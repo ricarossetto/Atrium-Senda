@@ -28,6 +28,17 @@
       byId('authSetupForm').addEventListener('submit', event => this.setup(event));
       byId('authTotpSetupForm').addEventListener('submit', event => this.verifySetup(event));
       byId('authLoginForm').addEventListener('submit', event => this.login(event));
+      byId('authRegisterForm')?.addEventListener('submit', event => this.register(event));
+      byId('authTabLogin')?.addEventListener('click', () => {
+        byId('authTabLogin')?.classList.add('active');
+        byId('authTabRegister')?.classList.remove('active');
+        this.show('authLoginForm');
+      });
+      byId('authTabRegister')?.addEventListener('click', () => {
+        byId('authTabRegister')?.classList.add('active');
+        byId('authTabLogin')?.classList.remove('active');
+        this.show('authRegisterForm');
+      });
       byId('copyRecoveryCodes').addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(byId('authRecoveryCodes').textContent); this.feedback('Códigos copiados. Guarde-os fora deste computador.', 'success'); }
         catch { this.feedback('Não foi possível copiar automaticamente. Selecione e copie os códigos.', 'error'); }
@@ -37,8 +48,40 @@
     },
     show(id) {
       document.querySelectorAll('.auth-step').forEach(element => element.classList.toggle('active', element.id === id));
+      const tabs = byId('authTabs');
+      if (tabs) {
+        tabs.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
+      }
       byId('authGate').classList.remove('hidden'); byId('appShell').classList.add('hidden');
       state.authenticated = false;
+    },
+    async register(event) {
+      event.preventDefault(); this.feedback('');
+      const formElement = event.currentTarget;
+      const form = new FormData(formElement);
+      if (form.get('password') !== form.get('confirmPassword')) {
+        return this.feedback('As senhas não coincidem.', 'error');
+      }
+      this.busy(formElement, true);
+      try {
+        const result = await request('/api/auth/register', {
+          method: 'POST',
+          body: {
+            displayName: form.get('displayName'),
+            email: form.get('email'),
+            username: form.get('username'),
+            oab: form.get('oab'),
+            password: form.get('password')
+          }
+        });
+        formElement.reset();
+        this.feedback(result.message || 'Solicitação enviada com sucesso! Aguarde a aprovação do Administrador Master.', 'success');
+        setTimeout(() => { byId('authTabLogin')?.click(); }, 3500);
+      } catch (error) {
+        this.feedback(error.message, 'error');
+      } finally {
+        this.busy(formElement, false);
+      }
     },
     async setup(event) {
       event.preventDefault(); this.feedback('');

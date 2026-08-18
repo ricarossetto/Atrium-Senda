@@ -868,6 +868,33 @@ const server = http.createServer(async (req, res) => {
       const session = assertAuthenticated(req, true); await security.logout(req);
       return json(res, 200, { ok: true, user: session.username }, { 'Set-Cookie': [security.clearCookie(), security.clearTrustedDeviceCookie()] });
     }
+    if (req.method === 'POST' && url.pathname === '/api/auth/register') {
+      const result = await security.registerUser(await readJson(req));
+      return json(res, 200, result);
+    }
+    if (req.method === 'GET' && url.pathname === '/api/auth/users') {
+      const session = assertAuthenticated(req);
+      return json(res, 200, { users: security.listUsers(), currentRole: session.role || 'collaborator' });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/users/manage') {
+      const session = assertAuthenticated(req, true);
+      if (session.role !== 'master_admin') throw Object.assign(new Error('Apenas o Administrador Master (Dr. Ricardo Rossetto) pode gerenciar usuários.'), { statusCode: 403 });
+      const body = await readJson(req);
+      const user = await security.updateUserStatus(body.userId, body);
+      return json(res, 200, { ok: true, user });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/sync') {
+      assertAuthenticated(req, true);
+      const config = await readPortalConfiguration();
+      const enabledIds = config.portals.filter(p => p.enabled || p.strategy === 'djen' || p.strategy === 'datajud').map(p => p.id);
+      spawn(process.execPath, [COLLECTOR_AGENT_FILE], {
+        cwd: ROOT,
+        env: { ...process.env, CENTRAL_URL: `http://${HOST}:${PORT}`, COLLECTOR_HEADLESS: 'true', COLLECTOR_PORTAL_IDS: enabledIds.join(',') },
+        windowsHide: true,
+        stdio: 'ignore'
+      });
+      return json(res, 200, { ok: true, message: 'Sincronização com DJEN, DataJud e tribunais disparada em segundo plano.' });
+    }
     if (req.method === 'POST' && url.pathname === '/api/auth/trusted-device/revoke') {
       assertAuthenticated(req, true); const revoked = await security.revokeTrustedDevice(req);
       return json(res, 200, { ok: true, revoked }, { 'Set-Cookie': security.clearTrustedDeviceCookie() });

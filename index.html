@@ -74,12 +74,29 @@
           <button class="button gold auth-submit" id="finishRecovery" type="button">Já guardei — entrar no Atrium Senda</button>
         </div>
 
+        <div class="auth-tabs" id="authTabs">
+          <button type="button" class="auth-tab active" id="authTabLogin">Entrar na Conta</button>
+          <button type="button" class="auth-tab" id="authTabRegister">Criar Conta / Novo Membro</button>
+        </div>
+
+        <form id="authRegisterForm" class="auth-step">
+          <p class="eyebrow">Novo Membro da Equipe</p><h2>Solicitar acesso à Central</h2>
+          <p>Informe seus dados para receber autorização do Administrador Master (Dr. Ricardo Rossetto - ricardo.rossetto.adv@gmail.com).</p>
+          <label>Nome completo<input name="displayName" autocomplete="name" required placeholder="Dr(a). Nome Sobrenome" maxlength="100"></label>
+          <label>E-mail de contato<input name="email" type="email" autocomplete="email" required placeholder="advogado@escritorio.com" maxlength="100"></label>
+          <label>Usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._-]{3,64}" placeholder="nome.sobrenome" maxlength="64"></label>
+          <label>OAB / Cargo (opcional)<input name="oab" placeholder="OAB/RS 000000" maxlength="40"></label>
+          <label>Senha de acesso<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+          <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+          <button class="button gold auth-submit" type="submit">Enviar solicitação para o Dr. Ricardo</button>
+        </form>
+
         <form id="authLoginForm" class="auth-step">
           <p class="eyebrow">Acesso restrito</p><h2>Entrar no Atrium Senda</h2>
           <p>Informe sua senha e o código atual do aplicativo autenticador.</p>
-          <label>Usuário<input name="username" autocomplete="username" required maxlength="64"></label>
+          <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="admin ou ricardo.rossetto.adv@gmail.com"></label>
           <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
-          <label>Código TOTP ou recuperação<input name="code" autocomplete="one-time-code" inputmode="text" required maxlength="11" placeholder="000000"></label>
+          <label>Código TOTP ou recuperação<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000"></label>
           <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>Senha e Authenticator serão exigidos novamente após 30 dias ou ao sair da conta.</small></span></label>
           <button class="button gold auth-submit" type="submit">Entrar no Atrium Senda</button>
         </form>
@@ -1258,7 +1275,7 @@
           <div class="setup-warning"><strong>Compatibilidade Universal:</strong> Aceita QR novo de ativação gerado pelo tribunal (PJe/PDPJ/eproc), QR de exportação do Google Authenticator ou chave manual Base32.</div>
         </section>
       </div>
-      <footer class="judicial-setup-footer"><div><strong>Primeiro acesso acompanhado</strong><span>Uma janela do tribunal será aberta para selecionar o A1, resolver eventual CAPTCHA e confirmar que a sessão foi criada.</span></div><button class="button gold" id="launchPortalLoginButton" type="button">Abrir primeira conexão</button></footer>
+      <footer class="judicial-setup-footer"><div><strong>Sincronização Judicial Autônoma</strong><span>O coletor monitora o DJEN, DataJud e tribunais vinculados automaticamente em segundo plano com IA.</span></div><button class="button gold" id="syncJudicialNowButton" type="button">✦ Sincronizar Acervo e Intimações Agora</button></footer>
     </section>
   </div>
 

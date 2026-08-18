@@ -75,11 +75,12 @@
       { id: 'audit-initial', at: new Date().toISOString(), action: 'Atrium Senda inicializado', detail: 'Ambiente pronto para uso com registros de demonstração.', actor: 'Sistema' }
     ],
     settings: {
-      officeName: 'Rossetto Advocacia',
+      officeName: 'Keller Advogados',
+      officeSlogan: 'Sociedade de Advogados',
       lawyerName: 'Ricardo De Luca Rossetto',
       lawyerOab: 'OAB/RS 135294',
       lawyerCpfCnpj: '000.000.000-00',
-      lawyerEmail: 'contato@rossetto.adv.br',
+      lawyerEmail: 'contato@keller.adv.br',
       lawyerPhone: '(51) 99999-9999',
       lawyerAddress: 'Endereço Profissional — Porto Alegre/RS',
       externalCalendarUrl: '',
@@ -149,21 +150,44 @@
   const formatDateTime = value => value ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : 'Nunca';
   const uid = prefix => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const ACT_RULES = [
-    { regex: /\b(apelac|recurs(o|ar)|agravo de instrument|recurso inominad|recurso especial|recurso extraordinari)/i, category: 'Recurso', days: 15, priority: 'importante', label: 'Recurso (15d)', css: 'recurso' },
-    { regex: /\b(contestac|contestaç|conteste|defes(a|ar)|apresentar defesa)/i, category: 'Contestação', days: 15, priority: 'importante', label: 'Contestação (15d)', css: 'contestacao' },
-    { regex: /\b(cumprimento de sentenc|pague|pagamento.{0,30}volunt|multa.{0,30}10%|execu[cç][aã]o)/i, category: 'Cumprimento de Sentença', days: 15, priority: 'urgente', label: 'Cumprimento (15d)', css: 'cumprimento' },
-    { regex: /\b(embargos? de declarac|embargos? declarator)/i, category: 'Embargos de Declaração', days: 5, priority: 'importante', label: 'Embargos (5d)', css: 'embargos' },
-    { regex: /\b(audi[eê]nc|sess[aã]o de julgamento|designad.{0,30}audi)/i, category: 'Audiência', days: 7, priority: 'urgente', label: 'Audiência (7d prep)', css: 'audiencia' },
-    { regex: /\b(manifest|impugn|r[eé]plic|especifica(r|cao|ção).{0,20}prov|contrarraz)/i, category: 'Manifestação', days: 15, priority: 'normal', label: 'Manifestação (15d)', css: 'manifestacao' },
-    { regex: /\b(senten[cç]|decis[aã]o|despacho|ac[oó]rd[aã]o)/i, category: 'Decisão / Despacho', days: 5, priority: 'normal', label: 'Decisão (5d)', css: 'recurso' }
+    { regex: /\b(embargos?\s+de\s+declara[cç][aã]o|embargos?\s+declarat[oó]rios?)\b/i, category: 'Embargos de Declaração', days: 5, priority: 'importante', label: 'Embargos (5d)', css: 'embargos' },
+    { regex: /\b(audi[eê]nc|sess[aã]o\s+de\s+julgamento|designad.{0,30}audi)\b/i, category: 'Audiência', days: 7, priority: 'urgente', label: 'Audiência (7d prep)', css: 'audiencia' },
+    { regex: /\b(apelac|agravo\s+de\s+instrumento|recurso\s+inominado|recurso\s+especial|recurso\s+extraordin[aá]rio|recurso\s+ordin[aá]rio|recurs(o|ar))\b/i, category: 'Recurso', days: 15, priority: 'importante', label: 'Recurso (15d)', css: 'recurso' },
+    { regex: /\b(contestac|contestaç|conteste|defes(a|ar)|apresentar\s+defesa)\b/i, category: 'Contestação', days: 15, priority: 'importante', label: 'Contestação (15d)', css: 'contestacao' },
+    { regex: /\b(cumprimento\s+de\s+senten[cç]|pague|pagamento.{0,30}volunt|multa.{0,30}10%|execu[cç][aã]o)\b/i, category: 'Cumprimento de Sentença', days: 15, priority: 'urgente', label: 'Cumprimento (15d)', css: 'cumprimento' },
+    { regex: /\b(manifest|impugn|r[eé]plic|especifica(r|cao|ção).{0,20}prov|contrarraz)\b/i, category: 'Manifestação', days: 15, priority: 'normal', label: 'Manifestação (15d)', css: 'manifestacao' },
+    { regex: /\b(edital|recupera[cç][aã]o\s+judicial|fal[eê]ncia|concedo\s+o\s+prazo)\b/i, category: 'Edital / Geral', days: 15, priority: 'normal', label: 'Edital (15d)', css: 'recurso' },
+    { regex: /\b(senten[cç]|ac[oó]rd[aã]o)\b/i, category: 'Sentença / Acórdão', days: 15, priority: 'importante', label: 'Sentença (15d)', css: 'recurso' },
+    { regex: /\b(decis[aã]o)\b/i, category: 'Decisão Interlocutória', days: 15, priority: 'normal', label: 'Decisão (15d)', css: 'recurso' },
+    { regex: /\b(despacho|ato\s+ordinat[oó]rio)\b/i, category: 'Despacho', days: 15, priority: 'normal', label: 'Despacho (15d)', css: 'rotina' }
   ];
 
   function classifyIntimationAct(text = '', title = '', type = '') {
     const combined = `${title} ${type} ${text}`;
+    
+    // 1. Extração de prazo explícito mencionado diretamente na decisão/despacho (ex: "prazo de 10 dias", "em 5 dias", "prazo de 30 dias")
+    const explicitMatch = combined.match(/\bprazo\s+(?:de\s+)?(\d{1,2})\s+dias?\b/i) || combined.match(/\bno\s+prazo\s+de\s+(\d{1,2})\s+dias?\b/i) || combined.match(/\bem\s+(\d{1,2})\s+dias?\b/i);
+    const explicitDays = explicitMatch ? parseInt(explicitMatch[1], 10) : null;
+
     for (const rule of ACT_RULES) {
-      if (rule.regex.test(combined)) return rule;
+      if (rule.regex.test(combined)) {
+        if (explicitDays && explicitDays !== rule.days && explicitDays > 0 && explicitDays <= 60) {
+          return {
+            ...rule,
+            days: explicitDays,
+            label: `${rule.category.split(' ')[0]} (${explicitDays}d)`
+          };
+        }
+        return rule;
+      }
     }
-    return { category: 'Intimação', days: 5, priority: 'normal', label: 'Intimação (5d)', css: 'rotina' };
+
+    if (explicitDays && explicitDays > 0 && explicitDays <= 60) {
+      return { category: 'Intimação', days: explicitDays, priority: 'normal', label: `Intimação (${explicitDays}d)`, css: 'rotina' };
+    }
+
+    // Regra Padrão do CPC: Quando não há certeza ou para prazos gerais, o padrão é SEMPRE 15 dias úteis
+    return { category: 'Prazo Geral', days: 15, priority: 'normal', label: 'Prazo Geral (15d)', css: 'rotina' };
   }
 
   function addDays(isoString, days) {
@@ -632,9 +656,7 @@ CPF: ${doc}`;
       byId('portalTotpForm').addEventListener('submit', event => this.savePortalTotp(event));
       byId('removePortalTotpButton').addEventListener('click', () => this.removePortalTotp());
       byId('resetJudicialConnectionsButton').addEventListener('click', () => this.resetJudicialConnections());
-      byId('savePortalCoverageButton').addEventListener('click', () => this.savePortalCoverage());
-      byId('launchPortalLoginButton').addEventListener('click', () => this.launchPortalLogin());
-      byId('forgetTrustedDeviceButton').addEventListener('click', () => this.forgetTrustedDevice());
+      byId('syncJudicialNowButton')?.addEventListener('click', () => this.syncJudicialNow());
       byId('portalCoverageList').addEventListener('click', event => {
         const button = event.target.closest('[data-configure-totp]'); if (!button) return;
         byId('totpPortalSelect').value = button.dataset.configureTotp;
@@ -849,8 +871,8 @@ CPF: ${doc}`;
     },
     renderOfficeIdentity() {
       const s = Store?.state?.settings || {};
-      const officeName = s.officeName || 'Advocacia Integrada';
-      const officeSlogan = s.officeSlogan || 'Escritório';
+      const officeName = s.officeName || 'Keller Advogados';
+      const officeSlogan = s.officeSlogan || 'Desde 1983';
       const officeLogo = s.officeLogo || '';
 
       const nameEl = document.getElementById('sidebarOfficeName');
@@ -863,18 +885,21 @@ CPF: ${doc}`;
         if (officeLogo) {
           avatarEl.innerHTML = `<img src="${escapeHtml(officeLogo)}" class="office-custom-logo" alt="Logo">`;
           avatarEl.style.background = 'transparent';
+          avatarEl.style.backgroundImage = 'none';
         } else {
-          avatarEl.innerHTML = `<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/></svg>`;
-          avatarEl.style.background = 'rgba(201,168,76,.1)';
+          avatarEl.innerHTML = '';
+          avatarEl.style.backgroundImage = "url('assets/images/equipe.png')";
+          avatarEl.style.backgroundSize = 'cover';
+          avatarEl.style.backgroundPosition = 'center';
         }
       }
     },
     openOfficeSetup() {
       const s = Store.state.settings || {};
       const primaryTerm = Store.state.terms?.[0] || {};
-      document.getElementById('officeInputName').value = s.officeName || 'Advocacia Integrada';
-      document.getElementById('officeInputSlogan').value = s.officeSlogan || 'Sociedade de Advogados';
-      document.getElementById('officeInputLawyer').value = s.lawyerName || primaryTerm.name || 'Dr(a). Advogado(a) Titular';
+      document.getElementById('officeInputName').value = s.officeName || 'Keller Advogados';
+      document.getElementById('officeInputSlogan').value = s.officeSlogan || 'Desde 1983';
+      document.getElementById('officeInputLawyer').value = s.lawyerName || primaryTerm.name || 'Ricardo De Luca Rossetto';
       document.getElementById('officeInputOab').value = s.lawyerOab || primaryTerm.registration || 'OAB/RS 135294';
       document.getElementById('officeInputAddress').value = s.lawyerAddress || '';
       document.getElementById('officeInputCity').value = s.city || '';
@@ -2133,17 +2158,32 @@ CPF: ${doc}`;
       } catch (error) { this.toast(error.message, 'error'); }
       finally { button.disabled = false; }
     },
-    async launchPortalLogin() {
-      const portalIds = [...document.querySelectorAll('[data-portal-enabled]:checked')].map(input => input.value);
-      if (!portalIds.length) return this.toast('Marque ao menos um tribunal antes da primeira conexão.', 'error');
-      if (!this.judicialStatus?.certificate?.valid) return this.toast('Valide o certificado A1 antes de abrir a primeira conexão.', 'error');
-      const button = document.getElementById('launchPortalLoginButton'); button.disabled = true;
+    async syncJudicialNow() {
+      const button = document.getElementById('syncJudicialNowButton');
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Sincronizando acervo e intimações…';
+      }
       try {
-        await this.judicialRequest('/api/integrations/judicial/connect', { portalIds });
-        this.toast('Janela de primeira conexão iniciada. Conclua apenas os pedidos oficiais dos tribunais.', 'success');
-        Store.audit('Primeira conexão judicial iniciada', `${portalIds.length} portal(is) selecionado(s).`);
-        await this.refreshJudicialStatus();
-      } catch (error) { button.disabled = false; this.toast(error.message, 'error'); }
+        const res = await window.KellerAuth.secureFetch('/api/integrations/judicial/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json().catch(() => ({}));
+        this.toast(data.message || 'Sincronização iniciada com sucesso em segundo plano!', 'success');
+        Store.audit('Sincronização judicial autônoma', 'Coleta de intimações DJEN, DataJud e tribunais.');
+        setTimeout(async () => {
+          await this.refreshRuntime();
+          this.renderAll();
+          if (button) {
+            button.disabled = false;
+            button.textContent = '✦ Sincronizar Acervo e Intimações Agora';
+          }
+        }, 3000);
+      } catch (error) {
+        this.toast(error.message || 'Falha ao iniciar sincronização.', 'error');
+        if (button) {
+          button.disabled = false;
+          button.textContent = '✦ Sincronizar Acervo e Intimações Agora';
+        }
+      }
     },
     async judicialRequest(url, body) {
       const response = await window.KellerAuth.secureFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) });
