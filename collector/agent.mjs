@@ -34,14 +34,18 @@ const publicPortals = portals.filter(portal => ['djen', 'datajud'].includes(port
 const preBrowserPortals = publicPortals.filter(portal => portal.strategy === 'djen');
 const postBrowserPortals = publicPortals.filter(portal => portal.strategy === 'datajud');
 const browserPortals = portals.filter(portal => !['djen', 'datajud'].includes(portal.strategy));
-const certificates = browserPortals
-  .filter(portal => portal.usesCertificate && portal.certificateMode === 'pfx-mtls')
-  .map(portal => {
+const certificates = [];
+for (const portal of browserPortals) {
+  if (portal.usesCertificate && portal.certificateMode === 'pfx-mtls') {
     const pfxPath = judicialSecrets.certificate?.path || process.env.A1_PFX_PATH;
     const passphrase = judicialSecrets.certificate?.passphrase || process.env.A1_PFX_PASSPHRASE;
-    if (!pfxPath || !passphrase) throw new Error(`O portal ${portal.name} exige A1, mas o certificado não foi configurado na Central.`);
-    return { origin: new URL(portal.url).origin, pfxPath, passphrase };
-  });
+    if (pfxPath && passphrase && existsSync(pfxPath)) {
+      certificates.push({ origin: new URL(portal.url).origin, pfxPath, passphrase });
+    } else if (!interactive) {
+      throw new Error(`O portal ${portal.name} exige A1, mas o certificado não foi configurado na Central.`);
+    }
+  }
+}
 
 const payload = { events: [], tasks: [], intimations: [], processes: [], sources: [] };
 const existingProcessNumbers = await loadExistingProcessNumbers();

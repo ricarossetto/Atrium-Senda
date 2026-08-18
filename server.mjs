@@ -427,14 +427,24 @@ async function startInteractiveCollector(portalIds) {
   const allowed = new Set(config.portals.filter(portal => portal.usesCertificate).map(portal => portal.id));
   const selected = [...new Set((Array.isArray(portalIds) ? portalIds : []).map(String))].filter(id => allowed.has(id));
   if (!selected.length) throw Object.assign(new Error('Selecione ao menos um portal para a primeira conexão.'), { statusCode: 400 });
+  const centralUrl = `http://${HOST}:${PORT}`;
   interactiveCollector = spawn(process.execPath, [COLLECTOR_AGENT_FILE], {
     cwd: ROOT,
-    env: { ...process.env, COLLECTOR_HEADLESS: 'false', COLLECTOR_INTERACTIVE: 'true', LOGIN_WAIT_SECONDS: '240', COLLECTOR_PORTAL_IDS: selected.join(',') },
-    windowsHide: true,
-    stdio: 'ignore'
+    env: {
+      ...process.env,
+      CENTRAL_URL: centralUrl,
+      COLLECTOR_HEADLESS: 'false',
+      COLLECTOR_INTERACTIVE: 'true',
+      LOGIN_WAIT_SECONDS: '240',
+      COLLECTOR_PORTAL_IDS: selected.join(',')
+    },
+    windowsHide: false,
+    stdio: 'pipe'
   });
+  interactiveCollector.stdout?.on('data', chunk => { console.log('[Coletor]:', chunk.toString().trim()); });
+  interactiveCollector.stderr?.on('data', chunk => { console.error('[Coletor Erro]:', chunk.toString().trim()); });
   interactiveCollector.once('exit', () => { interactiveCollector = null; });
-  interactiveCollector.once('error', () => { interactiveCollector = null; });
+  interactiveCollector.once('error', (err) => { console.error('[Coletor Falha]:', err); interactiveCollector = null; });
   return { started: true, portalCount: selected.length };
 }
 
@@ -671,8 +681,73 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
   };
 }
 
+function buildOfficeFullContext(state, runtime) {
+  const contacts = state.contacts || [];
+  const processes = mergeBy(state.processes || [], runtime?.processes || [], 'number');
+  const intimations = mergeBy(state.intimations || [], runtime?.intimations || [], 'id');
+  const tasks = mergeBy(state.tasks || [], runtime?.tasks || [], 'id');
+  const agenda = mergeBy(state.agenda || [], runtime?.events || [], 'id');
+  const terms = state.terms || [];
+
+  let summary = `\n=== DADOS COMPLETOS E REAIS DO ESCRITÓRIO (CONSULTA DIRETA DA IA) ===\n`;
+
+  // 1. Termos e Advogados Monitorados
+  if (terms.length) {
+    summary += `\n[ADVOGADOS E TERMOS MONITORADOS (${terms.length})]\n`;
+    terms.forEach(t => {
+      summary += `- ${t.name || 'Advogado'} · OAB/${t.oabUf || 'RS'} ${t.registration || ''} · Abrangência: ${t.court || 'Todos os Tribunais'}\n`;
+    });
+  }
+
+  // 2. Contatos / Clientes
+  if (contacts.length) {
+    summary += `\n[CLIENTES E CONTATOS DO ESCRITÓRIO (${contacts.length})]\n`;
+    contacts.forEach(c => {
+      summary += `- Nome: ${c.name} | Doc: ${c.document || c.cpf || 'N/I'} | Tel/Whats: ${c.phone || 'N/I'} | Email: ${c.email || 'N/I'} | Cidade: ${c.city || ''}/${c.state || ''} ${c.notes ? `| Detalhes: ${c.notes}` : ''}\n`;
+    });
+  }
+
+  // 3. Processos e Movimentações
+  if (processes.length) {
+    summary += `\n[ACERVO DE PROCESSOS ATIVOS (${processes.length})]\n`;
+    processes.forEach(p => {
+      summary += `- Processo: ${p.number} | Cliente: ${p.client || 'N/I'} | Parte Contrária: ${p.opposingParty || 'N/I'} | Foro/Vara: ${p.court || 'N/I'} | Ação: ${p.actionType || 'Cível'} (${p.stage || 'Em andamento'}) | Último Andamento: ${p.lastMovement || 'Sem movimentação registrada'}\n`;
+    });
+  }
+
+  // 4. Intimações do DJEN e Diários Oficiais
+  if (intimations.length) {
+    summary += `\n[INTIMAÇÕES JUDICIAIS E DIÁRIOS (${intimations.length})]\n`;
+    intimations.forEach(it => {
+      const statusLabel = it.status === 'conferida' ? 'CONFERIDA' : 'PENDENTE DE TRIAGEM';
+      const urgentLabel = it.isUrgent ? ' [URGENTE]' : '';
+      summary += `- [${statusLabel}${urgentLabel}] Processo: ${it.process || 'N/I'} | Cliente: ${it.client || 'N/I'} | Vara/Tribunal: ${it.court || 'N/I'} | Publicação: ${it.publishedAt || 'N/I'} | Prazo Fatal: ${it.fatalDate || 'N/I'} | Teor/Texto: ${String(it.text || it.summary || '').substring(0, 300)}\n`;
+    });
+  }
+
+  // 5. Tarefas e Prazos do Kanban
+  if (tasks.length) {
+    summary += `\n[QUADRO KANBAN DE TAREFAS E PRAZOS (${tasks.length})]\n`;
+    tasks.forEach(t => {
+      const statusLabel = t.status || 'pendente';
+      const urgentLabel = t.priority === 'urgente' ? ' [URGENTE]' : '';
+      summary += `- [Coluna: ${statusLabel}${urgentLabel}] ${t.title} | Processo: ${t.process || 'Geral'} | Cliente: ${t.client || 'N/I'} | Prazo Limite: ${t.dueDate || 'S/D'} | Responsável: ${t.lawyer || 'Dr(a). Advogado(a)'} | Pontuação: ${t.points || 10} pts\n`;
+    });
+  }
+
+  // 6. Agenda de Audiências e Compromissos
+  if (agenda.length) {
+    summary += `\n[AGENDA DE AUDIÊNCIAS E COMPROMISSOS (${agenda.length})]\n`;
+    agenda.forEach(a => {
+      summary += `- Data: ${a.date} às ${a.time || '00:00'} | Evento: ${a.title} | Cliente: ${a.client || 'N/I'} | Processo: ${a.process || 'N/I'}\n`;
+    });
+  }
+
+  return summary;
+}
+
 async function callGeminiApi(apiKey, systemInstruction, contents) {
-  const models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  const models = ['gemini-2.0-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
   let lastError = null;
 
   for (const model of models) {
@@ -858,15 +933,21 @@ const server = http.createServer(async (req, res) => {
       }
 
       const office = state.settings || {};
-      const systemPrompt = `Você é o Assistente Jurídico Inteligente do JurisFlow, plataforma autônoma para advocacia de alta performance no Brasil.
+      const runtime = await readRuntime().catch(() => ({}));
+      const fullOfficeContext = buildOfficeFullContext(state, runtime);
+
+      const systemPrompt = `Você é o Assistente Jurídico Inteligente do Atrium Senda, plataforma autônoma para advocacia de alta performance no Brasil.
 Escritório: ${office.officeName || 'Advocacia Integrada'} (${office.lawyerName || 'Dr(a). Advogado(a) Titular'} - ${office.lawyerOab || 'OAB'})
+
+${fullOfficeContext}
 
 Diretrizes essenciais:
 1. Especialista em Direito Brasileiro: CPC/2015, CPP, CLT, Legislação Previdenciária, Tributária, Consumidor e Direito Público.
-2. Contagem e Estratégia de Prazos: Domínio do Art. 219 (dias úteis), Art. 224 (termo inicial e final) e regras do CPC/2015 e CLT. Sempre calcule e explique o termo a quo, os dias úteis e o prazo fatal com clareza matemática.
-3. Análise de Intimações do DJEN / DJe / eproc: Sintetize o que o juízo/tribunal determinou, identifique o tipo de ato (despacho, decisão, sentença, acórdão) e a medida cabível (ex: agravo, apelação, embargos, réplica).
-4. Produção de Peças e Minutas: Redija petições, manifestações, cláusulas contratuais e procurações com técnica apurada, formatação em Markdown e fundamentação em lei e jurisprudência dos tribunais superiores (STJ/STF/TST).
-5. Formatação: Seja direto, organizado, use títulos em markdown, listas e bullet points. NÃO use emojis. Use termos jurídicos precisos.`;
+2. Acesso Total aos Dados do Escritório: Você conhece todos os clientes cadastrados, processos em andamento, movimentações, intimações do DJEN/diários, tarefas do Kanban, prazos fatais e audiências listados acima. Quando o usuário perguntar sobre qualquer processo, cliente, intimação ou prazo, consulte e responda com base nos dados reais do escritório com precisão.
+3. Contagem e Estratégia de Prazos: Domínio do Art. 219 (dias úteis), Art. 224 (termo inicial e final) e regras do CPC/2015 e CLT. Sempre calcule e explique o termo a quo, os dias úteis e o prazo fatal com clareza matemática.
+4. Análise de Intimações do DJEN / DJe / eproc: Sintetize o que o juízo/tribunal determinou, identifique o tipo de ato (despacho, decisão, sentença, acórdão) e a medida cabível (ex: agravo, apelação, embargos, réplica).
+5. Produção de Peças e Minutas: Redija petições, manifestações, cláusulas contratuais e procurações com técnica apurada, formatação em Markdown e fundamentação em lei e jurisprudência dos tribunais superiores (STJ/STF/TST).
+6. Formatação: Seja direto, organizado, use títulos em markdown, listas e bullet points. NÃO use emojis. Use termos jurídicos precisos.`;
 
       const history = Array.isArray(body.history) ? body.history : [];
       const contents = [];

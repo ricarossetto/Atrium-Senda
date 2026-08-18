@@ -232,8 +232,23 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .bento-dashboard-grid { grid-template-columns: 1fr; }
   .bento-focus { grid-column: span 1; }
 }
-.hero-card { min-height: 280px; position: relative; overflow: hidden; border: 1px solid rgba(212,175,55,.22); border-radius: 16px; background: radial-gradient(circle at 85% 20%, rgba(212,175,55,.16), transparent 50%), radial-gradient(circle at 15% 85%, rgba(74,123,176,.08), transparent 45%), linear-gradient(145deg, #181715, #0f0e0d); box-shadow: var(--shadow); }
-.hero-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(12,12,11,.96) 0%, rgba(12,12,11,.84) 45%, rgba(12,12,11,.35) 100%); }
+.hero-card {
+  min-height: 280px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(212,175,55,.28);
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, rgba(12,12,11,.97) 0%, rgba(12,12,11,.86) 45%, rgba(12,12,11,.32) 100%),
+    url('../assets/images/equipe.png') right 20% / cover no-repeat;
+  box-shadow: var(--shadow);
+}
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 85% 20%, rgba(212,175,55,.16), transparent 50%), radial-gradient(circle at 15% 85%, rgba(74,123,176,.08), transparent 45%);
+  pointer-events: none;
+}
 .hero-content { position: relative; z-index: 1; width: 68%; padding: 32px 34px; }
 .gold-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; color: var(--gold-soft); background: rgba(212,175,55,.09); border: 1px solid rgba(212,175,55,.24); border-radius: 99px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .hero-card h2 { margin: 14px 0 10px; font: 700 clamp(28px,2.8vw,40px)/1.06 var(--font-serif); letter-spacing: -.01em; color: var(--ivory); }
