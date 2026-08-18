@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SecurityManager, verifyTotp } from './lib/security.mjs';
 import { collectDjen } from './collector/adapters/djen.mjs';
+import ExcelJS from 'exceljs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const ENV_FILE = path.join(ROOT, '.env');
@@ -397,6 +398,132 @@ function calendarPayload(records) {
   const tasks = events.map(event => ({ id: `task:${event.externalId}`, externalId: `task:${event.externalId}`, title: event.title, description: event.description || 'Importado automaticamente da agenda ADVBOX.', status: 'triagem', source: 'Agenda ADVBOX', client: event.client, process: event.process, deadline: event.date, priority: 'normal', responsible: 'Ricardo', createdAt: event.importedAt }));
   return { events, tasks };
 }
+
+async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = '' }) {
+  let rows = [];
+  if (base64) {
+    const buffer = Buffer.from(base64, 'base64');
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const sheet = workbook.worksheets[0];
+    if (!sheet) throw new Error('A planilha está vazia.');
+    const headers = sheet.getRow(1).values.slice(1).map(v => String(v || '').trim());
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const rowData = {};
+      row.values.slice(1).forEach((val, idx) => {
+        if (headers[idx]) {
+          const text = val && typeof val === 'object' && 'text' in val ? val.text : val != null ? String(val).trim() : '';
+          rowData[headers[idx]] = text;
+        }
+      });
+      if (Object.values(rowData).some(Boolean)) rows.push(rowData);
+    });
+  } else if (content) {
+    const lines = content.split(/\r?\n/).filter(line => line.trim());
+    if (!lines.length) throw new Error('Arquivo de texto vazio.');
+    const delimiter = lines[0].includes(';') ? ';' : lines[0].includes('\t') ? '\t' : ',';
+    const headers = lines[0].split(delimiter).map(h => h.replace(/^["']|["']$/g, '').trim());
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(delimiter).map(p => p.replace(/^["']|["']$/g, '').trim());
+      const rowData = {};
+      headers.forEach((h, idx) => { rowData[h] = parts[idx] || ''; });
+      if (Object.values(rowData).some(Boolean)) rows.push(rowData);
+    }
+  } else {
+    throw new Error('Nenhum dado de planilha enviado.');
+  }
+
+  const contacts = [];
+  const processes = [];
+  const tasks = [];
+
+  for (const row of rows) {
+    const rowKeys = Object.keys(row);
+    const getVal = (...keys) => {
+      for (const k of keys) {
+        const foundKey = rowKeys.find(rk => rk.toLowerCase().replace(/[^a-z0-9]/g, '') === k.toLowerCase().replace(/[^a-z0-9]/g, ''));
+        if (foundKey && row[foundKey]) return String(row[foundKey]).trim();
+      }
+      return '';
+    };
+
+    const name = getVal('nome', 'contato', 'cliente', 'nomecompleto', 'nomedocliente');
+    const doc = getVal('cpf', 'cnpj', 'cpfcnpj', 'documento');
+    const procNum = getVal('processo', 'numerodoprocesso', 'numero', 'cnj', 'protocolo');
+    const court = getVal('tribunal', 'vara', 'orgao', 'comarca', 'juizo');
+    const stage = getVal('fase', 'etapa', 'status', 'situacao');
+    const actionType = getVal('tipodeacao', 'acao', 'materia', 'classe');
+    const feeType = getVal('honorarios', 'tipodehonorarios', 'contrato');
+    const feePct = getVal('percentual', 'porcentagem', 'exito', 'honorariosporcentagem');
+    const feeAmount = getVal('valor', 'valordeentrada', 'honorariosfixos', 'honorariosvalor');
+    const taskTitle = getVal('tarefa', 'compromisso', 'titulo', 'prazo', 'atividade');
+    const deadline = getVal('datalimite', 'vencimento', 'prazo', 'data');
+    const responsible = getVal('responsavel', 'destinatario', 'advogado');
+
+    if (procNum || (name && (court || actionType || stage))) {
+      processes.push({
+        id: `proc-${randomBytes(6).toString('hex')}`,
+        number: procNum || '',
+        client: name || 'Cliente não informado',
+        court: court || 'TJ',
+        actionType: actionType || 'Ação Cível',
+        stage: stage || 'Em andamento',
+        feeType: feeType ? feeType.toLowerCase() : feePct ? 'exito' : feeAmount ? 'fixo' : 'exito',
+        feePercentage: feePct ? feePct.replace(/\D/g, '') : '30',
+        feeAmount: feeAmount ? feeAmount.replace(/[^\d.,]/g, '') : '',
+        feeStatus: 'pendente',
+        registeredAt: new Date().toISOString().slice(0, 10),
+        lastMovement: 'Importado via planilha',
+        lastMovementAt: new Date().toISOString().slice(0, 10),
+        monitoring: 'active',
+        source: 'Planilha'
+      });
+    }
+
+    if (name && (doc || getVal('celular', 'telefone', 'email', 'cidade') || !procNum)) {
+      contacts.push({
+        id: `contact-${randomBytes(6).toString('hex')}`,
+        name,
+        document: doc || '',
+        mobile: getVal('celular', 'telefone', 'whatsapp', 'fone') || '',
+        phone: getVal('telefonefixo', 'telefone2') || '',
+        email: getVal('email', 'correioeletronico') || '',
+        city: getVal('cidade', 'municipio') || '',
+        state: getVal('estado', 'uf') || '',
+        profession: getVal('profissao', 'cargo') || '',
+        origin: 'Planilha',
+        registeredAt: new Date().toISOString().slice(0, 10)
+      });
+    }
+
+    if (taskTitle) {
+      tasks.push({
+        id: `task-${randomBytes(6).toString('hex')}`,
+        title: taskTitle,
+        description: `Importado de planilha: ${filename || 'lote'}`,
+        client: name || '',
+        process: procNum || '',
+        deadline: deadline || new Date().toISOString().slice(0, 10),
+        priority: 'normal',
+        status: 'triagem',
+        responsible: responsible || 'Advogado',
+        source: 'Planilha',
+        createdAt: new Date().toISOString()
+      });
+    }
+  }
+
+  return {
+    filename,
+    totalRows: rows.length,
+    preview: rows.slice(0, 8),
+    contacts,
+    processes,
+    tasks
+  };
+}
+
 function mergeBy(left = [], right = [], key = 'externalId') {
   const result = [...left];
   for (const record of right) {
@@ -517,6 +644,33 @@ const server = http.createServer(async (req, res) => {
       await saveRuntime(next);
       const imported = ['events', 'tasks', 'intimations', 'processes'].reduce((sum, key) => sum + sanitizeArray(incoming[key]).length, 0);
       return json(res, 200, { ok: true, imported, updatedAt: next.updatedAt });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/import/template') {
+      const type = url.searchParams.get('type') || 'processes';
+      let csvContent = '';
+      let filename = 'modelo.csv';
+      if (type === 'contacts') {
+        filename = 'modelo-contatos-jurisflow.csv';
+        csvContent = 'Nome;CPF/CNPJ;Telefone / WhatsApp;E-mail;Cidade;Estado;Profissão\nMaria de Souza;123.456.789-00;(51) 99999-8888;maria@exemplo.com;Porto Alegre;RS;Servidora Pública\nJoão da Silva;987.654.321-11;(51) 98888-7777;joao@exemplo.com;Canoas;RS;Aposentado';
+      } else if (type === 'tasks') {
+        filename = 'modelo-tarefas-prazos-jurisflow.csv';
+        csvContent = 'Título da Tarefa;Processo;Cliente;Data Limite;Responsável;Pontos\nElaborar Petição Inicial;5001234-56.2024.4.04.7100;Maria de Souza;2026-08-30;Dr. Advogado;10\nInterpor Recurso de Apelação;5009876-54.2023.8.21.0001;João da Silva;2026-08-25;Dr. Advogado;15';
+      } else {
+        filename = 'modelo-processos-jurisflow.csv';
+        csvContent = 'Número do Processo;Nome do Cliente;Tribunal / Comarca;Tipo de Ação;Etapa;Tipo de Honorários;Percentual de Êxito;Valor Fixo\n5001234-56.2024.4.04.7100;Maria de Souza;TRF4 · 1ª Vara Federal;Previdenciário;Instrução;exito;30;\n5009876-54.2023.8.21.0001;João da Silva;TJRS · 2ª Vara Cível;Cobrança;Execução;misto;20;1500';
+      }
+      res.writeHead(200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Cache-Control': 'no-store'
+      });
+      return res.end('\uFEFF' + csvContent);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/import/spreadsheet') {
+      assertAuthenticated(req, true);
+      const body = await readJson(req, 10_000_000);
+      const parsed = await parseUploadedSpreadsheet(body);
+      return json(res, 200, { ok: true, ...parsed });
     }
     if (req.method === 'POST' && url.pathname === '/api/sync') {
       assertAuthenticated(req, true);

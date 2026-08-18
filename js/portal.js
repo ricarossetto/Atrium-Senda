@@ -482,6 +482,26 @@ CPF: ${doc}`;
       byId('docGenProcessSelect')?.addEventListener('change', () => this.updateDocPreview());
       byId('docGenCopyButton')?.addEventListener('click', () => this.copyDocToClipboard());
       byId('docGenDownloadButton')?.addEventListener('click', () => this.downloadDoc());
+
+      // Importador de planilhas
+      const dropzone = byId('importerDropzone');
+      const fileInput = byId('importerFileInput');
+      if (dropzone && fileInput) {
+        byId('btnSelectSpreadsheet')?.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+        dropzone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropzone.classList.remove('drag-over');
+          if (e.dataTransfer.files?.[0]) this.handleSpreadsheetUpload(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+          if (e.target.files?.[0]) this.handleSpreadsheetUpload(e.target.files[0]);
+        });
+        byId('importerCancelButton')?.addEventListener('click', () => this.cancelSpreadsheetImport());
+        byId('importerCommitButton')?.addEventListener('click', () => this.commitSpreadsheetImport());
+      }
       document.querySelectorAll('th[data-sort-table]').forEach(th => {
         th.addEventListener('click', () => {
           const table = th.dataset.sortTable;
@@ -1516,6 +1536,101 @@ CPF: ${doc}`;
       a.click();
       URL.revokeObjectURL(url);
       this.toast(`Arquivo ${filename} baixado com sucesso.`, 'success');
+    },
+    async handleSpreadsheetUpload(file) {
+      if (!file) return;
+      this.toast('Analisando estrutura da planilha…');
+      try {
+        const isCsv = file.name.toLowerCase().endsWith('.csv');
+        let payload = {};
+        if (isCsv) {
+          const content = await file.text();
+          payload = { filename: file.name, content };
+        } else {
+          const buffer = await file.arrayBuffer();
+          let binary = '';
+          const bytes = new Uint8Array(buffer);
+          const len = bytes.byteLength;
+          for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
+          const base64 = btoa(binary);
+          payload = { filename: file.name, base64 };
+        }
+
+        const response = await window.KellerAuth.secureFetch('/api/import/spreadsheet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.message || 'Não foi possível ler a planilha.');
+        }
+
+        const result = await response.json();
+        this.importedSpreadsheetData = result;
+        this.renderSpreadsheetPreview(result);
+        this.toast(`Planilha lida: ${result.totalRows} linha(s) encontrada(s).`, 'success');
+      } catch (error) {
+        this.toast(error.message || 'Falha ao processar arquivo.', 'error');
+      }
+    },
+    renderSpreadsheetPreview(data) {
+      const card = document.getElementById('importerPreviewCard');
+      if (!card) return;
+      card.classList.remove('hidden');
+      document.getElementById('importerFileLabel').textContent = `Arquivo: ${data.filename || 'Planilha'}`;
+      document.getElementById('importerSummaryTitle').textContent = `${data.totalRows} linha(s) identificada(s)`;
+
+      const badges = [];
+      if (data.processes?.length) badges.push(`<span class="status-chip connected">⚖️ ${data.processes.length} Processo(s)</span>`);
+      if (data.contacts?.length) badges.push(`<span class="status-chip planned">👥 ${data.contacts.length} Contato(s)</span>`);
+      if (data.tasks?.length) badges.push(`<span class="status-chip warning">📅 ${data.tasks.length} Tarefa(s) / Prazo(s)</span>`);
+      document.getElementById('importerBadges').innerHTML = badges.join('');
+
+      const previewRows = data.preview || [];
+      if (!previewRows.length) return;
+      const headers = Object.keys(previewRows[0]);
+      document.getElementById('importerPreviewHead').innerHTML = `<tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>`;
+      document.getElementById('importerPreviewBody').innerHTML = previewRows.map(row => `
+        <tr>${headers.map(h => `<td>${escapeHtml(String(row[h] || '—'))}</td>`).join('')}</tr>
+      `).join('');
+
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    cancelSpreadsheetImport() {
+      this.importedSpreadsheetData = null;
+      document.getElementById('importerPreviewCard')?.classList.add('hidden');
+      const input = document.getElementById('importerFileInput');
+      if (input) input.value = '';
+      this.toast('Importação descartada.');
+    },
+    commitSpreadsheetImport() {
+      const data = this.importedSpreadsheetData;
+      if (!data) return;
+      let countProc = 0;
+      let countCont = 0;
+      let countTasks = 0;
+
+      (data.processes || []).forEach(proc => {
+        Store.upsert('processes', proc, 'number');
+        countProc++;
+      });
+      (data.contacts || []).forEach(cont => {
+        Store.upsert('contacts', cont, 'name');
+        countCont++;
+      });
+      (data.tasks || []).forEach(task => {
+        Store.upsert('tasks', task, 'title');
+        countTasks++;
+      });
+
+      Store.audit('Importação de planilha concluída', `${countProc} processos, ${countCont} contatos e ${countTasks} tarefas consolidados.`);
+      Store.save();
+      this.renderAll();
+      this.cancelSpreadsheetImport();
+      this.toast(`Importação concluída: ${countProc} processos, ${countCont} contatos e ${countTasks} tarefas importados!`, 'success');
+      if (countProc > 0) this.switchView('processes');
+      else if (countCont > 0) this.switchView('contacts');
     },
     async checkServerStatus() {
       try {

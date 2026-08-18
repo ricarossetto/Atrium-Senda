@@ -736,3 +736,88 @@ td small { color: var(--muted); }
 .doc-preview-textarea:focus {
   border-color: var(--gold);
 }
+
+/* Importador de Planilhas */
+.importer-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.dropzone-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  border: 2px dashed rgba(201, 168, 76, 0.35);
+  border-radius: 16px;
+  background: radial-gradient(circle at 50% 30%, rgba(201, 168, 76, 0.05), transparent 60%), #121210;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.dropzone-card:hover, .dropzone-card.drag-over {
+  border-color: var(--gold);
+  background: radial-gradient(circle at 50% 30%, rgba(201, 168, 76, 0.12), transparent 70%), #151512;
+}
+.dropzone-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.dropzone-content h3 {
+  font-size: 20px;
+  margin-bottom: 8px;
+  color: var(--ivory);
+}
+.dropzone-content p {
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 440px;
+  margin: 0 auto 18px;
+  line-height: 1.5;
+}
+.dropzone-hint {
+  display: block;
+  color: #817d74;
+  font-size: 11px;
+  margin-top: 14px;
+}
+.importer-guide-card {
+  padding: 24px;
+}
+.importer-guide-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+.guide-item {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+}
+.guide-item strong {
+  display: block;
+  font-size: 13px;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+.guide-item p {
+  color: #aaa59b;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+}
+.importer-preview-card {
+  margin-top: 20px;
+}
+.importer-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 0 18px;
+}
+@media (max-width: 900px) {
+  .importer-grid { grid-template-columns: 1fr; }
+}

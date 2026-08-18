@@ -102,6 +102,9 @@
       <div class="sidebar-divider"></div>
 
       <nav class="main-nav secondary" aria-label="Configurações">
+        <button class="nav-item" data-view="importer">
+          <span class="nav-icon" aria-hidden="true">📥</span><span>Importador</span>
+        </button>
         <button class="nav-item" data-view="configuration">
           <span class="nav-icon" aria-hidden="true">⚙</span><span>Configurações</span>
         </button>
@@ -246,6 +249,7 @@
         <div class="section-toolbar">
           <div class="filter-tabs"><button class="active">Ativos</button><button>Com movimentação</button><button>Sigilosos</button></div>
           <div class="toolbar-actions">
+            <button class="button ghost" data-view-link="importer">📥 Importar planilha</button>
             <button class="button ghost" id="btnGenDocProcess">⚖ Gerar minuta</button>
             <button class="button gold" id="newProcessButton">+ Cadastrar processo</button>
           </div>
@@ -274,6 +278,7 @@
         <div class="section-toolbar">
           <div class="toolbar-copy"><p>Contatos importados dos relatórios ADVBOX e preservados no armazenamento criptografado.</p></div>
           <div class="toolbar-actions">
+            <button class="button ghost" data-view-link="importer">📥 Importar planilha</button>
             <button class="button ghost" id="btnGenDocContact">⚖ Gerar minuta</button>
             <span class="status-chip connected" id="contactCount">0 contatos</span>
             <button class="button gold" id="newContactButton">+ Novo contato</button>
@@ -364,13 +369,75 @@
             <div class="integration-logo certificate-logo">A1</div><div class="integration-copy"><span class="status-chip muted" id="certificateIntegrationStatus">Verificando certificado</span><h3>Certificado Digital A1 & PJe</h3><p id="certificateIntegrationDetail">Ative o A1 localmente e sincronize expedientes e acervo com proteção criptográfica.</p><button class="button gold" id="certificateGuideButton">Gerenciar A1 e Tribunais</button></div>
           </article>
           <article class="integration-card card">
-            <div class="integration-logo legal-logo">📊</div><div class="integration-copy"><span class="status-chip connected">Pronto</span><h3>Importador de Planilhas</h3><p>Importe processos, contatos e clientes em lote via planilhas XLSX ou CSV.</p><button class="button ghost" data-view-link="processes">Ver processos</button></div>
+            <div class="integration-logo legal-logo">📊</div><div class="integration-copy"><span class="status-chip connected">Pronto</span><h3>Importador de Planilhas</h3><p>Importe processos, contatos e clientes em lote via planilhas XLSX ou CSV.</p><button class="button gold" data-view-link="importer">Abrir importador</button></div>
           </article>
         </div>
         <article class="card architecture-card">
           <div><p class="eyebrow">Arquitetura protegida</p><h3>Separação entre interface e credenciais</h3></div>
           <div class="architecture-flow"><span>Portais judiciais</span><b>→</b><span>Agente local seguro</span><b>→</b><span>JurisFlow</span><b>→</b><span>Triagem humana</span></div>
           <button class="button ghost hidden" id="forgetTrustedDeviceButton" type="button">Esquecer este navegador</button>
+        </article>
+      </section>
+
+      <section class="view" id="view-importer" data-title="Importador de Planilhas" data-eyebrow="Importação em lote">
+        <div class="section-toolbar">
+          <div class="toolbar-copy"><p>Importe processos, contatos, clientes e tarefas em lote via arquivos Excel (.xlsx) ou CSV com mapeamento inteligente.</p></div>
+          <div class="toolbar-actions">
+            <a class="button ghost" href="/api/import/template?type=processes" download>📄 Modelo Processos (CSV)</a>
+            <a class="button ghost" href="/api/import/template?type=contacts" download>📄 Modelo Contatos (CSV)</a>
+            <a class="button ghost" href="/api/import/template?type=tasks" download>📄 Modelo Prazos (CSV)</a>
+          </div>
+        </div>
+
+        <div class="importer-grid">
+          <article class="card dropzone-card" id="importerDropzone">
+            <input type="file" id="importerFileInput" accept=".xlsx,.xls,.csv" class="hidden">
+            <div class="dropzone-content">
+              <div class="dropzone-icon">📥</div>
+              <h3>Arraste e solte sua planilha aqui</h3>
+              <p>Suporta arquivos <strong>.XLSX</strong>, <strong>.XLS</strong> ou <strong>.CSV</strong> de qualquer software jurídico ou exportação do tribunal.</p>
+              <button class="button gold" type="button" id="btnSelectSpreadsheet">Selecionar arquivo no computador</button>
+              <small class="dropzone-hint">Colunas detectadas automaticamente: Processo, Cliente, CPF/CNPJ, Tribunal, Ação, Honorários, Contato, Prazos.</small>
+            </div>
+          </article>
+
+          <article class="card importer-guide-card">
+            <div class="card-heading"><div><p class="eyebrow">Instruções de formato</p><h3>O que pode ser importado</h3></div></div>
+            <div class="importer-guide-list">
+              <div class="guide-item">
+                <strong>⚖️ Processos & Clientes</strong>
+                <p>Colunas como <em>Número do processo</em>, <em>Cliente</em>, <em>Tribunal/Comarca</em>, <em>Tipo de Ação</em>, <em>Fase</em> e <em>Honorários</em>.</p>
+              </div>
+              <div class="guide-item">
+                <strong>👥 Contatos & Cadastro Geral</strong>
+                <p>Colunas como <em>Nome</em>, <em>CPF/CNPJ</em>, <em>Telefone / Celular</em>, <em>E-mail</em>, <em>Cidade</em> e <em>UF</em>.</p>
+              </div>
+              <div class="guide-item">
+                <strong>📅 Tarefas, Prazos & Audiências</strong>
+                <p>Colunas como <em>Título da tarefa</em>, <em>Processo</em>, <em>Cliente</em>, <em>Data Limite / Prazo</em> e <em>Responsável</em>.</p>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <article class="card importer-preview-card hidden" id="importerPreviewCard">
+          <div class="card-heading">
+            <div>
+              <p class="eyebrow" id="importerFileLabel">Arquivo carregado</p>
+              <h3 id="importerSummaryTitle">Pré-visualização dos dados</h3>
+            </div>
+            <div class="toolbar-actions">
+              <button class="button ghost" id="importerCancelButton">Descartar</button>
+              <button class="button gold" id="importerCommitButton">🚀 Confirmar e Importar para o JurisFlow</button>
+            </div>
+          </div>
+          <div class="importer-badges" id="importerBadges"></div>
+          <div class="responsive-table">
+            <table class="sortable-table" id="importerPreviewTable">
+              <thead id="importerPreviewHead"></thead>
+              <tbody id="importerPreviewBody"></tbody>
+            </table>
+          </div>
         </article>
       </section>
 
