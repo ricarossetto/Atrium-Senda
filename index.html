@@ -146,6 +146,17 @@
           </span>
           <span>Assistente IA</span>
         </button>
+        <button class="nav-item" data-view="prompts">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              <path d="M8 7h8M8 11h6"/>
+            </svg>
+          </span>
+          <span>Biblioteca de Prompts</span>
+          <strong class="nav-count gold-count" id="promptCountBadge">230</strong>
+        </button>
         <button class="nav-item" data-view="kanban">
           <span class="nav-icon" aria-hidden="true">
             <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -193,6 +204,15 @@
             </svg>
           </span>
           <span>Monitoramento</span>
+        </button>
+        <button class="nav-item" data-view="links">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </span>
+          <span>Links Úteis</span>
         </button>
       </nav>
 
@@ -863,6 +883,9 @@
 
           <div class="ai-quick-prompts">
             <span class="quick-prompts-label">Ações Rápidas:</span>
+            <button class="quick-prompt-btn highlight-gold-btn" type="button" data-view-link="prompts">
+              ✦ Abrir Biblioteca de Prompts (230)
+            </button>
             <button class="quick-prompt-btn" type="button" data-prompt="Analise a última intimação judicial recebida no sistema, explique a determinação judicial em linguagem clara e aponte a peça processual cabível e o prazo aplicável do CPC.">
               Analisar Última Intimação (DJEN)
             </button>
@@ -897,7 +920,7 @@
                     </ul>
                     <p>Como posso auxiliá-lo(a) hoje?</p>
                   </div>
-                  <div class="message-meta">Assistente JurisFlow</div>
+                  <div class="message-meta">Assistente Atrium Senda</div>
                 </div>
               </div>
             </div>
@@ -913,6 +936,241 @@
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Biblioteca de Prompts Jurídicos -->
+      <section class="view" id="view-prompts" data-title="Biblioteca de Prompts Jurídicos" data-eyebrow="Inteligência Artificial">
+        <div class="section-toolbar">
+          <div class="toolbar-copy">
+            <p>230 prompts jurídicos especializados e calibrados para pesquisa, redação de peças, análise de riscos e estratégia processual.</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="button gold" data-view-link="assistant">
+              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+              </svg>
+              <span>Abrir Assistente IA</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="prompts-hub">
+          <div class="prompts-filter-bar card">
+            <div class="prompts-search-box">
+              <span class="search-icon" aria-hidden="true">⌕</span>
+              <input type="search" id="promptsSearchInput" placeholder="Pesquisar por título, palavras-chave, lei ou tema jurídico...">
+              <button type="button" class="btn-clear-search hidden" id="btnClearPromptsSearch" aria-label="Limpar busca">×</button>
+            </div>
+
+            <div class="prompts-filter-row">
+              <div class="prompts-filter-group">
+                <label for="promptCategorySelect">Área do Direito:</label>
+                <select id="promptCategorySelect">
+                  <option value="all">Todas as Áreas (230 prompts)</option>
+                </select>
+              </div>
+
+              <div class="prompts-filter-group">
+                <label for="promptTypeSelect">Tipo de Ação:</label>
+                <select id="promptTypeSelect">
+                  <option value="all">Todos os Tipos</option>
+                  <option value="Redação">Redação</option>
+                  <option value="Análise">Análise</option>
+                  <option value="Pesquisa">Pesquisa</option>
+                  <option value="Assistente">Assistente</option>
+                  <option value="Geral">Geral</option>
+                </select>
+              </div>
+
+              <div class="prompts-counter-badge" id="promptsCountDisplay">
+                Mostrando 230 de 230 prompts
+              </div>
+            </div>
+          </div>
+
+          <div class="prompts-category-chips" id="promptsCategoryChips"></div>
+
+          <div class="prompts-grid" id="promptsGrid">
+            <!-- Os cards de prompts serão renderizados dinamicamente aqui -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Central de Links Úteis & Ferramentas -->
+      <section class="view" id="view-links" data-title="Links Úteis & Ferramentas" data-eyebrow="Acesso Rápido Oficial">
+        <div class="section-toolbar">
+          <div class="toolbar-copy">
+            <p>Atalhos diretos para legislações oficiais compiladas do Planalto, pesquisa de jurisprudência do STJ e ferramentas de IA jurídica.</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="button gold" data-view-link="prompts">
+              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+              <span>Biblioteca de Prompts (230)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="links-hub">
+          <!-- Seção de Legislação Principal -->
+          <div class="links-section-header">
+            <h3>Legislação &amp; Códigos Fundamentais (Planalto)</h3>
+            <p>Textos legais oficiais e compilados com as últimas atualizações legislativas.</p>
+          </div>
+
+          <div class="links-grid">
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+              <div class="link-card-header">
+                <div class="link-badge">Lei nº 10.406/2002</div>
+                <span class="external-icon">↗</span>
+              </div>
+              <h4>Código Civil (CC)</h4>
+              <p>Texto legal compilado oficial da legislação civil brasileira (obrigações, contratos, família, sucessões, posse e propriedade).</p>
+              <div class="link-card-meta">
+                <span class="link-domain">planalto.gov.br</span>
+                <span class="link-tag">Compilado</span>
+              </div>
+            </a>
+
+            <a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+              <div class="link-card-header">
+                <div class="link-badge">Lei nº 13.105/2015</div>
+                <span class="external-icon">↗</span>
+              </div>
+              <h4>Código de Processo Civil (CPC)</h4>
+              <p>Código de Processo Civil vigente (contagem de prazos em dias úteis, tutelas provisórias, execução, recursos e precedentes).</p>
+              <div class="link-card-meta">
+                <span class="link-domain">planalto.gov.br</span>
+                <span class="link-tag">Compilado</span>
+              </div>
+            </a>
+
+            <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del5452compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+              <div class="link-card-header">
+                <div class="link-badge">Decreto-Lei nº 5.452/1943</div>
+                <span class="external-icon">↗</span>
+              </div>
+              <h4>Consolidação das Leis do Trabalho (CLT)</h4>
+              <p>Normas que regulam as relações individuais e coletivas de trabalho e o direito processual do trabalho no Brasil.</p>
+              <div class="link-card-meta">
+                <span class="link-domain">planalto.gov.br</span>
+                <span class="link-tag">Compilado</span>
+              </div>
+            </a>
+
+            <a href="https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+              <div class="link-card-header">
+                <div class="link-badge">CF/1988</div>
+                <span class="external-icon">↗</span>
+              </div>
+              <h4>Constituição Federal (CF/88)</h4>
+              <p>Constituição da República Federativa do Brasil promulgada em 5 de outubro de 1988 com todas as Emendas Constitucionais.</p>
+              <div class="link-card-meta">
+                <span class="link-domain">planalto.gov.br</span>
+                <span class="link-tag">Texto Oficial</span>
+              </div>
+            </a>
+
+            <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+              <div class="link-card-header">
+                <div class="link-badge">Decreto-Lei nº 2.848/1940</div>
+                <span class="external-icon">↗</span>
+              </div>
+              <h4>Código Penal (CP)</h4>
+              <p>Código Penal brasileiro compilado (parte geral, crimes contra a pessoa, patrimônio, dignidade sexual e administração pública).</p>
+              <div class="link-card-meta">
+                <span class="link-domain">planalto.gov.br</span>
+                <span class="link-tag">Compilado</span>
+              </div>
+            </a>
+
+            <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+              <div class="link-card-header">
+                <div class="link-badge">Decreto-Lei nº 3.689/1941</div>
+                <span class="external-icon">↗</span>
+              </div>
+              <h4>Código de Processo Penal (CPP)</h4>
+              <p>Código de Processo Penal brasileiro compilado (inquérito policial, ação penal, provas, prisões cautelares, júri e recursos).</p>
+              <div class="link-card-meta">
+                <span class="link-domain">planalto.gov.br</span>
+                <span class="link-tag">Compilado</span>
+              </div>
+            </a>
+          </div>
+
+          <!-- Seção de Jurisprudência & Tribunais -->
+          <div class="links-section-header" style="margin-top: 32px;">
+            <h3>Jurisprudência &amp; Precedentes Oficiais</h3>
+            <p>Pesquisa unificada de acórdãos, súmulas e teses repetitivas nos Tribunais Superiores.</p>
+          </div>
+
+          <div class="links-grid">
+            <a href="https://processo.stj.jus.br/SCON/" target="_blank" rel="noopener noreferrer" class="link-card card highlight-gold">
+              <div class="link-card-header">
+                <div class="link-badge stj-badge">Superior Tribunal de Justiça</div>
+                <span class="external-icon">↗</span>
+              </div>
+              <h4>Jurisprudência do STJ (SCON)</h4>
+              <p>Sistema de Consulta de Jurisprudência oficial do STJ. Pesquisa de acórdãos, decisões monocráticas, súmulas e recursos repetitivos.</p>
+              <div class="link-card-meta">
+                <span class="link-domain">processo.stj.jus.br/SCON</span>
+                <span class="link-tag">Oficial</span>
+              </div>
+            </a>
+          </div>
+
+          <!-- Seção de Ferramentas Gratuitas com IA -->
+          <div class="links-section-header" style="margin-top: 32px;">
+            <h3>Ferramentas Gratuitas com Inteligência Artificial</h3>
+            <p>Plataformas externas gratuitas com IA para suporte à rotina e prática jurídica.</p>
+          </div>
+
+          <div class="links-grid">
+            <a href="https://www.jurisprudenciaia.com.br/" target="_blank" rel="noopener noreferrer" class="link-card card ai-card">
+              <div class="link-card-header">
+                <div class="link-badge ai-badge">IA Gratuita</div>
+                <span class="external-icon">↗</span>
+              </div>
+              <h4>JURISPRUDENCIAIA</h4>
+              <p>Ferramenta gratuita de pesquisa de jurisprudência potencializada por Inteligência Artificial para busca semântica e precedentes.</p>
+              <div class="link-card-meta">
+                <span class="link-domain">jurisprudenciaia.com.br</span>
+                <span class="link-tag">Pesquisa IA</span>
+              </div>
+            </a>
+
+            <a href="https://www.transcreveia.com.br/" target="_blank" rel="noopener noreferrer" class="link-card card ai-card">
+              <div class="link-card-header">
+                <div class="link-badge ai-badge">IA Gratuita</div>
+                <span class="external-icon">↗</span>
+              </div>
+              <h4>TRANSCREVEIA</h4>
+              <p>Ferramenta gratuita de transcrição de áudio e vídeo de audiências com Inteligência Artificial, geração de resumos e minutagem.</p>
+              <div class="link-card-meta">
+                <span class="link-domain">transcreveia.com.br</span>
+                <span class="link-tag">Transcrição IA</span>
+              </div>
+            </a>
+          </div>
+
+          <!-- Subjanela de Prompts Integrada -->
+          <div class="prompts-banner-card card" style="margin-top: 32px;">
+            <div class="prompts-banner-content">
+              <div class="prompts-banner-icon">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+                </svg>
+              </div>
+              <div>
+                <h3>Biblioteca de 230 Prompts Jurídicos Integrada</h3>
+                <p>Acesse modelos de prompts calibrados para elaboração de recursos, contestações, teses defensivas e análise de riscos com IA.</p>
+              </div>
+            </div>
+            <button class="button gold" data-view-link="prompts">Explorar Biblioteca de Prompts</button>
           </div>
         </div>
       </section>
@@ -1283,6 +1541,7 @@
 
   <input class="hidden" type="file" id="jsonImportInput" accept="application/json,.json">
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+  <script src="js/prompts-data.js?v=4.2.0" defer></script>
   <script src="js/auth.js?v=4.2.0" defer></script>
   <script src="js/portal.js?v=4.2.0" defer></script>
 </body>

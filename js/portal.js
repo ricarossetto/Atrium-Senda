@@ -474,6 +474,7 @@ CPF: ${doc}`;
     aiChatHistory: [],
     aiConfigured: false,
     isAiTyping: false,
+    promptsFilter: { search: '', category: 'all', type: 'all' },
     async init() {
       await Store.load();
       this.bindNavigation();
@@ -702,6 +703,61 @@ CPF: ${doc}`;
         this.renderAgenda();
         this.toast('Exibindo todas as atividades próximas.', 'success');
       });
+
+      // Biblioteca de Prompts Jurídicos
+      byId('promptsSearchInput')?.addEventListener('input', (e) => {
+        this.promptsFilter.search = e.target.value;
+        const btnClear = byId('btnClearPromptsSearch');
+        if (btnClear) btnClear.classList.toggle('hidden', !e.target.value);
+        this.renderPrompts();
+      });
+      byId('btnClearPromptsSearch')?.addEventListener('click', () => {
+        const input = byId('promptsSearchInput');
+        if (input) input.value = '';
+        this.promptsFilter.search = '';
+        byId('btnClearPromptsSearch')?.classList.add('hidden');
+        this.renderPrompts();
+        input?.focus();
+      });
+      byId('promptCategorySelect')?.addEventListener('change', (e) => {
+        this.promptsFilter.category = e.target.value;
+        const chipsContainer = byId('promptsCategoryChips');
+        if (chipsContainer) {
+          chipsContainer.querySelectorAll('.prompt-chip').forEach(chip => {
+            chip.classList.toggle('active', chip.dataset.category === this.promptsFilter.category);
+          });
+        }
+        this.renderPrompts();
+      });
+      byId('promptTypeSelect')?.addEventListener('change', (e) => {
+        this.promptsFilter.type = e.target.value;
+        this.renderPrompts();
+      });
+      byId('promptsCategoryChips')?.addEventListener('click', (e) => {
+        const chip = e.target.closest('.prompt-chip');
+        if (!chip) return;
+        const cat = chip.dataset.category || 'all';
+        this.promptsFilter.category = cat;
+        const select = byId('promptCategorySelect');
+        if (select) select.value = cat;
+        this.renderPrompts();
+      });
+      byId('promptsGrid')?.addEventListener('click', (e) => {
+        const copyBtn = e.target.closest('[data-copy-prompt]');
+        if (copyBtn) {
+          const promptId = copyBtn.dataset.copyPrompt;
+          const p = (window.PROMPTS_DATA || []).find(item => item.id === promptId);
+          if (p) this.copyPrompt(p.prompt, copyBtn);
+          return;
+        }
+        const useBtn = e.target.closest('[data-use-prompt]');
+        if (useBtn) {
+          const promptId = useBtn.dataset.usePrompt;
+          const p = (window.PROMPTS_DATA || []).find(item => item.id === promptId);
+          if (p) this.usePromptInAi(p.prompt);
+          return;
+        }
+      });
     },
     switchView(view) {
       this.currentView = view;
@@ -716,7 +772,7 @@ CPF: ${doc}`;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     renderAll() {
-      ['renderOfficeIdentity', 'renderMetrics', 'renderWeeklyDistribution', 'renderPriorities', 'renderActivity', 'renderSources', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderAgenda', 'renderMonitoring', 'renderConfiguration', 'renderAudit'].forEach(method => {
+      ['renderOfficeIdentity', 'renderMetrics', 'renderWeeklyDistribution', 'renderPriorities', 'renderActivity', 'renderSources', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderAgenda', 'renderMonitoring', 'renderPrompts', 'renderConfiguration', 'renderAudit'].forEach(method => {
         try { this[method](); } catch (error) { console.error(`Falha em ${method}:`, error); }
       });
     },
@@ -2254,6 +2310,140 @@ CPF: ${doc}`;
         this.isAiTyping = false;
         container.scrollTop = container.scrollHeight;
       }
+    },
+    copyPrompt(promptText, buttonElement) {
+      if (!navigator.clipboard) {
+        this.toast('Área de transferência indisponível neste navegador.', 'error');
+        return;
+      }
+      navigator.clipboard.writeText(promptText).then(() => {
+        if (buttonElement) {
+          const originalText = buttonElement.innerHTML;
+          buttonElement.innerHTML = `
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Copiado!</span>`;
+          buttonElement.classList.add('copied');
+          setTimeout(() => {
+            buttonElement.innerHTML = originalText;
+            buttonElement.classList.remove('copied');
+          }, 2000);
+        }
+        this.toast('Prompt copiado para a área de transferência!', 'success');
+      }).catch(() => {
+        this.toast('Não foi possível copiar o texto do prompt.', 'error');
+      });
+    },
+    usePromptInAi(promptText) {
+      this.switchView('assistant');
+      const input = document.getElementById('aiChatInput');
+      if (input) {
+        input.value = promptText;
+        input.style.height = 'auto';
+        input.style.height = Math.min(Math.max(input.scrollHeight, 60), 200) + 'px';
+        input.focus();
+        setTimeout(() => {
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+      this.toast('Prompt carregado no Assistente IA! Complete com os fatos e envie.', 'success');
+    },
+    renderPrompts() {
+      const allPrompts = window.PROMPTS_DATA || [];
+      const grid = document.getElementById('promptsGrid');
+      const chipsContainer = document.getElementById('promptsCategoryChips');
+      const categorySelect = document.getElementById('promptCategorySelect');
+      const countDisplay = document.getElementById('promptsCountDisplay');
+      const badgeNav = document.getElementById('promptCountBadge');
+      if (badgeNav) badgeNav.textContent = allPrompts.length;
+
+      // Monta as opções de categoria no select
+      const categories = ['all', ...new Set(allPrompts.map(p => p.category))];
+      if (categorySelect && categorySelect.options.length <= 1) {
+        categorySelect.innerHTML = categories.map(cat => {
+          const label = cat === 'all' ? `Todas as Áreas (${allPrompts.length} prompts)` : cat;
+          return `<option value="${escapeHtml(cat)}">${escapeHtml(label)}</option>`;
+        }).join('');
+      }
+
+      // Monta os chips de categoria com as mais frequentes
+      if (chipsContainer && !chipsContainer.children.length) {
+        const topCategories = ['all', ...[...new Set(allPrompts.map(p => p.category))].slice(0, 12)];
+        chipsContainer.innerHTML = topCategories.map(cat => {
+          const isSelected = this.promptsFilter.category === cat;
+          const label = cat === 'all' ? 'Todas as Áreas' : cat;
+          return `<button type="button" class="prompt-chip ${isSelected ? 'active' : ''}" data-category="${escapeHtml(cat)}">${escapeHtml(label)}</button>`;
+        }).join('');
+      } else if (chipsContainer) {
+        chipsContainer.querySelectorAll('.prompt-chip').forEach(chip => {
+          chip.classList.toggle('active', chip.dataset.category === this.promptsFilter.category);
+        });
+      }
+
+      // Filtragem dinâmica
+      const searchNeedle = normalizeText(this.promptsFilter.search || '');
+      const filtered = allPrompts.filter(p => {
+        if (this.promptsFilter.category !== 'all' && p.category !== this.promptsFilter.category) return false;
+        if (this.promptsFilter.type !== 'all' && normalizeText(p.type) !== normalizeText(this.promptsFilter.type)) return false;
+        if (searchNeedle) {
+          const haystack = normalizeText(`${p.title} ${p.description} ${(p.tags || []).join(' ')} ${p.prompt}`);
+          if (!haystack.includes(searchNeedle)) return false;
+        }
+        return true;
+      });
+
+      if (countDisplay) {
+        countDisplay.textContent = `Mostrando ${filtered.length} de ${allPrompts.length} prompts`;
+      }
+
+      if (!grid) return;
+
+      if (!filtered.length) {
+        grid.innerHTML = `
+          <div class="prompts-empty card">
+            <div class="empty-icon">⌕</div>
+            <h3>Nenhum prompt encontrado</h3>
+            <p>Tente ajustar os termos da pesquisa ou selecione outra área do direito.</p>
+          </div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(p => {
+        const typeClass = p.type ? `type-${normalizeText(p.type).replace(/\s+/g, '-')}` : 'type-geral';
+        const tagsHtml = (p.tags || []).slice(0, 5).map(t => `<span class="prompt-tag">${escapeHtml(t)}</span>`).join('');
+        return `
+          <article class="card prompt-card" data-prompt-id="${escapeHtml(p.id)}">
+            <div class="prompt-card-top">
+              <div class="prompt-badges">
+                <span class="prompt-cat-badge">${escapeHtml(p.category)}</span>
+                <span class="prompt-type-badge ${typeClass}">${escapeHtml(p.type || 'Geral')}</span>
+              </div>
+            </div>
+            <h4 class="prompt-title">${escapeHtml(p.title)}</h4>
+            <p class="prompt-desc">${escapeHtml(p.description || 'Modelo especializado para aplicação prática jurídica.')}</p>
+            ${tagsHtml ? `<div class="prompt-tags-list">${tagsHtml}</div>` : ''}
+            <div class="prompt-box">
+              <pre class="prompt-text">${escapeHtml(p.prompt)}</pre>
+            </div>
+            <div class="prompt-card-actions">
+              <button type="button" class="button ghost btn-copy-prompt" data-copy-prompt="${escapeHtml(p.id)}" title="Copiar texto do prompt">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                <span>Copiar</span>
+              </button>
+              <button type="button" class="button gold btn-use-prompt" data-use-prompt="${escapeHtml(p.id)}" title="Carregar no chat do Assistente IA">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+                </svg>
+                <span>Usar na IA</span>
+              </button>
+            </div>
+          </article>
+        `;
+      }).join('');
     },
     openGuideModal(type) {
       this.openModal('guide', 'Ativar certificado A1', 'Configuração protegida', [
