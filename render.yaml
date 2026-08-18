@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: jurisflow-central
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: node server.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: AUTH_SESSION_SECRET
+        generateValue: true
+      - key: AUTH_ENCRYPTION_KEY
+        generateValue: true

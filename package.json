@@ -1,0 +1,40 @@
+{
+  "name": "juris-flow",
+  "version": "1.0.0",
+  "description": "Sistema Open Source White Label para Gestão de Escritórios de Advocacia, Kanban Jurídico, Prazos Processuais, Timesheet e Coletores Oficiais.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "setup:keys": "node scripts/setup-keys.mjs",
+    "collector": "node collector/agent.mjs",
+    "import:spreadsheet": "node scripts/import-spreadsheet.mjs",
+    "check": "node --check server.mjs && node --check lib/security.mjs && node --check scripts/import-spreadsheet.mjs && node --check scripts/migrate-judicial-secrets.mjs && node --check js/auth.js && node --check js/portal.js && node --check collector/agent.mjs && node --check collector/adapters/djen.mjs && node --check collector/adapters/datajud.mjs && node --check collector/adapters/pje.mjs && node --check tests/helpers.mjs && node --check tests/security.mjs && node --check tests/importer.mjs && node --check tests/rls.mjs && node --check tests/collector.mjs && node --check tests/smoke.mjs && node --check tests/run-all.mjs",
+    "test:security": "node tests/security.mjs",
+    "test:importer": "node tests/importer.mjs",
+    "test:rls": "node tests/rls.mjs",
+    "test:collector": "node tests/collector.mjs",
+    "test:smoke": "node tests/smoke.mjs",
+    "test": "node tests/run-all.mjs"
+  },
+  "keywords": [
+    "advocacia",
+    "direito",
+    "juridico",
+    "kanban",
+    "gestao-juridica",
+    "prazos-processuais",
+    "djen",
+    "datajud",
+    "pje",
+    "timesheet",
+    "white-label",
+    "open-source"
+  ],
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "playwright": "^1.56.0",
+    "qrcode": "^1.5.4"
+  }
+}

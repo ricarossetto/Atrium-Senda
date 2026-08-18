@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+data/*.json
+collector/.profile/
+collector/portals.json
+*.pfx
+*.p12
+*.pem
+*.key
+node_modules/
+playwright-report/
+test-results/
+supabase/.temp/
+research/vendor/

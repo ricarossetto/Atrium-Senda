@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="description" content="JurisFlow: Gestão Integrada de Escritórios de Advocacia, Kanban Jurídico, Prazos, Timesheet e Coletores Oficiais.">
+  <title>JurisFlow — Gestão Jurídica & Kanban</title>
+  <link rel="icon" href="assets/images/favicon.png">
+  <link rel="stylesheet" href="css/portal.css?v=1.0.0">
+</head>
+<body>
+  <section class="auth-gate" id="authGate" aria-live="polite">
+    <div class="auth-visual">
+      <div class="auth-brand-logo"><span class="brand-badge-large">⚖️ JurisFlow</span></div>
+      <div class="auth-visual-copy">
+        <p class="eyebrow">Ambiente jurídico protegido</p>
+        <h1>Gestão Jurídica<br><em>segura por projeto.</em></h1>
+        <p>Senha forte, segundo fator (TOTP 2FA) e sessão protegida para gerenciar intimações, processos, prazos e documentos confidenciais.</p>
+      </div>
+      <div class="auth-security-list"><span>✓ Criptografia em repouso (AES-256-GCM)</span><span>✓ Segundo Fator TOTP (RFC 6238)</span><span>✓ Sessão HttpOnly e proteção CSRF</span></div>
+    </div>
+    <div class="auth-panel">
+      <div class="auth-card">
+        <div id="authLoading" class="auth-step active"><span class="auth-spinner"></span><h2>Verificando proteção…</h2><p>Validando a configuração de segurança.</p></div>
+
+        <form id="authSetupForm" class="auth-step">
+          <p class="eyebrow">Primeiro acesso</p><h2>Crie o acesso administrativo</h2>
+          <p>Essa senha não é enviada a nenhum serviço externo. Use uma frase longa e exclusiva.</p>
+          <label>Nome de exibição<input name="displayName" autocomplete="name" placeholder="Dr(a). Advogado(a) Titular" required maxlength="100"></label>
+          <label>Usuário de acesso<input name="username" autocomplete="username" placeholder="admin" required pattern="[a-zA-Z0-9._-]{3,64}" maxlength="64"></label>
+          <label>Senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+          <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+          <small class="auth-hint">Mínimo de 10 caracteres e ao menos três grupos entre maiúsculas, minúsculas, números e símbolos.</small>
+          <button class="button gold auth-submit" type="submit">Criar senha e configurar 2FA</button>
+        </form>
+
+        <form id="authTotpSetupForm" class="auth-step">
+          <p class="eyebrow">Segundo fator</p><h2>Vincule seu autenticador</h2>
+          <p>Leia o QR code com Microsoft Authenticator, Google Authenticator, 1Password ou outro aplicativo TOTP.</p>
+          <img id="authQrCode" class="auth-qr" alt="QR code para configurar o segundo fator">
+          <details><summary>Configurar manualmente</summary><code id="authManualSecret" class="auth-manual-secret"></code></details>
+          <label>Código de seis dígitos<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
+          <button class="button gold auth-submit" type="submit">Confirmar e ativar proteção</button>
+        </form>
+
+        <div id="authRecoveryStep" class="auth-step">
+          <p class="eyebrow">Códigos de recuperação</p><h2>Guarde em local seguro</h2>
+          <p>Cada código funciona uma única vez. Eles não serão exibidos novamente.</p>
+          <pre id="authRecoveryCodes" class="recovery-codes"></pre>
+          <button class="button ghost auth-submit" id="copyRecoveryCodes" type="button">Copiar códigos</button>
+          <button class="button gold auth-submit" id="finishRecovery" type="button">Já guardei — entrar no JurisFlow</button>
+        </div>
+
+        <form id="authLoginForm" class="auth-step">
+          <p class="eyebrow">Acesso restrito</p><h2>Entrar no JurisFlow</h2>
+          <p>Informe sua senha e o código atual do aplicativo autenticador.</p>
+          <label>Usuário<input name="username" autocomplete="username" required maxlength="64"></label>
+          <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
+          <label>Código TOTP ou recuperação<input name="code" autocomplete="one-time-code" inputmode="text" required maxlength="11" placeholder="000000"></label>
+          <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>Senha e Authenticator serão exigidos novamente após 30 dias, ao sair da conta ou ao revogar a confiança.</small></span></label>
+          <button class="button gold auth-submit" type="submit">Entrar com segurança</button>
+        </form>
+
+        <div id="authFeedback" class="auth-feedback hidden" role="alert"></div>
+        <p class="auth-local-note">Proteção ativa: dados e chaves criptografadas permanecem sob controle do seu ambiente.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="app-shell hidden" id="appShell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <span class="brand-badge">⚖️ JurisFlow</span>
+        <span class="brand-product">Gestão Integrada</span>
+      </div>
+
+      <nav class="main-nav" aria-label="Navegação principal">
+        <button class="nav-item active" data-view="dashboard">
+          <span class="nav-icon" aria-hidden="true">⌂</span><span>Meu dia</span>
+        </button>
+        <button class="nav-item" data-view="inbox">
+          <span class="nav-icon" aria-hidden="true">✦</span><span>Intimações</span><strong class="nav-count" id="inboxBadge">0</strong>
+        </button>
+        <button class="nav-item" data-view="kanban">
+          <span class="nav-icon" aria-hidden="true">▦</span><span>Kanban</span>
+        </button>
+        <button class="nav-item" data-view="processes">
+          <span class="nav-icon" aria-hidden="true">◫</span><span>Processos</span>
+        </button>
+        <button class="nav-item" data-view="contacts">
+          <span class="nav-icon" aria-hidden="true">♙</span><span>Contatos</span>
+        </button>
+        <button class="nav-item" data-view="agenda">
+          <span class="nav-icon" aria-hidden="true">□</span><span>Agenda</span>
+        </button>
+        <button class="nav-item" data-view="monitoring">
+          <span class="nav-icon" aria-hidden="true">◎</span><span>Monitoramento</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-divider"></div>
+
+      <nav class="main-nav secondary" aria-label="Configurações">
+        <button class="nav-item" data-view="configuration">
+          <span class="nav-icon" aria-hidden="true">⚙</span><span>Configurações</span>
+        </button>
+        <button class="nav-item" data-view="integrations">
+          <span class="nav-icon" aria-hidden="true">⛓</span><span>Integrações</span>
+        </button>
+        <button class="nav-item" data-view="audit">
+          <span class="nav-icon" aria-hidden="true">≡</span><span>Auditoria</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-office">
+        <div class="office-avatar-icon">⚖️</div>
+        <div class="office-copy">
+          <span id="sidebarOfficeLabel">Escritório</span>
+          <strong id="sidebarOfficeName">Advocacia Integrada</strong>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button mobile-only" id="menuToggle" aria-label="Abrir menu">☰</button>
+          <div>
+            <p class="eyebrow" id="viewEyebrow">Visão executiva</p>
+            <h1 id="viewTitle">Painel de Gestão Jurídica</h1>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <label class="global-search">
+            <span aria-hidden="true">⌕</span>
+            <input id="globalSearch" type="search" placeholder="Processo, cliente ou tarefa">
+            <kbd>/</kbd>
+          </label>
+          <button class="button ghost" id="quickDocGenButton" title="Gerar Minuta de Procuração ou Contrato">⚖ Minutas</button>
+          <button class="button ghost" id="syncButton"><span class="button-icon">↻</span><span>Sincronizar</span></button>
+          <button class="icon-button notification-button" data-view-link="inbox" aria-label="Ver intimações">♢<span id="notificationDot"></span></button>
+          <button class="profile-button" id="logoutButton" aria-label="Encerrar sessão com segurança" title="Encerrar sessão">
+            <span class="avatar">RR</span>
+            <span class="profile-copy"><strong>Ricardo Rossetto</strong><small>Advogado</small></span>
+            <span>Sair</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="environment-banner" id="environmentBanner">
+        <span class="pulse-dot"></span>
+        <strong>Modo protegido local</strong>
+        <span>Dados jurídicos permanecem neste computador até a ativação do banco seguro.</span>
+        <button id="dismissBanner" aria-label="Fechar aviso">×</button>
+      </div>
+
+      <section class="view active" id="view-dashboard" data-title="Bom dia, Ricardo" data-eyebrow="Visão executiva">
+        <div class="hero-grid">
+          <article class="hero-card">
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+              <span class="gold-pill">Segunda-feira · <span id="todayLabel"></span></span>
+              <h2>O que exige sua<br><em>atenção hoje</em></h2>
+              <p id="heroSummary">A central está organizando suas fontes e seus próximos prazos.</p>
+              <div class="hero-actions">
+                <button class="button gold" data-view-link="inbox">Abrir caixa de intimações</button>
+                <button class="button glass" data-view-link="kanban">Ver quadro</button>
+              </div>
+            </div>
+            <div class="hero-seal">K<span>1983</span></div>
+          </article>
+
+          <article class="day-focus card">
+            <div class="card-heading">
+              <div><p class="eyebrow">Foco do dia</p><h3>Prioridades</h3></div>
+              <button class="text-button" data-view-link="kanban">Ver todas →</button>
+            </div>
+            <div id="priorityList" class="priority-list"></div>
+          </article>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric-card danger" data-view-link="inbox" tabindex="0"><span class="metric-icon">!</span><div><small>Intimações novas</small><strong id="metricInbox">0</strong><p>aguardando triagem</p></div></article>
+          <article class="metric-card warning" data-view-link="kanban" tabindex="0"><span class="metric-icon">◷</span><div><small>Prazos em 7 dias</small><strong id="metricDeadlines">0</strong><p>confirme os prazos fatais</p></div></article>
+          <article class="metric-card info" data-view-link="kanban" tabindex="0"><span class="metric-icon">▦</span><div><small>Tarefas ativas</small><strong id="metricTasks">0</strong><p>no fluxo de trabalho</p></div></article>
+          <article class="metric-card success" data-view-link="monitoring" tabindex="0"><span class="metric-icon">✓</span><div><small>Fontes saudáveis</small><strong id="metricSources">0/0</strong><p>na última verificação</p></div></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="card activity-card">
+            <div class="card-heading">
+              <div><p class="eyebrow">Fluxo recente</p><h3>Últimas ocorrências</h3></div>
+              <button class="text-button" data-view-link="audit">Auditoria →</button>
+            </div>
+            <div class="timeline" id="activityTimeline"></div>
+          </article>
+
+          <article class="card source-card">
+            <div class="card-heading">
+              <div><p class="eyebrow">Automação</p><h3>Saúde das fontes</h3></div>
+              <button class="text-button" data-view-link="monitoring">Detalhes →</button>
+            </div>
+            <div id="sourceSummary" class="source-summary"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="view-inbox" data-title="Caixa de intimações" data-eyebrow="Triagem jurídica">
+        <div class="section-toolbar">
+          <div class="filter-tabs" id="inboxFilters">
+            <button class="active" data-filter="all">Todas</button>
+            <button data-filter="nova">Novas</button>
+            <button data-filter="triagem">Em triagem</button>
+            <button data-filter="prazo">Prazo conferido</button>
+            <button data-filter="tarefa">Tarefa criada</button>
+          </div>
+          <div class="toolbar-actions">
+            <button class="button ghost" id="importIntimationButton">Importar JSON</button>
+            <button class="button gold" id="newIntimationButton">+ Nova intimação</button>
+          </div>
+        </div>
+        <div class="inbox-layout">
+          <article class="card inbox-list-card">
+            <div class="list-head"><span>Ocorrência</span><span>Origem</span><span>Data</span><span>Status</span></div>
+            <div id="inboxList" class="inbox-list"></div>
+          </article>
+          <aside class="card intimation-detail" id="intimationDetail">
+            <div class="empty-detail"><span>✦</span><h3>Selecione uma intimação</h3><p>O texto original, o processo e a trilha de conferência aparecerão aqui.</p></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-kanban" data-title="Kanban jurídico" data-eyebrow="Fluxo do escritório">
+        <div class="section-toolbar">
+          <div class="toolbar-copy"><p>Organize o trabalho interno sem alterar silenciosamente a fonte oficial.</p></div>
+          <div class="toolbar-actions">
+            <button class="button ghost" id="kanbanFilterButton">Minhas tarefas</button>
+            <button class="button gold" id="newTaskButton">+ Nova tarefa</button>
+          </div>
+        </div>
+        <div class="kanban-board" id="kanbanBoard"></div>
+      </section>
+
+      <section class="view" id="view-processes" data-title="Processos" data-eyebrow="Carteira processual">
+        <div class="section-toolbar">
+          <div class="filter-tabs"><button class="active">Ativos</button><button>Com movimentação</button><button>Sigilosos</button></div>
+          <div class="toolbar-actions">
+            <button class="button ghost" id="btnGenDocProcess">⚖ Gerar minuta</button>
+            <button class="button gold" id="newProcessButton">+ Cadastrar processo</button>
+          </div>
+        </div>
+        <article class="card table-card">
+          <div class="table-search"><input id="processSearch" type="search" placeholder="Pesquisar número CNJ, cliente ou tribunal"></div>
+          <div class="responsive-table">
+            <table class="sortable-table" id="processTable">
+              <thead>
+                <tr>
+                  <th data-sort-table="process" data-sort-field="number" class="sort-header">Processo <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="process" data-sort-field="client" class="sort-header">Cliente <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="process" data-sort-field="court" class="sort-header">Tribunal <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="process" data-sort-field="registeredAt" class="sort-header">Data de cadastro <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="process" data-sort-field="lastMovementAt" class="sort-header">Última movimentação <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="process" data-sort-field="monitoring" class="sort-header">Monitoramento <span class="sort-indicator">↕</span></th>
+                </tr>
+              </thead>
+              <tbody id="processTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" id="view-contacts" data-title="Contatos" data-eyebrow="Pessoas e relacionamentos">
+        <div class="section-toolbar">
+          <div class="toolbar-copy"><p>Contatos importados dos relatórios ADVBOX e preservados no armazenamento criptografado.</p></div>
+          <div class="toolbar-actions">
+            <button class="button ghost" id="btnGenDocContact">⚖ Gerar minuta</button>
+            <span class="status-chip connected" id="contactCount">0 contatos</span>
+            <button class="button gold" id="newContactButton">+ Novo contato</button>
+          </div>
+        </div>
+        <article class="card table-card">
+          <div class="table-search"><input id="contactSearch" type="search" placeholder="Pesquisar nome, documento, telefone, e-mail ou origem"></div>
+          <div class="responsive-table">
+            <table class="sortable-table" id="contactTable">
+              <thead>
+                <tr>
+                  <th data-sort-table="contact" data-sort-field="name" class="sort-header">Contato <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="contact" data-sort-field="document" class="sort-header">Documento <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="contact" data-sort-field="mobile" class="sort-header">Canais <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="contact" data-sort-field="city" class="sort-header">Localidade <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="contact" data-sort-field="registeredAt" class="sort-header">Data de cadastro <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="contact" data-sort-field="origin" class="sort-header">Origem <span class="sort-indicator">↕</span></th>
+                </tr>
+              </thead>
+              <tbody id="contactTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" id="view-agenda" data-title="Agenda integrada" data-eyebrow="Compromissos e prazos">
+        <div class="section-toolbar">
+          <div class="filter-tabs" id="agendaFilterTabs">
+            <button class="active" data-agenda-filter="all">Todos</button>
+            <button data-agenda-filter="event">Audiências / Eventos</button>
+            <button data-agenda-filter="task">Tarefas / Prazos</button>
+            <button data-agenda-filter="intimation">Intimações</button>
+          </div>
+          <div class="toolbar-actions">
+            <button class="button ghost" id="agendaTodayButton">📅 Hoje</button>
+            <button class="button ghost" id="agendaAllUpcomingButton">Ver todos</button>
+            <button class="button ghost" id="newAgendaButton">+ Novo compromisso</button>
+            <button class="button gold" id="agendaSyncButton">↻ Atualizar agenda</button>
+          </div>
+        </div>
+        <div class="agenda-grid">
+          <article class="card mini-calendar-card"><div id="miniCalendar"></div></article>
+          <article class="card agenda-list-card">
+            <div class="agenda-day-header">
+              <div>
+                <p class="eyebrow" id="agendaDayEyebrow">Atividades do dia</p>
+                <h3 id="agendaDayTitle">Agenda jurídica</h3>
+              </div>
+              <div class="agenda-day-badges" id="agendaDayBadges"></div>
+            </div>
+            <div id="agendaList"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="view-monitoring" data-title="Termos monitorados" data-eyebrow="Intimações e fontes">
+        <div class="section-toolbar">
+          <div class="toolbar-copy"><p>Monitore nomes e inscrições profissionais. Reconexões com certificado sempre exigem validação humana.</p></div>
+          <button class="button gold" id="newTermButton">+ Adicionar termo</button>
+        </div>
+        <article class="monitor-hero card" id="primaryTermCard" tabindex="0" title="Clique para editar o termo monitorado">
+          <div class="monitor-avatar" id="primaryTermAvatar">AD</div>
+          <div class="monitor-identity">
+            <span class="status-chip monitoring"><i></i> Monitorando</span>
+            <h2 id="primaryTermName">Dr(a). Advogado(a) Titular</h2>
+            <p id="primaryTermRegistration">OAB/UF 000000 · Advogado(a) monitorado(a) principal</p>
+          </div>
+          <div class="monitor-stats"><div><strong id="termSourceCount">0</strong><span>fontes</span></div><div><strong id="termIssueCount">0</strong><span>com atenção</span></div><div><strong id="termNewCount">0</strong><span>novas ocorrências</span></div></div>
+        </article>
+        <div class="source-table card">
+          <div class="source-table-head"><span>Fonte</span><span>Método</span><span>Última verificação</span><span>Situação</span><span></span></div>
+          <div id="monitorSourceList"></div>
+        </div>
+        <div class="security-note">
+          <span>⌾</span><div><strong>Certificado A1 fica no agente local</strong><p>O arquivo PFX e a senha nunca são expostos externamente ou enviados a terceiros.</p></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-integrations" data-title="Integrações" data-eyebrow="Fontes e conexões">
+        <div class="integration-grid">
+          <article class="integration-card card">
+            <div class="integration-logo advbox-logo">📅</div><div class="integration-copy"><span class="status-chip warning">Configuração disponível</span><h3>Agenda Externa (Webcal / iCal)</h3><p>Importação automática de eventos de Google Agenda, Microsoft Outlook, Apple Calendar ou Webcal.</p><button class="button ghost" id="configureCalendarButton">Configurar agenda</button></div>
+          </article>
+          <article class="integration-card card">
+            <div class="integration-logo cnj-logo">CNJ</div><div class="integration-copy"><span class="status-chip planned">Oficial</span><h3>DJEN e DataJud (CNJ)</h3><p>Camada de conferência de publicações e andamentos do Diário de Justiça Eletrônico Nacional.</p><button class="button ghost" data-view-link="monitoring">Ver fontes</button></div>
+          </article>
+          <article class="integration-card card">
+            <div class="integration-logo certificate-logo">A1</div><div class="integration-copy"><span class="status-chip muted" id="certificateIntegrationStatus">Verificando certificado</span><h3>Certificado Digital A1 & PJe</h3><p id="certificateIntegrationDetail">Ative o A1 localmente e sincronize expedientes e acervo com proteção criptográfica.</p><button class="button gold" id="certificateGuideButton">Gerenciar A1 e Tribunais</button></div>
+          </article>
+          <article class="integration-card card">
+            <div class="integration-logo legal-logo">📊</div><div class="integration-copy"><span class="status-chip connected">Pronto</span><h3>Importador de Planilhas</h3><p>Importe processos, contatos e clientes em lote via planilhas XLSX ou CSV.</p><button class="button ghost" data-view-link="processes">Ver processos</button></div>
+          </article>
+        </div>
+        <article class="card architecture-card">
+          <div><p class="eyebrow">Arquitetura protegida</p><h3>Separação entre interface e credenciais</h3></div>
+          <div class="architecture-flow"><span>Portais judiciais</span><b>→</b><span>Agente local seguro</span><b>→</b><span>JurisFlow</span><b>→</b><span>Triagem humana</span></div>
+          <button class="button ghost hidden" id="forgetTrustedDeviceButton" type="button">Esquecer este navegador</button>
+        </article>
+      </section>
+
+      <section class="view" id="view-configuration" data-title="Configurações do escritório" data-eyebrow="Identidade, tarefas e equipe">
+        <div class="section-toolbar configuration-toolbar">
+          <div class="filter-tabs config-tabs" id="configurationTabs"></div>
+          <div class="toolbar-actions config-actions"><div class="table-search compact-search"><input id="configurationSearch" type="search" placeholder="Buscar nesta configuração"></div><button class="button gold" id="newConfigurationButton">+ Novo item</button></div>
+        </div>
+        <div class="configuration-metrics" id="configurationMetrics"></div>
+        <article class="card config-catalog">
+          <div class="card-heading"><div><p class="eyebrow">Catálogo protegido</p><h3 id="configurationHeading">Visão geral</h3></div><span class="status-chip connected" id="configurationCount">0 itens</span></div>
+          <div id="configurationList" class="configuration-list"></div>
+        </article>
+      </section>
+
+      <section class="view" id="view-audit" data-title="Auditoria" data-eyebrow="Rastreabilidade">
+        <article class="card table-card"><div class="card-heading"><div><p class="eyebrow">Registro imutável</p><h3>Histórico de operações</h3></div><button class="button ghost" id="exportAuditButton">Exportar JSON</button></div><div id="auditList" class="audit-list"></div></article>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop hidden" id="modalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header><div><p class="eyebrow" id="modalEyebrow">Novo registro</p><h2 id="modalTitle">Nova tarefa</h2></div><button class="icon-button" id="modalClose" aria-label="Fechar">×</button></header>
+      <form id="modalForm"><div id="modalFields"></div><footer><button type="button" class="button ghost" id="modalCancel">Cancelar</button><button type="submit" class="button gold">Salvar</button></footer></form>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="judicialSetupBackdrop">
+    <section class="modal judicial-setup-modal" role="dialog" aria-modal="true" aria-labelledby="judicialSetupTitle">
+      <header><div><p class="eyebrow">Monitoramento autenticado</p><h2 id="judicialSetupTitle">Certificado A1 e segundo fator</h2></div><button class="icon-button" id="judicialSetupClose" aria-label="Fechar">×</button></header>
+      <div class="judicial-setup-body">
+        <div class="setup-status-grid">
+          <article><span class="setup-status-icon" id="setupCertificateIcon">1</span><div><small>Certificado A1</small><strong id="setupCertificateStatus">Verificando…</strong></div></article>
+          <article><span class="setup-status-icon" id="setupPjeOfficeIcon">2</span><div><small>PJeOffice</small><strong id="setupPjeOfficeStatus">Verificando…</strong></div></article>
+          <article><span class="setup-status-icon" id="setupTotpIcon">3</span><div><small>Segundo fator</small><strong id="setupTotpStatus">Nenhum QR vinculado</strong></div></article>
+        </div>
+
+        <section class="setup-section">
+          <div class="setup-section-heading"><div><p class="eyebrow">Etapa 1</p><h3>Certificado digital A1</h3><p>O PFX e a senha são recebidos apenas pelo servidor local e armazenados cifrados. A chave privada não é exportada.</p></div><span class="status-chip muted" id="certificateFileBadge">Não configurado</span></div>
+          <form id="certificateSetupForm" class="setup-form-row">
+            <label class="file-picker"><span>Arquivo .PFX ou .P12</span><input id="certificateFileInput" type="file" accept=".pfx,.p12,application/x-pkcs12" required><small id="certificateFileName">Selecionar certificado</small></label>
+            <label><span>Senha atual do certificado</span><input id="certificatePassphrase" type="password" autocomplete="new-password" maxlength="256" required placeholder="••••••••••••"></label>
+            <button class="button gold" type="submit">Validar e proteger</button>
+          </form>
+        </section>
+
+        <section class="setup-section">
+          <div class="setup-section-heading"><div><p class="eyebrow">Etapa 2</p><h3>Cobertura dos tribunais</h3><p>Marque os portais que o coletor deve acessar. Fontes públicas DJEN e DataJud continuam ativas separadamente.</p></div><div class="setup-heading-actions"><button class="button danger-outline" id="resetJudicialConnectionsButton" type="button">Zerar acessos</button><button class="button ghost" id="savePortalCoverageButton" type="button">Salvar cobertura</button></div></div>
+          <div class="portal-coverage-list" id="portalCoverageList"><div class="setup-loading">Carregando portais…</div></div>
+        </section>
+
+        <section class="setup-section totp-section" id="totpSetupSection">
+          <div class="setup-section-heading"><div><p class="eyebrow">Etapa 3</p><h3>Vincular um QR novo do portal</h3><p>Primeiro ative ou redefina o 2FA no site do PJe/PDPJ. Quando o portal mostrar o QR de ativação, salve uma imagem e selecione-a aqui.</p></div><span class="status-chip warning">QR do portal</span></div>
+          <ol class="totp-instructions"><li>No portal judicial, abra Segurança ou Autenticação em duas etapas.</li><li>Escolha redefinir/ativar e gere um QR novo.</li><li>Leia o QR também no seu autenticador pessoal.</li><li>Selecione a mesma imagem abaixo e informe o código atual de seis dígitos.</li></ol>
+          <form id="portalTotpForm" class="totp-form">
+            <label><span>Portal</span><select id="totpPortalSelect" required><option value="">Selecione o tribunal</option></select></label>
+            <label class="file-picker"><span>Imagem do QR de ativação</span><input id="portalQrInput" type="file" accept="image/png,image/jpeg,image/webp"><small id="portalQrStatus">Selecionar QR code</small></label>
+            <label><span>Ou chave manual Base32</span><input id="portalTotpSecret" type="password" autocomplete="off" maxlength="256" placeholder="Chave exibida pelo portal"></label>
+            <label><span>Código atual para confirmar</span><input id="portalTotpCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"></label>
+            <div class="totp-actions"><button class="button gold" type="submit">Testar e ativar 2FA</button><button class="button ghost" id="removePortalTotpButton" type="button">Remover vínculo local</button></div>
+          </form>
+          <div class="setup-warning"><strong>Importante:</strong> QR de exportação do Google Authenticator não é aceito. Use o QR novo mostrado pelo próprio portal ao ativar o 2FA.</div>
+        </section>
+      </div>
+      <footer class="judicial-setup-footer"><div><strong>Primeiro acesso acompanhado</strong><span>Uma janela do tribunal será aberta para selecionar o A1, resolver eventual CAPTCHA e confirmar que a sessão foi criada.</span></div><button class="button gold" id="launchPortalLoginButton" type="button">Abrir primeira conexão</button></footer>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="docGeneratorBackdrop">
+    <section class="modal doc-generator-modal" role="dialog" aria-modal="true" aria-labelledby="docGenTitle">
+      <header>
+        <div><p class="eyebrow">Automação de Minutas</p><h2 id="docGenTitle">Gerador de Documentos Jurídicos</h2></div>
+        <button class="icon-button" id="docGenClose" aria-label="Fechar">×</button>
+      </header>
+      <div class="doc-gen-body">
+        <div class="doc-gen-controls">
+          <label><span>Tipo de documento</span>
+            <select id="docGenTypeSelect">
+              <option value="procuracao">Procuração Ad Judicia et Extra (Art. 105 CPC)</option>
+              <option value="contrato_honorarios">Contrato de Honorários Advocatícios</option>
+              <option value="declaracao_hipo">Declaração de Hipossuficiência (Justiça Gratuita)</option>
+            </select>
+          </label>
+          <label><span>Cliente / Outorgante</span>
+            <select id="docGenContactSelect"><option value="">Selecione o contato</option></select>
+          </label>
+          <label><span>Processo vinculado (opcional)</span>
+            <select id="docGenProcessSelect"><option value="">Geral / Sem processo</option></select>
+          </label>
+        </div>
+        <div class="doc-preview-wrap">
+          <div class="doc-preview-header">
+            <strong>Minuta Gerada</strong>
+            <div class="doc-preview-actions">
+              <button class="button ghost" id="docGenCopyButton" type="button">📋 Copiar minuta</button>
+              <button class="button gold" id="docGenDownloadButton" type="button">⬇ Baixar .md / .txt</button>
+            </div>
+          </div>
+          <textarea id="docGenPreviewText" class="doc-preview-textarea" rows="15" spellcheck="false"></textarea>
+        </div>
+      </div>
+      <footer>
+        <button type="button" class="button ghost" id="docGenCancel">Fechar</button>
+      </footer>
+    </section>
+  </div>
+
+  <input class="hidden" type="file" id="jsonImportInput" accept="application/json,.json">
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+  <script src="js/auth.js?v=4.1.0" defer></script>
+  <script src="js/portal.js?v=4.1.0" defer></script>
+</body>
+</html>

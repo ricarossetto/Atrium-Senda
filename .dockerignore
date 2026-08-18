@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+!.env.example
+data
+collector/.profile
+collector/portals.json
+node_modules
+test-results
+playwright-report
+research/vendor
+*.pfx
+*.p12
+*.pem
+*.key

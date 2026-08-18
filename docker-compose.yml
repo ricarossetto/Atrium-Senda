@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  jurisflow:
+    build: .
+    container_name: jurisflow-central
+    restart: unless-stopped
+    ports:
+      - "4173:4173"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=4173
+      - COOKIE_SECURE=false
+      - AUTH_SESSION_SECRET=minimo_32_caracteres_seguro_sessao_juris_flow_2026
+      - AUTH_ENCRYPTION_KEY=MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+    volumes:
+      - jurisflow-data:/app/data
+
+volumes:
+  jurisflow-data:
+    driver: local
