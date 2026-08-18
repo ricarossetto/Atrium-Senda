@@ -1,10 +1,10 @@
 {
-  "monitoredTerm": { "name": "Ricardo De Luca Rossetto", "registration": "OAB/RS 135294" },
+  "monitoredTerm": { "name": "Dr(a). Advogado(a) Titular", "registration": "OAB/UF 000000" },
   "portals": [
     {
       "id": "djen-cnj", "name": "DJEN / Comunica PJe", "short": "DJ", "group": "Fontes nacionais", "system": "Comunica PJe",
       "enabled": true, "accountScoped": false, "url": "https://comunicaapi.pje.jus.br/api/v1/comunicacao", "strategy": "djen",
-      "ufOab": "RS", "numeroOab": "135294", "lookbackDays": 3, "queryOabVariants": true, "pageSize": 50, "maxPages": 40,
+      "ufOab": "", "numeroOab": "", "lookbackDays": 3, "queryOabVariants": true, "pageSize": 50, "maxPages": 40,
       "requestSpacingMs": 500, "usesCertificate": false
     },
     {

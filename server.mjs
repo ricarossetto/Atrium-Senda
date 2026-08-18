@@ -168,7 +168,7 @@ function publicCertificatePortals(config, secrets) {
     automationLevel: portal.automationLevel || 'supported',
     manualFirstLogin: Boolean(portal.manualFirstLogin),
     notice: portal.notice || '',
-    supportsTotp: Boolean(portal.strategy === 'pje' || portal.autoTotpEnv),
+    supportsTotp: Boolean(portal.supportsTotp !== false),
     totpConfigured: Boolean(secrets.totpSecrets?.[portal.id]?.secret),
     firstLoginRequired: portal.strategy === 'pje' && !portal.enabled
   }));

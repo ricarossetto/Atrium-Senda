@@ -138,10 +138,14 @@
 
   function getOfficeIdentity() {
     const s = Store?.state?.settings || {};
+    const primaryTerm = Store?.state?.terms?.[0] || {};
+    const authUser = window.KellerAuth?.currentUser || {};
+    const lawyerName = s.lawyerName || primaryTerm.name || authUser.displayName || 'Dr(a). Advogado(a) Titular';
+    const lawyerOab = s.lawyerOab || primaryTerm.registration || 'OAB/UF 000000';
     return {
-      officeName: s.officeName || 'Escritório de Advocacia',
-      lawyerName: s.lawyerName || 'Dr(a). Advogado(a) Titular',
-      lawyerOab: s.lawyerOab || 'OAB/UF 000000',
+      officeName: s.officeName || (lawyerName !== 'Dr(a). Advogado(a) Titular' ? `Advocacia ${lawyerName.split(' ')[0]}` : 'Escritório de Advocacia'),
+      lawyerName: lawyerName,
+      lawyerOab: lawyerOab,
       lawyerCpf: s.lawyerCpfCnpj || '000.000.000-00',
       lawyerAddress: s.lawyerAddress || 'Sede Profissional',
       city: s.city || 'São Paulo/SP'
@@ -283,6 +287,13 @@ CPF: ${doc}`;
       Object.keys(sampleState.configuration).forEach(key => { if (!Array.isArray(this.state.configuration[key])) this.state.configuration[key] = []; });
       this.state.settings = { ...sampleState.settings, ...(this.state.settings || {}) };
       if (!this.state.terms.length) this.state.terms.unshift(deepClone(sampleState.terms[0]));
+      const authUser = window.KellerAuth?.currentUser;
+      if (authUser?.displayName && this.state.terms[0] && (this.state.terms[0].name === 'Dr(a). Advogado(a) Titular' || !this.state.terms[0].name)) {
+        this.state.terms[0].name = authUser.displayName;
+        if (!this.state.settings.lawyerName || this.state.settings.lawyerName === 'Dr(a). Advogado(a) Titular') {
+          this.state.settings.lawyerName = authUser.displayName;
+        }
+      }
     },
     save() {
       clearTimeout(this.saveTimer);
@@ -414,7 +425,8 @@ CPF: ${doc}`;
       byId('newProcessButton').addEventListener('click', () => this.openProcessModal());
       byId('newTermButton').addEventListener('click', () => this.openTermModal());
       byId('primaryTermCard').addEventListener('click', () => {
-        const term = Store.state.terms.find(item => item.registration === 'OAB/RS 135294') || Store.state.terms[0]; if (term) this.openTermModal(term);
+        const term = Store.state.terms[0] || { id: uid('term'), name: 'Dr(a). Advogado(a) Titular', registration: 'OAB/UF 000000', type: 'oab', active: true };
+        this.openTermModal(term);
       });
       byId('modalClose').addEventListener('click', () => this.closeModal());
       byId('modalCancel').addEventListener('click', () => this.closeModal());
@@ -1001,6 +1013,14 @@ CPF: ${doc}`;
       }
     },
     renderMonitoring() {
+      const term = Store.state.terms[0] || { name: 'Dr(a). Advogado(a) Titular', registration: 'OAB/UF 000000' };
+      const nameEl = document.getElementById('primaryTermName');
+      const regEl = document.getElementById('primaryTermRegistration');
+      const avatarEl = document.getElementById('primaryTermAvatar');
+      if (nameEl) nameEl.textContent = term.name || 'Dr(a). Advogado(a) Titular';
+      if (regEl) regEl.textContent = `${term.registration || 'OAB/UF 000000'} · Advogado(a) monitorado(a) principal`;
+      if (avatarEl) avatarEl.textContent = this.initials(term.name || 'AD');
+
       const issues = Store.state.sources.filter(source => ['attention', 'error'].includes(source.status)).length;
       document.getElementById('termSourceCount').textContent = Store.state.sources.length;
       document.getElementById('termIssueCount').textContent = issues;
@@ -1419,7 +1439,13 @@ CPF: ${doc}`;
         Store.audit(index === null || index === undefined || index === '' ? 'Configuração adicionada' : 'Configuração atualizada', `${section} · ${typeof record === 'string' ? record : record.name || record.event || record.group || 'item'}`);
       } else if (this.modalMode.mode === 'term') {
         const editing = Boolean(this.modalMode.defaults.id);
-        const record = { id: this.modalMode.defaults.id || uid('term'), active: true, ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() }; Store.upsert('terms', record); Store.audit(editing ? 'Termo atualizado' : 'Termo adicionado', `${record.name} · ${record.registration}`);
+        const record = { id: this.modalMode.defaults.id || uid('term'), active: true, ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() };
+        Store.upsert('terms', record);
+        if (Store.state.terms[0]?.id === record.id) {
+          Store.state.settings.lawyerName = record.name;
+          Store.state.settings.lawyerOab = record.registration;
+        }
+        Store.audit(editing ? 'Termo atualizado' : 'Termo adicionado', `${record.name} · ${record.registration}`);
       } else if (this.modalMode.mode === 'source') {
         const record = { ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() }; Store.upsert('sources', record); Store.audit('Fonte atualizada', `${record.name} · ${record.status}`);
       }

@@ -1,12 +1,13 @@
 (() => {
   'use strict';
 
-  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, pendingUser: null };
+  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, pendingUser: null, user: null };
   const byId = id => document.getElementById(id);
 
   const Auth = {
     get authenticated() { return state.authenticated; },
     get csrfToken() { return state.csrfToken; },
+    get currentUser() { return state.user || state.pendingUser; },
     get trustedDevice() { return Boolean(state.trustedDevice); },
     async init() {
       this.bind();
@@ -14,7 +15,7 @@
         const status = await request('/api/auth/status');
         state.configured = status.configured;
         if (status.authenticated) {
-          state.csrfToken = status.csrfToken; state.trustedDevice = Boolean(status.trustedDevice);
+          state.csrfToken = status.csrfToken; state.trustedDevice = Boolean(status.trustedDevice); state.user = status.user;
           this.enter(status.user);
         } else {
           this.show(status.configured ? 'authLoginForm' : 'authSetupForm');
@@ -71,9 +72,14 @@
       finally { this.busy(formElement, false); }
     },
     enter(user) {
-      state.authenticated = true; state.pendingUser = null;
+      state.authenticated = true; state.pendingUser = null; state.user = user;
       byId('authGate').classList.add('hidden'); byId('appShell').classList.remove('hidden'); this.feedback('');
-      if (user?.displayName) document.querySelector('.profile-copy strong').textContent = user.displayName;
+      if (user?.displayName) {
+        const strong = document.querySelector('.profile-copy strong');
+        if (strong) strong.textContent = user.displayName;
+        const avatar = document.querySelector('.profile-avatar');
+        if (avatar) avatar.textContent = user.displayName.split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+      }
       window.dispatchEvent(new CustomEvent('keller:authenticated', { detail: user }));
     },
     async logout() {
