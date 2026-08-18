@@ -2017,20 +2017,72 @@ CPF: ${doc}`;
     },
     async readPortalQr(file) {
       const status = document.getElementById('portalQrStatus');
-      document.getElementById('portalTotpSecret').value = '';
-      if (!file) { status.textContent = 'Selecionar QR code'; return; }
-      status.textContent = 'Lendo QR somente neste navegador…';
+      const secretInput = document.getElementById('portalTotpSecret');
+      secretInput.value = '';
+      if (!file) {
+        status.textContent = 'Selecionar QR code';
+        return;
+      }
+      status.textContent = 'Decodificando imagem do QR code…';
+
       try {
-        if (!('BarcodeDetector' in window)) throw new Error('Leitura automática indisponível neste navegador. Cole a chave manual ou URL OTP no campo abaixo.');
-        const detector = new BarcodeDetector({ formats: ['qr_code'] });
-        const bitmap = await createImageBitmap(file);
-        const codes = await detector.detect(bitmap); bitmap.close?.();
-        const raw = codes.find(code => code.rawValue)?.rawValue || '';
-        if (!raw) throw new Error('A imagem não contém um QR Code legível.');
-        document.getElementById('portalTotpSecret').value = raw;
-        status.textContent = `${file.name} · QR lido com segurança`;
+        let raw = '';
+
+        // 1. Decodificação universal via jsQR (Canvas 2D, suportado em 100% dos navegadores)
+        if (typeof window.jsQR === 'function') {
+          try {
+            const img = new Image();
+            const imgLoaded = new Promise((resolve, reject) => {
+              img.onload = () => resolve();
+              img.onerror = () => reject(new Error('Falha ao carregar arquivo de imagem.'));
+            });
+            const objectUrl = URL.createObjectURL(file);
+            img.src = objectUrl;
+            await imgLoaded;
+            URL.revokeObjectURL(objectUrl);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const qrResult = window.jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: 'attemptBoth'
+            });
+            if (qrResult?.data) {
+              raw = String(qrResult.data || '').trim();
+            }
+          } catch (err) {
+            console.warn('Tentativa com jsQR:', err);
+          }
+        }
+
+        // 2. Fallback via BarcodeDetector nativo (se disponível)
+        if (!raw && ('BarcodeDetector' in window)) {
+          try {
+            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            const bitmap = await createImageBitmap(file);
+            const codes = await detector.detect(bitmap);
+            bitmap.close?.();
+            raw = codes.find(code => code.rawValue)?.rawValue?.trim() || '';
+          } catch (err) {
+            console.warn('Tentativa com BarcodeDetector:', err);
+          }
+        }
+
+        if (!raw) {
+          throw new Error('Não foi possível ler o QR Code da imagem. Verifique se o enquadramento está nítido ou cole a chave manual Base32.');
+        }
+
+        secretInput.value = raw;
+        status.textContent = `${file.name} · QR lido com sucesso`;
+        this.toast('QR Code decodificado com sucesso! Digite o código de 6 dígitos para validar.', 'success');
         document.getElementById('portalTotpCode').focus();
-      } catch (error) { status.textContent = file.name; this.toast(error.message, 'error'); }
+      } catch (error) {
+        status.textContent = file.name;
+        this.toast(error.message, 'error');
+      }
     },
     async savePortalTotp(event) {
       event.preventDefault(); const form = event.currentTarget;

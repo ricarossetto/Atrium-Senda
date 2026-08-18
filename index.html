@@ -1255,7 +1255,7 @@
             <label><span>Código atual para confirmar</span><input id="portalTotpCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"></label>
             <div class="totp-actions"><button class="button gold" type="submit">Testar e ativar 2FA</button><button class="button ghost" id="removePortalTotpButton" type="button">Remover vínculo local</button></div>
           </form>
-          <div class="setup-warning"><strong>Importante:</strong> QR de exportação do Google Authenticator não é aceito. Use o QR novo mostrado pelo próprio portal ao ativar o 2FA.</div>
+          <div class="setup-warning"><strong>Compatibilidade Universal:</strong> Aceita QR novo de ativação gerado pelo tribunal (PJe/PDPJ/eproc), QR de exportação do Google Authenticator ou chave manual Base32.</div>
         </section>
       </div>
       <footer class="judicial-setup-footer"><div><strong>Primeiro acesso acompanhado</strong><span>Uma janela do tribunal será aberta para selecionar o A1, resolver eventual CAPTCHA e confirmar que a sessão foi criada.</span></div><button class="button gold" id="launchPortalLoginButton" type="button">Abrir primeira conexão</button></footer>
@@ -1578,9 +1578,10 @@
 
   <input class="hidden" type="file" id="jsonImportInput" accept="application/json,.json">
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
-  <script src="js/prompts-data.js?v=4.2.0" defer></script>
-  <script src="js/office-data.js?v=4.2.0" defer></script>
-  <script src="js/auth.js?v=4.2.0" defer></script>
-  <script src="js/portal.js?v=4.2.0" defer></script>
+  <script src="js/jsqr.js?v=4.3.0" defer></script>
+  <script src="js/prompts-data.js?v=4.3.0" defer></script>
+  <script src="js/office-data.js?v=4.3.0" defer></script>
+  <script src="js/auth.js?v=4.3.0" defer></script>
+  <script src="js/portal.js?v=4.3.0" defer></script>
 </body>
 </html>
