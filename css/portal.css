@@ -106,14 +106,24 @@ button, a { -webkit-tap-highlight-color: transparent; }
   border-radius: 12px;
   transition: background 0.2s ease, transform 0.15s ease;
   user-select: none;
+  overflow: hidden;
 }
 .brand:hover {
   background: rgba(201, 168, 76, 0.08);
   transform: translateY(-1px);
 }
+.brand img {
+  display: block;
+  max-width: 140px;
+  max-height: 42px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: left center;
+}
 .brand-badge { display: inline-flex; align-items: center; gap: 11px; font: 700 20px/1.2 var(--font-serif); color: var(--gold-soft); letter-spacing: .05em; text-transform: uppercase; }
 .brand-badge-large { display: inline-flex; align-items: center; gap: 16px; font: 700 32px/1.2 var(--font-serif); color: var(--gold-soft); letter-spacing: .06em; margin-bottom: 20px; text-transform: uppercase; }
-.brand-product { display: block; margin: 4px 0 0 46px; color: var(--gold); font: 600 9.5px/1.2 var(--font-sans); letter-spacing: .22em; text-transform: uppercase; white-space: nowrap; opacity: .85; }
+.brand-product { display: block; margin: 6px 0 0 2px; color: var(--gold); font: 600 9.5px/1.2 var(--font-sans); letter-spacing: .22em; text-transform: uppercase; white-space: nowrap; opacity: .85; }
 
 .brand-monogram-svg { width: 34px; height: 34px; flex-shrink: 0; filter: drop-shadow(0 2px 8px rgba(212, 175, 55, 0.3)); }
 .brand-badge-large .brand-monogram-svg { width: 60px; height: 60px; filter: drop-shadow(0 4px 16px rgba(212, 175, 55, 0.35)); }
