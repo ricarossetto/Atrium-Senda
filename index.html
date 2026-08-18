@@ -738,7 +738,7 @@
         </div>
         <article class="card architecture-card">
           <div><p class="eyebrow">Arquitetura protegida</p><h3>Separação entre interface e credenciais</h3></div>
-          <div class="architecture-flow"><span>Portais judiciais</span><b>→</b><span>Agente local seguro</span><b>→</b><span>JurisFlow</span><b>→</b><span>Triagem humana</span></div>
+          <div class="architecture-flow"><span>Portais judiciais</span><b>→</b><span>Agente local seguro</span><b>→</b><span>Atrium Senda</span><b>→</b><span>Triagem humana</span></div>
           <button class="button ghost hidden" id="forgetTrustedDeviceButton" type="button">Esquecer este navegador</button>
         </article>
       </section>
@@ -747,9 +747,9 @@
         <div class="section-toolbar">
           <div class="toolbar-copy"><p>Importe processos, contatos, clientes e tarefas em lote via arquivos Excel (.xlsx) ou CSV com mapeamento inteligente.</p></div>
           <div class="toolbar-actions">
-            <a class="button ghost" href="/api/import/template?type=processes" download>📄 Modelo Processos (CSV)</a>
-            <a class="button ghost" href="/api/import/template?type=contacts" download>📄 Modelo Contatos (CSV)</a>
-            <a class="button ghost" href="/api/import/template?type=tasks" download>📄 Modelo Prazos (CSV)</a>
+            <a class="button ghost" href="/api/import/template?type=processes" download>Modelo Processos (CSV)</a>
+            <a class="button ghost" href="/api/import/template?type=contacts" download>Modelo Contatos (CSV)</a>
+            <a class="button ghost" href="/api/import/template?type=tasks" download>Modelo Prazos (CSV)</a>
           </div>
         </div>
 
@@ -777,15 +777,15 @@
             <div class="card-heading"><div><p class="eyebrow">Instruções de formato</p><h3>O que pode ser importado</h3></div></div>
             <div class="importer-guide-list">
               <div class="guide-item">
-                <strong>⚖️ Processos & Clientes</strong>
+                <strong>Processos & Clientes</strong>
                 <p>Colunas como <em>Número do processo</em>, <em>Cliente</em>, <em>Tribunal/Comarca</em>, <em>Tipo de Ação</em>, <em>Fase</em> e <em>Honorários</em>.</p>
               </div>
               <div class="guide-item">
-                <strong>👥 Contatos & Cadastro Geral</strong>
+                <strong>Contatos & Cadastro Geral</strong>
                 <p>Colunas como <em>Nome</em>, <em>CPF/CNPJ</em>, <em>Telefone / Celular</em>, <em>E-mail</em>, <em>Cidade</em> e <em>UF</em>.</p>
               </div>
               <div class="guide-item">
-                <strong>📅 Tarefas, Prazos & Audiências</strong>
+                <strong>Tarefas, Prazos & Audiências</strong>
                 <p>Colunas como <em>Título da tarefa</em>, <em>Processo</em>, <em>Cliente</em>, <em>Data Limite / Prazo</em> e <em>Responsável</em>.</p>
               </div>
             </div>
@@ -800,7 +800,7 @@
             </div>
             <div class="toolbar-actions">
               <button class="button ghost" id="importerCancelButton">Descartar</button>
-              <button class="button gold" id="importerCommitButton">🚀 Confirmar e Importar para o JurisFlow</button>
+              <button class="button gold" id="importerCommitButton">Confirmar e Importar para o Atrium Senda</button>
             </div>
           </div>
           <div class="importer-badges" id="importerBadges"></div>
@@ -851,7 +851,7 @@
           <div id="aiOnboardingBanner" class="ai-onboarding-card card">
             <div class="ai-onboarding-content">
               <h3>Ative o Assistente Jurídico com o Google Gemini (Gratuito)</h3>
-              <p>O Assistente Jurídico do JurisFlow utiliza a tecnologia do <strong>Google Gemini</strong> para interpretar intimações judiciais, calcular contagem precisa de prazos em dias úteis (CPC/2015), redigir minutas contratuais e sugerir estratégias processuais.</p>
+              <p>O Assistente Jurídico do Atrium Senda utiliza a tecnologia do <strong>Google Gemini</strong> para interpretar intimações judiciais, calcular contagem precisa de prazos em dias úteis (CPC/2015), redigir minutas contratuais e sugerir estratégias processuais.</p>
               <div class="ai-steps-grid">
                 <div class="ai-step-item">
                   <span class="ai-step-num">1</span>
@@ -863,7 +863,7 @@
                 <div class="ai-step-item">
                   <span class="ai-step-num">2</span>
                   <div>
-                    <strong>Ative no JurisFlow</strong>
+                    <strong>Ative no Atrium Senda</strong>
                     <p>Insira a chave no campo seguro. O sistema valida a conexão instantaneamente.</p>
                   </div>
                 </div>
@@ -948,7 +948,14 @@
             <p>230 prompts jurídicos especializados e calibrados para pesquisa, redação de peças, análise de riscos e estratégia processual.</p>
           </div>
           <div class="toolbar-actions">
-            <button class="button gold" data-view-link="assistant">
+            <button class="button gold" id="btnNewPrompt" type="button">
+              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>+ Novo Prompt</span>
+            </button>
+            <button class="button ghost" data-view-link="assistant">
               <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
               </svg>
@@ -969,7 +976,7 @@
               <div class="prompts-filter-group">
                 <label for="promptCategorySelect">Área do Direito:</label>
                 <select id="promptCategorySelect">
-                  <option value="all">Todas as Áreas (230 prompts)</option>
+                  <option value="all">Todas as Áreas</option>
                 </select>
               </div>
 
@@ -986,7 +993,7 @@
               </div>
 
               <div class="prompts-counter-badge" id="promptsCountDisplay">
-                Mostrando 230 de 230 prompts
+                Mostrando prompts...
               </div>
             </div>
           </div>
@@ -1003,20 +1010,36 @@
       <section class="view" id="view-links" data-title="Links Úteis & Ferramentas" data-eyebrow="Acesso Rápido Oficial">
         <div class="section-toolbar">
           <div class="toolbar-copy">
-            <p>Atalhos diretos para legislações oficiais compiladas do Planalto, pesquisa de jurisprudência do STJ e ferramentas de IA jurídica.</p>
+            <p>Atalhos diretos para legislações oficiais compiladas do Planalto, pesquisa de jurisprudência do STJ, ferramentas de IA jurídica e links personalizados.</p>
           </div>
           <div class="toolbar-actions">
-            <button class="button gold" data-view-link="prompts">
+            <button class="button gold" id="btnNewLink" type="button">
+              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>+ Novo Link Útil</span>
+            </button>
+            <button class="button ghost" data-view-link="prompts">
               <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
               </svg>
-              <span>Biblioteca de Prompts (230)</span>
+              <span>Biblioteca de Prompts</span>
             </button>
           </div>
         </div>
 
         <div class="links-hub">
+          <!-- Seção de Links Personalizados do Usuário -->
+          <div id="customLinksSection" class="hidden">
+            <div class="links-section-header">
+              <h3>Meus Links Personalizados</h3>
+              <p>Atalhos e referências adicionadas pelo seu escritório.</p>
+            </div>
+            <div class="links-grid" id="customLinksGrid"></div>
+          </div>
+
           <!-- Seção de Legislação Principal -->
           <div class="links-section-header">
             <h3>Legislação &amp; Códigos Fundamentais (Planalto)</h3>
@@ -1124,13 +1147,26 @@
             </a>
           </div>
 
-          <!-- Seção de Ferramentas Gratuitas com IA -->
+          <!-- Seção de Ferramentas Gratuitas com IA & Repositório -->
           <div class="links-section-header" style="margin-top: 32px;">
-            <h3>Ferramentas Gratuitas com Inteligência Artificial</h3>
-            <p>Plataformas externas gratuitas com IA para suporte à rotina e prática jurídica.</p>
+            <h3>Ferramentas Gratuitas com Inteligência Artificial &amp; Repositório</h3>
+            <p>Plataformas externas gratuitas com IA e hubs de apoio à prática jurídica.</p>
           </div>
 
           <div class="links-grid">
+            <a href="https://ricarossetto.github.io/prompts-atualizados-02-2026/" target="_blank" rel="noopener noreferrer" class="link-card card highlight-gold">
+              <div class="link-card-header">
+                <div class="link-badge" style="background:rgba(212,175,55,0.18);color:var(--gold-soft);border:1px solid rgba(212,175,55,0.35);">Web Hub Oficial</div>
+                <span class="external-icon">↗</span>
+              </div>
+              <h4>Prompts Jurídicos Atualizados (02/2026)</h4>
+              <p>Portal web dedicado com o catálogo completo de 230 prompts jurídicos estruturados, busca interativa e atalhos de cópia rápida.</p>
+              <div class="link-card-meta">
+                <span class="link-domain">ricarossetto.github.io</span>
+                <span class="link-tag">230 Prompts</span>
+              </div>
+            </a>
+
             <a href="https://www.jurisprudenciaia.com.br/" target="_blank" rel="noopener noreferrer" class="link-card card ai-card">
               <div class="link-card-header">
                 <div class="link-badge ai-badge">IA Gratuita</div>
@@ -1543,6 +1579,7 @@
   <input class="hidden" type="file" id="jsonImportInput" accept="application/json,.json">
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
   <script src="js/prompts-data.js?v=4.2.0" defer></script>
+  <script src="js/office-data.js?v=4.2.0" defer></script>
   <script src="js/auth.js?v=4.2.0" defer></script>
   <script src="js/portal.js?v=4.2.0" defer></script>
 </body>

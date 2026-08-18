@@ -2219,3 +2219,102 @@ td small { color: var(--muted); }
   margin: 0;
   line-height: 1.5;
 }
+
+/* Estilos de Prompts Customizados */
+.custom-prompt-badge {
+  background: rgba(52, 199, 89, 0.15) !important;
+  color: #34c759 !important;
+  border: 1px solid rgba(52, 199, 89, 0.35) !important;
+}
+
+.button.danger-ghost {
+  background: transparent;
+  color: #ff4d4f;
+  border: 1px solid rgba(255, 77, 79, 0.35);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.button.danger-ghost:hover {
+  background: rgba(255, 77, 79, 0.15);
+  border-color: #ff4d4f;
+  color: #ff6b6d;
+}
+
+/* Links Personalizados */
+.custom-link-card {
+  position: relative;
+}
+
+.link-card-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-delete-link {
+  background: transparent;
+  border: 1px solid rgba(255, 77, 79, 0.25);
+  color: rgba(255, 77, 79, 0.7);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-link:hover {
+  background: rgba(255, 77, 79, 0.2);
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+/* Ações nas linhas de configuração */
+.configuration-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100%;
+  cursor: pointer;
+}
+
+.config-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  text-align: left;
+}
+
+.btn-delete-config-row {
+  background: transparent;
+  border: 1px solid rgba(255, 77, 79, 0.2);
+  color: rgba(255, 77, 79, 0.6);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  margin-left: 12px;
+}
+
+.btn-delete-config-row:hover {
+  background: rgba(255, 77, 79, 0.2);
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+

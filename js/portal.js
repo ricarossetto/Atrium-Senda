@@ -62,6 +62,8 @@
       { id: 'proc-demo-2', number: '5000000-00.2026.4.04.0000', client: 'Processo de demonstração', court: 'TRF · 2ª Vara Federal', secrecy: true, lastMovement: 'Movimentação capturada pelo conector', lastMovementAt: isoDate(-1), monitoring: 'attention' }
     ],
     contacts: [],
+    customPrompts: [],
+    customLinks: [],
     configuration: {
       users: [], monitoredTerms: [], taskDefinitions: [], actionGroups: [], actionTypes: [], stages: [], goals: [], origins: [], partners: [], inboxSections: [], notificationAssignments: [], integrations: [], sourceProducts: []
     },
@@ -331,11 +333,20 @@ CPF: ${doc}`;
       this.save();
     },
     ensureShape() {
-      ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts'].forEach(key => {
+      ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'customPrompts', 'customLinks'].forEach(key => {
         if (!Array.isArray(this.state[key])) this.state[key] = [];
       });
-      this.state.configuration = { ...deepClone(sampleState.configuration), ...(this.state.configuration || {}) };
-      Object.keys(sampleState.configuration).forEach(key => { if (!Array.isArray(this.state.configuration[key])) this.state.configuration[key] = []; });
+      this.state.configuration = { ...(this.state.configuration || {}) };
+      const defaultOffice = window.OFFICE_DEFAULT_DATA || {};
+      for (const key of ['taskDefinitions', 'actionTypes', 'actionGroups', 'stages', 'origins', 'goals', 'users', 'inboxSections', 'notificationAssignments', 'integrations']) {
+        if (!Array.isArray(this.state.configuration[key]) || this.state.configuration[key].length === 0) {
+          if (Array.isArray(defaultOffice[key]) && defaultOffice[key].length > 0) {
+            this.state.configuration[key] = deepClone(defaultOffice[key]);
+          } else {
+            this.state.configuration[key] = [];
+          }
+        }
+      }
       this.state.settings = { ...sampleState.settings, ...(this.state.settings || {}) };
       if (Array.isArray(this.state.sources)) {
         this.state.sources.forEach(s => {
@@ -742,19 +753,77 @@ CPF: ${doc}`;
         if (select) select.value = cat;
         this.renderPrompts();
       });
+      byId('btnNewPrompt')?.addEventListener('click', () => this.openNewPromptModal());
+      byId('btnNewLink')?.addEventListener('click', () => this.openNewLinkModal());
       byId('promptsGrid')?.addEventListener('click', (e) => {
         const copyBtn = e.target.closest('[data-copy-prompt]');
         if (copyBtn) {
           const promptId = copyBtn.dataset.copyPrompt;
-          const p = (window.PROMPTS_DATA || []).find(item => item.id === promptId);
+          const all = [...(Store.state.customPrompts || []), ...(window.PROMPTS_DATA || [])];
+          const p = all.find(item => item.id === promptId);
           if (p) this.copyPrompt(p.prompt, copyBtn);
           return;
         }
         const useBtn = e.target.closest('[data-use-prompt]');
         if (useBtn) {
           const promptId = useBtn.dataset.usePrompt;
-          const p = (window.PROMPTS_DATA || []).find(item => item.id === promptId);
+          const all = [...(Store.state.customPrompts || []), ...(window.PROMPTS_DATA || [])];
+          const p = all.find(item => item.id === promptId);
           if (p) this.usePromptInAi(p.prompt);
+          return;
+        }
+        const editBtn = e.target.closest('[data-edit-prompt]');
+        if (editBtn) {
+          const promptId = editBtn.dataset.editPrompt;
+          const p = (Store.state.customPrompts || []).find(item => item.id === promptId);
+          if (p) this.openNewPromptModal(p);
+          return;
+        }
+        const deleteBtn = e.target.closest('[data-delete-prompt]');
+        if (deleteBtn) {
+          const promptId = deleteBtn.dataset.deletePrompt;
+          const idx = (Store.state.customPrompts || []).findIndex(p => p.id === promptId);
+          if (idx >= 0) {
+            const removed = Store.state.customPrompts.splice(idx, 1)[0];
+            Store.audit('Prompt personalizado excluído', removed?.title || promptId);
+            Store.save();
+            this.renderPrompts();
+            this.toast('Prompt excluído com sucesso.', 'success');
+          }
+          return;
+        }
+      });
+      byId('customLinksGrid')?.addEventListener('click', (e) => {
+        const deleteBtn = e.target.closest('[data-delete-link]');
+        if (deleteBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          const linkId = deleteBtn.dataset.deleteLink;
+          const idx = (Store.state.customLinks || []).findIndex(l => l.id === linkId);
+          if (idx >= 0) {
+            const removed = Store.state.customLinks.splice(idx, 1)[0];
+            Store.audit('Link útil excluído', removed?.title || linkId);
+            Store.save();
+            this.renderLinks();
+            this.toast('Link útil excluído com sucesso.', 'success');
+          }
+          return;
+        }
+      });
+      byId('configurationList')?.addEventListener('click', (e) => {
+        const deleteBtn = e.target.closest('[data-delete-config]');
+        if (deleteBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          const index = Number(deleteBtn.dataset.deleteConfig);
+          const list = Store.state.configuration[this.configurationSection];
+          if (Array.isArray(list) && index >= 0 && index < list.length) {
+            const removed = list.splice(index, 1)[0];
+            Store.audit('Configuração removida', `${this.configurationSection} · ${typeof removed === 'string' ? removed : (removed?.name || 'item')}`);
+            Store.save();
+            this.renderConfiguration();
+            this.toast('Item removido com sucesso.', 'success');
+          }
           return;
         }
       });
@@ -768,11 +837,13 @@ CPF: ${doc}`;
         document.getElementById('viewTitle').textContent = section.dataset.title;
         document.getElementById('viewEyebrow').textContent = section.dataset.eyebrow;
       }
+      if (view === 'prompts') this.renderPrompts();
+      if (view === 'links') this.renderLinks();
       document.getElementById('sidebar').classList.remove('open');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     renderAll() {
-      ['renderOfficeIdentity', 'renderMetrics', 'renderWeeklyDistribution', 'renderPriorities', 'renderActivity', 'renderSources', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderAgenda', 'renderMonitoring', 'renderPrompts', 'renderConfiguration', 'renderAudit'].forEach(method => {
+      ['renderOfficeIdentity', 'renderMetrics', 'renderWeeklyDistribution', 'renderPriorities', 'renderActivity', 'renderSources', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderAgenda', 'renderMonitoring', 'renderPrompts', 'renderLinks', 'renderConfiguration', 'renderAudit'].forEach(method => {
         try { this[method](); } catch (error) { console.error(`Falha em ${method}:`, error); }
       });
     },
@@ -1295,17 +1366,36 @@ CPF: ${doc}`;
       document.getElementById('configurationHeading').textContent = label;
       document.getElementById('configurationCount').textContent = `${records.length} itens`;
       document.getElementById('configurationList').innerHTML = records.length ? records.map(({ item, index }) => this.configurationRow(item, index)).join('') : '<div class="empty-detail"><span>✓</span><h3>Nenhum item</h3><p>Não há registros nesta seção ou neste filtro.</p></div>';
-      document.querySelectorAll('#configurationList [data-config-index]').forEach(row => row.addEventListener('click', () => {
+      document.querySelectorAll('#configurationList [data-config-index]').forEach(row => row.addEventListener('click', (e) => {
+        if (e.target.closest('[data-delete-config]')) return;
         const index = Number(row.dataset.configIndex); const item = raw[index]; if (item !== undefined) this.openConfigurationModal(item, index);
       }));
     },
     configurationRow(item, index) {
-      if (typeof item === 'string') return `<button class="configuration-row" data-config-index="${index}"><strong>${escapeHtml(item)}</strong><span>Seção da caixa de entrada</span><small>Ativa · clique para editar</small></button>`;
+      if (typeof item === 'string') {
+        return `
+          <div class="configuration-row" data-config-index="${index}">
+            <div class="config-row-info">
+              <strong>${escapeHtml(item)}</strong>
+              <span>Seção da caixa de entrada</span>
+              <small>Ativa · clique para editar</small>
+            </div>
+            <button type="button" class="btn-delete-config-row" data-delete-config="${index}" title="Excluir este item">×</button>
+          </div>`;
+      }
       if (!item || typeof item !== 'object') return '';
       const primary = item.name || item.event || item.group || 'Configuração';
       const secondary = item.role || item.phase || item.group || item.publicationResponsible || item.method || (item.responsibles || []).join(', ') || item.status || '—';
       const meta = Number.isFinite(item.points) ? `<span class="config-points">${item.points} pontos</span>` : item.monthlyClosings == null && 'monthlyClosings' in item ? '<small>Meta não definida</small>' : `<small>${escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
-      return `<button class="configuration-row" data-config-index="${index}"><strong>${escapeHtml(primary)}</strong><span>${escapeHtml(secondary)}</span>${meta}</button>`;
+      return `
+        <div class="configuration-row" data-config-index="${index}">
+          <div class="config-row-info">
+            <strong>${escapeHtml(primary)}</strong>
+            <span>${escapeHtml(secondary)}</span>
+            ${meta}
+          </div>
+          <button type="button" class="btn-delete-config-row" data-delete-config="${index}" title="Excluir este item">×</button>
+        </div>`;
     },
     openIntimationDetailModal(item) {
       if (!item) return;
@@ -1931,15 +2021,12 @@ CPF: ${doc}`;
       if (!file) { status.textContent = 'Selecionar QR code'; return; }
       status.textContent = 'Lendo QR somente neste navegador…';
       try {
-        if (!('BarcodeDetector' in window)) throw new Error('Leitura automática indisponível neste navegador. Use a chave manual exibida pelo portal.');
+        if (!('BarcodeDetector' in window)) throw new Error('Leitura automática indisponível neste navegador. Cole a chave manual ou URL OTP no campo abaixo.');
         const detector = new BarcodeDetector({ formats: ['qr_code'] });
         const bitmap = await createImageBitmap(file);
         const codes = await detector.detect(bitmap); bitmap.close?.();
         const raw = codes.find(code => code.rawValue)?.rawValue || '';
-        if (!/^otpauth:\/\/totp\//i.test(raw)) {
-          if (/^otpauth-migration:/i.test(raw)) throw new Error('Esse é um QR de exportação do autenticador. Gere um QR novo no site do tribunal.');
-          throw new Error('A imagem não contém um QR TOTP de ativação reconhecido.');
-        }
+        if (!raw) throw new Error('A imagem não contém um QR Code legível.');
         document.getElementById('portalTotpSecret').value = raw;
         status.textContent = `${file.name} · QR lido com segurança`;
         document.getElementById('portalTotpCode').focus();
@@ -2209,7 +2296,7 @@ CPF: ${doc}`;
               <div class="message-text">
                 <p>Conversa reiniciada. Em que posso auxiliá-lo(a) agora com suas intimações, prazos ou minutas?</p>
               </div>
-              <div class="message-meta">Assistente JurisFlow</div>
+              <div class="message-meta">Assistente Atrium Senda</div>
             </div>
           </div>`;
       }
@@ -2365,7 +2452,9 @@ CPF: ${doc}`;
       this.toast('Prompt carregado no Assistente IA! Complete com os fatos e envie.', 'success');
     },
     renderPrompts() {
-      const allPrompts = window.PROMPTS_DATA || [];
+      const defaultPrompts = window.PROMPTS_DATA || [];
+      const customPrompts = Store.state.customPrompts || [];
+      const allPrompts = [...customPrompts, ...defaultPrompts];
       const grid = document.getElementById('promptsGrid');
       const chipsContainer = document.getElementById('promptsCategoryChips');
       const categorySelect = document.getElementById('promptCategorySelect');
@@ -2375,25 +2464,23 @@ CPF: ${doc}`;
 
       // Monta as opções de categoria no select
       const categories = ['all', ...new Set(allPrompts.map(p => p.category))];
-      if (categorySelect && categorySelect.options.length <= 1) {
+      if (categorySelect && (categorySelect.options.length <= 1 || categorySelect.options.length !== categories.length)) {
+        const curVal = categorySelect.value || 'all';
         categorySelect.innerHTML = categories.map(cat => {
           const label = cat === 'all' ? `Todas as Áreas (${allPrompts.length} prompts)` : cat;
           return `<option value="${escapeHtml(cat)}">${escapeHtml(label)}</option>`;
         }).join('');
+        if (categories.includes(curVal)) categorySelect.value = curVal;
       }
 
       // Monta os chips de categoria com as mais frequentes
-      if (chipsContainer && !chipsContainer.children.length) {
-        const topCategories = ['all', ...[...new Set(allPrompts.map(p => p.category))].slice(0, 12)];
+      const topCategories = ['all', ...[...new Set(allPrompts.map(p => p.category))].slice(0, 12)];
+      if (chipsContainer) {
         chipsContainer.innerHTML = topCategories.map(cat => {
           const isSelected = this.promptsFilter.category === cat;
           const label = cat === 'all' ? 'Todas as Áreas' : cat;
           return `<button type="button" class="prompt-chip ${isSelected ? 'active' : ''}" data-category="${escapeHtml(cat)}">${escapeHtml(label)}</button>`;
         }).join('');
-      } else if (chipsContainer) {
-        chipsContainer.querySelectorAll('.prompt-chip').forEach(chip => {
-          chip.classList.toggle('active', chip.dataset.category === this.promptsFilter.category);
-        });
       }
 
       // Filtragem dinâmica
@@ -2427,10 +2514,16 @@ CPF: ${doc}`;
       grid.innerHTML = filtered.map(p => {
         const typeClass = p.type ? `type-${normalizeText(p.type).replace(/\s+/g, '-')}` : 'type-geral';
         const tagsHtml = (p.tags || []).slice(0, 5).map(t => `<span class="prompt-tag">${escapeHtml(t)}</span>`).join('');
+        const customBadge = p.isCustom ? `<span class="prompt-cat-badge custom-prompt-badge">Personalizado</span>` : '';
+        const customActions = p.isCustom ? `
+          <button type="button" class="button ghost btn-edit-prompt" data-edit-prompt="${escapeHtml(p.id)}" title="Editar prompt">Editar</button>
+          <button type="button" class="button danger-ghost btn-delete-prompt" data-delete-prompt="${escapeHtml(p.id)}" title="Excluir prompt">Excluir</button>
+        ` : '';
         return `
-          <article class="card prompt-card" data-prompt-id="${escapeHtml(p.id)}">
+          <article class="card prompt-card ${p.isCustom ? 'custom-card' : ''}" data-prompt-id="${escapeHtml(p.id)}">
             <div class="prompt-card-top">
               <div class="prompt-badges">
+                ${customBadge}
                 <span class="prompt-cat-badge">${escapeHtml(p.category)}</span>
                 <span class="prompt-type-badge ${typeClass}">${escapeHtml(p.type || 'Geral')}</span>
               </div>
@@ -2455,10 +2548,65 @@ CPF: ${doc}`;
                 </svg>
                 <span>Usar na IA</span>
               </button>
+              ${customActions}
             </div>
           </article>
         `;
       }).join('');
+    },
+    renderLinks() {
+      const customLinks = Store.state.customLinks || [];
+      const section = document.getElementById('customLinksSection');
+      const grid = document.getElementById('customLinksGrid');
+      if (!section || !grid) return;
+
+      if (!customLinks.length) {
+        section.classList.add('hidden');
+        grid.innerHTML = '';
+        return;
+      }
+
+      section.classList.remove('hidden');
+      grid.innerHTML = customLinks.map(link => {
+        let domain = '';
+        try { domain = new URL(link.url).hostname.replace(/^www\./, ''); } catch { domain = link.url; }
+        return `
+          <div class="link-card card custom-link-card">
+            <div class="link-card-header">
+              <div class="link-badge">${escapeHtml(link.category || 'Link Personalizado')}</div>
+              <div class="link-card-top-actions">
+                <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="external-icon" title="Abrir link">↗</a>
+                <button type="button" class="btn-delete-link" data-delete-link="${escapeHtml(link.id)}" title="Excluir este link">×</button>
+              </div>
+            </div>
+            <h4>${escapeHtml(link.title)}</h4>
+            <p>${escapeHtml(link.description || 'Link personalizado adicionado ao escritório.')}</p>
+            <div class="link-card-meta">
+              <span class="link-domain">${escapeHtml(domain)}</span>
+              <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="link-tag">Acessar</a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    },
+    openNewPromptModal(defaults = {}) {
+      const categories = ['all', ...new Set((window.PROMPTS_DATA || []).map(p => p.category))].filter(c => c !== 'all');
+      this.openModal('prompt', defaults.id ? 'Editar prompt personalizado' : 'Novo prompt jurídico', 'Inteligência Artificial', [
+        { name: 'title', label: 'Título do prompt', required: true, full: true, placeholder: 'Ex: Recurso Especial — Violação ao CPC', value: defaults.title || '' },
+        { name: 'category', label: 'Área do Direito', required: true, placeholder: 'Ex: Cível, Previdenciário, Trabalhista...', value: defaults.category || 'Cível' },
+        { name: 'type', label: 'Tipo de Ação / Finalidade', type: 'select', options: [{value:'Redação',label:'Redação de Peça'},{value:'Análise',label:'Análise de Riscos / Fatos'},{value:'Pesquisa',label:'Pesquisa Jurisprudencial'},{value:'Assistente',label:'Assistente Estratégico'},{value:'Geral',label:'Geral'}], value: defaults.type || 'Redação' },
+        { name: 'tags', label: 'Palavras-chave / Tags', full: true, placeholder: 'Ex: apelação, cpc, tempestividade, omissão (separados por vírgula)', value: Array.isArray(defaults.tags) ? defaults.tags.join(', ') : (defaults.tags || '') },
+        { name: 'description', label: 'Resumo / Instruções de uso', full: true, placeholder: 'Ex: Estrutura especializada para demonstrar negativa de prestação jurisdicional.', value: defaults.description || '' },
+        { name: 'prompt', label: 'Texto completo do Prompt (com variáveis [CLIENTE], [FATO], etc.)', type: 'textarea', full: true, required: true, value: defaults.prompt || '', note: 'Você pode usar marcações entre colchetes como [PROCESSO], [FATOS] para orientar o preenchimento.' }
+      ], defaults);
+    },
+    openNewLinkModal(defaults = {}) {
+      this.openModal('link', defaults.id ? 'Editar link útil' : 'Adicionar novo link útil', 'Acesso rápido oficial', [
+        { name: 'title', label: 'Nome / Título da referência', required: true, full: true, placeholder: 'Ex: Código de Trânsito Brasileiro (CTB)', value: defaults.title || '' },
+        { name: 'url', label: 'Endereço Web (URL)', required: true, full: true, placeholder: 'Ex: https://www.planalto.gov.br/ccivil_03/leis/l9503compilado.htm', value: defaults.url || '' },
+        { name: 'category', label: 'Categoria', type: 'select', options: [{value:'Legislação',label:'Legislação & Códigos'},{value:'Jurisprudência',label:'Jurisprudência & Tribunais'},{value:'Ferramentas IA',label:'Ferramentas com IA'},{value:'Órgãos Públicos',label:'Órgãos Públicos / Cartórios'},{value:'Outros',label:'Outros Links'}], value: defaults.category || 'Legislação' },
+        { name: 'description', label: 'Descrição / O que é este link', type: 'textarea', full: true, placeholder: 'Ex: Lei Federal nº 9.503/1997 compilada com todas as normas de trânsito.', value: defaults.description || '' }
+      ], defaults);
     },
     openGuideModal(type) {
       this.openModal('guide', 'Ativar certificado A1', 'Configuração protegida', [
@@ -2571,6 +2719,41 @@ CPF: ${doc}`;
         Store.audit(editing ? 'Termo atualizado' : 'Termo adicionado', `${record.name} · ${record.registration}`);
       } else if (this.modalMode.mode === 'source') {
         const record = { ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() }; Store.upsert('sources', record); Store.audit('Fonte atualizada', `${record.name} · ${record.status}`);
+      } else if (this.modalMode.mode === 'prompt') {
+        const isEditing = Boolean(this.modalMode.defaults.id);
+        const record = {
+          id: this.modalMode.defaults.id || uid('prompt'),
+          isCustom: true,
+          title: data.title || 'Prompt sem título',
+          category: data.category || 'Geral',
+          type: data.type || 'Geral',
+          description: data.description || '',
+          tags: String(data.tags || '').split(/[,;]/).map(t => t.trim()).filter(Boolean),
+          prompt: data.prompt || '',
+          createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        Store.state.customPrompts = Store.state.customPrompts || [];
+        const idx = Store.state.customPrompts.findIndex(p => p.id === record.id);
+        if (idx >= 0) Store.state.customPrompts[idx] = record;
+        else Store.state.customPrompts.unshift(record);
+        Store.audit(isEditing ? 'Prompt personalizado atualizado' : 'Prompt personalizado criado', record.title);
+      } else if (this.modalMode.mode === 'link') {
+        const isEditing = Boolean(this.modalMode.defaults.id);
+        const record = {
+          id: this.modalMode.defaults.id || uid('link'),
+          title: data.title || 'Link sem título',
+          url: data.url || '#',
+          category: data.category || 'Legislação',
+          description: data.description || '',
+          createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        Store.state.customLinks = Store.state.customLinks || [];
+        const idx = Store.state.customLinks.findIndex(l => l.id === record.id);
+        if (idx >= 0) Store.state.customLinks[idx] = record;
+        else Store.state.customLinks.unshift(record);
+        Store.audit(isEditing ? 'Link útil atualizado' : 'Link útil adicionado', record.title);
       }
       Store.save(); this.closeModal(); this.renderAll(); this.toast('Registro salvo com sucesso.', 'success');
     },

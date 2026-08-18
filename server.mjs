@@ -113,7 +113,9 @@ async function readAppState() { return (await readAppStateEnvelope()).state; }
 async function saveAppState(value, expectedRevision = null) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
   if (value.contacts === undefined) value.contacts = [];
-  for (const key of ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts']) {
+  if (value.customPrompts === undefined) value.customPrompts = [];
+  if (value.customLinks === undefined) value.customLinks = [];
+  for (const key of ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'customPrompts', 'customLinks']) {
     if (!Array.isArray(value[key])) value[key] = [];
     if (value[key].length > 10_000) throw Object.assign(new Error(`Coleção inválida: ${key}.`), { statusCode: 400 });
   }
@@ -247,9 +249,97 @@ async function pjeOfficeStatus() {
   } catch { return { available: false, detail: 'PJeOffice Pro não está respondendo' }; }
 }
 
+function decodeProtobufVarint(buffer, offset) {
+  let res = 0;
+  let shift = 0;
+  while (offset < buffer.length) {
+    const byte = buffer[offset++];
+    res |= (byte & 0x7f) << shift;
+    if ((byte & 0x80) === 0) break;
+    shift += 7;
+  }
+  return { value: res, offset };
+}
+
+function base32Encode(buffer) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0;
+  let value = 0;
+  let output = '';
+  for (let i = 0; i < buffer.length; i++) {
+    value = (value << 8) | buffer[i];
+    bits += 8;
+    while (bits >= 5) {
+      output += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    output += alphabet[(value << (5 - bits)) & 31];
+  }
+  return output;
+}
+
+function parseGoogleAuthMigration(dataBase64) {
+  const cleanBase64 = decodeURIComponent(dataBase64).replace(/^otpauth-migration:\/\/offline\?data=/i, '');
+  const buffer = Buffer.from(cleanBase64, 'base64');
+  let offset = 0;
+  const accounts = [];
+
+  while (offset < buffer.length) {
+    const key = decodeProtobufVarint(buffer, offset);
+    offset = key.offset;
+    const fieldNumber = key.value >> 3;
+    const wireType = key.value & 0x07;
+
+    if (wireType === 2) {
+      const len = decodeProtobufVarint(buffer, offset);
+      offset = len.offset;
+      const end = offset + len.value;
+      const subBuffer = buffer.subarray(offset, end);
+      offset = end;
+
+      if (fieldNumber === 1) {
+        let subOffset = 0;
+        let secret = '';
+        let name = '';
+        let issuer = '';
+        while (subOffset < subBuffer.length) {
+          const subKey = decodeProtobufVarint(subBuffer, subOffset);
+          subOffset = subKey.offset;
+          const subField = subKey.value >> 3;
+          const subWire = subKey.value & 0x07;
+
+          if (subWire === 2) {
+            const subLen = decodeProtobufVarint(subBuffer, subOffset);
+            subOffset = subLen.offset;
+            const subData = subBuffer.subarray(subOffset, subOffset + subLen.value);
+            subOffset += subLen.value;
+            if (subField === 1) secret = base32Encode(subData);
+            else if (subField === 2) name = subData.toString('utf8');
+            else if (subField === 3) issuer = subData.toString('utf8');
+          } else if (subWire === 0) {
+            const val = decodeProtobufVarint(subBuffer, subOffset);
+            subOffset = val.offset;
+          }
+        }
+        if (secret) accounts.push({ secret, name, issuer });
+      }
+    } else if (wireType === 0) {
+      const val = decodeProtobufVarint(buffer, offset);
+      offset = val.offset;
+    }
+  }
+  return accounts;
+}
+
 function extractTotpSecret(value) {
   const raw = String(value || '').trim();
-  if (/^otpauth-migration:/i.test(raw)) throw Object.assign(new Error('Use o QR de ativação gerado pelo portal, não um QR de exportação do Google Authenticator.'), { statusCode: 400 });
+  if (/^otpauth-migration:/i.test(raw)) {
+    const accounts = parseGoogleAuthMigration(raw);
+    if (!accounts.length || !accounts[0].secret) throw Object.assign(new Error('Não foi possível extrair a chave TOTP do QR do Authenticator.'), { statusCode: 400 });
+    return accounts[0].secret.toUpperCase().replace(/[\s=-]/g, '');
+  }
   let secret = raw;
   if (/^otpauth:/i.test(raw)) {
     let url;
@@ -258,7 +348,7 @@ function extractTotpSecret(value) {
     secret = url.searchParams.get('secret') || '';
   }
   secret = secret.toUpperCase().replace(/[\s=-]/g, '');
-  if (!/^[A-Z2-7]{16,128}$/.test(secret)) throw Object.assign(new Error('O segredo TOTP não é válido. Gere um QR novo no portal ou informe a chave manual.'), { statusCode: 400 });
+  if (!/^[A-Z2-7]{16,128}$/.test(secret)) throw Object.assign(new Error('O segredo TOTP não é válido. Gere um QR novo no portal ou informe a chave manual em base32.'), { statusCode: 400 });
   return secret;
 }
 
@@ -880,8 +970,11 @@ Diretrizes essenciais:
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/2fa') {
       assertAuthenticated(req, true); const body = await readJson(req); const config = await readPortalConfiguration();
-      const portal = config.portals.find(item => item.id === String(body.portalId || '') && item.usesCertificate && (item.strategy === 'pje' || item.autoTotpEnv));
-      if (!portal) throw Object.assign(new Error('Portal de 2FA não reconhecido.'), { statusCode: 400 });
+      let portal = config.portals.find(item => item.id === String(body.portalId || ''));
+      if (!portal) {
+        const portalId = String(body.portalId || 'pje-custom');
+        portal = { id: portalId, name: String(body.portalName || portalId || 'Portal Judicial'), usesCertificate: true };
+      }
       const secrets = await readJudicialSecrets(); secrets.totpSecrets ||= {};
       if (body.remove === true) {
         delete secrets.totpSecrets[portal.id];
@@ -890,7 +983,7 @@ Diretrizes essenciais:
         return json(res, 200, { ok: true, removed: true });
       }
       const secret = extractTotpSecret(body.secret);
-      if (!verifyTotp(secret, body.code)) throw Object.assign(new Error('O código de seis dígitos não confere com esse QR. Gere um código atual e tente novamente.'), { statusCode: 400 });
+      if (!verifyTotp(secret, body.code)) throw Object.assign(new Error('O código de seis dígitos não confere com esse QR ou chave manual. Gere um código atual e tente novamente.'), { statusCode: 400 });
       secrets.totpSecrets[portal.id] = { secret, configuredAt: new Date().toISOString(), label: portal.name };
       secrets.allowAutomatedTotp = true;
       await saveJudicialSecrets(secrets);

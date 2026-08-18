@@ -11,6 +11,8 @@ const checkFiles = [
   'scripts/migrate-judicial-secrets.mjs',
   'js/auth.js',
   'js/portal.js',
+  'js/prompts-data.js',
+  'js/office-data.js',
   'collector/agent.mjs',
   'collector/adapters/djen.mjs',
   'collector/adapters/datajud.mjs',
@@ -45,7 +47,7 @@ async function runCommand(args, description) {
 }
 
 console.log('===============================================================');
-console.log('  JURISFLOW — SUÍTE DE TESTES E AUDITORIA COMPLETA');
+console.log('  ATRIUM SENDA — SUÍTE DE TESTES E AUDITORIA COMPLETA');
 console.log('===============================================================');
 
 let hasFailure = false;
