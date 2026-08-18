@@ -23,15 +23,17 @@
     version: 1,
     terms: [{
       id: 'term-principal',
-      name: 'Dr(a). Advogado(a) Titular',
-      registration: 'OAB/UF 000000',
+      name: 'Ricardo De Luca Rossetto',
+      registration: 'OAB/RS 135294',
+      oabNumber: '135294',
+      oabUf: 'RS',
       active: true,
       primary: true
     }],
     sources: [
       { id: 'external-calendar', name: 'Agenda Externa (Webcal)', short: 'CAL', method: 'Webcal/iCal', status: 'planned', lastCheck: null, detail: 'Sincronize com Google Agenda, Outlook ou Apple' },
-      { id: 'djen', name: 'DJEN / CNJ Oficial', short: 'CNJ', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Conector de diários e publicações' },
-      { id: 'datajud', name: 'DataJud / CNJ', short: 'DJ', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Enriquecimento de andamentos processuais' },
+      { id: 'djen-cnj', name: 'DJEN / CNJ Oficial', short: 'CNJ', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Conector de diários e publicações' },
+      { id: 'datajud-cnj', name: 'DataJud / CNJ', short: 'DJD', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Enriquecimento de andamentos processuais' },
       { id: 'a1', name: 'Portais com certificado A1 / PJe', short: 'A1', method: 'Agente local seguro', status: 'off', lastCheck: null, detail: 'Integração direta com tribunais' }
     ],
     intimations: [
@@ -40,14 +42,14 @@
         title: 'Publicação identificada para conferência', process: '0000000-00.2026.8.21.0000',
         client: 'Cliente Modelo', court: 'Tribunal de Justiça · Vara Cível', publishedAt: isoDate(0),
         text: 'Intimação de demonstração. Quando os coletores estiverem ativos, o texto original da publicação ou da notificação oficial será preservado neste espaço.',
-        term: 'Dr(a). Advogado(a) Titular · OAB/UF 000000', createdAt: new Date().toISOString()
+        term: 'Ricardo De Luca Rossetto · OAB/RS 135294', createdAt: new Date().toISOString()
       },
       {
         id: 'int-demo-2', source: 'Diário Eletrônico', status: 'triagem', unread: false,
         title: 'Movimentação processual aguardando análise', process: '5000000-00.2026.4.04.0000',
         client: 'Processo de demonstração', court: 'Justiça Federal · Vara Federal', publishedAt: isoDate(-1),
         text: 'Conteúdo ilustrativo para testar a triagem, a criação de tarefas e a vinculação ao Kanban.',
-        term: 'Dr(a). Advogado(a) Titular · OAB/UF 000000', createdAt: new Date(Date.now() - 86400000).toISOString()
+        term: 'Ricardo De Luca Rossetto · OAB/RS 135294', createdAt: new Date(Date.now() - 86400000).toISOString()
       }
     ],
     tasks: [
@@ -68,16 +70,16 @@
       { id: 'agenda-demo-2', title: 'Prazo fatal para recurso', date: isoDate(4), time: '17:00', source: 'Demonstração', client: 'Processo de demonstração', process: '5000000-00.2026.4.04.0000' }
     ],
     audit: [
-      { id: 'audit-initial', at: new Date().toISOString(), action: 'JurisFlow inicializado', detail: 'Ambiente pronto para uso com registros de demonstração.', actor: 'Sistema' }
+      { id: 'audit-initial', at: new Date().toISOString(), action: 'Atrium Senda inicializado', detail: 'Ambiente pronto para uso com registros de demonstração.', actor: 'Sistema' }
     ],
     settings: {
-      officeName: 'Escritório de Advocacia',
-      lawyerName: 'Dr(a). Advogado(a) Titular',
-      lawyerOab: 'OAB/UF 000000',
+      officeName: 'Rossetto Advocacia',
+      lawyerName: 'Ricardo De Luca Rossetto',
+      lawyerOab: 'OAB/RS 135294',
       lawyerCpfCnpj: '000.000.000-00',
-      lawyerEmail: 'contato@advocacia.adv.br',
-      lawyerPhone: '(00) 00000-0000',
-      lawyerAddress: 'Endereço Profissional, Sala 01 — Cidade/UF',
+      lawyerEmail: 'contato@rossetto.adv.br',
+      lawyerPhone: '(51) 99999-9999',
+      lawyerAddress: 'Endereço Profissional — Porto Alegre/RS',
       externalCalendarUrl: '',
       demoMode: true,
       calendarConfigured: false,
@@ -335,6 +337,18 @@ CPF: ${doc}`;
       this.state.configuration = { ...deepClone(sampleState.configuration), ...(this.state.configuration || {}) };
       Object.keys(sampleState.configuration).forEach(key => { if (!Array.isArray(this.state.configuration[key])) this.state.configuration[key] = []; });
       this.state.settings = { ...sampleState.settings, ...(this.state.settings || {}) };
+      if (Array.isArray(this.state.sources)) {
+        this.state.sources.forEach(s => {
+          if (s.id === 'djen') s.id = 'djen-cnj';
+          if (s.id === 'datajud') s.id = 'datajud-cnj';
+        });
+        const seen = new Set();
+        this.state.sources = this.state.sources.filter(s => {
+          if (!s?.id || seen.has(s.id)) return false;
+          seen.add(s.id);
+          return true;
+        });
+      }
       if (Array.isArray(this.state.processes)) {
         this.state.processes.forEach(p => {
           if (p.feeType === 'exito' && (p.feePercentage === '30' || !p.feePercentage) && (!p.feeAmount || p.feeAmount === '')) {
@@ -345,8 +359,18 @@ CPF: ${doc}`;
         });
       }
       if (!this.state.terms.length) this.state.terms.unshift(deepClone(sampleState.terms[0]));
+      if (this.state.terms[0]) {
+        if (!this.state.terms[0].registration || this.state.terms[0].registration === 'OAB/UF 000000') {
+          this.state.terms[0].registration = 'OAB/RS 135294';
+          this.state.terms[0].oabNumber = '135294';
+          this.state.terms[0].oabUf = 'RS';
+        }
+        if (!this.state.terms[0].name || this.state.terms[0].name === 'Dr(a). Advogado(a) Titular') {
+          this.state.terms[0].name = 'Ricardo De Luca Rossetto';
+        }
+      }
       const authUser = window.KellerAuth?.currentUser;
-      if (authUser?.displayName && this.state.terms[0] && (this.state.terms[0].name === 'Dr(a). Advogado(a) Titular' || !this.state.terms[0].name)) {
+      if (authUser?.displayName && this.state.terms[0]) {
         this.state.terms[0].name = authUser.displayName;
         if (!this.state.settings.lawyerName || this.state.settings.lawyerName === 'Dr(a). Advogado(a) Titular') {
           this.state.settings.lawyerName = authUser.displayName;
@@ -460,7 +484,7 @@ CPF: ${doc}`;
       document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long' }).format(new Date());
       if (Store.state.settings.dismissedBanner) document.getElementById('environmentBanner').classList.add('hidden');
       this.checkFirstAccessTour();
-      this.initialSyncTimer = window.setTimeout(() => this.syncWhenIdle(), 60 * 1000);
+      this.syncAll({ silent: true });
       this.autoSyncTimer = window.setInterval(() => this.syncWhenIdle(), 5 * 60 * 1000);
     },
     bindNavigation() {
@@ -2535,10 +2559,11 @@ CPF: ${doc}`;
       buttons.forEach(button => { if (button) button.disabled = true; });
       if (!silent) this.toast('Iniciando sincronização protegida…');
       try {
+        await Store.flush();
         const response = await window.KellerAuth.secureFetch('/api/sync', { method: 'POST', headers: { Accept: 'application/json' } });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || 'Servidor de integração indisponível.');
-        if (Store.state.settings.demoMode && Number(data.imported) > 0) {
+        if (Store.state.settings.demoMode && (Number(data.imported) > 0 || (data.intimations && data.intimations.length > 0))) {
           ['agenda', 'tasks', 'intimations', 'processes'].forEach(collection => {
             Store.state[collection] = Store.state[collection].filter(item => !String(item.id || '').includes('demo'));
           });
@@ -2547,11 +2572,12 @@ CPF: ${doc}`;
         (data.tasks || []).forEach(task => Store.upsert('tasks', task, 'externalId'));
         (data.intimations || []).forEach(item => Store.upsert('intimations', item, 'externalId'));
         (data.processes || []).forEach(item => Store.upsert('processes', item, 'number'));
-        (data.sources || []).forEach(source => Store.upsert('sources', source));
-        if (Number(data.imported) > 0) Store.state.settings.demoMode = false;
-        Store.audit('Sincronização concluída', `${data.imported || 0} registro(s) processado(s).`, 'Sistema');
+        (data.sources || []).forEach(source => Store.upsert('sources', source, 'id'));
+        if (Number(data.imported) > 0 || (data.intimations && data.intimations.length > 0)) Store.state.settings.demoMode = false;
+        Store.audit('Sincronização concluída', `${data.imported || (data.intimations?.length || 0)} registro(s) processado(s).`, 'Sistema');
+        Store.save();
         this.renderAll();
-        if (!silent) this.toast('Sincronização concluída.', 'success');
+        if (!silent) this.toast('Sincronização concluída com sucesso.', 'success');
       } catch (error) {
         if (!silent) this.toast(error.message || 'Não foi possível sincronizar.', 'error');
       } finally {

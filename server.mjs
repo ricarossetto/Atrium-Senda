@@ -623,6 +623,26 @@ async function callGeminiApi(apiKey, systemInstruction, contents) {
   throw lastError || new Error('Não foi possível conectar aos modelos do Google Gemini.');
 }
 
+function extractOabAndUf(term, fallbackReg = 'OAB/RS 135294') {
+  let uf = String(term?.oabUf || '').trim().toUpperCase();
+  let num = String(term?.oabNumber || '').replace(/\D/g, '');
+
+  if (!num || !uf || uf === 'UF') {
+    const reg = String(term?.registration || fallbackReg);
+    const ufMatch = reg.match(/\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/i) ||
+                    reg.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i) ||
+                    reg.match(/[\/\-]\s*([A-Z]{2})/i);
+    if (ufMatch) uf = ufMatch[1].toUpperCase();
+
+    const numMatch = reg.replace(/\D/g, '');
+    if (numMatch) num = numMatch;
+  }
+
+  if (!uf || uf === 'UF') uf = 'RS';
+  if (!num || num === '000000' || num === '00000') num = '135294';
+  return { uf, num };
+}
+
 function mergeBy(left = [], right = [], key = 'externalId') {
   const result = [...left];
   for (const record of right) {
@@ -943,43 +963,44 @@ Diretrizes essenciais:
       // 1. Sincronização automática com DJEN / CNJ Oficial para os termos monitorados
       if (process.env.KELLER_SKIP_COLLECTOR_ENV !== 'true') {
         try {
-          const terms = appState?.terms?.length ? appState.terms : [{ name: 'Advogado(a) Titular', registration: 'OAB/RS 135294' }];
+          const terms = appState?.terms?.length ? appState.terms : [{ name: 'Ricardo De Luca Rossetto', registration: 'OAB/RS 135294' }];
           for (const term of terms) {
-            const reg = String(term.registration || '');
-            let uf = term.oabUf || (reg.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i) || reg.match(/([A-Z]{2})\s*\d+/i) || reg.match(/\d+\s*[\/\-]?\s*([A-Z]{2})/i))?.[1] || '';
-            const num = term.oabNumber ? String(term.oabNumber).replace(/\D/g, '') : reg.replace(/\D/g, '');
+            const { uf, num } = extractOabAndUf(term);
             if (num && num.length >= 3) {
-              if (!uf) uf = 'RS';
               const target = { intimations: [], tasks: [], processes: [], sources: [] };
               const portal = {
                 id: 'djen-cnj',
                 name: 'DJEN / CNJ Oficial',
                 url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
-                lookbackDays: 15,
+                lookbackDays: 30,
                 queryOabVariants: false,
-                ufOab: uf.toUpperCase(),
+                ufOab: uf,
                 numeroOab: num,
-                timeoutMs: 20_000
+                timeoutMs: 25_000
               };
-              const djenResult = await collectDjen(portal, { monitoredTerm: term }, target);
+              const djenResult = await collectDjen(portal, { monitoredTerm: { ...term, oabUf: uf, oabNumber: num } }, target);
               if (target.intimations.length) {
                 intimations = mergeBy(intimations, target.intimations, 'externalId');
                 tasks = mergeBy(tasks, target.tasks, 'externalId');
                 djenImported += target.intimations.length;
               }
-              sources.push({
+              const sourceIdx = sources.findIndex(s => s.id === 'djen-cnj' || s.id === 'djen');
+              const updatedSource = {
                 id: 'djen-cnj',
                 name: 'DJEN / CNJ Oficial',
                 short: 'CNJ',
                 method: 'API pública oficial',
                 status: 'ok',
                 lastCheck: new Date().toISOString(),
-                detail: `${djenResult.records || 0} publicação(ões) lida(s) para OAB/${uf.toUpperCase()} ${num}`
-              });
+                detail: `${djenResult.records || 0} publicação(ões) lida(s) para OAB/${uf} ${num}`
+              };
+              if (sourceIdx >= 0) sources[sourceIdx] = updatedSource;
+              else sources.push(updatedSource);
             }
           }
         } catch (error) {
-          sources.push({
+          const sourceIdx = sources.findIndex(s => s.id === 'djen-cnj' || s.id === 'djen');
+          const errorSource = {
             id: 'djen-cnj',
             name: 'DJEN / CNJ Oficial',
             short: 'CNJ',
@@ -987,7 +1008,9 @@ Diretrizes essenciais:
             status: 'attention',
             lastCheck: new Date().toISOString(),
             detail: `Aviso DJEN: ${String(error.message).slice(0, 120)}`
-          });
+          };
+          if (sourceIdx >= 0) sources[sourceIdx] = errorSource;
+          else sources.push(errorSource);
         }
       }
 
