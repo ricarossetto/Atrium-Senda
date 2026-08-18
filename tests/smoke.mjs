@@ -122,6 +122,14 @@ try {
   await page.locator('button[data-view="monitoring"]').click();
   await page.locator('#view-monitoring.active').waitFor();
   assert(await page.locator('#primaryTermName').isVisible(), 'Termo principal ausente.');
+  await page.locator('#primaryTermCard').click();
+  await page.locator('#modalBackdrop:not(.hidden)').waitFor();
+  await page.locator('#modalForm [name="name"]').fill('André da Silva');
+  await page.locator('#modalForm [name="oabNumber"]').fill('135294');
+  await page.locator('#modalForm [name="oabUf"]').selectOption('RS');
+  await page.locator('#modalForm button[type="submit"]').click();
+  await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
+  assert(await page.locator('#primaryTermName').textContent() === 'André da Silva', 'Edição de termo com OAB/UF falhou.');
 
   // Teste 1: Classificador de Intimações e Estimador de Prazos
   await page.locator('button[data-view="inbox"]').click();
@@ -129,6 +137,13 @@ try {
   const firstInboxReference = await page.locator('#inboxList .inbox-case-line').first().innerText();
   assert(firstInboxReference.includes('·') && /\d{7}-\d{2}/.test(firstInboxReference), 'A caixa de intimações não exibiu processo e partes na mesma linha.');
   assert(await page.locator('#inboxList .act-chip').count() > 0, 'As tags do classificador de atos não foram renderizadas na caixa de entrada.');
+
+  // Teste: ordenação por prazo e data clicando no cabeçalho
+  await page.locator('button[data-inbox-sort-col="deadline"]').click();
+  assert(await page.locator('#inboxSortIconDeadline').textContent() !== '↕', 'Ordenação por prazo fatal no cabeçalho falhou.');
+  await page.locator('button[data-inbox-sort-col="date"]').click();
+  assert(await page.locator('#inboxSortIconDate').textContent() !== '↕', 'Ordenação por data no cabeçalho falhou.');
+
   await page.locator('#inboxList button.inbox-row').first().click();
   await page.locator('#intimationDetail .act-chip').waitFor();
   await page.locator('#intimationDetail button[data-detail-action="task"]').click();

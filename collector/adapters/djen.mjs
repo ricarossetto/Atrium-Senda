@@ -1,37 +1,26 @@
 const DEFAULT_ENDPOINT = 'https://comunicaapi.pje.jus.br/api/v1/comunicacao';
-const OAB_SUFFIXES = ['', '-O', '-A', '-N', '-B', '-S', '-E'];
 const PROCESS_DIGITS_RE = /\b\d{20}\b/;
 
 export async function collectDjen(portal, config, target, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const sleep = options.sleep || (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)));
   const registration = config.monitoredTerm?.registration || 'OAB/RS 135294';
-  const uf = String(portal.ufOab || registration.match(/OAB\s*\/\s*([A-Z]{2})/i)?.[1] || 'RS').toUpperCase();
-  const number = String(portal.numeroOab || registration).replace(/\D/g, '');
-  if (!number || !/^[A-Z]{2}$/.test(uf)) throw new Error('O número ou a UF da OAB do monitoramento DJEN é inválido.');
+  const uf = String(portal.ufOab || config.monitoredTerm?.oabUf || registration.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i)?.[1] || registration.match(/([A-Z]{2})/i)?.[1] || 'RS').toUpperCase();
+  const rawNumber = String(portal.numeroOab || config.monitoredTerm?.oabNumber || registration).replace(/\D/g, '');
+  if (!rawNumber || !/^[A-Z]{2}$/.test(uf)) throw new Error('O número ou a UF da OAB do monitoramento DJEN é inválido.');
 
+  const number = rawNumber;
   const endpoint = new URL(portal.url || DEFAULT_ENDPOINT);
   if (endpoint.protocol !== 'https:' || endpoint.hostname !== 'comunicaapi.pje.jus.br') {
     throw new Error('O monitoramento DJEN aceita somente o endpoint oficial do CNJ.');
   }
 
   const { start, end } = saoPauloDateWindow(Number(portal.lookbackDays || 2));
-  const variants = portal.queryOabVariants === false ? [number] : OAB_SUFFIXES.map(suffix => `${number}${suffix}`);
-  const records = [];
-  let announced = 0;
-  let complete = true;
+  const result = await fetchPages({ endpoint, variant: number, uf, start, end, portal, fetchImpl, sleep });
 
-  for (const variant of variants) {
-    const result = await fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl, sleep });
-    records.push(...result.items);
-    announced += result.count;
-    complete &&= result.complete;
-    if (variant !== variants.at(-1)) await sleep(Number(portal.requestSpacingMs || 500));
-  }
-
-  const unique = [...new Map(records.map(item => [String(item.id), item])).values()];
+  const unique = [...new Map(result.items.map(item => [String(item.id), item])).values()];
   for (const item of unique) appendDjenItem(item, portal, config, target);
-  return { records: unique.length, announced, complete, start, end };
+  return { records: unique.length, announced: result.count, complete: result.complete, start, end };
 }
 
 async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl, sleep }) {
@@ -52,7 +41,29 @@ async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl
       itensPorPagina: String(pageSize)
     }).toString();
 
-    const response = await fetchWithTimeout(fetchImpl, url, Number(portal.timeoutMs || 20_000));
+    let response;
+    try {
+      response = await fetchWithTimeout(fetchImpl, url, Number(portal.timeoutMs || 20_000));
+    } catch (err) {
+      if (pageRetries < 2) {
+        pageRetries += 1;
+        await sleep(1500 * pageRetries);
+        pagina -= 1;
+        continue;
+      }
+      throw err;
+    }
+
+    if (response.status === 429) {
+      if (pageRetries < 3) {
+        pageRetries += 1;
+        await sleep(2000 * pageRetries);
+        pagina -= 1;
+        continue;
+      }
+      throw new Error(`DJEN limitou requisições (HTTP 429). Tente novamente em instantes.`);
+    }
+
     if (!response.ok) throw new Error(`DJEN respondeu HTTP ${response.status} para OAB ${variant}/${uf}.`);
     const payload = await response.json();
     if (count === null) count = Number(payload.count || 0);
@@ -70,10 +81,38 @@ async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl
     pageRetries = 0;
     items.push(...pageItems);
     if (items.length >= count) break;
-    await sleep(Number(portal.requestSpacingMs || 500));
+    await sleep(Number(portal.requestSpacingMs || 400));
   }
 
   return { items, count: count || 0, complete: items.length >= (count || 0) };
+}
+
+export function decodeHtmlEntities(value) {
+  if (!value) return '';
+  const ENTITY_MAP = {
+    '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'",
+    '&ccedil;': 'ç', '&Ccedil;': 'Ç',
+    '&aacute;': 'á', '&Aacute;': 'Á', '&eacute;': 'é', '&Eacute;': 'É', '&iacute;': 'í', '&Iacute;': 'Í', '&oacute;': 'ó', '&Oacute;': 'Ó', '&uacute;': 'ú', '&Uacute;': 'Ú',
+    '&agrave;': 'à', '&Agrave;': 'À', '&egrave;': 'è', '&Egrave;': 'È', '&igrave;': 'ì', '&Igrave;': 'Ì', '&ograve;': 'ò', '&Ograve;': 'Ò', '&ugrave;': 'ù', '&Ugrave;': 'Ù',
+    '&atilde;': 'ã', '&Atilde;': 'Ã', '&otilde;': 'õ', '&Otilde;': 'Õ', '&ntilde;': 'ñ', '&Ntilde;': 'Ñ',
+    '&acirc;': 'â', '&Acirc;': 'Â', '&ecirc;': 'ê', '&Ecirc;': 'Ê', '&icirc;': 'î', '&Icirc;': 'Î', '&ocirc;': 'ô', '&Ocirc;': 'Ô', '&ucirc;': 'û', '&Ucirc;': 'Û',
+    '&auml;': 'ä', '&Auml;': 'Ä', '&euml;': 'ë', '&Euml;': 'Ë', '&iuml;': 'ï', '&Iuml;': 'Ï', '&ouml;': 'ö', '&Ouml;': 'Ö', '&uuml;': 'ü', '&Uuml;': 'Ü',
+    '&ordf;': 'ª', '&ordm;': 'º', '&deg;': '°', '&sect;': '§', '&copy;': '©', '&reg;': '®', '&trade;': '™',
+    '&ndash;': '–', '&mdash;': '—', '&lsquo;': '‘', '&rsquo;': '’', '&ldquo;': '“', '&rdquo;': '”', '&bull;': '•', '&hellip;': '…'
+  };
+
+  let text = String(value);
+  for (const [entity, char] of Object.entries(ENTITY_MAP)) {
+    text = text.replaceAll(entity, char);
+    text = text.replaceAll(entity.toUpperCase(), char);
+  }
+  text = text.replace(/&#(\d+);/g, (_, dec) => {
+    try { return String.fromCodePoint(Number(dec)); } catch { return _; }
+  });
+  text = text.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+    try { return String.fromCodePoint(parseInt(hex, 16)); } catch { return _; }
+  });
+  return text;
 }
 
 function appendDjenItem(item, portal, config, target) {
@@ -91,45 +130,28 @@ function appendDjenItem(item, portal, config, target) {
   const court = normalizeText([item.siglaTribunal, item.nomeOrgao].filter(Boolean).join(' · ')) || 'DJEN/CNJ';
   const title = canceledReason ? `${communicationType} cancelada` : [communicationType, documentType].filter(Boolean).join(' · ');
   const description = normalizeText([item.nomeClasse, recipients, text, canceledReason && `Cancelamento: ${canceledReason}`].filter(Boolean).join(' · '));
-  const term = `${config.monitoredTerm?.name || 'Ricardo De Luca Rossetto'} · ${config.monitoredTerm?.registration || 'OAB/RS 135294'}`;
+  const term = `${config.monitoredTerm?.name || 'Advogado(a) Titular'} · ${config.monitoredTerm?.registration || 'OAB/RS 135294'}`;
   const now = new Date().toISOString();
 
   target.intimations.push({
     id: externalId,
     externalId,
     source: portal.name || 'DJEN/CNJ',
-    status: canceledReason ? 'cancelada' : 'nova',
-    unread: !canceledReason,
-    title,
+    type: 'djen',
+    title: decodeHtmlEntities(title),
+    text: decodeHtmlEntities(text),
+    description: decodeHtmlEntities(description),
+    court: decodeHtmlEntities(court),
     process,
-    client: recipients,
-    court,
+    client: decodeHtmlEntities(recipients),
     publishedAt,
-    text: description,
     term,
+    status: 'nova',
+    unread: true,
     createdAt: now,
-    publicationStatus: normalizeText(item.status || ''),
-    canceledReason,
     certificateUrl: safeCertificateUrl(item.hash),
-    officialLink: safeOfficialLink(item.link)
+    officialLink: safeOfficialLink(item.link || item.url)
   });
-
-  if (!canceledReason) {
-    target.tasks.push({
-      id: `task:${externalId}`,
-      externalId: `task:${externalId}`,
-      title: `Analisar ${communicationType} no DJEN`,
-      description,
-      status: 'triagem',
-      source: portal.name || 'DJEN/CNJ',
-      client: recipients,
-      process,
-      deadline: '',
-      priority: 'importante',
-      responsible: 'Ricardo',
-      createdAt: now
-    });
-  }
 }
 
 function validDjenItem(item) {
@@ -155,16 +177,11 @@ function formatProcessNumber(value) {
 }
 
 function htmlToText(value) {
-  return normalizeText(String(value || '')
+  const stripped = String(value || '')
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'"));
+    .replace(/<[^>]+>/g, ' ');
+  return normalizeText(decodeHtmlEntities(stripped));
 }
 
 function normalizeText(value) { return String(value || '').replace(/\s+/g, ' ').trim(); }

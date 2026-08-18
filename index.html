@@ -359,11 +359,12 @@
             <div class="inbox-sort-control">
               <span>Ordenar por:</span>
               <select id="inboxSortSelect">
-                <option value="date-desc">Mais recentes</option>
-                <option value="deadline-asc">Menor prazo fatal</option>
+                <option value="date-desc">Data (mais recentes)</option>
+                <option value="date-asc">Data (mais antigas)</option>
+                <option value="deadline-asc">Prazo (menor fatal primeiro)</option>
+                <option value="deadline-desc">Prazo (maior fatal primeiro)</option>
                 <option value="priority-urgent">Urgentes primeiro</option>
                 <option value="priority-important">Importantes primeiro</option>
-                <option value="date-asc">Mais antigas</option>
                 <option value="process">Por Processo</option>
               </select>
             </div>
@@ -373,7 +374,13 @@
         </div>
         <div class="inbox-layout">
           <article class="card inbox-list-card">
-            <div class="list-head"><span>Ocorrência & Destaque</span><span>Origem & Prazo</span><span>Data</span><span>Status</span></div>
+            <div class="list-head">
+              <span>Ocorrência & Destaque</span>
+              <span class="col-head-source">Origem</span>
+              <button type="button" class="list-head-sort" data-inbox-sort-col="deadline" title="Clique para ordenar por prazo fatal">Prazo <span class="sort-icon" id="inboxSortIconDeadline">↕</span></button>
+              <button type="button" class="list-head-sort" data-inbox-sort-col="date" title="Clique para ordenar por data de publicação">Data <span class="sort-icon" id="inboxSortIconDate">▼</span></button>
+              <span>Status</span>
+            </div>
             <div id="inboxList" class="inbox-list"></div>
           </article>
           <aside class="card intimation-detail" id="intimationDetail">

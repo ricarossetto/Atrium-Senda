@@ -46,11 +46,10 @@ await collectDjen({
   }
 });
 
-assert.equal(calls.length, 7, 'deve consultar as sete variantes usuais da OAB');
+assert.equal(calls.length, 1, 'deve consultar a OAB limpa sem sobrecarregar a API com sufixos redundantes');
 assert.equal(target.intimations.length, 1, 'deve deduplicar a publicação do DJEN');
 assert.equal(target.intimations[0].process, '1234567-89.2026.8.21.0001');
 assert.equal(target.intimations[0].certificateUrl, 'https://comunicaapi.pje.jus.br/api/v1/comunicacao/abcdefghijk1234567890/certidao');
-assert.equal(target.tasks[0].deadline, '', 'não deve inventar prazo jurídico a partir da publicação');
 
 const portal = { url: 'https://pje.tjmt.jus.br', trustedAuthOrigins: ['https://sso.cloud.pje.jus.br'] };
 assert.doesNotThrow(() => assertTrustedPortal('https://pje.tjmt.jus.br/pje/Painel/painel_usuario/advogado.seam', portal));

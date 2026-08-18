@@ -88,6 +88,32 @@
 
   const deepClone = value => JSON.parse(JSON.stringify(value));
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+  function decodeHtmlEntities(value) {
+    if (!value) return '';
+    const ENTITY_MAP = {
+      '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'",
+      '&ccedil;': 'ç', '&Ccedil;': 'Ç',
+      '&aacute;': 'á', '&Aacute;': 'Á', '&eacute;': 'é', '&Eacute;': 'É', '&iacute;': 'í', '&Iacute;': 'Í', '&oacute;': 'ó', '&Oacute;': 'Ó', '&uacute;': 'ú', '&Uacute;': 'Ú',
+      '&agrave;': 'à', '&Agrave;': 'À', '&egrave;': 'è', '&Egrave;': 'È', '&igrave;': 'ì', '&Igrave;': 'Ì', '&ograve;': 'ò', '&Ograve;': 'Ò', '&ugrave;': 'ù', '&Ugrave;': 'Ù',
+      '&atilde;': 'ã', '&Atilde;': 'Ã', '&otilde;': 'õ', '&Otilde;': 'Õ', '&ntilde;': 'ñ', '&Ntilde;': 'Ñ',
+      '&acirc;': 'â', '&Acirc;': 'Â', '&ecirc;': 'ê', '&Ecirc;': 'Ê', '&icirc;': 'î', '&Icirc;': 'Î', '&ocirc;': 'ô', '&Ocirc;': 'Ô', '&ucirc;': 'û', '&Ucirc;': 'Û',
+      '&auml;': 'ä', '&Auml;': 'Ä', '&euml;': 'ë', '&Euml;': 'Ë', '&iuml;': 'ï', '&Iuml;': 'Ï', '&ouml;': 'ö', '&Ouml;': 'Ö', '&uuml;': 'ü', '&Uuml;': 'Ü',
+      '&ordf;': 'ª', '&ordm;': 'º', '&deg;': '°', '&sect;': '§', '&copy;': '©', '&reg;': '®', '&trade;': '™',
+      '&ndash;': '–', '&mdash;': '—', '&lsquo;': '‘', '&rsquo;': '’', '&ldquo;': '“', '&rdquo;': '”', '&bull;': '•', '&hellip;': '…'
+    };
+    let text = String(value);
+    for (const [entity, char] of Object.entries(ENTITY_MAP)) {
+      text = text.replaceAll(entity, char);
+      text = text.replaceAll(entity.toUpperCase(), char);
+    }
+    text = text.replace(/&#(\d+);/g, (_, dec) => {
+      try { return String.fromCodePoint(Number(dec)); } catch { return _; }
+    });
+    text = text.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+      try { return String.fromCodePoint(parseInt(hex, 16)); } catch { return _; }
+    });
+    return text;
+  }
   function formatMarkdown(text) {
     if (!text) return '';
     let html = escapeHtml(text);
@@ -511,6 +537,18 @@ CPF: ${doc}`;
         this.inboxSort = event.target.value;
         this.renderInbox();
       });
+      document.querySelectorAll('.list-head-sort').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const col = btn.dataset.inboxSortCol;
+          if (col === 'date') {
+            this.inboxSort = this.inboxSort === 'date-desc' ? 'date-asc' : 'date-desc';
+          } else if (col === 'deadline') {
+            this.inboxSort = this.inboxSort === 'deadline-asc' ? 'deadline-desc' : 'deadline-asc';
+          }
+          if (byId('inboxSortSelect')) byId('inboxSortSelect').value = this.inboxSort;
+          this.renderInbox();
+        });
+      });
       byId('processSearch')?.addEventListener('input', () => this.renderProcesses(byId('processSearch').value));
       byId('contactSearch')?.addEventListener('input', () => this.renderContacts(byId('contactSearch').value));
       byId('configurationSearch')?.addEventListener('input', () => this.renderConfiguration(byId('configurationSearch').value));
@@ -839,11 +877,18 @@ CPF: ${doc}`;
       items.sort((a, b) => {
         const actA = classifyIntimationAct(a.text, a.title, a.type);
         const actB = classifyIntimationAct(b.text, b.title, b.type);
-        const fatalA = a.fatalDeadline || addDays(a.publishedAt || isoDate(), actA.days);
-        const fatalB = b.fatalDeadline || addDays(b.publishedAt || isoDate(), actB.days);
+        const fatalA = a.fatalDeadline || (actA.days > 0 ? addDays(a.publishedAt || isoDate(), actA.days) : null);
+        const fatalB = b.fatalDeadline || (actB.days > 0 ? addDays(b.publishedAt || isoDate(), actB.days) : null);
 
         if (sort === 'deadline-asc') {
-          return (daysUntil(fatalA) - daysUntil(fatalB));
+          const dA = fatalA ? daysUntil(fatalA) : 99999;
+          const dB = fatalB ? daysUntil(fatalB) : 99999;
+          return dA - dB;
+        }
+        if (sort === 'deadline-desc') {
+          const dA = fatalA ? daysUntil(fatalA) : -99999;
+          const dB = fatalB ? daysUntil(fatalB) : -99999;
+          return dB - dA;
         }
         if (sort === 'priority-urgent') {
           const urgA = (a.urgent || a.priority === 'urgente') ? 1 : 0;
@@ -877,14 +922,29 @@ CPF: ${doc}`;
     },
     renderInbox() {
       const items = this.filteredIntimations();
+
+      const dateBtn = document.querySelector('button[data-inbox-sort-col="date"]');
+      const deadlineBtn = document.querySelector('button[data-inbox-sort-col="deadline"]');
+      const dateIcon = document.getElementById('inboxSortIconDate');
+      const deadlineIcon = document.getElementById('inboxSortIconDeadline');
+
+      if (dateBtn && dateIcon) {
+        dateBtn.classList.toggle('active', this.inboxSort === 'date-desc' || this.inboxSort === 'date-asc');
+        dateIcon.textContent = this.inboxSort === 'date-asc' ? '▲' : this.inboxSort === 'date-desc' ? '▼' : '↕';
+      }
+      if (deadlineBtn && deadlineIcon) {
+        deadlineBtn.classList.toggle('active', this.inboxSort === 'deadline-asc' || this.inboxSort === 'deadline-desc');
+        deadlineIcon.textContent = this.inboxSort === 'deadline-asc' ? '▲' : this.inboxSort === 'deadline-desc' ? '▼' : '↕';
+      }
+
       document.getElementById('inboxList').innerHTML = items.length ? items.map(item => {
         const act = classifyIntimationAct(item.text, item.title, item.type);
-        const fatalDate = item.fatalDeadline || addDays(item.publishedAt || isoDate(), act.days);
-        const dLeft = daysUntil(fatalDate);
-        const chipClass = dLeft <= 3 ? 'danger' : dLeft <= 7 ? 'warning' : 'normal';
+        const fatalDate = item.fatalDeadline || (act.days > 0 ? addDays(item.publishedAt || isoDate(), act.days) : null);
+        const dLeft = fatalDate ? daysUntil(fatalDate) : null;
+        const chipClass = dLeft !== null && dLeft <= 3 ? 'danger' : dLeft !== null && dLeft <= 7 ? 'warning' : 'normal';
         const urgentBadge = (item.urgent || item.priority === 'urgente') ? '<span class="badge-urgent">URGENTE</span>' : '';
         const importantBadge = item.important ? '<span class="badge-important">IMPORTANTE</span>' : '';
-        const deadlineChip = act.days > 0 ? `<span class="deadline-chip ${chipClass}">${act.days}d · fatal: ${formatDate(fatalDate)}</span>` : '';
+        const deadlineChip = fatalDate ? `<span class="deadline-chip ${chipClass}">${act.days ? `${act.days}d · ` : ''}fatal: ${formatDate(fatalDate)}</span>` : '<small style="color:var(--muted)">Sem prazo fatal</small>';
 
         return `
         <button class="inbox-row ${this.selectedIntimation === item.id ? 'active' : ''} ${(item.urgent || item.priority === 'urgente') ? 'is-urgent' : ''} ${item.important ? 'is-important' : ''}" data-intimation-id="${escapeHtml(item.id)}">
@@ -895,7 +955,8 @@ CPF: ${doc}`;
               <small class="inbox-case-line"><b>${escapeHtml(item.process || 'Sem processo vinculado')}</b>${this.intimationParties(item) ? `<em>· ${escapeHtml(this.intimationParties(item))}</em>` : '<em>· Partes ainda não identificadas</em>'}</small>
             </span>
           </span>
-          <span class="source-label"><span class="act-chip ${act.css}">${escapeHtml(act.label)}</span>${deadlineChip}</span>
+          <span class="source-label"><span class="act-chip ${act.css}">${escapeHtml(act.label)}</span></span>
+          <span class="deadline-label">${deadlineChip}</span>
           <span class="date-label">${formatDate(item.publishedAt)}</span>
           <span>${this.statusChip(item.status)}</span>
         </button>`;
@@ -1406,11 +1467,11 @@ CPF: ${doc}`;
       else if (intimationMatch) this.switchView('inbox');
       else if (taskMatch) this.switchView('kanban');
     },
-    openModal(mode, title, eyebrow, fields, defaults = {}) {
+    openModal(mode, title, eyebrow, fields, defaults = {}, topHtml = '') {
       this.modalMode = { mode, defaults };
       document.getElementById('modalTitle').textContent = title;
       document.getElementById('modalEyebrow').textContent = eyebrow;
-      document.getElementById('modalFields').innerHTML = `<div class="form-grid">${fields.map(field => {
+      document.getElementById('modalFields').innerHTML = `${topHtml}<div class="form-grid">${fields.map(field => {
         const value = defaults[field.name] ?? field.value ?? '';
         if (field.type === 'textarea') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><textarea id="field-${field.name}" name="${field.name}" ${field.required ? 'required' : ''}>${escapeHtml(value)}</textarea>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
         if (field.type === 'select') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><select id="field-${field.name}" name="${field.name}">${field.options.map(option => `<option value="${escapeHtml(option.value)}" ${String(value) === String(option.value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div>`;
@@ -1425,25 +1486,81 @@ CPF: ${doc}`;
       const definitions = Store.state.configuration?.taskDefinitions || [];
       const totalTime = totalTimeMinutes(defaults.timeLogs);
       const timeNote = totalTime > 0 ? `Tempo total acumulado nesta tarefa: ${formatMinutes(totalTime)}.` : '';
+      const cleanDescription = decodeHtmlEntities(defaults.description || defaults.text || '');
+      const cleanTitle = decodeHtmlEntities(defaults.title || '');
+
+      let intimationCardHtml = '';
+      if (cleanDescription) {
+        intimationCardHtml = `
+        <div class="task-intimation-card">
+          <div class="task-intimation-header">
+            <div class="task-intimation-title">
+              <svg class="nav-svg" style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span>Publicação / Texto da Intimação</span>
+            </div>
+            <div class="task-intimation-actions">
+              <button type="button" class="task-btn-action" id="btnCopyTaskIntimation">Copiar texto</button>
+              <button type="button" class="task-btn-action" id="btnAiAnalyzeTask">✦ Analisar com IA</button>
+            </div>
+          </div>
+          <div class="task-intimation-body" id="taskIntimationBody">${escapeHtml(cleanDescription)}</div>
+        </div>`;
+      }
+
       this.openModal('task', defaults.id ? 'Editar tarefa' : 'Nova tarefa', 'Fluxo interno', [
-        { name: 'taskDefinition', label: 'Definição de tarefa', type: 'select', full: true, options: [{ value: '', label: 'Selecione uma definição ADVBOX' }, ...definitions.map(item => ({ value: item.name, label: `${item.name} (${item.points} pts)` }))] },
-        { name: 'title', label: 'Título', required: true, full: true }, { name: 'client', label: 'Cliente' }, { name: 'process', label: 'Número do processo' },
-        { name: 'actionType', label: 'Tipo de ação' }, { name: 'protocol', label: 'Protocolo' },
-        { name: 'date', label: 'Data da atividade', type: 'date' }, { name: 'time', label: 'Horário', type: 'time' },
-        { name: 'deadline', label: 'Prazo interno', type: 'date' }, { name: 'fatalDeadline', label: 'Prazo fatal', type: 'date', note: 'Sempre sujeito à conferência humana.' },
-        { name: 'responsible', label: 'Responsável principal', value: 'Ricardo' }, { name: 'responsibles', label: 'Outros responsáveis', placeholder: 'Separe os nomes por vírgula' },
-        { name: 'sender', label: 'Remetente / criador' }, { name: 'location', label: 'Local' }, { name: 'points', label: 'Pontuação', type: 'number', value: 0 },
-        { name: 'addMinutes', label: 'Apontar tempo (minutos)', type: 'number', placeholder: 'Ex: 45', note: timeNote },
-        { name: 'timeDescription', label: 'Atividade no apontamento', placeholder: 'Ex: Elaboração de petição inicial' },
-        { name: 'status', label: 'Coluna', type: 'select', options: KANBAN_COLUMNS.map(column => ({ value: column.id, label: column.title })) },
+        { name: 'title', label: 'Título da tarefa', required: true, full: true, placeholder: 'Ex: Manifestação sobre despacho do DJEN' },
+        { name: 'taskDefinition', label: 'Definição de modelo', type: 'select', options: [{ value: '', label: 'Selecione um modelo de tarefa' }, ...definitions.map(item => ({ value: item.name, label: `${item.name} (${item.points} pts)` }))] },
+        { name: 'process', label: 'Número do processo', placeholder: 'Ex: 5002086-73.2022.4.04.7133' },
+        { name: 'client', label: 'Cliente', placeholder: 'Ex: Roberto Roque Junges' },
+        { name: 'fatalDeadline', label: 'Prazo fatal', type: 'date', note: 'Prazo peremptório (sujeito à conferência humana).' },
+        { name: 'deadline', label: 'Prazo interno', type: 'date' },
+        { name: 'date', label: 'Data da atividade', type: 'date' },
+        { name: 'time', label: 'Horário', type: 'time' },
+        { name: 'responsible', label: 'Responsável principal', value: defaults.responsible || 'Ricardo' },
+        { name: 'responsibles', label: 'Outros responsáveis', placeholder: 'Separe os nomes por vírgula' },
+        { name: 'status', label: 'Coluna (Quadro Kanban)', type: 'select', options: KANBAN_COLUMNS.map(column => ({ value: column.id, label: column.title })) },
         { name: 'priority', label: 'Prioridade', type: 'select', options: [{value:'normal',label:'Normal'},{value:'importante',label:'Importante'},{value:'urgente',label:'Urgente'}] },
-        { name: 'description', label: 'Comentário / instruções', type: 'textarea', full: true, note: 'Nunca registre senha, QR code ou segredo do certificado neste campo.' }
-      ], { status: 'triagem', priority: 'normal', source: 'Interna', ...defaults, taskDefinition: defaults.taskDefinition || (definitions.some(item => item.name === defaults.title) ? defaults.title : ''), responsibles: Array.isArray(defaults.responsibles) ? defaults.responsibles.join(', ') : (defaults.responsibles || '') });
+        { name: 'points', label: 'Pontuação', type: 'number', value: defaults.points || 0 },
+        { name: 'addMinutes', label: 'Apontar tempo (minutos)', type: 'number', placeholder: 'Ex: 45', note: timeNote },
+        { name: 'timeDescription', label: 'Atividade no apontamento', placeholder: 'Ex: Elaboração de minuta recursal' },
+        { name: 'description', label: 'Comentário interno / orientações', type: 'textarea', full: true, note: 'Nunca registre senha, QR code ou segredo do certificado neste campo.' },
+        { name: 'actionType', label: 'Tipo de ação' },
+        { name: 'protocol', label: 'Protocolo / Local' }
+      ], {
+        status: 'triagem',
+        priority: 'normal',
+        source: 'Interna',
+        ...defaults,
+        title: cleanTitle,
+        description: cleanDescription,
+        taskDefinition: defaults.taskDefinition || (definitions.some(item => item.name === cleanTitle) ? cleanTitle : ''),
+        responsibles: Array.isArray(defaults.responsibles) ? defaults.responsibles.join(', ') : (defaults.responsibles || '')
+      }, intimationCardHtml);
+
       const selector = document.getElementById('field-taskDefinition');
       selector?.addEventListener('change', () => {
         const definition = definitions.find(item => item.name === selector.value); if (!definition) return;
-        document.getElementById('field-title').value = definition.name;
-        document.getElementById('field-points').value = definition.points;
+        if (document.getElementById('field-title')) document.getElementById('field-title').value = definition.name;
+        if (document.getElementById('field-points')) document.getElementById('field-points').value = definition.points;
+      });
+
+      document.getElementById('btnCopyTaskIntimation')?.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(cleanDescription);
+          this.toast('Texto da intimação copiado com sucesso!', 'success');
+        } catch {
+          this.toast('Não foi possível copiar o texto.', 'error');
+        }
+      });
+
+      document.getElementById('btnAiAnalyzeTask')?.addEventListener('click', () => {
+        this.closeModal();
+        this.switchView('assistant');
+        const aiInput = document.getElementById('aiChatInput');
+        if (aiInput) {
+          aiInput.value = `Por favor, analise a seguinte intimação judicial, calcule os prazos em dias úteis (CPC/2015) e sugira as providências jurídicas cabíveis:\n\n${cleanDescription}`;
+          aiInput.focus();
+        }
       });
     },
     openIntimationModal(defaults = {}) {
@@ -1513,10 +1630,79 @@ CPF: ${doc}`;
       this.openModal('configuration', index === null ? 'Novo item de configuração' : 'Editar configuração', 'Estrutura do escritório', fields, { ...values, _section: section, _index: index });
     },
     openTermModal(defaults = {}) {
-      this.openModal('term', defaults.id ? 'Editar termo monitorado' : 'Adicionar termo', 'Monitoramento', [
-        { name: 'name', label: 'Nome completo ou razão social', required: true, full: true }, { name: 'registration', label: 'OAB, CPF ou CNPJ', required: true },
-        { name: 'type', label: 'Tipo', type: 'select', options: [{value:'oab',label:'Inscrição OAB'},{value:'name',label:'Nome'},{value:'document',label:'CPF / CNPJ'}] }
-      ], { type: 'oab', ...defaults });
+      const reg = defaults.registration || '';
+      let defaultOab = defaults.oabNumber || '';
+      let defaultUf = defaults.oabUf || '';
+      if (!defaultOab && reg) {
+        const ufMatch = reg.match(/([A-Z]{2})/i);
+        if (ufMatch) defaultUf = ufMatch[1].toUpperCase();
+        const numMatch = reg.replace(/\D/g, '');
+        if (numMatch) defaultOab = numMatch;
+      }
+      if (!defaultUf) defaultUf = 'RS';
+
+      const UF_OPTIONS = [
+        { value: 'RS', label: 'RS — Rio Grande do Sul' },
+        { value: 'SP', label: 'SP — São Paulo' },
+        { value: 'SC', label: 'SC — Santa Catarina' },
+        { value: 'PR', label: 'PR — Paraná' },
+        { value: 'RJ', label: 'RJ — Rio de Janeiro' },
+        { value: 'MG', label: 'MG — Minas Gerais' },
+        { value: 'DF', label: 'DF — Distrito Federal' },
+        { value: 'BA', label: 'BA — Bahia' },
+        { value: 'GO', label: 'GO — Goiás' },
+        { value: 'PE', label: 'PE — Pernambuco' },
+        { value: 'CE', label: 'CE — Ceará' },
+        { value: 'ES', label: 'ES — Espírito Santo' },
+        { value: 'MT', label: 'MT — Mato Grosso' },
+        { value: 'MS', label: 'MS — Mato Grosso do Sul' },
+        { value: 'MA', label: 'MA — Maranhão' },
+        { value: 'PA', label: 'PA — Pará' },
+        { value: 'PB', label: 'PB — Paraíba' },
+        { value: 'RN', label: 'RN — Rio Grande do Norte' },
+        { value: 'AL', label: 'AL — Alagoas' },
+        { value: 'SE', label: 'SE — Sergipe' },
+        { value: 'PI', label: 'PI — Piauí' },
+        { value: 'TO', label: 'TO — Tocantins' },
+        { value: 'RO', label: 'RO — Rondônia' },
+        { value: 'AC', label: 'AC — Acre' },
+        { value: 'AM', label: 'AM — Amazonas' },
+        { value: 'AP', label: 'AP — Amapá' },
+        { value: 'RR', label: 'RR — Roraima' }
+      ];
+
+      this.openModal('term', defaults.id ? 'Editar termo monitorado' : 'Adicionar termo monitorado', 'Monitoramento DJEN & Tribunais', [
+        { name: 'name', label: 'Nome completo ou razão social', required: true, full: true, placeholder: 'Ex: André da Silva', value: defaults.name || '' },
+        { name: 'type', label: 'Tipo de identificador', type: 'select', full: true, options: [{ value: 'oab', label: 'Inscrição OAB (Advogado)' }, { value: 'document', label: 'CPF ou CNPJ' }, { value: 'name', label: 'Nome Textual' }] },
+        { name: 'oabNumber', label: 'Número da OAB (somente números)', placeholder: 'Ex: 135294', note: 'Digite somente os números da sua OAB (ex: 135294 ou 029238 com zero à esquerda se tiver menos de 6 dígitos).' },
+        { name: 'oabUf', label: 'Estado / Seccional (UF)', type: 'select', value: defaultUf, options: UF_OPTIONS },
+        { name: 'document', label: 'CPF ou CNPJ', placeholder: 'Ex: 000.000.000-00 ou 00.000.000/0001-00' }
+      ], { type: 'oab', oabNumber: defaultOab, oabUf: defaultUf, ...defaults });
+
+      const typeSelect = document.getElementById('field-type');
+      const oabNumberField = document.getElementById('field-oabNumber')?.closest('.field');
+      const oabUfField = document.getElementById('field-oabUf')?.closest('.field');
+      const docField = document.getElementById('field-document')?.closest('.field');
+
+      const updateFieldsVisibility = () => {
+        const val = typeSelect?.value || 'oab';
+        if (val === 'oab') {
+          if (oabNumberField) oabNumberField.style.display = '';
+          if (oabUfField) oabUfField.style.display = '';
+          if (docField) docField.style.display = 'none';
+        } else if (val === 'document') {
+          if (oabNumberField) oabNumberField.style.display = 'none';
+          if (oabUfField) oabUfField.style.display = 'none';
+          if (docField) docField.style.display = '';
+        } else {
+          if (oabNumberField) oabNumberField.style.display = 'none';
+          if (oabUfField) oabUfField.style.display = 'none';
+          if (docField) docField.style.display = 'none';
+        }
+      };
+
+      typeSelect?.addEventListener('change', updateFieldsVisibility);
+      updateFieldsVisibility();
     },
     openSourceModal(defaults = {}) {
       this.openModal('source', 'Detalhes da fonte', 'Monitoramento e integração', [
@@ -2094,7 +2280,24 @@ CPF: ${doc}`;
         Store.audit(index === null || index === undefined || index === '' ? 'Configuração adicionada' : 'Configuração atualizada', `${section} · ${typeof record === 'string' ? record : record.name || record.event || record.group || 'item'}`);
       } else if (this.modalMode.mode === 'term') {
         const editing = Boolean(this.modalMode.defaults.id);
-        const record = { id: this.modalMode.defaults.id || uid('term'), active: true, ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() };
+        let registration = data.registration;
+        let oabNumber = data.oabNumber ? String(data.oabNumber).replace(/\D/g, '') : '';
+        let oabUf = data.oabUf ? String(data.oabUf).toUpperCase() : '';
+        if (data.type === 'oab' && oabNumber) {
+          registration = `OAB/${oabUf || 'RS'} ${oabNumber}`;
+        } else if (!registration) {
+          registration = data.document || data.name;
+        }
+        const record = {
+          id: this.modalMode.defaults.id || uid('term'),
+          active: true,
+          ...this.modalMode.defaults,
+          ...data,
+          registration,
+          oabNumber: oabNumber || undefined,
+          oabUf: oabUf || undefined,
+          updatedAt: new Date().toISOString()
+        };
         Store.upsert('terms', record);
         if (Store.state.terms[0]?.id === record.id) {
           Store.state.settings.lawyerName = record.name;

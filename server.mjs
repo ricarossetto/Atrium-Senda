@@ -943,12 +943,12 @@ Diretrizes essenciais:
       // 1. Sincronização automática com DJEN / CNJ Oficial para os termos monitorados
       if (process.env.KELLER_SKIP_COLLECTOR_ENV !== 'true') {
         try {
-          const terms = appState?.terms?.length ? appState.terms : [{ name: 'Dr(a). Advogado(a) Titular', registration: 'OAB/RS 135294' }];
+          const terms = appState?.terms?.length ? appState.terms : [{ name: 'Advogado(a) Titular', registration: 'OAB/RS 135294' }];
           for (const term of terms) {
             const reg = String(term.registration || '');
-            let uf = (reg.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i) || reg.match(/([A-Z]{2})\s*\d+/i) || reg.match(/\d+\s*[\/\-]?\s*([A-Z]{2})/i))?.[1] || '';
-            const num = reg.replace(/\D/g, '');
-            if (num && num.length >= 4) {
+            let uf = term.oabUf || (reg.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i) || reg.match(/([A-Z]{2})\s*\d+/i) || reg.match(/\d+\s*[\/\-]?\s*([A-Z]{2})/i))?.[1] || '';
+            const num = term.oabNumber ? String(term.oabNumber).replace(/\D/g, '') : reg.replace(/\D/g, '');
+            if (num && num.length >= 3) {
               if (!uf) uf = 'RS';
               const target = { intimations: [], tasks: [], processes: [], sources: [] };
               const portal = {
@@ -956,10 +956,10 @@ Diretrizes essenciais:
                 name: 'DJEN / CNJ Oficial',
                 url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
                 lookbackDays: 15,
-                queryOabVariants: true,
+                queryOabVariants: false,
                 ufOab: uf.toUpperCase(),
                 numeroOab: num,
-                timeoutMs: 15_000
+                timeoutMs: 20_000
               };
               const djenResult = await collectDjen(portal, { monitoredTerm: term }, target);
               if (target.intimations.length) {
