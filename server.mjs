@@ -40,9 +40,9 @@ await security.init();
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp', '.ttf': 'font/ttf'
-};
-const publicFiles = new Set(['index.html', 'css/portal.css', 'js/auth.js', 'js/portal.js']);
-const publicDirectories = ['assets/images/', 'assets/fonts/'];
+ };
+const publicFiles = new Set(['index.html', 'css/portal.css', 'js/auth.js', 'js/portal.js', 'js/prompts-data.js', 'js/office-data.js']);
+const publicDirectories = ['assets/images/', 'assets/fonts/', 'assets/team/', 'assets/icons/'];
 const emptyRuntime = () => ({ events: [], tasks: [], intimations: [], processes: [], sources: [], updatedAt: null });
 let interactiveCollector = null;
 
