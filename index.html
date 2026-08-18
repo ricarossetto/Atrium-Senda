@@ -92,7 +92,7 @@
 
   <div class="app-shell hidden" id="appShell">
     <aside class="sidebar" id="sidebar">
-      <div class="brand">
+      <div class="brand" data-view-link="dashboard" role="button" tabindex="0" title="Ir para a página inicial (Meu dia)">
         <span class="brand-badge">
           <svg class="brand-monogram-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -479,7 +479,8 @@
       <section class="view" id="view-inbox" data-title="Caixa de intimações" data-eyebrow="Triagem jurídica">
         <div class="section-toolbar">
           <div class="filter-tabs" id="inboxFilters">
-            <button class="active" data-filter="all">Todas</button>
+            <button class="active" data-filter="pendentes">Pendentes</button>
+            <button data-filter="all">Todas</button>
             <button data-filter="nova">Novas</button>
             <button data-filter="urgente">Urgentes</button>
             <button data-filter="importante">Importantes</button>
@@ -927,7 +928,7 @@
 
             <form id="aiChatForm" class="ai-chat-input-form">
               <div class="ai-input-wrapper">
-                <textarea id="aiChatInput" placeholder="Faça uma pergunta jurídica, solicite a análise de uma intimação ou peça uma minuta..." rows="1"></textarea>
+                <textarea id="aiChatInput" placeholder="Faça uma pergunta jurídica, solicite a análise de uma intimação ou peça uma minuta (Enter envia, Shift+Enter quebra linha)..." rows="2"></textarea>
                 <button type="submit" id="btnSendAiMessage" class="button gold ai-send-btn" title="Enviar mensagem (Enter)">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>

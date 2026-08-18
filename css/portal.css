@@ -34,7 +34,34 @@
   --font-serif: "Playfair Display", Georgia, serif;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #38342c #141311;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #141311;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #38342c;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
+
+::-webkit-scrollbar-corner {
+  background: #141311;
+}
+
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
@@ -67,7 +94,23 @@ button, a { -webkit-tap-highlight-color: transparent; }
   z-index: 30;
   backdrop-filter: blur(20px);
 }
-.brand { min-height: 84px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 8px 18px; }
+
+.brand {
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8px 10px 18px;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.2s ease, transform 0.15s ease;
+  user-select: none;
+}
+.brand:hover {
+  background: rgba(201, 168, 76, 0.08);
+  transform: translateY(-1px);
+}
 .brand-badge { display: inline-flex; align-items: center; gap: 11px; font: 700 20px/1.2 var(--font-serif); color: var(--gold-soft); letter-spacing: .05em; text-transform: uppercase; }
 .brand-badge-large { display: inline-flex; align-items: center; gap: 16px; font: 700 32px/1.2 var(--font-serif); color: var(--gold-soft); letter-spacing: .06em; margin-bottom: 20px; text-transform: uppercase; }
 .brand-product { display: block; margin: 4px 0 0 46px; color: var(--gold); font: 600 9.5px/1.2 var(--font-sans); letter-spacing: .22em; text-transform: uppercase; white-space: nowrap; opacity: .85; }
@@ -1398,23 +1441,25 @@ td small { color: var(--muted); }
 .ai-chat-card {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 340px);
-  min-height: 480px;
+  height: calc(100vh - 270px);
+  min-height: 560px;
   padding: 0 !important;
   overflow: hidden;
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 .ai-chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 .ai-message {
   display: flex;
-  gap: 12px;
-  max-width: 88%;
+  gap: 14px;
+  max-width: 90%;
   animation: fadeInMsg 0.2s ease;
 }
 @keyframes fadeInMsg {
@@ -1429,8 +1474,8 @@ td small { color: var(--muted); }
   flex-direction: row-reverse;
 }
 .message-avatar {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1458,10 +1503,10 @@ td small { color: var(--muted); }
   align-items: flex-end;
 }
 .message-text {
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-radius: 12px;
-  font-size: 13.5px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.65;
 }
 .assistant-message .message-text {
   background: #1e1c18;
@@ -1510,7 +1555,7 @@ td small { color: var(--muted); }
   border-radius: 12px 12px 2px 12px;
 }
 .message-meta {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #706c64;
   padding: 0 4px;
 }
@@ -1544,38 +1589,45 @@ td small { color: var(--muted); }
 }
 
 .ai-chat-input-form {
-  padding: 12px 16px;
+  padding: 16px 20px;
   background: #141311;
-  border-top: 1px solid var(--border-card);
+  border-top: 1px solid rgba(201, 168, 76, 0.25);
 }
 .ai-input-wrapper {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-end;
 }
 .ai-input-wrapper textarea {
   flex: 1;
-  background: #1c1a17;
-  border: 1px solid #333;
+  background: #191816;
+  border: 1px solid #38342c;
   color: #fff;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13.5px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 14.5px;
   resize: none;
-  max-height: 120px;
+  min-height: 62px;
+  max-height: 200px;
   font-family: inherit;
-  line-height: 1.4;
+  line-height: 1.5;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 .ai-input-wrapper textarea:focus {
   border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.2);
   outline: none;
 }
 .ai-send-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 42px;
-  padding: 0 16px;
+  justify-content: center;
+  gap: 8px;
+  height: 62px;
+  padding: 0 24px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
   flex-shrink: 0;
 }
 

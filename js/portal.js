@@ -458,7 +458,7 @@ CPF: ${doc}`;
 
   const App = {
     currentView: 'dashboard',
-    inboxFilter: 'all',
+    inboxFilter: 'pendentes',
     inboxSort: 'date-desc',
     currentTourSlide: 0,
     tempOfficeLogo: null,
@@ -979,6 +979,8 @@ CPF: ${doc}`;
       const sort = this.inboxSort || 'date-desc';
 
       let items = Store.state.intimations.filter(item => {
+        if (filter === 'pendentes') return item.status !== 'prazo' && item.status !== 'tarefa' && item.status !== 'arquivada';
+        if (filter === 'prazo') return item.status === 'prazo' || item.status === 'tarefa';
         if (filter === 'all') return true;
         if (filter === 'nova') return item.status === 'nova';
         if (filter === 'urgente') return Boolean(item.urgent || item.priority === 'urgente');
@@ -1140,13 +1142,19 @@ CPF: ${doc}`;
         return;
       }
       if (action === 'toggle-urgent') {
-        item.urgent = !item.urgent;
-        if (item.urgent) item.priority = 'urgente';
+        const currentlyUrgent = Boolean(item.urgent || item.priority === 'urgente');
+        if (currentlyUrgent) {
+          item.urgent = false;
+          item.priority = 'normal';
+        } else {
+          item.urgent = true;
+          item.priority = 'urgente';
+        }
         Store.audit(item.urgent ? 'Marcada como urgente' : 'Urgência removida', item.title);
         Store.save();
         this.renderAll();
         this.renderIntimationDetail();
-        this.toast(item.urgent ? 'Intimação marcada como URGENTE!' : 'Urgência removida.', 'success');
+        this.toast(item.urgent ? 'Intimação marcada como URGENTE!' : 'Urgência removida com sucesso.', 'success');
         return;
       }
       if (action === 'toggle-important') {
@@ -1177,7 +1185,14 @@ CPF: ${doc}`;
       }
       item.status = action;
       Store.audit(action === 'prazo' ? 'Triagem confirmada' : 'Intimação colocada em triagem', `${item.title} · ${item.process || 'sem processo'}`);
-      this.renderAll(); this.renderIntimationDetail();
+      Store.save();
+      this.renderAll();
+      if (this.selectedIntimation === item.id && this.inboxFilter === 'pendentes' && action === 'prazo') {
+        const remaining = this.filteredIntimations();
+        this.selectedIntimation = remaining[0]?.id || null;
+      }
+      this.renderIntimationDetail();
+      this.toast(action === 'prazo' ? 'Triagem confirmada! Intimação movida para Conferidas.' : 'Intimação em triagem.', 'success');
     },
     renderKanban() {
       const board = document.getElementById('kanbanBoard');
@@ -2127,9 +2142,9 @@ CPF: ${doc}`;
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || 'Falha ao validar chave com o Google Gemini.');
 
+      if (data.revision) Store.revision = data.revision;
       Store.state.settings.geminiApiKey = apiKey;
       Store.audit('Chave Gemini configurada', `Assistente IA ativado com modelo ${data.model || 'gemini-2.5-flash'}.`);
-      Store.save();
       await this.checkAiStatus();
       return data;
     },

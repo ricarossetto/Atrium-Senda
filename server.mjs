@@ -114,10 +114,13 @@ async function saveAppState(value, expectedRevision = null) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
   if (value.contacts === undefined) value.contacts = [];
   for (const key of ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts']) {
-    if (!Array.isArray(value[key]) || value[key].length > 10_000) throw Object.assign(new Error(`Coleção inválida: ${key}.`), { statusCode: 400 });
+    if (!Array.isArray(value[key])) value[key] = [];
+    if (value[key].length > 10_000) throw Object.assign(new Error(`Coleção inválida: ${key}.`), { statusCode: 400 });
   }
   const current = await readAppStateEnvelope();
-  if (current.revision && expectedRevision !== current.revision) throw Object.assign(new Error('Os dados foram atualizados em outra aba ou pelo importador. Recarregue a Central antes de salvar.'), { statusCode: 409 });
+  if (current.revision && expectedRevision !== current.revision) {
+    throw Object.assign(new Error('Os dados foram atualizados em outra aba ou pelo importador. Recarregue a Central antes de salvar.'), { statusCode: 409 });
+  }
   await mkdir(DATA_DIR, { recursive: true });
   const envelope = { version: 1, algorithm: 'aes-256-gcm', revision: randomBytes(18).toString('base64url'), encrypted: security.encrypt(JSON.stringify(value)), updatedAt: new Date().toISOString() };
   await writeFile(APP_STATE_FILE, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
@@ -746,9 +749,9 @@ const server = http.createServer(async (req, res) => {
       const state = envelope?.state || {};
       state.settings ||= {};
       state.settings.geminiApiKey = apiKey;
-      await saveAppState(state);
+      const saveResult = await saveAppState(state, envelope.revision);
 
-      return json(res, 200, { ok: true, message: 'Chave do Google Gemini ativada e validada com sucesso!', model: testResult.model });
+      return json(res, 200, { ok: true, message: 'Chave do Google Gemini ativada e validada com sucesso!', model: testResult.model, revision: saveResult.revision });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/ai/chat') {
@@ -830,7 +833,7 @@ Diretrizes essenciais:
       const state = envelope?.state || {};
       state.settings ||= {};
       state.settings.calendarUrl = calendarUrl;
-      await saveAppState(state);
+      const saveResult = await saveAppState(state, envelope.revision);
 
       let importedCount = 0;
       let errorDetail = null;
