@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SecurityManager, verifyTotp } from './lib/security.mjs';
+import { collectDjen } from './collector/adapters/djen.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const ENV_FILE = path.join(ROOT, '.env');
@@ -519,21 +520,101 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/sync') {
       assertAuthenticated(req, true);
-      const runtime = await readRuntime(); let events = runtime.events; let tasks = runtime.tasks; let calendarImported = 0; const sources = [...runtime.sources];
+      const runtime = await readRuntime();
+      let events = runtime.events;
+      let tasks = runtime.tasks;
+      let intimations = runtime.intimations;
+      let processes = runtime.processes;
+      let calendarImported = 0;
+      let djenImported = 0;
+      const sources = [...runtime.sources];
+
+      // 1. Sincronização automática com DJEN / CNJ Oficial para os termos monitorados
+      try {
+        let appState = null;
+        try {
+          const envelope = await readAppStateEnvelope();
+          if (envelope?.state) appState = envelope.state;
+        } catch { /* sem estado salvo */ }
+
+        const terms = appState?.terms?.length ? appState.terms : [{ name: 'Dr(a). Advogado(a) Titular', registration: 'OAB/RS 135294' }];
+        for (const term of terms) {
+          const reg = String(term.registration || '');
+          let uf = (reg.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i) || reg.match(/([A-Z]{2})\s*\d+/i) || reg.match(/\d+\s*[\/\-]?\s*([A-Z]{2})/i))?.[1] || '';
+          const num = reg.replace(/\D/g, '');
+          if (num && num.length >= 4) {
+            if (!uf) uf = 'RS';
+            const target = { intimations: [], tasks: [], processes: [], sources: [] };
+            const portal = {
+              id: 'djen-cnj',
+              name: 'DJEN / CNJ Oficial',
+              url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
+              lookbackDays: 15,
+              queryOabVariants: true,
+              ufOab: uf.toUpperCase(),
+              numeroOab: num,
+              timeoutMs: 15_000
+            };
+            const djenResult = await collectDjen(portal, { monitoredTerm: term }, target);
+            if (target.intimations.length) {
+              intimations = mergeBy(intimations, target.intimations, 'externalId');
+              tasks = mergeBy(tasks, target.tasks, 'externalId');
+              djenImported += target.intimations.length;
+            }
+            sources.push({
+              id: 'djen-cnj',
+              name: 'DJEN / CNJ Oficial',
+              short: 'CNJ',
+              method: 'API pública oficial',
+              status: 'ok',
+              lastCheck: new Date().toISOString(),
+              detail: `${djenResult.records || 0} publicação(ões) lida(s) para OAB/${uf.toUpperCase()} ${num}`
+            });
+          }
+        }
+      } catch (error) {
+        sources.push({
+          id: 'djen-cnj',
+          name: 'DJEN / CNJ Oficial',
+          short: 'CNJ',
+          method: 'API pública oficial',
+          status: 'attention',
+          lastCheck: new Date().toISOString(),
+          detail: `Aviso DJEN: ${String(error.message).slice(0, 120)}`
+        });
+      }
+
+      // 2. Sincronização com Agenda Externa (Webcal / iCalendar)
       const calUrl = process.env.EXTERNAL_CALENDAR_URL || process.env.ADVBOX_WEBCAL_URL;
       if (calUrl) {
         try {
           const calendarUrl = calUrl.replace(/^webcal:/i, 'https:');
           const response = await fetch(calendarUrl, { headers: { 'User-Agent': 'JurisFlow-Central-Juridica/1.0' }, redirect: 'follow' });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const parsed = calendarPayload(parseCalendar(await response.text())); events = mergeBy(events, parsed.events); tasks = mergeBy(tasks, parsed.tasks); calendarImported = parsed.events.length;
+          const parsed = calendarPayload(parseCalendar(await response.text()));
+          events = mergeBy(events, parsed.events);
+          tasks = mergeBy(tasks, parsed.tasks);
+          calendarImported = parsed.events.length;
           sources.push({ id: 'external-calendar', name: 'Agenda Externa', short: 'CAL', method: 'Webcal/iCal', status: 'ok', lastCheck: new Date().toISOString(), detail: `${parsed.events.length} compromisso(s) lido(s)` });
         } catch (error) {
           sources.push({ id: 'external-calendar', name: 'Agenda Externa', short: 'CAL', method: 'Webcal/iCal', status: 'error', lastCheck: new Date().toISOString(), detail: `Falha na leitura: ${String(error.message).slice(0, 120)}` });
         }
       }
-      const payload = { ...runtime, events, tasks, sources: mergeBy([], sources, 'id') };
-      return json(res, 200, { ...payload, imported: calendarImported + runtime.intimations.length + runtime.processes.length });
+
+      const updatedRuntime = {
+        events,
+        tasks,
+        intimations,
+        processes,
+        sources: mergeBy([], sources, 'id'),
+        updatedAt: new Date().toISOString()
+      };
+      await saveRuntime(updatedRuntime);
+
+      return json(res, 200, {
+        ...updatedRuntime,
+        imported: calendarImported + djenImported
+      });
     }
     if (req.method === 'GET' || req.method === 'HEAD') return serveStatic(req, res);
     json(res, 405, { message: 'Método não permitido.' });
