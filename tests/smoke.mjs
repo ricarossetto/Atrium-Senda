@@ -39,8 +39,24 @@ try {
   await page.locator('#finishRecovery').click();
   await page.locator('#view-dashboard.active').waitFor();
 
+  // Se o tour de primeiro acesso aparecer, pula ou conclui
+  try {
+    const tourSkip = page.locator('#tourSkipButton');
+    await tourSkip.waitFor({ timeout: 2000 });
+    await tourSkip.click();
+    await page.locator('#guidedTourBackdrop').waitFor({ state: 'hidden', timeout: 2000 });
+  } catch {}
+
   const brandBox = await page.locator('.brand').boundingBox();
   assert(brandBox, 'Identidade visual do JurisFlow ausente.');
+
+  // Teste de personalização do escritório
+  await page.locator('.sidebar-office').click();
+  await page.locator('#officeSetupBackdrop:not(.hidden)').waitFor();
+  await page.locator('#officeInputName').fill('Banca Rossetto & Associados');
+  await page.locator('#officeSetupForm button[type="submit"]').click();
+  await page.locator('#officeSetupBackdrop').waitFor({ state: 'hidden' });
+  assert(await page.locator('#sidebarOfficeName').textContent() === 'Banca Rossetto & Associados', 'Personalização do escritório falhou.');
 
   await page.locator('button[data-view="contacts"]').click();
   await page.locator('#view-contacts.active').waitFor();

@@ -240,6 +240,14 @@
             <input id="globalSearch" type="search" placeholder="Processo, cliente ou tarefa">
             <kbd>/</kbd>
           </label>
+          <button class="button ghost" id="tourButton" title="Apresentação Guiada do JurisFlow">
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span>Guia / Tour</span>
+          </button>
           <button class="button ghost" id="quickDocGenButton" title="Gerar Minuta de Procuração ou Contrato">
             <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -333,22 +341,35 @@
           <div class="filter-tabs" id="inboxFilters">
             <button class="active" data-filter="all">Todas</button>
             <button data-filter="nova">Novas</button>
+            <button data-filter="urgente">🔥 Urgentes</button>
+            <button data-filter="importante">⭐ Importantes</button>
+            <button data-filter="prazo-fatal">⏳ Com Prazo Fatal</button>
             <button data-filter="triagem">Em triagem</button>
-            <button data-filter="prazo">Prazo conferido</button>
-            <button data-filter="tarefa">Tarefa criada</button>
+            <button data-filter="prazo">Conferidas</button>
           </div>
           <div class="toolbar-actions">
+            <div class="inbox-sort-control">
+              <span>Ordenar por:</span>
+              <select id="inboxSortSelect">
+                <option value="date-desc">📅 Mais recentes</option>
+                <option value="deadline-asc">⏳ Menor prazo fatal</option>
+                <option value="priority-urgent">🚨 🔥 Urgentes primeiro</option>
+                <option value="priority-important">⭐ Importantes primeiro</option>
+                <option value="date-asc">📅 Mais antigas</option>
+                <option value="process">🏛️ Por Processo</option>
+              </select>
+            </div>
             <button class="button ghost" id="importIntimationButton">Importar JSON</button>
             <button class="button gold" id="newIntimationButton">+ Nova intimação</button>
           </div>
         </div>
         <div class="inbox-layout">
           <article class="card inbox-list-card">
-            <div class="list-head"><span>Ocorrência</span><span>Origem</span><span>Data</span><span>Status</span></div>
+            <div class="list-head"><span>Ocorrência & Destaque</span><span>Origem & Prazo</span><span>Data</span><span>Status</span></div>
             <div id="inboxList" class="inbox-list"></div>
           </article>
           <aside class="card intimation-detail" id="intimationDetail">
-            <div class="empty-detail"><span>✦</span><h3>Selecione uma intimação</h3><p>O texto original, o processo e a trilha de conferência aparecerão aqui.</p></div>
+            <div class="empty-detail"><span>✦</span><h3>Selecione uma intimação</h3><p>O texto original, o processo, alertas de urgência e a trilha de conferência aparecerão aqui.</p></div>
           </aside>
         </div>
       </section>
@@ -745,6 +766,218 @@
       </div>
       <footer>
         <button type="button" class="button ghost" id="docGenCancel">Fechar</button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="officeSetupBackdrop">
+    <section class="modal office-setup-modal" role="dialog" aria-modal="true" aria-labelledby="officeSetupTitle">
+      <header>
+        <div>
+          <p class="eyebrow">Identidade Institucional</p>
+          <h2 id="officeSetupTitle">Personalização do Escritório</h2>
+        </div>
+        <button class="icon-button" id="officeSetupClose" aria-label="Fechar">×</button>
+      </header>
+      <form id="officeSetupForm">
+        <div class="office-logo-picker">
+          <div class="office-logo-preview" id="officeLogoPreview">
+            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/>
+            </svg>
+          </div>
+          <div>
+            <input type="file" id="officeLogoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" class="hidden">
+            <button class="button ghost" type="button" id="btnChooseOfficeLogo">📁 Carregar Logo do Escritório</button>
+            <button class="button ghost hidden" type="button" id="btnRemoveOfficeLogo">Remover logo</button>
+            <small style="display:block;margin-top:6px;color:#817d74;font-size:11px;">Formatos: PNG, JPG ou SVG. Fica salva localmente no seu JurisFlow.</small>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <label><span>Nome do Escritório / Banca</span><input id="officeInputName" required placeholder="Ex: Silva & Associados Advocacia" maxlength="120"></label>
+          <label><span>Slogan / Subtítulo</span><input id="officeInputSlogan" placeholder="Ex: Sociedade de Advogados" maxlength="100"></label>
+        </div>
+        <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:12px;margin-bottom:12px;">
+          <label><span>Advogado(a) Titular Responsável</span><input id="officeInputLawyer" required placeholder="Dr(a). Advogado(a) Titular" maxlength="100"></label>
+          <label><span>Inscrição OAB</span><input id="officeInputOab" placeholder="Ex: OAB/RS 135294" maxlength="40"></label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+          <label><span>Endereço Profissional / Sede</span><input id="officeInputAddress" placeholder="Rua, Número, Sala/Andar" maxlength="150"></label>
+          <label><span>Cidade / UF</span><input id="officeInputCity" placeholder="Ex: Porto Alegre / RS" maxlength="80"></label>
+        </div>
+        <footer>
+          <button type="button" class="button ghost" id="officeSetupCancel">Cancelar</button>
+          <button type="submit" class="button gold">💾 Salvar Identidade do Escritório</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="guidedTourBackdrop">
+    <section class="modal guided-tour-modal" role="dialog" aria-modal="true" aria-labelledby="tourModalTitle">
+      <header class="tour-header">
+        <div class="tour-badge">
+          <svg class="brand-logo-svg" style="width:20px;height:16px;" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 15H42M28 15V62C28 69 22 72 15 72M28 38H48M15 38H28" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M60 22H86M73 22V54M65 54H81" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+            <path d="M54 34L61 46H47L54 34ZM92 34L99 46H85L92 34Z" fill="currentColor"/>
+          </svg>
+          <span id="tourModalTitle">Apresentação Guiada · JurisFlow</span>
+        </div>
+        <button class="icon-button" id="tourCloseButton" aria-label="Fechar apresentação">×</button>
+      </header>
+
+      <div class="tour-slides-container">
+        <!-- Slide 1: Boas-Vindas -->
+        <article class="tour-slide active" data-slide="0">
+          <div class="tour-slide-hero">
+            <div class="tour-icon-box">
+              <svg class="brand-logo-svg" style="width:36px;height:30px;" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 15H42M28 15V62C28 69 22 72 15 72M28 38H48M15 38H28" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M60 22H86M73 22V54M65 54H81" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                <path d="M54 34L61 46H47L54 34ZM92 34L99 46H85L92 34Z" fill="currentColor"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Bem-vindo ao JurisFlow</h2>
+              <p>Sua plataforma autônoma e white-label para advocacia de alta performance.</p>
+            </div>
+          </div>
+          <div class="tour-slide-body">
+            O JurisFlow foi projetado para dar a você total independência: sem mensalidades abusivas, sem softwares fechados de terceiros e com criptografia local (AES-256-GCM + 2FA) onde seus dados permanecem sob seu controle.
+            <div class="tour-features-grid">
+              <div class="tour-feature-card"><strong>⚖️ 100% White Label</strong><span>Personalize com o nome, logo e identidade do seu próprio escritório.</span></div>
+              <div class="tour-feature-card"><strong>🛡️ Criptografia & Segurança</strong><span>Autenticação TOTP 2FA e chaves isoladas no seu computador.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Slide 2: Meu Dia & Painel -->
+        <article class="tour-slide" data-slide="1">
+          <div class="tour-slide-hero">
+            <div class="tour-icon-box">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6l2 2 4-4M4 12l2 2 4-4M4 18l2 2 4-4"/><path d="M14 6h6M14 12h6M14 18h6"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Painel Executivo & Meu Dia</h2>
+              <p>Clareza instantânea sobre o que exige sua atenção a cada manhã.</p>
+            </div>
+          </div>
+          <div class="tour-slide-body">
+            Ao abrir seu JurisFlow, o painel central organiza automaticamente suas prioridades do dia, intimações recém-chegadas, prazos fatais nos próximos 7 dias e o status das suas fontes oficiais.
+            <div class="tour-features-grid">
+              <div class="tour-feature-card"><strong>🎯 Foco Diário Inteligente</strong><span>Tarefas críticas ordenadas por urgência e prazo fatal.</span></div>
+              <div class="tour-feature-card"><strong>📊 Métricas em Tempo Real</strong><span>Contadores de intimações, tarefas em andamento e fontes saudáveis.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Slide 3: Intimações & DJEN Oficial -->
+        <article class="tour-slide" data-slide="2">
+          <div class="tour-slide-hero">
+            <div class="tour-icon-box">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 8h8M8 12h5"/>
+                <path d="M18 13a2.5 2.5 0 0 0-2.5 2.5v1.5l-1 1h7l-1-1v-1.5A2.5 2.5 0 0 0 18 13zM17 19a1 1 0 0 0 2 0"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Intimações & DJEN Oficial</h2>
+              <p>Conectado diretamente à API pública oficial do CNJ.</p>
+            </div>
+          </div>
+          <div class="tour-slide-body">
+            Basta clicar em <strong>"Sincronizar"</strong> para buscar suas publicações pelo número da OAB em tempo real. O sistema calcula os prazos do CPC (15 dias úteis, 5 dias, etc.), destaca urgências e permite transformar publicações em tarefas no Kanban com 1 clique.
+            <div class="tour-features-grid">
+              <div class="tour-feature-card"><strong>🔥 Alertas Urgentes & Prazos</strong><span>Marque publicações críticas e ordene por menor prazo fatal.</span></div>
+              <div class="tour-feature-card"><strong>🔍 Trilha de Conferência</strong><span>Texto original integral do Diário com identificação de partes e processo.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Slide 4: Kanban, Minutas & Processos -->
+        <article class="tour-slide" data-slide="3">
+          <div class="tour-slide-hero">
+            <div class="tour-icon-box">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="5" height="16" rx="1.5"/><path d="M4.5 9h2M11.5 9h2M18.5 9h2"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Kanban & Automação de Minutas</h2>
+              <p>Gestão visual de fluxos de trabalho e produção documental.</p>
+            </div>
+          </div>
+          <div class="tour-slide-body">
+            Acompanhe o andamento dos prazos por colunas (Triagem, Em Elaboração, Revisão e Concluídas), registre honorários e tempos de trabalho (timesheet) e gere Procurações e Contratos com preenchimento automático.
+            <div class="tour-features-grid">
+              <div class="tour-feature-card"><strong>🪶 Gerador de Minutas</strong><span>Procurações Art. 105 CPC e Contratos de Honorários com seus dados.</span></div>
+              <div class="tour-feature-card"><strong>💰 Controle de Honorários</strong><span>Controle de percentuais de êxito, valores fixos e status de quitação.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Slide 5: Importador eproc & Planilhas -->
+        <article class="tour-slide" data-slide="4">
+          <div class="tour-slide-hero">
+            <div class="tour-icon-box">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="12" height="12" rx="1.5"/><path d="M3 7h12M3 11h12M7 3v12M11 3v12"/><path d="M18 10l3-3m0 0l3 3m-3-3v7" stroke-width="2"/><rect x="15" y="16" width="6" height="5" rx="1" fill="currentColor" fill-opacity="0.2" stroke-width="1.8"/><path d="M16.5 16v-1.5a1.5 1.5 0 0 1 3 0V16" stroke-width="1.6"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Importador eproc (.XLS) & Excel</h2>
+              <p>Traga todo o seu acervo processual em segundos.</p>
+            </div>
+          </div>
+          <div class="tour-slide-body">
+            Arraste seu relatório exportado diretamente do <strong>eproc (TJRS, TRF4, TJSC, TJSP)</strong> ou qualquer planilha Excel/CSV. O sistema reconhece colunas, números CNJ, clientes, réus, comarcas e valores da causa automaticamente com pré-visualização.
+            <div class="tour-features-grid">
+              <div class="tour-feature-card"><strong>📥 Compatibilidade Total</strong><span>Lê relatórios .XLS do tribunal, arquivos .XLSX e .CSV.</span></div>
+              <div class="tour-feature-card"><strong>⚡ Deduplicação Automática</strong><span>Evita processos e contatos duplicados com consolidação segura.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Slide 6: Personalização & Certificado A1 -->
+        <article class="tour-slide" data-slide="5">
+          <div class="tour-slide-hero">
+            <div class="tour-icon-box">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Personalização & Certificado A1</h2>
+              <p>Deixe o JurisFlow com a cara do seu escritório.</p>
+            </div>
+          </div>
+          <div class="tour-slide-body">
+            Clique no card do escritório no canto inferior esquerdo para colocar a <strong>logo e o nome da sua banca</strong>. Configure também seu <strong>Certificado Digital A1</strong> e o PJeOffice local para consultas judiciais avançadas.
+            <div class="tour-features-grid">
+              <div class="tour-feature-card"><strong>🏛️ Logo & Marca Própria</strong><span>Sua marca no painel, barra lateral e em todos os documentos.</span></div>
+              <div class="tour-feature-card"><strong>🔐 A1 Protegido no Agente</strong><span>Sua senha e certificado nunca saem do seu computador.</span></div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <footer class="tour-footer">
+        <button type="button" class="button ghost" id="tourSkipButton">Pular Apresentação</button>
+        <div class="tour-dots" id="tourDots">
+          <span class="tour-dot active" data-slide-target="0"></span>
+          <span class="tour-dot" data-slide-target="1"></span>
+          <span class="tour-dot" data-slide-target="2"></span>
+          <span class="tour-dot" data-slide-target="3"></span>
+          <span class="tour-dot" data-slide-target="4"></span>
+          <span class="tour-dot" data-slide-target="5"></span>
+        </div>
+        <div class="tour-nav-actions">
+          <button type="button" class="button ghost" id="tourPrevButton" style="display:none;">← Anterior</button>
+          <button type="button" class="button gold" id="tourNextButton">Próximo →</button>
+        </div>
       </footer>
     </section>
   </div>

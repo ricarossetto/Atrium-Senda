@@ -828,3 +828,288 @@ td small { color: var(--muted); }
 @media (max-width: 900px) {
   .importer-grid { grid-template-columns: 1fr; }
 }
+
+/* Personalização do Escritório */
+.sidebar-office {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.sidebar-office:hover {
+  border-color: var(--gold);
+  background: rgba(201, 168, 76, 0.08);
+}
+.office-custom-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 9px;
+  margin-right: 12px;
+  border: 1px solid var(--gold);
+  background: #151512;
+}
+.office-logo-picker {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  margin-bottom: 14px;
+}
+.office-logo-preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  border: 1px solid var(--gold);
+  background: #11110f;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.office-logo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Apresentação Guiada / Guided Tour Modal */
+.guided-tour-modal {
+  width: min(680px, 92vw);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #121210;
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85);
+}
+.tour-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid var(--line);
+  background: radial-gradient(circle at 80% 20%, rgba(201, 168, 76, 0.08), transparent 70%), #141412;
+}
+.tour-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.tour-slides-container {
+  padding: 32px 32px 24px;
+  min-height: 310px;
+}
+.tour-slide {
+  display: none;
+  animation: fadeInSlide 0.25s ease;
+}
+.tour-slide.active {
+  display: block;
+}
+@keyframes fadeInSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tour-slide-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+.tour-icon-box {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: radial-gradient(circle, rgba(201, 168, 76, 0.18), rgba(20, 20, 18, 0.8));
+  border: 1px solid var(--gold);
+  display: grid;
+  place-items: center;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.tour-icon-box svg {
+  width: 34px;
+  height: 34px;
+}
+.tour-slide-hero h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-serif);
+  font-size: 24px;
+  color: var(--ivory);
+}
+.tour-slide-hero p {
+  margin: 0;
+  color: var(--gold-soft);
+  font-size: 13px;
+}
+.tour-slide-body {
+  color: #c4bfb5;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.tour-features-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.tour-feature-card {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+}
+.tour-feature-card strong {
+  display: block;
+  font-size: 13px;
+  color: var(--gold);
+  margin-bottom: 3px;
+}
+.tour-feature-card span {
+  font-size: 12px;
+  color: #a8a296;
+  line-height: 1.4;
+}
+.tour-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 28px 22px;
+  border-top: 1px solid var(--line);
+  background: #0e0e0d;
+}
+.tour-dots {
+  display: flex;
+  gap: 8px;
+}
+.tour-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #33312c;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.tour-dot.active {
+  background: var(--gold);
+  width: 22px;
+  border-radius: 99px;
+}
+.tour-nav-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Caixa de Intimações - Prazos e Urgências */
+.inbox-toolbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.inbox-sort-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.inbox-sort-control select {
+  height: 34px;
+  padding: 0 10px;
+  background: #161614;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ivory);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+.inbox-sort-control select:focus {
+  border-color: var(--gold);
+}
+.badge-urgent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(224, 76, 76, 0.16);
+  border: 1px solid rgba(224, 76, 76, 0.45);
+  color: #ff6b6b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+.badge-important {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(201, 168, 76, 0.16);
+  border: 1px solid rgba(201, 168, 76, 0.45);
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+.deadline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+.deadline-chip.danger {
+  background: rgba(224, 76, 76, 0.15);
+  color: #ff6b6b;
+  border: 1px solid rgba(224, 76, 76, 0.3);
+}
+.deadline-chip.warning {
+  background: rgba(230, 162, 60, 0.15);
+  color: #e6a23c;
+  border: 1px solid rgba(230, 162, 60, 0.3);
+}
+.deadline-chip.normal {
+  background: rgba(201, 168, 76, 0.12);
+  color: var(--gold-soft);
+  border: 1px solid rgba(201, 168, 76, 0.25);
+}
+.inbox-row.is-urgent {
+  border-left: 3px solid #ff4d4f !important;
+}
+.inbox-row.is-important {
+  background: rgba(201, 168, 76, 0.04);
+}
+.btn-toggle-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-toggle-flag.active-urgent {
+  background: #ff4d4f !important;
+  color: #fff !important;
+}
+.btn-toggle-flag.active-important {
+  background: var(--gold) !important;
+  color: #0a0a0a !important;
+}

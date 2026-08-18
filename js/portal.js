@@ -143,7 +143,9 @@
     const lawyerName = s.lawyerName || primaryTerm.name || authUser.displayName || 'Dr(a). Advogado(a) Titular';
     const lawyerOab = s.lawyerOab || primaryTerm.registration || 'OAB/UF 000000';
     return {
-      officeName: s.officeName || (lawyerName !== 'Dr(a). Advogado(a) Titular' ? `Advocacia ${lawyerName.split(' ')[0]}` : 'Escritório de Advocacia'),
+      officeName: s.officeName || 'Advocacia Integrada',
+      officeSlogan: s.officeSlogan || 'Escritório',
+      officeLogo: s.officeLogo || '',
       lawyerName: lawyerName,
       lawyerOab: lawyerOab,
       lawyerCpf: s.lawyerCpfCnpj || '000.000.000-00',
@@ -377,6 +379,9 @@ CPF: ${doc}`;
   const App = {
     currentView: 'dashboard',
     inboxFilter: 'all',
+    inboxSort: 'date-desc',
+    currentTourSlide: 0,
+    tempOfficeLogo: null,
     selectedIntimation: null,
     configurationSection: 'taskDefinitions',
     modalMode: null,
@@ -394,6 +399,7 @@ CPF: ${doc}`;
       this.checkServerStatus();
       document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long' }).format(new Date());
       if (Store.state.settings.dismissedBanner) document.getElementById('environmentBanner').classList.add('hidden');
+      this.checkFirstAccessTour();
       this.initialSyncTimer = window.setTimeout(() => this.syncWhenIdle(), 60 * 1000);
       this.autoSyncTimer = window.setInterval(() => this.syncWhenIdle(), 5 * 60 * 1000);
     },
@@ -405,9 +411,9 @@ CPF: ${doc}`;
         if (event.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
           event.preventDefault(); document.getElementById('globalSearch').focus();
         }
-        if (event.key === 'Escape') { this.closeModal(); this.closeJudicialSetup(); }
+        if (event.key === 'Escape') { this.closeModal(); this.closeJudicialSetup(); this.closeOfficeSetup(); this.closeGuidedTour(); }
         if (event.key === 'Enter') {
-          const interactive = event.target.closest('[data-view-link], [data-process-id], [data-contact-id], [data-agenda-id], [data-source-id], #primaryTermCard');
+          const interactive = event.target.closest('[data-view-link], [data-process-id], [data-contact-id], [data-agenda-id], [data-source-id], #primaryTermCard, .sidebar-office');
           if (interactive && !['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(event.target.tagName)) { event.preventDefault(); interactive.click(); }
         }
       });
@@ -417,6 +423,7 @@ CPF: ${doc}`;
       byId('dismissBanner').addEventListener('click', () => { byId('environmentBanner').classList.add('hidden'); Store.state.settings.dismissedBanner = true; Store.save(); });
       byId('syncButton').addEventListener('click', () => this.syncAll());
       byId('agendaSyncButton').addEventListener('click', () => this.syncAll());
+      byId('tourButton')?.addEventListener('click', () => this.openGuidedTour());
       byId('newTaskButton').addEventListener('click', () => this.openTaskModal());
       byId('newContactButton').addEventListener('click', () => this.openContactModal());
       byId('newAgendaButton').addEventListener('click', () => this.openAgendaModal());
@@ -428,6 +435,27 @@ CPF: ${doc}`;
         const term = Store.state.terms[0] || { id: uid('term'), name: 'Dr(a). Advogado(a) Titular', registration: 'OAB/UF 000000', type: 'oab', active: true };
         this.openTermModal(term);
       });
+
+      // Personalização do Escritório
+      document.querySelector('.sidebar-office')?.addEventListener('click', () => this.openOfficeSetup());
+      byId('officeSetupClose')?.addEventListener('click', () => this.closeOfficeSetup());
+      byId('officeSetupCancel')?.addEventListener('click', () => this.closeOfficeSetup());
+      byId('officeSetupBackdrop')?.addEventListener('click', event => { if (event.target === byId('officeSetupBackdrop')) this.closeOfficeSetup(); });
+      byId('btnChooseOfficeLogo')?.addEventListener('click', () => byId('officeLogoInput')?.click());
+      byId('officeLogoInput')?.addEventListener('change', event => this.handleOfficeLogoUpload(event.target.files?.[0]));
+      byId('btnRemoveOfficeLogo')?.addEventListener('click', () => { this.tempOfficeLogo = null; this.updateOfficeLogoPreview(); });
+      byId('officeSetupForm')?.addEventListener('submit', event => this.handleOfficeSetupSubmit(event));
+
+      // Apresentação Guiada (Tour)
+      byId('tourCloseButton')?.addEventListener('click', () => this.closeGuidedTour());
+      byId('tourSkipButton')?.addEventListener('click', () => this.closeGuidedTour());
+      byId('tourPrevButton')?.addEventListener('click', () => this.showTourSlide(this.currentTourSlide - 1));
+      byId('tourNextButton')?.addEventListener('click', () => this.showTourSlide(this.currentTourSlide + 1));
+      byId('tourDots')?.addEventListener('click', event => {
+        const dot = event.target.closest('.tour-dot');
+        if (dot && dot.dataset.slideTarget !== undefined) this.showTourSlide(Number(dot.dataset.slideTarget));
+      });
+
       byId('modalClose').addEventListener('click', () => this.closeModal());
       byId('modalCancel').addEventListener('click', () => this.closeModal());
       byId('modalBackdrop').addEventListener('click', event => { if (event.target === byId('modalBackdrop')) this.closeModal(); });
@@ -436,6 +464,10 @@ CPF: ${doc}`;
         const button = event.target.closest('button[data-filter]'); if (!button) return;
         this.inboxFilter = button.dataset.filter;
         byId('inboxFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
+        this.renderInbox();
+      });
+      byId('inboxSortSelect')?.addEventListener('change', event => {
+        this.inboxSort = event.target.value;
         this.renderInbox();
       });
       byId('processSearch').addEventListener('input', () => this.renderProcesses(byId('processSearch').value));
@@ -557,9 +589,133 @@ CPF: ${doc}`;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     renderAll() {
-      ['renderMetrics', 'renderPriorities', 'renderActivity', 'renderSources', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderAgenda', 'renderMonitoring', 'renderConfiguration', 'renderAudit'].forEach(method => {
+      ['renderOfficeIdentity', 'renderMetrics', 'renderPriorities', 'renderActivity', 'renderSources', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderAgenda', 'renderMonitoring', 'renderConfiguration', 'renderAudit'].forEach(method => {
         try { this[method](); } catch (error) { console.error(`Falha em ${method}:`, error); }
       });
+    },
+    renderOfficeIdentity() {
+      const s = Store?.state?.settings || {};
+      const officeName = s.officeName || 'Advocacia Integrada';
+      const officeSlogan = s.officeSlogan || 'Escritório';
+      const officeLogo = s.officeLogo || '';
+
+      const nameEl = document.getElementById('sidebarOfficeName');
+      const labelEl = document.getElementById('sidebarOfficeLabel');
+      const avatarEl = document.querySelector('.sidebar-office .office-avatar-icon');
+      if (nameEl) nameEl.textContent = officeName;
+      if (labelEl) labelEl.textContent = officeSlogan;
+
+      if (avatarEl) {
+        if (officeLogo) {
+          avatarEl.innerHTML = `<img src="${escapeHtml(officeLogo)}" class="office-custom-logo" alt="Logo">`;
+          avatarEl.style.background = 'transparent';
+        } else {
+          avatarEl.innerHTML = `<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/></svg>`;
+          avatarEl.style.background = 'rgba(201,168,76,.1)';
+        }
+      }
+    },
+    openOfficeSetup() {
+      const s = Store.state.settings || {};
+      const primaryTerm = Store.state.terms?.[0] || {};
+      document.getElementById('officeInputName').value = s.officeName || 'Advocacia Integrada';
+      document.getElementById('officeInputSlogan').value = s.officeSlogan || 'Sociedade de Advogados';
+      document.getElementById('officeInputLawyer').value = s.lawyerName || primaryTerm.name || 'Dr(a). Advogado(a) Titular';
+      document.getElementById('officeInputOab').value = s.lawyerOab || primaryTerm.registration || 'OAB/RS 135294';
+      document.getElementById('officeInputAddress').value = s.lawyerAddress || '';
+      document.getElementById('officeInputCity').value = s.city || '';
+
+      this.tempOfficeLogo = s.officeLogo || null;
+      this.updateOfficeLogoPreview();
+
+      document.getElementById('officeSetupBackdrop').classList.remove('hidden');
+    },
+    closeOfficeSetup() {
+      document.getElementById('officeSetupBackdrop').classList.add('hidden');
+    },
+    updateOfficeLogoPreview() {
+      const preview = document.getElementById('officeLogoPreview');
+      const removeBtn = document.getElementById('btnRemoveOfficeLogo');
+      if (this.tempOfficeLogo) {
+        preview.innerHTML = `<img src="${escapeHtml(this.tempOfficeLogo)}" alt="Prévia">`;
+        removeBtn?.classList.remove('hidden');
+      } else {
+        preview.innerHTML = `<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/></svg>`;
+        removeBtn?.classList.add('hidden');
+      }
+    },
+    handleOfficeLogoUpload(file) {
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        this.toast('A imagem deve ter no máximo 2MB.', 'danger');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.tempOfficeLogo = e.target.result;
+        this.updateOfficeLogoPreview();
+        this.toast('Logo carregada com sucesso.', 'success');
+      };
+      reader.readAsDataURL(file);
+    },
+    handleOfficeSetupSubmit(event) {
+      event.preventDefault();
+      Store.state.settings.officeName = document.getElementById('officeInputName').value.trim();
+      Store.state.settings.officeSlogan = document.getElementById('officeInputSlogan').value.trim();
+      Store.state.settings.lawyerName = document.getElementById('officeInputLawyer').value.trim();
+      Store.state.settings.lawyerOab = document.getElementById('officeInputOab').value.trim();
+      Store.state.settings.lawyerAddress = document.getElementById('officeInputAddress').value.trim();
+      Store.state.settings.city = document.getElementById('officeInputCity').value.trim();
+      Store.state.settings.officeLogo = this.tempOfficeLogo;
+
+      if (Store.state.terms?.[0]) {
+        Store.state.terms[0].name = Store.state.settings.lawyerName;
+        Store.state.terms[0].registration = Store.state.settings.lawyerOab;
+      }
+
+      Store.audit('Identidade do escritório atualizada', Store.state.settings.officeName);
+      Store.save();
+      this.renderOfficeIdentity();
+      this.renderMonitoring();
+      this.closeOfficeSetup();
+      this.toast('Identidade do escritório salva com sucesso!', 'success');
+    },
+    checkFirstAccessTour() {
+      const seen = localStorage.getItem('jurisflow_tour_seen') || Store.state.settings?.guidedTourSeen;
+      if (!seen) {
+        window.setTimeout(() => this.openGuidedTour(), 600);
+      }
+    },
+    openGuidedTour() {
+      this.currentTourSlide = 0;
+      this.showTourSlide(0);
+      document.getElementById('guidedTourBackdrop').classList.remove('hidden');
+    },
+    closeGuidedTour() {
+      document.getElementById('guidedTourBackdrop').classList.add('hidden');
+      localStorage.setItem('jurisflow_tour_seen', 'true');
+      Store.state.settings.guidedTourSeen = true;
+      Store.save();
+    },
+    showTourSlide(index) {
+      const slides = document.querySelectorAll('.tour-slide');
+      const dots = document.querySelectorAll('.tour-dot');
+      const total = slides.length;
+      if (index < 0) index = 0;
+      if (index >= total) {
+        this.closeGuidedTour();
+        this.toast('Apresentação concluída! Bom trabalho.', 'success');
+        return;
+      }
+      this.currentTourSlide = index;
+
+      slides.forEach((s, i) => s.classList.toggle('active', i === index));
+      dots.forEach((d, i) => d.classList.toggle('active', i === index));
+
+      const prevBtn = document.getElementById('tourPrevButton');
+      const nextBtn = document.getElementById('tourNextButton');
+      if (prevBtn) prevBtn.style.display = index > 0 ? 'inline-block' : 'none';
+      if (nextBtn) nextBtn.textContent = index === total - 1 ? '🚀 Concluir e Começar' : 'Próximo →';
     },
     renderMetrics() {
       const newIntimations = Store.state.intimations.filter(item => item.status === 'nova').length;
@@ -601,7 +757,52 @@ CPF: ${doc}`;
     },
     filteredIntimations() {
       const filter = this.inboxFilter;
-      return Store.state.intimations.filter(item => filter === 'all' || item.status === filter);
+      const sort = this.inboxSort || 'date-desc';
+
+      let items = Store.state.intimations.filter(item => {
+        if (filter === 'all') return true;
+        if (filter === 'nova') return item.status === 'nova';
+        if (filter === 'urgente') return Boolean(item.urgent || item.priority === 'urgente');
+        if (filter === 'importante') return Boolean(item.important);
+        if (filter === 'prazo-fatal') {
+          const act = classifyIntimationAct(item.text, item.title, item.type);
+          return item.fatalDeadline || act.days > 0;
+        }
+        return item.status === filter;
+      });
+
+      items.sort((a, b) => {
+        const actA = classifyIntimationAct(a.text, a.title, a.type);
+        const actB = classifyIntimationAct(b.text, b.title, b.type);
+        const fatalA = a.fatalDeadline || addDays(a.publishedAt || isoDate(), actA.days);
+        const fatalB = b.fatalDeadline || addDays(b.publishedAt || isoDate(), actB.days);
+
+        if (sort === 'deadline-asc') {
+          return (daysUntil(fatalA) - daysUntil(fatalB));
+        }
+        if (sort === 'priority-urgent') {
+          const urgA = (a.urgent || a.priority === 'urgente') ? 1 : 0;
+          const urgB = (b.urgent || b.priority === 'urgente') ? 1 : 0;
+          if (urgA !== urgB) return urgB - urgA;
+          return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+        }
+        if (sort === 'priority-important') {
+          const impA = a.important ? 1 : 0;
+          const impB = b.important ? 1 : 0;
+          if (impA !== impB) return impB - impA;
+          return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+        }
+        if (sort === 'date-asc') {
+          return new Date(a.publishedAt || 0) - new Date(b.publishedAt || 0);
+        }
+        if (sort === 'process') {
+          return String(a.process || '').localeCompare(String(b.process || ''));
+        }
+        // default: date-desc
+        return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+      });
+
+      return items;
     },
     intimationParties(item) {
       const process = Store.state.processes.find(record => record.number === item.process);
@@ -613,12 +814,27 @@ CPF: ${doc}`;
       const items = this.filteredIntimations();
       document.getElementById('inboxList').innerHTML = items.length ? items.map(item => {
         const act = classifyIntimationAct(item.text, item.title, item.type);
+        const fatalDate = item.fatalDeadline || addDays(item.publishedAt || isoDate(), act.days);
+        const dLeft = daysUntil(fatalDate);
+        const chipClass = dLeft <= 3 ? 'danger' : dLeft <= 7 ? 'warning' : 'normal';
+        const urgentBadge = (item.urgent || item.priority === 'urgente') ? '<span class="badge-urgent">🔥 URGENTE</span>' : '';
+        const importantBadge = item.important ? '<span class="badge-important">⭐ IMPORTANTE</span>' : '';
+        const deadlineChip = act.days > 0 ? `<span class="deadline-chip ${chipClass}">⏳ ${act.days}d · fatal: ${formatDate(fatalDate)}</span>` : '';
+
         return `
-        <button class="inbox-row ${this.selectedIntimation === item.id ? 'active' : ''}" data-intimation-id="${escapeHtml(item.id)}">
-          <span class="inbox-primary"><i class="unread-dot ${item.unread ? '' : 'read'}"></i><span><strong>${escapeHtml(item.title)}</strong><small class="inbox-case-line"><b>${escapeHtml(item.process || 'Sem processo vinculado')}</b>${this.intimationParties(item) ? `<em>· ${escapeHtml(this.intimationParties(item))}</em>` : '<em>· Partes ainda não identificadas</em>'}</small></span></span>
-          <span class="source-label"><span class="act-chip ${act.css}">${escapeHtml(act.label)}</span></span><span class="date-label">${formatDate(item.publishedAt)}</span><span>${this.statusChip(item.status)}</span>
+        <button class="inbox-row ${this.selectedIntimation === item.id ? 'active' : ''} ${(item.urgent || item.priority === 'urgente') ? 'is-urgent' : ''} ${item.important ? 'is-important' : ''}" data-intimation-id="${escapeHtml(item.id)}">
+          <span class="inbox-primary">
+            <i class="unread-dot ${item.unread ? '' : 'read'}"></i>
+            <span>
+              <div style="display:flex;align-items:center;flex-wrap:wrap;">${urgentBadge}${importantBadge}<strong>${escapeHtml(item.title)}</strong></div>
+              <small class="inbox-case-line"><b>${escapeHtml(item.process || 'Sem processo vinculado')}</b>${this.intimationParties(item) ? `<em>· ${escapeHtml(this.intimationParties(item))}</em>` : '<em>· Partes ainda não identificadas</em>'}</small>
+            </span>
+          </span>
+          <span class="source-label"><span class="act-chip ${act.css}">${escapeHtml(act.label)}</span>${deadlineChip}</span>
+          <span class="date-label">${formatDate(item.publishedAt)}</span>
+          <span>${this.statusChip(item.status)}</span>
         </button>`;
-      }).join('') : '<div class="empty-detail"><span>✓</span><h3>Nenhuma ocorrência</h3><p>Não há intimações neste filtro.</p></div>';
+      }).join('') : '<div class="empty-detail"><span>✓</span><h3>Nenhuma ocorrência</h3><p>Não há intimações neste filtro ou ordenação.</p></div>';
       document.querySelectorAll('[data-intimation-id]').forEach(button => button.addEventListener('click', () => this.selectIntimation(button.dataset.intimationId)));
       if (this.selectedIntimation) this.renderIntimationDetail();
     },
@@ -638,11 +854,33 @@ CPF: ${doc}`;
       const container = document.getElementById('intimationDetail');
       if (!item) return;
       const act = classifyIntimationAct(item.text, item.title, item.type);
+      const fatalDate = item.fatalDeadline || addDays(item.publishedAt || isoDate(), act.days);
+      const dLeft = daysUntil(fatalDate);
+      const isUrgent = Boolean(item.urgent || item.priority === 'urgente');
+      const isImportant = Boolean(item.important);
+
       container.innerHTML = `
-        <div class="detail-header"><div style="display:flex;gap:8px;align-items:center;">${this.statusChip(item.status)}<span class="act-chip ${act.css}">${escapeHtml(act.label)}</span></div><h2>${escapeHtml(item.title)}</h2><p>${escapeHtml(item.court || 'Origem judicial não informada')}</p></div>
-        <div class="detail-meta"><div><small>Processo</small><strong>${escapeHtml(item.process || 'Não identificado')}</strong></div><div><small>Partes</small><strong>${escapeHtml(this.intimationParties(item) || 'Ainda não identificadas')}</strong></div><div><small>Publicação</small><strong>${formatDate(item.publishedAt)}</strong></div><div><small>Ato estimado</small><strong>${escapeHtml(act.category)} (${act.days}d)</strong></div></div>
-        <p class="eyebrow">Texto original preservado</p><div class="original-text">${escapeHtml(item.text || 'Sem texto original.')}</div>
-        <div class="detail-actions">
+        <div class="detail-header">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+            ${this.statusChip(item.status)}
+            <span class="act-chip ${act.css}">${escapeHtml(act.label)}</span>
+            ${isUrgent ? '<span class="badge-urgent">🔥 URGENTE</span>' : ''}
+            ${isImportant ? '<span class="badge-important">⭐ IMPORTANTE</span>' : ''}
+          </div>
+          <h2>${escapeHtml(item.title)}</h2>
+          <p>${escapeHtml(item.court || 'Origem judicial não informada')}</p>
+        </div>
+        <div class="detail-meta">
+          <div><small>Processo</small><strong>${escapeHtml(item.process || 'Não identificado')}</strong></div>
+          <div><small>Partes</small><strong>${escapeHtml(this.intimationParties(item) || 'Ainda não identificadas')}</strong></div>
+          <div><small>Publicação</small><strong>${formatDate(item.publishedAt)}</strong></div>
+          <div><small>Prazo Fatal Estimado</small><strong>${formatDate(fatalDate)} (${act.days}d · ${dLeft >= 0 ? `${dLeft}d restantes` : 'vencido'})</strong></div>
+        </div>
+        <p class="eyebrow">Texto original preservado</p>
+        <div class="original-text">${escapeHtml(item.text || 'Sem texto original.')}</div>
+        <div class="detail-actions" style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button class="button ghost btn-toggle-flag ${isUrgent ? 'active-urgent' : ''}" data-detail-action="toggle-urgent">${isUrgent ? '🔥 Remover Urgência' : '🔥 Marcar Urgente'}</button>
+          <button class="button ghost btn-toggle-flag ${isImportant ? 'active-important' : ''}" data-detail-action="toggle-important">${isImportant ? '⭐ Remover Destaque' : '⭐ Marcar Importante'}</button>
           <button class="button ghost" data-detail-action="edit">Editar dados</button>
           <button class="button ghost" data-detail-action="triagem">Marcar em triagem</button>
           <button class="button ghost" data-detail-action="prazo">Confirmar triagem</button>
@@ -651,6 +889,25 @@ CPF: ${doc}`;
       container.querySelectorAll('[data-detail-action]').forEach(button => button.addEventListener('click', () => this.handleIntimationAction(item, button.dataset.detailAction)));
     },
     handleIntimationAction(item, action) {
+      if (action === 'toggle-urgent') {
+        item.urgent = !item.urgent;
+        if (item.urgent) item.priority = 'urgente';
+        Store.audit(item.urgent ? 'Marcada como urgente' : 'Urgência removida', item.title);
+        Store.save();
+        this.renderAll();
+        this.renderIntimationDetail();
+        this.toast(item.urgent ? 'Intimação marcada como URGENTE!' : 'Urgência removida.', 'success');
+        return;
+      }
+      if (action === 'toggle-important') {
+        item.important = !item.important;
+        Store.audit(item.important ? 'Marcada como importante' : 'Destaque de importância removido', item.title);
+        Store.save();
+        this.renderAll();
+        this.renderIntimationDetail();
+        this.toast(item.important ? 'Intimação destacada como IMPORTANTE!' : 'Destaque de importância removido.', 'success');
+        return;
+      }
       if (action === 'edit') { this.openIntimationModal(item); return; }
       if (action === 'task') {
         const act = classifyIntimationAct(item.text, item.title, item.type);
@@ -663,7 +920,7 @@ CPF: ${doc}`;
           source: item.source || 'DJEN',
           intimationId: item.id,
           deadline: suggestedDeadline,
-          priority: act.priority || 'normal',
+          priority: (item.urgent || act.priority === 'urgente') ? 'urgente' : 'normal',
           status: 'triagem'
         });
         return;
