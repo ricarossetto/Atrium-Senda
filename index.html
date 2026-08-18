@@ -111,6 +111,14 @@
           <span>Intimações</span>
           <strong class="nav-count" id="inboxBadge">0</strong>
         </button>
+        <button class="nav-item" data-view="assistant">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+            </svg>
+          </span>
+          <span>Assistente IA</span>
+        </button>
         <button class="nav-item" data-view="kanban">
           <span class="nav-icon" aria-hidden="true">
             <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -341,9 +349,9 @@
           <div class="filter-tabs" id="inboxFilters">
             <button class="active" data-filter="all">Todas</button>
             <button data-filter="nova">Novas</button>
-            <button data-filter="urgente">🔥 Urgentes</button>
-            <button data-filter="importante">⭐ Importantes</button>
-            <button data-filter="prazo-fatal">⏳ Com Prazo Fatal</button>
+            <button data-filter="urgente">Urgentes</button>
+            <button data-filter="importante">Importantes</button>
+            <button data-filter="prazo-fatal">Com Prazo Fatal</button>
             <button data-filter="triagem">Em triagem</button>
             <button data-filter="prazo">Conferidas</button>
           </div>
@@ -351,12 +359,12 @@
             <div class="inbox-sort-control">
               <span>Ordenar por:</span>
               <select id="inboxSortSelect">
-                <option value="date-desc">📅 Mais recentes</option>
-                <option value="deadline-asc">⏳ Menor prazo fatal</option>
-                <option value="priority-urgent">🚨 🔥 Urgentes primeiro</option>
-                <option value="priority-important">⭐ Importantes primeiro</option>
-                <option value="date-asc">📅 Mais antigas</option>
-                <option value="process">🏛️ Por Processo</option>
+                <option value="date-desc">Mais recentes</option>
+                <option value="deadline-asc">Menor prazo fatal</option>
+                <option value="priority-urgent">Urgentes primeiro</option>
+                <option value="priority-important">Importantes primeiro</option>
+                <option value="date-asc">Mais antigas</option>
+                <option value="process">Por Processo</option>
               </select>
             </div>
             <button class="button ghost" id="importIntimationButton">Importar JSON</button>
@@ -677,8 +685,117 @@
         </article>
       </section>
 
-      <section class="view" id="view-audit" data-title="Auditoria" data-eyebrow="Rastreabilidade">
-        <article class="card table-card"><div class="card-heading"><div><p class="eyebrow">Registro imutável</p><h3>Histórico de operações</h3></div><button class="button ghost" id="exportAuditButton">Exportar JSON</button></div><div id="auditList" class="audit-list"></div></article>
+      <section class="view" id="view-assistant" data-title="Assistente Jurídico IA" data-eyebrow="Inteligência Artificial Google Gemini">
+        <div class="ai-assistant-container">
+          <div class="ai-assistant-header">
+            <div class="ai-header-info">
+              <div class="ai-header-badge">
+                <span class="ai-spark-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+                  </svg>
+                </span>
+                <div>
+                  <strong>Assistente Jurídico Autônomo</strong>
+                  <span id="aiModelBadge" class="status-chip connected">Google Gemini Flash</span>
+                </div>
+              </div>
+            </div>
+            <div class="ai-header-actions">
+              <span id="aiKeyStatusChip" class="status-chip warning">Chave não configurada</span>
+              <button class="button ghost" id="btnOpenGeminiKeyModal" type="button">Configurar Chave Gemini</button>
+              <button class="button ghost" id="btnClearAiConversation" type="button">Limpar conversa</button>
+            </div>
+          </div>
+
+          <div id="aiOnboardingBanner" class="ai-onboarding-card card">
+            <div class="ai-onboarding-content">
+              <h3>Ative o Assistente Jurídico com o Google Gemini (Gratuito)</h3>
+              <p>O Assistente Jurídico do JurisFlow utiliza a tecnologia do <strong>Google Gemini</strong> para interpretar intimações judiciais, calcular contagem precisa de prazos em dias úteis (CPC/2015), redigir minutas contratuais e sugerir estratégias processuais.</p>
+              <div class="ai-steps-grid">
+                <div class="ai-step-item">
+                  <span class="ai-step-num">1</span>
+                  <div>
+                    <strong>Obtenha sua Chave Gratuita</strong>
+                    <p>Acesse o <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a> e gere uma API Key em 30 segundos.</p>
+                  </div>
+                </div>
+                <div class="ai-step-item">
+                  <span class="ai-step-num">2</span>
+                  <div>
+                    <strong>Ative no JurisFlow</strong>
+                    <p>Insira a chave no campo seguro. O sistema valida a conexão instantaneamente.</p>
+                  </div>
+                </div>
+                <div class="ai-step-item">
+                  <span class="ai-step-num">3</span>
+                  <div>
+                    <strong>Potencialize sua Advocacia</strong>
+                    <p>Analise peças, pesquise teses e automatize triagens com privacidade local.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="ai-quick-key-form">
+                <input id="aiQuickKeyInput" type="password" placeholder="Cole sua Gemini API Key (AIzaSy...)" autocomplete="off">
+                <button class="button gold" id="btnSaveQuickAiKey" type="button">Ativar Assistente Gratuito</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-quick-prompts">
+            <span class="quick-prompts-label">Ações Rápidas:</span>
+            <button class="quick-prompt-btn" type="button" data-prompt="Analise a última intimação judicial recebida no sistema, explique a determinação judicial em linguagem clara e aponte a peça processual cabível e o prazo aplicável do CPC.">
+              Analisar Última Intimação (DJEN)
+            </button>
+            <button class="quick-prompt-btn" type="button" data-prompt="Explique com precisão a contagem de prazo em dias úteis para contestação no CPC/2015 (Art. 219 e Art. 335), detalhando termo inicial e hipóteses de suspensão.">
+              Calcular Prazos Processuais (CPC)
+            </button>
+            <button class="quick-prompt-btn" type="button" data-prompt="Redija um modelo completo de recurso de Apelação Cível com preliminares de cerceamento de defesa e mérito recursal, fundamentado na jurisprudência do STJ.">
+              Minuta de Apelação Cível
+            </button>
+            <button class="quick-prompt-btn" type="button" data-prompt="Quais são os requisitos e documentos essenciais para o ajuizamento de uma Ação Revisional de Contrato Bancário com pedido de tutela provisória?">
+              Estratégia &amp; Teses Jurídicas
+            </button>
+          </div>
+
+          <div class="ai-chat-card card">
+            <div id="aiChatMessages" class="ai-chat-messages">
+              <div class="ai-message assistant-message">
+                <div class="message-avatar">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+                  </svg>
+                </div>
+                <div class="message-body">
+                  <div class="message-text">
+                    <p>Olá, Doutor(a)! Sou seu <strong>Assistente Jurídico Inteligente</strong>, integrado com a inteligência do Google Gemini.</p>
+                    <p>Posso ajudá-lo(a) a:</p>
+                    <ul>
+                      <li><strong>Analisar intimações judiciais</strong> do DJEN / DJe / eproc e identificar prazos do CPC.</li>
+                      <li><strong>Calcular e planejar estratégias</strong> recursais e contestações em dias úteis.</li>
+                      <li><strong>Redigir petições, contratos e minutas</strong> com base nos processos e contatos do seu escritório.</li>
+                      <li><strong>Tirar dúvidas sobre legislação e precedentes</strong> dos tribunais superiores (STJ, STF e TST).</li>
+                    </ul>
+                    <p>Como posso auxiliá-lo(a) hoje?</p>
+                  </div>
+                  <div class="message-meta">Assistente JurisFlow</div>
+                </div>
+              </div>
+            </div>
+
+            <form id="aiChatForm" class="ai-chat-input-form">
+              <div class="ai-input-wrapper">
+                <textarea id="aiChatInput" placeholder="Faça uma pergunta jurídica, solicite a análise de uma intimação ou peça uma minuta..." rows="1"></textarea>
+                <button type="submit" id="btnSendAiMessage" class="button gold ai-send-btn" title="Enviar mensagem (Enter)">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                  </svg>
+                  <span>Enviar</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </section>
     </main>
   </div>
@@ -757,8 +874,8 @@
           <div class="doc-preview-header">
             <strong>Minuta Gerada</strong>
             <div class="doc-preview-actions">
-              <button class="button ghost" id="docGenCopyButton" type="button">📋 Copiar minuta</button>
-              <button class="button gold" id="docGenDownloadButton" type="button">⬇ Baixar .md / .txt</button>
+              <button class="button ghost" id="docGenCopyButton" type="button">Copiar minuta</button>
+              <button class="button gold" id="docGenDownloadButton" type="button">Baixar .md / .txt</button>
             </div>
           </div>
           <textarea id="docGenPreviewText" class="doc-preview-textarea" rows="15" spellcheck="false"></textarea>
@@ -788,7 +905,7 @@
           </div>
           <div>
             <input type="file" id="officeLogoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" class="hidden">
-            <button class="button ghost" type="button" id="btnChooseOfficeLogo">📁 Carregar Logo do Escritório</button>
+            <button class="button ghost" type="button" id="btnChooseOfficeLogo">Carregar Logo do Escritório</button>
             <button class="button ghost hidden" type="button" id="btnRemoveOfficeLogo">Remover logo</button>
             <small style="display:block;margin-top:6px;color:#817d74;font-size:11px;">Formatos: PNG, JPG ou SVG. Fica salva localmente no seu JurisFlow.</small>
           </div>
@@ -807,7 +924,7 @@
         </div>
         <footer>
           <button type="button" class="button ghost" id="officeSetupCancel">Cancelar</button>
-          <button type="submit" class="button gold">💾 Salvar Identidade do Escritório</button>
+          <button type="submit" class="button gold">Salvar Identidade do Escritório</button>
         </footer>
       </form>
     </section>
@@ -846,8 +963,8 @@
           <div class="tour-slide-body">
             O JurisFlow foi projetado para dar a você total independência: sem mensalidades abusivas, sem softwares fechados de terceiros e com criptografia local (AES-256-GCM + 2FA) onde seus dados permanecem sob seu controle.
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>⚖️ 100% White Label</strong><span>Personalize com o nome, logo e identidade do seu próprio escritório.</span></div>
-              <div class="tour-feature-card"><strong>🛡️ Criptografia & Segurança</strong><span>Autenticação TOTP 2FA e chaves isoladas no seu computador.</span></div>
+              <div class="tour-feature-card"><strong>100% White Label</strong><span>Personalize com o nome, logo e identidade do seu próprio escritório.</span></div>
+              <div class="tour-feature-card"><strong>Criptografia &amp; Segurança</strong><span>Autenticação TOTP 2FA e chaves isoladas no seu computador.</span></div>
             </div>
           </div>
         </article>
@@ -861,15 +978,15 @@
               </svg>
             </div>
             <div>
-              <h2>Painel Executivo & Meu Dia</h2>
+              <h2>Painel Executivo &amp; Meu Dia</h2>
               <p>Clareza instantânea sobre o que exige sua atenção a cada manhã.</p>
             </div>
           </div>
           <div class="tour-slide-body">
             Ao abrir seu JurisFlow, o painel central organiza automaticamente suas prioridades do dia, intimações recém-chegadas, prazos fatais nos próximos 7 dias e o status das suas fontes oficiais.
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>🎯 Foco Diário Inteligente</strong><span>Tarefas críticas ordenadas por urgência e prazo fatal.</span></div>
-              <div class="tour-feature-card"><strong>📊 Métricas em Tempo Real</strong><span>Contadores de intimações, tarefas em andamento e fontes saudáveis.</span></div>
+              <div class="tour-feature-card"><strong>Foco Diário Inteligente</strong><span>Tarefas críticas ordenadas por urgência e prazo fatal.</span></div>
+              <div class="tour-feature-card"><strong>Métricas em Tempo Real</strong><span>Contadores de intimações, tarefas em andamento e fontes saudáveis.</span></div>
             </div>
           </div>
         </article>
@@ -884,15 +1001,15 @@
               </svg>
             </div>
             <div>
-              <h2>Intimações & DJEN Oficial</h2>
+              <h2>Intimações &amp; DJEN Oficial</h2>
               <p>Conectado diretamente à API pública oficial do CNJ.</p>
             </div>
           </div>
           <div class="tour-slide-body">
             Basta clicar em <strong>"Sincronizar"</strong> para buscar suas publicações pelo número da OAB em tempo real. O sistema calcula os prazos do CPC (15 dias úteis, 5 dias, etc.), destaca urgências e permite transformar publicações em tarefas no Kanban com 1 clique.
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>🔥 Alertas Urgentes & Prazos</strong><span>Marque publicações críticas e ordene por menor prazo fatal.</span></div>
-              <div class="tour-feature-card"><strong>🔍 Trilha de Conferência</strong><span>Texto original integral do Diário com identificação de partes e processo.</span></div>
+              <div class="tour-feature-card"><strong>Alertas Urgentes &amp; Prazos</strong><span>Marque publicações críticas e ordene por menor prazo fatal.</span></div>
+              <div class="tour-feature-card"><strong>Trilha de Conferência</strong><span>Texto original integral do Diário com identificação de partes e processo.</span></div>
             </div>
           </div>
         </article>
@@ -906,15 +1023,15 @@
               </svg>
             </div>
             <div>
-              <h2>Kanban & Automação de Minutas</h2>
+              <h2>Kanban &amp; Automação de Minutas</h2>
               <p>Gestão visual de fluxos de trabalho e produção documental.</p>
             </div>
           </div>
           <div class="tour-slide-body">
             Acompanhe o andamento dos prazos por colunas (Triagem, Em Elaboração, Revisão e Concluídas), registre honorários e tempos de trabalho (timesheet) e gere Procurações e Contratos com preenchimento automático.
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>🪶 Gerador de Minutas</strong><span>Procurações Art. 105 CPC e Contratos de Honorários com seus dados.</span></div>
-              <div class="tour-feature-card"><strong>💰 Controle de Honorários</strong><span>Controle de percentuais de êxito, valores fixos e status de quitação.</span></div>
+              <div class="tour-feature-card"><strong>Gerador de Minutas</strong><span>Procurações Art. 105 CPC e Contratos de Honorários com seus dados.</span></div>
+              <div class="tour-feature-card"><strong>Controle de Honorários</strong><span>Controle de percentuais de êxito, valores fixos e status de quitação.</span></div>
             </div>
           </div>
         </article>
@@ -928,15 +1045,15 @@
               </svg>
             </div>
             <div>
-              <h2>Importador eproc (.XLS) & Excel</h2>
+              <h2>Importador eproc (.XLS) &amp; Excel</h2>
               <p>Traga todo o seu acervo processual em segundos.</p>
             </div>
           </div>
           <div class="tour-slide-body">
             Arraste seu relatório exportado diretamente do <strong>eproc (TJRS, TRF4, TJSC, TJSP)</strong> ou qualquer planilha Excel/CSV. O sistema reconhece colunas, números CNJ, clientes, réus, comarcas e valores da causa automaticamente com pré-visualização.
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>📥 Compatibilidade Total</strong><span>Lê relatórios .XLS do tribunal, arquivos .XLSX e .CSV.</span></div>
-              <div class="tour-feature-card"><strong>⚡ Deduplicação Automática</strong><span>Evita processos e contatos duplicados com consolidação segura.</span></div>
+              <div class="tour-feature-card"><strong>Compatibilidade Total</strong><span>Lê relatórios .XLS do tribunal, arquivos .XLSX e .CSV.</span></div>
+              <div class="tour-feature-card"><strong>Deduplicação Automática</strong><span>Evita processos e contatos duplicados com consolidação segura.</span></div>
             </div>
           </div>
         </article>
@@ -950,15 +1067,15 @@
               </svg>
             </div>
             <div>
-              <h2>Personalização & Certificado A1</h2>
+              <h2>Personalização &amp; Certificado A1</h2>
               <p>Deixe o JurisFlow com a cara do seu escritório.</p>
             </div>
           </div>
           <div class="tour-slide-body">
             Clique no card do escritório no canto inferior esquerdo para colocar a <strong>logo e o nome da sua banca</strong>. Configure também seu <strong>Certificado Digital A1</strong> e o PJeOffice local para consultas judiciais avançadas.
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>🏛️ Logo & Marca Própria</strong><span>Sua marca no painel, barra lateral e em todos os documentos.</span></div>
-              <div class="tour-feature-card"><strong>🔐 A1 Protegido no Agente</strong><span>Sua senha e certificado nunca saem do seu computador.</span></div>
+              <div class="tour-feature-card"><strong>Logo &amp; Marca Própria</strong><span>Sua marca no painel, barra lateral e em todos os documentos.</span></div>
+              <div class="tour-feature-card"><strong>A1 Protegido no Agente</strong><span>Sua senha e certificado nunca saem do seu computador.</span></div>
             </div>
           </div>
         </article>
@@ -982,9 +1099,72 @@
     </section>
   </div>
 
+  <!-- Modal de Configuração de Agenda Externa -->
+  <div class="modal-backdrop hidden" id="calendarConfigBackdrop">
+    <section class="modal calendar-config-modal" role="dialog" aria-modal="true" aria-labelledby="calendarConfigTitle">
+      <header>
+        <div>
+          <p class="eyebrow">Sincronização de Agenda</p>
+          <h2 id="calendarConfigTitle">Conectar Agenda Externa</h2>
+        </div>
+        <button class="icon-button" id="calendarConfigClose" aria-label="Fechar">×</button>
+      </header>
+      <form id="calendarConfigForm">
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;">
+          Conecte o JurisFlow com sua agenda externa favorita (Google Agenda, Microsoft Outlook, Apple Calendar ou qualquer servidor compatível com iCalendar / Webcal).
+        </p>
+        <div class="field full" style="margin-bottom:16px;">
+          <label for="calendarInputUrl">URL do Link da Agenda (iCal / Webcal .ics)</label>
+          <input id="calendarInputUrl" type="url" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics ou webcal://..." required>
+          <small class="field-note">
+            Como obter: No Google Agenda ou Outlook, acesse Configurações da Agenda &gt; Integrar agenda &gt; Copie o "Endereço secreto em formato iCal".
+          </small>
+        </div>
+        <div id="calendarConfigStatus" class="calendar-sync-status hidden"></div>
+        <footer>
+          <button type="button" class="button ghost" id="calendarConfigCancel">Cancelar</button>
+          <button type="submit" class="button gold" id="calendarConfigSubmit">Salvar e Sincronizar Agora</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <!-- Modal de Configuração da Chave Gemini -->
+  <div class="modal-backdrop hidden" id="geminiKeyBackdrop">
+    <section class="modal gemini-key-modal" role="dialog" aria-modal="true" aria-labelledby="geminiKeyTitle">
+      <header>
+        <div>
+          <p class="eyebrow">Inteligência Artificial</p>
+          <h2 id="geminiKeyTitle">Configurar Chave Google Gemini</h2>
+        </div>
+        <button class="icon-button" id="geminiKeyClose" aria-label="Fechar">×</button>
+      </header>
+      <form id="geminiKeyForm">
+        <div class="ai-guide-box">
+          <h4>Como obter sua chave gratuita da API Gemini (em 1 minuto):</h4>
+          <ol>
+            <li>Acesse o <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio (aistudio.google.com)</a>.</li>
+            <li>Faça login com sua conta Google e clique no botão <strong>"Create API key"</strong>.</li>
+            <li>Copie a chave gerada (começa com <code>AIzaSy...</code>) e cole no campo abaixo.</li>
+          </ol>
+        </div>
+        <div class="field full" style="margin-bottom:16px;">
+          <label for="geminiApiKeyInput">Chave da API Gemini (Google AI Studio)</label>
+          <input id="geminiApiKeyInput" type="password" placeholder="AIzaSy..." required autocomplete="off">
+          <small class="field-note">A chave é criptografada e armazenada de forma segura na sua instalação local.</small>
+        </div>
+        <div id="geminiKeyFeedback" class="gemini-key-feedback hidden"></div>
+        <footer>
+          <button type="button" class="button ghost" id="geminiKeyCancel">Cancelar</button>
+          <button type="submit" class="button gold" id="geminiKeySubmit">Validar e Salvar Chave</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
   <input class="hidden" type="file" id="jsonImportInput" accept="application/json,.json">
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
-  <script src="js/auth.js?v=4.1.0" defer></script>
-  <script src="js/portal.js?v=4.1.0" defer></script>
+  <script src="js/auth.js?v=4.2.0" defer></script>
+  <script src="js/portal.js?v=4.2.0" defer></script>
 </body>
 </html>

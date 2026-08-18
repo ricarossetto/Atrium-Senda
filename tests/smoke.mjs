@@ -6,9 +6,10 @@ import { startTestServer } from './helpers.mjs';
 
 const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ locale: 'pt-BR' });
+const page = await browser.newPage({ locale: 'pt-BR', viewport: { width: 1440, height: 900 } });
 const pageErrors = [];
-page.on('pageerror', error => pageErrors.push(error.message));
+page.on('pageerror', error => { console.error('PAGE ERROR:', error); pageErrors.push(error.message); });
+page.on('console', msg => console.log('PAGE LOG:', msg.text()));
 
 try {
   const response = await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
@@ -42,9 +43,9 @@ try {
   // Se o tour de primeiro acesso aparecer, pula ou conclui
   try {
     const tourSkip = page.locator('#tourSkipButton');
-    await tourSkip.waitFor({ timeout: 2000 });
+    await tourSkip.waitFor({ state: 'visible', timeout: 3000 });
     await tourSkip.click();
-    await page.locator('#guidedTourBackdrop').waitFor({ state: 'hidden', timeout: 2000 });
+    await page.locator('#guidedTourBackdrop').waitFor({ state: 'hidden', timeout: 3000 });
   } catch {}
 
   const brandBox = await page.locator('.brand').boundingBox();

@@ -88,6 +88,27 @@
 
   const deepClone = value => JSON.parse(JSON.stringify(value));
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+  function formatMarkdown(text) {
+    if (!text) return '';
+    let html = escapeHtml(text);
+    html = html.replace(/```([\s\S]*?)```/g, (match, p1) => `<pre><code>${p1.trim()}</code></pre>`);
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    html = html.replace(/^### (.*$)/gim, '<h4 style="color:var(--gold);margin:10px 0 4px 0;">$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3 style="color:var(--gold);margin:12px 0 6px 0;">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, '<h2 style="color:var(--gold);margin:14px 0 8px 0;">$1</h2>');
+    html = html.replace(/^\s*[-•]\s+(.*)$/gim, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    const lines = html.split('\n\n');
+    html = lines.map(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return '';
+      if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || trimmed.startsWith('<pre') || trimmed.startsWith('<li')) return trimmed;
+      return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`;
+    }).join('');
+    return html;
+  }
   const normalizeText = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const formatDate = value => {
     if (!value) return '—';
@@ -288,6 +309,15 @@ CPF: ${doc}`;
       this.state.configuration = { ...deepClone(sampleState.configuration), ...(this.state.configuration || {}) };
       Object.keys(sampleState.configuration).forEach(key => { if (!Array.isArray(this.state.configuration[key])) this.state.configuration[key] = []; });
       this.state.settings = { ...sampleState.settings, ...(this.state.settings || {}) };
+      if (Array.isArray(this.state.processes)) {
+        this.state.processes.forEach(p => {
+          if (p.feeType === 'exito' && (p.feePercentage === '30' || !p.feePercentage) && (!p.feeAmount || p.feeAmount === '')) {
+            p.feeType = '';
+            p.feePercentage = '';
+            p.feeStatus = '';
+          }
+        });
+      }
       if (!this.state.terms.length) this.state.terms.unshift(deepClone(sampleState.terms[0]));
       const authUser = window.KellerAuth?.currentUser;
       if (authUser?.displayName && this.state.terms[0] && (this.state.terms[0].name === 'Dr(a). Advogado(a) Titular' || !this.state.terms[0].name)) {
@@ -391,12 +421,16 @@ CPF: ${doc}`;
     agendaSelectedDate: null,
     agendaCalendarMonthOffset: 0,
     agendaTypeFilter: 'all',
+    aiChatHistory: [],
+    aiConfigured: false,
+    isAiTyping: false,
     async init() {
       await Store.load();
       this.bindNavigation();
       this.bindActions();
       this.renderAll();
       this.checkServerStatus();
+      this.checkAiStatus();
       document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long' }).format(new Date());
       if (Store.state.settings.dismissedBanner) document.getElementById('environmentBanner').classList.add('hidden');
       this.checkFirstAccessTour();
@@ -411,7 +445,14 @@ CPF: ${doc}`;
         if (event.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
           event.preventDefault(); document.getElementById('globalSearch').focus();
         }
-        if (event.key === 'Escape') { this.closeModal(); this.closeJudicialSetup(); this.closeOfficeSetup(); this.closeGuidedTour(); }
+        if (event.key === 'Escape') {
+          this.closeModal();
+          this.closeJudicialSetup();
+          this.closeOfficeSetup();
+          this.closeGuidedTour();
+          this.closeCalendarConfigModal();
+          this.closeGeminiKeyModal();
+        }
         if (event.key === 'Enter') {
           const interactive = event.target.closest('[data-view-link], [data-process-id], [data-contact-id], [data-agenda-id], [data-source-id], #primaryTermCard, .sidebar-office');
           if (interactive && !['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(event.target.tagName)) { event.preventDefault(); interactive.click(); }
@@ -420,18 +461,18 @@ CPF: ${doc}`;
     },
     bindActions() {
       const byId = id => document.getElementById(id);
-      byId('dismissBanner').addEventListener('click', () => { byId('environmentBanner').classList.add('hidden'); Store.state.settings.dismissedBanner = true; Store.save(); });
-      byId('syncButton').addEventListener('click', () => this.syncAll());
-      byId('agendaSyncButton').addEventListener('click', () => this.syncAll());
+      byId('dismissBanner')?.addEventListener('click', () => { byId('environmentBanner')?.classList.add('hidden'); Store.state.settings.dismissedBanner = true; Store.save(); });
+      byId('syncButton')?.addEventListener('click', () => this.syncAll());
+      byId('agendaSyncButton')?.addEventListener('click', () => this.syncAll());
       byId('tourButton')?.addEventListener('click', () => this.openGuidedTour());
-      byId('newTaskButton').addEventListener('click', () => this.openTaskModal());
-      byId('newContactButton').addEventListener('click', () => this.openContactModal());
-      byId('newAgendaButton').addEventListener('click', () => this.openAgendaModal());
-      byId('newConfigurationButton').addEventListener('click', () => this.openConfigurationModal());
-      byId('newIntimationButton').addEventListener('click', () => this.openIntimationModal());
-      byId('newProcessButton').addEventListener('click', () => this.openProcessModal());
-      byId('newTermButton').addEventListener('click', () => this.openTermModal());
-      byId('primaryTermCard').addEventListener('click', () => {
+      byId('newTaskButton')?.addEventListener('click', () => this.openTaskModal());
+      byId('newContactButton')?.addEventListener('click', () => this.openContactModal());
+      byId('newAgendaButton')?.addEventListener('click', () => this.openAgendaModal());
+      byId('newConfigurationButton')?.addEventListener('click', () => this.openConfigurationModal());
+      byId('newIntimationButton')?.addEventListener('click', () => this.openIntimationModal());
+      byId('newProcessButton')?.addEventListener('click', () => this.openProcessModal());
+      byId('newTermButton')?.addEventListener('click', () => this.openTermModal());
+      byId('primaryTermCard')?.addEventListener('click', () => {
         const term = Store.state.terms[0] || { id: uid('term'), name: 'Dr(a). Advogado(a) Titular', registration: 'OAB/UF 000000', type: 'oab', active: true };
         this.openTermModal(term);
       });
@@ -456,11 +497,11 @@ CPF: ${doc}`;
         if (dot && dot.dataset.slideTarget !== undefined) this.showTourSlide(Number(dot.dataset.slideTarget));
       });
 
-      byId('modalClose').addEventListener('click', () => this.closeModal());
-      byId('modalCancel').addEventListener('click', () => this.closeModal());
-      byId('modalBackdrop').addEventListener('click', event => { if (event.target === byId('modalBackdrop')) this.closeModal(); });
-      byId('modalForm').addEventListener('submit', event => this.handleModalSubmit(event));
-      byId('inboxFilters').addEventListener('click', event => {
+      byId('modalClose')?.addEventListener('click', () => this.closeModal());
+      byId('modalCancel')?.addEventListener('click', () => this.closeModal());
+      byId('modalBackdrop')?.addEventListener('click', event => { if (event.target === byId('modalBackdrop')) this.closeModal(); });
+      byId('modalForm')?.addEventListener('submit', event => this.handleModalSubmit(event));
+      byId('inboxFilters')?.addEventListener('click', event => {
         const button = event.target.closest('button[data-filter]'); if (!button) return;
         this.inboxFilter = button.dataset.filter;
         byId('inboxFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
@@ -470,20 +511,44 @@ CPF: ${doc}`;
         this.inboxSort = event.target.value;
         this.renderInbox();
       });
-      byId('processSearch').addEventListener('input', () => this.renderProcesses(byId('processSearch').value));
-      byId('contactSearch').addEventListener('input', () => this.renderContacts(byId('contactSearch').value));
-      byId('configurationSearch').addEventListener('input', () => this.renderConfiguration(byId('configurationSearch').value));
-      byId('configurationTabs').addEventListener('click', event => {
+      byId('processSearch')?.addEventListener('input', () => this.renderProcesses(byId('processSearch').value));
+      byId('contactSearch')?.addEventListener('input', () => this.renderContacts(byId('contactSearch').value));
+      byId('configurationSearch')?.addEventListener('input', () => this.renderConfiguration(byId('configurationSearch').value));
+      byId('configurationTabs')?.addEventListener('click', event => {
         const button = event.target.closest('button[data-config-section]'); if (!button) return;
         this.configurationSection = button.dataset.configSection;
-        byId('configurationSearch').value = '';
+        if (byId('configurationSearch')) byId('configurationSearch').value = '';
         this.renderConfiguration();
       });
-      byId('globalSearch').addEventListener('input', event => this.globalSearch(event.target.value));
-      byId('importIntimationButton').addEventListener('click', () => byId('jsonImportInput').click());
-      byId('jsonImportInput').addEventListener('change', event => this.importJson(event.target.files[0]));
-      byId('exportAuditButton').addEventListener('click', () => this.exportJson(Store.state.audit, `jurisflow-auditoria-${isoDate()}.json`));
-      byId('configureCalendarButton').addEventListener('click', () => this.openGuideModal('calendar'));
+      byId('globalSearch')?.addEventListener('input', event => this.globalSearch(event.target.value));
+      byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
+      byId('jsonImportInput')?.addEventListener('change', event => this.importJson(event.target.files[0]));
+      byId('exportAuditButton')?.addEventListener('click', () => this.exportJson(Store.state.audit, `jurisflow-auditoria-${isoDate()}.json`));
+
+      // Agenda Externa
+      byId('configureCalendarButton')?.addEventListener('click', () => this.openCalendarConfigModal());
+      byId('calendarConfigClose')?.addEventListener('click', () => this.closeCalendarConfigModal());
+      byId('calendarConfigCancel')?.addEventListener('click', () => this.closeCalendarConfigModal());
+      byId('calendarConfigBackdrop')?.addEventListener('click', event => { if (event.target === byId('calendarConfigBackdrop')) this.closeCalendarConfigModal(); });
+      byId('calendarConfigForm')?.addEventListener('submit', event => this.handleCalendarConfigSubmit(event));
+
+      // Assistente IA (Google Gemini)
+      byId('btnOpenGeminiKeyModal')?.addEventListener('click', () => this.openGeminiKeyModal());
+      byId('geminiKeyClose')?.addEventListener('click', () => this.closeGeminiKeyModal());
+      byId('geminiKeyCancel')?.addEventListener('click', () => this.closeGeminiKeyModal());
+      byId('geminiKeyBackdrop')?.addEventListener('click', event => { if (event.target === byId('geminiKeyBackdrop')) this.closeGeminiKeyModal(); });
+      byId('geminiKeyForm')?.addEventListener('submit', event => this.handleGeminiKeySubmit(event));
+      byId('btnSaveQuickAiKey')?.addEventListener('click', () => this.handleQuickAiKeySubmit());
+      byId('btnClearAiConversation')?.addEventListener('click', () => this.clearAiConversation());
+      document.querySelectorAll('.quick-prompt-btn').forEach(btn => btn.addEventListener('click', () => this.sendQuickPrompt(btn.dataset.prompt)));
+      byId('aiChatForm')?.addEventListener('submit', event => this.handleAiChatSubmit(event));
+      byId('aiChatInput')?.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          byId('aiChatForm').requestSubmit();
+        }
+      });
+
       byId('certificateGuideButton').addEventListener('click', () => this.openJudicialSetup());
       byId('judicialSetupClose').addEventListener('click', () => this.closeJudicialSetup());
       byId('judicialSetupBackdrop').addEventListener('click', event => { if (event.target === byId('judicialSetupBackdrop')) this.closeJudicialSetup(); });
@@ -817,9 +882,9 @@ CPF: ${doc}`;
         const fatalDate = item.fatalDeadline || addDays(item.publishedAt || isoDate(), act.days);
         const dLeft = daysUntil(fatalDate);
         const chipClass = dLeft <= 3 ? 'danger' : dLeft <= 7 ? 'warning' : 'normal';
-        const urgentBadge = (item.urgent || item.priority === 'urgente') ? '<span class="badge-urgent">🔥 URGENTE</span>' : '';
-        const importantBadge = item.important ? '<span class="badge-important">⭐ IMPORTANTE</span>' : '';
-        const deadlineChip = act.days > 0 ? `<span class="deadline-chip ${chipClass}">⏳ ${act.days}d · fatal: ${formatDate(fatalDate)}</span>` : '';
+        const urgentBadge = (item.urgent || item.priority === 'urgente') ? '<span class="badge-urgent">URGENTE</span>' : '';
+        const importantBadge = item.important ? '<span class="badge-important">IMPORTANTE</span>' : '';
+        const deadlineChip = act.days > 0 ? `<span class="deadline-chip ${chipClass}">${act.days}d · fatal: ${formatDate(fatalDate)}</span>` : '';
 
         return `
         <button class="inbox-row ${this.selectedIntimation === item.id ? 'active' : ''} ${(item.urgent || item.priority === 'urgente') ? 'is-urgent' : ''} ${item.important ? 'is-important' : ''}" data-intimation-id="${escapeHtml(item.id)}">
@@ -864,8 +929,8 @@ CPF: ${doc}`;
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
             ${this.statusChip(item.status)}
             <span class="act-chip ${act.css}">${escapeHtml(act.label)}</span>
-            ${isUrgent ? '<span class="badge-urgent">🔥 URGENTE</span>' : ''}
-            ${isImportant ? '<span class="badge-important">⭐ IMPORTANTE</span>' : ''}
+            ${isUrgent ? '<span class="badge-urgent">URGENTE</span>' : ''}
+            ${isImportant ? '<span class="badge-important">IMPORTANTE</span>' : ''}
           </div>
           <h2>${escapeHtml(item.title)}</h2>
           <p>${escapeHtml(item.court || 'Origem judicial não informada')}</p>
@@ -879,16 +944,24 @@ CPF: ${doc}`;
         <p class="eyebrow">Texto original preservado</p>
         <div class="original-text">${escapeHtml(item.text || 'Sem texto original.')}</div>
         <div class="detail-actions" style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button class="button ghost btn-toggle-flag ${isUrgent ? 'active-urgent' : ''}" data-detail-action="toggle-urgent">${isUrgent ? '🔥 Remover Urgência' : '🔥 Marcar Urgente'}</button>
-          <button class="button ghost btn-toggle-flag ${isImportant ? 'active-important' : ''}" data-detail-action="toggle-important">${isImportant ? '⭐ Remover Destaque' : '⭐ Marcar Importante'}</button>
+          <button class="button gold" data-detail-action="ai-analyze">✦ Analisar com IA</button>
+          <button class="button ghost btn-toggle-flag ${isUrgent ? 'active-urgent' : ''}" data-detail-action="toggle-urgent">${isUrgent ? 'Remover Urgência' : 'Marcar Urgente'}</button>
+          <button class="button ghost btn-toggle-flag ${isImportant ? 'active-important' : ''}" data-detail-action="toggle-important">${isImportant ? 'Remover Destaque' : 'Marcar Importante'}</button>
           <button class="button ghost" data-detail-action="edit">Editar dados</button>
           <button class="button ghost" data-detail-action="triagem">Marcar em triagem</button>
           <button class="button ghost" data-detail-action="prazo">Confirmar triagem</button>
-          <button class="button gold" data-detail-action="task">Criar tarefa (${act.days}d)</button>
+          <button class="button ghost" data-detail-action="task">Criar tarefa (${act.days}d)</button>
         </div>`;
       container.querySelectorAll('[data-detail-action]').forEach(button => button.addEventListener('click', () => this.handleIntimationAction(item, button.dataset.detailAction)));
     },
     handleIntimationAction(item, action) {
+      if (action === 'ai-analyze') {
+        this.switchView('assistant');
+        setTimeout(() => {
+          this.sendAiMessage(`Analise a seguinte intimação judicial recebida no sistema e responda com precisão:\n\n1. O que o magistrado/tribunal determinou?\n2. Qual é o prazo processual do CPC/CPP/CLT aplicável e como é feita a contagem em dias úteis?\n3. Qual é a medida judicial ou providência que o escritório deve adotar?\n\nProcesso: ${item.process || 'Não identificado'}\nTribunal: ${item.court || 'Não informado'}\nData da Publicação: ${formatDate(item.publishedAt)}\nTexto da Intimação:\n${item.text || ''}`);
+        }, 150);
+        return;
+      }
       if (action === 'toggle-urgent') {
         item.urgent = !item.urgent;
         if (item.urgent) item.priority = 'urgente';
@@ -901,11 +974,11 @@ CPF: ${doc}`;
       }
       if (action === 'toggle-important') {
         item.important = !item.important;
-        Store.audit(item.important ? 'Marcada como importante' : 'Destaque de importância removido', item.title);
+        Store.audit(item.important ? 'Marcada como importante' : 'Destaque removido', item.title);
         Store.save();
         this.renderAll();
         this.renderIntimationDetail();
-        this.toast(item.important ? 'Intimação destacada como IMPORTANTE!' : 'Destaque de importância removido.', 'success');
+        this.toast(item.important ? 'Intimação marcada como IMPORTANTE!' : 'Destaque removido.', 'success');
         return;
       }
       if (action === 'edit') { this.openIntimationModal(item); return; }
@@ -964,20 +1037,27 @@ CPF: ${doc}`;
     },
     renderProcesses(query = '') {
       const needle = normalizeText(query);
-      let records = Store.state.processes.filter(item => !needle || normalizeText(`${item.number} ${item.client} ${item.court} ${item.county || ''} ${item.feeType || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
+      let records = Store.state.processes.filter(item => !needle || normalizeText(`${item.number} ${item.client} ${item.court} ${item.county || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
       records = sortRecords(records, this.processSort);
       updateTableSortHeaders('processTable', this.processSort);
       document.getElementById('processTableBody').innerHTML = records.length ? records.map(item => {
         const regDate = item.registeredAt || item.createdAt;
-        const feeLabel = item.feePercentage ? `${item.feePercentage}% êxito` : item.feeAmount ? `R$ ${Number(item.feeAmount).toLocaleString('pt-BR')}` : item.feeType ? item.feeType.toUpperCase() : '';
-        const feeStatusClass = item.feeStatus === 'quitado' || item.feeStatus === 'em_dia' ? 'fee-status-paid' : item.feeStatus === 'pendente' ? 'fee-status-pending' : 'fee-status-waiting';
-        const feeBadge = item.feeType ? `<span class="fee-chip ${escapeHtml(item.feeType)}">${escapeHtml(feeLabel)}<span class="fee-status-badge ${feeStatusClass}">${escapeHtml(item.feeStatus || 'regular')}</span></span>` : '';
+        let feeBadge = '';
+        if (item.feeAmount && Number(item.feeAmount) > 0) {
+          feeBadge = `<span class="fee-chip fixo">Valor: R$ ${Number(item.feeAmount).toLocaleString('pt-BR')}</span>`;
+        } else if (item.feePercentage && Number(item.feePercentage) > 0) {
+          const feeStatusClass = item.feeStatus === 'quitado' || item.feeStatus === 'em_dia' ? 'fee-status-paid' : item.feeStatus === 'pendente' ? 'fee-status-pending' : 'fee-status-waiting';
+          feeBadge = `<span class="fee-chip ${escapeHtml(item.feeType || 'exito')}">${escapeHtml(item.feePercentage)}% êxito<span class="fee-status-badge ${feeStatusClass}">${escapeHtml(item.feeStatus || 'regular')}</span></span>`;
+        } else if (item.feeType && item.feeType !== 'exito' && item.feeType !== 'none') {
+          const feeStatusClass = item.feeStatus === 'quitado' || item.feeStatus === 'em_dia' ? 'fee-status-paid' : item.feeStatus === 'pendente' ? 'fee-status-pending' : 'fee-status-waiting';
+          feeBadge = `<span class="fee-chip ${escapeHtml(item.feeType)}">${escapeHtml(item.feeType.toUpperCase())}<span class="fee-status-badge ${feeStatusClass}">${escapeHtml(item.feeStatus || 'regular')}</span></span>`;
+        }
         return `
         <tr data-process-id="${escapeHtml(item.id)}" tabindex="0">
           <td><strong>${escapeHtml(item.number || item.protocol || 'Sem número')}</strong><small>${item.secrecy ? 'Segredo de justiça' : 'Consulta pública'}${item.caseFolder ? ` · ${escapeHtml(item.caseFolder)}` : ''}</small></td>
           <td><strong>${escapeHtml(item.client)}</strong>${feeBadge ? `<br>${feeBadge}` : ''}</td>
           <td><strong>${escapeHtml(item.court || item.county || '—')}</strong><small>${escapeHtml([item.actionType, item.stage].filter(Boolean).join(' · '))}</small></td>
-          <td><strong>${formatDate(regDate)}</strong><small>${escapeHtml(item.source || 'ADVBOX')}</small></td>
+          <td><strong>${formatDate(regDate)}</strong><small>${escapeHtml(item.source || 'eproc / Cadastro')}</small></td>
           <td><strong>${escapeHtml(item.lastMovement || 'Sem movimentação')}</strong><small>${formatDate(item.lastMovementAt)}</small></td>
           <td>${item.monitoring === 'active' ? '<span class="status-chip connected">Monitorando</span>' : '<span class="status-chip warning">Atenção</span>'}</td>
         </tr>`;
@@ -1309,7 +1389,9 @@ CPF: ${doc}`;
       }));
     },
     renderAudit() {
-      document.getElementById('auditList').innerHTML = Store.state.audit.map(item => `<div class="audit-item"><time>${formatDateTime(item.at)}</time><div><strong>${escapeHtml(item.action)}</strong><small>${escapeHtml(item.detail)}</small></div><small>${escapeHtml(item.actor)}</small></div>`).join('');
+      const list = document.getElementById('auditList');
+      if (!list) return;
+      list.innerHTML = Store.state.audit.map(item => `<div class="audit-item"><time>${formatDateTime(item.at)}</time><div><strong>${escapeHtml(item.action)}</strong><small>${escapeHtml(item.detail)}</small></div><small>${escapeHtml(item.actor)}</small></div>`).join('');
     },
     initials(value) { return String(value).trim().split(/\s+/).slice(0,2).map(part => part[0]).join('').toUpperCase(); },
     globalSearch(query) {
@@ -1628,12 +1710,308 @@ CPF: ${doc}`;
       for (let offset = 0; offset < bytes.length; offset += 32_768) binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768));
       return btoa(binary);
     },
+    openCalendarConfigModal() {
+      const url = Store.state.settings.calendarUrl || Store.state.settings.externalCalendarUrl || '';
+      const input = document.getElementById('calendarInputUrl');
+      if (input) input.value = url;
+      const statusBox = document.getElementById('calendarConfigStatus');
+      if (statusBox) { statusBox.className = 'calendar-sync-status hidden'; statusBox.textContent = ''; }
+      document.getElementById('calendarConfigBackdrop').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => input?.focus(), 50);
+    },
+    closeCalendarConfigModal() {
+      const backdrop = document.getElementById('calendarConfigBackdrop');
+      if (!backdrop || backdrop.classList.contains('hidden')) return;
+      backdrop.classList.add('hidden');
+      if (document.getElementById('modalBackdrop').classList.contains('hidden')) document.body.style.overflow = '';
+    },
+    async handleCalendarConfigSubmit(event) {
+      event.preventDefault();
+      const calendarUrl = document.getElementById('calendarInputUrl').value.trim();
+      const statusBox = document.getElementById('calendarConfigStatus');
+      const submitBtn = document.getElementById('calendarConfigSubmit');
+      if (!calendarUrl) return this.toast('Informe a URL da agenda em formato Webcal ou iCal.', 'error');
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sincronizando…';
+      if (statusBox) {
+        statusBox.className = 'calendar-sync-status warning';
+        statusBox.textContent = 'Conectando e importando eventos da agenda externa…';
+        statusBox.classList.remove('hidden');
+      }
+
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/calendar/configure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ calendarUrl })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.message || 'Falha ao salvar configuração da agenda.');
+
+        Store.state.settings.calendarUrl = calendarUrl;
+        Store.state.settings.externalCalendarUrl = calendarUrl;
+        Store.state.settings.calendarConfigured = true;
+        Store.audit('Agenda externa configurada', `${data.imported || 0} compromissos sincronizados.`);
+        Store.save();
+
+        if (statusBox) {
+          statusBox.className = data.error ? 'calendar-sync-status error' : 'calendar-sync-status success';
+          statusBox.textContent = data.message || 'Agenda sincronizada com sucesso!';
+        }
+        this.toast(data.message || 'Agenda configurada com sucesso!', data.error ? 'error' : 'success');
+
+        await this.syncAll();
+        setTimeout(() => this.closeCalendarConfigModal(), 1200);
+      } catch (error) {
+        if (statusBox) {
+          statusBox.className = 'calendar-sync-status error';
+          statusBox.textContent = error.message;
+        }
+        this.toast(error.message, 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Salvar e Sincronizar Agora';
+      }
+    },
+    async checkAiStatus() {
+      const chip = document.getElementById('aiKeyStatusChip');
+      const banner = document.getElementById('aiOnboardingBanner');
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/ai/status', { headers: { Accept: 'application/json' } });
+        const data = await response.json().catch(() => ({}));
+        this.aiConfigured = Boolean(data.configured || Store.state.settings.geminiApiKey);
+        if (chip) {
+          chip.textContent = this.aiConfigured ? 'Chave Ativa' : 'Chave não configurada';
+          chip.className = this.aiConfigured ? 'status-chip connected' : 'status-chip warning';
+        }
+        if (banner) {
+          banner.style.display = this.aiConfigured ? 'none' : 'block';
+        }
+      } catch {
+        this.aiConfigured = Boolean(Store.state.settings.geminiApiKey);
+        if (chip) {
+          chip.textContent = this.aiConfigured ? 'Chave Ativa' : 'Chave não configurada';
+          chip.className = this.aiConfigured ? 'status-chip connected' : 'status-chip warning';
+        }
+      }
+    },
+    openGeminiKeyModal() {
+      const input = document.getElementById('geminiApiKeyInput');
+      if (input) input.value = Store.state.settings.geminiApiKey || '';
+      const feedback = document.getElementById('geminiKeyFeedback');
+      if (feedback) { feedback.className = 'gemini-key-feedback hidden'; feedback.textContent = ''; }
+      document.getElementById('geminiKeyBackdrop').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => input?.focus(), 50);
+    },
+    closeGeminiKeyModal() {
+      const backdrop = document.getElementById('geminiKeyBackdrop');
+      if (!backdrop || backdrop.classList.contains('hidden')) return;
+      backdrop.classList.add('hidden');
+      if (document.getElementById('modalBackdrop').classList.contains('hidden')) document.body.style.overflow = '';
+    },
+    async saveGeminiKey(apiKey) {
+      apiKey = String(apiKey || '').trim();
+      if (!apiKey || apiKey.length < 20) {
+        throw new Error('Chave inválida. Copie a chave completa gerada no Google AI Studio.');
+      }
+      const response = await window.KellerAuth.secureFetch('/api/ai/configure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ apiKey })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || 'Falha ao validar chave com o Google Gemini.');
+
+      Store.state.settings.geminiApiKey = apiKey;
+      Store.audit('Chave Gemini configurada', `Assistente IA ativado com modelo ${data.model || 'gemini-2.5-flash'}.`);
+      Store.save();
+      await this.checkAiStatus();
+      return data;
+    },
+    async handleGeminiKeySubmit(event) {
+      event.preventDefault();
+      const key = document.getElementById('geminiApiKeyInput').value.trim();
+      const feedback = document.getElementById('geminiKeyFeedback');
+      const submitBtn = document.getElementById('geminiKeySubmit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Validando chave com Google…';
+      try {
+        const result = await this.saveGeminiKey(key);
+        if (feedback) {
+          feedback.className = 'gemini-key-feedback success';
+          feedback.textContent = result.message || 'Chave validada com sucesso!';
+          feedback.classList.remove('hidden');
+        }
+        this.toast('Assistente IA ativado com sucesso!', 'success');
+        setTimeout(() => this.closeGeminiKeyModal(), 1000);
+      } catch (error) {
+        if (feedback) {
+          feedback.className = 'gemini-key-feedback error';
+          feedback.textContent = error.message;
+          feedback.classList.remove('hidden');
+        }
+        this.toast(error.message, 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Validar e Salvar Chave';
+      }
+    },
+    async handleQuickAiKeySubmit() {
+      const input = document.getElementById('aiQuickKeyInput');
+      const btn = document.getElementById('btnSaveQuickAiKey');
+      const key = input.value.trim();
+      if (!key) return this.toast('Cole sua Gemini API Key antes de continuar.', 'error');
+      btn.disabled = true;
+      btn.textContent = 'Validando…';
+      try {
+        await this.saveGeminiKey(key);
+        input.value = '';
+        this.toast('Assistente Google Gemini ativado!', 'success');
+      } catch (error) {
+        this.toast(error.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Ativar Assistente Gratuito';
+      }
+    },
+    clearAiConversation() {
+      this.aiChatHistory = [];
+      const container = document.getElementById('aiChatMessages');
+      if (container) {
+        container.innerHTML = `
+          <div class="ai-message assistant-message">
+            <div class="message-avatar">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+              </svg>
+            </div>
+            <div class="message-body">
+              <div class="message-text">
+                <p>Conversa reiniciada. Em que posso auxiliá-lo(a) agora com suas intimações, prazos ou minutas?</p>
+              </div>
+              <div class="message-meta">Assistente JurisFlow</div>
+            </div>
+          </div>`;
+      }
+      this.toast('Conversa reiniciada.', 'success');
+    },
+    sendQuickPrompt(promptText) {
+      const input = document.getElementById('aiChatInput');
+      if (input) input.value = promptText;
+      this.sendAiMessage(promptText);
+    },
+    handleAiChatSubmit(event) {
+      event.preventDefault();
+      const input = document.getElementById('aiChatInput');
+      const message = input.value.trim();
+      if (!message) return;
+      input.value = '';
+      this.sendAiMessage(message);
+    },
+    async sendAiMessage(messageText) {
+      if (!messageText.trim()) return;
+      if (this.isAiTyping) return;
+
+      const container = document.getElementById('aiChatMessages');
+      if (!container) return;
+
+      if (!this.aiConfigured && !Store.state.settings.geminiApiKey) {
+        this.openGeminiKeyModal();
+        this.toast('Por favor, configure sua chave gratuita do Gemini para usar o assistente.', 'warning');
+        return;
+      }
+
+      const userDiv = document.createElement('div');
+      userDiv.className = 'ai-message user-message';
+      userDiv.innerHTML = `
+        <div class="message-avatar">EU</div>
+        <div class="message-body">
+          <div class="message-text">${escapeHtml(messageText).replace(/\n/g, '<br>')}</div>
+          <div class="message-meta">Você · ${new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date())}</div>
+        </div>`;
+      container.appendChild(userDiv);
+
+      this.isAiTyping = true;
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'ai-message assistant-message ai-typing-row';
+      typingDiv.innerHTML = `
+        <div class="message-avatar">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+          </svg>
+        </div>
+        <div class="message-body">
+          <div class="ai-typing-indicator">
+            <span>Assistente formulando resposta…</span>
+            <div class="ai-typing-dots"><span></span><span></span><span></span></div>
+          </div>
+        </div>`;
+      container.appendChild(typingDiv);
+      container.scrollTop = container.scrollHeight;
+
+      let context = {};
+      if (this.selectedIntimation) {
+        const item = Store.state.intimations.find(r => r.id === this.selectedIntimation);
+        if (item) context.intimation = item;
+      }
+
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            message: messageText,
+            context,
+            history: this.aiChatHistory.slice(-12)
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.message || 'Falha ao consultar a API do Google Gemini.');
+
+        typingDiv.remove();
+
+        const replyHtml = formatMarkdown(data.reply);
+        const assistantDiv = document.createElement('div');
+        assistantDiv.className = 'ai-message assistant-message';
+        assistantDiv.innerHTML = `
+          <div class="message-avatar">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
+            </svg>
+          </div>
+          <div class="message-body">
+            <div class="message-text">${replyHtml}</div>
+            <div class="message-meta">${data.model || 'Google Gemini Flash'} · ${new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date())}</div>
+          </div>`;
+        container.appendChild(assistantDiv);
+
+        this.aiChatHistory.push({ role: 'user', text: messageText });
+        this.aiChatHistory.push({ role: 'assistant', text: data.reply });
+      } catch (error) {
+        typingDiv.remove();
+        const errDiv = document.createElement('div');
+        errDiv.className = 'ai-message assistant-message';
+        errDiv.innerHTML = `
+          <div class="message-avatar" style="background:rgba(255,77,79,0.2);color:#ff4d4f;border-color:rgba(255,77,79,0.4);">!</div>
+          <div class="message-body">
+            <div class="message-text" style="background:#201111;border-color:#4a1c1c;color:#ff8585;">
+              <p><strong>Erro na consulta ao Assistente IA:</strong> ${escapeHtml(error.message)}</p>
+              <p style="font-size:12px;margin-top:6px;color:#c59999;">Verifique se a sua chave do Google Gemini foi inserida corretamente ou acesse <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--gold);text-decoration:underline;">Google AI Studio</a> para gerar uma nova chave gratuita.</p>
+            </div>
+          </div>`;
+        container.appendChild(errDiv);
+      } finally {
+        this.isAiTyping = false;
+        container.scrollTop = container.scrollHeight;
+      }
+    },
     openGuideModal(type) {
-      const isCalendar = type === 'calendar';
-      this.openModal('guide', isCalendar ? 'Ativar agenda ADVBOX' : 'Ativar certificado A1', 'Configuração protegida', [
-        { name: 'instructions', label: isCalendar ? 'Como configurar' : 'Arquitetura do certificado', type: 'textarea', full: true, value: isCalendar
-          ? '1. Regenere a URL Webcal que foi exposta no chat.\n2. Copie .env.example para .env.\n3. Insira a URL em ADVBOX_WEBCAL_URL no seu próprio computador.\n4. Reinicie o servidor e clique em Sincronizar.\n\nA URL nunca deve ser salva no GitHub.'
-          : '1. Instale o certificado A1 somente no agente local.\n2. Defina A1_PFX_PATH e A1_PFX_PASSPHRASE fora do código.\n3. Cadastre a origem exata de cada portal em collector/portals.json.\n4. Execute primeiro em modo visível para concluir login, QR code ou 2FA.\n5. Agende a execução diária somente após validar cada fonte.\n\nO sistema nunca deve calcular ou confirmar prazo fatal sem revisão humana.' }
+      this.openModal('guide', 'Ativar certificado A1', 'Configuração protegida', [
+        { name: 'instructions', label: 'Arquitetura do certificado', type: 'textarea', full: true, value: '1. Instale o certificado A1 somente no agente local.\n2. Defina A1_PFX_PATH e A1_PFX_PASSPHRASE fora do código.\n3. Cadastre a origem exata de cada portal em collector/portals.json.\n4. Execute primeiro em modo visível para concluir login, QR code ou 2FA.\n5. Agende a execução diária somente após validar cada fonte.\n\nO sistema nunca deve calcular ou confirmar prazo fatal sem revisão humana.' }
       ], {});
       document.querySelector('#modalForm footer .button.gold').textContent = 'Entendi';
     },
@@ -2001,7 +2379,7 @@ CPF: ${doc}`;
   const boot = () => {
     if (initialized) return;
     initialized = true;
-    App.init().catch(() => window.KellerAuth.logout());
+    App.init().catch(err => { console.error('App.init failed:', err); window.KellerAuth.logout(); });
   };
   window.JurisFlow = { App, Store };
   window.KellerCentral = { App, Store };

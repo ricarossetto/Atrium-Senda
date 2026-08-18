@@ -523,10 +523,10 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
         caseFolder: unitCode,
         actionType: [classe, subject].filter(Boolean).join(' · ') || 'Processo Judicial',
         stage: 'Em andamento',
-        feeType: feeType ? feeType.toLowerCase() : feePct ? 'exito' : 'exito',
-        feePercentage: feePct ? feePct.replace(/\D/g, '') : '30',
+        feeType: feeType ? feeType.toLowerCase() : feePct ? 'exito' : '',
+        feePercentage: feePct ? feePct.replace(/\D/g, '') : '',
         feeAmount: causeValue ? String(causeValue) : '',
-        feeStatus: 'pendente',
+        feeStatus: (feeType || feePct) ? 'pendente' : '',
         registeredAt: distribDate || new Date().toISOString().slice(0, 10),
         lastMovement: lastEvent || 'Importado do eproc',
         lastMovementAt: lastEventDate || new Date().toISOString().slice(0, 10),
@@ -576,6 +576,51 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
     processes,
     tasks
   };
+}
+
+async function callGeminiApi(apiKey, systemInstruction, contents) {
+  const models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const payload = {
+        contents,
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 4096
+        }
+      };
+      if (systemInstruction) {
+        payload.system_instruction = {
+          parts: [{ text: systemInstruction }]
+        };
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error?.message || `HTTP ${response.status}: ${JSON.stringify(data)}`);
+      }
+
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('A API do Gemini retornou uma resposta sem conteúdo.');
+      return { text, model };
+    } catch (err) {
+      lastError = err;
+      if (String(err.message).includes('not found') || String(err.message).includes('404')) {
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError || new Error('Não foi possível conectar aos modelos do Google Gemini.');
 }
 
 function mergeBy(left = [], right = [], key = 'externalId') {
@@ -642,7 +687,12 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/status') {
       assertAuthenticated(req); const runtime = await readRuntime();
-      return json(res, 200, { mode: 'local-protected', calendarConfigured: Boolean(process.env.ADVBOX_WEBCAL_URL), collectorConfigured: Boolean(runtime.updatedAt), lastCollectorRun: runtime.updatedAt, authentication: 'password+totp' });
+      let hasCalendar = Boolean(process.env.EXTERNAL_CALENDAR_URL || process.env.ADVBOX_WEBCAL_URL);
+      try {
+        const env = await readAppStateEnvelope();
+        if (env?.state?.settings?.calendarUrl) hasCalendar = true;
+      } catch {}
+      return json(res, 200, { mode: 'local-protected', calendarConfigured: hasCalendar, collectorConfigured: Boolean(runtime.updatedAt), lastCollectorRun: runtime.updatedAt, authentication: 'password+totp' });
     }
     if (req.method === 'GET' && url.pathname === '/api/events') { assertAuthenticated(req); return json(res, 200, await readRuntime()); }
     if (req.method === 'GET' && url.pathname === '/api/state') { assertAuthenticated(req); return json(res, 200, await readAppStateEnvelope()); }
@@ -650,6 +700,154 @@ const server = http.createServer(async (req, res) => {
       assertAuthenticated(req, true); const body = await readJson(req, 3_000_000); const saved = await saveAppState(body.state, body.revision ?? null);
       return json(res, 200, { ok: true, ...saved });
     }
+
+    // Assistente IA (Google Gemini)
+    if (req.method === 'GET' && url.pathname === '/api/ai/status') {
+      assertAuthenticated(req);
+      let configured = Boolean(process.env.GEMINI_API_KEY);
+      try {
+        const env = await readAppStateEnvelope();
+        if (env?.state?.settings?.geminiApiKey) configured = true;
+      } catch {}
+      return json(res, 200, { configured, model: 'gemini-2.5-flash' });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/ai/configure') {
+      assertAuthenticated(req, true);
+      const body = await readJson(req);
+      const apiKey = String(body.apiKey || '').trim();
+      if (!apiKey || apiKey.length < 20) {
+        throw Object.assign(new Error('Chave de API do Gemini inválida ou muito curta.'), { statusCode: 400 });
+      }
+
+      const testResult = await callGeminiApi(apiKey, null, [{ role: 'user', parts: [{ text: 'Responda apenas com a palavra OK' }] }]);
+
+      const envelope = await readAppStateEnvelope().catch(() => ({ state: {} }));
+      const state = envelope?.state || {};
+      state.settings ||= {};
+      state.settings.geminiApiKey = apiKey;
+      await saveAppState(state);
+
+      return json(res, 200, { ok: true, message: 'Chave do Google Gemini ativada e validada com sucesso!', model: testResult.model });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/ai/chat') {
+      assertAuthenticated(req, true);
+      const body = await readJson(req, 2_000_000);
+      const message = String(body.message || '').trim();
+      if (!message) throw Object.assign(new Error('Mensagem vazia.'), { statusCode: 400 });
+
+      const envelope = await readAppStateEnvelope().catch(() => ({ state: {} }));
+      const state = envelope?.state || {};
+      const apiKey = String(body.apiKey || state.settings?.geminiApiKey || process.env.GEMINI_API_KEY || '').trim();
+      if (!apiKey) {
+        throw Object.assign(new Error('Chave de API do Google Gemini não configurada. Configure sua chave gratuita em Assistente IA.'), { statusCode: 400 });
+      }
+
+      const office = state.settings || {};
+      const systemPrompt = `Você é o Assistente Jurídico Inteligente do JurisFlow, plataforma autônoma para advocacia de alta performance no Brasil.
+Escritório: ${office.officeName || 'Advocacia Integrada'} (${office.lawyerName || 'Dr(a). Advogado(a) Titular'} - ${office.lawyerOab || 'OAB'})
+
+Diretrizes essenciais:
+1. Especialista em Direito Brasileiro: CPC/2015, CPP, CLT, Legislação Previdenciária, Tributária, Consumidor e Direito Público.
+2. Contagem e Estratégia de Prazos: Domínio do Art. 219 (dias úteis), Art. 224 (termo inicial e final) e regras do CPC/2015 e CLT. Sempre calcule e explique o termo a quo, os dias úteis e o prazo fatal com clareza matemática.
+3. Análise de Intimações do DJEN / DJe / eproc: Sintetize o que o juízo/tribunal determinou, identifique o tipo de ato (despacho, decisão, sentença, acórdão) e a medida cabível (ex: agravo, apelação, embargos, réplica).
+4. Produção de Peças e Minutas: Redija petições, manifestações, cláusulas contratuais e procurações com técnica apurada, formatação em Markdown e fundamentação em lei e jurisprudência dos tribunais superiores (STJ/STF/TST).
+5. Formatação: Seja direto, organizado, use títulos em markdown, listas e bullet points. NÃO use emojis. Use termos jurídicos precisos.`;
+
+      const history = Array.isArray(body.history) ? body.history : [];
+      const contents = [];
+
+      if (body.context?.intimation) {
+        const it = body.context.intimation;
+        contents.push({
+          role: 'user',
+          parts: [{ text: `[Contexto da Intimação Selecionada no Sistema]\nProcesso: ${it.process || 'N/I'}\nCliente: ${it.client || 'N/I'}\nTribunal: ${it.court || 'N/I'}\nData da Publicação: ${it.publishedAt || 'N/I'}\nTexto Original do Diário:\n${it.text || ''}` }]
+        });
+        contents.push({
+          role: 'model',
+          parts: [{ text: 'Entendido. Tenho o contexto completo da intimação judicial carregado e pronto para análise.' }]
+        });
+      }
+
+      if (body.context?.process) {
+        const pr = body.context.process;
+        contents.push({
+          role: 'user',
+          parts: [{ text: `[Contexto do Processo Selecionado no Sistema]\nNúmero CNJ: ${pr.number || 'N/I'}\nCliente: ${pr.client || 'N/I'}\nParte Contrária: ${pr.opposingParty || 'N/I'}\nTribunal/Comarca: ${pr.court || 'N/I'}\nAção/Fase: ${pr.actionType || ''} (${pr.stage || ''})\nÚltimo Andamento: ${pr.lastMovement || ''}` }]
+        });
+        contents.push({
+          role: 'model',
+          parts: [{ text: 'Entendido. Tenho o contexto do processo judicial carregado.' }]
+        });
+      }
+
+      for (const h of history.slice(-10)) {
+        if (h.role && h.text) {
+          contents.push({
+            role: h.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: String(h.text) }]
+          });
+        }
+      }
+
+      contents.push({
+        role: 'user',
+        parts: [{ text: message }]
+      });
+
+      const response = await callGeminiApi(apiKey, systemPrompt, contents);
+      return json(res, 200, { ok: true, reply: response.text, model: response.model });
+    }
+
+    // Configuração de Agenda Externa (Webcal / iCal)
+    if (req.method === 'POST' && url.pathname === '/api/calendar/configure') {
+      assertAuthenticated(req, true);
+      const body = await readJson(req);
+      const calendarUrl = String(body.calendarUrl || '').trim();
+
+      const envelope = await readAppStateEnvelope().catch(() => ({ state: {} }));
+      const state = envelope?.state || {};
+      state.settings ||= {};
+      state.settings.calendarUrl = calendarUrl;
+      await saveAppState(state);
+
+      let importedCount = 0;
+      let errorDetail = null;
+      if (calendarUrl) {
+        try {
+          const fetchUrl = calendarUrl.replace(/^webcal:/i, 'https:');
+          const response = await fetch(fetchUrl, { headers: { 'User-Agent': 'JurisFlow-Central-Juridica/1.0' }, redirect: 'follow' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const parsed = calendarPayload(parseCalendar(await response.text()));
+          const runtime = await readRuntime();
+          runtime.events = mergeBy(runtime.events, parsed.events);
+          runtime.tasks = mergeBy(runtime.tasks, parsed.tasks);
+          importedCount = parsed.events.length;
+          runtime.sources = mergeBy(runtime.sources, [{
+            id: 'external-calendar',
+            name: 'Agenda Externa',
+            short: 'CAL',
+            method: 'Webcal/iCal',
+            status: 'ok',
+            lastCheck: new Date().toISOString(),
+            detail: `${parsed.events.length} compromisso(s) sincronizado(s)`
+          }], 'id');
+          await saveRuntime(runtime);
+        } catch (err) {
+          errorDetail = err.message;
+        }
+      }
+
+      return json(res, 200, {
+        ok: true,
+        calendarUrl,
+        imported: importedCount,
+        error: errorDetail,
+        message: errorDetail ? `URL salva, mas a leitura da agenda retornou: ${errorDetail}` : `Agenda configurada com sucesso! ${importedCount} evento(s) sincronizado(s).`
+      });
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/integrations/judicial') {
       assertAuthenticated(req); return json(res, 200, await judicialIntegrationStatus());
     }
@@ -736,64 +934,65 @@ const server = http.createServer(async (req, res) => {
       let calendarImported = 0;
       let djenImported = 0;
       const sources = [...runtime.sources];
+      let appState = null;
+      try {
+        const envelope = await readAppStateEnvelope();
+        if (envelope?.state) appState = envelope.state;
+      } catch { /* sem estado salvo */ }
 
       // 1. Sincronização automática com DJEN / CNJ Oficial para os termos monitorados
-      try {
-        let appState = null;
+      if (process.env.KELLER_SKIP_COLLECTOR_ENV !== 'true') {
         try {
-          const envelope = await readAppStateEnvelope();
-          if (envelope?.state) appState = envelope.state;
-        } catch { /* sem estado salvo */ }
-
-        const terms = appState?.terms?.length ? appState.terms : [{ name: 'Dr(a). Advogado(a) Titular', registration: 'OAB/RS 135294' }];
-        for (const term of terms) {
-          const reg = String(term.registration || '');
-          let uf = (reg.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i) || reg.match(/([A-Z]{2})\s*\d+/i) || reg.match(/\d+\s*[\/\-]?\s*([A-Z]{2})/i))?.[1] || '';
-          const num = reg.replace(/\D/g, '');
-          if (num && num.length >= 4) {
-            if (!uf) uf = 'RS';
-            const target = { intimations: [], tasks: [], processes: [], sources: [] };
-            const portal = {
-              id: 'djen-cnj',
-              name: 'DJEN / CNJ Oficial',
-              url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
-              lookbackDays: 15,
-              queryOabVariants: true,
-              ufOab: uf.toUpperCase(),
-              numeroOab: num,
-              timeoutMs: 15_000
-            };
-            const djenResult = await collectDjen(portal, { monitoredTerm: term }, target);
-            if (target.intimations.length) {
-              intimations = mergeBy(intimations, target.intimations, 'externalId');
-              tasks = mergeBy(tasks, target.tasks, 'externalId');
-              djenImported += target.intimations.length;
+          const terms = appState?.terms?.length ? appState.terms : [{ name: 'Dr(a). Advogado(a) Titular', registration: 'OAB/RS 135294' }];
+          for (const term of terms) {
+            const reg = String(term.registration || '');
+            let uf = (reg.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i) || reg.match(/([A-Z]{2})\s*\d+/i) || reg.match(/\d+\s*[\/\-]?\s*([A-Z]{2})/i))?.[1] || '';
+            const num = reg.replace(/\D/g, '');
+            if (num && num.length >= 4) {
+              if (!uf) uf = 'RS';
+              const target = { intimations: [], tasks: [], processes: [], sources: [] };
+              const portal = {
+                id: 'djen-cnj',
+                name: 'DJEN / CNJ Oficial',
+                url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
+                lookbackDays: 15,
+                queryOabVariants: true,
+                ufOab: uf.toUpperCase(),
+                numeroOab: num,
+                timeoutMs: 15_000
+              };
+              const djenResult = await collectDjen(portal, { monitoredTerm: term }, target);
+              if (target.intimations.length) {
+                intimations = mergeBy(intimations, target.intimations, 'externalId');
+                tasks = mergeBy(tasks, target.tasks, 'externalId');
+                djenImported += target.intimations.length;
+              }
+              sources.push({
+                id: 'djen-cnj',
+                name: 'DJEN / CNJ Oficial',
+                short: 'CNJ',
+                method: 'API pública oficial',
+                status: 'ok',
+                lastCheck: new Date().toISOString(),
+                detail: `${djenResult.records || 0} publicação(ões) lida(s) para OAB/${uf.toUpperCase()} ${num}`
+              });
             }
-            sources.push({
-              id: 'djen-cnj',
-              name: 'DJEN / CNJ Oficial',
-              short: 'CNJ',
-              method: 'API pública oficial',
-              status: 'ok',
-              lastCheck: new Date().toISOString(),
-              detail: `${djenResult.records || 0} publicação(ões) lida(s) para OAB/${uf.toUpperCase()} ${num}`
-            });
           }
+        } catch (error) {
+          sources.push({
+            id: 'djen-cnj',
+            name: 'DJEN / CNJ Oficial',
+            short: 'CNJ',
+            method: 'API pública oficial',
+            status: 'attention',
+            lastCheck: new Date().toISOString(),
+            detail: `Aviso DJEN: ${String(error.message).slice(0, 120)}`
+          });
         }
-      } catch (error) {
-        sources.push({
-          id: 'djen-cnj',
-          name: 'DJEN / CNJ Oficial',
-          short: 'CNJ',
-          method: 'API pública oficial',
-          status: 'attention',
-          lastCheck: new Date().toISOString(),
-          detail: `Aviso DJEN: ${String(error.message).slice(0, 120)}`
-        });
       }
 
       // 2. Sincronização com Agenda Externa (Webcal / iCalendar)
-      const calUrl = process.env.EXTERNAL_CALENDAR_URL || process.env.ADVBOX_WEBCAL_URL;
+      const calUrl = appState?.settings?.calendarUrl || process.env.EXTERNAL_CALENDAR_URL || process.env.ADVBOX_WEBCAL_URL;
       if (calUrl) {
         try {
           const calendarUrl = calUrl.replace(/^webcal:/i, 'https:');
