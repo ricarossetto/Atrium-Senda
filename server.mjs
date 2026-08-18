@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { SecurityManager, verifyTotp } from './lib/security.mjs';
 import { collectDjen } from './collector/adapters/djen.mjs';
 import ExcelJS from 'exceljs';
+import * as xlsxModule from 'xlsx';
+const XLSX = xlsxModule.default || xlsxModule;
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const ENV_FILE = path.join(ROOT, '.env');
@@ -399,39 +401,72 @@ function calendarPayload(records) {
   return { events, tasks };
 }
 
+function excelSerialToIsoDate(serial) {
+  if (typeof serial === 'number' && serial > 10000 && serial < 100000) {
+    const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+    return d.toISOString().slice(0, 10);
+  }
+  if (typeof serial === 'string') {
+    const m = serial.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    if (serial.match(/^\d{4}-\d{2}-\d{2}/)) return serial.slice(0, 10);
+  }
+  return '';
+}
+
+function findHeaderRow(matrix) {
+  const known = ['número processo', 'numero processo', 'processo', 'classe', 'autores principais', 'autor', 'réu', 'reu', 'localidade judicial', 'assunto', 'último evento', 'ultimo evento', 'data/hora', 'data de distribuição', 'valor da causa', 'cliente', 'documento', 'cpf', 'cnpj', 'telefone', 'celular', 'email', 'tarefa', 'compromisso', 'etapa', 'fase', 'tribunal', 'comarca'];
+  let bestRow = 0;
+  let maxMatches = 0;
+  for (let i = 0; i < Math.min(10, matrix.length); i++) {
+    const row = matrix[i];
+    if (!Array.isArray(row)) continue;
+    const rowLower = row.map(c => String(c || '').toLowerCase().trim());
+    if (rowLower[0] && rowLower[0].startsWith('relatório')) continue;
+    const matches = rowLower.filter(cell => known.some(k => cell === k || (cell.length > 3 && k.includes(cell)) || (k.length > 3 && cell.includes(k)))).length;
+    if (matches > maxMatches) {
+      maxMatches = matches;
+      bestRow = i;
+    }
+  }
+  return bestRow;
+}
+
 async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = '' }) {
-  let rows = [];
+  let matrix = [];
   if (base64) {
     const buffer = Buffer.from(base64, 'base64');
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
-    const sheet = workbook.worksheets[0];
-    if (!sheet) throw new Error('A planilha está vazia.');
-    const headers = sheet.getRow(1).values.slice(1).map(v => String(v || '').trim());
-    sheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
-      const rowData = {};
-      row.values.slice(1).forEach((val, idx) => {
-        if (headers[idx]) {
-          const text = val && typeof val === 'object' && 'text' in val ? val.text : val != null ? String(val).trim() : '';
-          rowData[headers[idx]] = text;
-        }
-      });
-      if (Object.values(rowData).some(Boolean)) rows.push(rowData);
-    });
+    try {
+      const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false });
+      const sheetName = wb.SheetNames[0];
+      if (!sheetName) throw new Error('A planilha está vazia.');
+      const sheet = wb.Sheets[sheetName];
+      matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    } catch (err) {
+      throw new Error(`Não foi possível processar a planilha: ${err.message}`);
+    }
   } else if (content) {
     const lines = content.split(/\r?\n/).filter(line => line.trim());
     if (!lines.length) throw new Error('Arquivo de texto vazio.');
     const delimiter = lines[0].includes(';') ? ';' : lines[0].includes('\t') ? '\t' : ',';
-    const headers = lines[0].split(delimiter).map(h => h.replace(/^["']|["']$/g, '').trim());
-    for (let i = 1; i < lines.length; i++) {
-      const parts = lines[i].split(delimiter).map(p => p.replace(/^["']|["']$/g, '').trim());
-      const rowData = {};
-      headers.forEach((h, idx) => { rowData[h] = parts[idx] || ''; });
-      if (Object.values(rowData).some(Boolean)) rows.push(rowData);
-    }
+    matrix = lines.map(line => line.split(delimiter).map(p => p.replace(/^["']|["']$/g, '').trim()));
   } else {
     throw new Error('Nenhum dado de planilha enviado.');
+  }
+
+  if (!matrix.length) throw new Error('A planilha não contém dados legíveis.');
+
+  const headerRowIndex = findHeaderRow(matrix);
+  const rawHeaders = (matrix[headerRowIndex] || []).map(c => String(c || '').trim());
+  const headers = rawHeaders.map((h, i) => h || `Coluna_${i + 1}`);
+
+  const rows = [];
+  for (let r = headerRowIndex + 1; r < matrix.length; r++) {
+    const rowArray = matrix[r];
+    if (!rowArray || !rowArray.some(c => c !== null && c !== undefined && String(c).trim() !== '')) continue;
+    const rowObj = {};
+    headers.forEach((h, idx) => { rowObj[h] = rowArray[idx] ?? ''; });
+    rows.push(rowObj);
   }
 
   const contacts = [];
@@ -442,58 +477,74 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
     const rowKeys = Object.keys(row);
     const getVal = (...keys) => {
       for (const k of keys) {
-        const foundKey = rowKeys.find(rk => rk.toLowerCase().replace(/[^a-z0-9]/g, '') === k.toLowerCase().replace(/[^a-z0-9]/g, ''));
-        if (foundKey && row[foundKey]) return String(row[foundKey]).trim();
+        const foundKey = rowKeys.find(rk => {
+          const cleanRk = rk.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return cleanRk === cleanK || (cleanK.length > 4 && cleanRk.includes(cleanK));
+        });
+        if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && String(row[foundKey]).trim() !== '') {
+          return row[foundKey];
+        }
       }
       return '';
     };
 
-    const name = getVal('nome', 'contato', 'cliente', 'nomecompleto', 'nomedocliente');
-    const doc = getVal('cpf', 'cnpj', 'cpfcnpj', 'documento');
-    const procNum = getVal('processo', 'numerodoprocesso', 'numero', 'cnj', 'protocolo');
-    const court = getVal('tribunal', 'vara', 'orgao', 'comarca', 'juizo');
-    const stage = getVal('fase', 'etapa', 'status', 'situacao');
-    const actionType = getVal('tipodeacao', 'acao', 'materia', 'classe');
-    const feeType = getVal('honorarios', 'tipodehonorarios', 'contrato');
-    const feePct = getVal('percentual', 'porcentagem', 'exito', 'honorariosporcentagem');
-    const feeAmount = getVal('valor', 'valordeentrada', 'honorariosfixos', 'honorariosvalor');
-    const taskTitle = getVal('tarefa', 'compromisso', 'titulo', 'prazo', 'atividade');
-    const deadline = getVal('datalimite', 'vencimento', 'prazo', 'data');
-    const responsible = getVal('responsavel', 'destinatario', 'advogado');
+    const rawProc = String(getVal('numeroprocesso', 'processo', 'cnj', 'numero', 'protocolo') || '').trim();
+    const procNumberMatch = rawProc.match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/);
+    const procNumber = procNumberMatch ? procNumberMatch[0] : rawProc.replace(/\s*\([^)]+\)/, '').trim();
+    const unitCode = rawProc.match(/\(([^)]+)\)/)?.[1] || '';
 
-    if (procNum || (name && (court || actionType || stage))) {
+    const author = String(getVal('autoresprincipais', 'autor', 'cliente', 'nome', 'nomedocliente', 'contato') || '').trim();
+    const defendant = String(getVal('reus', 'reu', 'reupassivo', 'reclamada') || '').trim();
+    const locality = String(getVal('localidadejudicial', 'comarca', 'tribunal', 'orgao', 'vara', 'cidade') || '').trim();
+    const classe = String(getVal('classe', 'classejudicial', 'acao', 'tipodeacao') || '').trim();
+    const subject = String(getVal('assunto', 'materia') || '').trim();
+    const lastEvent = String(getVal('ultimoevento', 'ultimoandamento', 'andamento', 'fase', 'etapa') || '').trim();
+    const lastEventDate = excelSerialToIsoDate(getVal('datahora', 'dataultimoevento', 'dataandamento') || '');
+    const distribDate = excelSerialToIsoDate(getVal('datadistribuicaodoprocesso', 'datadistribuicao', 'datadecadastro', 'cadastro') || '');
+    const causeValRaw = getVal('valordacausa', 'valor', 'honorariosvalor');
+    const causeValue = typeof causeValRaw === 'number' ? causeValRaw : Number(String(causeValRaw).replace(/[^\d.,]/g, '').replace(',', '.')) || '';
+    const doc = String(getVal('cpfcnpj', 'cpf', 'cnpj', 'documento') || '').trim();
+    const mobile = String(getVal('celular', 'telefone', 'whatsapp', 'fone') || '').trim();
+    const email = String(getVal('email', 'correioeletronico') || '').trim();
+    const feeType = String(getVal('honorarios', 'tipodehonorarios', 'contrato') || '').trim();
+    const feePct = String(getVal('percentual', 'porcentagem', 'exito') || '').trim();
+    const taskTitle = String(getVal('tarefa', 'compromisso', 'titulo', 'prazo', 'atividade') || '').trim();
+    const deadline = excelSerialToIsoDate(getVal('datalimite', 'vencimento', 'prazo', 'data') || '');
+    const responsible = String(getVal('responsavel', 'destinatario', 'advogado') || '').trim();
+
+    if (procNumber || (author && (locality || classe || subject || lastEvent))) {
       processes.push({
         id: `proc-${randomBytes(6).toString('hex')}`,
-        number: procNum || '',
-        client: name || 'Cliente não informado',
-        court: court || 'TJ',
-        actionType: actionType || 'Ação Cível',
-        stage: stage || 'Em andamento',
-        feeType: feeType ? feeType.toLowerCase() : feePct ? 'exito' : feeAmount ? 'fixo' : 'exito',
+        number: procNumber,
+        client: author || 'Cliente não informado',
+        opposingParty: defendant,
+        court: locality ? (locality.toLowerCase().startsWith('tj') || locality.toLowerCase().startsWith('trf') ? locality : `TJRS · ${locality}`) : 'eproc',
+        caseFolder: unitCode,
+        actionType: [classe, subject].filter(Boolean).join(' · ') || 'Processo Judicial',
+        stage: 'Em andamento',
+        feeType: feeType ? feeType.toLowerCase() : feePct ? 'exito' : 'exito',
         feePercentage: feePct ? feePct.replace(/\D/g, '') : '30',
-        feeAmount: feeAmount ? feeAmount.replace(/[^\d.,]/g, '') : '',
+        feeAmount: causeValue ? String(causeValue) : '',
         feeStatus: 'pendente',
-        registeredAt: new Date().toISOString().slice(0, 10),
-        lastMovement: 'Importado via planilha',
-        lastMovementAt: new Date().toISOString().slice(0, 10),
+        registeredAt: distribDate || new Date().toISOString().slice(0, 10),
+        lastMovement: lastEvent || 'Importado do eproc',
+        lastMovementAt: lastEventDate || new Date().toISOString().slice(0, 10),
         monitoring: 'active',
-        source: 'Planilha'
+        source: filename.toLowerCase().includes('eproc') || filename.toLowerCase().includes('relatorio') ? 'eproc TJRS' : 'Planilha'
       });
     }
 
-    if (name && (doc || getVal('celular', 'telefone', 'email', 'cidade') || !procNum)) {
+    if (author) {
       contacts.push({
         id: `contact-${randomBytes(6).toString('hex')}`,
-        name,
-        document: doc || '',
-        mobile: getVal('celular', 'telefone', 'whatsapp', 'fone') || '',
-        phone: getVal('telefonefixo', 'telefone2') || '',
-        email: getVal('email', 'correioeletronico') || '',
-        city: getVal('cidade', 'municipio') || '',
-        state: getVal('estado', 'uf') || '',
-        profession: getVal('profissao', 'cargo') || '',
-        origin: 'Planilha',
-        registeredAt: new Date().toISOString().slice(0, 10)
+        name: author,
+        document: doc,
+        mobile,
+        email,
+        city: locality,
+        origin: filename.toLowerCase().includes('eproc') || filename.toLowerCase().includes('relatorio') ? 'eproc TJRS' : 'Planilha',
+        registeredAt: distribDate || new Date().toISOString().slice(0, 10)
       });
     }
 
@@ -502,8 +553,8 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
         id: `task-${randomBytes(6).toString('hex')}`,
         title: taskTitle,
         description: `Importado de planilha: ${filename || 'lote'}`,
-        client: name || '',
-        process: procNum || '',
+        client: author || '',
+        process: procNumber || '',
         deadline: deadline || new Date().toISOString().slice(0, 10),
         priority: 'normal',
         status: 'triagem',
@@ -514,11 +565,14 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
     }
   }
 
+  // Deduplicar contatos por nome
+  const uniqueContacts = [...new Map(contacts.map(c => [c.name.toUpperCase(), c])).values()];
+
   return {
     filename,
     totalRows: rows.length,
     preview: rows.slice(0, 8),
-    contacts,
+    contacts: uniqueContacts,
     processes,
     tasks
   };
