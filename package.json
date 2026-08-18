@@ -32,6 +32,10 @@
     "white-label",
     "open-source"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ricarossetto/Atrium-Senda.git"
+  },
   "dependencies": {
     "exceljs": "^4.4.0",
     "playwright": "^1.56.0",
