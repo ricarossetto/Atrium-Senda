@@ -152,8 +152,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .card-heading h3 { margin: 0; font: 600 20px/1.2 var(--font-serif); }
 
 .hero-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(290px, .75fr); gap: 18px; }
-.hero-card { min-height: 290px; position: relative; overflow: hidden; border: 1px solid rgba(201,168,76,.17); border-radius: 20px; background: #0d0d0c url("../assets/images/equipe.png") 66% 43% / auto 118% no-repeat; box-shadow: var(--shadow); }
-.hero-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(9,9,8,.98) 0%, rgba(9,9,8,.89) 39%, rgba(9,9,8,.38) 73%, rgba(9,9,8,.28)); }
+.hero-card { min-height: 290px; position: relative; overflow: hidden; border: 1px solid rgba(201,168,76,.17); border-radius: 20px; background: radial-gradient(circle at 80% 20%, rgba(201,168,76,.14), transparent 50%), radial-gradient(circle at 20% 80%, rgba(111,159,216,.07), transparent 40%), linear-gradient(145deg, #161614, #0d0d0c); box-shadow: var(--shadow); }
+.hero-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(9,9,8,.95) 0%, rgba(9,9,8,.82) 40%, rgba(9,9,8,.3) 100%); }
 .hero-content { position: relative; z-index: 1; width: 66%; padding: 34px 36px; }
 .gold-pill { display: inline-flex; padding: 6px 11px; color: var(--gold-soft); background: rgba(201,168,76,.08); border: 1px solid rgba(201,168,76,.2); border-radius: 99px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .hero-card h2 { margin: 16px 0 10px; font: 600 clamp(29px,3vw,43px)/1.04 var(--font-serif); letter-spacing: -.02em; }
@@ -545,7 +545,7 @@ td small { color: var(--muted); }
 /* Autenticação e segundo fator */
 .auth-gate{min-height:100vh;display:grid;grid-template-columns:minmax(380px,1.05fr) minmax(420px,.95fr);background:#090909;color:var(--cream)}
 .auth-gate.hidden{display:none!important}
-.auth-visual{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(38px,6vw,88px);border-right:1px solid rgba(201,168,76,.2);background:linear-gradient(135deg,rgba(7,7,7,.97),rgba(10,10,10,.78)),url('../assets/images/equipe.png') center 58%/cover no-repeat}
+.auth-visual{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(38px,6vw,88px);border-right:1px solid rgba(201,168,76,.2);background:radial-gradient(circle at 25% 25%,rgba(201,168,76,.15),transparent 45%),radial-gradient(circle at 85% 75%,rgba(111,159,216,.09),transparent 45%),linear-gradient(135deg,#131310 0%,#090908 100%)}
 .auth-visual::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 70% 25%,rgba(201,168,76,.13),transparent 36%);pointer-events:none}
 .auth-logo{position:relative;z-index:1;width:min(250px,58%);height:auto}
 .auth-visual-copy{position:relative;z-index:1;max-width:680px;margin:18vh 0 10vh}

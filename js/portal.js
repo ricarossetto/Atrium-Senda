@@ -438,7 +438,7 @@ CPF: ${doc}`;
       byId('globalSearch').addEventListener('input', event => this.globalSearch(event.target.value));
       byId('importIntimationButton').addEventListener('click', () => byId('jsonImportInput').click());
       byId('jsonImportInput').addEventListener('change', event => this.importJson(event.target.files[0]));
-      byId('exportAuditButton').addEventListener('click', () => this.exportJson(Store.state.audit, `keller-auditoria-${isoDate()}.json`));
+      byId('exportAuditButton').addEventListener('click', () => this.exportJson(Store.state.audit, `jurisflow-auditoria-${isoDate()}.json`));
       byId('configureCalendarButton').addEventListener('click', () => this.openGuideModal('calendar'));
       byId('certificateGuideButton').addEventListener('click', () => this.openJudicialSetup());
       byId('judicialSetupClose').addEventListener('click', () => this.closeJudicialSetup());
