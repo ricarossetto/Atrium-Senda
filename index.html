@@ -3,50 +3,63 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0a0a0a">
-  <meta name="description" content="JurisFlow: Gestão Integrada de Escritórios de Advocacia, Kanban Jurídico, Prazos, Timesheet e Coletores Oficiais.">
-  <title>JurisFlow — Gestão Jurídica & Kanban</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23c9a84c'%3E%3Crect width='100' height='100' rx='22' fill='%23121210'/%3E%3Cpath d='M20 22h24M32 22v42c0 6-5 9-11 9M32 42h18M20 42h12' stroke='%23c9a84c' stroke-width='6' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Cpath d='M58 28h26M71 28v30M64 58h14' stroke='%23c9a84c' stroke-width='4' stroke-linecap='round' fill='none'/%3E%3Cpath d='M53 38l6 11H47l6-11zM89 38l6 11H83l6-11z' fill='%23c9a84c'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/portal.css?v=1.1.0">
+  <meta name="theme-color" content="#0c0c0b">
+  <meta name="description" content="Atrium Senda: Plataforma de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
+  <title>Atrium Senda — Plataforma de Gestão Jurídica Inteligente</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23D4AF37'%3E%3Crect width='100' height='100' rx='22' fill='%23121212'/%3E%3Cpath d='M50 12 L22 82 H34 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L66 82 H78 L50 12 Z' fill='%23FDF3C6'/%3E%3Cpath d='M42 82 C40 70 51 62 47 48 C44 38 48 30 50 24 C52 30 56 38 53 48 C49 62 60 70 58 82 H42 Z' fill='%23D4AF37'/%3E%3Cpath d='M40 26 C55 18 80 22 80 38 C80 50 58 52 58 62 C58 72 74 74 84 66 L86 76 C72 86 46 82 46 64 C46 48 68 46 68 36 C68 28 54 26 42 32 Z' fill='%23D4AF37'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/portal.css?v=2.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
     <div class="auth-visual">
       <div class="auth-brand-logo">
         <div class="brand-badge-large">
-          <svg class="brand-logo-svg" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 15H42M28 15V62C28 69 22 72 15 72M28 38H48M15 38H28" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M60 22H86M73 22V54M65 54H81" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-            <path d="M54 34L61 46H47L54 34ZM92 34L99 46H85L92 34Z" fill="currentColor"/>
+          <svg class="brand-monogram-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="authGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FDF3C6"/>
+                <stop offset="30%" stop-color="#D4AF37"/>
+                <stop offset="70%" stop-color="#997524"/>
+                <stop offset="100%" stop-color="#D4AF37"/>
+              </linearGradient>
+              <linearGradient id="authGoldSenda" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#AA822A"/>
+                <stop offset="50%" stop-color="#FFF5D0"/>
+                <stop offset="100%" stop-color="#C9A84C"/>
+              </linearGradient>
+            </defs>
+            <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="url(#authGoldGrad)"/>
+            <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="url(#authGoldSenda)" opacity="0.95"/>
+            <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="url(#authGoldGrad)" opacity="0.92"/>
           </svg>
-          <span>JurisFlow</span>
+          <span>Atrium Senda</span>
         </div>
       </div>
       <div class="auth-visual-copy">
-        <p class="eyebrow">Ambiente jurídico protegido</p>
-        <h1>Gestão Jurídica<br><em>segura por projeto.</em></h1>
-        <p>Senha forte, segundo fator (TOTP 2FA) e sessão protegida para gerenciar intimações, processos, prazos e documentos confidenciais.</p>
+        <p class="eyebrow">Ambiente jurídico seguro &amp; soberano</p>
+        <h1>Plataforma de Gestão<br><em>Jurídica Inteligente.</em></h1>
+        <p>Centralização absoluta, controle de prazos e Zero Trust com criptografia em repouso e segundo fator de autenticação (TOTP 2FA).</p>
       </div>
-      <div class="auth-security-list"><span>✓ Criptografia em repouso (AES-256-GCM)</span><span>✓ Segundo Fator TOTP (RFC 6238)</span><span>✓ Sessão HttpOnly e proteção CSRF</span></div>
+      <div class="auth-security-list"><span>✓ Criptografia AES-256-GCM</span><span>✓ Segundo Fator TOTP (RFC 6238)</span><span>✓ Sessão HttpOnly &amp; Zero Trust</span></div>
     </div>
     <div class="auth-panel">
       <div class="auth-card">
         <div id="authLoading" class="auth-step active"><span class="auth-spinner"></span><h2>Verificando proteção…</h2><p>Validando a configuração de segurança.</p></div>
 
         <form id="authSetupForm" class="auth-step">
-          <p class="eyebrow">Primeiro acesso</p><h2>Crie o acesso administrativo</h2>
-          <p>Essa senha não é enviada a nenhum serviço externo. Use uma frase longa e exclusiva.</p>
+          <p class="eyebrow">Primeiro acesso</p><h2>Crie seu acesso mestre</h2>
+          <p>Sua senha é privada e nunca deixa seu computador. Use uma frase forte e exclusiva.</p>
           <label>Nome de exibição<input name="displayName" autocomplete="name" placeholder="Dr(a). Advogado(a) Titular" required maxlength="100"></label>
           <label>Usuário de acesso<input name="username" autocomplete="username" placeholder="admin" required pattern="[a-zA-Z0-9._-]{3,64}" maxlength="64"></label>
           <label>Senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
-          <small class="auth-hint">Mínimo de 10 caracteres e ao menos três grupos entre maiúsculas, minúsculas, números e símbolos.</small>
+          <small class="auth-hint">Mínimo de 10 caracteres contendo letras maiúsculas, minúsculas, números e símbolos.</small>
           <button class="button gold auth-submit" type="submit">Criar senha e configurar 2FA</button>
         </form>
 
         <form id="authTotpSetupForm" class="auth-step">
           <p class="eyebrow">Segundo fator</p><h2>Vincule seu autenticador</h2>
-          <p>Leia o QR code com Microsoft Authenticator, Google Authenticator, 1Password ou outro aplicativo TOTP.</p>
+          <p>Leia o QR code com Microsoft Authenticator, Google Authenticator, 1Password ou outro app TOTP.</p>
           <img id="authQrCode" class="auth-qr" alt="QR code para configurar o segundo fator">
           <details><summary>Configurar manualmente</summary><code id="authManualSecret" class="auth-manual-secret"></code></details>
           <label>Código de seis dígitos<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
@@ -55,20 +68,20 @@
 
         <div id="authRecoveryStep" class="auth-step">
           <p class="eyebrow">Códigos de recuperação</p><h2>Guarde em local seguro</h2>
-          <p>Cada código funciona uma única vez. Eles não serão exibidos novamente.</p>
+          <p>Cada código funciona uma única vez para resgatar sua conta em caso de perda do dispositivo.</p>
           <pre id="authRecoveryCodes" class="recovery-codes"></pre>
           <button class="button ghost auth-submit" id="copyRecoveryCodes" type="button">Copiar códigos</button>
-          <button class="button gold auth-submit" id="finishRecovery" type="button">Já guardei — entrar no JurisFlow</button>
+          <button class="button gold auth-submit" id="finishRecovery" type="button">Já guardei — entrar no Atrium Senda</button>
         </div>
 
         <form id="authLoginForm" class="auth-step">
-          <p class="eyebrow">Acesso restrito</p><h2>Entrar no JurisFlow</h2>
+          <p class="eyebrow">Acesso restrito</p><h2>Entrar no Atrium Senda</h2>
           <p>Informe sua senha e o código atual do aplicativo autenticador.</p>
           <label>Usuário<input name="username" autocomplete="username" required maxlength="64"></label>
           <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
           <label>Código TOTP ou recuperação<input name="code" autocomplete="one-time-code" inputmode="text" required maxlength="11" placeholder="000000"></label>
-          <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>Senha e Authenticator serão exigidos novamente após 30 dias, ao sair da conta ou ao revogar a confiança.</small></span></label>
-          <button class="button gold auth-submit" type="submit">Entrar com segurança</button>
+          <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>Senha e Authenticator serão exigidos novamente após 30 dias ou ao sair da conta.</small></span></label>
+          <button class="button gold auth-submit" type="submit">Entrar no Atrium Senda</button>
         </form>
 
         <div id="authFeedback" class="auth-feedback hidden" role="alert"></div>
@@ -81,22 +94,36 @@
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <span class="brand-badge">
-          <svg class="brand-logo-svg" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 15H42M28 15V62C28 69 22 72 15 72M28 38H48M15 38H28" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M60 22H86M73 22V54M65 54H81" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-            <path d="M54 34L61 46H47L54 34ZM92 34L99 46H85L92 34Z" fill="currentColor"/>
+          <svg class="brand-monogram-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="sideGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FDF3C6"/>
+                <stop offset="30%" stop-color="#D4AF37"/>
+                <stop offset="70%" stop-color="#997524"/>
+                <stop offset="100%" stop-color="#D4AF37"/>
+              </linearGradient>
+              <linearGradient id="sideGoldSenda" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#AA822A"/>
+                <stop offset="50%" stop-color="#FFF5D0"/>
+                <stop offset="100%" stop-color="#C9A84C"/>
+              </linearGradient>
+            </defs>
+            <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="url(#sideGoldGrad)"/>
+            <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="url(#sideGoldSenda)" opacity="0.95"/>
+            <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="url(#sideGoldGrad)" opacity="0.92"/>
           </svg>
-          <span>JurisFlow</span>
+          <span>Atrium Senda</span>
         </span>
-        <span class="brand-product">Gestão Integrada</span>
+        <span class="brand-product">Plataforma Jurídica</span>
       </div>
 
       <nav class="main-nav" aria-label="Navegação principal">
         <button class="nav-item active" data-view="dashboard">
           <span class="nav-icon" aria-hidden="true">
             <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 6l2 2 4-4M4 12l2 2 4-4M4 18l2 2 4-4"/>
-              <path d="M14 6h6M14 12h6M14 18h6"/>
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              <path d="M7 16h6M7 12h3M7 8h5"/>
             </svg>
           </span>
           <span>Meu dia</span>
@@ -104,8 +131,8 @@
         <button class="nav-item" data-view="inbox">
           <span class="nav-icon" aria-hidden="true">
             <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 8h8M8 12h5"/>
-              <path d="M18 13a2.5 2.5 0 0 0-2.5 2.5v1.5l-1 1h7l-1-1v-1.5A2.5 2.5 0 0 0 18 13zM17 19a1 1 0 0 0 2 0"/>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              <path d="M18 15a2.5 2.5 0 0 0-2.5 2.5v1.5l-1 1h7l-1-1v-1.5A2.5 2.5 0 0 0 18 15z"/>
             </svg>
           </span>
           <span>Intimações</span>
@@ -248,7 +275,7 @@
             <input id="globalSearch" type="search" placeholder="Processo, cliente ou tarefa">
             <kbd>/</kbd>
           </label>
-          <button class="button ghost" id="tourButton" title="Apresentação Guiada do JurisFlow">
+          <button class="button ghost" id="tourButton" title="Apresentação Guiada do Atrium Senda">
             <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
@@ -273,8 +300,8 @@
           </button>
           <button class="icon-button notification-button" data-view-link="inbox" aria-label="Ver intimações">♢<span id="notificationDot"></span></button>
           <button class="profile-button" id="logoutButton" aria-label="Encerrar sessão com segurança" title="Encerrar sessão">
-            <span class="avatar">RR</span>
-            <span class="profile-copy"><strong>Ricardo Rossetto</strong><small>Advogado</small></span>
+            <span class="avatar">AS</span>
+            <span class="profile-copy"><strong>Ricardo Rossetto</strong><small>Advogado Titular</small></span>
             <span>Sair</span>
           </button>
         </div>
@@ -282,36 +309,101 @@
 
       <div class="environment-banner" id="environmentBanner">
         <span class="pulse-dot"></span>
-        <strong>Modo protegido local</strong>
-        <span>Dados jurídicos permanecem neste computador até a ativação do banco seguro.</span>
+        <strong>Ambiente Local Seguro (Zero Trust)</strong>
+        <span>Dados processuais e chaves de segurança protegidos com criptografia no dispositivo.</span>
         <button id="dismissBanner" aria-label="Fechar aviso">×</button>
       </div>
 
-      <section class="view active" id="view-dashboard" data-title="Painel Jurídico" data-eyebrow="Visão executiva">
-        <div class="hero-grid">
+      <section class="view active" id="view-dashboard" data-title="Painel Jurídico" data-eyebrow="Atrium Senda · Visão Executiva">
+        <div class="bento-dashboard-grid">
+          <!-- Bento 1: Hero Card Atrium Senda -->
           <article class="hero-card">
             <div class="hero-overlay"></div>
             <div class="hero-content">
-              <span class="gold-pill">Hoje · <span id="todayLabel"></span></span>
+              <span class="gold-pill">✦ Atrium Senda · <span id="todayLabel"></span></span>
               <h2>O que exige sua<br><em>atenção hoje</em></h2>
-              <p id="heroSummary">A central está organizando suas fontes e seus próximos prazos.</p>
+              <p id="heroSummary">A central está organizando suas fontes oficiais e seus próximos prazos.</p>
               <div class="hero-actions">
                 <button class="button gold" data-view-link="inbox">Abrir caixa de intimações</button>
-                <button class="button glass" data-view-link="kanban">Ver quadro</button>
+                <button class="button glass" data-view-link="kanban">Ver quadro Kanban</button>
               </div>
             </div>
             <div class="hero-seal">
-              <svg class="hero-seal-svg" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 15H42M28 15V62C28 69 22 72 15 72M28 38H48M15 38H28" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M60 22H86M73 22V54M65 54H81" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-                <path d="M54 34L61 46H47L54 34ZM92 34L99 46H85L92 34Z" fill="currentColor"/>
+              <svg class="brand-monogram-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="heroGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#FDF3C6"/>
+                    <stop offset="30%" stop-color="#D4AF37"/>
+                    <stop offset="70%" stop-color="#997524"/>
+                    <stop offset="100%" stop-color="#D4AF37"/>
+                  </linearGradient>
+                  <linearGradient id="heroGoldSenda" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#AA822A"/>
+                    <stop offset="50%" stop-color="#FFF5D0"/>
+                    <stop offset="100%" stop-color="#C9A84C"/>
+                  </linearGradient>
+                </defs>
+                <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="url(#heroGoldGrad)"/>
+                <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="url(#heroGoldSenda)" opacity="0.95"/>
+                <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="url(#heroGoldGrad)" opacity="0.92"/>
               </svg>
             </div>
           </article>
 
-          <article class="day-focus card">
+          <!-- Bento 2: Distribuição Semanal de Prazos -->
+          <article class="card bento-chart-card">
             <div class="card-heading">
-              <div><p class="eyebrow">Foco do dia</p><h3>Prioridades</h3></div>
+              <div>
+                <p class="eyebrow">Performance &amp; Prazos</p>
+                <h3>Distribuição Semanal</h3>
+              </div>
+              <span class="gold-pill">100% no prazo</span>
+            </div>
+            <div class="bento-chart-content">
+              <div class="chart-bars-wrap" id="weeklyChartBars">
+                <div class="chart-bar-col">
+                  <div class="chart-bar-fill" id="chartBar0" style="height: 40%;"><span class="chart-val">2</span></div>
+                  <span class="chart-day">Seg</span>
+                </div>
+                <div class="chart-bar-col">
+                  <div class="chart-bar-fill" id="chartBar1" style="height: 70%;"><span class="chart-val">5</span></div>
+                  <span class="chart-day">Ter</span>
+                </div>
+                <div class="chart-bar-col">
+                  <div class="chart-bar-fill active" id="chartBar2" style="height: 90%;"><span class="chart-val">7</span></div>
+                  <span class="chart-day">Qua</span>
+                </div>
+                <div class="chart-bar-col">
+                  <div class="chart-bar-fill" id="chartBar3" style="height: 55%;"><span class="chart-val">4</span></div>
+                  <span class="chart-day">Qui</span>
+                </div>
+                <div class="chart-bar-col">
+                  <div class="chart-bar-fill" id="chartBar4" style="height: 80%;"><span class="chart-val">6</span></div>
+                  <span class="chart-day">Sex</span>
+                </div>
+              </div>
+              <div class="chart-stats-sidebar">
+                <div class="chart-stat-item">
+                  <small>Média diária</small>
+                  <strong id="chartAvgStat">4.8</strong>
+                  <span>prazos / dia</span>
+                </div>
+                <div class="chart-stat-item">
+                  <small>Eficiência</small>
+                  <strong style="color:#93dfb4;">Zero</strong>
+                  <span>perdas de prazo</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Bento 3: Foco do Dia & Prioridades -->
+          <article class="card day-focus bento-focus">
+            <div class="card-heading">
+              <div>
+                <p class="eyebrow">Foco do dia</p>
+                <h3>Prioridades</h3>
+              </div>
               <button class="text-button" data-view-link="kanban">Ver todas →</button>
             </div>
             <div id="priorityList" class="priority-list"></div>
@@ -319,10 +411,30 @@
         </div>
 
         <div class="metric-grid">
-          <article class="metric-card danger" data-view-link="inbox" tabindex="0"><span class="metric-icon">!</span><div><small>Intimações novas</small><strong id="metricInbox">0</strong><p>aguardando triagem</p></div></article>
-          <article class="metric-card warning" data-view-link="kanban" tabindex="0"><span class="metric-icon">◷</span><div><small>Prazos em 7 dias</small><strong id="metricDeadlines">0</strong><p>confirme os prazos fatais</p></div></article>
-          <article class="metric-card info" data-view-link="kanban" tabindex="0"><span class="metric-icon">▦</span><div><small>Tarefas ativas</small><strong id="metricTasks">0</strong><p>no fluxo de trabalho</p></div></article>
-          <article class="metric-card success" data-view-link="monitoring" tabindex="0"><span class="metric-icon">✓</span><div><small>Fontes saudáveis</small><strong id="metricSources">0/0</strong><p>na última verificação</p></div></article>
+          <article class="metric-card danger" data-view-link="inbox" tabindex="0">
+            <span class="metric-icon">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </span>
+            <div><small>Intimações novas</small><strong id="metricInbox">0</strong><p>aguardando triagem</p></div>
+          </article>
+          <article class="metric-card warning" data-view-link="kanban" tabindex="0">
+            <span class="metric-icon">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </span>
+            <div><small>Prazos em 7 dias</small><strong id="metricDeadlines">0</strong><p>confirme os prazos fatais</p></div>
+          </article>
+          <article class="metric-card info" data-view-link="processes" tabindex="0">
+            <span class="metric-icon">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M3 10h18"/></svg>
+            </span>
+            <div><small>Processos Ativos</small><strong id="metricTasks">0</strong><p>carteira monitorada</p></div>
+          </article>
+          <article class="metric-card success" data-view-link="monitoring" tabindex="0">
+            <span class="metric-icon">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <div><small>Fontes saudáveis</small><strong id="metricSources">0/0</strong><p>na última verificação</p></div>
+          </article>
         </div>
 
         <div class="dashboard-grid">
@@ -914,7 +1026,7 @@
             <input type="file" id="officeLogoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" class="hidden">
             <button class="button ghost" type="button" id="btnChooseOfficeLogo">Carregar Logo do Escritório</button>
             <button class="button ghost hidden" type="button" id="btnRemoveOfficeLogo">Remover logo</button>
-            <small style="display:block;margin-top:6px;color:#817d74;font-size:11px;">Formatos: PNG, JPG ou SVG. Fica salva localmente no seu JurisFlow.</small>
+            <small style="display:block;margin-top:6px;color:#817d74;font-size:11px;">Formatos: PNG, JPG ou SVG. Fica salva localmente no seu Atrium Senda.</small>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
@@ -941,12 +1053,12 @@
     <section class="modal guided-tour-modal" role="dialog" aria-modal="true" aria-labelledby="tourModalTitle">
       <header class="tour-header">
         <div class="tour-badge">
-          <svg class="brand-logo-svg" style="width:20px;height:16px;" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 15H42M28 15V62C28 69 22 72 15 72M28 38H48M15 38H28" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M60 22H86M73 22V54M65 54H81" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-            <path d="M54 34L61 46H47L54 34ZM92 34L99 46H85L92 34Z" fill="currentColor"/>
+          <svg class="brand-monogram-svg" style="width:22px;height:22px;" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="#D4AF37"/>
+            <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="#FFF5D0"/>
+            <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="#D4AF37"/>
           </svg>
-          <span id="tourModalTitle">Apresentação Guiada · JurisFlow</span>
+          <span id="tourModalTitle">Apresentação Guiada · Atrium Senda</span>
         </div>
         <button class="icon-button" id="tourCloseButton" aria-label="Fechar apresentação">×</button>
       </header>
@@ -956,19 +1068,19 @@
         <article class="tour-slide active" data-slide="0">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
-              <svg class="brand-logo-svg" style="width:36px;height:30px;" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 15H42M28 15V62C28 69 22 72 15 72M28 38H48M15 38H28" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M60 22H86M73 22V54M65 54H81" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-                <path d="M54 34L61 46H47L54 34ZM92 34L99 46H85L92 34Z" fill="currentColor"/>
+              <svg class="brand-monogram-svg" style="width:40px;height:40px;" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="#D4AF37"/>
+                <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="#FFF5D0"/>
+                <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="#D4AF37"/>
               </svg>
             </div>
             <div>
-              <h2>Bem-vindo ao JurisFlow</h2>
-              <p>Sua plataforma autônoma e white-label para advocacia de alta performance.</p>
+              <h2>Bem-vindo ao Atrium Senda</h2>
+              <p>Plataforma de gestão jurídica inteligente, centralizada e soberana.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            O JurisFlow foi projetado para dar a você total independência: sem mensalidades abusivas, sem softwares fechados de terceiros e com criptografia local (AES-256-GCM + 2FA) onde seus dados permanecem sob seu controle.
+            O <strong>Atrium Senda</strong> une o <em>Atrium</em> (ponto central romano de recepção, convergência e segurança Zero Trust) com a <em>Senda</em> (o fluxo contínuo de trabalho, controle de prazos e eficiência). Tenha controle absoluto sem mensalidades abusivas nem dependência de terceiros.
             <div class="tour-features-grid">
               <div class="tour-feature-card"><strong>100% White Label</strong><span>Personalize com o nome, logo e identidade do seu próprio escritório.</span></div>
               <div class="tour-feature-card"><strong>Criptografia &amp; Segurança</strong><span>Autenticação TOTP 2FA e chaves isoladas no seu computador.</span></div>
@@ -985,15 +1097,15 @@
               </svg>
             </div>
             <div>
-              <h2>Painel Executivo &amp; Meu Dia</h2>
+              <h2>Painel Executivo &amp; Bento Grid</h2>
               <p>Clareza instantânea sobre o que exige sua atenção a cada manhã.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            Ao abrir seu JurisFlow, o painel central organiza automaticamente suas prioridades do dia, intimações recém-chegadas, prazos fatais nos próximos 7 dias e o status das suas fontes oficiais.
+            Ao abrir seu Atrium Senda, o painel central organiza automaticamente suas prioridades do dia, o gráfico semanal de distribuição de prazos, intimações recém-chegadas e o status das suas fontes oficiais.
             <div class="tour-features-grid">
               <div class="tour-feature-card"><strong>Foco Diário Inteligente</strong><span>Tarefas críticas ordenadas por urgência e prazo fatal.</span></div>
-              <div class="tour-feature-card"><strong>Métricas em Tempo Real</strong><span>Contadores de intimações, tarefas em andamento e fontes saudáveis.</span></div>
+              <div class="tour-feature-card"><strong>Distribuição Semanal</strong><span>Visualização gráfica dos volumes de prazos de segunda a sexta.</span></div>
             </div>
           </div>
         </article>
@@ -1015,7 +1127,7 @@
           <div class="tour-slide-body">
             Basta clicar em <strong>"Sincronizar"</strong> para buscar suas publicações pelo número da OAB em tempo real. O sistema calcula os prazos do CPC (15 dias úteis, 5 dias, etc.), destaca urgências e permite transformar publicações em tarefas no Kanban com 1 clique.
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Alertas Urgentes &amp; Prazos</strong><span>Marque publicações críticas e ordene por menor prazo fatal.</span></div>
+              <div class="tour-feature-card"><strong>Alertas Urgentes &amp; Prazos</strong><span>Marque publicações críticas e ordene por menor prazo fatal com um clique no cabeçalho.</span></div>
               <div class="tour-feature-card"><strong>Trilha de Conferência</strong><span>Texto original integral do Diário com identificação de partes e processo.</span></div>
             </div>
           </div>
@@ -1030,15 +1142,15 @@
               </svg>
             </div>
             <div>
-              <h2>Kanban &amp; Automação de Minutas</h2>
+              <h2>Kanban, Minutas &amp; Assistente IA</h2>
               <p>Gestão visual de fluxos de trabalho e produção documental.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            Acompanhe o andamento dos prazos por colunas (Triagem, Em Elaboração, Revisão e Concluídas), registre honorários e tempos de trabalho (timesheet) e gere Procurações e Contratos com preenchimento automático.
+            Acompanhe o andamento dos prazos por colunas (Triagem, Em Elaboração, Revisão e Concluídas), use a IA com sua chave Gemini para análise de intimações e gere Procurações e Contratos com preenchimento automático.
             <div class="tour-features-grid">
+              <div class="tour-feature-card"><strong>Assistente Jurídico IA</strong><span>Análise inteligente de teses, pedidos e publicações judiciais.</span></div>
               <div class="tour-feature-card"><strong>Gerador de Minutas</strong><span>Procurações Art. 105 CPC e Contratos de Honorários com seus dados.</span></div>
-              <div class="tour-feature-card"><strong>Controle de Honorários</strong><span>Controle de percentuais de êxito, valores fixos e status de quitação.</span></div>
             </div>
           </div>
         </article>
@@ -1075,7 +1187,7 @@
             </div>
             <div>
               <h2>Personalização &amp; Certificado A1</h2>
-              <p>Deixe o JurisFlow com a cara do seu escritório.</p>
+              <p>Deixe o Atrium Senda com a cara do seu escritório.</p>
             </div>
           </div>
           <div class="tour-slide-body">
@@ -1118,7 +1230,7 @@
       </header>
       <form id="calendarConfigForm">
         <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;">
-          Conecte o JurisFlow com sua agenda externa favorita (Google Agenda, Microsoft Outlook, Apple Calendar ou qualquer servidor compatível com iCalendar / Webcal).
+          Conecte o Atrium Senda com sua agenda externa favorita (Google Agenda, Microsoft Outlook, Apple Calendar ou qualquer servidor compatível com iCalendar / Webcal).
         </p>
         <div class="field full" style="margin-bottom:16px;">
           <label for="calendarInputUrl">URL do Link da Agenda (iCal / Webcal .ics)</label>

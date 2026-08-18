@@ -1,96 +1,107 @@
 <div align="center">
 
-# ⚖️ JurisFlow
+# 🏛️ Atrium Senda
 
-### Central Open Source de Gestão Jurídica, Kanban e Prazos para Escritórios de Advocacia
+### Plataforma de Gestão Jurídica Inteligente, Soberana e Autônoma
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20.0.0-green.svg)](https://nodejs.org/)
-[![Security: AES-256-GCM](https://img.shields.io/badge/Security-AES--256--GCM-blue.svg)](#seguran%C3%A7a)
-[![2FA: TOTP](https://img.shields.io/badge/2FA-TOTP%20(RFC%206238)-blueviolet.svg)](#seguran%C3%A7a)
-[![White Label](https://img.shields.io/badge/White%20Label-100%25%20Customiz%C3%A1vel-gold.svg)](#personaliza%C3%A7%C3%A3o)
+[![Security: AES-256-GCM](https://img.shields.io/badge/Security-AES--256--GCM-blue.svg)](#segurança-e-privacidade-zero-trust)
+[![2FA: TOTP](https://img.shields.io/badge/2FA-TOTP%20(RFC%206238)-blueviolet.svg)](#segurança-e-privacidade-zero-trust)
+[![Design: Bento Grid](https://img.shields.io/badge/UI-Bento%20Grid%20Dark%20Gold-gold.svg)](#design-system--filosofia-visual)
+[![AI: Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini%20API-teal.svg)](#assistente-jurídico-ia-gemini)
 
-*Uma alternativa moderna, rápida, segura e **100% gratuita** para advogados autônomos, bancas e departamentos jurídicos no Brasil.*
+*Uma alternativa moderna, rápida, segura e **100% autônoma** para advogados autônomos, bancas e departamentos jurídicos no Brasil.*
 
-[Funcionalidades](#-funcionalidades-principais) • [Instalação Rápida](#-instala%C3%A7%C3%A3o-e-execu%C3%A7%C3%A3o-local) • [Deploy na Nuvem](#-deploy-em-1-clique) • [Segurança](#-seguran%C3%A7a-e-privacidade-oab--lgpd) • [Minutas](#-gerador-de-minutas-autom%C3%A1tico)
+[Origem do Nome](#-origem--justificativa-do-nome) • [Funcionalidades](#-funcionalidades-principais) • [Design System](#-design-system--filosofia-visual) • [Instalação Rápida](#-instalação-e-execução-local) • [Segurança](#-segurança-e-privacidade-zero-trust)
 
 ---
 
 </div>
 
-## 📌 Sobre o JurisFlow
+## 🏛️ Origem & Justificativa do Nome
 
-O **JurisFlow** é um sistema completo e *White Label* de gestão jurídica, desenvolvido para devolver aos advogados a autonomia, privacidade e agilidade no controle do escritório. 
+O nome **Atrium Senda** foi cuidadosamente selecionado para refletir a essência, a modernidade e a autonomia da advocacia contemporânea, utilizando uma combinação original de latim e português:
 
-Com interface visual refinada (tema *dark gold*), navegação fluida em Single Page Application (SPA) e arquitetura modular, o JurisFlow elimina a dependência de plataformas proprietárias caras e centraliza tudo o que você precisa no dia a dia forense:
+### 1. Atrium (Átrio)
+- **Contexto Histórico**: O *atrium* era o local central de encontro e recepção em uma casa romana, o ponto onde tudo convergia e se organizava.
+- **Significado no Software**: Representa a **centralização única** que o software oferece. É o ponto de convergência onde o advogado centraliza todos os seus processos, tarefas, agenda e finanças. Simboliza a "primeira linha de defesa" e o controle total do escritório, refletindo a premissa de **Zero Trust** e a segurança robusta.
 
-- **Kanban Ágil de Prazos e Tarefas** com Timesheet integrado.
-- **Gestão Processual & Honorários** com precificação (êxito, fixo, misto, mensalidade).
-- **Agenda Integrada Interativa** com mapa diário e sincronização Webcal (Google Agenda/Outlook/Apple).
-- **Triagem Inteligente de Intimações** com classificação jurídica automática do ato e cálculo de prazos em dias úteis.
-- **Automação de Minutas Forenses** (Procuração *Ad Judicia*, Contrato de Honorários e Declaração de Hipossuficiência) geradas em 1 clique com os dados das partes.
-- **Conexão com Fontes Oficiais**: Diário de Justiça Eletrônico Nacional (DJEN/CNJ), DataJud e portais judiciais com certificado A1.
-- **Blindagem Criptográfica AES-256-GCM**: Seus dados ficam protegidos no seu próprio ambiente, em conformidade estrita com a LGPD e o sigilo profissional da OAB.
+### 2. Senda
+- **Contexto**: Palavra que denota caminho, trilha, fluxo, rumo ou vereda.
+- **Significado no Software**: Representa o **fluxo de trabalho contínuo e a gestão de prazos**. Toca nas funcionalidades de Kanban, controle de prazos em dias úteis (CPC/2015), triagem inteligente de intimações e automação de minutas. O software é a senda segura pela qual a rotina jurídica transcorre sem riscos de perda de prazo.
 
 ---
 
 ## 🌟 Funcionalidades Principais
 
-### 1. 📊 Kanban Jurídico & Timesheet Forense
-- Colunas organizadas por fluxo de trabalho: *Triagem*, *Prioridade*, *Em Andamento*, *Aguardando*, *Revisão* e *Concluída*.
+### 1. 📊 Dashboard Bento Grid & Distribuição Semanal
+- **Layout Bento Moderno**: Compartimentos executivos harmoniosos com métricas em tempo real, foco do dia, linha do tempo de auditoria e monitoramento de fontes.
+- **Gráfico de Distribuição Semanal**: Visualização gráfica de colunas verticais com o volume de prazos de segunda a sexta-feira, cálculo de média diária e taxa de pontualidade 100%.
+
+### 2. 🤖 Assistente Jurídico IA (Google Gemini)
+- Integração nativa com a API gratuita do **Google Gemini** (Google AI Studio).
+- Cadastro e validação da chave API diretamente pela interface do sistema com armazenamento criptografado local.
+- Leitura, síntese e extração de teses e pedidos de publicações e intimações.
+- Assistente com streaming de resposta em tempo real para tirar dúvidas processuais e redigir argumentos.
+
+### 3. ⚖️ Triagem Inteligente de Intimações & DJEN Oficial
+- Conectado diretamente à API pública oficial do **Diário de Justiça Eletrônico Nacional (DJEN / CNJ)**.
+- Consulta limpa por número de OAB e Estado (sem loops ou erros 429).
+- Classificação semântica automática do ato: *Contestação (15d)*, *Apelação (15d)*, *Embargos de Declaração (5d)*, *Manifestação (15d)*.
+- **Visualização da Publicação com Destaque**: Texto integral com decodificação universal de caracteres e botão direto *"✦ Analisar com IA"*.
+- **Ordenação Direta por Clique**: Cabeçalhos clicáveis de *Data* e *Prazo* para reordenar instantaneamente.
+
+### 4. 🗂️ Kanban Jurídico & Timesheet Forense
+- Colunas organizadas por fluxo de trabalho: *Triagem*, *Em Elaboração*, *Revisão* e *Concluídas*.
 - Cartões com arrastar e soltar (*drag & drop*), indicador de prioridade (*Normal*, *Importante*, *Urgente*) e responsável.
-- **Timesheet integrado**: Apontamento detalhado de horas e minutos trabalhados por tarefa para prestação de contas aos clientes.
-- Prazos internos e **Prazos Fatais** destacados em vermelho com contagem regressiva.
+- **Timesheet integrado**: Apontamento detalhado de minutos trabalhados por tarefa para prestação de contas.
+- Prazos fatais destacados em vermelho com contagem regressiva em dias úteis.
 
-### 2. ⚖️ Gestão de Processos & Controle de Honorários
-- Cadastro de processos com número CNJ, clientes, parte contrária, tribunal, comarca e vara.
-- **Módulo Financeiro de Honorários**:
-  - *Quota Litis / Êxito* (% sobre o proveito econômico).
-  - *Honorários Fixos / Pró-labore*.
-  - *Honorários Mistos* (Fixo de entrada + Êxito).
-  - *Mensalidade / Partido*.
-  - *Cobrança por Hora*.
-  - Status financeiro: *Em dia*, *Aguardando êxito*, *Pendente* e *Quitado*.
-- Ordenação interativa bidirecional (ascendente/descendente) clicando em qualquer cabeçalho da tabela (Cliente, Data de Cadastro, Tribunal, Fase, Honorários).
-
-### 3. 📜 Gerador Automático de Minutas Forenses
-- Geração instantânea de peças prontas para impressão ou cópia:
-  - **Procuração "Ad Judicia et Extra"** (com poderes gerais e cláusula de poderes especiais do Art. 105 do CPC).
-  - **Contrato de Prestação de Serviços Advocatícios e Honorários** (com cláusula de sucumbência autônoma do Art. 23 da Lei 8.906/94).
+### 5. 📜 Gerador Automático de Minutas Forenses
+- Geração instantânea de peças prontas para cópia ou download em Markdown/Texto:
+  - **Procuração "Ad Judicia et Extra"** (com poderes especiais do Art. 105 do CPC).
+  - **Contrato de Prestação de Serviços Advocatícios e Honorários** (com percentual de êxito ou valor fixo).
   - **Declaração de Hipossuficiência Econômica** (Justiça Gratuita - Art. 98 do CPC).
-- Preenchimento dinâmico automático com a qualificação do cliente e os dados do seu escritório.
+- Cabeçalho formal automático com a identidade e dados do escritório.
 
-### 4. 📅 Agenda Integrada & Visualização Diária
-- Mini-calendário com marcadores coloridos por tipo de compromisso:
-  - 🟡 **Dourado**: Audiências e compromissos.
-  - 🔵 **Azul**: Tarefas e prazos internos.
-  - 🔴 **Vermelho**: Prazos fatais.
-  - 🟢 **Verde**: Intimações publicadas.
-- Clique em qualquer dia para ver a pauta completa daquela data.
-- Sincronização externa com Google Agenda, Microsoft Outlook ou Apple Calendar via URL Webcal/iCalendar.
+### 6. 📁 Importador eproc (.XLS) & Universal (XLSX / CSV)
+- Importe relatórios exportados diretamente do **eproc (TJRS, TRF4, TJSC, TJSP)** ou qualquer planilha Excel.
+- Pré-visualização completa, mapeamento inteligente de colunas e consolidação deduplicada.
 
-### 5. 🤖 Triagem de Intimações & Estimador de Prazos
-- Classificador semântico automático de atos judiciais: *Contestação (15d)*, *Recurso/Apelação (15d)*, *Cumprimento de Sentença (15d)*, *Embargos de Declaração (5d)*, *Audiência (7d)*, *Manifestação (15d)*.
-- Botão para converter intimação em tarefa do Kanban em **1 clique**, já com o prazo legal pré-calculado.
-
-### 6. 📁 Importador Universal de Planilhas (XLSX / CSV)
-- Migre de qualquer software anterior importando planilhas de contatos, processos e tarefas em lote.
+### 7. 📅 Agenda Integrada & Sincronização Externa
+- Mini-calendário com mapa de calor diário por categoria (audiências, prazos fatais, tarefas).
+- Conexão simplificada por formulário no sistema com qualquer agenda externa (Google Agenda, Microsoft Outlook, Apple Calendar) via URL iCal/Webcal.
 
 ---
 
-## 🔒 Segurança e Privacidade (OAB / LGPD)
+## 🎨 Design System & Filosofia Visual
 
-O JurisFlow foi projetado com a premissa de **Zero Trust** e sigilo forense:
+O Atrium Senda adota uma identidade visual imersiva e sofisticada baseada em:
+
+- **Paleta Dark Gold**:
+  - `#0C0C0B` / `#121212`: Negro Metálico Profundo.
+  - `#D4AF37` / `#C9A84C`: Dourado Escovado e Reflexos Nobres.
+  - `#FDF3C6` / `#F5E6A3`: Brilho especular dourado.
+  - `#404040`: Cinza Carvão para linhas de suporte e bordas.
+  - `#CC3333`: Vermelho Fatais para prazos e urgências críticas.
+- **Tipografia**: Serifada monumental (`Cinzel` / `Playfair Display`) para prestígio institucional combinada com sans-serif geométrica legível (`Plus Jakarta Sans` / `Inter`) para dados técnicos.
+- **Monograma AS Oficial**: Entrelace monumental da letra *A* com a letra *S*, desenhando no centro o caminho em perspectiva da *Senda*.
+- **Neo-Brutalismo Sutil**: Bordas finas de 1px com brilho dourado, cantos suaves (14–16px) e micro-interações táteis de elevação no hover.
+
+---
+
+## 🔒 Segurança e Privacidade (Zero Trust)
 
 | Camada | Tecnologia | Detalhes |
 | :--- | :--- | :--- |
 | **Criptografia em Repouso** | AES-256-GCM | Todos os dados locais (`app-state.json`, `runtime.json`) são cifrados com chaves de 256 bits. |
-| **Hash de Senha** | Scrypt | Derivação de chave resistente a ataques de força bruta com GPU. |
+| **Hash de Senha** | Scrypt | Derivação de chave resistente a ataques de força bruta. |
 | **Autenticação em 2 Etapas** | TOTP (RFC 6238) | Compatível com Google Authenticator, Microsoft Authenticator, 1Password, etc. |
 | **Recuperação de Emergência** | 8 Códigos de uso único | Códigos HMAC-SHA256 gerados no primeiro acesso. |
-| **Sessão Segura** | Cookies HttpOnly + SameSite | Cookies protegidos contra ataques XSS e Session Hijacking. |
+| **Sessão Segura** | Cookies HttpOnly + SameSite | Cookies protegidos contra ataques XSS e sequestro de sessão. |
 | **Proteção de Escrita** | Token Anti-CSRF | Todas as requisições de alteração exigem validação de token CSRF. |
-| **Cabeçalhos de Segurança** | CSP, HSTS, No-Sniff, Anti-Frame | `Content-Security-Policy` estrita sem execução de scripts externos não autorizados. |
+| **Cabeçalhos de Segurança** | CSP, HSTS, No-Sniff, Anti-Frame | `Content-Security-Policy` estrita. |
 
 ---
 
@@ -103,8 +114,8 @@ O JurisFlow foi projetado com a premissa de **Zero Trust** e sigilo forense:
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/seu-usuario/juris-flow.git
-   cd juris-flow
+   git clone https://github.com/seu-usuario/atrium-senda.git
+   cd atrium-senda
    ```
 
 2. **Instale as dependências:**
@@ -118,90 +129,36 @@ O JurisFlow foi projetado com a premissa de **Zero Trust** e sigilo forense:
    ```
 
 4. **Acesse no seu navegador:**
-   👉 [http://localhost:4173](http://localhost:4173) ou [http://127.0.0.1:4173](http://127.0.0.1:4173)
+   👉 [http://localhost:5000](http://localhost:5000) ou [http://127.0.0.1:5000](http://127.0.0.1:5000)
 
 5. **Primeiro Acesso (Setup Único)**:
-   - Defina seu nome, usuário e senha administrativa forte.
+   - Crie seu usuário e senha administrativa forte.
    - Escaneie o QR Code no seu aplicativo autenticador no celular (2FA).
-   - Guarde os códigos de recuperação em local seguro.
-   - *A partir desse momento, a rota de cadastro é permanentemente travada e o sistema passa a exigir login + 2FA.*
+   - Guarde os 8 códigos de recuperação em local seguro.
+   - A rota de cadastro é permanentemente travada após a inicialização.
 
 ---
 
-## ☁️ Deploy em 1 Clique
-
-### Opção A: Docker Compose (Qualquer Servidor / VPS)
-
-O projeto já inclui o `docker-compose.yml` e `Dockerfile` configurados:
+## 🧪 Testes Automatizados
 
 ```bash
-docker compose up -d
-```
-O painel estará disponível na porta `4173` com volume persistente montado em `./data`.
-
----
-
-### Opção B: Render
-
-1. Crie uma conta em [render.com](https://render.com).
-2. Clique em **New +** $\to$ **Web Service** e conecte seu repositório do GitHub.
-3. O Render detectará automaticamente o arquivo `render.yaml` e o `Dockerfile`.
-4. Preencha as variáveis de ambiente:
-   - `NODE_ENV`: `production`
-   - `COOKIE_SECURE`: `true`
-   - `AUTH_SESSION_SECRET`: Gerado via `npm run setup:keys`
-   - `AUTH_ENCRYPTION_KEY`: Gerado via `npm run setup:keys`
-5. Clique em **Create Web Service** e sua Central estará no ar com link HTTPS em menos de 2 minutos.
-
----
-
-### Opção C: Vercel
-
-1. Importe o repositório no painel da [Vercel](https://vercel.com).
-2. O arquivo `vercel.json` configurará as rotas e funções serverless automaticamente.
-3. Configure as variáveis de ambiente e clique em **Deploy**.
-
----
-
-## 🛠️ Personalização (White Label)
-
-O JurisFlow é 100% personalizável para a identidade visual do seu escritório:
-
-1. Acesse o menu **Configurações** na barra lateral.
-2. Na aba **Identidade do Escritório**, personalize:
-   - **Nome do Escritório** (Ex: *Silva & Santos Advogados Associados*)
-   - **Advogado(a) Titular** (Ex: *Dra. Maria Santos*)
-   - **Número de Inscrição na OAB** (Ex: *OAB/SP 123.456*)
-   - **Endereço Profissional, E-mail e WhatsApp**
-   - **URL da Agenda Externa** (Link Webcal do Google Agenda, Outlook ou Apple)
-3. Todas as minutas contratuais, procurações e cabeçalhos do sistema serão atualizados automaticamente com os seus dados!
-
----
-
-## 🧪 Testes Automatizados & Auditoria
-
-O projeto conta com uma suíte rigorosa de 5 baterias de testes automatizados:
-
-```bash
-# Executar todos os testes de conformidade
+# Executar a suíte de testes de conformidade
 npm test
 ```
 
 Suítes incluídas:
 - `tests/security.mjs`: Autenticação scrypt, TOTP, cookies HttpOnly, rate limiting, CSP e AES-256.
-- `tests/importer.mjs`: Importação de planilhas XLSX, deduplicação e proteção de PII.
-- `tests/rls.mjs`: Políticas de banco de dados e Row Level Security (RLS AAL2).
+- `tests/importer.mjs`: Importação de planilhas XLSX/XLS e relatórios eproc.
+- `tests/rls.mjs`: Políticas de isolamento e Row Level Security.
 - `tests/collector.mjs`: Conectores judiciais (DJEN, DataJud, PJe).
-- `tests/smoke.mjs`: Teste End-to-End completo via Playwright (login, 2FA, kanban, timesheet, honorários, minutas).
+- `tests/smoke.mjs`: Teste End-to-End completo (login, 2FA, kanban, timesheet, honorários, minutas, termos OAB/UF e ordenação).
 
 ---
 
 ## 📄 Licença
 
-Distribuído sob a licença **MIT**. Consulte o arquivo [`LICENSE`](LICENSE) para obter mais informações. Você é livre para utilizar, modificar e distribuir este software para fins pessoais ou comerciais.
-
----
+Distribuído sob a licença **MIT**. Consulte o arquivo [`LICENSE`](LICENSE) para obter mais informações.
 
 <div align="center">
-  <sub>Desenvolvido com ⚖️ para fortalecer a advocacia brasileira independente.</sub>
+  <sub>Atrium Senda — Desenvolvido com rigor e excelência para fortalecer a advocacia brasileira independente.</sub>
 </div>

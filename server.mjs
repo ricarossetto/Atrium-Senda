@@ -1034,6 +1034,6 @@ Diretrizes essenciais:
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`JurisFlow — Gestão Jurídica & Kanban: http://${HOST}:${PORT}`);
+  console.log(`Atrium Senda — Plataforma de Gestão Jurídica Inteligente: http://${HOST}:${PORT}`);
   console.log('Autenticação segura ativa (AES-256-GCM + TOTP 2FA).');
 });

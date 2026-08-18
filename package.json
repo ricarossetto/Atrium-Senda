@@ -1,7 +1,7 @@
 {
-  "name": "juris-flow",
+  "name": "atrium-senda",
   "version": "1.0.0",
-  "description": "Sistema Open Source White Label para Gestão de Escritórios de Advocacia, Kanban Jurídico, Prazos Processuais, Timesheet e Coletores Oficiais.",
+  "description": "Atrium Senda — Plataforma de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.",
   "license": "MIT",
   "type": "module",
   "scripts": {

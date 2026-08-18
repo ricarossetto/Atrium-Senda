@@ -561,7 +561,7 @@ CPF: ${doc}`;
       byId('globalSearch')?.addEventListener('input', event => this.globalSearch(event.target.value));
       byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
       byId('jsonImportInput')?.addEventListener('change', event => this.importJson(event.target.files[0]));
-      byId('exportAuditButton')?.addEventListener('click', () => this.exportJson(Store.state.audit, `jurisflow-auditoria-${isoDate()}.json`));
+      byId('exportAuditButton')?.addEventListener('click', () => this.exportJson(Store.state.audit, `atrium-senda-auditoria-${isoDate()}.json`));
 
       // Agenda Externa
       byId('configureCalendarButton')?.addEventListener('click', () => this.openCalendarConfigModal());
@@ -692,7 +692,7 @@ CPF: ${doc}`;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     renderAll() {
-      ['renderOfficeIdentity', 'renderMetrics', 'renderPriorities', 'renderActivity', 'renderSources', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderAgenda', 'renderMonitoring', 'renderConfiguration', 'renderAudit'].forEach(method => {
+      ['renderOfficeIdentity', 'renderMetrics', 'renderWeeklyDistribution', 'renderPriorities', 'renderActivity', 'renderSources', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderAgenda', 'renderMonitoring', 'renderConfiguration', 'renderAudit'].forEach(method => {
         try { this[method](); } catch (error) { console.error(`Falha em ${method}:`, error); }
       });
     },
@@ -834,6 +834,42 @@ CPF: ${doc}`;
       document.getElementById('heroSummary').textContent = newIntimations || deadlines
         ? `${newIntimations} intimação(ões) nova(s) e ${deadlines} prazo(s) nos próximos sete dias precisam de conferência.`
         : 'Nenhuma ocorrência urgente foi identificada nas fontes ativas.';
+    },
+    renderWeeklyDistribution() {
+      const activeTasks = Store.state.tasks.filter(t => !TERMINAL_STATUSES.includes(t.status));
+      const dayCounts = [0, 0, 0, 0, 0];
+
+      activeTasks.forEach(task => {
+        if (!task.deadline) return;
+        const parts = String(task.deadline).split('-');
+        if (parts.length === 3) {
+          const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          if (!isNaN(d.getTime())) {
+            const dayOfWeek = d.getDay(); // 0 Dom, 1 Seg, 2 Ter, 3 Qua, 4 Qui, 5 Sex, 6 Sab
+            if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+              dayCounts[dayOfWeek - 1]++;
+            }
+          }
+        }
+      });
+
+      const maxCount = Math.max(...dayCounts, 1);
+      const totalPrazos = dayCounts.reduce((a, b) => a + b, 0);
+      const avg = totalPrazos > 0 ? (totalPrazos / 5).toFixed(1) : '0.0';
+
+      for (let i = 0; i < 5; i++) {
+        const count = dayCounts[i];
+        const bar = document.getElementById(`chartBar${i}`);
+        if (bar) {
+          const pct = Math.max(25, Math.min(100, Math.round((count / maxCount) * 100)));
+          bar.style.height = `${pct}%`;
+          const valEl = bar.querySelector('.chart-val');
+          if (valEl) valEl.textContent = count;
+        }
+      }
+
+      const avgEl = document.getElementById('chartAvgStat');
+      if (avgEl) avgEl.textContent = avg;
     },
     renderPriorities() {
       const tasks = Store.state.tasks
@@ -2584,8 +2620,9 @@ CPF: ${doc}`;
     initialized = true;
     App.init().catch(err => { console.error('App.init failed:', err); window.KellerAuth.logout(); });
   };
-  window.JurisFlow = { App, Store };
-  window.KellerCentral = { App, Store };
+  window.AtriumSenda = { App, Store };
+  window.JurisFlow = window.AtriumSenda;
+  window.KellerCentral = window.AtriumSenda;
   window.addEventListener('keller:authenticated', boot);
   if (window.KellerAuth?.authenticated) boot();
 })();
