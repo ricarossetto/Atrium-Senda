@@ -417,37 +417,104 @@ async function pjeOfficeAvailable() {
 }
 
 async function tryAutomatedTotp(page, portal) {
-  const automationAllowed = judicialSecrets.allowAutomatedTotp || String(process.env.ALLOW_AUTOMATED_PORTAL_TOTP).toLowerCase() === 'true';
-  if (!automationAllowed || portal.strategy !== 'pje') return false;
   const secret = judicialSecrets.totpSecrets?.[portal.id]?.secret || (portal.autoTotpEnv ? process.env[portal.autoTotpEnv] : '');
   if (!secret) return false;
   const allowedOrigins = new Set([new URL(portal.url).origin, ...(portal.trustedAuthOrigins || [])]);
   if (!allowedOrigins.has(new URL(page.url()).origin)) return false;
-  const body = (await page.locator('body').innerText({ timeout: 2_000 }).catch(() => '')).slice(0, 5_000);
-  if (!/autentica[cç][aã]o|c[oó]digo\s+(?:de\s+)?verifica[cç][aã]o|token|totp/i.test(body)) return false;
-  const input = page.locator('input[autocomplete="one-time-code"], input[name*="otp" i], input[id*="otp" i], input[name*="token" i], input[placeholder*="código" i]').first();
-  if (!(await input.count().catch(() => 0))) return false;
-  await input.fill(generateTotp(secret));
-  const submit = page.getByRole('button', { name: /^(validar|entrar|continuar)$/i }).first();
-  if (await submit.count().catch(() => 0)) await submit.click();
+
+  // Seletores abrangentes para captura de campos 2FA/TOTP em eproc, PJe, PDPJ e portais de autenticação
+  const selectors = [
+    'input[autocomplete="one-time-code"]',
+    'input#txtCodAutenticacao',
+    'input#txtCodigo',
+    'input[name="txtCodAutenticacao"]',
+    'input[name="txtCodigo"]',
+    'input[name*="otp" i]',
+    'input[id*="otp" i]',
+    'input[name*="token" i]',
+    'input[id*="token" i]',
+    'input[name*="codigo" i]',
+    'input[id*="codigo" i]',
+    'input[name*="2fa" i]',
+    'input[id*="2fa" i]',
+    'input[name*="totp" i]',
+    'input[id*="totp" i]',
+    'input[placeholder*="código" i]',
+    'input[placeholder*="digite" i]',
+    'input[maxlength="6"]'
+  ];
+
+  let input = null;
+  for (const sel of selectors) {
+    const candidate = page.locator(sel).first();
+    if (await candidate.count().catch(() => 0) && await candidate.isVisible().catch(() => false)) {
+      input = candidate;
+      break;
+    }
+  }
+
+  if (!input) {
+    for (const frame of page.frames()) {
+      for (const sel of selectors) {
+        const candidate = frame.locator(sel).first();
+        if (await candidate.count().catch(() => 0) && await candidate.isVisible().catch(() => false)) {
+          input = candidate;
+          break;
+        }
+      }
+      if (input) break;
+    }
+  }
+
+  if (!input) return false;
+
+  const currentCode = generateTotp(secret);
+  console.log(`[2FA Robô]: Injetando código TOTP gerado automaticamente (${currentCode}) em ${portal.name}…`);
+  await input.fill(currentCode).catch(() => {});
+  await page.waitForTimeout(300);
+
+  const submitCandidates = [
+    page.locator('button[type="submit"], input[type="submit"], input#sbmEntrar, button#btnEntrar, input#btnEntrar, button#sbmEntrar').first(),
+    page.getByRole('button', { name: /^(validar|entrar|continuar|confirmar|acessar|verificar)$/i }).first()
+  ];
+
+  for (const submit of submitCandidates) {
+    if (await submit.count().catch(() => 0) && await submit.isVisible().catch(() => false)) {
+      await submit.click().catch(() => {});
+      await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => {});
+      await page.waitForTimeout(1_500);
+      return true;
+    }
+  }
+
+  await input.press('Enter').catch(() => {});
+  await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(1_500);
   return true;
 }
 
 async function tryAutomatedCertificateLogin(page, portal) {
-  if (!portal.autoCertificateLogin || portal.certificateMode !== 'pjeoffice') return false;
   const allowedOrigins = new Set([new URL(portal.url).origin, ...(portal.trustedAuthOrigins || [])]);
   if (!allowedOrigins.has(new URL(page.url()).origin)) return false;
+
   const candidates = [
     page.getByRole('button', { name: /certificado\s+digital/i }),
     page.getByRole('link', { name: /certificado\s+digital/i }),
-    page.getByText(/acesso\s+com\s+certificado\s+digital/i, { exact: false })
+    page.getByText(/acesso\s+com\s+certificado\s+digital/i, { exact: false }),
+    page.getByRole('button', { name: /certificado\s+a1/i }),
+    page.getByRole('link', { name: /certificado\s+a1/i }),
+    page.getByRole('button', { name: /entrar\s+com\s+certificado/i }),
+    page.getByRole('link', { name: /entrar\s+com\s+certificado/i }),
+    page.locator('button#btnCertificado, a#btnCertificado, button#btn-login-cert, a#btn-login-cert').first()
   ];
   for (const candidate of candidates) {
     if (!(await candidate.count().catch(() => 0))) continue;
     const element = candidate.first();
     if (!(await element.isVisible().catch(() => false))) continue;
+    console.log(`[A1 Robô]: Clicando automaticamente no acesso por Certificado em ${portal.name}…`);
     await element.click({ timeout: 5_000 }).catch(() => {});
-    await page.waitForTimeout(2_000);
+    await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => {});
+    await page.waitForTimeout(1_500);
     return true;
   }
   return false;
