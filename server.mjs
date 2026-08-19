@@ -747,7 +747,7 @@ function buildOfficeFullContext(state, runtime) {
 }
 
 async function callGeminiApi(apiKey, systemInstruction, contents) {
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-pro', 'gemini-1.5-pro'];
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-pro-exp', 'gemini-1.5-pro'];
   let lastError = null;
 
   for (const model of models) {
