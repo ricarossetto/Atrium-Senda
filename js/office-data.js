@@ -1,11 +1,13 @@
 // Atrium Senda — Dataset Padrão de Configurações do Escritório (ADVBOX)
 (function (root, factory) {
+  const data = factory();
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
-  } else {
-    root.OFFICE_DEFAULT_DATA = factory();
+    module.exports = data;
   }
-}(typeof self !== 'undefined' ? self : this, function () {
+  if (typeof root === 'object' && root) {
+    root.OFFICE_DEFAULT_DATA = data;
+  }
+}(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this), function () {
   'use strict';
 
   const actionGroups = [

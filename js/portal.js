@@ -331,6 +331,93 @@ ${name}
 CPF: ${doc}`;
   }
 
+  function generateProcuracaoPrevText(contact, process) {
+    const id = getOfficeIdentity();
+    const name = contact?.name || '[NOME DO OUTORGANTE]';
+    const doc = contact?.document || '[CPF/CNPJ]';
+    const rg = contact?.rg ? `, RG nº ${contact.rg}` : '';
+    const prof = contact?.profession ? `, profissão: ${contact.profession}` : '';
+    const civil = contact?.maritalStatus ? `, estado civil ${contact.maritalStatus}` : '';
+    const address = [contact?.address, contact?.district, contact?.city, contact?.state, contact?.zip].filter(Boolean).join(', ') || '[ENDEREÇO COMPLETO]';
+    const nbText = process?.nb ? ` (NB nº ${process.nb})` : '';
+
+    return `PROCURAÇÃO ESPECIAL PREVIDENCIÁRIA "AD JUDICIA ET EXTRA"
+
+OUTORGANTE:
+${name}, brasileiro(a)${civil}${prof}, inscrito(a) no CPF sob o nº ${doc}${rg}, residente e domiciliado(a) em ${address}.
+
+OUTORGADO:
+${id.lawyerName.toUpperCase()}, advogado(a), ${id.lawyerOab}, com endereço profissional em ${id.officeName}, situado em ${id.lawyerAddress}.
+
+PODERES ESPECÍFICOS PREVIDENCIÁRIOS:
+Por este instrumento, o(a) OUTORGANTE confere ao(s) OUTORGADO(S) amplos poderes gerais para o foro ("AD JUDICIA ET EXTRA"), bem como PODERES ESPECIAIS para representá-lo(a) perante o INSTITUTO NACIONAL DO SEGURO SOCIAL (INSS), Juizados Especiais Federais, Varas Federais e Tribunais Regionais Federais${nbText}, podendo:
+1. Requerer, acompanhar, prestar esclarecimentos, interpor recursos e assinar termos referentes a quaisquer benefícios previdenciários e assistenciais (Aposentadorias, Auxílios por Incapacidade, Pensões, BPC/LOAS);
+2. Ter vista e extrair cópias de Processos Administrativos Previdenciários (PAP) e do Cadastro Nacional de Informações Sociais (CNIS);
+3. Transigir, desistir, firmar acordos judiciais e extrajudiciais, renunciar ao excedente de 60 salários mínimos para expedição de RPV;
+4. RECEBER E DAR QUITAÇÃO de valores decorrentes de Requisições de Pequeno Valor (RPV) e Precatórios Judiciais, bem como assinar guias, recibos e declarações de quitação.
+
+${contact?.city || id.city}, ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date())}.
+
+
+_________________________________________________________
+${name}
+CPF: ${doc}`;
+  }
+
+  function generateTermoRenunciaText(contact, process) {
+    const id = getOfficeIdentity();
+    const name = contact?.name || '[NOME DO CLIENTE]';
+    const procNumber = process?.number || '[NÚMERO DO PROCESSO]';
+
+    return `NOTIFICAÇÃO DE RENÚNCIA AO MANDATO JUDICIAL (ART. 112 DO CPC)
+
+AO(À) ILUSTRÍSSIMO(A) SENHOR(A):
+${name}
+
+Ref.: Ação Judicial nº ${procNumber}
+
+Prezado(a) Senhor(a),
+
+Pelo presente instrumento, venho NOTIFICÁ-LO(A) de que, por motivos de foro íntimo, RENUNCIO aos poderes que me foram outorgados por Vossa Senhoria para representá-lo(a) nos autos do processo em epígrafe.
+
+Em cumprimento ao disposto no Artigo 112, § 1º, da Lei nº 13.105/2015 (Código de Processo Civil), informo que continuarei a representá-lo(a) nos referidos autos durante os próximos 10 (dez) dias seguintes à ciência desta notificação, a fim de evitar qualquer prejuízo processual, cabendo a Vossa Senhoria constituir novo procurador para prosseguimento do feito.
+
+${contact?.city || id.city}, ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date())}.
+
+
+_________________________________________________________
+${id.lawyerName}
+${id.lawyerOab} - ${id.officeName}
+
+
+CIENTE DO(A) NOTIFICADO(A): Em ___/___/______
+
+Assinatura: _____________________________________________`;
+  }
+
+  function generateSubstabelecimentoText(contact, process) {
+    const id = getOfficeIdentity();
+    const procNumber = process?.number ? ` nos autos do processo nº ${process.number}` : '';
+
+    return `SUBSTABELECIMENTO
+
+SUBSTABELECENTE:
+${id.lawyerName.toUpperCase()}, advogado(a), ${id.lawyerOab}, com escritório profissional em ${id.lawyerAddress}.
+
+SUBSTABELECIDO(A):
+[NOME DO ADVOGADO SUBSTABELECIDO], advogado(a) inscrito(a) na OAB/[UF] sob o nº [000.000], com escritório em [ENDEREÇO PROFISSIONAL].
+
+PODERES:
+Substabeleço, [COM / SEM] RESERVA DE IGUAIS PODERES, no(a) advogado(a) acima qualificado(a), todos os poderes que me foram outorgados por ${contact?.name || '[NOME DO CLIENTE]'}${procNumber}, para o fim específico de praticar todos os atos judiciais e extrajudiciais necessários ao fiel cumprimento do mandato.
+
+${id.city}, ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date())}.
+
+
+_________________________________________________________
+${id.lawyerName}
+${id.lawyerOab}`;
+  }
+
   const daysUntil = value => {
     if (!value) return Infinity;
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -1299,7 +1386,23 @@ CPF: ${doc}`;
       board.querySelectorAll('.task-card').forEach(card => {
         card.addEventListener('dragstart', () => { card.classList.add('dragging'); card.dataset.dragging = 'true'; });
         card.addEventListener('dragend', () => { card.classList.remove('dragging'); delete card.dataset.dragging; });
-        card.addEventListener('click', () => { const task = Store.state.tasks.find(item => item.id === card.dataset.taskId); if (task) this.openTaskModal(task); });
+        card.addEventListener('click', event => {
+          if (event.target.closest('.timesheet-btn')) return;
+          const task = Store.state.tasks.find(item => item.id === card.dataset.taskId);
+          if (task) this.openTaskModal(task);
+        });
+      });
+      board.querySelectorAll('[data-timesheet-start]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          this.startTimeSheet(btn.dataset.timesheetStart);
+        });
+      });
+      board.querySelectorAll('[data-timesheet-stop]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          this.stopTimeSheet();
+        });
       });
       board.querySelectorAll('.kanban-column').forEach(column => {
         column.addEventListener('dragover', event => { event.preventDefault(); column.classList.add('drag-over'); });
@@ -1314,8 +1417,83 @@ CPF: ${doc}`;
     taskCard(task) {
       const overdue = daysUntil(task.deadline) < 0 && task.status !== 'concluida';
       const timeMins = totalTimeMinutes(task.timeLogs);
-      const timeBadge = timeMins > 0 ? `<span class="task-timelog" title="Tempo total registrado na tarefa">⏱ ${formatMinutes(timeMins)}</span>` : '';
-      return `<article class="task-card" draggable="true" data-task-id="${escapeHtml(task.id)}"><div class="task-top"><span class="task-source">${escapeHtml(task.source || 'INTERNA')}</span><span>${Number(task.points) ? `<b class="task-points">${Number(task.points)} pts</b>` : ''}${timeBadge}${task.priority === 'urgente' ? '<span class="task-priority" title="Urgente">!</span>' : ''}</span></div><h4>${escapeHtml(task.title)}</h4><p>${escapeHtml(task.description || 'Sem descrição')}</p><div class="task-tags">${task.client ? `<span>${escapeHtml(task.client)}</span>` : ''}${task.process ? `<span>${escapeHtml(task.process)}</span>` : ''}</div>${task.fatalDeadline ? `<div class="fatal-date">Prazo fatal: ${formatDate(task.fatalDeadline)}</div>` : ''}<footer class="task-footer"><span class="task-date ${overdue ? 'overdue' : ''}">${overdue ? 'Atrasada · ' : ''}${formatDate(task.deadline)}</span><span class="task-avatar">${escapeHtml(this.initials(task.responsible || 'Ricardo'))}</span></footer></article>`;
+      const timeBadge = timeMins > 0 ? `<span class="task-timelog" title="Tempo total registrado no TimeSheet">⏱ ${formatMinutes(timeMins)}</span>` : '';
+      const isTimerRunning = this.activeTimeSheetTaskId === task.id;
+      const timerBtn = isTimerRunning
+        ? `<button type="button" class="timesheet-btn active timesheet-live" data-timesheet-stop="${escapeHtml(task.id)}" title="Clique para pausar e salvar apontamento no TimeSheet">⏹ ${this.formatElapsedTimer()}</button>`
+        : `<button type="button" class="timesheet-btn" data-timesheet-start="${escapeHtml(task.id)}" title="Iniciar cronômetro de TimeSheet">▶ Iniciar</button>`;
+
+      const points = Number(task.points) || (task.priority === 'urgente' ? 25 : 10);
+      return `<article class="task-card ${isTimerRunning ? 'timer-active' : ''}" draggable="true" data-task-id="${escapeHtml(task.id)}">
+        <div class="task-top">
+          <span class="task-source">${escapeHtml(task.source || 'INTERNA')}</span>
+          <span class="task-badges">
+            <b class="task-points" title="Pontuação TaskScore ADVBOX">✦ ${points} pts</b>
+            ${timeBadge}
+            ${task.priority === 'urgente' ? '<span class="task-priority" title="Urgente">!</span>' : ''}
+          </span>
+        </div>
+        <h4>${escapeHtml(task.title)}</h4>
+        <p>${escapeHtml(task.description || 'Sem descrição')}</p>
+        <div class="task-tags">
+          ${task.client ? `<span>${escapeHtml(task.client)}</span>` : ''}
+          ${task.process ? `<span>${escapeHtml(task.process)}</span>` : ''}
+        </div>
+        ${task.fatalDeadline ? `<div class="fatal-date">Prazo fatal: ${formatDate(task.fatalDeadline)}</div>` : ''}
+        <footer class="task-footer">
+          <div class="task-footer-left">
+            <span class="task-date ${overdue ? 'overdue' : ''}">${overdue ? 'Atrasada · ' : ''}${formatDate(task.deadline)}</span>
+            ${timerBtn}
+          </div>
+          <span class="task-avatar">${escapeHtml(this.initials(task.responsible || 'Ricardo'))}</span>
+        </footer>
+      </article>`;
+    },
+    startTimeSheet(taskId) {
+      if (this.activeTimeSheetTaskId === taskId) return;
+      this.stopTimeSheet();
+      this.activeTimeSheetTaskId = taskId;
+      this.timeSheetStartedAt = Date.now();
+      clearInterval(this.timeSheetInterval);
+      this.timeSheetInterval = setInterval(() => {
+        const liveBtn = document.querySelector(`.timesheet-live[data-timesheet-stop="${this.activeTimeSheetTaskId}"]`);
+        if (liveBtn) liveBtn.textContent = `⏹ ${this.formatElapsedTimer()}`;
+      }, 1000);
+      this.renderKanban();
+      this.toast('Cronômetro TimeSheet iniciado na tarefa!', 'success');
+    },
+    stopTimeSheet() {
+      if (!this.activeTimeSheetTaskId) return;
+      const elapsedMs = Date.now() - this.timeSheetStartedAt;
+      const minutes = Math.max(1, Math.round(elapsedMs / 60000));
+      const task = Store.state.tasks.find(t => t.id === this.activeTimeSheetTaskId);
+      if (task) {
+        if (!Array.isArray(task.timeLogs)) task.timeLogs = [];
+        task.timeLogs.push({
+          id: uid('tlog'),
+          minutes,
+          date: isoDate(),
+          author: window.KellerAuth?.currentUser?.displayName || 'Advogado',
+          description: 'Apontamento via Cronômetro TimeSheet'
+        });
+        task.timeSpentMinutes = (task.timeSpentMinutes || 0) + minutes;
+        Store.audit('TimeSheet registrado', `${task.title}: +${minutes} min`);
+        Store.save();
+      }
+      clearInterval(this.timeSheetInterval);
+      this.activeTimeSheetTaskId = null;
+      this.timeSheetStartedAt = null;
+      this.timeSheetInterval = null;
+      this.renderKanban();
+      this.toast(`TimeSheet: ${minutes} min adicionados à tarefa.`, 'success');
+    },
+    formatElapsedTimer() {
+      if (!this.timeSheetStartedAt) return '00:00:00';
+      const sec = Math.floor((Date.now() - this.timeSheetStartedAt) / 1000);
+      const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+      const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
     },
     moveTask(taskId, status) {
       const task = Store.state.tasks.find(item => item.id === taskId); if (!task || task.status === status) return;
@@ -1325,7 +1503,7 @@ CPF: ${doc}`;
     },
     renderProcesses(query = '') {
       const needle = normalizeText(query);
-      let records = Store.state.processes.filter(item => !needle || normalizeText(`${item.number} ${item.client} ${item.court} ${item.county || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
+      let records = Store.state.processes.filter(item => !needle || normalizeText(`${item.number} ${item.client} ${item.court} ${item.county || ''} ${item.nb || ''} ${item.opposingParty || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
       records = sortRecords(records, this.processSort);
       updateTableSortHeaders('processTable', this.processSort);
       document.getElementById('processTableBody').innerHTML = records.length ? records.map(item => {
@@ -1340,19 +1518,84 @@ CPF: ${doc}`;
           const feeStatusClass = item.feeStatus === 'quitado' || item.feeStatus === 'em_dia' ? 'fee-status-paid' : item.feeStatus === 'pendente' ? 'fee-status-pending' : 'fee-status-waiting';
           feeBadge = `<span class="fee-chip ${escapeHtml(item.feeType)}">${escapeHtml(item.feeType.toUpperCase())}<span class="fee-status-badge ${feeStatusClass}">${escapeHtml(item.feeStatus || 'regular')}</span></span>`;
         }
+
+        const nbChip = item.nb ? `<span class="nb-chip" title="Número do Benefício INSS">NB ${escapeHtml(item.nb)}</span>` : '';
+        const riskClass = item.risk === 'remoto' ? 'remoto' : item.risk === 'possivel' ? 'possivel' : 'provavel';
+        const riskLabel = item.risk === 'remoto' ? 'Risco Alto' : item.risk === 'possivel' ? 'Risco Médio' : 'Êxito Provável';
+        const riskChip = `<span class="risk-chip ${riskClass}" title="Probabilidade de Êxito Legal One">${riskLabel}</span>`;
+        const isTjrs = String(item.number || '').includes('.8.21.') || String(item.court || '').toUpperCase().includes('TJRS');
+        const tjrsBtn = isTjrs ? `<button type="button" class="btn-tjrs-consult" data-tjrs-consult="${escapeHtml(item.number)}" title="Consultar andamentos no microserviço oficial do TJRS">⚖ Consultar TJRS</button>` : '';
+
+        const clientPos = item.clientPosition ? `<small style="color:var(--gold-soft);">${escapeHtml(item.clientPosition)}</small> ` : '';
+        const opposingInfo = item.opposingParty ? `<small> vs ${escapeHtml(item.opposingParty)}</small>` : '';
+
         return `
         <tr data-process-id="${escapeHtml(item.id)}" tabindex="0">
-          <td><strong>${escapeHtml(item.number || item.protocol || 'Sem número')}</strong><small>${item.secrecy ? 'Segredo de justiça' : 'Consulta pública'}${item.caseFolder ? ` · ${escapeHtml(item.caseFolder)}` : ''}</small></td>
-          <td><strong>${escapeHtml(item.client)}</strong>${feeBadge ? `<br>${feeBadge}` : ''}</td>
-          <td><strong>${escapeHtml(item.court || item.county || '—')}</strong><small>${escapeHtml([item.actionType, item.stage].filter(Boolean).join(' · '))}</small></td>
-          <td><strong>${formatDate(regDate)}</strong><small>${escapeHtml(item.source || 'eproc / Cadastro')}</small></td>
+          <td>
+            <strong>${escapeHtml(item.number || item.protocol || 'Sem número')}</strong>
+            <small>${item.secrecy ? 'Segredo de justiça' : 'Consulta pública'}${item.caseFolder ? ` · ${escapeHtml(item.caseFolder)}` : ''}</small>
+            ${nbChip}
+          </td>
+          <td>
+            ${clientPos}<strong>${escapeHtml(item.client)}</strong>${opposingInfo}
+            ${feeBadge ? `<br>${feeBadge}` : ''}
+          </td>
+          <td>
+            <strong>${escapeHtml(item.court || item.county || '—')}</strong>
+            <small>${escapeHtml([item.actionType, item.judicialPhase || item.stage].filter(Boolean).join(' · '))}</small>
+            <div>${riskChip}</div>
+          </td>
+          <td>
+            <strong>${formatDate(regDate)}</strong>
+            <small>${escapeHtml(item.source || 'eproc / Cadastro')}</small>
+            ${tjrsBtn}
+          </td>
           <td><strong>${escapeHtml(item.lastMovement || 'Sem movimentação')}</strong><small>${formatDate(item.lastMovementAt)}</small></td>
           <td>${item.monitoring === 'active' ? '<span class="status-chip connected">Monitorando</span>' : '<span class="status-chip warning">Atenção</span>'}</td>
         </tr>`;
       }).join('') : '<tr><td colspan="6">Nenhum processo encontrado.</td></tr>';
-      document.querySelectorAll('#processTableBody [data-process-id]').forEach(row => row.addEventListener('click', () => {
-        const item = Store.state.processes.find(record => record.id === row.dataset.processId); if (item) this.openProcessModal(item);
+
+      document.querySelectorAll('#processTableBody [data-process-id]').forEach(row => row.addEventListener('click', event => {
+        if (event.target.closest('.btn-tjrs-consult')) return;
+        const item = Store.state.processes.find(record => record.id === row.dataset.processId);
+        if (item) this.openProcessModal(item);
       }));
+
+      document.querySelectorAll('#processTableBody [data-tjrs-consult]').forEach(btn => {
+        btn.addEventListener('click', async event => {
+          event.stopPropagation();
+          const procNum = btn.dataset.tjrsConsult;
+          this.toast(`Consultando processo ${procNum} no TJRS…`);
+          btn.disabled = true;
+          try {
+            const resp = await window.KellerAuth.secureFetch('/api/tjrs/consult', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ processNumber: procNum })
+            });
+            const result = await resp.json();
+            if (result.ok && result.data) {
+              const proc = Store.state.processes.find(p => p.number === procNum);
+              if (proc) {
+                const movs = result.data.movimentacoes || result.data.movimentos || [];
+                if (movs.length > 0) {
+                  proc.lastMovement = movs[0].descricao || movs[0].texto || movs[0].nome || 'Movimentação atualizada via TJRS';
+                  proc.lastMovementAt = isoDate();
+                  Store.save();
+                  this.renderProcesses(query);
+                }
+              }
+              this.toast('Processo consultado e atualizado diretamente do TJRS!', 'success');
+            } else {
+              this.toast(result.message || 'Consulta TJRS finalizada sem novos dados.', 'info');
+            }
+          } catch (err) {
+            this.toast(`Falha na consulta TJRS: ${err.message}`, 'error');
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
     },
     renderContacts(query = '') {
       const needle = normalizeText(query);
@@ -1818,25 +2061,50 @@ CPF: ${doc}`;
       ], { publishedAt: isoDate(), source: 'Manual', ...defaults });
     },
     openProcessModal(defaults = {}) {
+      const actionTypes = (Store.state.configuration?.actionTypes || []).map(a => ({ value: a.name, label: a.name }));
+      const actionGroups = (Store.state.configuration?.actionGroups || []).map(g => ({ value: g.name, label: g.name }));
+
       this.openModal('process', defaults.id ? 'Detalhes do processo' : 'Cadastrar processo', 'Carteira processual', [
-        { name: 'number', label: 'Número CNJ', full: true }, { name: 'client', label: 'Cliente', required: true }, { name: 'opposingParty', label: 'Parte contrária' },
-        { name: 'actionGroup', label: 'Grupo de ação' }, { name: 'actionType', label: 'Tipo de ação' }, { name: 'judicialPhase', label: 'Fase judicial' }, { name: 'stage', label: 'Etapa' },
-        { name: 'protocol', label: 'Protocolo' }, { name: 'originalProcess', label: 'Processo originário' }, { name: 'caseFolder', label: 'Pasta / caso' },
-        { name: 'court', label: 'Tribunal / órgão' }, { name: 'county', label: 'Comarca' }, { name: 'courtUnit', label: 'Vara / unidade' },
-        { name: 'responsible', label: 'Responsável' },
-        { name: 'registeredAt', label: 'Data de cadastro do processo', type: 'date' },
+        { name: 'number', label: 'Número CNJ', full: true, placeholder: '0000000-00.0000.8.21.0000' },
+        { name: 'oldNumber', label: 'Número antigo / físico', placeholder: 'Ex: 029/1.12.0001234-5' },
+        { name: 'nb', label: 'NB — Número do Benefício (INSS)', placeholder: 'Ex: 123.456.789-0' },
+        { name: 'client', label: 'Cliente principal', required: true },
+        { name: 'clientPosition', label: 'Posição do cliente', type: 'select', options: [{value:'Autor(a)',label:'Autor(a)'},{value:'Réu / Ré',label:'Réu / Ré'},{value:'Exequente',label:'Exequente'},{value:'Executado(a)',label:'Executado(a)'},{value:'Reclamante',label:'Reclamante (Trabalhista)'},{value:'Reclamada',label:'Reclamada (Trabalhista)'},{value:'Terceiro Interessado',label:'Terceiro Interessado'},{value:'Litisconsorte',label:'Litisconsorte'}] },
+        { name: 'opposingParty', label: 'Parte contrária principal', placeholder: 'Nome da parte adversa' },
+        { name: 'actionGroup', label: 'Grupo de ação', type: actionGroups.length ? 'select' : 'text', options: [{value:'',label:'Selecione o grupo'}, ...actionGroups] },
+        { name: 'actionType', label: 'Tipo de ação / Matéria', type: actionTypes.length ? 'select' : 'text', options: [{value:'',label:'Selecione o tipo de ação'}, ...actionTypes] },
+        { name: 'judicialPhase', label: 'Fase processual', type: 'select', options: [{value:'Conhecimento',label:'Conhecimento'},{value:'Recursal',label:'Recursal'},{value:'Execução / Cumprimento',label:'Execução / Cumprimento'},{value:'Acordo',label:'Acordo'},{value:'Administrativo',label:'Administrativo'},{value:'Arquivado',label:'Arquivado'}] },
+        { name: 'risk', label: 'Risco / Probabilidade de êxito', type: 'select', options: [{value:'provavel',label:'Provável (Alto êxito)'},{value:'possivel',label:'Possível (Médio risco)'},{value:'remoto',label:'Remoto (Alto risco)'}] },
+        { name: 'stage', label: 'Etapa do fluxo' },
+        { name: 'protocol', label: 'Protocolo / Local' },
+        { name: 'caseFolder', label: 'Pasta física / Caso' },
+        { name: 'court', label: 'Tribunal / Órgão', placeholder: 'Ex: TJRS, TRF4, TST' },
+        { name: 'county', label: 'Comarca / Seção Judiciária', placeholder: 'Ex: Ijuí, Porto Alegre' },
+        { name: 'courtUnit', label: 'Vara / Unidade Judiciária', placeholder: 'Ex: 1ª Vara Cível, 2ª Vara Federal' },
+        { name: 'responsible', label: 'Responsável principal' },
+        { name: 'registeredAt', label: 'Data de distribuição / cadastro', type: 'date' },
         { name: 'lastMovementAt', label: 'Data do último andamento', type: 'date' },
         { name: 'lastMovement', label: 'Último andamento', type: 'textarea', full: true },
         { name: 'feeType', label: 'Tipo de honorários', type: 'select', options: [{value:'',label:'Não definido'},{value:'exito',label:'Êxito (Quota Litis %)'},{value:'fixo',label:'Fixo (Pró-labore)'},{value:'misto',label:'Misto (Fixo + Êxito)'},{value:'mensal',label:'Mensalidade (Partido)'},{value:'horas',label:'Cobrança por Hora'}] },
         { name: 'feePercentage', label: 'Percentual de êxito (%)', type: 'number', placeholder: 'Ex: 30' },
-        { name: 'feeAmount', label: 'Valor fixo / total (R$)', type: 'number', placeholder: 'Ex: 5000' },
+        { name: 'feeAmount', label: 'Valor fixo / causa (R$)', type: 'number', placeholder: 'Ex: 5000' },
         { name: 'feeMonthly', label: 'Valor mensal (R$)', type: 'number', placeholder: 'Ex: 1500' },
         { name: 'feeStatus', label: 'Situação dos honorários', type: 'select', options: [{value:'em_dia',label:'Em dia / Regular'},{value:'aguardando_exito',label:'Aguardando êxito processual'},{value:'pendente',label:'Pendente / Cobrança'},{value:'quitado',label:'Quitado'}] },
         { name: 'feeNotes', label: 'Condições de pagamento e faturamento', type: 'textarea', full: true },
         { name: 'secrecy', label: 'Visibilidade', type: 'select', options: [{value:'false',label:'Consulta pública'},{value:'true',label:'Segredo de justiça'}] },
         { name: 'monitoring', label: 'Monitoramento', type: 'select', options: [{value:'active',label:'Monitorando'},{value:'attention',label:'Precisa de atenção'}] },
         { name: 'notes', label: 'Anotações gerais', type: 'textarea', full: true }
-      ], { secrecy: false, monitoring: 'active', feeStatus: 'em_dia', registeredAt: defaults.registeredAt || (defaults.createdAt ? defaults.createdAt.slice(0, 10) : isoDate()), ...defaults, secrecy: String(Boolean(defaults.secrecy)) });
+      ], {
+        secrecy: false,
+        monitoring: 'active',
+        feeStatus: 'em_dia',
+        clientPosition: 'Autor(a)',
+        judicialPhase: 'Conhecimento',
+        risk: 'provavel',
+        registeredAt: defaults.registeredAt || (defaults.createdAt ? defaults.createdAt.slice(0, 10) : isoDate()),
+        ...defaults,
+        secrecy: String(Boolean(defaults.secrecy))
+      });
     },
     openContactModal(defaults = {}) {
       this.openModal('contact', defaults.id ? 'Detalhes do contato' : 'Novo contato', 'Cadastro de pessoas', [
@@ -2884,8 +3152,11 @@ CPF: ${doc}`;
 
       let text = '';
       if (type === 'procuracao') text = generateProcuracaoText(contact, process);
+      else if (type === 'procuracao_prev') text = generateProcuracaoPrevText(contact, process);
       else if (type === 'contrato_honorarios') text = generateContratoText(contact, process);
       else if (type === 'declaracao_hipo') text = generateDeclaracaoHipoText(contact);
+      else if (type === 'termo_renuncia') text = generateTermoRenunciaText(contact, process);
+      else if (type === 'substabelecimento') text = generateSubstabelecimentoText(contact, process);
 
       const previewArea = document.getElementById('docGenPreviewText');
       if (previewArea) previewArea.value = text;

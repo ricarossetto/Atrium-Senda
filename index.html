@@ -4,41 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0c0c0b">
-  <meta name="description" content="Atrium Senda: Plataforma de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
-  <title>Atrium Senda — Plataforma de Gestão Jurídica Inteligente</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23D4AF37'%3E%3Crect width='100' height='100' rx='22' fill='%23121212'/%3E%3Cpath d='M50 12 L22 82 H34 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L66 82 H78 L50 12 Z' fill='%23FDF3C6'/%3E%3Cpath d='M42 82 C40 70 51 62 47 48 C44 38 48 30 50 24 C52 30 56 38 53 48 C49 62 60 70 58 82 H42 Z' fill='%23D4AF37'/%3E%3Cpath d='M40 26 C55 18 80 22 80 38 C80 50 58 52 58 62 C58 72 74 74 84 66 L86 76 C72 86 46 82 46 64 C46 48 68 46 68 36 C68 28 54 26 42 32 Z' fill='%23D4AF37'/%3E%3C/svg%3E">
+  <meta name="description" content="Keller Central Jurídica: Plataforma de Gestão Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
+  <title>Keller Central Jurídica — Gestão Autônoma e Kanban</title>
+  <link rel="icon" href="assets/images/favicon.png">
   <link rel="stylesheet" href="css/portal.css?v=4.4.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
     <div class="auth-visual">
       <div class="auth-brand-logo">
-        <div class="brand-badge-large">
-          <svg class="brand-monogram-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="authGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#FDF3C6"/>
-                <stop offset="30%" stop-color="#D4AF37"/>
-                <stop offset="70%" stop-color="#997524"/>
-                <stop offset="100%" stop-color="#D4AF37"/>
-              </linearGradient>
-              <linearGradient id="authGoldSenda" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#AA822A"/>
-                <stop offset="50%" stop-color="#FFF5D0"/>
-                <stop offset="100%" stop-color="#C9A84C"/>
-              </linearGradient>
-            </defs>
-            <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="url(#authGoldGrad)"/>
-            <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="url(#authGoldSenda)" opacity="0.95"/>
-            <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="url(#authGoldGrad)" opacity="0.92"/>
-          </svg>
-          <span>Atrium Senda</span>
-        </div>
+        <img src="assets/images/logo-branco.png" alt="Keller Advogados Associados" class="auth-logo" style="max-height: 52px; width: auto; object-fit: contain; margin-bottom: 20px;">
       </div>
       <div class="auth-visual-copy">
-        <p class="eyebrow">Ambiente jurídico seguro &amp; soberano</p>
-        <h1>Plataforma de Gestão<br><em>Jurídica Inteligente.</em></h1>
-        <p>Centralização absoluta, controle de prazos e Zero Trust com criptografia em repouso e segundo fator de autenticação (TOTP 2FA).</p>
+        <p class="eyebrow">Ambiente jurídico protegido</p>
+        <h1>Central Keller<br><em>segura por projeto.</em></h1>
+        <p>Senha forte, segundo fator e sessão local para proteger intimações, processos e documentos confidenciais.</p>
       </div>
       <div class="auth-security-list"><span>✓ Criptografia AES-256-GCM</span><span>✓ Segundo Fator TOTP (RFC 6238)</span><span>✓ Sessão HttpOnly &amp; Zero Trust</span></div>
     </div>
@@ -76,29 +56,29 @@
 
         <div class="auth-tabs" id="authTabs">
           <button type="button" class="auth-tab active" id="authTabLogin">Entrar na Conta</button>
-          <button type="button" class="auth-tab" id="authTabRegister">Criar Nova Conta</button>
+          <button type="button" class="auth-tab" id="authTabRegister">Criar Conta / Novo Membro</button>
         </div>
 
         <form id="authRegisterForm" class="auth-step">
-          <p class="eyebrow">Novo Usuário</p><h2>Criar conta de acesso</h2>
-          <p>Cadastre seus dados para acessar a plataforma Atrium Senda.</p>
-          <label>Nome completo<input name="displayName" autocomplete="name" required placeholder="Nome Sobrenome" maxlength="100"></label>
-          <label>E-mail<input name="email" type="email" autocomplete="email" required placeholder="usuario@email.com" maxlength="100"></label>
+          <p class="eyebrow">Novo Membro da Equipe</p><h2>Solicitar acesso ao Keller Advogados</h2>
+          <p>Informe seus dados para receber autorização do Administrador Master (Dr. Ricardo Rossetto - ricardo.rossetto.adv@gmail.com).</p>
+          <label>Nome completo<input name="displayName" autocomplete="name" required placeholder="Dr(a). Nome Sobrenome" maxlength="100"></label>
+          <label>E-mail de contato<input name="email" type="email" autocomplete="email" required placeholder="advogado@keller.adv.br" maxlength="100"></label>
           <label>Usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._-]{3,64}" placeholder="nome.sobrenome" maxlength="64"></label>
-          <label>Cargo / OAB (opcional)<input name="oab" placeholder="Advogado(a) / OAB" maxlength="40"></label>
+          <label>OAB / Cargo (opcional)<input name="oab" placeholder="OAB/RS 000000" maxlength="40"></label>
           <label>Senha de acesso<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
-          <button class="button gold auth-submit" type="submit">Criar conta e acessar</button>
+          <button class="button gold auth-submit" type="submit">Enviar solicitação para o Dr. Ricardo</button>
         </form>
 
         <form id="authLoginForm" class="auth-step">
-          <p class="eyebrow">Acesso restrito</p><h2>Entrar no Atrium Senda</h2>
+          <p class="eyebrow">Acesso restrito</p><h2>Entrar na Central Keller</h2>
           <p>Informe sua senha e o código atual do aplicativo autenticador.</p>
           <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="admin ou seu.usuario"></label>
           <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
           <label>Código TOTP ou recuperação<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000"></label>
           <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>Senha e Authenticator serão exigidos novamente após 30 dias ou ao sair da conta.</small></span></label>
-          <button class="button gold auth-submit" type="submit">Entrar no Atrium Senda</button>
+          <button class="button gold auth-submit" type="submit">Entrar na Central Keller</button>
         </form>
 
         <div id="authFeedback" class="auth-feedback hidden" role="alert"></div>
@@ -110,28 +90,8 @@
   <div class="app-shell hidden" id="appShell">
     <aside class="sidebar" id="sidebar">
       <div class="brand" data-view-link="dashboard" role="button" tabindex="0" title="Ir para a página inicial (Meu dia)">
-        <span class="brand-badge">
-          <svg class="brand-monogram-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="sideGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#FDF3C6"/>
-                <stop offset="30%" stop-color="#D4AF37"/>
-                <stop offset="70%" stop-color="#997524"/>
-                <stop offset="100%" stop-color="#D4AF37"/>
-              </linearGradient>
-              <linearGradient id="sideGoldSenda" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#AA822A"/>
-                <stop offset="50%" stop-color="#FFF5D0"/>
-                <stop offset="100%" stop-color="#C9A84C"/>
-              </linearGradient>
-            </defs>
-            <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="url(#sideGoldGrad)"/>
-            <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="url(#sideGoldSenda)" opacity="0.95"/>
-            <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="url(#sideGoldGrad)" opacity="0.92"/>
-          </svg>
-          <span>Atrium Senda</span>
-        </span>
-        <span class="brand-product">Plataforma Jurídica</span>
+        <img src="assets/images/logo-branco.png" alt="Keller Advogados Associados" style="height: 34px; max-width: 145px; object-fit: contain;">
+        <span class="brand-product">Central Jurídica</span>
       </div>
 
       <nav class="main-nav" aria-label="Navegação principal">
@@ -284,15 +244,11 @@
         </button>
       </nav>
 
-      <div class="sidebar-office">
-        <div class="office-avatar-icon">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/>
-          </svg>
-        </div>
+      <div class="sidebar-office" title="Configurações e identidade do escritório">
+        <div class="office-avatar-icon" style="background-image: url('assets/images/equipe.png'); background-size: cover; background-position: center; border-radius: 8px; width: 44px; height: 44px; border: 1px solid rgba(212, 175, 55, 0.35);"></div>
         <div class="office-copy">
-          <span id="sidebarOfficeLabel">Escritório</span>
-          <strong id="sidebarOfficeName">Advocacia Integrada</strong>
+          <span id="sidebarOfficeLabel">Desde 1983</span>
+          <strong id="sidebarOfficeName">Keller Advogados</strong>
         </div>
       </div>
     </aside>
@@ -1290,8 +1246,11 @@
           <label><span>Tipo de documento</span>
             <select id="docGenTypeSelect">
               <option value="procuracao">Procuração Ad Judicia et Extra (Art. 105 CPC)</option>
-              <option value="contrato_honorarios">Contrato de Honorários Advocatícios</option>
-              <option value="declaracao_hipo">Declaração de Hipossuficiência (Justiça Gratuita)</option>
+              <option value="procuracao_prev">Procuração Especial Previdenciária (INSS / RPV / Precatório)</option>
+              <option value="contrato_honorarios">Contrato de Honorários Advocatícios (Quota Litis / Êxito)</option>
+              <option value="declaracao_hipo">Declaração de Hipossuficiência (Justiça Gratuita - Art. 98 CPC)</option>
+              <option value="termo_renuncia">Notificação de Renúncia de Mandato (Art. 112 CPC)</option>
+              <option value="substabelecimento">Substabelecimento de Poderes (Com/Sem Reserva)</option>
             </select>
           </label>
           <label><span>Cliente / Outorgante</span>

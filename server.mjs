@@ -40,7 +40,7 @@ await security.init();
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp', '.ttf': 'font/ttf'
- };
+};
 const publicFiles = new Set(['index.html', 'css/portal.css', 'js/jsqr.js', 'js/auth.js', 'js/portal.js', 'js/prompts-data.js', 'js/office-data.js']);
 const publicDirectories = ['assets/images/', 'assets/fonts/', 'assets/team/', 'assets/icons/'];
 const emptyRuntime = () => ({ events: [], tasks: [], intimations: [], processes: [], sources: [], updatedAt: null });
@@ -900,6 +900,34 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, revoked }, { 'Set-Cookie': security.clearTrustedDeviceCookie() });
     }
 
+    if (req.method === 'POST' && url.pathname === '/api/tjrs/consult') {
+      assertAuthenticated(req);
+      const body = await readJson(req);
+      const rawNumber = String(body.processNumber || '').trim();
+      const cleanNumber = rawNumber.replace(/\D/g, '');
+      if (cleanNumber.length < 15) throw Object.assign(new Error('Número de processo CNJ inválido.'), { statusCode: 400 });
+      
+      const codComarca = body.codComarca || cleanNumber.slice(-3) || '029';
+      const tjrsUrl = `https://consulta-processual-service.tjrs.jus.br/api/consulta-service/v1/consultaProcesso?numeroProcesso=${cleanNumber}&codComarca=${codComarca}`;
+      
+      try {
+        const response = await fetch(tjrsUrl, {
+          headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          },
+          signal: AbortSignal.timeout(12_000)
+        });
+        if (!response.ok) {
+          return json(res, 200, { ok: false, message: `O microserviço do TJRS retornou status HTTP ${response.status}.` });
+        }
+        const data = await response.json().catch(() => null);
+        return json(res, 200, { ok: true, data });
+      } catch (err) {
+        return json(res, 200, { ok: false, message: `Não foi possível conectar ao TJRS: ${err.message}` });
+      }
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/status') {
       assertAuthenticated(req); const runtime = await readRuntime();
       let hasCalendar = Boolean(process.env.EXTERNAL_CALENDAR_URL || process.env.ADVBOX_WEBCAL_URL);
@@ -963,8 +991,8 @@ const server = http.createServer(async (req, res) => {
       const runtime = await readRuntime().catch(() => ({}));
       const fullOfficeContext = buildOfficeFullContext(state, runtime);
 
-      const systemPrompt = `Você é o Assistente Jurídico Inteligente do Atrium Senda, plataforma autônoma para advocacia de alta performance no Brasil.
-Escritório: ${office.officeName || 'Advocacia Integrada'} (${office.lawyerName || 'Dr(a). Advogado(a) Titular'} - ${office.lawyerOab || 'OAB'})
+      const systemPrompt = `Você é o Assistente Jurídico Inteligente da Central Keller, plataforma do escritório Keller Advogados.
+Escritório: ${office.officeName || 'Keller Advogados'} (${office.lawyerName || 'Dr(a). Advogado(a) Titular'} - ${office.lawyerOab || 'OAB'})
 
 ${fullOfficeContext}
 
