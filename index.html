@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0c0c0b">
-  <meta name="description" content="Keller Central Jurídica: Plataforma de Gestão Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
-  <title>Keller Central Jurídica — Gestão Autônoma e Kanban</title>
+  <meta name="description" content="Atrium Senda: Plataforma Open-Source de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
+  <title>Atrium Senda — Plataforma de Gestão Jurídica Inteligente</title>
   <link rel="icon" href="assets/images/favicon.png">
   <link rel="stylesheet" href="css/portal.css?v=4.4.0">
 </head>
@@ -13,11 +13,11 @@
   <section class="auth-gate" id="authGate" aria-live="polite">
     <div class="auth-visual">
       <div class="auth-brand-logo">
-        <img src="assets/images/logo-branco.png" alt="Keller Advogados Associados" class="auth-logo" style="max-height: 52px; width: auto; object-fit: contain; margin-bottom: 20px;">
+        <span class="brand-title" style="font-size:1.8rem;font-weight:700;letter-spacing:0.05em;color:var(--gold);display:block;margin-bottom:16px;">ATRIUM SENDA</span>
       </div>
       <div class="auth-visual-copy">
-        <p class="eyebrow">Ambiente jurídico protegido</p>
-        <h1>Central Keller<br><em>segura por projeto.</em></h1>
+        <p class="eyebrow">Plataforma Open-Source Protegida</p>
+        <h1>Atrium Senda<br><em>gestão jurídica autônoma.</em></h1>
         <p>Senha forte, segundo fator e sessão local para proteger intimações, processos e documentos confidenciais.</p>
       </div>
       <div class="auth-security-list"><span>✓ Criptografia AES-256-GCM</span><span>✓ Segundo Fator TOTP (RFC 6238)</span><span>✓ Sessão HttpOnly &amp; Zero Trust</span></div>
@@ -60,25 +60,25 @@
         </div>
 
         <form id="authRegisterForm" class="auth-step">
-          <p class="eyebrow">Novo Membro da Equipe</p><h2>Solicitar acesso ao Keller Advogados</h2>
-          <p>Informe seus dados para receber autorização do Administrador Master (Dr. Ricardo Rossetto - ricardo.rossetto.adv@gmail.com).</p>
+          <p class="eyebrow">Novo Membro / Cadastro</p><h2>Criar Acesso ao Atrium Senda</h2>
+          <p>Cadastre seus dados para acessar o painel do seu escritório.</p>
           <label>Nome completo<input name="displayName" autocomplete="name" required placeholder="Dr(a). Nome Sobrenome" maxlength="100"></label>
-          <label>E-mail de contato<input name="email" type="email" autocomplete="email" required placeholder="advogado@keller.adv.br" maxlength="100"></label>
+          <label>E-mail de contato<input name="email" type="email" autocomplete="email" required placeholder="advogado@escritorio.adv.br" maxlength="100"></label>
           <label>Usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._-]{3,64}" placeholder="nome.sobrenome" maxlength="64"></label>
-          <label>OAB / Cargo (opcional)<input name="oab" placeholder="OAB/RS 000000" maxlength="40"></label>
+          <label>OAB / Cargo (opcional)<input name="oab" placeholder="OAB/UF 000000" maxlength="40"></label>
           <label>Senha de acesso<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
-          <button class="button gold auth-submit" type="submit">Enviar solicitação para o Dr. Ricardo</button>
+          <button class="button gold auth-submit" type="submit">Criar Conta e Acessar</button>
         </form>
 
         <form id="authLoginForm" class="auth-step">
-          <p class="eyebrow">Acesso restrito</p><h2>Entrar na Central Keller</h2>
+          <p class="eyebrow">Acesso restrito</p><h2>Entrar no Atrium Senda</h2>
           <p>Informe sua senha e o código atual do aplicativo autenticador.</p>
           <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="admin ou seu.usuario"></label>
           <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
           <label>Código TOTP ou recuperação<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000"></label>
           <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>Senha e Authenticator serão exigidos novamente após 30 dias ou ao sair da conta.</small></span></label>
-          <button class="button gold auth-submit" type="submit">Entrar na Central Keller</button>
+          <button class="button gold auth-submit" type="submit">Entrar no Atrium Senda</button>
         </form>
 
         <div id="authFeedback" class="auth-feedback hidden" role="alert"></div>
@@ -90,8 +90,8 @@
   <div class="app-shell hidden" id="appShell">
     <aside class="sidebar" id="sidebar">
       <div class="brand" data-view-link="dashboard" role="button" tabindex="0" title="Ir para a página inicial (Meu dia)">
-        <img src="assets/images/logo-branco.png" alt="Keller Advogados Associados" style="height: 34px; max-width: 145px; object-fit: contain;">
-        <span class="brand-product">Central Jurídica</span>
+        <span class="brand-title" style="font-size:1.15rem;font-weight:700;letter-spacing:0.04em;color:var(--gold);">ATRIUM SENDA</span>
+        <span class="brand-product">Gestão Jurídica</span>
       </div>
 
       <nav class="main-nav" aria-label="Navegação principal">
@@ -246,8 +246,8 @@
       <div class="sidebar-office" title="Configurações e identidade do escritório">
         <div class="office-avatar-icon" style="background-image: url('assets/images/equipe.png'); background-size: cover; background-position: center; border-radius: 8px; width: 44px; height: 44px; border: 1px solid rgba(212, 175, 55, 0.35);"></div>
         <div class="office-copy">
-          <span id="sidebarOfficeLabel">Desde 1983</span>
-          <strong id="sidebarOfficeName">Keller Advogados</strong>
+          <span id="sidebarOfficeLabel">Gestão Jurídica</span>
+          <strong id="sidebarOfficeName">Atrium Senda</strong>
         </div>
       </div>
     </aside>

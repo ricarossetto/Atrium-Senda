@@ -1021,8 +1021,8 @@ const server = http.createServer(async (req, res) => {
       const runtime = await readRuntime().catch(() => ({}));
       const fullOfficeContext = buildOfficeFullContext(state, runtime);
 
-      const systemPrompt = `Você é o Assistente Jurídico Inteligente da Central Keller, plataforma do escritório Keller Advogados.
-Escritório: ${office.officeName || 'Keller Advogados'} (${office.lawyerName || 'Dr(a). Advogado(a) Titular'} - ${office.lawyerOab || 'OAB'})
+      const systemPrompt = `Você é o Assistente Jurídico Inteligente do Atrium Senda, plataforma de gestão jurídica inteligente.
+Escritório: ${office.officeName || 'Atrium Senda'} (${office.lawyerName || 'Dr(a). Advogado(a) Titular'} - ${office.lawyerOab || 'OAB'})
 
 ${fullOfficeContext}
 
