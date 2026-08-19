@@ -747,7 +747,7 @@ function buildOfficeFullContext(state, runtime) {
 }
 
 async function callGeminiApi(apiKey, systemInstruction, contents) {
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-pro-exp', 'gemini-1.5-pro'];
+  const models = ['gemini-3.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.0-pro-exp', 'gemini-1.5-pro'];
   let lastError = null;
 
   for (const model of models) {
@@ -977,7 +977,7 @@ const server = http.createServer(async (req, res) => {
         const env = await readAppStateEnvelope();
         if (env?.state?.settings?.geminiApiKey) configured = true;
       } catch {}
-      return json(res, 200, { configured, model: 'gemini-2.5-flash' });
+      return json(res, 200, { configured, model: 'gemini-3.5-flash-lite' });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/ai/configure') {
