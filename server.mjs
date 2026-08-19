@@ -932,24 +932,17 @@ const server = http.createServer(async (req, res) => {
       if (cleanNumber.length < 15) throw Object.assign(new Error('Número de processo CNJ inválido.'), { statusCode: 400 });
       
       const isTrf4 = rawNumber.includes('.4.04.') || cleanNumber.includes('404');
-      const is2G = rawNumber.includes('.8.21.') && (body.grau === '2' || body.courtUnit?.includes('Turma') || body.courtUnit?.includes('Câmara'));
       
-      const eprocUrl = isTrf4
-        ? `https://eproc.trf4.jus.br/eproc2trf4/controlador.php?acao=processo_selecionar&num_processo=${cleanNumber}`
-        : is2G
-        ? `https://eproc2g.tjrs.jus.br/eproc/externo_controlador.php?acao=processo_selecionar&num_processo=${cleanNumber}`
-        : `https://eproc1g.tjrs.jus.br/eproc/externo_controlador.php?acao=processo_selecionar&num_processo=${cleanNumber}`;
-
-      const buscaUrl = isTrf4
-        ? eprocUrl
+      const portalUrl = isTrf4
+        ? `https://eproc.trf4.jus.br/eproc2trf4/controlador.php?acao=processo_consulta_publica`
         : `https://www.tjrs.jus.br/novo/busca/?return=proc&client=wp_index&q=${cleanNumber}`;
 
       return json(res, 200, {
         ok: true,
-        directUrl: eprocUrl,
-        buscaUrl,
-        courtName: isTrf4 ? 'TRF4 (eproc)' : 'TJRS (eproc 1º/2º Grau)',
-        message: `Processo pronto para consulta oficial no ${isTrf4 ? 'TRF4' : 'TJRS'}.`
+        directUrl: portalUrl,
+        processNumber: rawNumber,
+        courtName: isTrf4 ? 'TRF4 (eproc)' : 'TJRS (Portal Oficial)',
+        message: `Número copiado e consulta oficial aberta no ${isTrf4 ? 'TRF4' : 'TJRS'}.`
       });
     }
 

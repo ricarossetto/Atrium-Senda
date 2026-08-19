@@ -1754,6 +1754,11 @@ ${id.lawyerOab} - ${id.officeName}`;
           event.stopPropagation();
           const procNum = btn.dataset.tjrsConsult;
           const proc = Store.state.processes.find(p => p.number === procNum);
+          
+          try {
+            await navigator.clipboard.writeText(procNum);
+          } catch {}
+
           this.toast(`Abrindo consulta oficial do processo ${procNum}…`);
           btn.disabled = true;
           try {
@@ -1765,7 +1770,7 @@ ${id.lawyerOab} - ${id.officeName}`;
             const result = await resp.json();
             if (result.ok && (result.directUrl || result.buscaUrl)) {
               window.open(result.directUrl || result.buscaUrl, '_blank', 'noopener,noreferrer');
-              this.toast(result.message || 'Consulta aberta no tribunal.', 'success');
+              this.toast(result.message || 'Consulta aberta no portal do tribunal.', 'success');
             } else {
               this.toast(result.message || 'Não foi possível obter o link do tribunal.', 'error');
             }
