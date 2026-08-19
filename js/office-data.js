@@ -11,17 +11,17 @@
   'use strict';
 
   const actionGroups = [
-    { name: 'Cível', publicationResponsible: 'Ricardo De Luca Rossetto' },
-    { name: 'Previdenciário', publicationResponsible: 'Ricardo De Luca Rossetto' },
-    { name: 'Trabalhista', publicationResponsible: 'Ricardo De Luca Rossetto' },
-    { name: 'Tributário', publicationResponsible: 'Ricardo De Luca Rossetto' },
-    { name: 'Família', publicationResponsible: 'Ricardo De Luca Rossetto' },
-    { name: 'Consumidor', publicationResponsible: 'Ricardo De Luca Rossetto' },
-    { name: 'Criminal', publicationResponsible: 'Ricardo De Luca Rossetto' },
-    { name: 'Administrativo', publicationResponsible: 'Ricardo De Luca Rossetto' },
-    { name: 'Serviços', publicationResponsible: 'Ricardo De Luca Rossetto' },
-    { name: 'Precatório', publicationResponsible: 'Ricardo De Luca Rossetto' },
-    { name: 'Financeiro/rh', publicationResponsible: 'Ricardo De Luca Rossetto' }
+    { name: 'Cível', publicationResponsible: 'Advogado Responsável' },
+    { name: 'Previdenciário', publicationResponsible: 'Advogado Responsável' },
+    { name: 'Trabalhista', publicationResponsible: 'Advogado Responsável' },
+    { name: 'Tributário', publicationResponsible: 'Advogado Responsável' },
+    { name: 'Família', publicationResponsible: 'Advogado Responsável' },
+    { name: 'Consumidor', publicationResponsible: 'Advogado Responsável' },
+    { name: 'Criminal', publicationResponsible: 'Advogado Responsável' },
+    { name: 'Administrativo', publicationResponsible: 'Advogado Responsável' },
+    { name: 'Serviços', publicationResponsible: 'Advogado Responsável' },
+    { name: 'Precatório', publicationResponsible: 'Advogado Responsável' },
+    { name: 'Financeiro/rh', publicationResponsible: 'Advogado Responsável' }
   ];
 
   const taskDefinitions = [
@@ -342,9 +342,36 @@
   ];
 
   const notificationAssignments = [
-    { event: 'Publicação capturada do DJEN', responsibles: 'Ricardo De Luca Rossetto, Equipe de Apoio Jurídico' },
-    { event: 'Prazo fatal a vencer em 48h', responsibles: 'Ricardo De Luca Rossetto' },
-    { event: 'Andamento capturado nos tribunais', responsibles: 'Equipe de Apoio Jurídico' }
+    { event: 'Publicação capturada do DJEN', responsibles: 'Advogado Responsável, Apoio Jurídico' },
+    { event: 'Prazo fatal a vencer em 48h', responsibles: 'Advogado Responsável' },
+    { event: 'Andamento capturado nos tribunais', responsibles: 'Apoio Jurídico' }
+  ];
+
+  const contactRoles = [
+    { id: 'cliente', name: 'Cliente / Outorgante' },
+    { id: 'testemunha', name: 'Testemunha' },
+    { id: 'perito', name: 'Perito Judicial / Assistente Técnico' },
+    { id: 'adverso', name: 'Advogado Adverso / Parte Contrária' },
+    { id: 'correspondente', name: 'Correspondente Jurídico' },
+    { id: 'preposto', name: 'Preposto / Representante' },
+    { id: 'outro', name: 'Outro Contato' }
+  ];
+
+  const leadOrigins = [
+    { id: 'indicacao', name: 'Indicação de Cliente' },
+    { id: 'parceria', name: 'Parceria Profissional' },
+    { id: 'balcao', name: 'Balcão / Atendimento Direto' },
+    { id: 'redes_sociais', name: 'Redes Sociais / WhatsApp' },
+    { id: 'google_site', name: 'Google / Site do Escritório' },
+    { id: 'convenio', name: 'Convênio / Entidade Sindical' },
+    { id: 'outro', name: 'Outra Origem' }
+  ];
+
+  const requisitionStatuses = [
+    { id: 'requisitado', name: 'Requisitado / Expedido' },
+    { id: 'aguardando_deposito', name: 'Aguardando Depósito Bancário' },
+    { id: 'disponivel_saque', name: 'Disponível para Saque / Levantamento' },
+    { id: 'repassado', name: 'Pago e Repassado ao Cliente' }
   ];
 
   const integrations = [
@@ -365,6 +392,9 @@
     users,
     inboxSections,
     notificationAssignments,
+    contactRoles,
+    leadOrigins,
+    requisitionStatuses,
     integrations
   };
 }));

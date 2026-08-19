@@ -418,6 +418,194 @@ ${id.lawyerName}
 ${id.lawyerOab}`;
   }
 
+  function generateQuesitosPrevText(contact, process) {
+    const id = getOfficeIdentity();
+    const name = contact?.name || '[NOME DO AUTOR/SEGURADO]';
+    const doc = contact?.document || '[CPF]';
+    const procNumber = process?.number || '[NÚMERO DO PROCESSO]';
+    const court = process?.court || '[VARA FEDERAL / JEF COMPETENTE]';
+    const nb = process?.nb ? ` (NB nº ${process.nb})` : '';
+
+    return `EXCELENTÍSSIMO(A) SENHOR(A) DOUTOR(A) JUIZ(A) DO(A) ${court.toUpperCase()}
+
+Processo nº: ${procNumber}
+Autor(a): ${name} (CPF nº ${doc})
+Réu: INSTITUTO NACIONAL DO SEGURO SOCIAL - INSS${nb}
+
+${name.toUpperCase()}, já devidamente qualificado(a) nos autos da AÇÃO PREVIDENCIÁRIA em epígrafe, vem, por intermédio de seu(sua) procurador(a) infra-assinado(a), apresentar os seus:
+
+QUESITOS DA PARTE AUTORA PARA A PERÍCIA MÉDICA JUDICIAL (ART. 465, § 1º, III DO CPC)
+
+1. Qual a especialidade médica do(a) Ilustre Perito(a) e qual a atividade laborativa habitual declarada e comprovada pela parte Autora?
+2. A parte Autora é portadora de alguma lesão, enfermidade ou sequela física/mental? Qual(is) o(s) respectivo(s) CID(s)?
+3. A referida enfermidade decorre de acidente de trabalho, doença profissional ou possui nexo causal com as atividades laborativas desempenhadas?
+4. Em razão da patologia diagnosticada, a parte Autora apresenta incapacidade para o exercício de sua profissão habitual ou de qualquer outra atividade laborativa que lhe garanta o sustento?
+5. A incapacidade apurada é de caráter temporário ou permanente? É total ou parcial?
+6. É possível estimar a Data de Início da Doença (DID) e a Data de Início da Incapacidade (DII)? Em quais exames, laudos e elementos clínicos o(a) Sr(a). Perito(a) se baseou para fixar tais marcos temporais?
+7. Há indicação de intervenção cirúrgica, reabilitação profissional ou tratamentos medicamentosos contínuos?
+8. No caso de não ser constatada incapacidade atual, restou evidenciada redução permanente da capacidade laborativa para a atividade que habitualmente exercia (hipótese de Auxílio-Acidente - Art. 86 da Lei 8.213/91)?
+9. Queira o(a) Sr(a). Perito(a) prestar outros esclarecimentos que entender pertinentes para a justa resolução da lide.
+
+Termos em que,
+Pede deferimento.
+
+${contact?.city || id.city}, ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date())}.
+
+
+_________________________________________________________
+${id.lawyerName}
+${id.lawyerOab} - ${id.officeName}`;
+  }
+
+  function generatePrestacaoContasRpvText(contact, process) {
+    const id = getOfficeIdentity();
+    const name = contact?.name || '[NOME DO CLIENTE]';
+    const doc = contact?.document || '[CPF/CNPJ]';
+    const procNumber = process?.number || '[NÚMERO DO PROCESSO]';
+    const nb = process?.nb ? ` (NB nº ${process.nb})` : '';
+
+    const grossAmount = Number(process?.requisitionAmount || process?.feeAmount || 0);
+    const feePct = Number(process?.feePercentage || 30);
+    const contractualFee = grossAmount > 0 ? (grossAmount * (feePct / 100)) : 0;
+    const netAmount = grossAmount > 0 ? (grossAmount - contractualFee) : 0;
+
+    const formattedGross = grossAmount > 0 ? `R$ ${grossAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'R$ [VALOR BRUTO]';
+    const formattedFee = contractualFee > 0 ? `R$ ${contractualFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${feePct}%)` : `[${feePct}% de Honorários]`;
+    const formattedNet = netAmount > 0 ? `R$ ${netAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'R$ [VALOR LÍQUIDO]';
+
+    return `TERMO DE PRESTAÇÃO DE CONTAS E RECIBO DE REPASSE (RPV / ALVARÁ JUDICIAL)
+
+CLIENTE / BENEFICIÁRIO(A):
+${name}, inscrito(a) no CPF sob o nº ${doc}.
+
+PROCESSO VINCULADO:
+Processo nº: ${procNumber}${nb}
+Juízo / Tribunal: ${process?.court || 'Justiça Federal / Estadual'}
+
+DISCRIMINAÇÃO DOS VALORES RECEBIDOS E REPASSADOS:
+1. VALOR BRUTO LEVANTADO (RPV / Alvará): ................... ${formattedGross}
+2. (-) HONORÁRIOS ADVOCATÍCIOS CONTRATUAIS (${feePct}%): .. ${formattedFee}
+3. (=) VALOR LÍQUIDO REPASSADO AO CLIENTE: ................ ${formattedNet}
+
+DECLARAÇÃO DE QUITAÇÃO:
+Pelo presente instrumento, o(a) CLIENTE declara que recebeu do escritório ${id.officeName}, por intermédio de seu(sua) procurador(a) ${id.lawyerName} (${id.lawyerOab}), a exata quantia líquida de ${formattedNet}, referente ao pagamento integral do crédito judicial oriundo do processo supramencionado.
+
+Com o recebimento do referido valor, o(a) CLIENTE confere a mais ampla, geral, rasa e irrevogável QUITAÇÃO quanto aos valores decorrentes da presente ação judicial, nada mais tendo a reclamar a qualquer título, no presente ou no futuro.
+
+${contact?.city || id.city}, ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date())}.
+
+
+_________________________________________________________
+${name}
+CPF: ${doc}
+(Beneficiário / Outorgante)
+
+
+_________________________________________________________
+${id.lawyerName}
+${id.lawyerOab} - ${id.officeName}
+(Advogado / Outorgado)`;
+  }
+
+  function generateRequerimentoInssText(contact, process) {
+    const id = getOfficeIdentity();
+    const name = contact?.name || '[NOME DO REQUERENTE]';
+    const doc = contact?.document || '[CPF]';
+    const nb = process?.nb ? `NB nº ${process.nb}` : '[NÚMERO DO BENEFÍCIO / PROTOCOLO]';
+    const address = [contact?.address, contact?.district, contact?.city, contact?.state, contact?.zip].filter(Boolean).join(', ') || '[ENDEREÇO DO REQUERENTE]';
+
+    return `ILUSTRÍSSIMO(A) SENHOR(A) CHEFE DA AGÊNCIA DA PREVIDÊNCIA SOCIAL (INSS / APS)
+
+REQUERIMENTO ADMINISTRATIVO DE CÓPIA INTEGRAL DE PROCESSO E REVISÃO
+
+REQUERENTE:
+${name}, brasileiro(a), inscrito(a) no CPF sob o nº ${doc}, residente e domiciliado(a) em ${address}, vem, por intermédio de seu(sua) procurador(a) legalmente constituído(a) ${id.lawyerName} (${id.lawyerOab}), com escritório profissional em ${id.lawyerAddress}, requerer o que segue:
+
+1. DO OBJETO DO REQUERIMENTO:
+O(A) Requerente é titular / postulante do benefício previdenciário ${nb}, processado perante esta Autarquia Federal.
+
+2. DOS PEDIDOS:
+Diante do exposto e com fundamento no Art. 5º, incisos XXXIII e XXXIV da Constituição Federal e no Art. 6º-A da Lei nº 8.213/91, requer:
+a) O FORNECIMENTO DE CÓPIA INTEGRAL EM FORMATO DIGITAL (PDF) do Processo Administrativo (PAP), contendo todos os laudos periciais médicos (SABIC/PMF), pareceres da contadoria, extrato CNIS e decisões administrativas;
+b) Seja conferida prioridade na tramitação deste pedido em razão das normas regulamentares vigentes;
+c) Que todas as notificações e intimações referentes ao presente requerimento sejam dirigidas ao(à) procurador(a) subscritor(a).
+
+Nestes termos,
+Pede e aguarda deferimento.
+
+${contact?.city || id.city}, ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date())}.
+
+
+_________________________________________________________
+${id.lawyerName}
+${id.lawyerOab} - ${id.officeName}`;
+  }
+
+  function isBrazilianHoliday(date) {
+    const m = date.getMonth() + 1;
+    const d = date.getDate();
+    if (m === 1 && d === 1) return true;
+    if (m === 4 && d === 21) return true;
+    if (m === 5 && d === 1) return true;
+    if (m === 9 && d === 7) return true;
+    if (m === 10 && d === 12) return true;
+    if (m === 11 && d === 2) return true;
+    if (m === 11 && d === 15) return true;
+    if (m === 11 && d === 20) return true;
+    if (m === 12 && d === 25) return true;
+    return false;
+  }
+
+  function isForenseRecess(date) {
+    const m = date.getMonth() + 1;
+    const d = date.getDate();
+    if (m === 12 && d >= 20) return true;
+    if (m === 1 && d <= 20) return true;
+    return false;
+  }
+
+  function isBusinessDay(date, excludeRecess = true) {
+    const dayOfWeek = date.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) return false;
+    if (excludeRecess && isForenseRecess(date)) return false;
+    if (isBrazilianHoliday(date)) return false;
+    return true;
+  }
+
+  function calculateLegalDeadline(startDateStr, totalDays = 15, options = {}) {
+    const countBusiness = options.businessDays !== false;
+    const isDouble = Boolean(options.doubleDeadline);
+    const effectiveDays = isDouble ? totalDays * 2 : totalDays;
+    
+    let current = new Date(`${String(startDateStr).slice(0, 10)}T00:00:00`);
+    if (isNaN(current.getTime())) current = new Date();
+
+    // Art. 224 CPC: Exclui o dia do começo
+    current.setDate(current.getDate() + 1);
+
+    while (!isBusinessDay(current)) {
+      current.setDate(current.getDate() + 1);
+    }
+
+    if (!countBusiness) {
+      current.setDate(current.getDate() + (effectiveDays - 1));
+      while (!isBusinessDay(current)) {
+        current.setDate(current.getDate() + 1);
+      }
+      return current.toISOString().slice(0, 10);
+    }
+
+    let counted = 1;
+    while (counted < effectiveDays) {
+      current.setDate(current.getDate() + 1);
+      if (isBusinessDay(current)) {
+        counted += 1;
+      }
+    }
+
+    return current.toISOString().slice(0, 10);
+  }
+
   const daysUntil = value => {
     if (!value) return Infinity;
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -1591,20 +1779,27 @@ ${id.lawyerOab}`;
     },
     renderContacts(query = '') {
       const needle = normalizeText(query);
-      let records = Store.state.contacts.filter(item => !needle || normalizeText(`${item.name} ${item.document} ${item.mobile} ${item.phone} ${item.email} ${item.origin} ${item.city || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
+      let records = Store.state.contacts.filter(item => !needle || normalizeText(`${item.name} ${item.document} ${item.mobile} ${item.phone} ${item.email} ${item.origin} ${item.contactRole || ''} ${item.leadOrigin || ''} ${item.city || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
       records = sortRecords(records, this.contactSort);
       updateTableSortHeaders('contactTable', this.contactSort);
       document.getElementById('contactCount').textContent = `${Store.state.contacts.length} contatos`;
+      const roleMap = { cliente: 'Cliente', testemunha: 'Testemunha', perito: 'Perito Judicial', adverso: 'Adv. Adverso', correspondente: 'Correspondente', preposto: 'Preposto', outro: 'Outro' };
       document.getElementById('contactTableBody').innerHTML = records.length ? records.map(item => {
         const regDate = item.registeredAt || item.createdAt;
+        const roleLabel = roleMap[item.contactRole] || (item.contactRole ? escapeHtml(item.contactRole) : 'Cliente');
+        const roleBadge = `<span class="fee-chip fixo" style="font-size:0.72rem;padding:2px 6px;margin-right:4px;">${roleLabel}</span>`;
+        const originLabel = item.leadOrigin ? escapeHtml(item.leadOrigin) : escapeHtml(item.origin || 'Direta');
         return `
         <tr data-contact-id="${escapeHtml(item.id)}" tabindex="0">
-          <td><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.profession || 'Pessoa cadastrada')}</small></td>
+          <td>
+            ${roleBadge}<strong>${escapeHtml(item.name)}</strong>
+            <small>${escapeHtml(item.profession || 'Pessoa cadastrada')}</small>
+          </td>
           <td><strong>${escapeHtml(item.document || '—')}</strong><small>${escapeHtml(item.rg || '')}</small></td>
           <td><strong>${escapeHtml(item.mobile || item.phone || '—')}</strong><small>${escapeHtml(item.email || '')}</small></td>
           <td><strong>${escapeHtml(item.city || '—')}</strong><small>${escapeHtml([item.state, item.country].filter(Boolean).join(' · '))}</small></td>
           <td><strong>${formatDate(regDate)}</strong><small>${item.externalId ? `ID ${escapeHtml(item.externalId)}` : 'Manual'}</small></td>
-          <td>${escapeHtml(item.origin || 'Não informada')}</td>
+          <td>${originLabel}</td>
         </tr>`;
       }).join('') : '<tr><td colspan="6">Nenhum contato encontrado.</td></tr>';
       document.querySelectorAll('#contactTableBody [data-contact-id]').forEach(row => row.addEventListener('click', () => {
@@ -2082,6 +2277,10 @@ ${id.lawyerOab}`;
         { name: 'feeAmount', label: 'Valor fixo / causa (R$)', type: 'number', placeholder: 'Ex: 5000' },
         { name: 'feeMonthly', label: 'Valor mensal (R$)', type: 'number', placeholder: 'Ex: 1500' },
         { name: 'feeStatus', label: 'Situação dos honorários', type: 'select', options: [{value:'em_dia',label:'Em dia / Regular'},{value:'aguardando_exito',label:'Aguardando êxito processual'},{value:'pendente',label:'Pendente / Cobrança'},{value:'quitado',label:'Quitado'}] },
+        { name: 'requisitionType', label: 'Requisição judicial (RPV / Alvará)', type: 'select', options: [{value:'',label:'Nenhuma requisição ativa'},{value:'rpv_federal',label:'RPV Federal (TRF4)'},{value:'precatorio_federal',label:'Precatório Federal (TRF4)'},{value:'alvara_estadual',label:'Alvará Judicial Estadual (TJRS)'},{value:'alvara_trabalhista',label:'Alvará Trabalhista (TRT4)'}] },
+        { name: 'requisitionAmount', label: 'Valor bruto requisitado (R$)', type: 'number', placeholder: 'Ex: 45000' },
+        { name: 'requisitionBank', label: 'Banco depositário', type: 'select', options: [{value:'',label:'Não definido'},{value:'bb',label:'Banco do Brasil'},{value:'cef',label:'Caixa Econômica Federal'},{value:'banrisul',label:'Banrisul'},{value:'outro',label:'Outro banco'}] },
+        { name: 'requisitionStatus', label: 'Status da requisição', type: 'select', options: [{value:'requisitado',label:'Requisitado / Expedido'},{value:'aguardando_deposito',label:'Aguardando Depósito Bancário'},{value:'disponivel_saque',label:'Disponível para Saque / Levantamento'},{value:'repassado',label:'Pago e Repassado ao Cliente'}] },
         { name: 'feeNotes', label: 'Condições de pagamento e faturamento', type: 'textarea', full: true },
         { name: 'secrecy', label: 'Visibilidade', type: 'select', options: [{value:'false',label:'Consulta pública'},{value:'true',label:'Segredo de justiça'}] },
         { name: 'monitoring', label: 'Monitoramento', type: 'select', options: [{value:'active',label:'Monitorando'},{value:'attention',label:'Precisa de atenção'}] },
@@ -2100,13 +2299,16 @@ ${id.lawyerOab}`;
     },
     openContactModal(defaults = {}) {
       this.openModal('contact', defaults.id ? 'Detalhes do contato' : 'Novo contato', 'Cadastro de pessoas', [
-        { name: 'name', label: 'Nome completo / razão social', required: true, full: true }, { name: 'document', label: 'CPF / CNPJ' }, { name: 'rg', label: 'RG' },
+        { name: 'name', label: 'Nome completo / razão social', required: true, full: true },
+        { name: 'contactRole', label: 'Papel do contato', type: 'select', options: [{value:'cliente',label:'Cliente / Outorgante'},{value:'testemunha',label:'Testemunha'},{value:'perito',label:'Perito Judicial / Assistente'},{value:'adverso',label:'Advogado Adverso / Parte Contrária'},{value:'correspondente',label:'Correspondente Jurídico'},{value:'preposto',label:'Preposto / Representante'},{value:'outro',label:'Outro Contato'}] },
+        { name: 'leadOrigin', label: 'Origem do contato / captação', type: 'select', options: [{value:'indicacao',label:'Indicação de Cliente'},{value:'parceria',label:'Parceria Profissional'},{value:'balcao',label:'Balcão / Atendimento Direto'},{value:'redes_sociais',label:'Redes Sociais / WhatsApp'},{value:'google_site',label:'Google / Site do Escritório'},{value:'convenio',label:'Convênio / Entidade Sindical'},{value:'outro',label:'Outra Origem'}] },
+        { name: 'document', label: 'CPF / CNPJ' }, { name: 'rg', label: 'RG' },
         { name: 'birthDate', label: 'Data de nascimento', type: 'date' }, { name: 'profession', label: 'Profissão' }, { name: 'maritalStatus', label: 'Estado civil' },
         { name: 'mobile', label: 'Celular' }, { name: 'phone', label: 'Telefone' }, { name: 'email', label: 'E-mail', type: 'email' },
-        { name: 'origin', label: 'Origem' }, { name: 'city', label: 'Cidade' }, { name: 'state', label: 'Estado' },
+        { name: 'origin', label: 'Origem (texto livre)' }, { name: 'city', label: 'Cidade' }, { name: 'state', label: 'Estado' },
         { name: 'address', label: 'Endereço', full: true }, { name: 'district', label: 'Bairro' }, { name: 'zip', label: 'CEP' },
         { name: 'notes', label: 'Anotações gerais', type: 'textarea', full: true }
-      ], { source: 'Interna', ...defaults });
+      ], { source: 'Interna', contactRole: 'cliente', leadOrigin: 'indicacao', ...defaults });
     },
     openAgendaModal(defaults = {}) {
       this.openModal('agenda', defaults.id ? 'Detalhes do compromisso' : 'Novo compromisso', 'Agenda jurídica', [
@@ -3145,6 +3347,9 @@ ${id.lawyerOab}`;
       else if (type === 'procuracao_prev') text = generateProcuracaoPrevText(contact, process);
       else if (type === 'contrato_honorarios') text = generateContratoText(contact, process);
       else if (type === 'declaracao_hipo') text = generateDeclaracaoHipoText(contact);
+      else if (type === 'quesitos_prev') text = generateQuesitosPrevText(contact, process);
+      else if (type === 'prestacao_contas_rpv') text = generatePrestacaoContasRpvText(contact, process);
+      else if (type === 'requerimento_inss') text = generateRequerimentoInssText(contact, process);
       else if (type === 'termo_renuncia') text = generateTermoRenunciaText(contact, process);
       else if (type === 'substabelecimento') text = generateSubstabelecimentoText(contact, process);
 

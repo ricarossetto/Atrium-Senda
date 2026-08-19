@@ -789,9 +789,24 @@ async function callGeminiApi(apiKey, systemInstruction, contents) {
       return { text, model };
     } catch (err) {
       lastError = err;
-      if (err.statusCode === 400 || err.statusCode === 403) throw err;
+      if (err.statusCode === 400 && (err.message.includes('inválida') || err.message.includes('expirada'))) throw err;
+      if (err.statusCode === 403) throw err;
       const msg = String(err.message).toLowerCase();
-      if (msg.includes('not found') || msg.includes('404') || msg.includes('no longer available') || msg.includes('deprecated') || msg.includes('is not supported')) {
+      if (
+        msg.includes('high demand') ||
+        msg.includes('quota') ||
+        msg.includes('rate limit') ||
+        msg.includes('resource exhausted') ||
+        msg.includes('too many requests') ||
+        msg.includes('429') ||
+        msg.includes('503') ||
+        msg.includes('500') ||
+        msg.includes('not found') ||
+        msg.includes('404') ||
+        msg.includes('no longer available') ||
+        msg.includes('deprecated') ||
+        msg.includes('is not supported')
+      ) {
         continue;
       }
       throw err;
