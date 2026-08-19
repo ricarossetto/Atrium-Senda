@@ -747,7 +747,7 @@ function buildOfficeFullContext(state, runtime) {
 }
 
 async function callGeminiApi(apiKey, systemInstruction, contents) {
-  const models = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-pro', 'gemini-1.5-pro'];
   let lastError = null;
 
   for (const model of models) {
@@ -774,7 +774,14 @@ async function callGeminiApi(apiKey, systemInstruction, contents) {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data.error?.message || `HTTP ${response.status}: ${JSON.stringify(data)}`);
+        const errorMsg = data.error?.message || `HTTP ${response.status}: ${JSON.stringify(data)}`;
+        if (response.status === 400 && (errorMsg.includes('API key') || errorMsg.includes('API_KEY_INVALID'))) {
+          throw Object.assign(new Error('Chave de API do Gemini inválida ou expirada. Verifique sua chave no Google AI Studio.'), { statusCode: 400 });
+        }
+        if (response.status === 403) {
+          throw Object.assign(new Error('Acesso negado pela API do Google Gemini. Verifique as permissões da chave no Google Cloud / AI Studio.'), { statusCode: 403 });
+        }
+        throw new Error(errorMsg);
       }
 
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -782,6 +789,7 @@ async function callGeminiApi(apiKey, systemInstruction, contents) {
       return { text, model };
     } catch (err) {
       lastError = err;
+      if (err.statusCode === 400 || err.statusCode === 403) throw err;
       const msg = String(err.message).toLowerCase();
       if (msg.includes('not found') || msg.includes('404') || msg.includes('no longer available') || msg.includes('deprecated') || msg.includes('is not supported')) {
         continue;
@@ -965,7 +973,12 @@ const server = http.createServer(async (req, res) => {
         throw Object.assign(new Error('Chave de API do Gemini inválida ou muito curta.'), { statusCode: 400 });
       }
 
-      const testResult = await callGeminiApi(apiKey, null, [{ role: 'user', parts: [{ text: 'Responda apenas com a palavra OK' }] }]);
+      let testResult;
+      try {
+        testResult = await callGeminiApi(apiKey, null, [{ role: 'user', parts: [{ text: 'Responda apenas com a palavra OK' }] }]);
+      } catch (err) {
+        throw Object.assign(new Error(`Falha ao validar chave com o Google Gemini: ${err.message}`), { statusCode: 400 });
+      }
 
       const envelope = await readAppStateEnvelope().catch(() => ({ state: {} }));
       const state = envelope?.state || {};
@@ -1284,7 +1297,7 @@ Diretrizes essenciais:
     json(res, 405, { message: 'Método não permitido.' });
   } catch (error) {
     const headers = error.retryAfter ? { 'Retry-After': String(error.retryAfter) } : {};
-    const message = error instanceof SyntaxError ? 'JSON inválido.' : error.statusCode ? error.message : 'Falha interna da central.';
+    const message = error instanceof SyntaxError ? 'JSON inválido.' : (error.message || 'Falha interna da central.');
     if (!error.statusCode) console.error(error);
     json(res, error.statusCode || 500, { message }, headers);
   }

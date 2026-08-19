@@ -2811,8 +2811,6 @@ ${id.lawyerOab}`;
       const chipsContainer = document.getElementById('promptsCategoryChips');
       const categorySelect = document.getElementById('promptCategorySelect');
       const countDisplay = document.getElementById('promptsCountDisplay');
-      const badgeNav = document.getElementById('promptCountBadge');
-      if (badgeNav) badgeNav.textContent = allPrompts.length;
 
       // Monta as opções de categoria no select
       const categories = ['all', ...new Set(allPrompts.map(p => p.category))];
