@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-label="Equipe jurídica Atrium Senda">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#0e1917"/>
+      <stop offset="1" stop-color="#263c35"/>
+    </linearGradient>
+    <radialGradient id="light" cx="70%" cy="30%" r="70%">
+      <stop stop-color="#d5b879" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#d5b879" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="960" height="540" fill="url(#bg)"/>
+  <rect width="960" height="540" fill="url(#light)"/>
+  <g fill="none" stroke="#d5b879" stroke-width="9" opacity=".92">
+    <circle cx="690" cy="194" r="63"/>
+    <circle cx="521" cy="227" r="50"/>
+    <circle cx="835" cy="237" r="48"/>
+    <path d="M577 429c9-93 48-143 113-143s105 50 114 143"/>
+    <path d="M443 429c6-73 32-112 78-112 27 0 48 13 61 38M798 350c11-21 26-32 47-32 43 0 69 38 76 111"/>
+  </g>
+  <path d="M90 410 224 75h70l134 335h-83l-27-76H202l-28 76Zm139-151h62l-31-91Z" fill="#d5b879" opacity=".96"/>
+</svg>

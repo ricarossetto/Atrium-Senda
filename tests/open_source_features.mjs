@@ -6,6 +6,12 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const officeDataPath = path.resolve(__dirname, '../js/office-data.js');
 const officeDataContent = fs.readFileSync(officeDataPath, 'utf8');
+const publicSourceFiles = [
+  '../index.html', '../server.mjs', '../lib/security.mjs', '../js/portal.js', '../js/office-data.js',
+  '../collector/agent.mjs', '../collector/portals.example.json', '../collector/adapters/djen.mjs',
+  '../collector/adapters/datajud.mjs', '../collector/adapters/pje.mjs'
+];
+const publicSourceContent = publicSourceFiles.map(file => fs.readFileSync(path.resolve(__dirname, file), 'utf8')).join('\n');
 const mod = { exports: {} };
 const fn = new Function('module', 'exports', 'globalThis', 'self', officeDataContent);
 fn(mod, mod.exports, globalThis, globalThis);
@@ -32,9 +38,9 @@ console.log('✓ Status de RPV e Alvarás validados.');
 
 // 3. Validar Auditoria de Privacidade Open Source (Sem dados hardcoded)
 console.log('\n3. Validando neutralidade e privacidade open-source...');
-const forbiddenTerms = ['ricardo.rossetto.adv@gmail.com', 'Keller Advogados'];
+const forbiddenTerms = ['ricardo.rossetto.adv@gmail.com', 'Ricardo De Luca Rossetto', '135294', 'Keller Advogados', 'contato@keller.adv.br'];
 forbiddenTerms.forEach(term => {
-  assert.ok(!officeDataContent.includes(term), 'office-data.js não deve conter termo privado: ' + term);
+  assert.ok(!publicSourceContent.includes(term), 'O código público não deve conter termo privado: ' + term);
 });
 console.log('✓ Código 100% livre de credenciais e dados pessoais.');
 

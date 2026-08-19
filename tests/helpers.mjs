@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const STARTUP_TIMEOUT_MS = 30_000;
 
 export async function startTestServer() {
   const dataDirectory = await mkdtemp(path.join(tmpdir(), 'keller-security-test-'));
@@ -26,14 +27,37 @@ export async function startTestServer() {
   let output = '';
   child.stdout.on('data', chunk => { output += chunk; }); child.stderr.on('data', chunk => { output += chunk; });
   const baseUrl = `http://127.0.0.1:${port}`; const started = Date.now();
-  while (Date.now() - started < 15_000) {
-    if (child.exitCode !== null) throw new Error(`Servidor de teste encerrou cedo: ${output}`);
-    try { const response = await fetch(`${baseUrl}/api/auth/status`); if (response.ok) break; } catch { /* iniciando */ }
+  let ready = false;
+  let lastStartupError = '';
+  while (Date.now() - started < STARTUP_TIMEOUT_MS) {
+    if (child.exitCode !== null) {
+      await rm(dataDirectory, { recursive: true, force: true });
+      throw new Error(`Servidor de teste encerrou cedo: ${output || `código ${child.exitCode}`}`);
+    }
+    try {
+      const response = await fetch(`${baseUrl}/api/auth/status`, { signal: AbortSignal.timeout(1_000) });
+      if (response.ok) { ready = true; break; }
+      lastStartupError = `HTTP ${response.status}`;
+    } catch (error) { lastStartupError = error.message; }
     await new Promise(resolve => setTimeout(resolve, 80));
   }
-  const response = await fetch(`${baseUrl}/api/auth/status`).catch(() => null);
-  if (!response?.ok) throw new Error(`Servidor de teste não iniciou: ${output}`);
-  return { baseUrl, dataDirectory, collectorToken, async stop() { if (child.exitCode === null) { child.kill('SIGTERM'); await new Promise(resolve => child.once('exit', resolve)); } await rm(dataDirectory, { recursive: true, force: true }); } };
+  if (!ready) {
+    await stopChild(child);
+    await rm(dataDirectory, { recursive: true, force: true });
+    throw new Error(`Servidor de teste não iniciou em ${STARTUP_TIMEOUT_MS / 1_000}s: ${output || lastStartupError || 'sem saída do processo'}`);
+  }
+  return { baseUrl, dataDirectory, collectorToken, async stop() { try { await stopChild(child); } finally { await rm(dataDirectory, { recursive: true, force: true }); } } };
+}
+
+async function stopChild(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  const exited = new Promise(resolve => child.once('exit', resolve));
+  child.kill('SIGTERM');
+  await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 5_000))]);
+  if (child.exitCode === null && child.signalCode === null) {
+    child.kill('SIGKILL');
+    await exited;
+  }
 }
 
 async function findAvailablePort() {

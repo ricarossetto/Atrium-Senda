@@ -149,5 +149,5 @@ grant select, insert on public.audit_logs to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 
 -- O primeiro workspace deve ser criado pelo usuário autenticado, seguido da associação owner:
--- insert into public.workspaces(name, owner_id) values ('Keller Advogados', auth.uid());
+-- insert into public.workspaces(name, owner_id) values ('Meu Escritório', auth.uid());
 -- insert into public.workspace_members(workspace_id, user_id, role) values (<workspace_id>, auth.uid(), 'owner');

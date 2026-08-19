@@ -23,10 +23,10 @@
     version: 1,
     terms: [{
       id: 'term-principal',
-      name: 'Ricardo De Luca Rossetto',
-      registration: 'OAB/RS 135294',
-      oabNumber: '135294',
-      oabUf: 'RS',
+      name: 'Advogado(a) Monitorado(a)',
+      registration: 'OAB/UF 000000',
+      oabNumber: '',
+      oabUf: '',
       active: true,
       primary: true
     }],
@@ -42,14 +42,14 @@
         title: 'Publicação identificada para conferência', process: '0000000-00.2026.8.21.0000',
         client: 'Cliente Modelo', court: 'Tribunal de Justiça · Vara Cível', publishedAt: isoDate(0),
         text: 'Intimação de demonstração. Quando os coletores estiverem ativos, o texto original da publicação ou da notificação oficial será preservado neste espaço.',
-        term: 'Ricardo De Luca Rossetto · OAB/RS 135294', createdAt: new Date().toISOString()
+        term: 'Advogado(a) Monitorado(a) · OAB/UF 000000', createdAt: new Date().toISOString()
       },
       {
         id: 'int-demo-2', source: 'Diário Eletrônico', status: 'triagem', unread: false,
         title: 'Movimentação processual aguardando análise', process: '5000000-00.2026.4.04.0000',
         client: 'Processo de demonstração', court: 'Justiça Federal · Vara Federal', publishedAt: isoDate(-1),
         text: 'Conteúdo ilustrativo para testar a triagem, a criação de tarefas e a vinculação ao Kanban.',
-        term: 'Ricardo De Luca Rossetto · OAB/RS 135294', createdAt: new Date(Date.now() - 86400000).toISOString()
+        term: 'Advogado(a) Monitorado(a) · OAB/UF 000000', createdAt: new Date(Date.now() - 86400000).toISOString()
       }
     ],
     tasks: [
@@ -75,14 +75,14 @@
       { id: 'audit-initial', at: new Date().toISOString(), action: 'Atrium Senda inicializado', detail: 'Ambiente pronto para uso com registros de demonstração.', actor: 'Sistema' }
     ],
     settings: {
-      officeName: 'Keller Advogados',
+      officeName: 'Meu Escritório',
       officeSlogan: 'Sociedade de Advogados',
-      lawyerName: 'Ricardo De Luca Rossetto',
-      lawyerOab: 'OAB/RS 135294',
-      lawyerCpfCnpj: '000.000.000-00',
-      lawyerEmail: 'contato@keller.adv.br',
-      lawyerPhone: '(51) 99999-9999',
-      lawyerAddress: 'Endereço Profissional — Porto Alegre/RS',
+      lawyerName: 'Advogado(a) Titular',
+      lawyerOab: 'OAB/UF 000000',
+      lawyerCpfCnpj: '',
+      lawyerEmail: '',
+      lawyerPhone: '',
+      lawyerAddress: '',
       externalCalendarUrl: '',
       demoMode: true,
       calendarConfigured: false,
@@ -93,6 +93,12 @@
 
   const deepClone = value => JSON.parse(JSON.stringify(value));
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+  function normalizeExternalUrl(value) {
+    try {
+      const url = new URL(String(value || '').trim());
+      return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : '';
+    } catch { return ''; }
+  }
   function decodeHtmlEntities(value) {
     if (!value) return '';
     const ENTITY_MAP = {
@@ -669,16 +675,6 @@ ${id.lawyerOab} - ${id.officeName}`;
         });
       }
       if (!this.state.terms.length) this.state.terms.unshift(deepClone(sampleState.terms[0]));
-      if (this.state.terms[0]) {
-        if (!this.state.terms[0].registration || this.state.terms[0].registration === 'OAB/UF 000000') {
-          this.state.terms[0].registration = 'OAB/RS 135294';
-          this.state.terms[0].oabNumber = '135294';
-          this.state.terms[0].oabUf = 'RS';
-        }
-        if (!this.state.terms[0].name || this.state.terms[0].name === 'Dr(a). Advogado(a) Titular') {
-          this.state.terms[0].name = 'Ricardo De Luca Rossetto';
-        }
-      }
       const authUser = window.KellerAuth?.currentUser;
       if (authUser?.displayName && this.state.terms[0]) {
         this.state.terms[0].name = authUser.displayName;
@@ -689,10 +685,21 @@ ${id.lawyerOab} - ${id.officeName}`;
     },
     save() {
       clearTimeout(this.saveTimer);
-      this.saveTimer = setTimeout(() => { this.flushPromise = this.flushPromise.then(() => this.flush()); }, 250);
+      this.saveTimer = setTimeout(() => {
+        this.saveTimer = null;
+        this.enqueueFlush();
+      }, 250);
     },
-    async flush() {
-      clearTimeout(this.saveTimer); this.saveTimer = null;
+    enqueueFlush() {
+      this.flushPromise = this.flushPromise.then(() => this.flushRequest(), () => this.flushRequest());
+      return this.flushPromise;
+    },
+    flush() {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+      return this.enqueueFlush();
+    },
+    async flushRequest() {
       try {
         const response = await window.KellerAuth.secureFetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: this.state, revision: this.revision }), keepalive: true });
         if (response.status === 409) {
@@ -784,9 +791,12 @@ ${id.lawyerOab} - ${id.officeName}`;
     aiChatHistory: [],
     aiConfigured: false,
     isAiTyping: false,
+    authUsers: [],
+    currentAuthRole: 'collaborator',
     promptsFilter: { search: '', category: 'all', type: 'all' },
     async init() {
       await Store.load();
+      await this.loadAuthUsers();
       this.bindNavigation();
       this.bindActions();
       this.renderAll();
@@ -891,7 +901,8 @@ ${id.lawyerOab} - ${id.officeName}`;
         const button = event.target.closest('button[data-config-section]'); if (!button) return;
         this.configurationSection = button.dataset.configSection;
         if (byId('configurationSearch')) byId('configurationSearch').value = '';
-        this.renderConfiguration();
+        if (this.configurationSection === 'users') this.loadAuthUsers().then(() => this.renderConfiguration());
+        else this.renderConfiguration();
       });
       byId('globalSearch')?.addEventListener('input', event => this.globalSearch(event.target.value));
       byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
@@ -1146,7 +1157,7 @@ ${id.lawyerOab} - ${id.officeName}`;
     },
     renderOfficeIdentity() {
       const s = Store?.state?.settings || {};
-      const officeName = s.officeName || 'Keller Advogados';
+      const officeName = s.officeName || 'Meu Escritório';
       const officeSlogan = s.officeSlogan || 'Desde 1983';
       const officeLogo = s.officeLogo || '';
 
@@ -1163,7 +1174,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           avatarEl.style.backgroundImage = 'none';
         } else {
           avatarEl.innerHTML = '';
-          avatarEl.style.backgroundImage = "url('assets/images/equipe.png')";
+          avatarEl.style.backgroundImage = "url('assets/icons/team.svg')";
           avatarEl.style.backgroundSize = 'cover';
           avatarEl.style.backgroundPosition = 'center';
         }
@@ -1172,10 +1183,10 @@ ${id.lawyerOab} - ${id.officeName}`;
     openOfficeSetup() {
       const s = Store.state.settings || {};
       const primaryTerm = Store.state.terms?.[0] || {};
-      document.getElementById('officeInputName').value = s.officeName || 'Keller Advogados';
+      document.getElementById('officeInputName').value = s.officeName || 'Meu Escritório';
       document.getElementById('officeInputSlogan').value = s.officeSlogan || 'Desde 1983';
-      document.getElementById('officeInputLawyer').value = s.lawyerName || primaryTerm.name || 'Ricardo De Luca Rossetto';
-      document.getElementById('officeInputOab').value = s.lawyerOab || primaryTerm.registration || 'OAB/RS 135294';
+      document.getElementById('officeInputLawyer').value = s.lawyerName || primaryTerm.name || 'Advogado(a) Titular';
+      document.getElementById('officeInputOab').value = s.lawyerOab || primaryTerm.registration || 'OAB/UF 000000';
       document.getElementById('officeInputAddress').value = s.lawyerAddress || '';
       document.getElementById('officeInputCity').value = s.city || '';
 
@@ -1508,7 +1519,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (action === 'ai-analyze') {
         this.switchView('assistant');
         setTimeout(() => {
-          this.sendAiMessage(`Analise a seguinte intimação judicial recebida no sistema e responda com precisão:\n\n1. O que o magistrado/tribunal determinou?\n2. Qual é o prazo processual do CPC/CPP/CLT aplicável e como é feita a contagem em dias úteis?\n3. Qual é a medida judicial ou providência que o escritório deve adotar?\n\nProcesso: ${item.process || 'Não identificado'}\nTribunal: ${item.court || 'Não informado'}\nData da Publicação: ${formatDate(item.publishedAt)}\nTexto da Intimação:\n${item.text || ''}`);
+          this.sendAiMessage(`Analise a seguinte intimação judicial recebida no sistema:\n\n1. O que o magistrado/tribunal determinou?\n2. Qual é a estimativa preliminar do prazo processual do CPC/CPP/CLT e quais hipóteses foram usadas na contagem?\n3. Qual é a medida judicial ou providência sugerida para conferência do escritório?\n\nNão trate a estimativa como prazo fatal confirmado; indique a necessidade de validar o processo e o calendário oficial.\n\nProcesso: ${item.process || 'Não identificado'}\nTribunal: ${item.court || 'Não informado'}\nData da Publicação: ${formatDate(item.publishedAt)}\nTexto da Intimação:\n${item.text || ''}`);
         }, 150);
         return;
       }
@@ -1633,7 +1644,7 @@ ${id.lawyerOab} - ${id.officeName}`;
             <span class="task-date ${overdue ? 'overdue' : ''}">${overdue ? 'Atrasada · ' : ''}${formatDate(task.deadline)}</span>
             ${timerBtn}
           </div>
-          <span class="task-avatar">${escapeHtml(this.initials(task.responsible || 'Ricardo'))}</span>
+          <span class="task-avatar">${escapeHtml(this.initials(task.responsible || 'Advogado(a)'))}</span>
         </footer>
       </article>`;
     },
@@ -1730,7 +1741,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           </td>
           <td>
             <strong>${escapeHtml(item.court || item.county || '—')}</strong>
-            <small>${escapeHtml([item.actionType, item.judicialPhase || item.stage].filter(Boolean).join(' · '))}</small>
+            <small>${escapeHtml([...new Set([item.actionType, item.judicialPhase, item.stage].filter(Boolean))].join(' · '))}</small>
             <div>${riskChip}</div>
           </td>
           <td>
@@ -1811,6 +1822,38 @@ ${id.lawyerOab} - ${id.officeName}`;
         const item = Store.state.contacts.find(record => record.id === row.dataset.contactId); if (item) this.openContactModal(item);
       }));
     },
+    async loadAuthUsers() {
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/auth/users', { headers: { Accept: 'application/json' } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível carregar os usuários de acesso.');
+        this.authUsers = Array.isArray(payload.users) ? payload.users : [];
+        this.currentAuthRole = payload.currentRole || 'collaborator';
+      } catch (error) {
+        this.authUsers = [];
+        console.warn('Falha ao carregar usuários de autenticação:', error.message);
+      }
+    },
+    async manageAuthUser(userId, status) {
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/auth/users/manage', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ userId, status })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível atualizar o usuário.');
+        await this.loadAuthUsers(); this.renderConfiguration(); this.toast('Acesso do usuário atualizado.', 'success');
+      } catch (error) { this.toast(error.message, 'error'); }
+    },
+    authUserRow(user) {
+      const labels = { active: 'Ativo', inactive: 'Suspenso', pending_approval: 'Aguardando aprovação' };
+      const canManage = this.currentAuthRole === 'master_admin' && user.role !== 'master_admin';
+      const nextStatus = user.status === 'active' ? 'inactive' : 'active';
+      const actionLabel = user.status === 'pending_approval' ? 'Aprovar' : user.status === 'active' ? 'Suspender' : 'Reativar';
+      return `<div class="configuration-row" data-auth-user-id="${escapeHtml(user.id)}">
+        <div class="config-row-info"><strong>${escapeHtml(user.displayName || user.username)}</strong><span>${escapeHtml(user.email || user.username)} · ${user.role === 'master_admin' ? 'Administrador' : 'Colaborador'}</span><small>${escapeHtml(labels[user.status] || user.status || 'Ativo')}</small></div>
+        ${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}">${actionLabel}</button>` : ''}
+      </div>`;
+    },
     renderConfiguration(query = '') {
       const config = Store.state.configuration || {};
       const sections = [
@@ -1818,14 +1861,22 @@ ${id.lawyerOab} - ${id.officeName}`;
       ];
       document.getElementById('configurationTabs').innerHTML = sections.map(([key, label]) => `<button class="${this.configurationSection === key ? 'active' : ''}" data-config-section="${key}">${label}</button>`).join('');
       document.getElementById('configurationMetrics').innerHTML = [
-        ['Definições de tarefa', config.taskDefinitions?.length || 0], ['Tipos de ação', config.actionTypes?.length || 0], ['Etapas', config.stages?.length || 0], ['Usuários', config.users?.length || 0], ['Contatos importados', Store.state.contacts.length]
+        ['Definições de tarefa', config.taskDefinitions?.length || 0], ['Tipos de ação', config.actionTypes?.length || 0], ['Etapas', config.stages?.length || 0], ['Usuários de acesso', this.authUsers.length], ['Contatos importados', Store.state.contacts.length]
       ].map(([label, count]) => `<div class="configuration-metric"><strong>${count}</strong><span>${label}</span></div>`).join('');
       const label = sections.find(([key]) => key === this.configurationSection)?.[1] || 'Configuração';
-      const raw = Array.isArray(config[this.configurationSection]) ? config[this.configurationSection] : [];
+      const isAuthUsers = this.configurationSection === 'users';
+      document.getElementById('newConfigurationButton')?.classList.toggle('hidden', isAuthUsers);
+      const raw = isAuthUsers ? this.authUsers : (Array.isArray(config[this.configurationSection]) ? config[this.configurationSection] : []);
       const needle = normalizeText(query); const records = raw.map((item, index) => ({ item, index })).filter(({ item }) => !needle || normalizeText(typeof item === 'string' ? item : Object.values(item || {}).flat().join(' ')).includes(needle));
       document.getElementById('configurationHeading').textContent = label;
       document.getElementById('configurationCount').textContent = `${records.length} itens`;
-      document.getElementById('configurationList').innerHTML = records.length ? records.map(({ item, index }) => this.configurationRow(item, index)).join('') : '<div class="empty-detail"><span>✓</span><h3>Nenhum item</h3><p>Não há registros nesta seção ou neste filtro.</p></div>';
+      document.getElementById('configurationList').innerHTML = records.length ? records.map(({ item, index }) => isAuthUsers ? this.authUserRow(item) : this.configurationRow(item, index)).join('') : '<div class="empty-detail"><span>✓</span><h3>Nenhum item</h3><p>Não há registros nesta seção ou neste filtro.</p></div>';
+      if (isAuthUsers) {
+        document.querySelectorAll('#configurationList [data-auth-user-status]').forEach(button => button.addEventListener('click', event => {
+          event.stopPropagation(); const row = button.closest('[data-auth-user-id]'); if (row) this.manageAuthUser(row.dataset.authUserId, button.dataset.authUserStatus);
+        }));
+        return;
+      }
       document.querySelectorAll('#configurationList [data-config-index]').forEach(row => row.addEventListener('click', (e) => {
         if (e.target.closest('[data-delete-config]')) return;
         const index = Number(row.dataset.configIndex); const item = raw[index]; if (item !== undefined) this.openConfigurationModal(item, index);
@@ -2197,7 +2248,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         { name: 'deadline', label: 'Prazo interno', type: 'date' },
         { name: 'date', label: 'Data da atividade', type: 'date' },
         { name: 'time', label: 'Horário', type: 'time' },
-        { name: 'responsible', label: 'Responsável principal', value: defaults.responsible || 'Ricardo' },
+        { name: 'responsible', label: 'Responsável principal', value: defaults.responsible || window.KellerAuth?.currentUser?.displayName || 'Advogado(a)' },
         { name: 'responsibles', label: 'Outros responsáveis', placeholder: 'Separe os nomes por vírgula' },
         { name: 'status', label: 'Coluna (Quadro Kanban)', type: 'select', options: KANBAN_COLUMNS.map(column => ({ value: column.id, label: column.title })) },
         { name: 'priority', label: 'Prioridade', type: 'select', options: [{value:'normal',label:'Normal'},{value:'importante',label:'Importante'},{value:'urgente',label:'Urgente'}] },
@@ -2239,7 +2290,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         this.switchView('assistant');
         const aiInput = document.getElementById('aiChatInput');
         if (aiInput) {
-          aiInput.value = `Por favor, analise a seguinte intimação judicial, calcule os prazos em dias úteis (CPC/2015) e sugira as providências jurídicas cabíveis:\n\n${cleanDescription}`;
+          aiInput.value = `Por favor, analise a seguinte intimação judicial, estime preliminarmente os prazos em dias úteis (CPC/2015), explicite as hipóteses usadas e sugira providências para conferência humana. Não trate a estimativa como prazo fatal confirmado.\n\n${cleanDescription}`;
           aiInput.focus();
         }
       });
@@ -2255,6 +2306,22 @@ ${id.lawyerOab} - ${id.officeName}`;
     openProcessModal(defaults = {}) {
       const actionTypes = (Store.state.configuration?.actionTypes || []).map(a => ({ value: a.name, label: a.name }));
       const actionGroups = (Store.state.configuration?.actionGroups || []).map(g => ({ value: g.name, label: g.name }));
+      const processNumber = String(defaults.number || defaults.protocol || '').trim();
+      const linkedTasks = defaults.id ? Store.state.tasks.filter(task => processNumber && String(task.process || '').trim() === processNumber) : [];
+      const linkedIntimations = defaults.id ? Store.state.intimations.filter(item => processNumber && String(item.process || '').trim() === processNumber) : [];
+      const openTasks = linkedTasks.filter(task => !TERMINAL_STATUSES.includes(task.status));
+      const timeMinutes = linkedTasks.reduce((total, task) => total + totalTimeMinutes(task.timeLogs), 0);
+      const nextDeadline = openTasks.map(task => task.fatalDeadline || task.deadline).filter(Boolean).sort()[0];
+      const summaryHtml = defaults.id ? `<section class="process-summary-card" data-process-summary>
+        <div class="process-summary-heading"><div><span>Resumo rápido do processo</span><strong>${escapeHtml(processNumber || 'Processo sem número')}</strong></div><small>${escapeHtml(defaults.client || 'Cliente não informado')} · ${escapeHtml(defaults.court || 'Órgão não informado')}</small></div>
+        <div class="process-summary-metrics">
+          <div><strong>${openTasks.length}</strong><span>Tarefas abertas</span></div>
+          <div><strong>${linkedIntimations.length}</strong><span>Intimações</span></div>
+          <div><strong>${escapeHtml(formatMinutes(timeMinutes))}</strong><span>Tempo apontado</span></div>
+          <div><strong>${nextDeadline ? formatDate(nextDeadline) : '—'}</strong><span>Próximo prazo</span></div>
+        </div>
+        <p><b>Último andamento:</b> ${escapeHtml(defaults.lastMovement || 'Ainda não informado.')} ${defaults.lastMovementAt ? `· ${formatDate(defaults.lastMovementAt)}` : ''}</p>
+      </section>` : '';
 
       this.openModal('process', defaults.id ? 'Detalhes do processo' : 'Cadastrar processo', 'Carteira processual', [
         { name: 'number', label: 'Número CNJ', full: true, placeholder: '0000000-00.0000.8.21.0000' },
@@ -2300,7 +2367,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         registeredAt: defaults.registeredAt || (defaults.createdAt ? defaults.createdAt.slice(0, 10) : isoDate()),
         ...defaults,
         secrecy: String(Boolean(defaults.secrecy))
-      });
+      }, summaryHtml);
     },
     openContactModal(defaults = {}) {
       this.openModal('contact', defaults.id ? 'Detalhes do contato' : 'Novo contato', 'Cadastro de pessoas', [
@@ -2387,7 +2454,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.openModal('term', defaults.id ? 'Editar termo monitorado' : 'Adicionar termo monitorado', 'Monitoramento DJEN & Tribunais', [
         { name: 'name', label: 'Nome completo ou razão social', required: true, full: true, placeholder: 'Ex: André da Silva', value: defaults.name || '' },
         { name: 'type', label: 'Tipo de identificador', type: 'select', full: true, options: [{ value: 'oab', label: 'Inscrição OAB (Advogado)' }, { value: 'document', label: 'CPF ou CNPJ' }, { value: 'name', label: 'Nome Textual' }] },
-        { name: 'oabNumber', label: 'Número da OAB (somente números)', placeholder: 'Ex: 135294', note: 'Digite somente os números da sua OAB (ex: 135294 ou 029238 com zero à esquerda se tiver menos de 6 dígitos).' },
+        { name: 'oabNumber', label: 'Número da OAB (somente números)', placeholder: 'Ex: 123456', note: 'Digite somente os números da sua OAB, preservando o zero à esquerda quando existir.' },
         { name: 'oabUf', label: 'Estado / Seccional (UF)', type: 'select', value: defaultUf, options: UF_OPTIONS },
         { name: 'document', label: 'CPF ou CNPJ', placeholder: 'Ex: 000.000.000-00 ou 00.000.000/0001-00' }
       ], { type: 'oab', oabNumber: defaultOab, oabUf: defaultUf, ...defaults });
@@ -2744,7 +2811,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       try {
         const response = await window.KellerAuth.secureFetch('/api/ai/status', { headers: { Accept: 'application/json' } });
         const data = await response.json().catch(() => ({}));
-        this.aiConfigured = Boolean(data.configured || Store.state.settings.geminiApiKey);
+        this.aiConfigured = Boolean(data.configured);
         if (chip) {
           chip.textContent = this.aiConfigured ? 'Chave Ativa' : 'Chave não configurada';
           chip.className = this.aiConfigured ? 'status-chip connected' : 'status-chip warning';
@@ -2753,7 +2820,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           banner.style.display = this.aiConfigured ? 'none' : 'block';
         }
       } catch {
-        this.aiConfigured = Boolean(Store.state.settings.geminiApiKey);
+        this.aiConfigured = false;
         if (chip) {
           chip.textContent = this.aiConfigured ? 'Chave Ativa' : 'Chave não configurada';
           chip.className = this.aiConfigured ? 'status-chip connected' : 'status-chip warning';
@@ -2762,7 +2829,7 @@ ${id.lawyerOab} - ${id.officeName}`;
     },
     openGeminiKeyModal() {
       const input = document.getElementById('geminiApiKeyInput');
-      if (input) input.value = Store.state.settings.geminiApiKey || '';
+      if (input) input.value = '';
       const feedback = document.getElementById('geminiKeyFeedback');
       if (feedback) { feedback.className = 'gemini-key-feedback hidden'; feedback.textContent = ''; }
       document.getElementById('geminiKeyBackdrop').classList.remove('hidden');
@@ -2788,8 +2855,6 @@ ${id.lawyerOab} - ${id.officeName}`;
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || 'Falha ao validar chave com o Google Gemini.');
 
-      if (data.revision) Store.revision = data.revision;
-      Store.state.settings.geminiApiKey = apiKey;
       Store.audit('Chave Gemini configurada', `Assistente IA ativado com modelo ${data.model || 'gemini-3.5-flash-lite'}.`);
       await this.checkAiStatus();
       return data;
@@ -2881,7 +2946,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       const container = document.getElementById('aiChatMessages');
       if (!container) return;
 
-      if (!this.aiConfigured && !Store.state.settings.geminiApiKey) {
+      if (!this.aiConfigured) {
         this.openGeminiKeyModal();
         this.toast('Por favor, configure sua chave gratuita do Gemini para usar o assistente.', 'warning');
         return;
@@ -3125,14 +3190,15 @@ ${id.lawyerOab} - ${id.officeName}`;
 
       section.classList.remove('hidden');
       grid.innerHTML = customLinks.map(link => {
+        const safeUrl = normalizeExternalUrl(link.url);
         let domain = '';
-        try { domain = new URL(link.url).hostname.replace(/^www\./, ''); } catch { domain = link.url; }
+        try { domain = new URL(safeUrl).hostname.replace(/^www\./, ''); } catch { domain = 'Endereço inválido'; }
         return `
           <div class="link-card card custom-link-card">
             <div class="link-card-header">
               <div class="link-badge">${escapeHtml(link.category || 'Link Personalizado')}</div>
               <div class="link-card-top-actions">
-                <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="external-icon" title="Abrir link">↗</a>
+                <a href="${escapeHtml(safeUrl || '#')}" target="_blank" rel="noopener noreferrer" class="external-icon" title="Abrir link">↗</a>
                 <button type="button" class="btn-delete-link" data-delete-link="${escapeHtml(link.id)}" title="Excluir este link">×</button>
               </div>
             </div>
@@ -3140,7 +3206,7 @@ ${id.lawyerOab} - ${id.officeName}`;
             <p>${escapeHtml(link.description || 'Link personalizado adicionado ao escritório.')}</p>
             <div class="link-card-meta">
               <span class="link-domain">${escapeHtml(domain)}</span>
-              <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="link-tag">Acessar</a>
+              <a href="${escapeHtml(safeUrl || '#')}" target="_blank" rel="noopener noreferrer" class="link-tag">Acessar</a>
             </div>
           </div>
         `;
@@ -3195,12 +3261,13 @@ ${id.lawyerOab} - ${id.officeName}`;
       const data = Object.fromEntries(new FormData(event.currentTarget).entries());
       if (this.modalMode.mode === 'task') {
         const history = Array.isArray(this.modalMode.defaults.history) ? [...this.modalMode.defaults.history] : [];
-        history.push({ at: new Date().toISOString(), action: this.modalMode.defaults.id ? 'Tarefa atualizada' : 'Tarefa atribuída', actor: 'Ricardo' });
+        const currentActor = window.KellerAuth?.currentUser?.displayName || 'Advogado(a)';
+        history.push({ at: new Date().toISOString(), action: this.modalMode.defaults.id ? 'Tarefa atualizada' : 'Tarefa atribuída', actor: currentActor });
         const timeLogs = Array.isArray(this.modalMode.defaults.timeLogs) ? [...this.modalMode.defaults.timeLogs] : [];
         const addMinutes = Number(data.addMinutes);
         if (addMinutes > 0) {
-          timeLogs.push({ id: uid('time'), date: isoDate(), minutes: addMinutes, description: data.timeDescription || 'Trabalho realizado', actor: 'Ricardo' });
-          history.push({ at: new Date().toISOString(), action: `Apontamento de tempo: ${formatMinutes(addMinutes)}`, actor: 'Ricardo' });
+          timeLogs.push({ id: uid('time'), date: isoDate(), minutes: addMinutes, description: data.timeDescription || 'Trabalho realizado', actor: currentActor });
+          history.push({ at: new Date().toISOString(), action: `Apontamento de tempo: ${formatMinutes(addMinutes)}`, actor: currentActor });
         }
         delete data.addMinutes;
         delete data.timeDescription;
@@ -3211,7 +3278,8 @@ ${id.lawyerOab} - ${id.officeName}`;
         Store.audit(this.modalMode.defaults.id ? 'Tarefa atualizada' : 'Tarefa atribuída', `${record.title}${record.process ? ` · ${record.process}` : ''}${record.points ? ` · ${record.points} pontos` : ''}${addMinutes > 0 ? ` · ${formatMinutes(addMinutes)} apontados` : ''}`);
       } else if (this.modalMode.mode === 'intimation') {
         const editing = Boolean(this.modalMode.defaults.id);
-        const record = { id: this.modalMode.defaults.id || uid('int'), status: this.modalMode.defaults.status || 'nova', unread: this.modalMode.defaults.unread ?? true, term: this.modalMode.defaults.term || 'Ricardo De Luca Rossetto · OAB/RS 135294', createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(), ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() };
+        const primaryTerm = Store.state.terms.find(term => term.primary) || Store.state.terms[0];
+        const record = { id: this.modalMode.defaults.id || uid('int'), status: this.modalMode.defaults.status || 'nova', unread: this.modalMode.defaults.unread ?? true, term: this.modalMode.defaults.term || `${primaryTerm?.name || 'Advogado(a) Monitorado(a)'} · ${primaryTerm?.registration || 'OAB/UF 000000'}`, createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(), ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() };
         Store.upsert('intimations', record); Store.audit(editing ? 'Intimação atualizada' : 'Intimação registrada', `${record.title}${record.process ? ` · ${record.process}` : ''}`);
       } else if (this.modalMode.mode === 'process') {
         const editing = Boolean(this.modalMode.defaults.id);
@@ -3297,10 +3365,12 @@ ${id.lawyerOab} - ${id.officeName}`;
         Store.audit(isEditing ? 'Prompt personalizado atualizado' : 'Prompt personalizado criado', record.title);
       } else if (this.modalMode.mode === 'link') {
         const isEditing = Boolean(this.modalMode.defaults.id);
+        const normalizedUrl = normalizeExternalUrl(data.url);
+        if (!normalizedUrl) { this.toast('Informe um endereço HTTP ou HTTPS válido.', 'error'); return; }
         const record = {
           id: this.modalMode.defaults.id || uid('link'),
           title: data.title || 'Link sem título',
-          url: data.url || '#',
+          url: normalizedUrl,
           category: data.category || 'Legislação',
           description: data.description || '',
           createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(),

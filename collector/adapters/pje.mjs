@@ -16,7 +16,7 @@ export async function collectPje(page, portal, config, target) {
   const result = { processes: 0, intimations: 0 };
   const processNumbers = new Set();
   const now = new Date().toISOString();
-  const term = `${config.monitoredTerm?.name || 'Ricardo De Luca Rossetto'} · ${config.monitoredTerm?.registration || 'OAB/RS 135294'}`;
+  const term = `${config.monitoredTerm?.name || 'Advogado(a) Monitorado(a)'} · ${config.monitoredTerm?.registration || 'OAB/UF 000000'}`;
 
   for (const line of uniqueLines) {
     const process = line.match(PROCESS_RE)?.[0];
@@ -70,7 +70,7 @@ export async function collectPje(page, portal, config, target) {
       process,
       deadline: '',
       priority: pendingScience ? 'urgente' : 'importante',
-      responsible: 'Ricardo',
+      responsible: config.monitoredTerm?.shortName || config.monitoredTerm?.name || 'Advogado(a)',
       createdAt: now
     });
     result.intimations += 1;

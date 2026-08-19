@@ -4,8 +4,8 @@ const PROCESS_DIGITS_RE = /\b\d{20}\b/;
 export async function collectDjen(portal, config, target, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const sleep = options.sleep || (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)));
-  const registration = config.monitoredTerm?.registration || 'OAB/RS 135294';
-  const uf = String(portal.ufOab || config.monitoredTerm?.oabUf || registration.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i)?.[1] || registration.match(/([A-Z]{2})/i)?.[1] || 'RS').toUpperCase();
+  const registration = config.monitoredTerm?.registration || '';
+  const uf = String(portal.ufOab || config.monitoredTerm?.oabUf || registration.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i)?.[1] || '').toUpperCase();
   const rawNumber = String(portal.numeroOab || config.monitoredTerm?.oabNumber || registration).replace(/\D/g, '');
   if (!rawNumber || !/^[A-Z]{2}$/.test(uf)) throw new Error('O número ou a UF da OAB do monitoramento DJEN é inválido.');
 
@@ -130,7 +130,7 @@ function appendDjenItem(item, portal, config, target) {
   const court = normalizeText([item.siglaTribunal, item.nomeOrgao].filter(Boolean).join(' · ')) || 'DJEN/CNJ';
   const title = canceledReason ? `${communicationType} cancelada` : [communicationType, documentType].filter(Boolean).join(' · ');
   const description = normalizeText([item.nomeClasse, recipients, text, canceledReason && `Cancelamento: ${canceledReason}`].filter(Boolean).join(' · '));
-  const term = `${config.monitoredTerm?.name || 'Advogado(a) Titular'} · ${config.monitoredTerm?.registration || 'OAB/RS 135294'}`;
+  const term = `${config.monitoredTerm?.name || 'Advogado(a) Titular'} · ${config.monitoredTerm?.registration || 'OAB/UF 000000'}`;
   const now = new Date().toISOString();
 
   target.intimations.push({

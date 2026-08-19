@@ -240,7 +240,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   border-radius: 16px;
   background:
     linear-gradient(90deg, rgba(12,12,11,.97) 0%, rgba(12,12,11,.86) 45%, rgba(12,12,11,.32) 100%),
-    url('../assets/images/equipe.png') right 20% / cover no-repeat;
+    url('../assets/icons/team.svg') right 20% / cover no-repeat;
   box-shadow: var(--shadow);
 }
 .hero-overlay {
@@ -1759,6 +1759,12 @@ td small { color: var(--muted); }
   background: #141311;
   border-top: 1px solid rgba(201, 168, 76, 0.25);
 }
+.ai-privacy-notice {
+  margin: 9px 2px 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
 .ai-input-wrapper {
   display: flex;
   gap: 12px;
@@ -2483,4 +2489,22 @@ td small { color: var(--muted); }
   color: #ff4d4f;
   border-color: #ff4d4f;
 }
-
+.process-summary-card {
+  margin: 0 0 18px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--gold) 7%, var(--panel));
+}
+.process-summary-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.process-summary-heading div { display: grid; gap: 4px; }
+.process-summary-heading span, .process-summary-heading small, .process-summary-metrics span { color: var(--muted); font-size: 0.75rem; }
+.process-summary-heading strong { color: var(--gold); }
+.process-summary-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.process-summary-metrics div { display: grid; gap: 3px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.process-summary-metrics strong { font-size: 1rem; }
+.process-summary-card p { margin: 12px 0 0; color: var(--muted); line-height: 1.5; }
+@media (max-width: 720px) {
+  .process-summary-heading { align-items: flex-start; flex-direction: column; }
+  .process-summary-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

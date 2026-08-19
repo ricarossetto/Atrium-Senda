@@ -41,9 +41,10 @@ O nome **Atrium Senda** foi cuidadosamente selecionado para refletir a essência
 
 ### 2. 🤖 Assistente Jurídico IA (Google Gemini)
 - Integração nativa com a API gratuita do **Google Gemini** (Google AI Studio).
-- Cadastro e validação da chave API diretamente pela interface do sistema com armazenamento criptografado local.
+- Cadastro e validação da chave API diretamente pela interface, com armazenamento criptografado exclusivo no servidor (a chave não retorna ao navegador).
 - Leitura, síntese e extração de teses e pedidos de publicações e intimações.
-- Assistente com streaming de resposta em tempo real para tirar dúvidas processuais e redigir argumentos.
+- O sistema envia ao Google apenas a pergunta, o histórico recente e os registros relacionados à consulta; perguntas jurídicas gerais não incluem o acervo interno.
+- Respostas sobre prazos são estimativas auxiliares e exigem conferência humana no processo e no calendário oficial.
 
 ### 3. ⚖️ Triagem Inteligente de Intimações & DJEN Oficial
 - Conectado diretamente à API pública oficial do **Diário de Justiça Eletrônico Nacional (DJEN / CNJ)**.
@@ -114,22 +115,23 @@ O Atrium Senda adota uma identidade visual imersiva e sofisticada baseada em:
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/seu-usuario/atrium-senda.git
-   cd atrium-senda
+   git clone https://github.com/ricarossetto/Atrium-Senda.git
+   cd Atrium-Senda
    ```
 
 2. **Instale as dependências:**
    ```bash
-   npm install
+   corepack enable
+   pnpm install --frozen-lockfile
    ```
 
 3. **Inicie o servidor:**
    ```bash
-   npm start
+   pnpm start
    ```
 
 4. **Acesse no seu navegador:**
-   👉 [http://localhost:5000](http://localhost:5000) ou [http://127.0.0.1:5000](http://127.0.0.1:5000)
+   👉 [http://localhost:4173](http://localhost:4173) ou [http://127.0.0.1:4173](http://127.0.0.1:4173)
 
 5. **Primeiro Acesso (Setup Único)**:
    - Crie seu usuário e senha administrativa forte.

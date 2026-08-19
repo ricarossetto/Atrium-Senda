@@ -329,7 +329,7 @@
   ];
 
   const users = [
-    { name: 'Ricardo De Luca Rossetto', role: 'Advogado Titular', pointsGoal: 1500 },
+    { name: 'Advogado(a) Titular', role: 'Administrador', pointsGoal: 1500 },
     { name: 'Equipe de Apoio Jurídico', role: 'Controladoria & Prazos', pointsGoal: 1000 }
   ];
 

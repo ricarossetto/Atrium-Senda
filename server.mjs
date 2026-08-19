@@ -3,9 +3,12 @@ import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm } from
 import { existsSync } from 'node:fs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SecurityManager, verifyTotp } from './lib/security.mjs';
+import { buildRelevantOfficeContext } from './lib/ai-context.mjs';
 import { collectDjen } from './collector/adapters/djen.mjs';
 import ExcelJS from 'exceljs';
 import * as xlsxModule from 'xlsx';
@@ -22,6 +25,7 @@ const DATA_DIR = path.resolve(process.env.JURISFLOW_DATA_DIR || process.env.KELL
 const RUNTIME_FILE = path.join(DATA_DIR, 'runtime.json');
 const APP_STATE_FILE = path.join(DATA_DIR, 'app-state.json');
 const INTEGRATIONS_FILE = path.join(DATA_DIR, 'judicial-integrations.json');
+const AI_SECRETS_FILE = path.join(DATA_DIR, 'ai-secrets.json');
 const DEFAULT_PORTALS_FILE = existsSync(path.join(ROOT, 'collector', 'portals.json')) ? path.join(ROOT, 'collector', 'portals.json') : path.join(ROOT, 'collector', 'portals.example.json');
 const PORTALS_FILE = path.resolve(process.env.JURISFLOW_PORTALS_FILE || process.env.KELLER_PORTALS_FILE || DEFAULT_PORTALS_FILE);
 const COLLECTOR_AGENT_FILE = path.join(ROOT, 'collector', 'agent.mjs');
@@ -115,6 +119,7 @@ async function saveAppState(value, expectedRevision = null) {
   if (value.contacts === undefined) value.contacts = [];
   if (value.customPrompts === undefined) value.customPrompts = [];
   if (value.customLinks === undefined) value.customLinks = [];
+  if (value.settings && typeof value.settings === 'object') delete value.settings.geminiApiKey;
   for (const key of ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'customPrompts', 'customLinks']) {
     if (!Array.isArray(value[key])) value[key] = [];
     if (value[key].length > 10_000) throw Object.assign(new Error(`Coleção inválida: ${key}.`), { statusCode: 400 });
@@ -127,6 +132,40 @@ async function saveAppState(value, expectedRevision = null) {
   const envelope = { version: 1, algorithm: 'aes-256-gcm', revision: randomBytes(18).toString('base64url'), encrypted: security.encrypt(JSON.stringify(value)), updatedAt: new Date().toISOString() };
   await writeFile(APP_STATE_FILE, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
   return { updatedAt: envelope.updatedAt, revision: envelope.revision };
+}
+
+async function readAiApiKey() {
+  if (process.env.GEMINI_API_KEY) return String(process.env.GEMINI_API_KEY).trim();
+  try {
+    const envelope = JSON.parse(await readFile(AI_SECRETS_FILE, 'utf8'));
+    return String(JSON.parse(security.decrypt(envelope.encrypted))?.geminiApiKey || '').trim();
+  } catch (error) {
+    if (existsSync(AI_SECRETS_FILE)) throw new Error('A chave de IA criptografada não pôde ser aberta.', { cause: error });
+    return '';
+  }
+}
+
+async function saveAiApiKey(apiKey) {
+  await mkdir(DATA_DIR, { recursive: true });
+  const envelope = {
+    version: 1,
+    algorithm: 'aes-256-gcm',
+    encrypted: security.encrypt(JSON.stringify({ geminiApiKey: String(apiKey || '').trim() })),
+    updatedAt: new Date().toISOString()
+  };
+  await writeFile(AI_SECRETS_FILE, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
+}
+
+async function readPublicAppStateEnvelope() {
+  let envelope = await readAppStateEnvelope();
+  const legacyKey = String(envelope.state?.settings?.geminiApiKey || '').trim();
+  if (legacyKey) {
+    await saveAiApiKey(legacyKey);
+    delete envelope.state.settings.geminiApiKey;
+    const saved = await saveAppState(envelope.state, envelope.revision);
+    envelope = { state: envelope.state, revision: saved.revision };
+  }
+  return envelope;
 }
 
 async function readJudicialSecrets() {
@@ -449,7 +488,7 @@ async function startInteractiveCollector(portalIds) {
 }
 
 function applySecurityHeaders(res) {
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -471,6 +510,79 @@ async function readJson(req, limit = 1_000_000) {
   }
   if (!chunks.length) return {};
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
+const CALENDAR_RESPONSE_LIMIT = 2_000_000;
+const CALENDAR_REDIRECT_LIMIT = 3;
+
+function invalidCalendarUrl(message) {
+  return Object.assign(new Error(message), { statusCode: 400 });
+}
+
+function isPrivateNetworkAddress(address = '') {
+  const normalized = String(address).toLowerCase().split('%')[0].replace(/^\[|\]$/g, '');
+  if (isIP(normalized) === 4) {
+    const [a, b, c] = normalized.split('.').map(Number);
+    return a === 0 || a === 10 || a === 127 || a >= 224
+      || (a === 100 && b >= 64 && b <= 127)
+      || (a === 169 && b === 254)
+      || (a === 172 && b >= 16 && b <= 31)
+      || (a === 192 && (b === 0 || b === 168))
+      || (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100)))
+      || (a === 203 && b === 0 && c === 113);
+  }
+  if (isIP(normalized) === 6) {
+    if (normalized.startsWith('::ffff:')) return isPrivateNetworkAddress(normalized.slice(7));
+    return normalized === '::' || normalized === '::1' || /^f[cd]/.test(normalized)
+      || /^fe[89ab]/.test(normalized) || normalized.startsWith('2001:db8:');
+  }
+  return true;
+}
+
+async function validateCalendarUrl(value) {
+  let url;
+  try { url = new URL(String(value || '').trim().replace(/^webcal:/i, 'https:')); }
+  catch { throw invalidCalendarUrl('Informe uma URL válida para a agenda externa.'); }
+  if (url.protocol !== 'https:') throw invalidCalendarUrl('A agenda externa deve usar HTTPS ou Webcal.');
+  if (url.username || url.password) throw invalidCalendarUrl('A URL da agenda não pode conter usuário ou senha embutidos.');
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, '').replace(/^\[|\]$/g, '');
+  if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost')) throw invalidCalendarUrl('Endereços locais não são permitidos na agenda externa.');
+  let addresses;
+  try { addresses = isIP(hostname) ? [{ address: hostname }] : await lookup(hostname, { all: true, verbatim: true }); }
+  catch { throw invalidCalendarUrl('Não foi possível resolver o endereço da agenda externa.'); }
+  if (!addresses.length || addresses.some(entry => isPrivateNetworkAddress(entry.address))) {
+    throw invalidCalendarUrl('A agenda externa deve apontar somente para um endereço público seguro.');
+  }
+  return url;
+}
+
+async function fetchCalendarSource(value) {
+  let url = await validateCalendarUrl(value);
+  for (let redirectCount = 0; redirectCount <= CALENDAR_REDIRECT_LIMIT; redirectCount += 1) {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Atrium-Senda/1.0' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(15_000)
+    });
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      if (redirectCount === CALENDAR_REDIRECT_LIMIT) throw invalidCalendarUrl('A agenda externa excedeu o limite de redirecionamentos.');
+      const location = response.headers.get('location');
+      if (!location) throw invalidCalendarUrl('A agenda externa retornou um redirecionamento inválido.');
+      url = await validateCalendarUrl(new URL(location, url).toString());
+      continue;
+    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const declaredLength = Number(response.headers.get('content-length') || 0);
+    if (declaredLength > CALENDAR_RESPONSE_LIMIT) throw invalidCalendarUrl('O arquivo de agenda excede o limite de 2 MB.');
+    const chunks = []; let size = 0;
+    for await (const chunk of response.body || []) {
+      size += chunk.length;
+      if (size > CALENDAR_RESPONSE_LIMIT) throw invalidCalendarUrl('O arquivo de agenda excede o limite de 2 MB.');
+      chunks.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks).toString('utf8');
+  }
+  throw invalidCalendarUrl('Não foi possível obter a agenda externa.');
 }
 
 function unfoldIcs(source) { return source.replace(/\r?\n[ \t]/g, '').split(/\r?\n/); }
@@ -500,7 +612,7 @@ function calendarPayload(records) {
     const externalId = `advbox-calendar:${record.UID || `${start.date}:${summary}:${index}`}`;
     return { id: externalId, externalId, title: summary, date: start.date, time: start.time, source: 'Agenda ADVBOX', client: record.LOCATION || '', process, description, importedAt: now };
   }).filter(event => event.date);
-  const tasks = events.map(event => ({ id: `task:${event.externalId}`, externalId: `task:${event.externalId}`, title: event.title, description: event.description || 'Importado automaticamente da agenda ADVBOX.', status: 'triagem', source: 'Agenda ADVBOX', client: event.client, process: event.process, deadline: event.date, priority: 'normal', responsible: 'Ricardo', createdAt: event.importedAt }));
+  const tasks = events.map(event => ({ id: `task:${event.externalId}`, externalId: `task:${event.externalId}`, title: event.title, description: event.description || 'Importado automaticamente da agenda externa.', status: 'triagem', source: 'Agenda Externa', client: event.client, process: event.process, deadline: event.date, priority: 'normal', responsible: 'Advogado(a)', createdAt: event.importedAt }));
   return { events, tasks };
 }
 
@@ -681,71 +793,6 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
   };
 }
 
-function buildOfficeFullContext(state, runtime) {
-  const contacts = state.contacts || [];
-  const processes = mergeBy(state.processes || [], runtime?.processes || [], 'number');
-  const intimations = mergeBy(state.intimations || [], runtime?.intimations || [], 'id');
-  const tasks = mergeBy(state.tasks || [], runtime?.tasks || [], 'id');
-  const agenda = mergeBy(state.agenda || [], runtime?.events || [], 'id');
-  const terms = state.terms || [];
-
-  let summary = `\n=== DADOS COMPLETOS E REAIS DO ESCRITÓRIO (CONSULTA DIRETA DA IA) ===\n`;
-
-  // 1. Termos e Advogados Monitorados
-  if (terms.length) {
-    summary += `\n[ADVOGADOS E TERMOS MONITORADOS (${terms.length})]\n`;
-    terms.forEach(t => {
-      summary += `- ${t.name || 'Advogado'} · OAB/${t.oabUf || 'RS'} ${t.registration || ''} · Abrangência: ${t.court || 'Todos os Tribunais'}\n`;
-    });
-  }
-
-  // 2. Contatos / Clientes
-  if (contacts.length) {
-    summary += `\n[CLIENTES E CONTATOS DO ESCRITÓRIO (${contacts.length})]\n`;
-    contacts.forEach(c => {
-      summary += `- Nome: ${c.name} | Doc: ${c.document || c.cpf || 'N/I'} | Tel/Whats: ${c.phone || 'N/I'} | Email: ${c.email || 'N/I'} | Cidade: ${c.city || ''}/${c.state || ''} ${c.notes ? `| Detalhes: ${c.notes}` : ''}\n`;
-    });
-  }
-
-  // 3. Processos e Movimentações
-  if (processes.length) {
-    summary += `\n[ACERVO DE PROCESSOS ATIVOS (${processes.length})]\n`;
-    processes.forEach(p => {
-      summary += `- Processo: ${p.number} | Cliente: ${p.client || 'N/I'} | Parte Contrária: ${p.opposingParty || 'N/I'} | Foro/Vara: ${p.court || 'N/I'} | Ação: ${p.actionType || 'Cível'} (${p.stage || 'Em andamento'}) | Último Andamento: ${p.lastMovement || 'Sem movimentação registrada'}\n`;
-    });
-  }
-
-  // 4. Intimações do DJEN e Diários Oficiais
-  if (intimations.length) {
-    summary += `\n[INTIMAÇÕES JUDICIAIS E DIÁRIOS (${intimations.length})]\n`;
-    intimations.forEach(it => {
-      const statusLabel = it.status === 'conferida' ? 'CONFERIDA' : 'PENDENTE DE TRIAGEM';
-      const urgentLabel = it.isUrgent ? ' [URGENTE]' : '';
-      summary += `- [${statusLabel}${urgentLabel}] Processo: ${it.process || 'N/I'} | Cliente: ${it.client || 'N/I'} | Vara/Tribunal: ${it.court || 'N/I'} | Publicação: ${it.publishedAt || 'N/I'} | Prazo Fatal: ${it.fatalDate || 'N/I'} | Teor/Texto: ${String(it.text || it.summary || '').substring(0, 300)}\n`;
-    });
-  }
-
-  // 5. Tarefas e Prazos do Kanban
-  if (tasks.length) {
-    summary += `\n[QUADRO KANBAN DE TAREFAS E PRAZOS (${tasks.length})]\n`;
-    tasks.forEach(t => {
-      const statusLabel = t.status || 'pendente';
-      const urgentLabel = t.priority === 'urgente' ? ' [URGENTE]' : '';
-      summary += `- [Coluna: ${statusLabel}${urgentLabel}] ${t.title} | Processo: ${t.process || 'Geral'} | Cliente: ${t.client || 'N/I'} | Prazo Limite: ${t.dueDate || 'S/D'} | Responsável: ${t.lawyer || 'Dr(a). Advogado(a)'} | Pontuação: ${t.points || 10} pts\n`;
-    });
-  }
-
-  // 6. Agenda de Audiências e Compromissos
-  if (agenda.length) {
-    summary += `\n[AGENDA DE AUDIÊNCIAS E COMPROMISSOS (${agenda.length})]\n`;
-    agenda.forEach(a => {
-      summary += `- Data: ${a.date} às ${a.time || '00:00'} | Evento: ${a.title} | Cliente: ${a.client || 'N/I'} | Processo: ${a.process || 'N/I'}\n`;
-    });
-  }
-
-  return summary;
-}
-
 async function callGeminiApi(apiKey, systemInstruction, contents) {
   const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'];
   let lastError = null;
@@ -815,7 +862,7 @@ async function callGeminiApi(apiKey, systemInstruction, contents) {
   throw lastError || new Error('Não foi possível conectar aos modelos do Google Gemini.');
 }
 
-function extractOabAndUf(term, fallbackReg = 'OAB/RS 135294') {
+function extractOabAndUf(term, fallbackReg = '') {
   let uf = String(term?.oabUf || '').trim().toUpperCase();
   let num = String(term?.oabNumber || '').replace(/\D/g, '');
 
@@ -830,8 +877,8 @@ function extractOabAndUf(term, fallbackReg = 'OAB/RS 135294') {
     if (numMatch) num = numMatch;
   }
 
-  if (!uf || uf === 'UF') uf = 'RS';
-  if (!num || num === '000000' || num === '00000') num = '135294';
+  if (uf === 'UF') uf = '';
+  if (num === '000000' || num === '00000') num = '';
   return { uf, num };
 }
 
@@ -896,13 +943,17 @@ const server = http.createServer(async (req, res) => {
       const result = await security.registerUser(await readJson(req));
       return json(res, 200, result);
     }
+    if (req.method === 'POST' && url.pathname === '/api/auth/register/verify') {
+      const result = await security.verifyRegisteredUser(await readJson(req));
+      return json(res, 200, result);
+    }
     if (req.method === 'GET' && url.pathname === '/api/auth/users') {
       const session = assertAuthenticated(req);
       return json(res, 200, { users: security.listUsers(), currentRole: session.role || 'collaborator' });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/users/manage') {
       const session = assertAuthenticated(req, true);
-      if (session.role !== 'master_admin') throw Object.assign(new Error('Apenas o Administrador Master (Dr. Ricardo Rossetto) pode gerenciar usuários.'), { statusCode: 403 });
+      if (session.role !== 'master_admin') throw Object.assign(new Error('Apenas o administrador principal pode gerenciar usuários.'), { statusCode: 403 });
       const body = await readJson(req);
       const user = await security.updateUserStatus(body.userId, body);
       return json(res, 200, { ok: true, user });
@@ -956,7 +1007,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { mode: 'local-protected', calendarConfigured: hasCalendar, collectorConfigured: Boolean(runtime.updatedAt), lastCollectorRun: runtime.updatedAt, authentication: 'password+totp' });
     }
     if (req.method === 'GET' && url.pathname === '/api/events') { assertAuthenticated(req); return json(res, 200, await readRuntime()); }
-    if (req.method === 'GET' && url.pathname === '/api/state') { assertAuthenticated(req); return json(res, 200, await readAppStateEnvelope()); }
+    if (req.method === 'GET' && url.pathname === '/api/state') { assertAuthenticated(req); return json(res, 200, await readPublicAppStateEnvelope()); }
     if (req.method === 'POST' && url.pathname === '/api/state') {
       assertAuthenticated(req, true); const body = await readJson(req, 3_000_000); const saved = await saveAppState(body.state, body.revision ?? null);
       return json(res, 200, { ok: true, ...saved });
@@ -965,16 +1016,13 @@ const server = http.createServer(async (req, res) => {
     // Assistente IA (Google Gemini)
     if (req.method === 'GET' && url.pathname === '/api/ai/status') {
       assertAuthenticated(req);
-      let configured = Boolean(process.env.GEMINI_API_KEY);
-      try {
-        const env = await readAppStateEnvelope();
-        if (env?.state?.settings?.geminiApiKey) configured = true;
-      } catch {}
+      const configured = Boolean(await readAiApiKey());
       return json(res, 200, { configured, model: 'gemini-3.5-flash-lite' });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/ai/configure') {
-      assertAuthenticated(req, true);
+      const session = assertAuthenticated(req, true);
+      if (session.role !== 'master_admin') throw Object.assign(new Error('Apenas o administrador principal pode configurar a chave de IA.'), { statusCode: 403 });
       const body = await readJson(req);
       const apiKey = String(body.apiKey || '').trim();
       if (!apiKey || apiKey.length < 20) {
@@ -988,13 +1036,8 @@ const server = http.createServer(async (req, res) => {
         throw Object.assign(new Error(`Falha ao validar chave com o Google Gemini: ${err.message}`), { statusCode: 400 });
       }
 
-      const envelope = await readAppStateEnvelope().catch(() => ({ state: {} }));
-      const state = envelope?.state || {};
-      state.settings ||= {};
-      state.settings.geminiApiKey = apiKey;
-      const saveResult = await saveAppState(state, envelope.revision);
-
-      return json(res, 200, { ok: true, message: 'Chave do Google Gemini ativada e validada com sucesso!', model: testResult.model, revision: saveResult.revision });
+      await saveAiApiKey(apiKey);
+      return json(res, 200, { ok: true, message: 'Chave do Google Gemini ativada e armazenada somente no servidor.', model: testResult.model });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/ai/chat') {
@@ -1005,26 +1048,26 @@ const server = http.createServer(async (req, res) => {
 
       const envelope = await readAppStateEnvelope().catch(() => ({ state: {} }));
       const state = envelope?.state || {};
-      const apiKey = String(body.apiKey || state.settings?.geminiApiKey || process.env.GEMINI_API_KEY || '').trim();
+      const apiKey = await readAiApiKey();
       if (!apiKey) {
         throw Object.assign(new Error('Chave de API do Google Gemini não configurada. Configure sua chave gratuita em Assistente IA.'), { statusCode: 400 });
       }
 
       const office = state.settings || {};
       const runtime = await readRuntime().catch(() => ({}));
-      const fullOfficeContext = buildOfficeFullContext(state, runtime);
+      const relevantOfficeContext = buildRelevantOfficeContext(state, runtime, message, body.context || {});
 
       const systemPrompt = `Você é o Assistente Jurídico Inteligente do Atrium Senda, plataforma de gestão jurídica inteligente.
 Escritório: ${office.officeName || 'Atrium Senda'} (${office.lawyerName || 'Dr(a). Advogado(a) Titular'} - ${office.lawyerOab || 'OAB'})
 
-${fullOfficeContext}
+${relevantOfficeContext}
 
 Diretrizes essenciais:
 1. Especialista em Direito Brasileiro: CPC/2015, CPP, CLT, Legislação Previdenciária, Tributária, Consumidor e Direito Público.
-2. Acesso Total aos Dados do Escritório: Você conhece todos os clientes cadastrados, processos em andamento, movimentações, intimações do DJEN/diários, tarefas do Kanban, prazos fatais e audiências listados acima. Quando o usuário perguntar sobre qualquer processo, cliente, intimação ou prazo, consulte e responda com base nos dados reais do escritório com precisão.
-3. Contagem e Estratégia de Prazos: Domínio do Art. 219 (dias úteis), Art. 224 (termo inicial e final) e regras do CPC/2015 e CLT. Sempre calcule e explique o termo a quo, os dias úteis e o prazo fatal com clareza matemática.
+2. Contexto interno limitado: use somente os registros relevantes listados acima e o contexto explicitamente selecionado. Não alegue acesso a cadastros ou fatos que não estejam presentes nesta solicitação.
+3. Contagem e Estratégia de Prazos: trate todo cálculo como estimativa preliminar. Explique termo a quo, calendário e hipóteses adotadas, mas nunca declare um prazo fatal como definitivo; exija conferência humana no processo e no calendário oficial do tribunal.
 4. Análise de Intimações do DJEN / DJe / eproc: Sintetize o que o juízo/tribunal determinou, identifique o tipo de ato (despacho, decisão, sentença, acórdão) e a medida cabível (ex: agravo, apelação, embargos, réplica).
-5. Produção de Peças e Minutas: Redija petições, manifestações, cláusulas contratuais e procurações com técnica apurada, formatação em Markdown e fundamentação em lei e jurisprudência dos tribunais superiores (STJ/STF/TST).
+5. Produção de Peças e Minutas: Redija petições, manifestações, cláusulas contratuais e procurações em Markdown. Não invente número, teor ou precedente; toda referência jurisprudencial não fornecida deve ser marcada para pesquisa e validação em fonte oficial.
 6. Formatação: Seja direto, organizado, use títulos em markdown, listas e bullet points. NÃO use emojis. Use termos jurídicos precisos.`;
 
       const history = Array.isArray(body.history) ? body.history : [];
@@ -1076,7 +1119,8 @@ Diretrizes essenciais:
     if (req.method === 'POST' && url.pathname === '/api/calendar/configure') {
       assertAuthenticated(req, true);
       const body = await readJson(req);
-      const calendarUrl = String(body.calendarUrl || '').trim();
+      const requestedCalendarUrl = String(body.calendarUrl || '').trim();
+      const calendarUrl = requestedCalendarUrl ? (await validateCalendarUrl(requestedCalendarUrl)).toString() : '';
 
       const envelope = await readAppStateEnvelope().catch(() => ({ state: {} }));
       const state = envelope?.state || {};
@@ -1088,10 +1132,7 @@ Diretrizes essenciais:
       let errorDetail = null;
       if (calendarUrl) {
         try {
-          const fetchUrl = calendarUrl.replace(/^webcal:/i, 'https:');
-          const response = await fetch(fetchUrl, { headers: { 'User-Agent': 'JurisFlow-Central-Juridica/1.0' }, redirect: 'follow' });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const parsed = calendarPayload(parseCalendar(await response.text()));
+          const parsed = calendarPayload(parseCalendar(await fetchCalendarSource(calendarUrl)));
           const runtime = await readRuntime();
           runtime.events = mergeBy(runtime.events, parsed.events);
           runtime.tasks = mergeBy(runtime.tasks, parsed.tasks);
@@ -1177,13 +1218,13 @@ Diretrizes essenciais:
       let csvContent = '';
       let filename = 'modelo.csv';
       if (type === 'contacts') {
-        filename = 'modelo-contatos-jurisflow.csv';
+        filename = 'modelo-contatos-atrium-senda.csv';
         csvContent = 'Nome;CPF/CNPJ;Telefone / WhatsApp;E-mail;Cidade;Estado;Profissão\nMaria de Souza;123.456.789-00;(51) 99999-8888;maria@exemplo.com;Porto Alegre;RS;Servidora Pública\nJoão da Silva;987.654.321-11;(51) 98888-7777;joao@exemplo.com;Canoas;RS;Aposentado';
       } else if (type === 'tasks') {
-        filename = 'modelo-tarefas-prazos-jurisflow.csv';
+        filename = 'modelo-tarefas-prazos-atrium-senda.csv';
         csvContent = 'Título da Tarefa;Processo;Cliente;Data Limite;Responsável;Pontos\nElaborar Petição Inicial;5001234-56.2024.4.04.7100;Maria de Souza;2026-08-30;Dr. Advogado;10\nInterpor Recurso de Apelação;5009876-54.2023.8.21.0001;João da Silva;2026-08-25;Dr. Advogado;15';
       } else {
-        filename = 'modelo-processos-jurisflow.csv';
+        filename = 'modelo-processos-atrium-senda.csv';
         csvContent = 'Número do Processo;Nome do Cliente;Tribunal / Comarca;Tipo de Ação;Etapa;Tipo de Honorários;Percentual de Êxito;Valor Fixo\n5001234-56.2024.4.04.7100;Maria de Souza;TRF4 · 1ª Vara Federal;Previdenciário;Instrução;exito;30;\n5009876-54.2023.8.21.0001;João da Silva;TJRS · 2ª Vara Cível;Cobrança;Execução;misto;20;1500';
       }
       res.writeHead(200, {
@@ -1218,7 +1259,7 @@ Diretrizes essenciais:
       // 1. Sincronização automática com DJEN / CNJ Oficial para os termos monitorados
       if (process.env.KELLER_SKIP_COLLECTOR_ENV !== 'true') {
         try {
-          const terms = appState?.terms?.length ? appState.terms : [{ name: 'Ricardo De Luca Rossetto', registration: 'OAB/RS 135294' }];
+          const terms = appState?.terms?.length ? appState.terms : [];
           for (const term of terms) {
             const { uf, num } = extractOabAndUf(term);
             if (num && num.length >= 3) {
@@ -1273,10 +1314,7 @@ Diretrizes essenciais:
       const calUrl = appState?.settings?.calendarUrl || process.env.EXTERNAL_CALENDAR_URL || process.env.ADVBOX_WEBCAL_URL;
       if (calUrl) {
         try {
-          const calendarUrl = calUrl.replace(/^webcal:/i, 'https:');
-          const response = await fetch(calendarUrl, { headers: { 'User-Agent': 'JurisFlow-Central-Juridica/1.0' }, redirect: 'follow' });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const parsed = calendarPayload(parseCalendar(await response.text()));
+          const parsed = calendarPayload(parseCalendar(await fetchCalendarSource(calUrl)));
           events = mergeBy(events, parsed.events);
           tasks = mergeBy(tasks, parsed.tasks);
           calendarImported = parsed.events.length;

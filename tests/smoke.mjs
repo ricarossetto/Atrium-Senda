@@ -8,8 +8,12 @@ const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ locale: 'pt-BR', viewport: { width: 1440, height: 900 } });
 const pageErrors = [];
+const responseErrors = [];
 page.on('pageerror', error => { console.error('PAGE ERROR:', error); pageErrors.push(error.message); });
 page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+page.on('response', response => {
+  if (response.status() >= 400) responseErrors.push(`${response.request().method()} ${new URL(response.url()).pathname} → ${response.status()}`);
+});
 
 try {
   const response = await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
@@ -50,6 +54,12 @@ try {
 
   const brandBox = await page.locator('.brand').boundingBox();
   assert(brandBox, 'Identidade visual do JurisFlow ausente.');
+  const concurrentFlushes = await page.evaluate(() => Promise.all([
+    window.KellerCentral.Store.flush(),
+    window.KellerCentral.Store.flush(),
+    window.KellerCentral.Store.flush()
+  ]));
+  assert(concurrentFlushes.every(Boolean), 'A fila de persistência não serializou gravações simultâneas.');
 
   // Teste de personalização do escritório
   await page.locator('.sidebar-office').click();
@@ -87,10 +97,17 @@ try {
   await page.locator('[name="phase"]').fill('Judicial');
   await page.locator('#modalForm button[type="submit"]').click();
   const configRow = page.locator('#configurationList [data-config-index]', { hasText: 'TAREFA EDITÁVEL DO TESTE' });
-  await configRow.waitFor(); await configRow.click();
+  await configRow.waitFor(); await configRow.locator('.config-row-info').click();
+  await page.locator('#modalBackdrop:not(.hidden)').waitFor();
   await page.locator('[name="points"]').fill('95');
   await page.locator('#modalForm button[type="submit"]').click();
+  await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => window.KellerCentral?.Store.state.configuration.taskDefinitions.some(item => item.name === 'TAREFA EDITÁVEL DO TESTE' && Number(item.points) === 95));
   await page.locator('#configurationList [data-config-index]', { hasText: '95 pontos' }).waitFor();
+  await page.locator('#configurationTabs [data-config-section="users"]').click();
+  await page.locator('#configurationList [data-auth-user-id]', { hasText: 'Advogado Administrador' }).waitFor();
+  assert(await page.locator('#configurationList [data-auth-user-id]').count() === 1, 'A aba Usuários não exibiu as contas reais de autenticação.');
+  assert(await page.locator('#newConfigurationButton').isHidden(), 'A aba Usuários ainda oferece cadastro no catálogo fictício.');
   await capture('configuration');
 
   await page.locator('button[data-view="integrations"]').click();
@@ -175,6 +192,8 @@ try {
   await processRow.waitFor();
   await processRow.click();
   await page.locator('#modalBackdrop:not(.hidden)').waitFor();
+  await page.locator('[data-process-summary]', { hasText: 'Resumo rápido do processo' }).waitFor();
+  assert(await page.locator('.process-summary-metrics > div').count() === 4, 'Resumo rápido não exibiu tarefas, intimações, tempo e próximo prazo.');
   await page.locator('#modalForm [name="stage"]').waitFor();
   await page.locator('#modalForm [name="stage"]').fill('ETAPA EDITADA NO SITE');
   await page.locator('#modalForm [name="feeType"]').selectOption('exito');
@@ -236,6 +255,7 @@ try {
   await page.locator('#modalCancel').click();
   await capture('dashboard');
   await page.locator('button[data-view="kanban"]').click();
+  await flushStore();
   await page.locator('#logoutButton').click();
   await page.locator('#authLoginForm.active').waitFor();
   await page.locator('#authLoginForm [name="username"]').fill('admin');
@@ -243,12 +263,13 @@ try {
   await page.locator('#authLoginForm [name="code"]').fill(generateTotp(secret));
   await page.locator('#authLoginForm button[type="submit"]').click();
   await page.locator('#view-kanban.active').waitFor();
-  await page.waitForTimeout(400);
+  await flushStore();
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.locator('#view-dashboard.active').waitFor();
   await page.locator('button[data-view="kanban"]').click();
   await page.locator('#kanbanBoard h4', { hasText: 'Tarefa com timesheet' }).waitFor();
   assert(pageErrors.length === 0, `Erro de página: ${pageErrors.join(' | ')}`);
+  assert(responseErrors.length === 0, `Respostas HTTP inesperadas: ${responseErrors.join(' | ')}`);
   console.log('Smoke test aprovado: cadastro, 2FA, recuperação, login, persistência cifrada, painel, termo, Kanban, estimador de prazos, timesheet, honorários, minutas e logout.');
 } finally {
   await browser.close();
@@ -260,4 +281,12 @@ async function capture(name) {
   if (!process.env.KELLER_VISUAL_QA_PATH) return;
   await mkdir(process.env.KELLER_VISUAL_QA_PATH, { recursive: true });
   await page.screenshot({ path: path.join(process.env.KELLER_VISUAL_QA_PATH, `${name}.png`), fullPage: true });
+}
+async function flushStore() {
+  await page.evaluate(async () => {
+    const store = window.KellerCentral?.Store;
+    if (!store) return;
+    if (store.saveTimer) await new Promise(resolve => setTimeout(resolve, 350));
+    await store.flushPromise;
+  });
 }

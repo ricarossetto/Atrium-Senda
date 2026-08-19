@@ -27,10 +27,50 @@ try {
   const verified = await response.json();
   assert(response.ok && verified.recoveryCodes.length === 8, 'Segundo fator não foi ativado.');
   const cookie = response.headers.get('set-cookie').split(';')[0]; const csrf = verified.csrfToken; const recovery = verified.recoveryCodes[0];
+
+  const collaboratorPassword = 'Colaborador-2026!';
+  response = await postJson(`${server.baseUrl}/api/auth/register`, { username: 'colaborador', displayName: 'Pessoa Colaboradora', email: 'colaborador@example.test', password: collaboratorPassword });
+  const registration = await response.json();
+  assert(response.ok && registration.setupToken && registration.manualSecret && registration.qrCode.startsWith('data:image/png'), 'Cadastro de colaborador não exigiu configuração TOTP.');
+  response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'colaborador', password: collaboratorPassword, code: generateTotp(registration.manualSecret) });
+  assert(response.status === 401, 'Cadastro incompleto conseguiu autenticar antes de confirmar o TOTP.');
+  response = await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: registration.setupToken, code: generateTotp(registration.manualSecret) });
+  assert(response.ok && (await response.json()).status === 'pending_approval', 'Novo colaborador não ficou pendente de aprovação.');
+  response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'colaborador', password: collaboratorPassword, code: generateTotp(registration.manualSecret) });
+  assert(response.status === 403, 'Colaborador acessou o sistema antes da aprovação administrativa.');
+  response = await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: cookie } });
+  const collaborator = (await response.json()).users.find(user => user.username === 'colaborador');
+  assert(response.ok && collaborator?.status === 'pending_approval', 'Administrador não visualizou a solicitação pendente.');
+  response = await postJson(`${server.baseUrl}/api/auth/users/manage`, { userId: collaborator.id, status: 'active' }, { Cookie: cookie, 'X-CSRF-Token': csrf });
+  assert(response.ok, 'Administrador não conseguiu aprovar o colaborador.');
+  response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'colaborador', password: collaboratorPassword });
+  assert(response.status === 401, 'Colaborador aprovado conseguiu entrar sem o segundo fator.');
+  response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'colaborador', password: collaboratorPassword, code: generateTotp(registration.manualSecret), trustBrowser: true });
+  const collaboratorLogin = await response.json();
+  const collaboratorCookies = response.headers.getSetCookie();
+  const collaboratorSessionCookie = collaboratorCookies.map(value => value.split(';')[0]).find(value => value.startsWith('keller_session='));
+  const collaboratorTrustedCookie = collaboratorCookies.map(value => value.split(';')[0]).find(value => value.startsWith('keller_trusted='));
+  assert(response.ok && collaboratorLogin.user.role === 'collaborator' && collaboratorSessionCookie && collaboratorTrustedCookie, 'Login TOTP do colaborador não preservou sua função.');
+  response = await postJson(`${server.baseUrl}/api/auth/users/manage`, { userId: collaborator.id, status: 'inactive' }, { Cookie: collaboratorSessionCookie, 'X-CSRF-Token': collaboratorLogin.csrfToken });
+  assert(response.status === 403, 'Colaborador conseguiu gerenciar contas administrativas.');
+  response = await postJson(`${server.baseUrl}/api/ai/configure`, { apiKey: 'chave-de-teste-que-nao-deve-ser-usada' }, { Cookie: collaboratorSessionCookie, 'X-CSRF-Token': collaboratorLogin.csrfToken });
+  assert(response.status === 403, 'Colaborador conseguiu configurar a chave compartilhada de IA.');
+  response = await fetch(`${server.baseUrl}/api/auth/status`, { headers: { Cookie: collaboratorTrustedCookie } });
+  const collaboratorTrustedStatus = await response.json();
+  assert(response.ok && collaboratorTrustedStatus.user.username === 'colaborador' && collaboratorTrustedStatus.user.role === 'collaborator', 'Navegador confiável trocou a identidade ou a função do colaborador.');
+  response = await postJson(`${server.baseUrl}/api/auth/trusted-device/revoke`, {}, { Cookie: collaboratorTrustedCookie, 'X-CSRF-Token': collaboratorTrustedStatus.csrfToken });
+  assert(response.ok, 'Colaborador não conseguiu revogar seu navegador confiável.');
+
   response = await fetch(`${server.baseUrl}/api/status`, { headers: { Cookie: cookie } }); assert(response.ok, 'Sessão autenticada não acessou a API.');
+  response = await postJson(`${server.baseUrl}/api/calendar/configure`, { calendarUrl: 'http://127.0.0.1:8080/private.ics' }, { Cookie: cookie, 'X-CSRF-Token': csrf });
+  assert(response.status === 400, 'Agenda externa aceitou protocolo inseguro ou endereço local.');
+  response = await postJson(`${server.baseUrl}/api/calendar/configure`, { calendarUrl: 'https://localhost/private.ics' }, { Cookie: cookie, 'X-CSRF-Token': csrf });
+  assert(response.status === 400, 'Agenda externa aceitou acesso ao localhost por HTTPS.');
+  response = await postJson(`${server.baseUrl}/api/calendar/configure`, { calendarUrl: 'https://usuario:senha@example.com/calendar.ics' }, { Cookie: cookie, 'X-CSRF-Token': csrf });
+  assert(response.status === 400, 'Agenda externa aceitou credenciais embutidas na URL.');
   response = await postJson(`${server.baseUrl}/api/sync`, {}, { Cookie: cookie }); assert(response.status === 403, 'POST autenticado foi aceito sem CSRF.');
   response = await postJson(`${server.baseUrl}/api/sync`, {}, { Cookie: cookie, 'X-CSRF-Token': csrf }); assert(response.ok, 'POST com sessão e CSRF foi recusado.');
-  const protectedState = { version: 1, terms: [], sources: [], intimations: [{ id: 'secret', title: 'Segredo de teste' }], tasks: [], processes: [], agenda: [], audit: [], settings: {} };
+  const protectedState = { version: 1, terms: [], sources: [], intimations: [{ id: 'secret', title: 'Segredo de teste' }], tasks: [], processes: [], agenda: [], audit: [], settings: { geminiApiKey: 'AIzaSy-chave-que-nao-pode-voltar-ao-browser' } };
   response = await postJson(`${server.baseUrl}/api/state`, { state: protectedState }, { Cookie: cookie }); assert(response.status === 403, 'Estado foi gravado sem CSRF.');
   response = await postJson(`${server.baseUrl}/api/state`, { state: protectedState }, { Cookie: cookie, 'X-CSRF-Token': csrf }); assert(response.ok, 'Estado autenticado não foi gravado.');
   const encryptedFile = await readFile(path.join(server.dataDirectory, 'app-state.json'), 'utf8');
@@ -38,6 +78,7 @@ try {
   response = await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: cookie } });
   const recoveredState = await response.json();
   assert(recoveredState.state.intimations[0].title === 'Segredo de teste' && recoveredState.revision, 'Estado criptografado não pôde ser recuperado após autenticação.');
+  assert(!recoveredState.state.settings.geminiApiKey, 'A chave de IA foi devolvida ao navegador dentro do estado compartilhado.');
   response = await postJson(`${server.baseUrl}/api/state`, { state: protectedState }, { Cookie: cookie, 'X-CSRF-Token': csrf });
   assert(response.status === 409, 'Uma aba desatualizada conseguiu sobrescrever o estado mais recente.');
   response = await postJson(`${server.baseUrl}/api/state`, { state: protectedState, revision: recoveredState.revision }, { Cookie: cookie, 'X-CSRF-Token': csrf });
@@ -74,7 +115,7 @@ try {
   for (let index = 0; index < 5; index++) await postJson(`${server.baseUrl}/api/auth/login`, { username: 'bloqueio', password: 'Incorreta-123456!', code: '000000' });
   response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'bloqueio', password: 'Incorreta-123456!', code: '000000' });
   assert(response.status === 429 && response.headers.has('retry-after'), 'Limitação de tentativas não bloqueou o atacante.');
-  console.log('Security test aprovado: senha, TOTP, navegador confiável, revogação, recuperação, sessão, CSRF, rate limit, CSP, arquivos privados, estado principal e coleta criptografados.');
+  console.log('Security test aprovado: senha, TOTP por usuário, aprovação administrativa, papéis, navegador confiável, revogação, recuperação, sessão, CSRF, rate limit, CSP, arquivos privados, estado principal e coleta criptografados.');
 } finally { await server.stop(); }
 
 function assert(condition, message) { if (!condition) throw new Error(message); }

@@ -144,7 +144,7 @@ function mergeDatajudRecord(record, number, alias, portal, config, target) {
       title: 'Revisar nova movimentação no DataJud',
       description: normalizeText([movementText, processRecord.actionType, subject, court].filter(Boolean).join(' · ')),
       status: 'triagem', source: portal.name || 'DataJud/CNJ', client: processRecord.client || '', process: normalizedNumber,
-      deadline: '', priority: 'normal', responsible: config.monitoredTerm?.shortName || 'Ricardo', createdAt: now
+      deadline: '', priority: 'normal', responsible: config.monitoredTerm?.shortName || config.monitoredTerm?.name || 'Advogado(a)', createdAt: now
     });
   }
   return !previousAt || timestamp(processRecord.lastMovementAt) > timestamp(previousAt);

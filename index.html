@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0c0c0b">
   <meta name="description" content="Atrium Senda: Plataforma Open-Source de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
   <title>Atrium Senda — Plataforma de Gestão Jurídica Inteligente</title>
-  <link rel="icon" href="assets/images/favicon.png">
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/portal.css?v=4.4.0">
 </head>
 <body>
@@ -30,7 +30,7 @@
           <p class="eyebrow">Primeiro acesso</p><h2>Crie seu acesso mestre</h2>
           <p>Sua senha é privada e nunca deixa seu computador. Use uma frase forte e exclusiva.</p>
           <label>Nome de exibição<input name="displayName" autocomplete="name" placeholder="Dr(a). Advogado(a) Titular" required maxlength="100"></label>
-          <label>Usuário de acesso<input name="username" autocomplete="username" placeholder="admin" required pattern="[a-zA-Z0-9._-]{3,64}" maxlength="64"></label>
+          <label>Usuário de acesso<input name="username" autocomplete="username" placeholder="admin" required pattern="[a-zA-Z0-9._\x2d]{3,64}" maxlength="64"></label>
           <label>Senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <small class="auth-hint">Mínimo de 10 caracteres contendo letras maiúsculas, minúsculas, números e símbolos.</small>
@@ -61,14 +61,14 @@
 
         <form id="authRegisterForm" class="auth-step">
           <p class="eyebrow">Novo Membro / Cadastro</p><h2>Criar Acesso ao Atrium Senda</h2>
-          <p>Cadastre seus dados para acessar o painel do seu escritório.</p>
+          <p>Cadastre seus dados, vincule seu autenticador e aguarde a aprovação do administrador.</p>
           <label>Nome completo<input name="displayName" autocomplete="name" required placeholder="Dr(a). Nome Sobrenome" maxlength="100"></label>
           <label>E-mail de contato<input name="email" type="email" autocomplete="email" required placeholder="advogado@escritorio.adv.br" maxlength="100"></label>
-          <label>Usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._-]{3,64}" placeholder="nome.sobrenome" maxlength="64"></label>
+          <label>Usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._\x2d]{3,64}" placeholder="nome.sobrenome" maxlength="64"></label>
           <label>OAB / Cargo (opcional)<input name="oab" placeholder="OAB/UF 000000" maxlength="40"></label>
           <label>Senha de acesso<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
-          <button class="button gold auth-submit" type="submit">Criar Conta e Acessar</button>
+          <button class="button gold auth-submit" type="submit">Configurar 2FA e solicitar acesso</button>
         </form>
 
         <form id="authLoginForm" class="auth-step">
@@ -244,7 +244,7 @@
       </nav>
 
       <div class="sidebar-office" title="Configurações e identidade do escritório">
-        <div class="office-avatar-icon" style="background-image: url('assets/images/equipe.png'); background-size: cover; background-position: center; border-radius: 8px; width: 44px; height: 44px; border: 1px solid rgba(212, 175, 55, 0.35);"></div>
+        <div class="office-avatar-icon" style="background-image: url('assets/icons/team.svg'); background-size: cover; background-position: center; border-radius: 8px; width: 44px; height: 44px; border: 1px solid rgba(212, 175, 55, 0.35);"></div>
         <div class="office-copy">
           <span id="sidebarOfficeLabel">Gestão Jurídica</span>
           <strong id="sidebarOfficeName">Atrium Senda</strong>
@@ -293,7 +293,7 @@
           <button class="icon-button notification-button" data-view-link="inbox" aria-label="Ver intimações">♢<span id="notificationDot"></span></button>
           <button class="profile-button" id="logoutButton" aria-label="Encerrar sessão com segurança" title="Encerrar sessão">
             <span class="avatar">AS</span>
-            <span class="profile-copy"><strong>Ricardo Rossetto</strong><small>Advogado Titular</small></span>
+            <span class="profile-copy"><strong>Administrador</strong><small>Advogado(a) Titular</small></span>
             <span>Sair</span>
           </button>
         </div>
@@ -823,7 +823,7 @@
           <div id="aiOnboardingBanner" class="ai-onboarding-card card">
             <div class="ai-onboarding-content">
               <h3>Ative o Assistente Jurídico com o Google Gemini (Gratuito)</h3>
-              <p>O Assistente Jurídico do Atrium Senda utiliza a tecnologia do <strong>Google Gemini</strong> para interpretar intimações judiciais, calcular contagem precisa de prazos em dias úteis (CPC/2015), redigir minutas contratuais e sugerir estratégias processuais.</p>
+              <p>O Assistente Jurídico do Atrium Senda utiliza o <strong>Google Gemini</strong> para interpretar intimações, auxiliar em estimativas de prazos sujeitas à conferência, redigir minutas e sugerir estratégias processuais.</p>
               <div class="ai-steps-grid">
                 <div class="ai-step-item">
                   <span class="ai-step-num">1</span>
@@ -843,7 +843,7 @@
                   <span class="ai-step-num">3</span>
                   <div>
                     <strong>Potencialize sua Advocacia</strong>
-                    <p>Analise peças, pesquise teses e automatize triagens com privacidade local.</p>
+                    <p>A pergunta e somente o contexto interno relevante são enviados ao Google. Evite incluir dados além dos necessários e confira o resultado.</p>
                   </div>
                 </div>
               </div>
@@ -863,7 +863,7 @@
               Analisar Última Intimação (DJEN)
             </button>
             <button class="quick-prompt-btn" type="button" data-prompt="Explique com precisão a contagem de prazo em dias úteis para contestação no CPC/2015 (Art. 219 e Art. 335), detalhando termo inicial e hipóteses de suspensão.">
-              Calcular Prazos Processuais (CPC)
+              Estimar Prazos Processuais (CPC)
             </button>
             <button class="quick-prompt-btn" type="button" data-prompt="Redija um modelo completo de recurso de Apelação Cível com preliminares de cerceamento de defesa e mérito recursal, fundamentado na jurisprudência do STJ.">
               Minuta de Apelação Cível
@@ -887,7 +887,7 @@
                     <p>Posso ajudá-lo(a) a:</p>
                     <ul>
                       <li><strong>Analisar intimações judiciais</strong> do DJEN / DJe / eproc e identificar prazos do CPC.</li>
-                      <li><strong>Calcular e planejar estratégias</strong> recursais e contestações em dias úteis.</li>
+                      <li><strong>Estimar e planejar estratégias</strong> recursais e contestações em dias úteis, sempre com conferência humana.</li>
                       <li><strong>Redigir petições, contratos e minutas</strong> com base nos processos e contatos do seu escritório.</li>
                       <li><strong>Tirar dúvidas sobre legislação e precedentes</strong> dos tribunais superiores (STJ, STF e TST).</li>
                     </ul>
@@ -908,6 +908,7 @@
                   <span>Enviar</span>
                 </button>
               </div>
+              <p class="ai-privacy-notice">Ao enviar, sua mensagem, o histórico recente e apenas os registros relacionados à pergunta são transmitidos à API do Google Gemini. Prazos e referências devem ser conferidos no processo e em fontes oficiais.</p>
             </form>
           </div>
         </div>
@@ -1308,7 +1309,7 @@
         </div>
         <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:12px;margin-bottom:12px;">
           <label><span>Advogado(a) Titular Responsável</span><input id="officeInputLawyer" required placeholder="Dr(a). Advogado(a) Titular" maxlength="100"></label>
-          <label><span>Inscrição OAB</span><input id="officeInputOab" placeholder="Ex: OAB/RS 135294" maxlength="40"></label>
+          <label><span>Inscrição OAB</span><input id="officeInputOab" placeholder="Ex: OAB/UF 123456" maxlength="40"></label>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
           <label><span>Endereço Profissional / Sede</span><input id="officeInputAddress" placeholder="Rua, Número, Sala/Andar" maxlength="150"></label>
@@ -1543,7 +1544,7 @@
         <div class="field full" style="margin-bottom:16px;">
           <label for="geminiApiKeyInput">Chave da API Gemini (Google AI Studio)</label>
           <input id="geminiApiKeyInput" type="password" placeholder="AIzaSy..." required autocomplete="off">
-          <small class="field-note">A chave é criptografada e armazenada de forma segura na sua instalação local.</small>
+          <small class="field-note">A chave é criptografada, armazenada somente no servidor local e nunca devolvida ao navegador.</small>
         </div>
         <div id="geminiKeyFeedback" class="gemini-key-feedback hidden"></div>
         <footer>

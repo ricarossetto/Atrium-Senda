@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, pendingUser: null, user: null };
+  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, registrationSetupToken: null, pendingUser: null, user: null };
   const byId = id => document.getElementById(id);
 
   const Auth = {
@@ -74,9 +74,13 @@
             password: form.get('password')
           }
         });
+        state.registrationSetupToken = result.setupToken;
+        byId('authQrCode').src = result.qrCode;
+        byId('authManualSecret').textContent = result.manualSecret;
         formElement.reset();
-        this.feedback(result.message || 'Solicitação enviada com sucesso! Aguarde a aprovação do Administrador Master.', 'success');
-        setTimeout(() => { byId('authTabLogin')?.click(); }, 3500);
+        this.show('authTotpSetupForm');
+        this.feedback('Vincule o autenticador para concluir a solicitação de acesso.', 'success');
+        byId('authTotpSetupForm').elements.code.focus();
       } catch (error) {
         this.feedback(error.message, 'error');
       } finally {
@@ -99,6 +103,14 @@
     async verifySetup(event) {
       event.preventDefault(); this.feedback(''); const formElement = event.currentTarget; const form = new FormData(formElement); this.busy(formElement, true);
       try {
+        if (state.registrationSetupToken) {
+          const result = await request('/api/auth/register/verify', { method: 'POST', body: { setupToken: state.registrationSetupToken, code: form.get('code') } });
+          state.registrationSetupToken = null;
+          byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src'); formElement.reset();
+          byId('authTabLogin')?.classList.add('active'); byId('authTabRegister')?.classList.remove('active');
+          this.show('authLoginForm'); this.feedback(result.message, 'success');
+          return;
+        }
         const result = await request('/api/auth/setup/verify', { method: 'POST', body: { setupToken: state.setupToken, code: form.get('code') } });
         state.authenticated = true; state.csrfToken = result.csrfToken; state.pendingUser = result.user;
         byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');

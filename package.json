@@ -4,17 +4,22 @@
   "description": "Atrium Senda — Plataforma de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node server.mjs",
     "dev": "node server.mjs",
     "setup:keys": "node scripts/setup-keys.mjs",
     "collector": "node collector/agent.mjs",
     "import:spreadsheet": "node scripts/import-spreadsheet.mjs",
-    "check": "node --check server.mjs && node --check lib/security.mjs && node --check scripts/import-spreadsheet.mjs && node --check scripts/migrate-judicial-secrets.mjs && node --check js/auth.js && node --check js/portal.js && node --check collector/agent.mjs && node --check collector/adapters/djen.mjs && node --check collector/adapters/datajud.mjs && node --check collector/adapters/pje.mjs && node --check tests/helpers.mjs && node --check tests/security.mjs && node --check tests/importer.mjs && node --check tests/rls.mjs && node --check tests/collector.mjs && node --check tests/smoke.mjs && node --check tests/run-all.mjs",
+    "check": "node --check server.mjs && node --check lib/security.mjs && node --check lib/ai-context.mjs && node --check scripts/import-spreadsheet.mjs && node --check scripts/migrate-judicial-secrets.mjs && node --check js/auth.js && node --check js/portal.js && node --check collector/agent.mjs && node --check collector/adapters/djen.mjs && node --check collector/adapters/datajud.mjs && node --check collector/adapters/pje.mjs && node --check tests/helpers.mjs && node --check tests/security.mjs && node --check tests/importer.mjs && node --check tests/rls.mjs && node --check tests/collector.mjs && node --check tests/ai-context.mjs && node --check tests/smoke.mjs && node --check tests/run-all.mjs",
     "test:security": "node tests/security.mjs",
     "test:importer": "node tests/importer.mjs",
     "test:rls": "node tests/rls.mjs",
     "test:collector": "node tests/collector.mjs",
+    "test:features": "node tests/features_validation.mjs && node tests/open_source_features.mjs && node tests/ai-context.mjs",
     "test:smoke": "node tests/smoke.mjs",
     "test": "node tests/run-all.mjs"
   },
@@ -40,6 +45,6 @@
     "exceljs": "^4.4.0",
     "playwright": "^1.56.0",
     "qrcode": "^1.5.4",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }
