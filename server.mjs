@@ -747,7 +747,7 @@ function buildOfficeFullContext(state, runtime) {
 }
 
 async function callGeminiApi(apiKey, systemInstruction, contents) {
-  const models = ['gemini-2.0-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
   let lastError = null;
 
   for (const model of models) {
@@ -782,7 +782,8 @@ async function callGeminiApi(apiKey, systemInstruction, contents) {
       return { text, model };
     } catch (err) {
       lastError = err;
-      if (String(err.message).includes('not found') || String(err.message).includes('404')) {
+      const msg = String(err.message).toLowerCase();
+      if (msg.includes('not found') || msg.includes('404') || msg.includes('no longer available') || msg.includes('deprecated') || msg.includes('is not supported')) {
         continue;
       }
       throw err;
@@ -907,25 +908,26 @@ const server = http.createServer(async (req, res) => {
       const cleanNumber = rawNumber.replace(/\D/g, '');
       if (cleanNumber.length < 15) throw Object.assign(new Error('Número de processo CNJ inválido.'), { statusCode: 400 });
       
-      const codComarca = body.codComarca || cleanNumber.slice(-3) || '029';
-      const tjrsUrl = `https://consulta-processual-service.tjrs.jus.br/api/consulta-service/v1/consultaProcesso?numeroProcesso=${cleanNumber}&codComarca=${codComarca}`;
+      const isTrf4 = rawNumber.includes('.4.04.') || cleanNumber.includes('404');
+      const is2G = rawNumber.includes('.8.21.') && (body.grau === '2' || body.courtUnit?.includes('Turma') || body.courtUnit?.includes('Câmara'));
       
-      try {
-        const response = await fetch(tjrsUrl, {
-          headers: {
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          },
-          signal: AbortSignal.timeout(12_000)
-        });
-        if (!response.ok) {
-          return json(res, 200, { ok: false, message: `O microserviço do TJRS retornou status HTTP ${response.status}.` });
-        }
-        const data = await response.json().catch(() => null);
-        return json(res, 200, { ok: true, data });
-      } catch (err) {
-        return json(res, 200, { ok: false, message: `Não foi possível conectar ao TJRS: ${err.message}` });
-      }
+      const eprocUrl = isTrf4
+        ? `https://eproc.trf4.jus.br/eproc2trf4/controlador.php?acao=processo_selecionar&num_processo=${cleanNumber}`
+        : is2G
+        ? `https://eproc2g.tjrs.jus.br/eproc/externo_controlador.php?acao=processo_selecionar&num_processo=${cleanNumber}`
+        : `https://eproc1g.tjrs.jus.br/eproc/externo_controlador.php?acao=processo_selecionar&num_processo=${cleanNumber}`;
+
+      const buscaUrl = isTrf4
+        ? eprocUrl
+        : `https://www.tjrs.jus.br/novo/busca/?return=proc&client=wp_index&q=${cleanNumber}`;
+
+      return json(res, 200, {
+        ok: true,
+        directUrl: eprocUrl,
+        buscaUrl,
+        courtName: isTrf4 ? 'TRF4 (eproc)' : 'TJRS (eproc 1º/2º Grau)',
+        message: `Processo pronto para consulta oficial no ${isTrf4 ? 'TRF4' : 'TJRS'}.`
+      });
     }
 
     if (req.method === 'GET' && url.pathname === '/api/status') {

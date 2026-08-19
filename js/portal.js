@@ -1565,32 +1565,24 @@ ${id.lawyerOab}`;
         btn.addEventListener('click', async event => {
           event.stopPropagation();
           const procNum = btn.dataset.tjrsConsult;
-          this.toast(`Consultando processo ${procNum} no TJRS…`);
+          const proc = Store.state.processes.find(p => p.number === procNum);
+          this.toast(`Abrindo consulta oficial do processo ${procNum}…`);
           btn.disabled = true;
           try {
             const resp = await window.KellerAuth.secureFetch('/api/tjrs/consult', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ processNumber: procNum })
+              body: JSON.stringify({ processNumber: procNum, courtUnit: proc?.courtUnit })
             });
             const result = await resp.json();
-            if (result.ok && result.data) {
-              const proc = Store.state.processes.find(p => p.number === procNum);
-              if (proc) {
-                const movs = result.data.movimentacoes || result.data.movimentos || [];
-                if (movs.length > 0) {
-                  proc.lastMovement = movs[0].descricao || movs[0].texto || movs[0].nome || 'Movimentação atualizada via TJRS';
-                  proc.lastMovementAt = isoDate();
-                  Store.save();
-                  this.renderProcesses(query);
-                }
-              }
-              this.toast('Processo consultado e atualizado diretamente do TJRS!', 'success');
+            if (result.ok && (result.directUrl || result.buscaUrl)) {
+              window.open(result.directUrl || result.buscaUrl, '_blank', 'noopener,noreferrer');
+              this.toast(result.message || 'Consulta aberta no tribunal.', 'success');
             } else {
-              this.toast(result.message || 'Consulta TJRS finalizada sem novos dados.', 'info');
+              this.toast(result.message || 'Não foi possível obter o link do tribunal.', 'error');
             }
           } catch (err) {
-            this.toast(`Falha na consulta TJRS: ${err.message}`, 'error');
+            this.toast(`Falha na consulta ao tribunal: ${err.message}`, 'error');
           } finally {
             btn.disabled = false;
           }
