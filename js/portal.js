@@ -2785,7 +2785,7 @@ ${id.lawyerOab} - ${id.officeName}`;
 
       if (data.revision) Store.revision = data.revision;
       Store.state.settings.geminiApiKey = apiKey;
-      Store.audit('Chave Gemini configurada', `Assistente IA ativado com modelo ${data.model || 'gemini-2.5-flash'}.`);
+      Store.audit('Chave Gemini configurada', `Assistente IA ativado com modelo ${data.model || 'gemini-3.5-flash-lite'}.`);
       await this.checkAiStatus();
       return data;
     },
