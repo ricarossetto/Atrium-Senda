@@ -1047,6 +1047,10 @@ ${id.lawyerOab} - ${id.officeName}`;
 
       // Área de Trabalho (Astrea)
       byId('btnDashboardNewTask')?.addEventListener('click', () => this.openTaskModal());
+      byId('astreaTaskSortSelect')?.addEventListener('change', event => {
+        this.astreaTaskSort = event.target.value;
+        this.renderAstreaTasks();
+      });
       byId('astreaTaskFilters')?.addEventListener('click', event => {
         const button = event.target.closest('button[data-astrea-filter]'); if (!button) return;
         this.astreaTaskFilter = button.dataset.astreaFilter;
@@ -1532,8 +1536,11 @@ ${id.lawyerOab} - ${id.officeName}`;
       const listEl = document.getElementById('astreaTaskList');
       if (!listEl) return;
       const filter = this.astreaTaskFilter || 'all';
+      const sort = this.astreaTaskSort || 'date-asc';
       const tasks = Store.state.tasks || [];
-      const filtered = tasks.filter(t => {
+      const processes = Store.state.processes || [];
+
+      let filtered = tasks.filter(t => {
         if (TERMINAL_STATUSES.includes(t.status)) return false;
         if (filter === 'all') return true;
         const lower = String(t.title || '').toLowerCase() + ' ' + String(t.type || '').toLowerCase();
@@ -1541,7 +1548,37 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (filter === 'audiencia') return lower.includes('audiência') || lower.includes('audiencia') || lower.includes('julgamento');
         if (filter === 'tarefa') return !lower.includes('audiência') && !lower.includes('prazo');
         return true;
-      }).sort((a, b) => (daysUntil(a.deadline) - daysUntil(b.deadline)) || (a.priority === 'urgente' ? -1 : 1));
+      });
+
+      filtered.sort((a, b) => {
+        const procA = processes.find(p => (a.process && p.number === a.process) || (a.client && p.client === a.client));
+        const procB = processes.find(p => (b.process && p.number === b.process) || (b.client && p.client === b.client));
+        const clientA = a.client || procA?.client || a.title || '';
+        const clientB = b.client || procB?.client || b.title || '';
+        const pointsA = Number(a.points) || 0;
+        const pointsB = Number(b.points) || 0;
+
+        if (sort === 'date-asc') {
+          return (daysUntil(a.deadline) - daysUntil(b.deadline)) || (a.priority === 'urgente' ? -1 : 1);
+        }
+        if (sort === 'date-desc') {
+          return (daysUntil(b.deadline) - daysUntil(a.deadline)) || (a.priority === 'urgente' ? -1 : 1);
+        }
+        if (sort === 'name-asc') {
+          return clientA.localeCompare(clientB, 'pt-BR');
+        }
+        if (sort === 'difficulty-desc') {
+          return (pointsB - pointsA) || (daysUntil(a.deadline) - daysUntil(b.deadline));
+        }
+        if (sort === 'difficulty-asc') {
+          return (pointsA - pointsB) || (daysUntil(a.deadline) - daysUntil(b.deadline));
+        }
+        if (sort === 'priority') {
+          const prioScore = (item) => (item.priority === 'urgente' ? 3 : item.priority === 'importante' ? 2 : 1);
+          return (prioScore(b) - prioScore(a)) || (daysUntil(a.deadline) - daysUntil(b.deadline));
+        }
+        return (daysUntil(a.deadline) - daysUntil(b.deadline));
+      });
 
       const countEl = document.getElementById('astreaTaskCount');
       if (countEl) countEl.textContent = `${filtered.length} tarefas`;
@@ -1552,6 +1589,12 @@ ${id.lawyerOab} - ${id.officeName}`;
       }
 
       listEl.innerHTML = filtered.map(task => {
+        const proc = processes.find(p => (task.process && p.number === task.process) || (task.client && p.client === task.client));
+        const clientName = task.client || proc?.client || 'Atividade interna';
+        const processNum = task.process || proc?.number || '';
+        const courtName = proc?.court || proc?.county || task.court || '';
+        const points = Number(task.points) || 0;
+
         const titleLower = String(task.title || '').toLowerCase();
         let typeBadge = 'tarefa';
         let typeLabel = 'Tarefa';
@@ -1570,19 +1613,23 @@ ${id.lawyerOab} - ${id.officeName}`;
         const dateFormatted = task.deadline ? formatDate(task.deadline) : 'Sem data';
         const dateClass = days < 0 ? 'style="color:var(--danger);font-weight:700;"' : days <= 2 ? 'style="color:var(--warning);font-weight:700;"' : '';
 
+        const difficultyText = points >= 50 ? 'Alta Complexidade' : points >= 20 ? 'Média' : points > 0 ? 'Básica' : '';
+
         return `
           <div class="astrea-task-item" data-astrea-task-id="${escapeHtml(task.id)}">
             <input type="checkbox" class="astrea-task-check" data-complete-task-id="${escapeHtml(task.id)}" title="Concluir tarefa">
             <div class="astrea-task-body">
               <div class="astrea-task-title">${escapeHtml(task.title)}</div>
-              <div class="astrea-task-process">
-                <span>${escapeHtml(task.client || task.process || 'Atividade interna')}</span>
-                ${task.process ? `<small>· ${escapeHtml(task.process)}</small>` : ''}
+              <div class="astrea-task-process" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0 6px 0;font-size:12px;">
+                <strong>👤 ${escapeHtml(clientName)}</strong>
+                ${processNum ? `<span style="color:var(--muted)">· 📁 <b>${escapeHtml(processNum)}</b></span>` : ''}
+                ${courtName ? `<span style="color:var(--muted)">· ⚖️ <em>${escapeHtml(courtName)}</em></span>` : ''}
               </div>
               <div class="astrea-task-tags">
                 <span class="task-tag ${typeBadge}">${typeLabel}</span>
                 ${task.responsible ? `<span class="task-tag user">👤 ${escapeHtml(task.responsible)}</span>` : ''}
-                ${task.points ? `<span class="task-tag" style="background:rgba(212,175,55,0.15);color:var(--gold);">${task.points} pts</span>` : ''}
+                ${points ? `<span class="task-tag points" style="background:rgba(212,175,55,0.15);color:var(--gold);font-weight:600;">⚡ ${points} pts${difficultyText ? ` (${difficultyText})` : ''}</span>` : ''}
+                ${task.priority === 'urgente' ? `<span class="task-tag" style="background:rgba(239,68,68,0.15);color:var(--danger);font-weight:700;">URGENTE</span>` : ''}
               </div>
             </div>
             <div class="astrea-task-date" ${dateClass}>${dateFormatted}</div>
@@ -3231,54 +3278,92 @@ ${id.lawyerOab} - ${id.officeName}`;
       const certificate = status.certificate || {};
       const portals = status.portals || [];
       const totpCount = portals.filter(portal => portal.totpConfigured).length;
-      const setStatusIcon = (id, ok) => { const element = document.getElementById(id); element.className = `setup-status-icon ${ok ? 'ok' : 'off'}`; element.textContent = ok ? '✓' : '·'; };
+      const setStatusIcon = (id, ok) => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.className = `setup-status-icon ${ok ? 'ok' : 'off'}`;
+          element.textContent = ok ? '✓' : '·';
+        }
+      };
       setStatusIcon('setupCertificateIcon', certificate.valid);
       setStatusIcon('setupPjeOfficeIcon', status.pjeOffice?.available);
       setStatusIcon('setupTotpIcon', totpCount > 0);
-      document.getElementById('setupCertificateStatus').textContent = certificate.valid ? 'A1 validado pelo Windows' : certificate.accessible ? 'Senha ou contêiner inválido' : 'Selecione o PFX';
-      document.getElementById('setupPjeOfficeStatus').textContent = status.pjeOffice?.available ? 'Aplicativo oficial disponível' : 'Abra o PJeOffice Pro';
-      document.getElementById('setupTotpStatus').textContent = totpCount ? `${totpCount} portal(is) vinculado(s)` : 'Nenhum QR vinculado';
+
+      const sc = document.getElementById('setupCertificateStatus');
+      if (sc) sc.textContent = certificate.valid ? 'A1 validado pelo Windows' : certificate.accessible ? 'Senha ou contêiner inválido' : 'Selecione o PFX';
+
+      const sp = document.getElementById('setupPjeOfficeStatus');
+      if (sp) sp.textContent = status.pjeOffice?.available ? 'Aplicativo oficial disponível' : 'Abra o PJeOffice Pro';
+
+      const st = document.getElementById('setupTotpStatus');
+      if (st) st.textContent = totpCount ? `${totpCount} portal(is) vinculado(s)` : 'Nenhum QR vinculado';
+
       const fileBadge = document.getElementById('certificateFileBadge');
-      fileBadge.textContent = certificate.valid ? certificate.fileName || 'Certificado ativo' : 'Não configurado';
-      fileBadge.className = `status-chip ${certificate.valid ? 'connected' : 'muted'}`;
+      if (fileBadge) {
+        fileBadge.textContent = certificate.valid ? certificate.fileName || 'Certificado ativo' : 'Não configurado';
+        fileBadge.className = `status-chip ${certificate.valid ? 'connected' : 'muted'}`;
+      }
+
       const cardChip = document.getElementById('certificateIntegrationStatus');
-      cardChip.textContent = certificate.valid ? `A1 ativo · ${totpCount} 2FA` : 'Configuração necessária';
-      cardChip.className = `status-chip ${certificate.valid ? 'connected' : 'warning'}`;
-      document.getElementById('certificateIntegrationDetail').textContent = certificate.valid
-        ? `${certificate.fileName || 'Certificado'} validado localmente. ${portals.filter(portal => portal.enabled).length} portal(is) habilitado(s) e ${totpCount} segundo(s) fator(es) protegido(s).`
-        : 'Ative o A1, selecione os tribunais e vincule um QR novo de cada portal em um único assistente protegido.';
-      const portalGroups = portals.reduce((groups, portal) => { (groups[portal.group || 'Outros tribunais'] ||= []).push(portal); return groups; }, {});
-      document.getElementById('portalCoverageList').innerHTML = portals.length ? Object.entries(portalGroups).map(([group, items]) => `
-        <section class="portal-coverage-group">
-          <header><strong>${escapeHtml(group)}</strong><span>${items.length} portal(is)</span></header>
-          ${items.map(portal => `
-            <label class="portal-coverage-row ${portal.automationLevel === 'experimental' ? 'experimental' : ''}">
-              <input type="checkbox" data-portal-enabled value="${escapeHtml(portal.id)}" ${portal.enabled ? 'checked' : ''}>
-              <span><strong>${escapeHtml(portal.name)}</strong><small>${portal.automationLevel === 'experimental' ? 'Cobertura experimental · primeiro acesso acompanhado' : portal.supportsTotp ? portal.totpConfigured ? '2FA vinculado e verificado' : 'Sem QR/2FA vinculado' : 'Sessão com certificado, sem TOTP local'}</small></span>
-              <span class="portal-method">${escapeHtml(portal.system || (portal.certificateMode === 'pjeoffice' ? 'PJeOffice oficial' : 'Certificado do Windows'))}</span>
-              ${portal.supportsTotp ? `<button class="button ghost portal-qr-button" type="button" data-configure-totp="${escapeHtml(portal.id)}">${portal.totpConfigured ? 'Trocar QR' : 'Vincular 2FA'}</button>` : '<span></span>'}
-            </label>`).join('')}
-        </section>`).join('') : '<div class="setup-loading">Nenhum portal com certificado foi configurado.</div>';
-      const selectedPortal = document.getElementById('totpPortalSelect').value;
-      document.getElementById('totpPortalSelect').innerHTML = `<option value="">Selecione o tribunal</option>${portals.filter(portal => portal.supportsTotp).map(portal => `<option value="${escapeHtml(portal.id)}">${escapeHtml(portal.name)}${portal.totpConfigured ? ' · vinculado' : ''}</option>`).join('')}`;
-      if (portals.some(portal => portal.id === selectedPortal && portal.supportsTotp)) document.getElementById('totpPortalSelect').value = selectedPortal;
-      document.getElementById('launchPortalLoginButton').disabled = Boolean(status.interactiveCollectorRunning);
-      document.getElementById('launchPortalLoginButton').textContent = status.interactiveCollectorRunning ? 'Primeira conexão em andamento…' : 'Abrir primeira conexão';
+      if (cardChip) {
+        cardChip.textContent = certificate.valid ? `A1 ativo · ${totpCount} 2FA` : 'Configuração necessária';
+        cardChip.className = `status-chip ${certificate.valid ? 'connected' : 'warning'}`;
+      }
+
+      const cardDetail = document.getElementById('certificateIntegrationDetail');
+      if (cardDetail) {
+        cardDetail.textContent = certificate.valid
+          ? `${certificate.fileName || 'Certificado'} validado localmente. ${portals.filter(portal => portal.enabled).length} portal(is) habilitado(s) e ${totpCount} segundo(s) fator(es) protegido(s).`
+          : 'Ative o A1, selecione os tribunais e vincule um QR novo de cada portal em um único assistente protegido.';
+      }
+
+      const coverageList = document.getElementById('portalCoverageList');
+      if (coverageList) {
+        const portalGroups = portals.reduce((groups, portal) => { (groups[portal.group || 'Outros tribunais'] ||= []).push(portal); return groups; }, {});
+        coverageList.innerHTML = portals.length ? Object.entries(portalGroups).map(([group, items]) => `
+          <section class="portal-coverage-group">
+            <header><strong>${escapeHtml(group)}</strong><span>${items.length} portal(is)</span></header>
+            ${items.map(portal => `
+              <label class="portal-coverage-row ${portal.automationLevel === 'experimental' ? 'experimental' : ''}">
+                <input type="checkbox" data-portal-enabled value="${escapeHtml(portal.id)}" ${portal.enabled ? 'checked' : ''}>
+                <span><strong>${escapeHtml(portal.name)}</strong><small>${portal.automationLevel === 'experimental' ? 'Cobertura experimental · primeiro acesso acompanhado' : portal.supportsTotp ? portal.totpConfigured ? '2FA vinculado e verificado' : 'Sem QR/2FA vinculado' : 'Sessão com certificado, sem TOTP local'}</small></span>
+                <span class="portal-method">${escapeHtml(portal.system || (portal.certificateMode === 'pjeoffice' ? 'PJeOffice oficial' : 'Certificado do Windows'))}</span>
+                ${portal.supportsTotp ? `<button class="button ghost portal-qr-button" type="button" data-configure-totp="${escapeHtml(portal.id)}">${portal.totpConfigured ? 'Trocar QR' : 'Vincular 2FA'}</button>` : '<span></span>'}
+              </label>`).join('')}
+          </section>`).join('') : '<div class="setup-loading">Nenhum portal com certificado foi configurado.</div>';
+      }
+
+      const totpSelect = document.getElementById('totpPortalSelect');
+      if (totpSelect) {
+        const selectedPortal = totpSelect.value;
+        totpSelect.innerHTML = `<option value="">Selecione o tribunal</option>${portals.filter(portal => portal.supportsTotp).map(portal => `<option value="${escapeHtml(portal.id)}">${escapeHtml(portal.name)}${portal.totpConfigured ? ' · vinculado' : ''}</option>`).join('')}`;
+        if (portals.some(portal => portal.id === selectedPortal && portal.supportsTotp)) totpSelect.value = selectedPortal;
+      }
+
+      const launchBtn = document.getElementById('launchPortalLoginButton');
+      if (launchBtn) {
+        launchBtn.disabled = Boolean(status.interactiveCollectorRunning);
+        launchBtn.textContent = status.interactiveCollectorRunning ? 'Primeira conexão em andamento…' : 'Abrir primeira conexão';
+      }
     },
     async saveCertificate(event) {
       event.preventDefault();
-      const form = event.currentTarget; const file = document.getElementById('certificateFileInput').files[0];
-      const passphrase = document.getElementById('certificatePassphrase').value;
+      const form = event.currentTarget;
+      const file = document.getElementById('certificateFileInput')?.files[0];
+      const passphrase = document.getElementById('certificatePassphrase')?.value;
       if (!file || !passphrase) return this.toast('Selecione o PFX e informe a senha atual.', 'error');
       this.setFormBusy(form, true);
       try {
         if (file.size > 5_000_000) throw new Error('O certificado deve ter no máximo 5 MB.');
         const pfxBase64 = await this.fileToBase64(file);
         await this.judicialRequest('/api/integrations/judicial/certificate', { fileName: file.name, pfxBase64, passphrase });
-        form.reset(); document.getElementById('certificateFileName').textContent = 'Selecionar certificado';
+        form.reset();
+        const fn = document.getElementById('certificateFileName');
+        if (fn) fn.textContent = 'Selecionar certificado';
         Store.audit('Certificado A1 configurado', 'Contêiner validado pelo Windows e armazenado cifrado no agente local.');
-        this.toast('Certificado validado e protegido com sucesso.', 'success');
+        this.toast('Certificado validado com sucesso! Sincronizando dados judiciais...', 'success');
         await this.refreshJudicialStatus();
+        await this.syncAll();
       } catch (error) { this.toast(error.message, 'error'); }
       finally { this.setFormBusy(form, false); }
     },
@@ -3390,7 +3475,8 @@ ${id.lawyerOab} - ${id.officeName}`;
     async resetJudicialConnections() {
       const confirmed = window.confirm('Isso removerá todos os QR Codes/2FA, desmarcará os tribunais e apagará as sessões judiciais locais. O certificado A1 será preservado. Continuar?');
       if (!confirmed) return;
-      const button = document.getElementById('resetJudicialConnectionsButton'); button.disabled = true;
+      const button = document.getElementById('resetJudicialConnectionsButton');
+      if (button) button.disabled = true;
       try {
         const result = await this.judicialRequest('/api/integrations/judicial/reset', { confirm: 'ZERAR_ACESSOS_JUDICIAIS' });
         document.getElementById('portalTotpSecret').value = ''; document.getElementById('portalTotpCode').value = ''; document.getElementById('portalQrInput').value = '';
@@ -3398,7 +3484,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         this.toast(result.certificatePreserved ? 'Acessos zerados. O certificado A1 foi preservado.' : 'Acessos zerados; nenhum certificado estava configurado.', 'success');
         await this.refreshJudicialStatus();
       } catch (error) { this.toast(error.message, 'error'); }
-      finally { button.disabled = false; }
+      finally { if (button) button.disabled = false; }
     },
     async syncJudicialNow() {
       const button = document.getElementById('syncJudicialNowButton');
@@ -3407,20 +3493,12 @@ ${id.lawyerOab} - ${id.officeName}`;
         button.textContent = 'Sincronizando acervo e intimações…';
       }
       try {
-        const res = await window.KellerAuth.secureFetch('/api/integrations/judicial/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-        const data = await res.json().catch(() => ({}));
-        this.toast(data.message || 'Sincronização iniciada com sucesso em segundo plano!', 'success');
+        await this.syncAll();
+        this.toast('Sincronização com DJEN e tribunais concluída com sucesso!', 'success');
         Store.audit('Sincronização judicial autônoma', 'Coleta de intimações DJEN, DataJud e tribunais.');
-        setTimeout(async () => {
-          await this.refreshRuntime();
-          this.renderAll();
-          if (button) {
-            button.disabled = false;
-            button.textContent = '✦ Sincronizar Acervo e Intimações Agora';
-          }
-        }, 3000);
       } catch (error) {
-        this.toast(error.message || 'Falha ao iniciar sincronização.', 'error');
+        this.toast(error.message || 'Falha ao sincronizar.', 'error');
+      } finally {
         if (button) {
           button.disabled = false;
           button.textContent = '✦ Sincronizar Acervo e Intimações Agora';
@@ -3471,8 +3549,10 @@ ${id.lawyerOab} - ${id.officeName}`;
       const submitBtn = document.getElementById('calendarConfigSubmit');
       if (!calendarUrl) return this.toast('Informe a URL da agenda em formato Webcal ou iCal.', 'error');
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Sincronizando…';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sincronizando…';
+      }
       if (statusBox) {
         statusBox.className = 'calendar-sync-status warning';
         statusBox.textContent = 'Conectando e importando eventos da agenda externa…';
@@ -3509,8 +3589,10 @@ ${id.lawyerOab} - ${id.officeName}`;
         }
         this.toast(error.message, 'error');
       } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Salvar e Sincronizar Agora';
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Salvar e Sincronizar Agora';
+        }
       }
     },
     async checkAiStatus() {
@@ -3540,7 +3622,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (input) input.value = '';
       const feedback = document.getElementById('geminiKeyFeedback');
       if (feedback) { feedback.className = 'gemini-key-feedback hidden'; feedback.textContent = ''; }
-      document.getElementById('geminiKeyBackdrop').classList.remove('hidden');
+      document.getElementById('geminiKeyBackdrop')?.classList.remove('hidden');
       document.body.style.overflow = 'hidden';
       setTimeout(() => input?.focus(), 50);
     },
@@ -3548,7 +3630,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       const backdrop = document.getElementById('geminiKeyBackdrop');
       if (!backdrop || backdrop.classList.contains('hidden')) return;
       backdrop.classList.add('hidden');
-      if (document.getElementById('modalBackdrop').classList.contains('hidden')) document.body.style.overflow = '';
+      if (document.getElementById('modalBackdrop')?.classList.contains('hidden')) document.body.style.overflow = '';
     },
     async saveGeminiKey(apiKey) {
       apiKey = String(apiKey || '').trim();
@@ -3569,11 +3651,13 @@ ${id.lawyerOab} - ${id.officeName}`;
     },
     async handleGeminiKeySubmit(event) {
       event.preventDefault();
-      const key = document.getElementById('geminiApiKeyInput').value.trim();
+      const key = document.getElementById('geminiApiKeyInput')?.value?.trim() || '';
       const feedback = document.getElementById('geminiKeyFeedback');
       const submitBtn = document.getElementById('geminiKeySubmit');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Validando chave com Google…';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Validando chave com Google…';
+      }
       try {
         const result = await this.saveGeminiKey(key);
         if (feedback) {
@@ -3591,26 +3675,32 @@ ${id.lawyerOab} - ${id.officeName}`;
         }
         this.toast(error.message, 'error');
       } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Validar e Salvar Chave';
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Validar e Salvar Chave';
+        }
       }
     },
     async handleQuickAiKeySubmit() {
       const input = document.getElementById('aiQuickKeyInput');
       const btn = document.getElementById('btnSaveQuickAiKey');
-      const key = input.value.trim();
+      const key = input?.value?.trim() || '';
       if (!key) return this.toast('Cole sua Gemini API Key antes de continuar.', 'error');
-      btn.disabled = true;
-      btn.textContent = 'Validando…';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Validando…';
+      }
       try {
         await this.saveGeminiKey(key);
-        input.value = '';
+        if (input) input.value = '';
         this.toast('Assistente Google Gemini ativado!', 'success');
       } catch (error) {
         this.toast(error.message, 'error');
       } finally {
-        btn.disabled = false;
-        btn.textContent = 'Ativar Assistente Gratuito';
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Ativar Assistente Gratuito';
+        }
       }
     },
     clearAiConversation() {

@@ -388,14 +388,27 @@
           <div class="astrea-tasks-column">
             <div class="astrea-tasks-header">
               <div class="astrea-tasks-title">
-                <span>Lista de Tarefas & Prazos</span>
+                <span>Lista de Tarefas &amp; Prazos</span>
                 <span class="status-chip connected" id="astreaTaskCount">0 tarefas</span>
               </div>
-              <div class="filter-tabs" id="astreaTaskFilters">
-                <button class="active" data-astrea-filter="all">Todas</button>
-                <button data-astrea-filter="prazo">Prazos</button>
-                <button data-astrea-filter="audiencia">Audiências</button>
-                <button data-astrea-filter="tarefa">Tarefas</button>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <div class="inbox-sort-control" style="margin:0; padding:2px 6px; display:inline-flex; align-items:center; gap:5px; background:var(--panel-soft); border:1px solid var(--line); border-radius:6px;">
+                  <span style="font-size:11px; color:var(--muted);">Ordenar:</span>
+                  <select id="astreaTaskSortSelect" style="background:transparent; border:none; color:var(--text); font-size:11.5px; font-weight:600; padding:2px 4px; outline:none; cursor:pointer;">
+                    <option value="date-asc" selected>Data (menor prazo)</option>
+                    <option value="date-desc">Data (maior prazo)</option>
+                    <option value="name-asc">Nome / Cliente (A-Z)</option>
+                    <option value="difficulty-desc">Dificuldade (Alta primeiro)</option>
+                    <option value="difficulty-asc">Dificuldade (Básica primeiro)</option>
+                    <option value="priority">Prioridade (Urgentes)</option>
+                  </select>
+                </div>
+                <div class="filter-tabs" id="astreaTaskFilters">
+                  <button class="active" data-astrea-filter="all">Todas</button>
+                  <button data-astrea-filter="prazo">Prazos</button>
+                  <button data-astrea-filter="audiencia">Audiências</button>
+                  <button data-astrea-filter="tarefa">Tarefas</button>
+                </div>
               </div>
             </div>
             <div id="astreaTaskList" class="astrea-tasks-list">

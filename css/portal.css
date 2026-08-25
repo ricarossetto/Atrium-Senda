@@ -2908,6 +2908,28 @@ td small { color: var(--muted); }
 }
 
 /* ==========================================================================
+   SCROLLBARS UNIVERSAIS (TEMA CLARO)
+   ========================================================================== */
+[data-theme="light"] {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+[data-theme="light"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 4px;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
+}
+
+/* ==========================================================================
    CAIXA DE INTIMAÇÕES & DETALHES (TEMA CLARO)
    ========================================================================== */
 [data-theme="light"] .list-head {
@@ -2936,27 +2958,88 @@ td small { color: var(--muted); }
 }
 
 [data-theme="light"] .inbox-case-line b {
-  color: #334155 !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
 }
 
 [data-theme="light"] .inbox-case-line em {
+  color: #334155 !important;
+  font-weight: 500 !important;
+}
+
+[data-theme="light"] .intimation-detail {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .intimation-detail-header h3,
+[data-theme="light"] .detail-header h2 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .detail-header p {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .detail-meta div {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .detail-meta small {
   color: #64748b !important;
 }
 
-[data-theme="light"] .intimation-detail-header h3 {
+[data-theme="light"] .detail-meta strong {
   color: #0f172a !important;
 }
 
-[data-theme="light"] .detail-card {
+[data-theme="light"] .original-text,
+[data-theme="light"] .detail-text-box,
+[data-theme="light"] .prompt-text-box,
+[data-theme="light"] .doc-preview-body,
+[data-theme="light"] pre {
   background: #f8fafc !important;
-  border: 1px solid #e2e8f0 !important;
-  color: #1e293b !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
-[data-theme="light"] .detail-text-box {
-  background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-  color: #0f172a !important;
+[data-theme="light"] .detail-actions {
+  background: #faf9f5 !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .deadline-chip {
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .deadline-chip.normal {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid #fde68a !important;
+}
+
+[data-theme="light"] .deadline-chip.warning {
+  background: #ffedd5 !important;
+  color: #9a3412 !important;
+  border: 1px solid #fed7aa !important;
+}
+
+[data-theme="light"] .deadline-chip.danger {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border: 1px solid #fecaca !important;
+}
+
+[data-theme="light"] #btnEmailPublications {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: #f59e0b !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] #btnEmailPublications:hover {
+  background: #fde68a !important;
 }
 
 /* ==========================================================================
@@ -2986,6 +3069,35 @@ td small { color: var(--muted); }
   background: #ffffff !important;
   border: 1px solid #cbd5e1 !important;
   color: #0f172a !important;
+}
+
+[data-theme="light"] .fee-chip,
+[data-theme="light"] .fee-chip.fixo {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid #fde68a !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .fee-chip.exito {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border: 1px solid #bbf7d0 !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .fee-chip.mensal {
+  background: #e0f2fe !important;
+  color: #075985 !important;
+  border: 1px solid #bae6fd !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .fee-chip.horas {
+  background: #f3e8ff !important;
+  color: #6b21a8 !important;
+  border: 1px solid #e9d5ff !important;
+  font-weight: 600 !important;
 }
 
 /* ==========================================================================
@@ -3084,15 +3196,22 @@ td small { color: var(--muted); }
    ELEMENTOS DE INTERFACE COMUNS (TEMA CLARO)
    ========================================================================== */
 [data-theme="light"] .sidebar-office {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
 }
 [data-theme="light"] .sidebar-office:hover {
-  background: #f1f5f9;
-  border-color: rgba(184, 134, 11, 0.4);
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
 }
+[data-theme="light"] #sidebarOfficeLabel,
+[data-theme="light"] .sidebar-office span {
+  color: #64748b !important;
+  font-weight: 500 !important;
+}
+[data-theme="light"] #sidebarOfficeName,
 [data-theme="light"] .sidebar-office strong {
-  color: #0f172a;
+  color: #0f172a !important;
+  font-weight: 700 !important;
 }
 
 [data-theme="light"] .filter-tabs button {
@@ -3170,6 +3289,18 @@ td small { color: var(--muted); }
   border-color: #b8860b !important;
   box-shadow: 0 8px 24px rgba(184, 134, 11, 0.12);
 }
+[data-theme="light"] .link-card-meta {
+  border-top: 1px solid #e2e8f0 !important;
+}
+[data-theme="light"] .link-domain {
+  color: #64748b !important;
+}
+[data-theme="light"] .link-tag {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+  font-weight: 600 !important;
+}
 [data-theme="light"] .links-section-header h3 {
   color: #0f172a;
 }
@@ -3185,16 +3316,45 @@ td small { color: var(--muted); }
 }
 
 [data-theme="light"] .astrea-task-item {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
 }
 [data-theme="light"] .astrea-task-item:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
 }
 [data-theme="light"] .astrea-task-title {
-  color: #0f172a;
+  color: #0f172a !important;
+  font-weight: 700 !important;
 }
+[data-theme="light"] .astrea-task-process strong {
+  color: #1e293b !important;
+}
+[data-theme="light"] .astrea-task-process span,
+[data-theme="light"] .astrea-task-process small {
+  color: #475569 !important;
+}
+[data-theme="light"] .task-tag {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+[data-theme="light"] .task-tag.prazo {
+  background: #ffedd5 !important;
+  color: #9a3412 !important;
+  border-color: #fed7aa !important;
+}
+[data-theme="light"] .task-tag.tarefa {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border-color: #bbf7d0 !important;
+}
+[data-theme="light"] .task-tag.audiencia {
+  background: #e0f2fe !important;
+  color: #075985 !important;
+  border-color: #bae6fd !important;
+}
+
 [data-theme="light"] .astrea-widget {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -3221,9 +3381,15 @@ td small { color: var(--muted); }
 }
 
 [data-theme="light"] .theme-toggle-btn {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #1e293b;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #1e293b !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+}
+[data-theme="light"] .theme-toggle-btn:hover {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
 }
 
 [data-theme="light"] .gold-pill {
@@ -3305,8 +3471,6 @@ td small { color: var(--muted); }
 [data-theme="light"] .btn-tjrs-consult:hover {
   background: #eff6ff !important;
   border-color: #3b82f6 !important;
-}5e1;
-  color: #1e293b;
 }
 
 /* Botão de Tema */
@@ -3314,10 +3478,10 @@ td small { color: var(--muted); }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 13px;
+  padding: 6px 14px;
   background: var(--panel-soft);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 9999px;
   color: var(--ivory);
   font-size: 12.5px;
   font-weight: 500;
