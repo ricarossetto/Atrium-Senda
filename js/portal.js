@@ -4396,6 +4396,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (section === 'taskDefinitions') record.points = Number(data.points) || 0;
         if (section === 'goals') record.monthlyClosings = data.monthlyClosings === '' ? null : Number(data.monthlyClosings);
         if (index === null || index === undefined || index === '') list.push(record); else list[Number(index)] = record;
+        Store.save();
         Store.audit(index === null || index === undefined || index === '' ? 'Configuração adicionada' : 'Configuração atualizada', `${section} · ${typeof record === 'string' ? record : record.name || record.event || record.group || 'item'}`);
       } else if (this.modalMode.mode === 'term') {
         const editing = Boolean(this.modalMode.defaults.id);
