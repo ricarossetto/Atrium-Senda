@@ -44,7 +44,7 @@
 
   <!-- Tipografia Oficial ATRIUM -->
   <g transform="translate(130, 20)">
-    <text x="0" y="52" font-family="'Playfair Display', Georgia, serif" font-size="52" font-weight="700" letter-spacing="0.08em" fill="currentColor">ATRIUM</text>
+    <text x="0" y="52" font-family="'Playfair Display', Georgia, serif" font-size="52" font-weight="700" letter-spacing="0.08em" fill="#F7F4EE">ATRIUM</text>
     
     <!-- Linhas e Subtítulo -->
     <line x1="0" y1="72" x2="40" y2="72" stroke="url(#goldGrad)" stroke-width="2"/>
