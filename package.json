@@ -2,6 +2,8 @@
   "name": "atrium",
   "version": "2.0.0",
   "description": "Atrium Escritório Integrado (v2.0) — Plataforma Open-Source de Gestão Jurídica Soberana e Inteligente. Centralização segura, Kanban jurídico, gestão de prazos com CPC/2015, triagem de intimações DJEN, boletim diário por e-mail e IA assistencial com privacidade Zero Trust.",
+  "homepage": "https://github.com/ricarossetto/Atrium-Senda#readme",
+  "author": "Ricardo de Luca Rossetto",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@11.19.0",

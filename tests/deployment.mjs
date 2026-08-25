@@ -3,16 +3,29 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateTotp } from '../lib/security.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
+async function findAvailablePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.unref();
+    probe.on('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      probe.close(() => resolve(address.port));
+    });
+  });
+}
+
 async function runDeploymentTests() {
   console.log('=== TESTES DE DEPLOYMENT & CONFORMIDADE COM NUVEM (RENDER / PROD) ===\n');
   const dataDirectory = await mkdtemp(path.join(tmpdir(), 'atrium-deploy-test-'));
-  const port = 54320 + Math.floor(Math.random() * 1000);
+  const port = await findAvailablePort();
   const bootstrapToken = 'test-bootstrap-token-' + randomBytes(8).toString('hex');
   const collectorToken = randomBytes(32).toString('base64url');
   const sessionSecret = randomBytes(48).toString('base64url');
@@ -43,17 +56,21 @@ async function runDeploymentTests() {
   child.stderr.on('data', c => { serverOutput += c; });
 
   const baseUrl = `http://127.0.0.1:${port}`;
+  const started = Date.now();
 
   try {
     // 1. Aguardar boot
     console.log('1. Validando boot do servidor Node persistente em ambiente de produção...');
     let ready = false;
-    for (let i = 0; i < 100; i++) {
+    while (Date.now() - started < 30_000) {
+      if (child.exitCode !== null) {
+        throw new Error(`Servidor encerrou com código ${child.exitCode}: ${serverOutput}`);
+      }
       try {
-        const res = await fetch(`${baseUrl}/api/auth/status`);
+        const res = await fetch(`${baseUrl}/api/auth/status`, { signal: AbortSignal.timeout(1_000) });
         if (res.ok) { ready = true; break; }
       } catch {}
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 80));
     }
     assert.equal(ready, true, `O servidor de produção deve iniciar e responder 200 no /api/auth/status. Log: ${serverOutput}`);
     console.log('✓ Servidor de produção iniciou com sucesso (HTTP 200).');

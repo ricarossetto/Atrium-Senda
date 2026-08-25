@@ -10,21 +10,82 @@ import { JudicialSessionManager, SESSION_STATUS } from '../lib/judicial/session-
 import { runA1Sandbox, A1_ERROR_CODES } from '../lib/judicial/a1-sandbox.mjs';
 import { runTotpSandbox, parseTotpUri, parseGoogleAuthMigration, TOTP_ERROR_CODES } from '../lib/judicial/totp-sandbox.mjs';
 
-function runPs(script) {
+import { randomBytes, X509Certificate } from 'node:crypto';
+
+function runCommand(cmd, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
-      windowsHide: true,
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
+    const child = spawn(cmd, args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', d => { stdout += d; });
     child.stderr.on('data', d => { stderr += d; });
+    child.on('error', reject);
     child.on('exit', code => {
-      if (code !== 0) return reject(new Error(stderr || `PS exited with code ${code}`));
-      try { resolve(JSON.parse(stdout.trim())); } catch { resolve(stdout.trim()); }
+      if (code !== 0) return reject(new Error(stderr || `${cmd} exited with code ${code}`));
+      resolve(stdout.trim());
     });
   });
+}
+
+async function generateSyntheticCertCrossPlatform() {
+  if (process.platform === 'win32') {
+    const genSyntheticScript = `
+      $ErrorActionPreference = "Stop"
+      $cert = New-SelfSignedCertificate -Subject "CN=Atrium Teste Unitario:00011122233" -CertStoreLocation "Cert:\\CurrentUser\\My" -KeyExportPolicy Exportable -KeySpec Signature
+      $thumb = $cert.Thumbprint
+      $pwd = "UnitSecret123!"
+      $pfxBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx, $pwd)
+      Remove-Item "Cert:\\CurrentUser\\My\\$thumb" -Force
+      $filePath = "$env:TEMP\\atrium-unit-synthetic-$([guid]::NewGuid().ToString('N')).pfx"
+      [System.IO.File]::WriteAllBytes($filePath, $pfxBytes)
+      [pscustomobject]@{
+        filePath = $filePath
+        passphrase = $pwd
+        thumbprint = $thumb
+        thumbprintSha256 = $cert.GetCertHashString([System.Security.Cryptography.HashAlgorithmName]::SHA256)
+      } | ConvertTo-Json -Compress
+    `;
+
+    return new Promise((resolve, reject) => {
+      const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', genSyntheticScript], {
+        windowsHide: true,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.on('data', d => { stdout += d; });
+      child.stderr.on('data', d => { stderr += d; });
+      child.on('exit', code => {
+        if (code !== 0) return reject(new Error(stderr || `PS exited with code ${code}`));
+        try { resolve(JSON.parse(stdout.trim())); } catch { resolve(stdout.trim()); }
+      });
+    });
+  }
+
+  // Non-Windows (Linux / macOS) OpenSSL generation
+  const pwd = 'UnitSecret123!';
+  const id = randomBytes(8).toString('hex');
+  const tempKeyPath = path.join(tmpdir(), `atrium-synth-key-${id}.pem`);
+  const tempCertPath = path.join(tmpdir(), `atrium-synth-cert-${id}.pem`);
+  const tempPfxPath = path.join(tmpdir(), `atrium-unit-synthetic-${id}.pfx`);
+
+  await runCommand('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-keyout', tempKeyPath, '-out', tempCertPath, '-days', '365', '-nodes', '-subj', '/CN=Atrium Teste Unitario:00011122233']);
+  await runCommand('openssl', ['pkcs12', '-export', '-out', tempPfxPath, '-inkey', tempKeyPath, '-in', tempCertPath, '-passout', `pass:${pwd}`]);
+  
+  const fs = await import('node:fs/promises');
+  const certRaw = await fs.readFile(tempCertPath, 'utf8');
+  const x509 = new X509Certificate(certRaw);
+  const thumbprintSha256 = x509.fingerprint256.replace(/:/g, '').toUpperCase();
+
+  try { await unlink(tempKeyPath); } catch {}
+  try { await unlink(tempCertPath); } catch {}
+
+  return {
+    filePath: tempPfxPath,
+    passphrase: pwd,
+    thumbprint: thumbprintSha256.slice(0, 40),
+    thumbprintSha256
+  };
 }
 
 console.log('--- SUITE: JUDICIAL INTEGRATION & SANDBOX ARCHITECTURE ---');
@@ -136,24 +197,7 @@ try {
   assert.equal(missingRes.errorCode, A1_ERROR_CODES.PFX_NOT_FOUND);
 
   // 4.2 Gerar PFX sintético com par de chaves RSA
-  const genSyntheticScript = `
-    $ErrorActionPreference = "Stop"
-    $cert = New-SelfSignedCertificate -Subject "CN=Atrium Teste Unitario:00011122233" -CertStoreLocation "Cert:\\CurrentUser\\My" -KeyExportPolicy Exportable -KeySpec Signature
-    $thumb = $cert.Thumbprint
-    $pwd = "UnitSecret123!"
-    $pfxBytes = $cert.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx, $pwd)
-    Remove-Item "Cert:\\CurrentUser\\My\\$thumb" -Force
-    $filePath = "$env:TEMP\\atrium-unit-synthetic-$([guid]::NewGuid().ToString('N')).pfx"
-    [System.IO.File]::WriteAllBytes($filePath, $pfxBytes)
-    [pscustomobject]@{
-      filePath = $filePath
-      passphrase = $pwd
-      thumbprint = $thumb
-      thumbprintSha256 = $cert.GetCertHashString([System.Security.Cryptography.HashAlgorithmName]::SHA256)
-    } | ConvertTo-Json -Compress
-  `;
-
-  const syntheticCert = await runPs(genSyntheticScript);
+  const syntheticCert = await generateSyntheticCertCrossPlatform();
   console.log('Certificado sintético gerado com SHA-256:', syntheticCert.thumbprintSha256);
 
   try {
