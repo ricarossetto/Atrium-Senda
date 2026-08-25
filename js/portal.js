@@ -2,7 +2,7 @@
   'use strict';
 
   const STORAGE_KEY = 'jurisflow_storage_v1';
-  const TERMINAL_STATUSES = ['concluida'];
+  const TERMINAL_STATUSES = ['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada'];
   const KANBAN_COLUMNS = [
     { id: 'triagem', title: 'Entrada & triagem', color: '#c9a84c' },
     { id: 'prioridade', title: 'Prioridade', color: '#e5a84b' },
@@ -977,6 +977,74 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('jsonImportInput')?.addEventListener('change', event => this.importJson(event.target.files[0]));
       byId('exportAuditButton')?.addEventListener('click', () => this.exportJson(Store.state.audit, `atrium-auditoria-${isoDate()}.json`));
 
+      // Disparo de Publicações por Email (Estilo Astrea)
+      byId('btnEmailPublications')?.addEventListener('click', () => this.openPublicationsEmailModal());
+      byId('publicationsEmailClose')?.addEventListener('click', () => this.closePublicationsEmailModal());
+      byId('publicationsEmailCancel')?.addEventListener('click', () => this.closePublicationsEmailModal());
+      byId('publicationsEmailModalBackdrop')?.addEventListener('click', (e) => {
+        if (e.target === byId('publicationsEmailModalBackdrop')) this.closePublicationsEmailModal();
+      });
+
+      byId('btnSendEmailDirect')?.addEventListener('click', async () => {
+        const targetEmail = byId('emailTargetAddress')?.value?.trim();
+        if (!targetEmail) return this.toast('Informe um e-mail de destino.', 'error');
+        this.toast('Processando envio do boletim de publicações…');
+        const items = this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []);
+        const lawyerName = Store.state.terms[0]?.name || window.KellerAuth?.currentUser?.displayName || 'Dr(a). Advogado(a)';
+        try {
+          const resp = await window.KellerAuth.secureFetch('/api/email/publications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: targetEmail, recipientName: lawyerName, publications: items, date: new Date().toLocaleDateString('pt-BR') })
+          });
+          const data = await resp.json();
+          if (data.ok) {
+            this.toast(data.message || 'Boletim gerado / enviado com sucesso!', 'success');
+            Store.audit('Boletim de publicações gerado', `${targetEmail} (${items.length} intimações)`);
+          } else {
+            this.toast(data.message || 'Falha no envio.', 'error');
+          }
+        } catch (err) {
+          this.toast(`Erro na requisição: ${err.message}`, 'error');
+        }
+      });
+
+      byId('btnOpenGmailWeb')?.addEventListener('click', () => {
+        if (this.currentEmailBulletin?.gmailUrl) {
+          window.open(this.currentEmailBulletin.gmailUrl, '_blank', 'noopener,noreferrer');
+        } else {
+          const target = byId('emailTargetAddress')?.value || '';
+          window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(target)}`, '_blank');
+        }
+      });
+
+      byId('btnCopyEmailHtml')?.addEventListener('click', async () => {
+        if (!this.currentEmailBulletin?.emailHtml) return this.toast('Nenhum conteúdo para copiar.', 'error');
+        try {
+          const blob = new Blob([this.currentEmailBulletin.emailHtml], { type: 'text/html' });
+          const textBlob = new Blob([this.currentEmailBulletin.emailText || ''], { type: 'text/plain' });
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })
+          ]);
+          this.toast('HTML e texto do e-mail copiados com sucesso!', 'success');
+        } catch {
+          await navigator.clipboard.writeText(this.currentEmailBulletin.emailText || '');
+          this.toast('Texto do e-mail copiado com sucesso!', 'success');
+        }
+      });
+
+      byId('btnDownloadEmailHtml')?.addEventListener('click', () => {
+        if (!this.currentEmailBulletin?.emailHtml) return this.toast('Gere o boletim primeiro.', 'error');
+        const blob = new Blob([this.currentEmailBulletin.emailHtml], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `boletim-publicacoes-${isoDate()}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.toast('Arquivo HTML baixado com sucesso.', 'success');
+      });
+
       // Área de Trabalho (Astrea)
       byId('btnDashboardNewTask')?.addEventListener('click', () => this.openTaskModal());
       byId('astreaTaskFilters')?.addEventListener('click', event => {
@@ -1279,11 +1347,20 @@ ${id.lawyerOab} - ${id.officeName}`;
         document.getElementById('viewEyebrow').textContent = section.dataset.eyebrow;
       }
       if (view === 'dashboard') this.renderDashboard();
+      if (view === 'inbox') this.renderInbox();
+      if (view === 'kanban') this.renderKanban();
+      if (view === 'processes') this.renderProcesses(document.getElementById('processSearch')?.value || '');
+      if (view === 'contacts') this.renderContacts(document.getElementById('contactSearch')?.value || '');
       if (view === 'leads') this.renderLeads();
       if (view === 'financial') this.renderFinancial();
       if (view === 'documents') this.renderDocuments();
+      if (view === 'agenda') this.renderAgenda();
+      if (view === 'monitoring') this.renderMonitoring();
       if (view === 'prompts') this.renderPrompts();
       if (view === 'links') this.renderLinks();
+      if (view === 'configuration') this.renderConfiguration();
+      if (view === 'audit') this.renderAudit();
+      if (view === 'integrations') this.refreshJudicialStatus();
       document.getElementById('sidebar').classList.remove('open');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
@@ -1430,7 +1507,8 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.renderAstreaWidgets();
     },
     renderMetrics() {
-      const newIntimations = Store.state.intimations.filter(item => item.status === 'nova').length;
+      const activeCutoffIntimations = this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []);
+      const newIntimations = activeCutoffIntimations.filter(item => item.status === 'nova').length;
       const deadlines = Store.state.tasks.filter(task => !TERMINAL_STATUSES.includes(task.status) && daysUntil(task.deadline) >= 0 && daysUntil(task.deadline) <= 7).length;
       const activeTasks = Store.state.tasks.filter(task => !TERMINAL_STATUSES.includes(task.status)).length;
       const activeSources = Store.state.sources.filter(source => source.status === 'ok').length;
@@ -1444,7 +1522,10 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (mDead) mDead.textContent = deadlines;
       if (mTasks) mTasks.textContent = activeTasks;
       if (mSources) mSources.textContent = `${activeSources}/${Store.state.sources.length}`;
-      if (inBadge) inBadge.textContent = newIntimations;
+      if (inBadge) {
+        inBadge.textContent = newIntimations;
+        inBadge.style.display = newIntimations > 0 ? 'inline-block' : 'none';
+      }
       if (notifDot) notifDot.style.display = newIntimations ? '' : 'none';
     },
     renderAstreaTasks() {
@@ -1522,7 +1603,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           e.stopPropagation();
           const task = Store.state.tasks.find(t => t.id === chk.dataset.completeTaskId);
           if (task) {
-            task.status = 'concluido';
+            task.status = 'concluida';
             task.completedAt = new Date().toISOString();
             Store.audit('Tarefa concluída', task.title);
             Store.save();
@@ -2185,9 +2266,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         }
 
         const nbChip = item.nb ? `<span class="nb-chip" title="Número do Benefício INSS">NB ${escapeHtml(item.nb)}</span>` : '';
-        const riskClass = item.risk === 'remoto' ? 'remoto' : item.risk === 'possivel' ? 'possivel' : 'provavel';
-        const riskLabel = item.risk === 'remoto' ? 'Risco Alto' : item.risk === 'possivel' ? 'Risco Médio' : 'Êxito Provável';
-        const riskChip = `<span class="risk-chip ${riskClass}" title="Probabilidade de Êxito Legal One">${riskLabel}</span>`;
+        const riskChip = item.risk ? `<span class="risk-chip ${item.risk === 'remoto' ? 'remoto' : item.risk === 'possivel' ? 'possivel' : 'provavel'}" title="Probabilidade de Êxito">${item.risk === 'remoto' ? 'Risco Alto' : item.risk === 'possivel' ? 'Risco Médio' : 'Êxito Provável'}</span>` : '';
         const isTjrs = String(item.number || '').includes('.8.21.') || String(item.court || '').toUpperCase().includes('TJRS');
         const tjrsBtn = isTjrs ? `<button type="button" class="btn-tjrs-consult" data-tjrs-consult="${escapeHtml(item.number)}" title="Consultar andamentos no microserviço oficial do TJRS">⚖ Consultar TJRS</button>` : '';
 
@@ -2638,14 +2717,85 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (avatarEl) avatarEl.textContent = this.initials(term.name || 'AD');
 
       const issues = Store.state.sources.filter(source => ['attention', 'error'].includes(source.status)).length;
+      const activeCutoffIntimations = this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []);
+      const newCount = activeCutoffIntimations.filter(item => item.status === 'nova').length;
       document.getElementById('termSourceCount').textContent = Store.state.sources.length;
       document.getElementById('termIssueCount').textContent = issues;
-      document.getElementById('termNewCount').textContent = Store.state.intimations.filter(item => item.status === 'nova').length;
+      document.getElementById('termNewCount').textContent = newCount;
       document.getElementById('monitorSourceList').innerHTML = Store.state.sources.map(source => `
-        <div class="source-row" data-source-id="${escapeHtml(source.id)}" tabindex="0"><div class="source-name"><span class="source-mark">${escapeHtml(source.short)}</span><div><strong>${escapeHtml(source.name)}</strong><small>${escapeHtml(source.detail)}</small></div></div><span class="source-method">${escapeHtml(source.method)}</span><span class="source-check">${source.lastCheck ? formatDateTime(source.lastCheck) : 'Ainda não verificada'}</span><span>${source.status === 'ok' ? '<span class="status-chip connected">Ativo</span>' : source.status === 'attention' ? '<span class="status-chip warning">Atenção</span>' : source.status === 'error' ? '<span class="status-chip danger">Falha</span>' : source.status === 'planned' ? '<span class="status-chip planned">Preparado</span>' : '<span class="status-chip muted">Desativado</span>'}</span><span class="row-menu" aria-hidden="true">···</span></div>`).join('');
+        <div class="source-row" data-source-id="${escapeHtml(source.id)}" tabindex="0"><div class="source-name"><span class="source-mark">${escapeHtml(source.short)}</span><div><strong>${escapeHtml(source.name)}</strong><small>${escapeHtml(source.detail)}</small></div></div><span class="source-method">${escapeHtml(source.method)}</span><span class="source-check">${source.lastCheck ? formatDateTime(source.lastCheck) : 'Ainda não verificada'}</span><span>${source.status === 'ok' ? '<span class="status-chip connected">Ativo</span>' : source.status === 'attention' ? '<span class="status-chip warning">Atenção</span>' : source.status === 'error' ? '<span class="status-chip danger">Falha</span>' : source.status === 'planned' ? '<span class="status-chip planned">Preparado</span>' : '<span class="status-chip muted">Desativado</span>'}</span><span class="row-menu" aria-hidden="true">⚙</span></div>`).join('');
       document.querySelectorAll('#monitorSourceList [data-source-id]').forEach(row => row.addEventListener('click', () => {
-        const source = Store.state.sources.find(item => item.id === row.dataset.sourceId); if (source) this.openSourceModal(source);
+        const sourceId = row.dataset.sourceId;
+        if (sourceId === 'a1' || sourceId === 'pje') {
+          this.openJudicialSetup();
+        } else if (sourceId === 'external-calendar' || sourceId === 'advbox-calendar') {
+          this.openCalendarConfigModal();
+        } else if (sourceId === 'djen-cnj' || sourceId === 'djen') {
+          const term = Store.state.terms[0] || {};
+          this.openTermModal(term);
+        } else if (sourceId === 'datajud-cnj' || sourceId === 'datajud') {
+          this.openDataJudConfigModal();
+        } else {
+          const source = Store.state.sources.find(item => item.id === sourceId);
+          if (source) this.openSourceModal(source);
+        }
       }));
+    },
+    openDataJudConfigModal() {
+      const currentKey = Store.state.settings?.datajudApiKey || 'cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
+      this.openModal('datajud', 'Configuração DataJud / CNJ', 'Integração Oficial de Andamentos', [
+        { name: 'apiKey', label: 'Chave Pública da API DataJud (CNJ)', full: true, value: currentKey, note: 'Chave pública oficial mantida pelo CNJ (datajud-wiki.cnj.jus.br).' },
+        { name: 'autoSync', label: 'Enriquecimento Automático', type: 'select', options: [{ value: 'active', label: 'Ativo (buscar andamentos ao cadastrar processo)' }, { value: 'manual', label: 'Apenas manual (sob demanda)' }] },
+        { name: 'tribunals', label: 'Abrangência de Tribunais', full: true, value: 'TJRS, TRF4, STJ, TST, TJSC, TJPR, TJSP' }
+      ], {
+        apiKey: currentKey,
+        autoSync: 'active',
+        tribunals: 'TJRS, TRF4, STJ, TST, TJSC, TJPR, TJSP'
+      });
+    },
+    async openPublicationsEmailModal() {
+      const items = this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []);
+      const lawyerName = Store.state.terms[0]?.name || window.KellerAuth?.currentUser?.displayName || 'Dr(a). Advogado(a)';
+      const targetEmailInput = document.getElementById('emailTargetAddress');
+      const targetEmail = targetEmailInput?.value?.trim() || 'ricardodelucarossetto1998@gmail.com';
+      
+      const previewContainer = document.getElementById('emailPreviewContainer');
+      if (previewContainer) {
+        previewContainer.innerHTML = '<div style="padding:24px;text-align:center;color:#64748b;">✦ Consolidando dados do DJEN e gerando boletim padrão Astrea…</div>';
+      }
+      
+      document.getElementById('publicationsEmailModalBackdrop')?.classList.remove('hidden');
+
+      try {
+        const resp = await window.KellerAuth.secureFetch('/api/email/publications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: targetEmail,
+            recipientName: lawyerName,
+            publications: items,
+            date: new Date().toLocaleDateString('pt-BR')
+          })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          this.currentEmailBulletin = data;
+          if (previewContainer) {
+            previewContainer.innerHTML = data.emailHtml;
+          }
+        } else {
+          if (previewContainer) {
+            previewContainer.innerHTML = `<div style="color:var(--danger);padding:16px;">Erro ao gerar boletim: ${escapeHtml(data.message)}</div>`;
+          }
+        }
+      } catch (err) {
+        if (previewContainer) {
+          previewContainer.innerHTML = `<div style="color:var(--danger);padding:16px;">Falha na comunicação: ${escapeHtml(err.message)}</div>`;
+        }
+      }
+    },
+    closePublicationsEmailModal() {
+      document.getElementById('publicationsEmailModalBackdrop')?.classList.add('hidden');
     },
     renderAudit(filter = 'all', query = '') {
       const list = document.getElementById('auditList');
@@ -2740,9 +2890,22 @@ ${id.lawyerOab} - ${id.officeName}`;
       const cleanDescription = decodeHtmlEntities(defaults.description || defaults.text || '');
       const cleanTitle = decodeHtmlEntities(defaults.title || '');
 
-      let intimationCardHtml = '';
+      let completionBarHtml = '';
+      if (defaults.id) {
+        const isDone = TERMINAL_STATUSES.includes(defaults.status);
+        completionBarHtml = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding:10px 14px; background:var(--panel-soft); border-radius:10px; border:1px solid var(--line);">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12px; color:var(--muted); font-weight:600;">Situação da Tarefa:</span>
+            <span class="status-chip ${isDone ? 'connected' : 'warning'}">${isDone ? 'Concluída' : 'Em andamento'}</span>
+          </div>
+          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask" style="padding:6px 14px; font-size:12px; font-weight:600;">✓ Marcar como Concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask" style="padding:6px 14px; font-size:12px;">↩ Reabrir Tarefa</button>`}
+        </div>`;
+      }
+
+      let intimationCardHtml = completionBarHtml;
       if (cleanDescription) {
-        intimationCardHtml = `
+        intimationCardHtml += `
         <div class="task-intimation-card">
           <div class="task-intimation-header">
             <div class="task-intimation-title">
@@ -2787,6 +2950,32 @@ ${id.lawyerOab} - ${id.officeName}`;
         taskDefinition: defaults.taskDefinition || (definitions.some(item => item.name === cleanTitle) ? cleanTitle : ''),
         responsibles: Array.isArray(defaults.responsibles) ? defaults.responsibles.join(', ') : (defaults.responsibles || '')
       }, intimationCardHtml);
+
+      document.getElementById('btnDirectCompleteTask')?.addEventListener('click', () => {
+        const task = Store.state.tasks.find(t => t.id === defaults.id);
+        if (task) {
+          task.status = 'concluida';
+          task.completedAt = new Date().toISOString();
+          Store.audit('Tarefa concluída', task.title);
+          Store.save();
+          this.closeModal();
+          this.renderAll();
+          this.toast('Tarefa concluída e removida do painel ativo!', 'success');
+        }
+      });
+
+      document.getElementById('btnDirectReopenTask')?.addEventListener('click', () => {
+        const task = Store.state.tasks.find(t => t.id === defaults.id);
+        if (task) {
+          task.status = 'triagem';
+          delete task.completedAt;
+          Store.audit('Tarefa reaberta', task.title);
+          Store.save();
+          this.closeModal();
+          this.renderAll();
+          this.toast('Tarefa reaberta no fluxo!', 'success');
+        }
+      });
 
       const selector = document.getElementById('field-taskDefinition');
       selector?.addEventListener('change', () => {
@@ -2852,7 +3041,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         { name: 'actionGroup', label: 'Grupo de ação', type: actionGroups.length ? 'select' : 'text', options: [{value:'',label:'Selecione o grupo'}, ...actionGroups] },
         { name: 'actionType', label: 'Tipo de ação / Matéria', type: actionTypes.length ? 'select' : 'text', options: [{value:'',label:'Selecione o tipo de ação'}, ...actionTypes] },
         { name: 'judicialPhase', label: 'Fase processual', type: 'select', options: [{value:'Conhecimento',label:'Conhecimento'},{value:'Recursal',label:'Recursal'},{value:'Execução / Cumprimento',label:'Execução / Cumprimento'},{value:'Acordo',label:'Acordo'},{value:'Administrativo',label:'Administrativo'},{value:'Arquivado',label:'Arquivado'}] },
-        { name: 'risk', label: 'Risco / Probabilidade de êxito', type: 'select', options: [{value:'provavel',label:'Provável (Alto êxito)'},{value:'possivel',label:'Possível (Médio risco)'},{value:'remoto',label:'Remoto (Alto risco)'}] },
+        { name: 'risk', label: 'Risco / Probabilidade de êxito (Opcional)', type: 'select', options: [{value:'',label:'Não informado / Sem prognóstico'},{value:'provavel',label:'Provável (Alto êxito)'},{value:'possivel',label:'Possível (Médio risco)'},{value:'remoto',label:'Remoto (Alto risco)'}] },
         { name: 'stage', label: 'Etapa do fluxo' },
         { name: 'protocol', label: 'Protocolo / Local' },
         { name: 'caseFolder', label: 'Pasta física / Caso' },
@@ -3875,6 +4064,15 @@ ${id.lawyerOab} - ${id.officeName}`;
         Store.audit(editing ? 'Atendimento atualizado' : 'Novo atendimento registrado', `${record.client} · ${record.serviceType}`);
       } else if (this.modalMode.mode === 'source') {
         const record = { ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() }; Store.upsert('sources', record); Store.audit('Fonte atualizada', `${record.name} · ${record.status}`);
+      } else if (this.modalMode.mode === 'datajud') {
+        if (!Store.state.settings) Store.state.settings = {};
+        Store.state.settings.datajudApiKey = data.apiKey || '';
+        Store.audit('Configuração DataJud atualizada', `Chave configurada (${(data.apiKey || '').slice(0, 10)}…)`);
+        Store.save();
+        this.renderMonitoring();
+        this.toast('Configurações do DataJud salvas com sucesso!', 'success');
+        this.closeModal();
+        return;
       } else if (this.modalMode.mode === 'prompt') {
         const isEditing = Boolean(this.modalMode.defaults.id);
         const record = {

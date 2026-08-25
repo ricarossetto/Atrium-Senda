@@ -612,6 +612,7 @@
                 <option value="process">Por Processo</option>
               </select>
             </div>
+            <button class="button ghost" id="btnEmailPublications" style="color:var(--gold); border-color:var(--gold);" title="Enviar ou exportar boletim diário de publicações por email (formato idêntico ao Astrea)">📧 Enviar por E-mail</button>
             <button class="button ghost" id="importIntimationButton">Importar JSON</button>
             <button class="button gold" id="newIntimationButton">+ Nova intimação</button>
           </div>
@@ -1746,6 +1747,41 @@
           <button type="submit" class="button gold" id="geminiKeySubmit">Validar e Salvar Chave</button>
         </footer>
       </form>
+    </section>
+  </div>
+
+  <!-- Modal de Envio de Publicações por E-mail (Estilo Astrea) -->
+  <div class="modal-backdrop hidden" id="publicationsEmailModalBackdrop">
+    <section class="modal publications-email-modal" role="dialog" aria-modal="true" aria-labelledby="emailModalTitle" style="max-width:760px; width:92%;">
+      <header>
+        <div>
+          <p class="eyebrow" id="emailModalEyebrow">Comunicação e Notificações</p>
+          <h2 id="emailModalTitle">Boletim de Publicações por E-mail (Estilo Astrea)</h2>
+        </div>
+        <button type="button" class="icon-button" id="publicationsEmailClose" aria-label="Fechar modal">×</button>
+      </header>
+      <div class="modal-body" style="padding:20px; max-height:75vh; overflow-y:auto;">
+        <div class="field full" style="margin-bottom:16px;">
+          <label for="emailTargetAddress">E-mail de Destino:</label>
+          <input type="email" id="emailTargetAddress" placeholder="ex: seuemail@gmail.com" value="ricardodelucarossetto1998@gmail.com">
+          <p class="field-note">O boletim consolida as publicações do período ativo em layout responsivo idêntico ao Astrea.</p>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;">
+          <button type="button" class="button gold" id="btnSendEmailDirect">🚀 Enviar E-mail via Servidor</button>
+          <button type="button" class="button ghost" id="btnOpenGmailWeb">🌐 Abrir no Gmail</button>
+          <button type="button" class="button ghost" id="btnCopyEmailHtml">📋 Copiar HTML Formatado</button>
+          <button type="button" class="button ghost" id="btnDownloadEmailHtml">💾 Baixar Arquivo HTML</button>
+        </div>
+
+        <div style="font-weight:600; margin-bottom:8px; color:var(--ivory); font-size:13px;">Pré-visualização do Boletim:</div>
+        <div id="emailPreviewContainer" style="background:#ffffff; color:#0f172a; padding:16px; border-radius:8px; border:1px solid var(--line); font-size:13px; max-height:360px; overflow-y:auto;">
+          <!-- Preenchido dinamicamente -->
+        </div>
+      </div>
+      <footer>
+        <button type="button" class="button ghost" id="publicationsEmailCancel">Fechar</button>
+      </footer>
     </section>
   </div>
 

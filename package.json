@@ -1,7 +1,7 @@
 {
   "name": "atrium",
-  "version": "1.0.0",
-  "description": "Atrium — Plataforma Open-Source de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.",
+  "version": "2.0.0",
+  "description": "Atrium Escritório Integrado (v2.0) — Plataforma Open-Source de Gestão Jurídica Soberana e Inteligente. Centralização segura, Kanban jurídico, gestão de prazos com CPC/2015, triagem de intimações DJEN, boletim diário por e-mail e IA assistencial com privacidade Zero Trust.",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@11.19.0",

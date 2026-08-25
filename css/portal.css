@@ -2582,11 +2582,19 @@ td small { color: var(--muted); }
 [data-theme="light"] .card,
 [data-theme="light"] .metric-card,
 [data-theme="light"] .hero-card,
-[data-theme="light"] .modal-dialog,
-[data-theme="light"] .auth-card {
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+[data-theme="light"] .auth-card,
+[data-theme="light"] .inbox-list-card,
+[data-theme="light"] .intimation-detail,
+[data-theme="light"] .importer-preview-card,
+[data-theme="light"] .importer-guide-card,
+[data-theme="light"] .dropzone-card,
+[data-theme="light"] .architecture-card,
+[data-theme="light"] .config-catalog,
+[data-theme="light"] .audit-layout {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.04);
+  color: #0f172a;
 }
 
 [data-theme="light"] .auth-visual {
@@ -2608,36 +2616,473 @@ td small { color: var(--muted); }
   border-color: rgba(184, 134, 11, 0.3);
 }
 
+[data-theme="light"] .nav-section-title {
+  color: #94a3b8;
+}
+
+/* ==========================================================================
+   MODAIS & FORMULÁRIOS (TEMA CLARO)
+   ========================================================================== */
+[data-theme="light"] .modal-backdrop {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+[data-theme="light"] .modal,
+[data-theme="light"] .modal-dialog,
+[data-theme="light"] .office-setup-modal,
+[data-theme="light"] .gemini-key-modal,
+[data-theme="light"] .doc-generator-modal,
+[data-theme="light"] .judicial-setup-modal {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .modal header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .modal header h2,
+[data-theme="light"] .modal header h3,
+[data-theme="light"] #modalTitle,
+[data-theme="light"] #geminiKeyTitle,
+[data-theme="light"] #officeSetupTitle,
+[data-theme="light"] #judicialSetupTitle {
+  color: #0f172a !important;
+  font-family: var(--font-serif);
+}
+
+[data-theme="light"] .modal header p.eyebrow,
+[data-theme="light"] #modalEyebrow {
+  color: #b8860b !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] .modal footer {
+  background: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .field label,
+[data-theme="light"] .form-grid label {
+  color: #334155 !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .field-note {
+  color: #64748b !important;
+}
+
 [data-theme="light"] input,
 [data-theme="light"] select,
-[data-theme="light"] textarea {
-  background: #ffffff;
-  color: #0f172a;
-  border: 1px solid #cbd5e1;
+[data-theme="light"] textarea,
+[data-theme="light"] .field input,
+[data-theme="light"] .field select,
+[data-theme="light"] .field textarea {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 [data-theme="light"] input:focus,
 [data-theme="light"] select:focus,
-[data-theme="light"] textarea:focus {
-  border-color: #b8860b;
-  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.15);
+[data-theme="light"] textarea:focus,
+[data-theme="light"] .field input:focus,
+[data-theme="light"] .field select:focus,
+[data-theme="light"] .field textarea:focus {
+  border-color: #b8860b !important;
+  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.15) !important;
+  outline: none;
 }
 
-[data-theme="light"] .table-card table th {
-  background: #f8fafc;
-  color: #475569;
-  border-bottom: 1px solid #e2e8f0;
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #94a3b8 !important;
 }
 
-[data-theme="light"] .table-card table td {
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
+[data-theme="light"] .icon-button,
+[data-theme="light"] #modalClose,
+[data-theme="light"] #geminiKeyClose,
+[data-theme="light"] #officeSetupClose,
+[data-theme="light"] #judicialSetupClose,
+[data-theme="light"] #docGenClose {
+  color: #64748b !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
 }
 
-[data-theme="light"] .table-card table tr:hover td {
-  background: #f8fafc;
+[data-theme="light"] .icon-button:hover {
+  color: #0f172a !important;
+  background: #e2e8f0 !important;
 }
 
+/* Card de publicação dentro do modal de tarefas */
+[data-theme="light"] .task-intimation-card {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .task-intimation-header {
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .task-intimation-body {
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .task-btn-action {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+/* ==========================================================================
+   ASSISTENTE JURÍDICO IA (TEMA CLARO)
+   ========================================================================== */
+[data-theme="light"] .ai-assistant-container {
+  background: transparent !important;
+}
+
+[data-theme="light"] .ai-chat-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .ai-header-badge strong {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .ai-message.assistant-message .message-text {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .ai-message.assistant-message .message-text p,
+[data-theme="light"] .ai-message.assistant-message .message-text li,
+[data-theme="light"] .ai-message.assistant-message .message-text strong {
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .ai-message.user-message .message-text {
+  background: #fefce8 !important;
+  border: 1px solid #fde047 !important;
+  color: #854d0e !important;
+}
+
+[data-theme="light"] .ai-message .message-meta {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .ai-onboarding-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .ai-onboarding-content h3 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .ai-onboarding-content p {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .ai-step-item {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .ai-step-item strong {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .ai-step-item p {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .ai-typing-row .ai-typing-indicator {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .quick-prompt-btn {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+[data-theme="light"] .quick-prompt-btn:hover {
+  background: #f8fafc !important;
+  border-color: #b8860b !important;
+  color: #926904 !important;
+}
+
+[data-theme="light"] .highlight-gold-btn {
+  background: #fef3c7 !important;
+  border-color: #f59e0b !important;
+  color: #926904 !important;
+}
+
+/* ==========================================================================
+   KANBAN JURÍDICO & TAREFAS (TEMA CLARO)
+   ========================================================================== */
+[data-theme="light"] .kanban-column {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .column-header {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .column-title {
+  color: #0f172a !important;
+  font-weight: 700;
+}
+
+[data-theme="light"] .column-count {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+[data-theme="light"] .task-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .task-card:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .task-card h4 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .task-card p {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .task-tags span {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .task-source {
+  color: #94a3b8 !important;
+}
+
+[data-theme="light"] .task-date {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .task-date.overdue {
+  color: #dc2626 !important;
+}
+
+/* ==========================================================================
+   BANNER ZERO TRUST & STATUS (TEMA CLARO)
+   ========================================================================== */
+[data-theme="light"] .environment-banner {
+  background: #f0fdf4 !important;
+  border: 1px solid #bbf7d0 !important;
+  color: #166534 !important;
+}
+
+[data-theme="light"] .environment-banner strong,
+[data-theme="light"] .environment-banner span {
+  color: #166534 !important;
+}
+
+[data-theme="light"] .environment-banner a {
+  color: #15803d !important;
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   CAIXA DE INTIMAÇÕES & DETALHES (TEMA CLARO)
+   ========================================================================== */
+[data-theme="light"] .list-head {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+[data-theme="light"] .inbox-row {
+  background: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .inbox-row:hover {
+  background: #f8fafc !important;
+}
+
+[data-theme="light"] .inbox-row.active {
+  background: #fefce8 !important;
+  border-color: #fde047 !important;
+}
+
+[data-theme="light"] .inbox-row strong {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .inbox-case-line b {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .inbox-case-line em {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .intimation-detail-header h3 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .detail-card {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .detail-text-box {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* ==========================================================================
+   TABELAS & LISTAS DE PROCESSO, CONTATO, AUDITORIA (TEMA CLARO)
+   ========================================================================== */
+[data-theme="light"] .table-card table th,
+[data-theme="light"] .sortable-table th {
+  background: #f8fafc !important;
+  color: #334155 !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+  font-weight: 600;
+}
+
+[data-theme="light"] .table-card table td,
+[data-theme="light"] .sortable-table td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #1e293b !important;
+  background: #ffffff;
+}
+
+[data-theme="light"] .table-card table tr:hover td,
+[data-theme="light"] .sortable-table tr:hover td {
+  background: #f8fafc !important;
+}
+
+[data-theme="light"] .table-search input {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* ==========================================================================
+   MONITORAMENTO & TERMOS (TEMA CLARO)
+   ========================================================================== */
+[data-theme="light"] .term-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .term-title strong,
+[data-theme="light"] #primaryTermName {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] #primaryTermRegistration {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .source-row {
+  background: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .source-row:hover {
+  background: #f8fafc !important;
+}
+
+[data-theme="light"] .source-name strong {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .source-name small {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .source-mark {
+  background: #fef3c7 !important;
+  color: #926904 !important;
+  border: 1px solid rgba(184, 134, 11, 0.3) !important;
+}
+
+/* ==========================================================================
+   AGENDA & MINI CALENDÁRIO (TEMA CLARO)
+   ========================================================================== */
+[data-theme="light"] .agenda-calendar-card,
+[data-theme="light"] .mini-calendar-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .calendar-header h3 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .calendar-weekday {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .calendar-cell {
+  background: #ffffff !important;
+  border: 1px solid #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .calendar-cell:hover {
+  background: #f8fafc !important;
+}
+
+[data-theme="light"] .calendar-cell.has-events {
+  background: #fefce8 !important;
+  font-weight: 700;
+  color: #854d0e !important;
+}
+
+[data-theme="light"] .calendar-cell.active {
+  border-color: #b8860b !important;
+  background: #fef3c7 !important;
+}
+
+[data-theme="light"] .agenda-item {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .agenda-item:hover {
+  background: #f8fafc !important;
+}
+
+[data-theme="light"] .agenda-title {
+  color: #0f172a !important;
+}
+
+/* ==========================================================================
+   ELEMENTOS DE INTERFACE COMUNS (TEMA CLARO)
+   ========================================================================== */
 [data-theme="light"] .sidebar-office {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -2649,6 +3094,7 @@ td small { color: var(--muted); }
 [data-theme="light"] .sidebar-office strong {
   color: #0f172a;
 }
+
 [data-theme="light"] .filter-tabs button {
   background: #ffffff;
   border: 1px solid #cbd5e1;
@@ -2664,6 +3110,7 @@ td small { color: var(--muted); }
   color: #926904;
   font-weight: 600;
 }
+
 [data-theme="light"] .prompt-card {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
@@ -2713,6 +3160,7 @@ td small { color: var(--muted); }
 [data-theme="light"] .prompt-card-actions {
   border-top: 1px solid #f1f5f9;
 }
+
 [data-theme="light"] .link-card {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
@@ -2728,12 +3176,14 @@ td small { color: var(--muted); }
 [data-theme="light"] .links-section-header p {
   color: #64748b;
 }
+
 [data-theme="light"] .toast {
   background: #ffffff;
   border: 1px solid #d4af37;
   color: #0f172a;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
 }
+
 [data-theme="light"] .astrea-task-item {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -2769,21 +3219,25 @@ td small { color: var(--muted); }
 [data-theme="light"] .astrea-reminder-item:hover {
   background: #f1f5f9;
 }
+
 [data-theme="light"] .theme-toggle-btn {
   background: #f1f5f9;
   border-color: #cbd5e1;
   color: #1e293b;
 }
+
 [data-theme="light"] .gold-pill {
   background: #fef3c7;
   border: 1px solid #f59e0b;
   color: #926904;
 }
+
 [data-theme="light"] .status-chip.muted {
   background: #f1f5f9;
   border: 1px solid #cbd5e1;
   color: #475569;
 }
+
 [data-theme="light"] .timeline-item {
   border-left-color: #e2e8f0;
 }
@@ -2793,6 +3247,7 @@ td small { color: var(--muted); }
 [data-theme="light"] .timeline-copy span {
   color: #64748b;
 }
+
 [data-theme="light"] .source-summary-item {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -2800,11 +3255,13 @@ td small { color: var(--muted); }
 [data-theme="light"] .source-summary-item strong {
   color: #0f172a;
 }
+
 [data-theme="light"] .global-search input {
   background: #f8fafc;
   border: 1px solid #cbd5e1;
   color: #0f172a;
 }
+
 [data-theme="light"] .button.ghost {
   background: #ffffff;
   border: 1px solid #cbd5e1;
@@ -2815,6 +3272,7 @@ td small { color: var(--muted); }
   color: #0f172a;
   border-color: #94a3b8;
 }
+
 [data-theme="light"] .profile-button {
   background: #f8fafc;
   border: 1px solid #cbd5e1;
@@ -2826,9 +3284,28 @@ td small { color: var(--muted); }
 [data-theme="light"] .profile-button .profile-copy strong {
   color: #0f172a;
 }
-[data-theme="light"] .environment-banner {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
+
+[data-theme="light"] .card-heading h3,
+[data-theme="light"] .section-toolbar h3,
+[data-theme="light"] .toolbar-copy p {
+  color: #334155;
+}
+
+[data-theme="light"] .card-heading p.eyebrow,
+[data-theme="light"] .section-toolbar p.eyebrow {
+  color: #b8860b;
+}
+
+[data-theme="light"] .btn-tjrs-consult {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #2563eb !important;
+}
+
+[data-theme="light"] .btn-tjrs-consult:hover {
+  background: #eff6ff !important;
+  border-color: #3b82f6 !important;
+}5e1;
   color: #1e293b;
 }
 
