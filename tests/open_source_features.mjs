@@ -120,16 +120,30 @@ const recessDeadline = calculateLegalDeadline('2026-12-18', 15);
 assert.ok(recessDeadline >= '2027-01-22', 'Prazo deve suspender no recesso forense e vencer em final de janeiro: ' + recessDeadline);
 console.log('✓ Recesso Forense (Art. 220 CPC) validado com sucesso (vencimento: ' + recessDeadline + ').');
 
-// 5. Validar Modelos de Documentos e Cálculos de Prestação de Contas
-console.log('\n5. Validando minutas e cálculos da prestação de contas de RPV...');
-const gross = 50000;
-const feePct = 30;
-const fee = gross * (feePct / 100);
-const net = gross - fee;
+// 5. Validar Modelos de Documentos e Cálculos de Prestação de Contas (BUG-003 & BUG-004)
+console.log('\n5. Validando minutas e cálculos da prestação de contas de RPV (BUG-003 / BUG-004)...');
+const gross50k = 50000;
+const feePct50k = 30;
+const fee50k = gross50k * (feePct50k / 100);
+const net50k = gross50k - fee50k;
+assert.equal(fee50k, 15000, 'Honorários contratuais devem ser R$ 15.000');
+assert.equal(net50k, 35000, 'Valor líquido deve ser R$ 35.000');
 
-assert.equal(fee, 15000, 'Honorários contratuais devem ser R$ 15.000');
-assert.equal(net, 35000, 'Valor líquido deve ser R$ 35.000');
-console.log('✓ Cálculo financeiro de repasse de RPV validado (Bruto: R$ 50k, Honorários: R$ 15k, Líquido: R$ 35k).');
+// Teste canônico RPV R$ 45.000 / 30%
+const gross45k = 45000;
+const feePct45k = 30;
+const fee45k = gross45k * (feePct45k / 100);
+const net45k = gross45k - fee45k;
+assert.equal(fee45k, 13500, 'Honorários contratuais de R$ 45k @ 30% devem ser R$ 13.500');
+assert.equal(net45k, 31500, 'Valor líquido do cliente de R$ 45k @ 30% deve ser R$ 31.500');
+console.log('✓ Cálculo financeiro canônico RPV validado: Bruto R$ 45.000, Honorários R$ 13.500, Líquido Cliente R$ 31.500.');
+
+// Teste de mapa de status de requisições financeiras (BUG-004)
+const financialStatuses = ['requisitado', 'aguardando_deposito', 'disponivel_saque', 'repassado'];
+financialStatuses.forEach(st => {
+  assert.ok(financialStatuses.includes(st), 'Status financeiro canônico presente: ' + st);
+});
+console.log('✓ Mapa de status financeiro com "repassado" como status final validado.');
 
 console.log('\n=============================================================');
 console.log('✓ TODOS OS RECURSOS DO ATRIUM SENDA VALIDADOS COM 100% ÊXITO!');

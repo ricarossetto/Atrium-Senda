@@ -40,7 +40,7 @@
           <label>Senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <small class="auth-hint">Mínimo de 10 caracteres contendo letras maiúsculas, minúsculas, números e símbolos.</small>
-          <button class="button gold auth-submit" type="submit">Criar senha e configurar 2FA</button>
+          <button class="button gold auth-submit" type="submit">Crie sua senha e escolha a proteção em 2 etapas</button>
         </form>
 
         <form id="authTotpSetupForm" class="auth-step">
@@ -68,23 +68,23 @@
 
         <form id="authRegisterForm" class="auth-step">
           <p class="eyebrow">Novo Membro / Cadastro</p><h2>Criar Acesso ao Atrium</h2>
-          <p>Cadastre seus dados, vincule seu autenticador e aguarde a aprovação do administrador.</p>
+          <p>Cadastre seus dados e solicite a liberação do seu acesso ao administrador.</p>
           <label>Nome completo<input name="displayName" autocomplete="name" required placeholder="Dr(a). Nome Sobrenome" maxlength="100"></label>
           <label>E-mail de contato<input name="email" type="email" autocomplete="email" required placeholder="advogado@escritorio.adv.br" maxlength="100"></label>
           <label>Usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._\x2d]{3,64}" placeholder="nome.sobrenome" maxlength="64"></label>
           <label>OAB / Cargo (opcional)<input name="oab" placeholder="OAB/UF 000000" maxlength="40"></label>
           <label>Senha de acesso<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
-          <button class="button gold auth-submit" type="submit">Configurar 2FA e solicitar acesso</button>
+          <button class="button gold auth-submit" type="submit">Criar conta e solicitar acesso</button>
         </form>
 
         <form id="authLoginForm" class="auth-step">
           <p class="eyebrow">Acesso restrito</p><h2>Entrar no Atrium</h2>
-          <p>Informe sua senha e o código atual do aplicativo autenticador.</p>
+          <p>Informe seu usuário e senha de acesso.</p>
           <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="admin ou seu.usuario"></label>
           <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
-          <label>Código TOTP ou recuperação<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000"></label>
-          <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>Senha e Authenticator serão exigidos novamente após 30 dias ou ao sair da conta.</small></span></label>
+          <label>Código do autenticador ou recuperação (se a proteção em 2 etapas estiver ativada)<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000 (opcional se 2FA inativo)"></label>
+          <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>O segundo fator não será exigido novamente neste dispositivo durante este período.</small></span></label>
           <button class="button gold auth-submit" type="submit">Entrar no Atrium</button>
         </form>
 
@@ -320,11 +320,16 @@
             <span id="themeToggleIcon">☀️</span>
             <span id="themeToggleText">Modo Claro</span>
           </button>
-          <label class="global-search">
-            <span aria-hidden="true">⌕</span>
-            <input id="globalSearch" type="search" placeholder="Pesquisar contato, processo ou tarefa">
-            <kbd>/</kbd>
-          </label>
+          <div class="global-search-container">
+            <label class="global-search" for="globalSearch">
+              <span aria-hidden="true">⌕</span>
+              <input id="globalSearch" type="search" placeholder="Pesquisar (Ctrl+K ou /)" autocomplete="off">
+              <kbd>/</kbd>
+            </label>
+            <div class="search-palette-dropdown hidden" id="globalSearchPalette">
+              <div class="search-palette-results" id="searchPaletteResults"></div>
+            </div>
+          </div>
           <button class="button ghost" id="tourButton" title="Apresentação Guiada do Atrium">
             <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
@@ -979,7 +984,7 @@
           <div class="toolbar-actions">
             <div class="table-search compact-search"><input id="auditSearch" type="search" placeholder="Pesquisar registros de auditoria"></div>
             <button class="button ghost" id="btnExportAuditLog" type="button">Exportar Log (JSON)</button>
-            <button class="button ghost" id="btnClearAuditLog" type="button">Limpar Histórico</button>
+            <button class="button ghost" id="btnClearAuditLog" type="button">Limpar Filtros</button>
           </div>
         </div>
 
@@ -1843,6 +1848,65 @@
       <footer>
         <button type="button" class="button ghost" id="publicationsEmailCancel">Fechar</button>
       </footer>
+    </section>
+  </div>
+
+  <!-- Modal Contextual de Lançamento Financeiro (BUG-005) -->
+  <div class="modal-backdrop hidden" id="financialEntryBackdrop">
+    <section class="modal card financial-entry-modal" role="dialog" aria-modal="true" aria-labelledby="finModalTitle" style="max-width:560px; width:92%;">
+      <header class="modal-header">
+        <div>
+          <p class="eyebrow">Gestão Financeira &amp; Honorários</p>
+          <h3 id="finModalTitle">Novo Lançamento Financeiro</h3>
+        </div>
+        <button class="icon-button" id="financialEntryClose" type="button" aria-label="Fechar modal">✕</button>
+      </header>
+      <form id="financialEntryForm">
+        <div class="modal-body form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:20px;">
+          <label style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Processo / Cliente Vinculado</span>
+            <select id="finProcessSelect" name="processId" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+              <option value="">Selecione o processo...</option>
+            </select>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Tipo de Lançamento</span>
+            <select id="finTypeSelect" name="entryType" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+              <option value="rpv">RPV / Precatório / Alvará</option>
+              <option value="exito">Honorários de Êxito (Quota Litis)</option>
+              <option value="fixo">Honorários Fixos / Iniciais</option>
+              <option value="mensal">Honorários Mensais / Partido</option>
+              <option value="custas">Custas e Reembolsos</option>
+            </select>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Situação / Status</span>
+            <select id="finStatusSelect" name="status" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+              <option value="requisitado">Requisitado / Expedido</option>
+              <option value="aguardando_deposito">Aguardando Depósito Judicial</option>
+              <option value="disponivel_saque">Disponível para Saque / Levantamento</option>
+              <option value="repassado">Repassado ao Cliente &amp; Quitado</option>
+            </select>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Valor Bruto / Base (R$)</span>
+            <input id="finGrossInput" name="grossAmount" type="number" step="0.01" min="0" placeholder="Ex: 45000.00" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Percentual de Honorários (%)</span>
+            <input id="finFeePctInput" name="feePercentage" type="number" step="0.5" min="0" max="100" placeholder="Ex: 30" value="30" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+          </label>
+          <div style="grid-column:span 2; background:var(--panel-soft); padding:14px; border-radius:10px; border:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; text-align:center;">
+            <div><small style="color:var(--muted); font-size:10px; text-transform:uppercase;">Valor Bruto</small><strong id="finSumGross" style="display:block; color:var(--ivory); font-size:15px; margin-top:2px;">R$ 0,00</strong></div>
+            <div><small style="color:var(--muted); font-size:10px; text-transform:uppercase;">Honorários</small><strong id="finSumFee" style="display:block; color:var(--gold); font-size:15px; margin-top:2px;">R$ 0,00</strong></div>
+            <div><small style="color:var(--muted); font-size:10px; text-transform:uppercase;">Líquido Cliente</small><strong id="finSumNet" style="display:block; color:var(--success); font-size:15px; margin-top:2px;">R$ 0,00</strong></div>
+          </div>
+        </div>
+        <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
+          <button class="button ghost" id="financialEntryCancel" type="button">Cancelar</button>
+          <button class="button gold" type="submit">Salvar Lançamento</button>
+        </footer>
+      </form>
     </section>
   </div>
 

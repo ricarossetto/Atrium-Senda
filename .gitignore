@@ -17,5 +17,6 @@ test-results/
 supabase/.temp/
 research/vendor/
 dist/
+artifacts/
 .DS_Store
 Thumbs.db

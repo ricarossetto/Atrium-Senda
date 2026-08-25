@@ -139,6 +139,17 @@ async function saveAppState(value, expectedRevision = null) {
   if (current.revision && expectedRevision !== current.revision) {
     throw Object.assign(new Error('Os dados foram atualizados em outra aba ou pelo importador. Recarregue a Central antes de salvar.'), { statusCode: 409 });
   }
+  // Garantir trilha de auditoria imutável (append-only) no backend
+  if (current.state?.audit && Array.isArray(current.state.audit)) {
+    const mergedAudit = [...(value.audit || [])];
+    for (const entry of current.state.audit) {
+      if (!mergedAudit.some(m => (m.id && m.id === entry.id) || (m.at && m.at === entry.at))) {
+        mergedAudit.push(entry);
+      }
+    }
+    mergedAudit.sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime());
+    value.audit = mergedAudit.slice(0, 1000);
+  }
   await mkdir(DATA_DIR, { recursive: true });
   const envelope = { version: 1, algorithm: 'aes-256-gcm', revision: randomBytes(18).toString('base64url'), encrypted: security.encrypt(JSON.stringify(value)), updatedAt: new Date().toISOString() };
   await writeFile(APP_STATE_FILE, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });

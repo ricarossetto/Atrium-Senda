@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pnpm install --frozen-lockfile || npm install
+          npm ci || npm install --no-audit --no-fund
 
       - name: Install Playwright Browsers (Chromium)
         run: |
@@ -37,9 +37,24 @@ jobs:
         run: |
           npm run check
 
-      - name: Run Full Audit & Test Suite (11 Suites)
+      - name: Run Full Audit & Test Suite (12 Suites)
         run: |
           npm test
         env:
           CI: true
           NODE_ENV: test
+
+      - name: Run Multi-Viewport Visual QA
+        run: |
+          node tests/visual-qa.mjs
+        env:
+          CI: true
+          NODE_ENV: test
+
+      - name: Upload Visual QA Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atrium-visual-qa-screenshots
+          path: artifacts/visual-qa/
+          retention-days: 14

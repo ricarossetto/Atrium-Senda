@@ -139,14 +139,38 @@ try {
   const optEnable = await response.json();
   assert(response.ok && optEnable.mfaEnabled, 'Falha ao ativar MFA posteriormente.');
 
-  // Agora login exige código
-  response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'adv_sem_mfa', password: optionalUserPwd });
-  assert(response.status === 401, 'Usuário que ativou MFA conseguiu logar sem código.');
+  // Teste BUG-012: Isolamento de Recovery Codes entre Usuários
+  const collabRecovery = registration.recoveryCodes ? registration.recoveryCodes[0] : null;
+  if (optEnable.recoveryCodes && optEnable.recoveryCodes.length > 0) {
+    const userBRecovery = optEnable.recoveryCodes[0];
+    // Recovery code do Usuário B não pode autenticar Admin (Usuário A)
+    response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'admin', password, code: userBRecovery });
+    assert(response.status === 401, 'BUG-012: Recovery code do Usuário B conseguiu autenticar Usuário A!');
+    
+    // Login do Usuário B com seu próprio recovery code
+    response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'adv_sem_mfa', password: optionalUserPwd, code: userBRecovery });
+    assert(response.ok, 'BUG-012: Usuário B não conseguiu logar com seu próprio recovery code.');
+    const userBLoginAfterRecovery = await response.json();
+    const userBCookie = response.headers.get('set-cookie').split(';')[0];
+
+    // Teste BUG-013: Desativação de MFA exigindo senha + TOTP/Recovery
+    // Tentativa sem código de 2FA
+    response = await postJson(`${server.baseUrl}/api/auth/mfa/disable`, { password: optionalUserPwd }, { Cookie: userBCookie, 'X-CSRF-Token': userBLoginAfterRecovery.csrfToken });
+    assert(response.status === 401, 'BUG-013: Desativação de MFA permitida sem segundo fator.');
+
+    // Desativação com senha + código TOTP válido
+    response = await postJson(`${server.baseUrl}/api/auth/mfa/disable`, { password: optionalUserPwd, code: generateTotp(newSecret) }, { Cookie: userBCookie, 'X-CSRF-Token': userBLoginAfterRecovery.csrfToken });
+    assert(response.ok, 'BUG-013: Desativação de MFA com senha e TOTP falhou.');
+    
+    // Agora usuário B consegue logar sem código
+    response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'adv_sem_mfa', password: optionalUserPwd });
+    assert(response.ok, 'BUG-013: Usuário não conseguiu logar sem código após desativar MFA.');
+  }
 
   for (let index = 0; index < 5; index++) await postJson(`${server.baseUrl}/api/auth/login`, { username: 'bloqueio', password: 'Incorreta-123456!', code: '000000' });
   response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'bloqueio', password: 'Incorreta-123456!', code: '000000' });
   assert(response.status === 429 && response.headers.has('retry-after'), 'Limitação de tentativas não bloqueou o atacante.');
-  console.log('Security test aprovado: senha, TOTP por usuário, MFA opcional e ativação posterior, aprovação administrativa, papéis, navegador confiável, revogação, recuperação individual, sessão, CSRF, rate limit, CSP, arquivos privados, estado principal e coleta criptografados.');
+  console.log('Security test aprovado: senha, TOTP por usuário, MFA opcional e ativação posterior, isolamento estrito de recovery codes (BUG-012), fluxo de desativação de MFA (BUG-013), aprovação administrativa, papéis, navegador confiável, revogação, sessão, CSRF, rate limit, CSP, arquivos privados, estado principal e coleta criptografados.');
 } finally { await server.stop(); }
 
 function assert(condition, message) { if (!condition) throw new Error(message); }

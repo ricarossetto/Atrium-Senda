@@ -12,9 +12,8 @@
     { id: 'concluida', title: 'Concluída', color: '#40b879' }
   ];
 
-  const now = new Date();
   const isoDate = (offset = 0) => {
-    const date = new Date(now);
+    const date = new Date();
     date.setDate(date.getDate() + offset);
     return date.toISOString().slice(0, 10);
   };
@@ -128,20 +127,34 @@
   function formatMarkdown(text) {
     if (!text) return '';
     let html = escapeHtml(text);
-    html = html.replace(/```([\s\S]*?)```/g, (match, p1) => `<pre><code>${p1.trim()}</code></pre>`);
+    // Code blocks
+    html = html.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => `<pre><code class="lang-${lang}">${code.trim()}</code></pre>`);
+    html = html.replace(/```([\s\S]*?)```/g, (match, code) => `<pre><code>${code.trim()}</code></pre>`);
+    // Inline code
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Headings
+    html = html.replace(/^### (.*$)/gim, '<h4 class="md-h4">$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3 class="md-h3">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, '<h2 class="md-h2">$1</h2>');
+    // Blockquotes
+    html = html.replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>');
+    // Bold & Italic
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
     html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    html = html.replace(/^### (.*$)/gim, '<h4 style="color:var(--gold);margin:10px 0 4px 0;">$1</h4>');
-    html = html.replace(/^## (.*$)/gim, '<h3 style="color:var(--gold);margin:12px 0 6px 0;">$1</h3>');
-    html = html.replace(/^# (.*$)/gim, '<h2 style="color:var(--gold);margin:14px 0 8px 0;">$1</h2>');
-    html = html.replace(/^\s*[-•]\s+(.*)$/gim, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-    const lines = html.split('\n\n');
-    html = lines.map(line => {
-      const trimmed = line.trim();
+    html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+    // Unordered lists
+    html = html.replace(/^\s*[-•*]\s+(.*)$/gim, '<ul><li>$1</li></ul>');
+    html = html.replace(/<\/ul>\s*<ul>/g, '');
+    // Ordered lists
+    html = html.replace(/^\s*\d+\.\s+(.*)$/gim, '<ol><li>$1</li></ol>');
+    html = html.replace(/<\/ol>\s*<ol>/g, '');
+    // Paragraphs
+    const blocks = html.split(/\n{2,}/);
+    html = blocks.map(block => {
+      const trimmed = block.trim();
       if (!trimmed) return '';
-      if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || trimmed.startsWith('<pre') || trimmed.startsWith('<li')) return trimmed;
+      if (/^<(h[2-4]|ul|ol|pre|blockquote)/i.test(trimmed)) return trimmed;
       return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`;
     }).join('');
     return html;
@@ -825,6 +838,13 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.syncAll({ silent: true });
       this.autoSyncTimer = window.setInterval(() => this.syncWhenIdle(), 5 * 60 * 1000);
     },
+    initials(name) {
+      if (!name) return 'AD';
+      const parts = String(name).trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 0) return 'AD';
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    },
     initTheme() {
       const savedTheme = localStorage.getItem('atrium_theme') || localStorage.getItem('jurisflow_theme') || 'dark';
       this.setTheme(savedTheme);
@@ -868,8 +888,13 @@ ${id.lawyerOab} - ${id.officeName}`;
       document.addEventListener('click', event => { const link = event.target.closest('[data-view-link]'); if (link) this.switchView(link.dataset.viewLink); });
       document.getElementById('menuToggle')?.addEventListener('click', () => document.getElementById('sidebar')?.classList.toggle('open'));
       document.addEventListener('keydown', event => {
-        if (event.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-          event.preventDefault(); document.getElementById('globalSearch').focus();
+        if (((event.key === 'k' || event.key === 'K') && (event.ctrlKey || event.metaKey)) || (event.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) {
+          event.preventDefault();
+          const searchInput = document.getElementById('globalSearch');
+          if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+          }
         }
         if (event.key === 'Escape') {
           this.closeModal();
@@ -878,6 +903,8 @@ ${id.lawyerOab} - ${id.officeName}`;
           this.closeGuidedTour();
           this.closeCalendarConfigModal();
           this.closeGeminiKeyModal();
+          this.closeFinancialEntryModal();
+          this.closeGlobalSearchPalette();
         }
         if (event.key === 'Enter') {
           const interactive = event.target.closest('[data-view-link], [data-process-id], [data-contact-id], [data-agenda-id], [data-source-id], #primaryTermCard, .sidebar-office');
@@ -974,15 +1001,29 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('auditSearch')?.addEventListener('input', () => this.renderAudit(this.auditFilter, byId('auditSearch').value));
       byId('btnExportAuditLog')?.addEventListener('click', () => this.exportJson(Store.state.audit, `atrium-auditoria-${isoDate()}.json`));
       byId('btnClearAuditLog')?.addEventListener('click', () => {
-        if (confirm('Deseja realmente limpar o histórico de auditoria local?')) {
-          Store.state.audit = [];
-          Store.audit('Auditoria limpa', 'Histórico de eventos resetado pelo usuário');
-          this.renderAudit();
-          this.toast('Histórico de auditoria reiniciado.', 'success');
-        }
+        this.auditFilter = 'all';
+        if (byId('auditSearch')) byId('auditSearch').value = '';
+        byId('auditFilters')?.querySelectorAll('button').forEach((item, idx) => item.classList.toggle('active', idx === 0));
+        this.renderAudit('all', '');
+        this.toast('Filtros de auditoria redefinidos.', 'info');
       });
 
-      byId('globalSearch')?.addEventListener('input', event => this.globalSearch(event.target.value));
+      let searchDebounceTimer = null;
+      byId('globalSearch')?.addEventListener('input', event => {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => this.performGlobalSearch(event.target.value), 180);
+      });
+      byId('globalSearch')?.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          this.closeGlobalSearchPalette();
+          byId('globalSearch')?.blur();
+        }
+      });
+      document.addEventListener('click', event => {
+        if (!event.target.closest('.global-search-container')) {
+          this.closeGlobalSearchPalette();
+        }
+      });
       byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
       byId('jsonImportInput')?.addEventListener('change', event => this.importJson(event.target.files[0]));
       byId('exportAuditButton')?.addEventListener('click', () => this.exportJson(Store.state.audit, `atrium-auditoria-${isoDate()}.json`));
@@ -1087,13 +1128,17 @@ ${id.lawyerOab} - ${id.officeName}`;
       });
       byId('financialSearch')?.addEventListener('input', () => this.renderFinancial(byId('financialSearch').value));
       byId('btnGenDocPrestacao')?.addEventListener('click', () => this.openDocumentGenerator({ type: 'prestacao_contas' }));
-      byId('newFinancialEntryButton')?.addEventListener('click', () => this.openProcessModal());
+      byId('newFinancialEntryButton')?.addEventListener('click', () => this.openFinancialEntryModal());
+      byId('financialEntryClose')?.addEventListener('click', () => this.closeFinancialEntryModal());
+      byId('financialEntryCancel')?.addEventListener('click', () => this.closeFinancialEntryModal());
+      byId('financialEntryBackdrop')?.addEventListener('click', event => { if (event.target === byId('financialEntryBackdrop')) this.closeFinancialEntryModal(); });
+      byId('financialEntryForm')?.addEventListener('submit', event => this.handleFinancialEntrySubmit(event));
+      byId('finGrossInput')?.addEventListener('input', () => this.updateFinancialModalSummary());
+      byId('finFeePctInput')?.addEventListener('input', () => this.updateFinancialModalSummary());
+      byId('finTypeSelect')?.addEventListener('change', () => this.updateFinancialModalSummary());
 
       // Documentos & Minutas
       byId('btnOpenDocGenModal')?.addEventListener('click', () => this.openDocumentGenerator());
-      byId('quickDocGenButton')?.addEventListener('click', () => this.openDocumentGenerator());
-      byId('btnGenDocProcess')?.addEventListener('click', () => this.openDocumentGenerator());
-      byId('btnGenDocContact')?.addEventListener('click', () => this.openDocumentGenerator());
 
       // Agenda Externa
       byId('configureCalendarButton')?.addEventListener('click', () => this.openCalendarConfigModal());
@@ -1713,21 +1758,47 @@ ${id.lawyerOab} - ${id.officeName}`;
       const lEl = document.getElementById('widgetActiveLeads');
       if (lEl) lEl.textContent = activeLeads;
 
-      let totalHonorarios = 0;
+      let totalHonorariosAFaturar = 0;
       processes.forEach(p => {
-        if (p.feeAmount) totalHonorarios += Number(p.feeAmount);
+        const isPaid = p.feeStatus === 'pago' || p.feeStatus === 'quitado' || p.requisitionStatus === 'repassado' || p.requisitionStatus === 'pago';
+        if (isPaid) return;
+
+        if (p.feeType === 'fixo' && p.feeAmount) {
+          totalHonorariosAFaturar += Number(p.feeAmount);
+        } else if (p.feeType === 'mensal' && p.feeMonthly) {
+          totalHonorariosAFaturar += Number(p.feeMonthly);
+        } else if (p.feeType === 'misto') {
+          if (p.feeAmount) totalHonorariosAFaturar += Number(p.feeAmount);
+          if (p.feeMonthly) totalHonorariosAFaturar += Number(p.feeMonthly);
+        } else if (p.feePercentage) {
+          const feePct = Number(p.feePercentage);
+          const baseValue = Number(p.requisitionAmount ?? p.rpvAmount ?? p.economicValue ?? 0);
+          if (baseValue > 0) {
+            totalHonorariosAFaturar += (baseValue * feePct / 100);
+          } else if (p.feeAmount) {
+            totalHonorariosAFaturar += Number(p.feeAmount);
+          }
+        } else if (p.feeAmount) {
+          totalHonorariosAFaturar += Number(p.feeAmount);
+        }
       });
       const honEl = document.getElementById('widgetHonorariosPending');
-      if (honEl) honEl.textContent = formatCurrency(totalHonorarios);
+      if (honEl) honEl.textContent = formatCurrency(totalHonorariosAFaturar);
 
-      let totalMinutes = 0;
+      const thirtyDaysAgo = Date.now() - 30 * 86400000;
+      let totalMinutes30d = 0;
       tasks.forEach(t => {
         if (Array.isArray(t.timeLogs)) {
-          totalMinutes += totalTimeMinutes(t.timeLogs);
+          t.timeLogs.forEach(log => {
+            const logTime = new Date(log.date || log.at || log.createdAt || 0).getTime();
+            if (!log.date || logTime >= thirtyDaysAgo) {
+              totalMinutes30d += Number(log.minutes || 0);
+            }
+          });
         }
       });
       const tsEl = document.getElementById('widgetTimesheetHours');
-      if (tsEl) tsEl.textContent = formatMinutes(totalMinutes) || '0h 0m';
+      if (tsEl) tsEl.textContent = formatMinutes(totalMinutes30d) || '0h 0m';
 
       const docCountEl = document.getElementById('widgetDocsCount');
       if (docCountEl) docCountEl.textContent = Store.state.customDocs?.length || 5;
@@ -1852,21 +1923,37 @@ ${id.lawyerOab} - ${id.officeName}`;
       const needle = normalizeText(query);
       const processes = Store.state.processes || [];
 
-      let totalHonorarios = 0;
+      const FINANCIAL_STATUS_MAP = {
+        requisitado: { label: 'Requisitado / Expedido', chipClass: 'muted', isFinal: false },
+        aguardando_deposito: { label: 'Aguardando Depósito', chipClass: 'warning', isFinal: false },
+        disponivel_saque: { label: 'Disponível para Saque', chipClass: 'info', isFinal: false },
+        repassado: { label: 'Repassado & Quitado', chipClass: 'connected', isFinal: true },
+        pago: { label: 'Repassado & Quitado', chipClass: 'connected', isFinal: true },
+        quitado: { label: 'Repassado & Quitado', chipClass: 'connected', isFinal: true }
+      };
+
+      let totalHonorariosAFaturar = 0;
       let rpvCount = 0;
 
       const rows = [];
       processes.forEach(proc => {
-        if (proc.feeAmount) totalHonorarios += Number(proc.feeAmount);
-        if (proc.requisitionStatus || proc.rpvAmount) {
+        const isPaid = proc.feeStatus === 'pago' || proc.feeStatus === 'quitado' || proc.requisitionStatus === 'repassado' || proc.requisitionStatus === 'pago';
+        
+        // Cálculo canônico do RPV / Precatório (BUG-003)
+        if (proc.requisitionStatus || proc.requisitionAmount || proc.rpvAmount) {
           rpvCount++;
-          const gross = Number(proc.rpvAmount || proc.economicValue || 0);
-          const feePct = Number(proc.feePercentage || 30);
+          const gross = Number(proc.requisitionAmount ?? proc.rpvAmount ?? proc.economicValue ?? 0);
+          const feePct = Number(proc.feePercentage ?? 30);
           const feeAmount = proc.feeAmount ? Number(proc.feeAmount) : (gross * feePct / 100);
           const netClient = Math.max(0, gross - feeAmount);
+          const statusInfo = FINANCIAL_STATUS_MAP[proc.requisitionStatus] || { label: proc.requisitionStatus || 'Requisitado', chipClass: 'warning', isFinal: false };
+
+          if (!isPaid && !statusInfo.isFinal) {
+            totalHonorariosAFaturar += feeAmount;
+          }
 
           if (filter === 'all' || filter === 'rpv') {
-            if (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.requisitionStatus}`).includes(needle)) {
+            if (!needle || normalizeText(`${proc.number} ${proc.client} ${statusInfo.label}`).includes(needle)) {
               rows.push(`
                 <tr>
                   <td><strong>${escapeHtml(proc.number || 'Processo sem número')}</strong></td>
@@ -1875,7 +1962,7 @@ ${id.lawyerOab} - ${id.officeName}`;
                   <td>${formatCurrency(gross)}</td>
                   <td><strong style="color:var(--gold);">${formatCurrency(feeAmount)}</strong></td>
                   <td><strong style="color:var(--success);">${formatCurrency(netClient)}</strong></td>
-                  <td><span class="status-chip ${proc.requisitionStatus === 'pago' ? 'connected' : 'warning'}">${escapeHtml(proc.requisitionStatus || 'Aguardando Pagamento')}</span></td>
+                  <td><span class="status-chip ${statusInfo.chipClass}">${escapeHtml(statusInfo.label)}</span></td>
                 </tr>
               `);
             }
@@ -1883,6 +1970,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         } else if (filter === 'all' || filter === 'honorarios') {
           if (proc.feeAmount || proc.feeMonthly) {
             const feeVal = Number(proc.feeAmount || proc.feeMonthly || 0);
+            if (!isPaid) totalHonorariosAFaturar += feeVal;
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.feeType}`).includes(needle)) {
               rows.push(`
                 <tr>
@@ -1892,7 +1980,7 @@ ${id.lawyerOab} - ${id.officeName}`;
                   <td>${formatCurrency(feeVal)}</td>
                   <td><strong style="color:var(--gold);">${formatCurrency(feeVal)}</strong></td>
                   <td>—</td>
-                  <td><span class="status-chip connected">Ativo</span></td>
+                  <td><span class="status-chip ${isPaid ? 'connected' : 'warning'}">${isPaid ? 'Quitado' : 'A Faturar'}</span></td>
                 </tr>
               `);
             }
@@ -1902,10 +1990,77 @@ ${id.lawyerOab} - ${id.officeName}`;
 
       const honEl = document.getElementById('finMetricHonorarios');
       const rpvEl = document.getElementById('finMetricRpvCount');
-      if (honEl) honEl.textContent = formatCurrency(totalHonorarios);
+      if (honEl) honEl.textContent = formatCurrency(totalHonorariosAFaturar);
       if (rpvEl) rpvEl.textContent = `${rpvCount} requisições`;
 
       listEl.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" class="empty-table" style="text-align:center;padding:24px;color:var(--muted);">Nenhum lançamento financeiro ou requisição RPV localizada.</td></tr>';
+    },
+    openFinancialEntryModal() {
+      const backdrop = document.getElementById('financialEntryBackdrop');
+      if (!backdrop) return;
+      const select = document.getElementById('finProcessSelect');
+      const processes = Store.state.processes || [];
+      if (select) {
+        select.innerHTML = '<option value="">Selecione o processo ou cliente...</option>' +
+          processes.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.number || 'S/N')} — ${escapeHtml(p.client || 'Cliente')}</option>`).join('');
+      }
+      const form = document.getElementById('financialEntryForm');
+      if (form) form.reset();
+      this.updateFinancialModalSummary();
+      backdrop.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    },
+    closeFinancialEntryModal() {
+      const backdrop = document.getElementById('financialEntryBackdrop');
+      if (backdrop) backdrop.classList.add('hidden');
+      if (document.getElementById('modalBackdrop')?.classList.contains('hidden')) {
+        document.body.style.overflow = '';
+      }
+    },
+    updateFinancialModalSummary() {
+      const gross = parseFloat(document.getElementById('finGrossInput')?.value) || 0;
+      const feePct = parseFloat(document.getElementById('finFeePctInput')?.value) || 0;
+      const fee = (gross * feePct) / 100;
+      const net = Math.max(0, gross - fee);
+      const sumGross = document.getElementById('finSumGross');
+      const sumFee = document.getElementById('finSumFee');
+      const sumNet = document.getElementById('finSumNet');
+      if (sumGross) sumGross.textContent = formatCurrency(gross);
+      if (sumFee) sumFee.textContent = formatCurrency(fee);
+      if (sumNet) sumNet.textContent = formatCurrency(net);
+    },
+    handleFinancialEntrySubmit(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const data = new FormData(form);
+      const processId = data.get('processId');
+      const entryType = data.get('entryType');
+      const status = data.get('status');
+      const grossAmount = parseFloat(data.get('grossAmount')) || 0;
+      const feePercentage = parseFloat(data.get('feePercentage')) || 30;
+      const feeAmount = (grossAmount * feePercentage) / 100;
+
+      const process = Store.state.processes.find(p => p.id === processId);
+      if (!process) {
+        this.toast('Selecione um processo válido para vincular o lançamento.', 'error');
+        return;
+      }
+
+      process.requisitionAmount = grossAmount;
+      process.feePercentage = feePercentage;
+      process.feeAmount = feeAmount;
+      process.requisitionStatus = status;
+      process.feeType = entryType === 'rpv' ? 'RPV / Precatório' : (entryType === 'exito' ? 'Quota Litis' : 'Honorários');
+      process.updatedAt = new Date().toISOString();
+
+      Store.upsert('processes', process);
+      Store.audit('Lançamento financeiro registrado', `${process.number || process.client}: ${formatCurrency(grossAmount)} (${status})`);
+      Store.save();
+
+      this.closeFinancialEntryModal();
+      this.renderFinancial();
+      this.renderAstreaWidgets();
+      this.toast('Lançamento financeiro salvo com sucesso!', 'success');
     },
     renderDocuments() {
       const grid = document.getElementById('documentsTemplateGrid');
@@ -3121,18 +3276,167 @@ ${id.lawyerOab} - ${id.officeName}`;
           </table>
         </div>`;
     },
-    initials(value) { return String(value).trim().split(/\s+/).slice(0,2).map(part => part[0]).join('').toUpperCase(); },
-    globalSearch(query) {
-      if (!query.trim()) return;
-      const needle = normalizeText(query);
-      const processMatch = Store.state.processes.some(item => normalizeText(`${item.number} ${item.client}`).includes(needle));
-      const contactMatch = Store.state.contacts.some(item => normalizeText(`${item.name} ${item.document} ${item.email}`).includes(needle));
-      const taskMatch = Store.state.tasks.some(item => normalizeText(`${item.title} ${item.client} ${item.process}`).includes(needle));
-      const intimationMatch = Store.state.intimations.some(item => normalizeText(`${item.title} ${item.client} ${item.process}`).includes(needle));
-      if (processMatch) { this.switchView('processes'); document.getElementById('processSearch').value = query; this.renderProcesses(query); }
-      else if (contactMatch) { this.switchView('contacts'); document.getElementById('contactSearch').value = query; this.renderContacts(query); }
-      else if (intimationMatch) this.switchView('inbox');
-      else if (taskMatch) this.switchView('kanban');
+    closeGlobalSearchPalette() {
+      const palette = document.getElementById('globalSearchPalette');
+      if (palette) palette.classList.add('hidden');
+    },
+    performGlobalSearch(query) {
+      const trimmed = String(query || '').trim();
+      const palette = document.getElementById('globalSearchPalette');
+      const resultsEl = document.getElementById('searchPaletteResults');
+      if (!palette || !resultsEl) return;
+
+      if (!trimmed || trimmed.length < 2) {
+        palette.classList.add('hidden');
+        resultsEl.innerHTML = '';
+        return;
+      }
+
+      const needle = normalizeText(trimmed);
+      const processes = (Store.state.processes || []).filter(item =>
+        normalizeText(`${item.number} ${item.client} ${item.court} ${item.actionType}`).includes(needle)
+      ).slice(0, 4);
+
+      const contacts = (Store.state.contacts || []).filter(item =>
+        normalizeText(`${item.name} ${item.document} ${item.email} ${item.phone}`).includes(needle)
+      ).slice(0, 4);
+
+      const tasks = (Store.state.tasks || []).filter(item =>
+        normalizeText(`${item.title} ${item.client} ${item.process} ${item.responsible}`).includes(needle)
+      ).slice(0, 4);
+
+      const intimations = (Store.state.intimations || []).filter(item =>
+        normalizeText(`${item.title} ${item.client} ${item.process} ${item.court}`).includes(needle)
+      ).slice(0, 4);
+
+      const totalMatches = processes.length + contacts.length + tasks.length + intimations.length;
+
+      if (totalMatches === 0) {
+        resultsEl.innerHTML = `<div class="search-palette-empty">Nenhum resultado localizado para <strong>"${escapeHtml(trimmed)}"</strong>.</div>`;
+        palette.classList.remove('hidden');
+        return;
+      }
+
+      const groups = [];
+
+      if (processes.length > 0) {
+        groups.push(`
+          <div class="search-palette-group">
+            <div class="search-palette-group-title">
+              <span>Processos (${processes.length})</span>
+            </div>
+            ${processes.map(p => `
+              <div class="search-palette-item" data-search-target="process" data-search-id="${escapeHtml(p.id)}">
+                <span class="search-palette-icon">⚖️</span>
+                <div class="search-palette-info">
+                  <strong>${escapeHtml(p.number || 'Processo S/N')}</strong>
+                  <small>${escapeHtml(p.client || 'Cliente')} · ${escapeHtml(p.court || 'Tribunal')}</small>
+                </div>
+                <span class="search-palette-badge">${escapeHtml(p.actionType || 'Ação')}</span>
+              </div>
+            `).join('')}
+          </div>
+        `);
+      }
+
+      if (contacts.length > 0) {
+        groups.push(`
+          <div class="search-palette-group">
+            <div class="search-palette-group-title">
+              <span>Contatos (${contacts.length})</span>
+            </div>
+            ${contacts.map(c => `
+              <div class="search-palette-item" data-search-target="contact" data-search-id="${escapeHtml(c.id)}">
+                <span class="search-palette-icon">👤</span>
+                <div class="search-palette-info">
+                  <strong>${escapeHtml(c.name || 'Contato')}</strong>
+                  <small>${escapeHtml(c.document || c.email || c.phone || 'Sem documento')}</small>
+                </div>
+                <span class="search-palette-badge">${escapeHtml(c.role || 'Cliente')}</span>
+              </div>
+            `).join('')}
+          </div>
+        `);
+      }
+
+      if (tasks.length > 0) {
+        groups.push(`
+          <div class="search-palette-group">
+            <div class="search-palette-group-title">
+              <span>Tarefas &amp; Prazos (${tasks.length})</span>
+            </div>
+            ${tasks.map(t => `
+              <div class="search-palette-item" data-search-target="task" data-search-id="${escapeHtml(t.id)}">
+                <span class="search-palette-icon">📋</span>
+                <div class="search-palette-info">
+                  <strong>${escapeHtml(t.title || 'Tarefa')}</strong>
+                  <small>${escapeHtml(t.client || t.process || 'Prazo: ' + formatDate(t.deadline))}</small>
+                </div>
+                <span class="search-palette-badge">${escapeHtml(t.status || 'Pendente')}</span>
+              </div>
+            `).join('')}
+          </div>
+        `);
+      }
+
+      if (intimations.length > 0) {
+        groups.push(`
+          <div class="search-palette-group">
+            <div class="search-palette-group-title">
+              <span>Publicações &amp; DJEN (${intimations.length})</span>
+            </div>
+            ${intimations.map(i => `
+              <div class="search-palette-item" data-search-target="intimation" data-search-id="${escapeHtml(i.id)}">
+                <span class="search-palette-icon">📬</span>
+                <div class="search-palette-info">
+                  <strong>${escapeHtml(i.title || 'Publicação')}</strong>
+                  <small>${escapeHtml(i.process || i.court || 'DataJud')}</small>
+                </div>
+                <span class="search-palette-badge">${escapeHtml(i.category || 'Intimação')}</span>
+              </div>
+            `).join('')}
+          </div>
+        `);
+      }
+
+      resultsEl.innerHTML = groups.join('');
+      palette.classList.remove('hidden');
+
+      resultsEl.querySelectorAll('.search-palette-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const target = item.dataset.searchTarget;
+          const id = item.dataset.searchId;
+          this.closeGlobalSearchPalette();
+          const searchInput = document.getElementById('globalSearch');
+          if (searchInput) searchInput.value = '';
+
+          if (target === 'process') {
+            this.switchView('processes');
+            const proc = Store.state.processes.find(p => p.id === id);
+            if (proc) {
+              const input = document.getElementById('processSearch');
+              if (input) input.value = proc.number || proc.client || '';
+              this.renderProcesses(proc.number || proc.client || '');
+            }
+          } else if (target === 'contact') {
+            this.switchView('contacts');
+            const contact = Store.state.contacts.find(c => c.id === id);
+            if (contact) {
+              const input = document.getElementById('contactSearch');
+              if (input) input.value = contact.name || '';
+              this.renderContacts(contact.name || '');
+            }
+          } else if (target === 'task') {
+            this.switchView('kanban');
+            const task = Store.state.tasks.find(t => t.id === id);
+            if (task) this.openTaskModal(task);
+          } else if (target === 'intimation') {
+            this.switchView('inbox');
+            this.inboxSelectedId = id;
+            this.renderInbox();
+          }
+        });
+      });
     },
     openModal(mode, title, eyebrow, fields, defaults = {}, topHtml = '') {
       this.modalMode = { mode, defaults };
