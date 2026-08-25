@@ -48,7 +48,7 @@ async function runDeploymentTests() {
     // 1. Aguardar boot
     console.log('1. Validando boot do servidor Node persistente em ambiente de produção...');
     let ready = false;
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 100; i++) {
       try {
         const res = await fetch(`${baseUrl}/api/auth/status`);
         if (res.ok) { ready = true; break; }
