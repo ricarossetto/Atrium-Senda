@@ -4,20 +4,24 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateTotp, SecurityManager } from '../lib/security.mjs';
+import { JudicialSessionManager, SESSION_STATUS } from '../lib/judicial/session-manager.mjs';
+import { createModernizedPfx } from '../lib/judicial/a1-sandbox.mjs';
 import { collectDjen } from './adapters/djen.mjs';
 import { collectDatajud } from './adapters/datajud.mjs';
 import { collectPje } from './adapters/pje.mjs';
 
 const COLLECTOR_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(COLLECTOR_DIR);
-const PROFILE_DIR = path.join(COLLECTOR_DIR, '.profile');
-const JUDICIAL_INTEGRATIONS_FILE = path.join(ROOT, 'data', 'judicial-integrations.json');
+const DATA_DIR = path.join(ROOT, 'data');
+const JUDICIAL_INTEGRATIONS_FILE = path.join(DATA_DIR, 'judicial-integrations.json');
 const PROCESS_RE = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/;
 const DATE_RE = /\b(\d{2})\/(\d{2})\/(\d{4})\b/;
 
 await loadEnv(path.join(ROOT, '.env'));
 await loadEnv(path.join(ROOT, '.env.collector'));
 const judicialSecrets = await loadJudicialSecrets();
+const sessionManager = new JudicialSessionManager({ dataDirectory: DATA_DIR });
+await sessionManager.init();
 
 const CENTRAL_URL = process.env.CENTRAL_URL || 'http://127.0.0.1:4173';
 const headless = String(process.env.COLLECTOR_HEADLESS).toLowerCase() === 'true';
@@ -34,37 +38,62 @@ const publicPortals = portals.filter(portal => ['djen', 'datajud'].includes(port
 const preBrowserPortals = publicPortals.filter(portal => portal.strategy === 'djen');
 const postBrowserPortals = publicPortals.filter(portal => portal.strategy === 'datajud');
 const browserPortals = portals.filter(portal => !['djen', 'datajud'].includes(portal.strategy));
-const certificates = [];
-for (const portal of browserPortals) {
-  if (portal.usesCertificate && portal.certificateMode === 'pfx-mtls') {
-    const pfxPath = judicialSecrets.certificate?.path || process.env.A1_PFX_PATH;
-    const passphrase = judicialSecrets.certificate?.passphrase || process.env.A1_PFX_PASSPHRASE;
-    if (pfxPath && passphrase && existsSync(pfxPath)) {
-      certificates.push({ origin: new URL(portal.url).origin, pfxPath, passphrase });
-    } else if (!interactive) {
-      throw new Error(`O portal ${portal.name} exige A1, mas o certificado não foi configurado na Central.`);
-    }
-  }
-}
 
 const payload = { events: [], tasks: [], intimations: [], processes: [], sources: [] };
 const existingProcessNumbers = await loadExistingProcessNumbers();
 
 try {
   for (const portal of preBrowserPortals) await collectPublicPortal(portal, payload);
-  if (browserPortals.length) {
-    await mkdir(PROFILE_DIR, { recursive: true });
-    const context = await chromium.launchPersistentContext(PROFILE_DIR, {
-      headless,
-      viewport: { width: 1440, height: 960 },
-      locale: 'pt-BR',
-      timezoneId: 'America/Sao_Paulo',
-      clientCertificates: certificates.length ? certificates : undefined
-    });
+
+  for (const portal of browserPortals) {
+    const profileDir = sessionManager.getProfileDir('agent-local', portal.id);
+    await mkdir(profileDir, { recursive: true });
+    let releaseLock = null;
+    let modernCertCleanup = null;
+    let context = null;
+
     try {
-      for (const portal of browserPortals) await collectPortal(context, portal, payload);
-    } finally { await context.close(); }
+      releaseLock = await sessionManager.acquireLock('agent-local', portal.id);
+      const clientCerts = [];
+
+      if (portal.usesCertificate) {
+        const pfxPath = judicialSecrets.certificate?.path || process.env.A1_PFX_PATH;
+        const passphrase = judicialSecrets.certificate?.passphrase || process.env.A1_PFX_PASSPHRASE;
+        if (pfxPath && passphrase && existsSync(pfxPath)) {
+          try {
+            const modernCert = await createModernizedPfx({ pfxPath, passphrase });
+            modernCertCleanup = modernCert.cleanup;
+            clientCerts.push({
+              origin: new URL(portal.url).origin,
+              pfxPath: modernCert.modernPath,
+              passphrase: modernCert.modernPassphrase
+            });
+          } catch (certErr) {
+            console.warn(`[A1 Sandbox] Aviso ao modernizar PFX para ${portal.name}:`, certErr.message);
+          }
+        }
+      }
+
+      context = await chromium.launchPersistentContext(profileDir, {
+        headless,
+        viewport: { width: 1440, height: 960 },
+        locale: 'pt-BR',
+        timezoneId: 'America/Sao_Paulo',
+        clientCertificates: clientCerts.length ? clientCerts : undefined
+      });
+
+      await collectPortal(context, portal, payload);
+      await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.CONNECTED);
+    } catch (portalError) {
+      console.error(`Erro na coleta do portal ${portal.name}:`, portalError.message);
+      await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.ERROR, { error: portalError.message });
+    } finally {
+      if (context) { try { await context.close(); } catch {} }
+      if (modernCertCleanup) { try { await modernCertCleanup(); } catch {} }
+      if (releaseLock) releaseLock();
+    }
   }
+
   for (const portal of postBrowserPortals) await collectPublicPortal(portal, payload);
   const response = await fetch(`${CENTRAL_URL}/api/ingest`, {
     method: 'POST',
