@@ -26,6 +26,7 @@ const checkFiles = [
   'tests/features_validation.mjs',
   'tests/open_source_features.mjs',
   'tests/ai-context.mjs',
+  'tests/deployment.mjs',
   'tests/smoke.mjs'
 ];
 
@@ -37,6 +38,7 @@ const testSuites = [
   { name: 'Catálogos ADVBOX/Legal One e regras de negócio', file: 'tests/features_validation.mjs' },
   { name: 'Recursos jurídicos, privacidade e cálculos auxiliares', file: 'tests/open_source_features.mjs' },
   { name: 'Minimização de dados no contexto do assistente de IA', file: 'tests/ai-context.mjs' },
+  { name: 'Deployment e Conformidade com Nuvem (Render / Cloud)', file: 'tests/deployment.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 

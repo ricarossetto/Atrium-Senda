@@ -47,6 +47,8 @@ try {
   // Garante dispensa do tour guiado no teste
   await page.evaluate(() => {
     localStorage.setItem('jurisflow_tour_seen', 'true');
+    localStorage.setItem('atrium_tour_seen', 'true');
+    window.KellerCentral?.App.closeGuidedTour();
     const backdrop = document.getElementById('guidedTourBackdrop');
     if (backdrop) backdrop.classList.add('hidden');
   });

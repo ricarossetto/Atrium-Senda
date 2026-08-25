@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 120" fill="none" width="100%" height="100%">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E5C794"/>
+      <stop offset="45%" stop-color="#C5A880"/>
+      <stop offset="100%" stop-color="#9C7736"/>
+    </linearGradient>
+    <linearGradient id="goldLight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FDF3C6"/>
+      <stop offset="100%" stop-color="#C5A880"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Emblem / Templo dos Circuitos -->
+  <g transform="translate(10, 8) scale(1.05)">
+    <!-- Pedimento Triangular -->
+    <path d="M48 6 L88 64 L74 64 L48 24 L22 64 L8 64 Z" fill="url(#goldGrad)"/>
+    
+    <!-- Coluna Esquerda -->
+    <rect x="14" y="66" width="16" height="4" rx="1" fill="url(#goldGrad)"/>
+    <rect x="16" y="70" width="4" height="24" fill="url(#goldGrad)"/>
+    <rect x="24" y="70" width="4" height="24" fill="url(#goldGrad)"/>
+    <rect x="12" y="94" width="20" height="4" rx="1" fill="url(#goldGrad)"/>
+
+    <!-- Coluna Direita -->
+    <rect x="66" y="66" width="16" height="4" rx="1" fill="url(#goldGrad)"/>
+    <rect x="68" y="70" width="4" height="24" fill="url(#goldGrad)"/>
+    <rect x="76" y="70" width="4" height="24" fill="url(#goldGrad)"/>
+    <rect x="64" y="94" width="20" height="4" rx="1" fill="url(#goldGrad)"/>
+
+    <!-- Circuitos Internos -->
+    <!-- Circuito Central -->
+    <path d="M48 30 L48 94" stroke="url(#goldLight)" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="48" cy="27" r="4.5" fill="url(#goldLight)"/>
+
+    <!-- Circuito Esquerdo -->
+    <path d="M38 48 L44 58 L44 94" stroke="url(#goldGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="37" cy="46" r="3.5" fill="url(#goldGrad)"/>
+
+    <!-- Circuito Direito -->
+    <path d="M58 48 L52 58 L52 94" stroke="url(#goldGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="59" cy="46" r="3.5" fill="url(#goldGrad)"/>
+  </g>
+
+  <!-- Tipografia Oficial ATRIUM -->
+  <g transform="translate(130, 20)">
+    <text x="0" y="52" font-family="'Playfair Display', Georgia, serif" font-size="52" font-weight="700" letter-spacing="0.08em" fill="currentColor">ATRIUM</text>
+    
+    <!-- Linhas e Subtítulo -->
+    <line x1="0" y1="72" x2="40" y2="72" stroke="url(#goldGrad)" stroke-width="2"/>
+    <text x="50" y="76" font-family="'Inter', -apple-system, sans-serif" font-size="12.5" font-weight="600" letter-spacing="0.28em" fill="url(#goldGrad)">ESCRITÓRIO INTEGRADO</text>
+    <line x1="305" y1="72" x2="345" y2="72" stroke="url(#goldGrad)" stroke-width="2"/>
+  </g>
+</svg>

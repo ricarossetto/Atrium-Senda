@@ -1,0 +1,41 @@
+name: Atrium CI
+
+on:
+  push:
+    branches: [ main, v2.0, master ]
+  pull_request:
+    branches: [ main, v2.0, master ]
+
+jobs:
+  test:
+    name: Lint, Test & E2E Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Enable Corepack & Setup PNPM
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
+
+      - name: Install Dependencies
+        run: |
+          pnpm install --frozen-lockfile || npm install
+
+      - name: Install Playwright Browsers (Chromium)
+        run: |
+          npx playwright install chromium --with-deps
+
+      - name: Run Full Audit & Test Suite (9 Suites)
+        run: |
+          npm test
+        env:
+          CI: true
+          NODE_ENV: test

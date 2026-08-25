@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: jurisflow-central
+    name: atrium-central
     runtime: node
     plan: free
     buildCommand: npm install --omit=dev
@@ -12,7 +12,16 @@ services:
         value: 0.0.0.0
       - key: COOKIE_SECURE
         value: "true"
+      - key: JURISFLOW_CLOUD_MODE
+        value: "true"
+      - key: KELLER_SKIP_COLLECTOR_ENV
+        value: "true"
       - key: AUTH_SESSION_SECRET
         generateValue: true
       - key: AUTH_ENCRYPTION_KEY
         generateValue: true
+      - key: COLLECTOR_INGEST_TOKEN
+        generateValue: true
+      - key: SETUP_BOOTSTRAP_TOKEN
+        generateValue: true
+

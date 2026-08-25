@@ -854,9 +854,19 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.toast(`Tema alternado para Modo ${nextTheme === 'light' ? 'Claro' : 'Escuro'}.`, 'success');
     },
     bindNavigation() {
+      const sidebar = document.getElementById('sidebar');
+      const isCollapsed = localStorage.getItem('atrium_sidebar_collapsed') === 'true';
+      if (isCollapsed && sidebar) sidebar.classList.add('collapsed');
+
+      document.getElementById('sidebarToggleBtn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sidebar?.classList.toggle('collapsed');
+        localStorage.setItem('atrium_sidebar_collapsed', sidebar?.classList.contains('collapsed') ? 'true' : 'false');
+      });
+
       document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => this.switchView(button.dataset.view)));
       document.addEventListener('click', event => { const link = event.target.closest('[data-view-link]'); if (link) this.switchView(link.dataset.viewLink); });
-      document.getElementById('menuToggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+      document.getElementById('menuToggle')?.addEventListener('click', () => document.getElementById('sidebar')?.classList.toggle('open'));
       document.addEventListener('keydown', event => {
         if (event.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
           event.preventDefault(); document.getElementById('globalSearch').focus();
@@ -1339,6 +1349,21 @@ ${id.lawyerOab} - ${id.officeName}`;
           }
           return;
         }
+        const authStatusBtn = e.target.closest('[data-auth-user-status]');
+        if (authStatusBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          const row = authStatusBtn.closest('[data-auth-user-id]');
+          if (row) this.manageAuthUser(row.dataset.authUserId, authStatusBtn.dataset.authUserStatus);
+          return;
+        }
+        const row = e.target.closest('[data-config-index]');
+        if (row) {
+          const index = Number(row.dataset.configIndex);
+          const raw = Array.isArray(Store.state.configuration[this.configurationSection]) ? Store.state.configuration[this.configurationSection] : [];
+          const item = raw[index];
+          if (item !== undefined) this.openConfigurationModal(item, index);
+        }
       });
     },
     switchView(view) {
@@ -1464,25 +1489,28 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.toast('Identidade do escritório salva com sucesso!', 'success');
     },
     checkFirstAccessTour() {
-      const seen = localStorage.getItem('jurisflow_tour_seen') || Store.state.settings?.guidedTourSeen;
+      const seen = localStorage.getItem('atrium_tour_seen') || localStorage.getItem('jurisflow_tour_seen') || Store.state.settings?.guidedTourSeen;
       if (!seen) {
         if (this.tourTimer) window.clearTimeout(this.tourTimer);
         this.tourTimer = window.setTimeout(() => this.openGuidedTour(), 600);
       }
     },
-    openGuidedTour() {
-      const seen = localStorage.getItem('jurisflow_tour_seen') || Store.state.settings?.guidedTourSeen;
-      if (seen) return;
+    openGuidedTour(force = false) {
+      const seen = localStorage.getItem('atrium_tour_seen') || localStorage.getItem('jurisflow_tour_seen') || Store.state.settings?.guidedTourSeen;
+      if (seen && !force) return;
       this.currentTourSlide = 0;
       this.showTourSlide(0);
-      document.getElementById('guidedTourBackdrop').classList.remove('hidden');
+      document.getElementById('guidedTourBackdrop')?.classList.remove('hidden');
     },
     closeGuidedTour() {
       if (this.tourTimer) window.clearTimeout(this.tourTimer);
-      document.getElementById('guidedTourBackdrop').classList.add('hidden');
+      document.getElementById('guidedTourBackdrop')?.classList.add('hidden');
+      localStorage.setItem('atrium_tour_seen', 'true');
       localStorage.setItem('jurisflow_tour_seen', 'true');
-      Store.state.settings.guidedTourSeen = true;
-      Store.save();
+      if (Store.state?.settings) {
+        Store.state.settings.guidedTourSeen = true;
+        Store.save();
+      }
     },
     showTourSlide(index) {
       const slides = document.querySelectorAll('.tour-slide');
@@ -2463,16 +2491,6 @@ ${id.lawyerOab} - ${id.officeName}`;
       document.getElementById('configurationHeading').textContent = label;
       document.getElementById('configurationCount').textContent = `${records.length} itens`;
       document.getElementById('configurationList').innerHTML = records.length ? records.map(({ item, index }) => isAuthUsers ? this.authUserRow(item) : this.configurationRow(item, index)).join('') : '<div class="empty-detail"><span>✓</span><h3>Nenhum item</h3><p>Não há registros nesta seção ou neste filtro.</p></div>';
-      if (isAuthUsers) {
-        document.querySelectorAll('#configurationList [data-auth-user-status]').forEach(button => button.addEventListener('click', event => {
-          event.stopPropagation(); const row = button.closest('[data-auth-user-id]'); if (row) this.manageAuthUser(row.dataset.authUserId, button.dataset.authUserStatus);
-        }));
-        return;
-      }
-      document.querySelectorAll('#configurationList [data-config-index]').forEach(row => row.addEventListener('click', (e) => {
-        if (e.target.closest('[data-delete-config]')) return;
-        const index = Number(row.dataset.configIndex); const item = raw[index]; if (item !== undefined) this.openConfigurationModal(item, index);
-      }));
     },
     configurationRow(item, index) {
       if (typeof item === 'string') {

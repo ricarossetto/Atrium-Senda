@@ -960,6 +960,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/sync') {
       assertAuthenticated(req, true);
+      if (CLOUD_MODE) {
+        return json(res, 200, { ok: true, cloud: true, message: 'Modo nuvem ativo: o coletor judicial autônomo executa no dispositivo seguro do escritório.' });
+      }
       const config = await readPortalConfiguration();
       const enabledIds = config.portals.filter(p => p.enabled || p.strategy === 'djen' || p.strategy === 'datajud').map(p => p.id);
       spawn(process.execPath, [COLLECTOR_AGENT_FILE], {

@@ -13,14 +13,20 @@
   <section class="auth-gate" id="authGate" aria-live="polite">
     <div class="auth-visual">
       <div class="auth-brand-logo">
-        <span class="brand-title" style="font-size:1.8rem;font-weight:700;letter-spacing:0.05em;color:var(--gold);display:block;margin-bottom:16px;">ATRIUM</span>
+        <div class="auth-logo-frame">
+          <img src="assets/icons/atrium-logo.svg" alt="ATRIUM — Escritório Integrado" class="auth-brand-svg">
+        </div>
       </div>
       <div class="auth-visual-copy">
-        <p class="eyebrow">Plataforma Open-Source Protegida</p>
-        <h1>Atrium<br><em>gestão jurídica inteligente.</em></h1>
-        <p>Senha forte, segundo fator e sessão local para proteger intimações, processos e documentos confidenciais.</p>
+        <p class="eyebrow">✦ Centro Estratégico do Escritório Moderno</p>
+        <h1>ATRIUM<br><em>Escritório Integrado.</em></h1>
+        <p>Sóbrio, imponente e seguro. Gestão jurídica inteligente, triagem autônoma de intimações e assistência com inteligência artificial.</p>
       </div>
-      <div class="auth-security-list"><span>✓ Criptografia AES-256-GCM</span><span>✓ Segundo Fator TOTP (RFC 6238)</span><span>✓ Sessão HttpOnly &amp; Zero Trust</span></div>
+      <div class="auth-security-list">
+        <span>✓ Criptografia AES-256-GCM</span>
+        <span>✓ Segundo Fator TOTP (RFC 6238)</span>
+        <span>✓ Sessão HttpOnly &amp; Zero Trust</span>
+      </div>
     </div>
     <div class="auth-panel">
       <div class="auth-card">
@@ -28,7 +34,7 @@
 
         <form id="authSetupForm" class="auth-step">
           <p class="eyebrow">Primeiro acesso</p><h2>Crie seu acesso mestre</h2>
-          <p>Sua senha é privada e nunca deixa seu computador. Use uma frase forte e exclusiva.</p>
+          <p>Sua senha é privada e protegida com criptografia no dispositivo. Use uma frase forte e exclusiva.</p>
           <label>Nome de exibição<input name="displayName" autocomplete="name" placeholder="Dr(a). Advogado(a) Titular" required maxlength="100"></label>
           <label>Usuário de acesso<input name="username" autocomplete="username" placeholder="admin" required pattern="[a-zA-Z0-9._\x2d]{3,64}" maxlength="64"></label>
           <label>Senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
@@ -89,9 +95,19 @@
 
   <div class="app-shell hidden" id="appShell">
     <aside class="sidebar" id="sidebar">
-      <div class="brand" data-view-link="dashboard" role="button" tabindex="0" title="Ir para a Área de Trabalho">
-        <span class="brand-title" style="font-size:1.25rem;font-weight:700;letter-spacing:0.04em;color:var(--gold);">ATRIUM</span>
-        <span class="brand-product">Gestão Jurídica</span>
+      <div class="brand-wrapper">
+        <div class="brand" data-view-link="dashboard" role="button" tabindex="0" title="Ir para a Área de Trabalho">
+          <img src="assets/icons/atrium-emblem.svg" alt="Atrium" class="brand-emblem">
+          <div class="brand-text">
+            <span class="brand-title">ATRIUM</span>
+            <span class="brand-product">Escritório Integrado</span>
+          </div>
+        </div>
+        <button type="button" class="sidebar-collapse-btn" id="sidebarToggleBtn" title="Recolher / Expandir Menu Lateral" aria-label="Recolher Menu">
+          <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
       </div>
 
       <div class="sidebar-nav-wrap">
@@ -340,14 +356,14 @@
         </div>
       </header>
 
-      <div class="environment-banner" id="environmentBanner">
-        <span class="pulse-dot"></span>
-        <strong>Ambiente Local Seguro (Zero Trust)</strong>
-        <span>Dados processuais e chaves de segurança protegidos com criptografia no dispositivo.</span>
-        <button id="dismissBanner" aria-label="Fechar aviso">×</button>
-      </div>
-
       <section class="view active" id="view-dashboard" data-title="Área de Trabalho" data-eyebrow="Atrium · Meu Dia">
+        <div class="environment-banner" id="environmentBanner">
+          <span class="pulse-dot"></span>
+          <strong>Ambiente Local Seguro (Zero Trust)</strong>
+          <span>Dados processuais e chaves de segurança protegidos com criptografia no dispositivo.</span>
+          <button id="dismissBanner" aria-label="Fechar aviso">×</button>
+        </div>
+
         <div class="section-toolbar" style="margin-bottom: 16px;">
           <div class="toolbar-copy"><p><span class="gold-pill">✦ Atrium · <span id="todayLabel"></span></span></p></div>
           <div class="toolbar-actions">
