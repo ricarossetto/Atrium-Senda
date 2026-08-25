@@ -10,6 +10,9 @@ import { fileURLToPath } from 'node:url';
 import { SecurityManager, verifyTotp } from './lib/security.mjs';
 import { buildRelevantOfficeContext } from './lib/ai-context.mjs';
 import { collectDjen } from './collector/adapters/djen.mjs';
+import { JudicialOrchestrator } from './lib/judicial/orchestrator.mjs';
+import { runA1Sandbox } from './lib/judicial/a1-sandbox.mjs';
+import { runTotpSandbox, parseTotpUri } from './lib/judicial/totp-sandbox.mjs';
 import ExcelJS from 'exceljs';
 import * as xlsxModule from 'xlsx';
 const XLSX = xlsxModule.default || xlsxModule;
@@ -40,6 +43,14 @@ const security = new SecurityManager({
   secureCookies: String(process.env.COOKIE_SECURE).toLowerCase() === 'true'
 });
 await security.init();
+
+const defaultPortalsList = existsSync(PORTALS_FILE) ? JSON.parse(await readFile(PORTALS_FILE, 'utf8')).portals || [] : [];
+const judicialOrchestrator = new JudicialOrchestrator({
+  dataDirectory: DATA_DIR,
+  securityManager: security,
+  portalsConfig: defaultPortalsList
+});
+await judicialOrchestrator.init();
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -1517,12 +1528,96 @@ Diretrizes essenciais:
       });
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/integrations/judicial') {
-      assertAuthenticated(req); return json(res, 200, await judicialIntegrationStatus());
+    if (CLOUD_MODE) {
+      if (['/api/integrations/judicial/certificate', '/api/integrations/judicial/reset', '/api/integrations/judicial/connect', '/api/integrations/judicial/a1/sandbox'].includes(url.pathname)) {
+        return json(res, 503, { ok: false, message: 'Operações com certificado digital local e sessões de desktop não estão disponíveis em ambiente de nuvem.' });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/sync') {
+        assertAuthenticated(req, true);
+        return json(res, 200, { ok: true, message: 'Em ambiente de nuvem, a sincronização do acervo com certificado deve ser realizada pelo agente local.' });
+      }
     }
+
+    if (req.method === 'GET' && url.pathname === '/api/integrations/judicial') {
+      const session = assertAuthenticated(req);
+      const diagnostics = await judicialOrchestrator.getDiagnostics(session.username);
+      const legacyStatus = await judicialIntegrationStatus();
+      return json(res, 200, {
+        ok: true,
+        ...legacyStatus,
+        diagnostics,
+        certificate: {
+          ...legacyStatus.certificate,
+          summary: diagnostics.a1.summary,
+          status: diagnostics.a1.status
+        }
+      });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/integrations/judicial/diagnostics') {
+      const session = assertAuthenticated(req);
+      const diagnostics = await judicialOrchestrator.getDiagnostics(session.username);
+      return json(res, 200, { ok: true, diagnostics });
+    }
+
+    // A1 Certificate Sandbox Execution
+    if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/a1/sandbox') {
+      assertAuthenticated(req, true);
+      const result = await judicialOrchestrator.runA1Test();
+      return json(res, 200, { ok: true, sandbox: result });
+    }
+
+    // TOTP Sandbox Execution
+    if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/totp/sandbox') {
+      assertAuthenticated(req, true);
+      const body = await readJson(req);
+      let result;
+      if (body.portalId) {
+        result = await judicialOrchestrator.runTotpTest(body.portalId);
+      } else if (body.secret) {
+        result = runTotpSandbox({ secret: body.secret });
+      } else {
+        throw Object.assign(new Error('Informe o portalId ou o segredo TOTP para teste.'), { statusCode: 400 });
+      }
+      return json(res, 200, { ok: true, sandbox: result });
+    }
+
+    // TOTP Parse QR / Migration
+    if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/totp/parse') {
+      assertAuthenticated(req, true);
+      const body = await readJson(req);
+      const raw = body.qrData || body.secret;
+      if (!raw) throw Object.assign(new Error('Nenhum dado de QR ou segredo recebido.'), { statusCode: 400 });
+      const parsed = parseTotpUri(raw);
+      return json(res, 200, { ok: true, ...parsed });
+    }
+
+    // Certificate Upload with Sandbox Validation
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/certificate') {
-      assertAuthenticated(req, true); const result = await saveUploadedCertificate(await readJson(req, 7_500_000));
-      return json(res, 200, { ok: true, certificate: { valid: true, fileName: result.fileName, expiresAt: result.expiresAt || null } });
+      assertAuthenticated(req, true);
+      const body = await readJson(req, 7_500_000);
+      const fileName = path.basename(String(body.fileName || 'certificado.pfx'));
+      if (!/\.(pfx|p12)$/i.test(fileName)) throw Object.assign(new Error('Selecione um certificado .pfx ou .p12.'), { statusCode: 400 });
+      const encoded = String(body.pfxBase64 || '').replace(/^data:[^,]+,/, '');
+      if (!encoded) throw Object.assign(new Error('Arquivo de certificado vazio.'), { statusCode: 400 });
+      const passphrase = String(body.passphrase || '');
+      const pfxBuffer = Buffer.from(encoded, 'base64');
+
+      const saved = await judicialOrchestrator.credentialManager.saveCertificate({
+        fileName,
+        pfxBuffer,
+        passphrase
+      });
+
+      return json(res, 200, {
+        ok: true,
+        certificate: {
+          valid: true,
+          fileName,
+          summary: saved.summary
+        },
+        sandbox: saved.sandboxResult
+      });
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/2fa') {
       assertAuthenticated(req, true); const body = await readJson(req); const config = await readPortalConfiguration();

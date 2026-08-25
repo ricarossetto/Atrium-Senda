@@ -8,6 +8,12 @@ const checkFiles = [
   'server.mjs',
   'lib/security.mjs',
   'lib/ai-context.mjs',
+  'lib/judicial/credential-manager.mjs',
+  'lib/judicial/session-manager.mjs',
+  'lib/judicial/a1-sandbox.mjs',
+  'lib/judicial/totp-sandbox.mjs',
+  'lib/judicial/auth-adapters.mjs',
+  'lib/judicial/orchestrator.mjs',
   'scripts/import-spreadsheet.mjs',
   'scripts/migrate-judicial-secrets.mjs',
   'js/auth.js',
@@ -28,6 +34,7 @@ const checkFiles = [
   'tests/ai-context.mjs',
   'tests/deployment.mjs',
   'tests/system_diagnostic.mjs',
+  'tests/judicial_sandbox.mjs',
   'tests/smoke.mjs'
 ];
 
@@ -41,6 +48,7 @@ const testSuites = [
   { name: 'Minimização de dados no contexto do assistente de IA', file: 'tests/ai-context.mjs' },
   { name: 'Deployment e Conformidade com Nuvem (Render / Cloud)', file: 'tests/deployment.mjs' },
   { name: 'Diagnóstico do Sistema, Backups Criptografados & Feedback Beta', file: 'tests/system_diagnostic.mjs' },
+  { name: 'Arquitetura Judicial, A1 Sandbox (mTLS) & TOTP Sandbox', file: 'tests/judicial_sandbox.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 

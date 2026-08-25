@@ -1420,39 +1420,70 @@
 
   <div class="modal-backdrop hidden" id="judicialSetupBackdrop">
     <section class="modal judicial-setup-modal" role="dialog" aria-modal="true" aria-labelledby="judicialSetupTitle">
-      <header><div><p class="eyebrow">Monitoramento autenticado</p><h2 id="judicialSetupTitle">Certificado A1 e segundo fator</h2></div><button class="icon-button" id="judicialSetupClose" aria-label="Fechar">×</button></header>
+      <header><div><p class="eyebrow">Monitoramento autenticado</p><h2 id="judicialSetupTitle">Certificado A1, Segundo Fator & Tribunais</h2></div><button class="icon-button" id="judicialSetupClose" aria-label="Fechar">×</button></header>
       <div class="judicial-setup-body">
         <div class="setup-status-grid">
           <article><span class="setup-status-icon" id="setupCertificateIcon">1</span><div><small>Certificado A1</small><strong id="setupCertificateStatus">Verificando…</strong></div></article>
-          <article><span class="setup-status-icon" id="setupPjeOfficeIcon">2</span><div><small>PJeOffice</small><strong id="setupPjeOfficeStatus">Verificando…</strong></div></article>
-          <article><span class="setup-status-icon" id="setupTotpIcon">3</span><div><small>Segundo fator</small><strong id="setupTotpStatus">Nenhum QR vinculado</strong></div></article>
+          <article><span class="setup-status-icon" id="setupPjeOfficeIcon">2</span><div><small>PJeOffice Pro</small><strong id="setupPjeOfficeStatus">Verificando…</strong></div></article>
+          <article><span class="setup-status-icon" id="setupTotpIcon">3</span><div><small>Segundo Fator (2FA)</small><strong id="setupTotpStatus">Nenhum QR vinculado</strong></div></article>
         </div>
 
-        <section class="setup-section">
-          <div class="setup-section-heading"><div><p class="eyebrow">Etapa 1</p><h3>Certificado digital A1</h3><p>O PFX e a senha são recebidos apenas pelo servidor local e armazenados cifrados. A chave privada não é exportada.</p></div><span class="status-chip muted" id="certificateFileBadge">Não configurado</span></div>
+        <section class="setup-section" id="a1SetupSection">
+          <div class="setup-section-heading">
+            <div>
+              <p class="eyebrow">Etapa 1 · Criptografia & mTLS Local</p>
+              <h3>Certificado Digital A1 ICP-Brasil</h3>
+              <p>O PFX e a senha são armazenados cifrados com AES-256-GCM localmente. A chave privada nunca sai deste computador.</p>
+            </div>
+            <span class="status-chip muted" id="certificateFileBadge">Não configurado</span>
+          </div>
+
+          <div id="a1ActiveCard" class="card a1-active-card hidden" style="margin-bottom: 16px; padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--line); border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+              <div>
+                <strong id="a1HolderName" style="font-size: 15px; color: var(--gold-soft); display: block;">Titular Identificado</strong>
+                <small id="a1DocAndIssuer" style="color: var(--muted); font-size: 12px;">CPF / Emissor</small>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="button gold" id="btnRunA1Sandbox" type="button" style="padding: 4px 12px; font-size: 12px;">🧪 Testar Certificado no Sandbox</button>
+                <button class="button ghost" id="btnReplaceCertToggle" type="button" style="padding: 4px 10px; font-size: 12px;">Substituir</button>
+              </div>
+            </div>
+            
+            <div id="a1SandboxChecklist" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; font-size: 11.5px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+              <div id="chkStep-pfxFile"><span>📁 Arquivo PFX:</span> <strong>·</strong></div>
+              <div id="chkStep-passphrase"><span>🔑 Senha:</span> <strong>·</strong></div>
+              <div id="chkStep-x509Cert"><span>📜 X.509 ICP-Brasil:</span> <strong>·</strong></div>
+              <div id="chkStep-validity"><span>⏳ Validade:</span> <strong>·</strong></div>
+              <div id="chkStep-privateKey"><span>🛡️ Chave Privada:</span> <strong>·</strong></div>
+              <div id="chkStep-signature"><span>✍️ Assinatura SHA-256:</span> <strong>·</strong></div>
+              <div id="chkStep-serverHttps"><span>🌐 Servidor HTTPS 127.0.0.1:</span> <strong>·</strong></div>
+              <div id="chkStep-fingerprint"><span>🎯 mTLS Fingerprint:</span> <strong>·</strong></div>
+            </div>
+          </div>
+
           <form id="certificateSetupForm" class="setup-form-row">
             <label class="file-picker"><span>Arquivo .PFX ou .P12</span><input id="certificateFileInput" type="file" accept=".pfx,.p12,application/x-pkcs12" required><small id="certificateFileName">Selecionar certificado</small></label>
             <label><span>Senha atual do certificado</span><input id="certificatePassphrase" type="password" autocomplete="new-password" maxlength="256" required placeholder="••••••••••••"></label>
-            <button class="button gold" type="submit">Validar e proteger</button>
+            <button class="button gold" type="submit">Validar e Proteger</button>
           </form>
         </section>
 
         <section class="setup-section">
-          <div class="setup-section-heading"><div><p class="eyebrow">Etapa 2</p><h3>Cobertura dos tribunais</h3><p>Marque os portais que o coletor deve acessar. Fontes públicas DJEN e DataJud continuam ativas separadamente.</p></div><div class="setup-heading-actions"><button class="button danger-outline" id="resetJudicialConnectionsButton" type="button">Zerar acessos</button><button class="button ghost" id="savePortalCoverageButton" type="button">Salvar cobertura</button></div></div>
+          <div class="setup-section-heading"><div><p class="eyebrow">Etapa 2</p><h3>Cobertura dos Tribunais & Sessões</h3><p>Marque os portais que o coletor deve acessar. Fontes públicas DJEN e DataJud continuam ativas separadamente.</p></div><div class="setup-heading-actions"><button class="button danger-outline" id="resetJudicialConnectionsButton" type="button">Zerar acessos</button><button class="button ghost" id="savePortalCoverageButton" type="button">Salvar cobertura</button></div></div>
           <div class="portal-coverage-list" id="portalCoverageList"><div class="setup-loading">Carregando portais…</div></div>
         </section>
 
         <section class="setup-section totp-section" id="totpSetupSection">
-          <div class="setup-section-heading"><div><p class="eyebrow">Etapa 3</p><h3>Vincular um QR novo do portal</h3><p>Primeiro ative ou redefina o 2FA no site do PJe/PDPJ. Quando o portal mostrar o QR de ativação, salve uma imagem e selecione-a aqui.</p></div><span class="status-chip warning">QR do portal</span></div>
-          <ol class="totp-instructions"><li>No portal judicial, abra Segurança ou Autenticação em duas etapas.</li><li>Escolha redefinir/ativar e gere um QR novo.</li><li>Leia o QR também no seu autenticador pessoal.</li><li>Selecione a mesma imagem abaixo e informe o código atual de seis dígitos.</li></ol>
+          <div class="setup-section-heading"><div><p class="eyebrow">Etapa 3</p><h3>Segundo Fator (TOTP / RFC 6238)</h3><p>Vincule o QR Code de ativação gerado pelo tribunal (PJe/eproc) ou exportado pelo Google Authenticator.</p></div><span class="status-chip warning">2FA do Tribunal</span></div>
           <form id="portalTotpForm" class="totp-form">
-            <label><span>Portal</span><select id="totpPortalSelect" required><option value="">Selecione o tribunal</option></select></label>
-            <label class="file-picker"><span>Imagem do QR de ativação</span><input id="portalQrInput" type="file" accept="image/png,image/jpeg,image/webp"><small id="portalQrStatus">Selecionar QR code</small></label>
-            <label><span>Ou chave manual Base32</span><input id="portalTotpSecret" type="password" autocomplete="off" maxlength="256" placeholder="Chave exibida pelo portal"></label>
-            <label><span>Código atual para confirmar</span><input id="portalTotpCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"></label>
-            <div class="totp-actions"><button class="button gold" type="submit">Testar e ativar 2FA</button><button class="button ghost" id="removePortalTotpButton" type="button">Remover vínculo local</button></div>
+            <label><span>Portal Judicial</span><select id="totpPortalSelect" required><option value="">Selecione o tribunal</option></select></label>
+            <label class="file-picker"><span>Imagem do QR Code</span><input id="portalQrInput" type="file" accept="image/png,image/jpeg,image/webp"><small id="portalQrStatus">Selecionar imagem do QR</small></label>
+            <label><span>Ou Chave Manual Base32</span><input id="portalTotpSecret" type="password" autocomplete="off" maxlength="256" placeholder="Ex: JBSWY3DPEHPK3PXP"></label>
+            <label><span>Código de 6 Dígitos (Teste)</span><input id="portalTotpCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"></label>
+            <div class="totp-actions"><button class="button gold" type="submit">Testar e Ativar 2FA</button><button class="button ghost" id="removePortalTotpButton" type="button">Remover vínculo local</button></div>
           </form>
-          <div class="setup-warning"><strong>Compatibilidade Universal:</strong> Aceita QR novo de ativação gerado pelo tribunal (PJe/PDPJ/eproc), QR de exportação do Google Authenticator ou chave manual Base32.</div>
+          <div class="setup-warning"><strong>Zero Trust:</strong> As imagens de QR Code são processadas em memória e descartadas imediatamente após a extração do segredo Base32.</div>
         </section>
       </div>
       <footer class="judicial-setup-footer"><div><strong>Sincronização Judicial Autônoma</strong><span>O coletor monitora o DJEN, DataJud e tribunais vinculados automaticamente em segundo plano com IA.</span></div><button class="button gold" id="syncJudicialNowButton" type="button">✦ Sincronizar Acervo e Intimações Agora</button></footer>

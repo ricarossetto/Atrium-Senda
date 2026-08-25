@@ -3509,7 +3509,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       setStatusIcon('setupTotpIcon', totpCount > 0);
 
       const sc = document.getElementById('setupCertificateStatus');
-      if (sc) sc.textContent = certificate.valid ? 'A1 validado pelo Windows' : certificate.accessible ? 'Senha ou contêiner inválido' : 'Selecione o PFX';
+      if (sc) sc.textContent = certificate.valid ? 'A1 validado no Sandbox' : certificate.accessible ? 'Senha ou contêiner inválido' : 'Selecione o PFX';
 
       const sp = document.getElementById('setupPjeOfficeStatus');
       if (sp) sp.textContent = status.pjeOffice?.available ? 'Aplicativo oficial disponível' : 'Abra o PJeOffice Pro';
@@ -3519,20 +3519,49 @@ ${id.lawyerOab} - ${id.officeName}`;
 
       const fileBadge = document.getElementById('certificateFileBadge');
       if (fileBadge) {
-        fileBadge.textContent = certificate.valid ? certificate.fileName || 'Certificado ativo' : 'Não configurado';
+        fileBadge.textContent = certificate.valid ? (certificate.status === 'operational' ? 'A1 OPERATIONAL' : 'Certificado Ativo') : 'Não configurado';
         fileBadge.className = `status-chip ${certificate.valid ? 'connected' : 'muted'}`;
+      }
+
+      const a1Card = document.getElementById('a1ActiveCard');
+      const certForm = document.getElementById('certificateSetupForm');
+      const btnTestA1 = document.getElementById('btnRunA1Sandbox');
+      const btnReplace = document.getElementById('btnReplaceCertToggle');
+      const holderNameEl = document.getElementById('a1HolderName');
+      const docAndIssuerEl = document.getElementById('a1DocAndIssuer');
+
+      if (btnTestA1) {
+        btnTestA1.onclick = () => this.testA1Sandbox();
+      }
+      if (btnReplace && certForm && a1Card) {
+        btnReplace.onclick = () => {
+          certForm.classList.toggle('hidden');
+          btnReplace.textContent = certForm.classList.contains('hidden') ? 'Substituir' : 'Cancelar';
+        };
+      }
+
+      if (certificate.valid || certificate.accessible) {
+        if (a1Card) a1Card.classList.remove('hidden');
+        if (certForm) certForm.classList.add('hidden');
+        if (holderNameEl) holderNameEl.textContent = certificate.summary?.holder || certificate.fileName || 'Certificado A1 Ativo';
+        if (docAndIssuerEl) {
+          docAndIssuerEl.textContent = `${certificate.summary?.documentMasked ? 'CPF ' + certificate.summary.documentMasked + ' · ' : ''}${certificate.summary?.issuer ? certificate.summary.issuer.split(',')[0] : 'ICP-Brasil'}${certificate.summary?.notAfter ? ' · Vigente até ' + new Date(certificate.summary.notAfter).toLocaleDateString('pt-BR') : ''}`;
+        }
+      } else {
+        if (a1Card) a1Card.classList.add('hidden');
+        if (certForm) certForm.classList.remove('hidden');
       }
 
       const cardChip = document.getElementById('certificateIntegrationStatus');
       if (cardChip) {
-        cardChip.textContent = certificate.valid ? `A1 ativo · ${totpCount} 2FA` : 'Configuração necessária';
+        cardChip.textContent = certificate.valid ? `A1 Operacional · ${totpCount} 2FA` : 'Configuração necessária';
         cardChip.className = `status-chip ${certificate.valid ? 'connected' : 'warning'}`;
       }
 
       const cardDetail = document.getElementById('certificateIntegrationDetail');
       if (cardDetail) {
         cardDetail.textContent = certificate.valid
-          ? `${certificate.fileName || 'Certificado'} validado localmente. ${portals.filter(portal => portal.enabled).length} portal(is) habilitado(s) e ${totpCount} segundo(s) fator(es) protegido(s).`
+          ? `${certificate.summary?.holder || certificate.fileName || 'Certificado'} validado com mTLS Sandbox. ${portals.filter(portal => portal.enabled).length} portal(is) habilitado(s) e ${totpCount} segundo(s) fator(es) protegido(s).`
           : 'Ative o A1, selecione os tribunais e vincule um QR novo de cada portal em um único assistente protegido.';
       }
 
@@ -3563,6 +3592,41 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (launchBtn) {
         launchBtn.disabled = Boolean(status.interactiveCollectorRunning);
         launchBtn.textContent = status.interactiveCollectorRunning ? 'Primeira conexão em andamento…' : 'Abrir primeira conexão';
+      }
+    },
+    async testA1Sandbox() {
+      const btn = document.getElementById('btnRunA1Sandbox');
+      if (btn) { btn.disabled = true; btn.textContent = '🧪 Executando Sandbox...'; }
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/integrations/judicial/a1/sandbox', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({})
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.message || 'Falha ao executar sandbox do certificado.');
+        
+        const sandbox = data.sandbox || {};
+        if (sandbox.steps) {
+          for (const step of sandbox.steps) {
+            const el = document.getElementById(`chkStep-${step.id}`);
+            if (el) {
+              const ok = step.status === 'OK';
+              el.innerHTML = `<span>${escapeHtml(step.name)}:</span> <strong style="color:${ok ? '#4ade80' : '#f87171'}">${ok ? '✓ OK' : '✗ Falha'}</strong>`;
+            }
+          }
+        }
+        if (sandbox.operational) {
+          this.toast('Certificado A1 validado 100% no Sandbox (mTLS + Playwright + Assinatura)!', 'success');
+          const chip = document.getElementById('certificateFileBadge');
+          if (chip) { chip.textContent = 'A1 OPERATIONAL'; chip.className = 'status-chip connected'; }
+        } else {
+          this.toast(`A1 Sandbox: ${sandbox.errorMessage || 'Falha na validação'}`, 'error');
+        }
+      } catch (err) {
+        this.toast(`Erro no Sandbox: ${err.message}`, 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🧪 Testar Certificado no Sandbox'; }
       }
     },
     async saveCertificate(event) {
