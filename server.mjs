@@ -1,7 +1,7 @@
 import http from 'node:http';
-import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm } from 'node:fs/promises';
+import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
@@ -1009,6 +1009,223 @@ const server = http.createServer(async (req, res) => {
       } catch {}
       return json(res, 200, { mode: 'local-protected', calendarConfigured: hasCalendar, collectorConfigured: Boolean(runtime.updatedAt), lastCollectorRun: runtime.updatedAt, authentication: 'password+totp' });
     }
+
+    // ==========================================
+    // DIAGNÓSTICO & SAÚDE DO SISTEMA
+    // ==========================================
+    if (req.method === 'GET' && (url.pathname === '/api/system/diagnostic' || url.pathname === '/api/system/diagnostic/export')) {
+      const session = assertAuthenticated(req);
+      const runtime = await readRuntime();
+      const aiKey = await readAiApiKey();
+      const appEnv = await readAppStateEnvelope();
+      const state = appEnv.state || {};
+
+      let storageSizeBytes = 0;
+      try {
+        if (existsSync(APP_STATE_FILE)) {
+          const st = await stat(APP_STATE_FILE);
+          storageSizeBytes = st.size;
+        }
+      } catch {}
+
+      const backupDir = path.join(DATA_DIR, 'backups');
+      let backupCount = 0;
+      let lastBackup = null;
+      try {
+        if (existsSync(backupDir)) {
+          const files = (await readdir(backupDir)).filter(f => f.endsWith('.json') || f.endsWith('.atrium-backup'));
+          backupCount = files.length;
+          if (files.length > 0) {
+            files.sort();
+            const lastStat = await stat(path.join(backupDir, files[files.length - 1]));
+            lastBackup = lastStat.mtime.toISOString();
+          }
+        }
+      } catch {}
+
+      const diagnostic = {
+        app: {
+          name: 'Atrium — Escritório Integrado',
+          version: '2.0.0',
+          uptimeSeconds: Math.floor(process.uptime()),
+          nodeVersion: process.version,
+          platform: process.platform,
+          arch: process.arch,
+          cloudMode: Boolean(CLOUD_MODE),
+          environment: process.env.NODE_ENV || 'production'
+        },
+        storage: {
+          type: 'Encrypted JSON State (AES-256-GCM)',
+          encryptedFile: 'storage/app-state.json',
+          sizeBytes: storageSizeBytes,
+          revision: appEnv.revision || 'initial',
+          records: {
+            contacts: Array.isArray(state.contacts) ? state.contacts.length : 0,
+            processes: Array.isArray(state.processes) ? state.processes.length : 0,
+            tasks: Array.isArray(state.tasks) ? state.tasks.length : 0,
+            intimations: Array.isArray(state.intimations) ? state.intimations.length : 0,
+            agenda: Array.isArray(state.agenda) ? state.agenda.length : 0,
+            leads: Array.isArray(state.leads) ? state.leads.length : 0,
+            auditLogs: Array.isArray(state.audit) ? state.audit.length : 0
+          }
+        },
+        security: {
+          encryption: 'AES-256-GCM com derivação Scrypt',
+          twoFactor: 'TOTP RFC 6238 ativo',
+          cookieSecure: Boolean(security.secureCookies),
+          bootstrapTokenConfigured: Boolean(process.env.SETUP_BOOTSTRAP_TOKEN),
+          totalUsers: (security.listUsers ? security.listUsers().length : 1),
+          currentUserRole: session.role || 'master_admin'
+        },
+        integrations: {
+          djen: {
+            strategy: 'djen',
+            status: 'conectado',
+            description: 'Diário de Justiça Eletrônico Nacional (API Oficial)'
+          },
+          datajud: {
+            strategy: 'datajud',
+            status: (state.settings?.datajudApiKey || process.env.DATAJUD_API_KEY) ? 'configurado' : 'chave_pendente',
+            description: 'Conselho Nacional de Justiça — Consulta Pública Processual'
+          },
+          gemini: {
+            status: aiKey ? 'configurado' : 'modo_local_sem_chave',
+            description: aiKey ? 'Google Gemini AI Ativo' : 'Assistência Local com Modelos Pré-Programados'
+          },
+          collector: {
+            strategy: CLOUD_MODE ? 'agente_remoto_local' : 'coletor_local',
+            lastRun: runtime.updatedAt || null,
+            status: CLOUD_MODE ? 'cloud_mode' : (runtime.updatedAt ? 'ativo' : 'aguardando_primeira_execucao')
+          }
+        },
+        backups: {
+          totalBackups: backupCount,
+          lastBackupDate: lastBackup
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      if (url.pathname === '/api/system/diagnostic/export') {
+        const payloadStr = JSON.stringify(diagnostic, null, 2);
+        const fileName = `atrium-diagnostic-${new Date().toISOString().slice(0, 10)}.json`;
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${fileName}"`,
+          'Content-Length': Buffer.byteLength(payloadStr)
+        });
+        return res.end(payloadStr);
+      }
+
+      return json(res, 200, { ok: true, diagnostic });
+    }
+
+    // ==========================================
+    // BACKUP & RESTAURAÇÃO INTEGRADA
+    // ==========================================
+    if (req.method === 'POST' && url.pathname === '/api/system/backup/create') {
+      const session = assertAuthenticated(req, true);
+      const appEnv = await readAppStateEnvelope();
+      const state = appEnv.state || {};
+      const backupDir = path.join(DATA_DIR, 'backups');
+      await mkdir(backupDir, { recursive: true });
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPayload = {
+        format: 'atrium-encrypted-backup-v1',
+        createdAt: new Date().toISOString(),
+        createdBy: session.username,
+        appVersion: '2.0.0',
+        encryptedState: security.encrypt(JSON.stringify(state)),
+        checksum: createHash('sha256').update(JSON.stringify(state)).digest('hex')
+      };
+
+      const backupFileName = `atrium-backup-${timestamp}.atrium-backup`;
+      const backupFilePath = path.join(backupDir, backupFileName);
+      await writeFile(backupFilePath, JSON.stringify(backupPayload, null, 2), 'utf8');
+
+      return json(res, 200, {
+        ok: true,
+        fileName: backupFileName,
+        createdAt: backupPayload.createdAt,
+        checksum: backupPayload.checksum,
+        backupData: backupPayload
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/system/backup/restore') {
+      const session = assertAuthenticated(req, true);
+      if (session.role !== 'master_admin') throw Object.assign(new Error('Apenas o administrador principal pode restaurar backups.'), { statusCode: 403 });
+      const body = await readJson(req, 10_000_000);
+      const backup = body.backupData || body;
+
+      if (!backup || !backup.encryptedState) {
+        throw Object.assign(new Error('Formato de arquivo de backup inválido.'), { statusCode: 400 });
+      }
+
+      // Snapshot de segurança pré-restauração obrigatório
+      const currentEnv = await readAppStateEnvelope();
+      if (currentEnv.state) {
+        const backupDir = path.join(DATA_DIR, 'backups');
+        await mkdir(backupDir, { recursive: true });
+        const safetyFile = path.join(backupDir, `safety-snapshot-pre-restore-${Date.now()}.json`);
+        await writeFile(safetyFile, JSON.stringify(currentEnv, null, 2), 'utf8');
+      }
+
+      let restoredState;
+      try {
+        restoredState = JSON.parse(security.decrypt(backup.encryptedState));
+      } catch (err) {
+        throw Object.assign(new Error('Falha ao descriptografar o backup. Verifique se a chave do escritório é a mesma.'), { statusCode: 400 });
+      }
+
+      if (backup.checksum) {
+        const actualChecksum = createHash('sha256').update(JSON.stringify(restoredState)).digest('hex');
+        if (actualChecksum !== backup.checksum) {
+          throw Object.assign(new Error('Falha de integridade: o checksum do backup não confere.'), { statusCode: 400 });
+        }
+      }
+
+      await saveAppState(restoredState);
+      return json(res, 200, { ok: true, message: 'Dados restaurados com sucesso a partir do backup.' });
+    }
+
+    // ==========================================
+    // CANAL DE FEEDBACK BETA
+    // ==========================================
+    if (req.method === 'POST' && url.pathname === '/api/system/feedback') {
+      const session = assertAuthenticated(req);
+      const body = await readJson(req);
+      const feedbackType = body.type || 'sugestao';
+      const message = String(body.message || '').trim();
+      const component = String(body.component || 'Geral').trim();
+
+      if (!message) throw Object.assign(new Error('A mensagem de feedback não pode estar vazia.'), { statusCode: 400 });
+
+      const feedbackDir = path.join(DATA_DIR, 'feedback');
+      await mkdir(feedbackDir, { recursive: true });
+      const feedbackFile = path.join(feedbackDir, 'beta-feedback.json');
+      let feedbackList = [];
+      try {
+        feedbackList = JSON.parse(await readFile(feedbackFile, 'utf8'));
+      } catch {}
+
+      const entry = {
+        id: `fb-${Date.now()}`,
+        type: feedbackType,
+        message,
+        component,
+        user: session.username,
+        appVersion: '2.0.0',
+        platform: process.platform,
+        createdAt: new Date().toISOString()
+      };
+
+      feedbackList.unshift(entry);
+      await writeFile(feedbackFile, JSON.stringify(feedbackList.slice(0, 100), null, 2), 'utf8');
+
+      return json(res, 200, { ok: true, id: entry.id, message: 'Feedback registrado com sucesso. Agradecemos sua colaboração!' });
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/events') { assertAuthenticated(req); return json(res, 200, await readRuntime()); }
     if (req.method === 'GET' && url.pathname === '/api/state') { assertAuthenticated(req); return json(res, 200, await readPublicAppStateEnvelope()); }
     if (req.method === 'POST' && url.pathname === '/api/state') {

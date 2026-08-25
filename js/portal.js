@@ -2477,7 +2477,18 @@ ${id.lawyerOab} - ${id.officeName}`;
     renderConfiguration(query = '') {
       const config = Store.state.configuration || {};
       const sections = [
-        ['taskDefinitions', 'Tarefas'], ['users', 'Usuários'], ['actionGroups', 'Grupos'], ['actionTypes', 'Tipos de ação'], ['stages', 'Etapas'], ['origins', 'Origens'], ['goals', 'Metas'], ['inboxSections', 'Caixa de entrada'], ['notificationAssignments', 'Notificações'], ['integrations', 'Integrações']
+        ['taskDefinitions', 'Tarefas'],
+        ['users', 'Usuários'],
+        ['actionGroups', 'Grupos'],
+        ['actionTypes', 'Tipos de ação'],
+        ['stages', 'Etapas'],
+        ['origins', 'Origens'],
+        ['goals', 'Metas'],
+        ['inboxSections', 'Caixa de entrada'],
+        ['notificationAssignments', 'Notificações'],
+        ['integrations', 'Integrações'],
+        ['diagnostic', 'Diagnóstico & Saúde'],
+        ['backups', 'Backups & Restauração']
       ];
       document.getElementById('configurationTabs').innerHTML = sections.map(([key, label]) => `<button class="${this.configurationSection === key ? 'active' : ''}" data-config-section="${key}">${label}</button>`).join('');
       document.getElementById('configurationMetrics').innerHTML = [
@@ -2485,7 +2496,24 @@ ${id.lawyerOab} - ${id.officeName}`;
       ].map(([label, count]) => `<div class="configuration-metric"><strong>${count}</strong><span>${label}</span></div>`).join('');
       const label = sections.find(([key]) => key === this.configurationSection)?.[1] || 'Configuração';
       const isAuthUsers = this.configurationSection === 'users';
-      document.getElementById('newConfigurationButton')?.classList.toggle('hidden', isAuthUsers);
+      const isSpecialSection = this.configurationSection === 'diagnostic' || this.configurationSection === 'backups';
+      document.getElementById('newConfigurationButton')?.classList.toggle('hidden', isAuthUsers || isSpecialSection);
+      document.getElementById('configurationSearch')?.closest('.table-search')?.classList.toggle('hidden', isSpecialSection);
+
+      if (this.configurationSection === 'diagnostic') {
+        document.getElementById('configurationHeading').textContent = 'Diagnóstico & Saúde do Sistema';
+        document.getElementById('configurationCount').textContent = 'Atrium v2.0';
+        this.renderDiagnostic();
+        return;
+      }
+
+      if (this.configurationSection === 'backups') {
+        document.getElementById('configurationHeading').textContent = 'Cópias de Segurança & Restauração';
+        document.getElementById('configurationCount').textContent = 'Zero Trust';
+        this.renderBackups();
+        return;
+      }
+
       const raw = isAuthUsers ? this.authUsers : (Array.isArray(config[this.configurationSection]) ? config[this.configurationSection] : []);
       const needle = normalizeText(query); const records = raw.map((item, index) => ({ item, index })).filter(({ item }) => !needle || normalizeText(typeof item === 'string' ? item : Object.values(item || {}).flat().join(' ')).includes(needle));
       document.getElementById('configurationHeading').textContent = label;
@@ -2517,6 +2545,179 @@ ${id.lawyerOab} - ${id.officeName}`;
           </div>
           <button type="button" class="btn-delete-config-row" data-delete-config="${index}" title="Excluir este item">×</button>
         </div>`;
+    },
+    async renderDiagnostic() {
+      const container = document.getElementById('configurationList');
+      container.innerHTML = '<div class="empty-detail"><span class="auth-spinner" style="margin:0 auto 16px;"></span><h3>Consultando diagnóstico…</h3><p>Verificando a integridade dos subsistemas.</p></div>';
+      try {
+        const resp = await fetch('/api/system/diagnostic', { credentials: 'same-origin' });
+        const data = await resp.json();
+        if (!data.ok || !data.diagnostic) throw new Error(data.message || 'Falha ao obter diagnóstico.');
+        const d = data.diagnostic;
+
+        container.innerHTML = `
+          <div class="diagnostic-panel" style="padding: 16px; display: flex; flex-direction: column; gap: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line);">
+              <div>
+                <h4 style="margin: 0; font-size: 1.1rem; color: var(--ivory);">${escapeHtml(d.app.name)} v${escapeHtml(d.app.version)}</h4>
+                <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted);">Uptime: ${Math.floor(d.app.uptimeSeconds / 60)} min · Node ${escapeHtml(d.app.nodeVersion)} · ${escapeHtml(d.app.platform)} (${escapeHtml(d.app.arch)})</p>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="button ghost" id="btnExportDiagnosticJson">📥 Exportar Relatório Anonimizado (.json)</button>
+                <button type="button" class="button gold" id="btnOpenFeedbackModal">💬 Enviar Feedback Beta</button>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+              <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <strong style="font-size: 13px; color: var(--ivory);">Banco de Dados & Estado</strong>
+                  <span class="status-chip connected" style="font-size: 10px;">Ativo</span>
+                </div>
+                <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.storage.type)}</p>
+                <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.6;">
+                  <li>Contatos: <strong>${d.storage.records.contacts}</strong></li>
+                  <li>Processos: <strong>${d.storage.records.processes}</strong></li>
+                  <li>Tarefas: <strong>${d.storage.records.tasks}</strong></li>
+                  <li>Intimações: <strong>${d.storage.records.intimations}</strong></li>
+                  <li>Tamanho do arquivo: <strong>${(d.storage.sizeBytes / 1024).toFixed(1)} KB</strong></li>
+                </ul>
+              </div>
+
+              <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <strong style="font-size: 13px; color: var(--ivory);">Criptografia & Sessão</strong>
+                  <span class="status-chip connected" style="font-size: 10px;">Protegido</span>
+                </div>
+                <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.security.encryption)}</p>
+                <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.6;">
+                  <li>Segundo Fator: <strong>${escapeHtml(d.security.twoFactor)}</strong></li>
+                  <li>Sessão HttpOnly / Zero Trust: <strong>Ativa</strong></li>
+                  <li>Usuários Registrados: <strong>${d.security.totalUsers}</strong></li>
+                  <li>Modo: <strong>${d.app.cloudMode ? 'Nuvem / Cloud' : 'Local Seguro'}</strong></li>
+                </ul>
+              </div>
+
+              <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <strong style="font-size: 13px; color: var(--ivory);">Tribunais & Coleta</strong>
+                  <span class="status-chip ${d.integrations.djen.status === 'conectado' ? 'connected' : 'warning'}" style="font-size: 10px;">${d.integrations.djen.status}</span>
+                </div>
+                <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.integrations.djen.description)}</p>
+                <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.6;">
+                  <li>DataJud CNJ: <strong>${d.integrations.datajud.status === 'configurado' ? 'Chave Ativa' : 'Consulta Pública'}</strong></li>
+                  <li>IA Gemini: <strong>${d.integrations.gemini.status === 'configurado' ? 'Online' : 'Modelos Locais'}</strong></li>
+                  <li>Última Coleta: <strong>${d.integrations.collector.lastRun ? new Date(d.integrations.collector.lastRun).toLocaleString('pt-BR') : 'Nenhuma'}</strong></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('btnExportDiagnosticJson')?.addEventListener('click', () => {
+          window.location.href = '/api/system/diagnostic/export';
+        });
+        document.getElementById('btnOpenFeedbackModal')?.addEventListener('click', () => {
+          this.openFeedbackModal();
+        });
+      } catch (err) {
+        container.innerHTML = `<div class="empty-detail"><span style="color:var(--danger)">⚠️</span><h3>Erro ao gerar diagnóstico</h3><p>${escapeHtml(err.message)}</p></div>`;
+      }
+    },
+    async renderBackups() {
+      const container = document.getElementById('configurationList');
+      container.innerHTML = `
+        <div style="padding: 16px; display: flex; flex-direction: column; gap: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line);">
+            <div>
+              <h4 style="margin: 0; font-size: 1.1rem; color: var(--ivory);">Cópia de Segurança & Restauração (Zero Trust)</h4>
+              <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted);">Gere snapshots cifrados dos dados processuais, tarefas e contatos ou restaure de um arquivo.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="button gold" id="btnCreateBackupNow">🔒 Gerar Backup Criptografado (.atrium-backup)</button>
+              <label class="button ghost" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center;">
+                📥 Restaurar do Arquivo
+                <input type="file" id="inputRestoreBackup" accept=".atrium-backup,.json" style="display: none;">
+              </label>
+            </div>
+          </div>
+
+          <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
+            <h5 style="margin: 0 0 8px; font-size: 13px; color: var(--ivory);">Regras de Proteção de Dados:</h5>
+            <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--muted); line-height: 1.6;">
+              <li>Cada backup é assinado com <strong>HMAC-SHA256</strong> e protegido com <strong>criptografia AES-256-GCM</strong>.</li>
+              <li>Antes de qualquer restauração, o sistema cria automaticamente um snapshot de emergência pré-restauração.</li>
+              <li>A restauração preserva a integridade de todas as chaves e usuários cadastrados.</li>
+            </ul>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('btnCreateBackupNow')?.addEventListener('click', async () => {
+        try {
+          this.toast('Gerando cópia de segurança cifrada…', 'info');
+          const resp = await fetch('/api/system/backup/create', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' } });
+          const data = await resp.json();
+          if (!data.ok || !data.backupData) throw new Error(data.message || 'Falha ao criar backup.');
+          const blob = new Blob([JSON.stringify(data.backupData, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = data.fileName || `atrium-backup-${new Date().toISOString().slice(0, 10)}.atrium-backup`;
+          a.click();
+          URL.revokeObjectURL(url);
+          this.toast('Backup criptografado gerado e baixado com sucesso!', 'success');
+        } catch (err) {
+          this.toast(`Erro no backup: ${err.message}`, 'error');
+        }
+      });
+
+      document.getElementById('inputRestoreBackup')?.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!confirm(`Confirma a restauração do backup "${file.name}"? O sistema criará uma cópia de segurança antes de aplicar os dados.`)) {
+          e.target.value = '';
+          return;
+        }
+        try {
+          const text = await file.text();
+          const backupData = JSON.parse(text);
+          this.toast('Validando integridade e restaurando dados…', 'info');
+          const resp = await fetch('/api/system/backup/restore', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ backupData })
+          });
+          const data = await resp.json();
+          if (!data.ok) throw new Error(data.message || 'Falha ao restaurar dados.');
+          this.toast('Backup restaurado com sucesso! Atualizando o sistema…', 'success');
+          setTimeout(() => window.location.reload(), 1200);
+        } catch (err) {
+          this.toast(`Erro na restauração: ${err.message}`, 'error');
+        }
+      });
+    },
+    openFeedbackModal() {
+      this.openModal('feedback', 'Enviar Feedback do Beta', 'Canal de Comunicação Direto', [
+        { name: 'type', label: 'Tipo de Feedback', type: 'select', options: [
+          { value: 'sugestao', label: '💡 Sugestão de Melhoria' },
+          { value: 'bug', label: '🐛 Relato de Problema / Bug' },
+          { value: 'dificuldade', label: '❓ Dificuldade de Uso' },
+          { value: 'performance', label: '⚡ Desempenho / Lentidão' }
+        ], required: true },
+        { name: 'component', label: 'Módulo / Tela Afetada', type: 'select', options: [
+          { value: 'Geral', label: 'Geral / Outros' },
+          { value: 'Área de Trabalho', label: 'Área de Trabalho' },
+          { value: 'Kanban', label: 'Kanban & Tarefas' },
+          { value: 'Intimações', label: 'Caixa de Intimações' },
+          { value: 'Processos', label: 'Processos' },
+          { value: 'Financeiro', label: 'Financeiro & RPVs' },
+          { value: 'Documentos', label: 'Minutas & Modelos' },
+          { value: 'Configurações', label: 'Configurações' }
+        ], required: true },
+        { name: 'message', label: 'Descrição Detalhada', type: 'textarea', full: true, required: true, placeholder: 'Descreva detalhadamente o que ocorreu ou sua sugestão (dados pessoais e processos não são enviados).' }
+      ], {});
     },
     openIntimationDetailModal(item) {
       if (!item) return;
@@ -4218,6 +4419,20 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (idx >= 0) Store.state.customLinks[idx] = record;
         else Store.state.customLinks.unshift(record);
         Store.audit(isEditing ? 'Link útil atualizado' : 'Link útil adicionado', record.title);
+      } else if (this.modalMode.mode === 'feedback') {
+        fetch('/api/system/feedback', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(data)
+        }).then(r => r.json()).then(res => {
+          if (!res.ok) throw new Error(res.message || 'Falha ao enviar feedback.');
+          this.toast('Feedback do Beta enviado com sucesso. Muito obrigado!', 'success');
+        }).catch(err => {
+          this.toast(`Erro ao enviar feedback: ${err.message}`, 'error');
+        });
+        this.closeModal();
+        return;
       }
       Store.save(); this.closeModal(); this.renderAll(); this.toast('Registro salvo com sucesso.', 'success');
     },

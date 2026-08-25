@@ -27,6 +27,7 @@ const checkFiles = [
   'tests/open_source_features.mjs',
   'tests/ai-context.mjs',
   'tests/deployment.mjs',
+  'tests/system_diagnostic.mjs',
   'tests/smoke.mjs'
 ];
 
@@ -39,6 +40,7 @@ const testSuites = [
   { name: 'Recursos jurídicos, privacidade e cálculos auxiliares', file: 'tests/open_source_features.mjs' },
   { name: 'Minimização de dados no contexto do assistente de IA', file: 'tests/ai-context.mjs' },
   { name: 'Deployment e Conformidade com Nuvem (Render / Cloud)', file: 'tests/deployment.mjs' },
+  { name: 'Diagnóstico do Sistema, Backups Criptografados & Feedback Beta', file: 'tests/system_diagnostic.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 
