@@ -1248,15 +1248,19 @@ ${id.lawyerOab} - ${id.officeName}`;
     checkFirstAccessTour() {
       const seen = localStorage.getItem('jurisflow_tour_seen') || Store.state.settings?.guidedTourSeen;
       if (!seen) {
-        window.setTimeout(() => this.openGuidedTour(), 600);
+        if (this.tourTimer) window.clearTimeout(this.tourTimer);
+        this.tourTimer = window.setTimeout(() => this.openGuidedTour(), 600);
       }
     },
     openGuidedTour() {
+      const seen = localStorage.getItem('jurisflow_tour_seen') || Store.state.settings?.guidedTourSeen;
+      if (seen) return;
       this.currentTourSlide = 0;
       this.showTourSlide(0);
       document.getElementById('guidedTourBackdrop').classList.remove('hidden');
     },
     closeGuidedTour() {
+      if (this.tourTimer) window.clearTimeout(this.tourTimer);
       document.getElementById('guidedTourBackdrop').classList.add('hidden');
       localStorage.setItem('jurisflow_tour_seen', 'true');
       Store.state.settings.guidedTourSeen = true;

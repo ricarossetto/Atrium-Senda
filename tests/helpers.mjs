@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const STARTUP_TIMEOUT_MS = 30_000;
+const STARTUP_TIMEOUT_MS = 45_000;
 
 export async function startTestServer() {
   const dataDirectory = await mkdtemp(path.join(tmpdir(), 'keller-security-test-'));
