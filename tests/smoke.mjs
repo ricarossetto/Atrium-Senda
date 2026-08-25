@@ -252,8 +252,30 @@ try {
   }
   await capture('agenda-interactive');
 
+  // Testar Tema Claro / Escuro
+  await page.locator('#themeToggleButton').click();
+  assert(await page.evaluate(() => document.documentElement.getAttribute('data-theme')) === 'light', 'Tema claro não foi aplicado.');
+  await page.locator('#themeToggleButton').click();
+  assert(await page.evaluate(() => document.documentElement.getAttribute('data-theme')) !== 'light', 'Tema escuro não foi restaurado.');
+
+  // Testar Visualização de Atendimentos / Leads
+  await page.locator('button[data-view="leads"]').click();
+  await page.locator('#view-leads.active').waitFor();
+
+  // Testar Visualização de Financeiro
+  await page.locator('button[data-view="financial"]').click();
+  await page.locator('#view-financial.active').waitFor();
+
+  // Testar Visualização de Documentos
+  await page.locator('button[data-view="documents"]').click();
+  await page.locator('#view-documents.active').waitFor();
+
+  // Testar Área de Trabalho (Dashboard Estilo Astrea)
   await page.locator('button[data-view="dashboard"]').click();
-  const focusTask = page.locator('#priorityList [data-task-id]').first(); await focusTask.waitFor(); await focusTask.click();
+  await page.locator('#view-dashboard.active').waitFor();
+  const focusTask = page.locator('#astreaTaskList [data-astrea-task-id]').first();
+  await focusTask.waitFor();
+  await focusTask.click();
   await page.locator('#modalTitle', { hasText: 'Editar tarefa' }).waitFor();
   await page.locator('#modalCancel').click();
   await capture('dashboard');

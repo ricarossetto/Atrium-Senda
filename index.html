@@ -4,20 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0c0c0b">
-  <meta name="description" content="Atrium Senda: Plataforma Open-Source de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
-  <title>Atrium Senda — Plataforma de Gestão Jurídica Inteligente</title>
+  <meta name="description" content="Atrium: Plataforma Open-Source de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
+  <title>Atrium — Plataforma de Gestão Jurídica Inteligente</title>
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/portal.css?v=4.4.0">
+  <link rel="stylesheet" href="css/portal.css?v=4.5.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
     <div class="auth-visual">
       <div class="auth-brand-logo">
-        <span class="brand-title" style="font-size:1.8rem;font-weight:700;letter-spacing:0.05em;color:var(--gold);display:block;margin-bottom:16px;">ATRIUM SENDA</span>
+        <span class="brand-title" style="font-size:1.8rem;font-weight:700;letter-spacing:0.05em;color:var(--gold);display:block;margin-bottom:16px;">ATRIUM</span>
       </div>
       <div class="auth-visual-copy">
         <p class="eyebrow">Plataforma Open-Source Protegida</p>
-        <h1>Atrium Senda<br><em>gestão jurídica autônoma.</em></h1>
+        <h1>Atrium<br><em>gestão jurídica inteligente.</em></h1>
         <p>Senha forte, segundo fator e sessão local para proteger intimações, processos e documentos confidenciais.</p>
       </div>
       <div class="auth-security-list"><span>✓ Criptografia AES-256-GCM</span><span>✓ Segundo Fator TOTP (RFC 6238)</span><span>✓ Sessão HttpOnly &amp; Zero Trust</span></div>
@@ -51,7 +51,7 @@
           <p>Cada código funciona uma única vez para resgatar sua conta em caso de perda do dispositivo.</p>
           <pre id="authRecoveryCodes" class="recovery-codes"></pre>
           <button class="button ghost auth-submit" id="copyRecoveryCodes" type="button">Copiar códigos</button>
-          <button class="button gold auth-submit" id="finishRecovery" type="button">Já guardei — entrar no Atrium Senda</button>
+          <button class="button gold auth-submit" id="finishRecovery" type="button">Já guardei — entrar no Atrium</button>
         </div>
 
         <div class="auth-tabs" id="authTabs">
@@ -60,7 +60,7 @@
         </div>
 
         <form id="authRegisterForm" class="auth-step">
-          <p class="eyebrow">Novo Membro / Cadastro</p><h2>Criar Acesso ao Atrium Senda</h2>
+          <p class="eyebrow">Novo Membro / Cadastro</p><h2>Criar Acesso ao Atrium</h2>
           <p>Cadastre seus dados, vincule seu autenticador e aguarde a aprovação do administrador.</p>
           <label>Nome completo<input name="displayName" autocomplete="name" required placeholder="Dr(a). Nome Sobrenome" maxlength="100"></label>
           <label>E-mail de contato<input name="email" type="email" autocomplete="email" required placeholder="advogado@escritorio.adv.br" maxlength="100"></label>
@@ -72,13 +72,13 @@
         </form>
 
         <form id="authLoginForm" class="auth-step">
-          <p class="eyebrow">Acesso restrito</p><h2>Entrar no Atrium Senda</h2>
+          <p class="eyebrow">Acesso restrito</p><h2>Entrar no Atrium</h2>
           <p>Informe sua senha e o código atual do aplicativo autenticador.</p>
           <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="admin ou seu.usuario"></label>
           <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
           <label>Código TOTP ou recuperação<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000"></label>
           <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>Senha e Authenticator serão exigidos novamente após 30 dias ou ao sair da conta.</small></span></label>
-          <button class="button gold auth-submit" type="submit">Entrar no Atrium Senda</button>
+          <button class="button gold auth-submit" type="submit">Entrar no Atrium</button>
         </form>
 
         <div id="authFeedback" class="auth-feedback hidden" role="alert"></div>
@@ -89,8 +89,8 @@
 
   <div class="app-shell hidden" id="appShell">
     <aside class="sidebar" id="sidebar">
-      <div class="brand" data-view-link="dashboard" role="button" tabindex="0" title="Ir para a página inicial (Meu dia)">
-        <span class="brand-title" style="font-size:1.15rem;font-weight:700;letter-spacing:0.04em;color:var(--gold);">ATRIUM SENDA</span>
+      <div class="brand" data-view-link="dashboard" role="button" tabindex="0" title="Ir para a Área de Trabalho">
+        <span class="brand-title" style="font-size:1.25rem;font-weight:700;letter-spacing:0.04em;color:var(--gold);">ATRIUM</span>
         <span class="brand-product">Gestão Jurídica</span>
       </div>
 
@@ -103,7 +103,56 @@
               <path d="M7 16h6M7 12h3M7 8h5"/>
             </svg>
           </span>
-          <span>Meu dia</span>
+          <span>Área de trabalho</span>
+        </button>
+        <button class="nav-item" data-view="kanban">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="5" height="16" rx="1.5"/>
+              <rect x="10" y="4" width="5" height="11" rx="1.5"/>
+              <rect x="17" y="4" width="5" height="16" rx="1.5"/>
+              <path d="M4.5 9h2M11.5 9h2M18.5 9h2"/>
+            </svg>
+          </span>
+          <span>Gestão kanban</span>
+        </button>
+        <button class="nav-item" data-view="agenda">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="16" rx="2"/>
+              <path d="M8 2v4M16 2v4M3 10h18"/>
+            </svg>
+          </span>
+          <span>Agenda</span>
+        </button>
+        <button class="nav-item" data-view="contacts">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="7" r="4"/>
+              <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+            </svg>
+          </span>
+          <span>Contatos</span>
+        </button>
+        <button class="nav-item" data-view="leads">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </span>
+          <span>Atendimentos</span>
+        </button>
+        <button class="nav-item" data-view="processes">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+              <path d="M3 10h18"/>
+            </svg>
+          </span>
+          <span>Processos e casos</span>
         </button>
         <button class="nav-item" data-view="inbox">
           <span class="nav-icon" aria-hidden="true">
@@ -112,8 +161,17 @@
               <path d="M18 15a2.5 2.5 0 0 0-2.5 2.5v1.5l-1 1h7l-1-1v-1.5A2.5 2.5 0 0 0 18 15z"/>
             </svg>
           </span>
-          <span>Intimações</span>
+          <span>Publicações</span>
           <strong class="nav-count" id="inboxBadge">0</strong>
+        </button>
+        <button class="nav-item" data-view="financial">
+          <span class="nav-icon" aria-hidden="true">
+            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </span>
+          <span>Financeiro</span>
         </button>
         <button class="nav-item" data-view="assistant">
           <span class="nav-icon" aria-hidden="true">
@@ -121,7 +179,7 @@
               <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
             </svg>
           </span>
-          <span>Assistente IA</span>
+          <span>Criação de peças IA</span>
         </button>
         <button class="nav-item" data-view="prompts">
           <span class="nav-icon" aria-hidden="true">
@@ -133,43 +191,17 @@
           </span>
           <span>Biblioteca de Prompts</span>
         </button>
-        <button class="nav-item" data-view="kanban">
+        <button class="nav-item" data-view="documents">
           <span class="nav-icon" aria-hidden="true">
             <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="5" height="16" rx="1.5"/>
-              <rect x="10" y="4" width="5" height="11" rx="1.5"/>
-              <rect x="17" y="4" width="5" height="16" rx="1.5"/>
-              <path d="M4.5 9h2M11.5 9h2M18.5 9h2"/>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <path d="M14 2v6h6"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <line x1="10" y1="9" x2="8" y2="9"/>
             </svg>
           </span>
-          <span>Kanban</span>
-        </button>
-        <button class="nav-item" data-view="processes">
-          <span class="nav-icon" aria-hidden="true">
-            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
-              <path d="M3 10h18"/>
-            </svg>
-          </span>
-          <span>Processos</span>
-        </button>
-        <button class="nav-item" data-view="contacts">
-          <span class="nav-icon" aria-hidden="true">
-            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="7" r="4"/>
-              <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
-            </svg>
-          </span>
-          <span>Contatos</span>
-        </button>
-        <button class="nav-item" data-view="agenda">
-          <span class="nav-icon" aria-hidden="true">
-            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="5" width="18" height="16" rx="2"/>
-              <path d="M8 2v4M16 2v4M3 10h18"/>
-            </svg>
-          </span>
-          <span>Agenda</span>
+          <span>Documentos</span>
         </button>
         <button class="nav-item" data-view="monitoring">
           <span class="nav-icon" aria-hidden="true">
@@ -239,7 +271,7 @@
               <path d="M15 17.5l-1 3 2-1 2 1-1-3"/>
             </svg>
           </span>
-          <span>Auditoria</span>
+          <span>Alertas / Auditoria</span>
         </button>
       </nav>
 
@@ -247,7 +279,7 @@
         <div class="office-avatar-icon" style="background-image: url('assets/icons/team.svg'); background-size: cover; background-position: center; border-radius: 8px; width: 44px; height: 44px; border: 1px solid rgba(212, 175, 55, 0.35);"></div>
         <div class="office-copy">
           <span id="sidebarOfficeLabel">Gestão Jurídica</span>
-          <strong id="sidebarOfficeName">Atrium Senda</strong>
+          <strong id="sidebarOfficeName">Atrium</strong>
         </div>
       </div>
     </aside>
@@ -258,16 +290,20 @@
           <button class="icon-button mobile-only" id="menuToggle" aria-label="Abrir menu">☰</button>
           <div>
             <p class="eyebrow" id="viewEyebrow">Visão executiva</p>
-            <h1 id="viewTitle">Painel de Gestão Jurídica</h1>
+            <h1 id="viewTitle">Área de Trabalho</h1>
           </div>
         </div>
         <div class="topbar-actions">
+          <button type="button" class="theme-toggle-btn" id="themeToggleButton" title="Alternar entre tema Claro e Escuro">
+            <span id="themeToggleIcon">☀️</span>
+            <span id="themeToggleText">Modo Claro</span>
+          </button>
           <label class="global-search">
             <span aria-hidden="true">⌕</span>
-            <input id="globalSearch" type="search" placeholder="Processo, cliente ou tarefa">
+            <input id="globalSearch" type="search" placeholder="Pesquisar contato, processo ou tarefa">
             <kbd>/</kbd>
           </label>
-          <button class="button ghost" id="tourButton" title="Apresentação Guiada do Atrium Senda">
+          <button class="button ghost" id="tourButton" title="Apresentação Guiada do Atrium">
             <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
@@ -292,7 +328,7 @@
           </button>
           <button class="icon-button notification-button" data-view-link="inbox" aria-label="Ver intimações">♢<span id="notificationDot"></span></button>
           <button class="profile-button" id="logoutButton" aria-label="Encerrar sessão com segurança" title="Encerrar sessão">
-            <span class="avatar">AS</span>
+            <span class="avatar">AT</span>
             <span class="profile-copy"><strong>Administrador</strong><small>Advogado(a) Titular</small></span>
             <span>Sair</span>
           </button>
@@ -306,100 +342,13 @@
         <button id="dismissBanner" aria-label="Fechar aviso">×</button>
       </div>
 
-      <section class="view active" id="view-dashboard" data-title="Painel Jurídico" data-eyebrow="Atrium Senda · Visão Executiva">
-        <div class="bento-dashboard-grid">
-          <!-- Bento 1: Hero Card Atrium Senda -->
-          <article class="hero-card">
-            <div class="hero-overlay"></div>
-            <div class="hero-content">
-              <span class="gold-pill">✦ Atrium Senda · <span id="todayLabel"></span></span>
-              <h2>O que exige sua<br><em>atenção hoje</em></h2>
-              <p id="heroSummary">A central está organizando suas fontes oficiais e seus próximos prazos.</p>
-              <div class="hero-actions">
-                <button class="button gold" data-view-link="inbox">Abrir caixa de intimações</button>
-                <button class="button glass" data-view-link="kanban">Ver quadro Kanban</button>
-              </div>
-            </div>
-            <div class="hero-seal">
-              <svg class="brand-monogram-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="heroGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#FDF3C6"/>
-                    <stop offset="30%" stop-color="#D4AF37"/>
-                    <stop offset="70%" stop-color="#997524"/>
-                    <stop offset="100%" stop-color="#D4AF37"/>
-                  </linearGradient>
-                  <linearGradient id="heroGoldSenda" x1="0%" y1="100%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#AA822A"/>
-                    <stop offset="50%" stop-color="#FFF5D0"/>
-                    <stop offset="100%" stop-color="#C9A84C"/>
-                  </linearGradient>
-                </defs>
-                <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="url(#heroGoldGrad)"/>
-                <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="url(#heroGoldSenda)" opacity="0.95"/>
-                <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="url(#heroGoldGrad)" opacity="0.92"/>
-              </svg>
-            </div>
-          </article>
-
-          <!-- Bento 2: Distribuição Semanal de Prazos -->
-          <article class="card bento-chart-card">
-            <div class="card-heading">
-              <div>
-                <p class="eyebrow">Performance &amp; Prazos</p>
-                <h3>Distribuição Semanal</h3>
-              </div>
-              <span class="gold-pill">100% no prazo</span>
-            </div>
-            <div class="bento-chart-content">
-              <div class="chart-bars-wrap" id="weeklyChartBars">
-                <div class="chart-bar-col">
-                  <div class="chart-bar-fill" id="chartBar0" style="height: 40%;"><span class="chart-val">2</span></div>
-                  <span class="chart-day">Seg</span>
-                </div>
-                <div class="chart-bar-col">
-                  <div class="chart-bar-fill" id="chartBar1" style="height: 70%;"><span class="chart-val">5</span></div>
-                  <span class="chart-day">Ter</span>
-                </div>
-                <div class="chart-bar-col">
-                  <div class="chart-bar-fill active" id="chartBar2" style="height: 90%;"><span class="chart-val">7</span></div>
-                  <span class="chart-day">Qua</span>
-                </div>
-                <div class="chart-bar-col">
-                  <div class="chart-bar-fill" id="chartBar3" style="height: 55%;"><span class="chart-val">4</span></div>
-                  <span class="chart-day">Qui</span>
-                </div>
-                <div class="chart-bar-col">
-                  <div class="chart-bar-fill" id="chartBar4" style="height: 80%;"><span class="chart-val">6</span></div>
-                  <span class="chart-day">Sex</span>
-                </div>
-              </div>
-              <div class="chart-stats-sidebar">
-                <div class="chart-stat-item">
-                  <small>Média diária</small>
-                  <strong id="chartAvgStat">4.8</strong>
-                  <span>prazos / dia</span>
-                </div>
-                <div class="chart-stat-item">
-                  <small>Eficiência</small>
-                  <strong style="color:#93dfb4;">Zero</strong>
-                  <span>perdas de prazo</span>
-                </div>
-              </div>
-            </div>
-          </article>
-
-          <!-- Bento 3: Foco do Dia & Prioridades -->
-          <article class="card day-focus bento-focus">
-            <div class="card-heading">
-              <div>
-                <p class="eyebrow">Foco do dia</p>
-                <h3>Prioridades</h3>
-              </div>
-              <button class="text-button" data-view-link="kanban">Ver todas →</button>
-            </div>
-            <div id="priorityList" class="priority-list"></div>
-          </article>
+      <section class="view active" id="view-dashboard" data-title="Área de Trabalho" data-eyebrow="Atrium · Meu Dia">
+        <div class="section-toolbar" style="margin-bottom: 16px;">
+          <div class="toolbar-copy"><p><span class="gold-pill">✦ Atrium · <span id="todayLabel"></span></span></p></div>
+          <div class="toolbar-actions">
+            <button class="button gold" id="btnDashboardNewTask">+ Adicionar Tarefa</button>
+            <button class="button ghost" data-view-link="kanban">Ver Quadro Kanban →</button>
+          </div>
         </div>
 
         <div class="metric-grid">
@@ -407,7 +356,7 @@
             <span class="metric-icon">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             </span>
-            <div><small>Intimações novas</small><strong id="metricInbox">0</strong><p>aguardando triagem</p></div>
+            <div><small>Publicações novas</small><strong id="metricInbox">0</strong><p>aguardando triagem</p></div>
           </article>
           <article class="metric-card warning" data-view-link="kanban" tabindex="0">
             <span class="metric-icon">
@@ -429,22 +378,198 @@
           </article>
         </div>
 
-        <div class="dashboard-grid">
-          <article class="card activity-card">
-            <div class="card-heading">
-              <div><p class="eyebrow">Fluxo recente</p><h3>Últimas ocorrências</h3></div>
-              <button class="text-button" data-view-link="audit">Auditoria →</button>
+        <!-- Layout Estilo Astrea: 2 Colunas (Tarefas e Prazos à Esquerda / Widgets à Direita) -->
+        <div class="astrea-dashboard-wrap">
+          <div class="astrea-tasks-column">
+            <div class="astrea-tasks-header">
+              <div class="astrea-tasks-title">
+                <span>Lista de Tarefas & Prazos</span>
+                <span class="status-chip connected" id="astreaTaskCount">0 tarefas</span>
+              </div>
+              <div class="filter-tabs" id="astreaTaskFilters">
+                <button class="active" data-astrea-filter="all">Todas</button>
+                <button data-astrea-filter="prazo">Prazos</button>
+                <button data-astrea-filter="audiencia">Audiências</button>
+                <button data-astrea-filter="tarefa">Tarefas</button>
+              </div>
             </div>
-            <div class="timeline" id="activityTimeline"></div>
-          </article>
+            <div id="astreaTaskList" class="astrea-tasks-list">
+              <!-- Renderizado dinamicamente pelo portal.js -->
+            </div>
+          </div>
 
-          <article class="card source-card">
-            <div class="card-heading">
-              <div><p class="eyebrow">Automação</p><h3>Saúde das fontes</h3></div>
-              <button class="text-button" data-view-link="monitoring">Detalhes →</button>
+          <aside class="astrea-widgets-column">
+            <!-- Widget 1: Minhas Atividades -->
+            <div class="astrea-widget">
+              <div class="astrea-widget-header">
+                <h4>Minhas atividades</h4>
+                <small style="color:var(--muted)">Esta semana</small>
+              </div>
+              <div class="astrea-activity-counters">
+                <div class="astrea-counter-box">
+                  <strong id="widgetCompletedTasks" style="color:var(--success)">0</strong>
+                  <small>Concluídas</small>
+                </div>
+                <div class="astrea-counter-box">
+                  <strong id="widgetLateTasks" style="color:var(--danger)">0</strong>
+                  <small>Atrasadas</small>
+                </div>
+                <div class="astrea-counter-box">
+                  <strong id="widgetPendingTasks" style="color:var(--warning)">0</strong>
+                  <small>A concluir</small>
+                </div>
+              </div>
             </div>
-            <div id="sourceSummary" class="source-summary"></div>
+
+            <!-- Widget 2: Processos e Casos -->
+            <div class="astrea-widget">
+              <div class="astrea-widget-header">
+                <h4>Processos e casos</h4>
+                <small style="color:var(--muted)">Últimos 30 dias</small>
+              </div>
+              <div class="astrea-stat-row">
+                <span>Com movimentação recente:</span>
+                <strong id="widgetProcActive" style="color:var(--success)">0</strong>
+              </div>
+              <div class="astrea-stat-row">
+                <span>Sem movimentação no período:</span>
+                <strong id="widgetProcInactive" style="color:var(--muted)">0</strong>
+              </div>
+            </div>
+
+            <!-- Widget 3: Estatísticas Gerais -->
+            <div class="astrea-widget">
+              <div class="astrea-widget-header">
+                <h4>Estatísticas</h4>
+                <small style="color:var(--muted)">Geral</small>
+              </div>
+              <div class="astrea-stat-row">
+                <span>Atendimentos ativos:</span>
+                <strong id="widgetActiveLeads">0</strong>
+              </div>
+              <div class="astrea-stat-row">
+                <span>Honorários a faturar:</span>
+                <strong id="widgetHonorariosPending" style="color:var(--gold)">R$ 0,00</strong>
+              </div>
+              <div class="astrea-stat-row">
+                <span>Timesheets (30 dias):</span>
+                <strong id="widgetTimesheetHours">0h 0m</strong>
+              </div>
+              <div class="astrea-stat-row">
+                <span>Documentos gerados:</span>
+                <strong id="widgetDocsCount">0</strong>
+              </div>
+            </div>
+
+            <!-- Widget 4: Próximos Lembretes & Compromissos -->
+            <div class="astrea-widget">
+              <div class="astrea-widget-header">
+                <h4>Lembretes</h4>
+                <button class="text-button" data-view-link="agenda">Agenda →</button>
+              </div>
+              <div id="astreaRemindersList" class="astrea-reminders-list">
+                <!-- Renderizado dinamicamente -->
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-leads" data-title="Atendimentos e Oportunidades" data-eyebrow="CRM Jurídico & Captação">
+        <div class="section-toolbar">
+          <div class="filter-tabs" id="leadStatusFilters">
+            <button class="active" data-lead-filter="all">Todos</button>
+            <button data-lead-filter="novo">Novos</button>
+            <button data-lead-filter="em_analise">Em Análise</button>
+            <button data-lead-filter="proposta">Proposta Enviada</button>
+            <button data-lead-filter="fechado">Fechados</button>
+            <button data-lead-filter="declinado">Declinados</button>
+          </div>
+          <div class="toolbar-actions">
+            <span class="status-chip connected" id="leadCount">0 atendimentos</span>
+            <button class="button gold" id="newLeadButton">+ Novo Atendimento</button>
+          </div>
+        </div>
+        <article class="card table-card">
+          <div class="table-search"><input id="leadSearch" type="search" placeholder="Pesquisar cliente, tipo de atendimento, origem ou responsável"></div>
+          <div class="responsive-table">
+            <table class="sortable-table" id="leadTable">
+              <thead>
+                <tr>
+                  <th>Cliente / Interessado</th>
+                  <th>Tipo de Ação / Atendimento</th>
+                  <th>Origem</th>
+                  <th>Honorários Estimados</th>
+                  <th>Responsável</th>
+                  <th>Data</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="leadTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" id="view-financial" data-title="Financeiro & Requisições" data-eyebrow="Honorários, RPVs e Prestação de Contas">
+        <div class="section-toolbar">
+          <div class="filter-tabs" id="financialFilters">
+            <button class="active" data-fin-filter="all">Todos</button>
+            <button data-fin-filter="rpv">RPVs / Alvarás</button>
+            <button data-fin-filter="honorarios">Honorários</button>
+          </div>
+          <div class="toolbar-actions">
+            <button class="button ghost" id="btnGenDocPrestacao">
+              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M18 13l-4 4-2-1 1-2 4-4a1.4 1.4 0 0 1 2 2z" stroke-width="1.8"/></svg>
+              <span>Gerar Prestação de Contas RPV</span>
+            </button>
+            <button class="button gold" id="newFinancialEntryButton">+ Novo Lançamento</button>
+          </div>
+        </div>
+        <div class="metric-grid" style="margin-bottom:16px;">
+          <article class="metric-card success">
+            <span class="metric-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+            <div><small>Honorários Contratuais Previstos</small><strong id="finMetricHonorarios">R$ 0,00</strong><p>calculados sobre a carteira</p></div>
           </article>
+          <article class="metric-card warning">
+            <span class="metric-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
+            <div><small>RPVs / Alvarás em Tramitação</small><strong id="finMetricRpvCount">0 requisições</strong><p>aguardando expedição/pagamento</p></div>
+          </article>
+          <article class="metric-card info">
+            <span class="metric-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+            <div><small>Horas Apontadas (TimeSheet)</small><strong id="finMetricTimesheet">0h 0m</strong><p>valor hora apurado</p></div>
+          </article>
+        </div>
+        <article class="card table-card">
+          <div class="table-search"><input id="financialSearch" type="search" placeholder="Pesquisar por processo, cliente ou tipo de honorário"></div>
+          <div class="responsive-table">
+            <table class="sortable-table" id="financialTable">
+              <thead>
+                <tr>
+                  <th>Processo / Referência</th>
+                  <th>Cliente</th>
+                  <th>Tipo de Honorários / Requisição</th>
+                  <th>Valor Bruto</th>
+                  <th>Honorários do Escritório</th>
+                  <th>Líquido Cliente</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="financialTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" id="view-documents" data-title="Modelos e Minutas Jurídicas" data-eyebrow="Automação Documental">
+        <div class="section-toolbar">
+          <div class="toolbar-copy"><p>Geração instantânea de minutas com preenchimento automático dos dados do cliente e do processo.</p></div>
+          <div class="toolbar-actions">
+            <button class="button gold" id="btnOpenDocGenModal">+ Nova Minuta</button>
+          </div>
+        </div>
+        <div class="prompts-grid" id="documentsTemplateGrid">
+          <!-- Renderizado dinamicamente -->
         </div>
       </section>
 

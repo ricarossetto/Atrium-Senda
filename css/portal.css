@@ -2508,3 +2508,411 @@ td small { color: var(--muted); }
   .process-summary-heading { align-items: flex-start; flex-direction: column; }
   .process-summary-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ==========================================================================
+   ATRIUM — TEMA CLARO (LIGHT MODE) & TEMA ESCURO (DARK MODE)
+   ========================================================================== */
+
+[data-theme="light"] {
+  --ink: #f4f6f8;
+  --ink-2: #ffffff;
+  --ink-3: #f8fafc;
+  --panel: #ffffff;
+  --panel-soft: #f1f5f9;
+  --panel-hover: #e2e8f0;
+  --ivory: #0f172a;
+  --muted: #64748b;
+  --line: rgba(15, 23, 42, 0.08);
+  --line-strong: rgba(15, 23, 42, 0.16);
+  --gold: #b8860b;
+  --gold-dark: #926904;
+  --gold-soft: #fef3c7;
+  --gold-gleam: #fffbeb;
+  --charcoal: #cbd5e1;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --info: #2563eb;
+  --radius: 14px;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --shadow-gold: 0 4px 16px rgba(184, 134, 11, 0.10);
+}
+
+[data-theme="light"] body {
+  color: #0f172a;
+  background:
+    radial-gradient(circle at 85% -10%, rgba(184, 134, 11, .05), transparent 35%),
+    radial-gradient(circle at 10% 90%, rgba(37, 99, 235, .03), transparent 40%),
+    #f4f6f8;
+}
+
+[data-theme="light"] .sidebar {
+  background: #ffffff;
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .topbar {
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .card,
+[data-theme="light"] .metric-card,
+[data-theme="light"] .hero-card,
+[data-theme="light"] .modal-dialog,
+[data-theme="light"] .auth-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .auth-visual {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+}
+
+[data-theme="light"] .nav-item {
+  color: #475569;
+}
+
+[data-theme="light"] .nav-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+[data-theme="light"] .nav-item.active {
+  background: #fef3c7;
+  color: #926904;
+  border-color: rgba(184, 134, 11, 0.3);
+}
+
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+
+[data-theme="light"] input:focus,
+[data-theme="light"] select:focus,
+[data-theme="light"] textarea:focus {
+  border-color: #b8860b;
+  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.15);
+}
+
+[data-theme="light"] .table-card table th {
+  background: #f8fafc;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+[data-theme="light"] .table-card table td {
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+}
+
+[data-theme="light"] .table-card table tr:hover td {
+  background: #f8fafc;
+}
+
+/* Botão de Tema */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: var(--ivory);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--panel-hover);
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+/* Layout Astrea: Dashboard com 2 Colunas */
+.astrea-dashboard-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+@media (max-width: 1100px) {
+  .astrea-dashboard-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.astrea-tasks-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.astrea-tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.astrea-tasks-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ivory);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.astrea-task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.astrea-task-item:hover {
+  border-color: var(--gold);
+  background: var(--panel-soft);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.astrea-task-check {
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.astrea-task-body {
+  flex: 1;
+  display: grid;
+  gap: 4px;
+}
+
+.astrea-task-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ivory);
+}
+
+.astrea-task-process {
+  font-size: 0.82rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.astrea-task-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.task-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.task-tag.prazo {
+  background: rgba(229, 168, 75, 0.15);
+  color: #e5a84b;
+  border: 1px solid rgba(229, 168, 75, 0.3);
+}
+
+.task-tag.audiencia {
+  background: rgba(147, 51, 234, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(147, 51, 234, 0.3);
+}
+
+.task-tag.tarefa {
+  background: rgba(56, 161, 105, 0.15);
+  color: #38a169;
+  border: 1px solid rgba(56, 161, 105, 0.3);
+}
+
+.task-tag.reuniao {
+  background: rgba(74, 123, 176, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(74, 123, 176, 0.3);
+}
+
+.task-tag.user {
+  background: var(--panel-soft);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.astrea-task-date {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+/* Coluna Lateral de Widgets (Astrea) */
+.astrea-widgets-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.astrea-widget {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.astrea-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.astrea-widget-header h4 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ivory);
+}
+
+.astrea-activity-counters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+
+.astrea-counter-box {
+  padding: 10px 4px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.astrea-counter-box strong {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ivory);
+}
+
+.astrea-counter-box small {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.astrea-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.astrea-stat-row:last-child {
+  border-bottom: none;
+}
+
+.astrea-stat-row span {
+  color: var(--muted);
+}
+
+.astrea-stat-row strong {
+  color: var(--ivory);
+}
+
+.astrea-reminders-list {
+  display: grid;
+  gap: 8px;
+}
+
+.astrea-reminder-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel-soft);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.astrea-reminder-item:hover {
+  background: var(--panel-hover);
+}
+
+.astrea-reminder-date {
+  color: var(--gold);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Estilos de Atendimentos / CRM */
+.lead-status-chip {
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lead-status-chip.novo {
+  background: rgba(37, 99, 235, 0.15);
+  color: #3b82f6;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.lead-status-chip.em_analise {
+  background: rgba(229, 168, 75, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(229, 168, 75, 0.3);
+}
+
+.lead-status-chip.proposta {
+  background: rgba(147, 51, 234, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(147, 51, 234, 0.3);
+}
+
+.lead-status-chip.fechado {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.lead-status-chip.declinado {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}

@@ -217,6 +217,11 @@
     return `${m}m`;
   }
 
+  function formatCurrency(value) {
+    const num = Number(value) || 0;
+    return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
   function getOfficeIdentity() {
     const s = Store?.state?.settings || {};
     const primaryTerm = Store?.state?.terms?.[0] || {};
@@ -638,7 +643,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.save();
     },
     ensureShape() {
-      ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'customPrompts', 'customLinks'].forEach(key => {
+      ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'leads', 'customPrompts', 'customLinks'].forEach(key => {
         if (!Array.isArray(this.state[key])) this.state[key] = [];
       });
       this.state.configuration = { ...(this.state.configuration || {}) };
@@ -797,6 +802,7 @@ ${id.lawyerOab} - ${id.officeName}`;
     async init() {
       await Store.load();
       await this.loadAuthUsers();
+      this.initTheme();
       this.bindNavigation();
       this.bindActions();
       this.renderAll();
@@ -807,6 +813,33 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.checkFirstAccessTour();
       this.syncAll({ silent: true });
       this.autoSyncTimer = window.setInterval(() => this.syncWhenIdle(), 5 * 60 * 1000);
+    },
+    initTheme() {
+      const savedTheme = localStorage.getItem('atrium_theme') || localStorage.getItem('jurisflow_theme') || 'dark';
+      this.setTheme(savedTheme);
+      document.getElementById('themeToggleButton')?.addEventListener('click', () => this.toggleTheme());
+    },
+    setTheme(theme) {
+      this.currentTheme = theme;
+      if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        const icon = document.getElementById('themeToggleIcon');
+        const text = document.getElementById('themeToggleText');
+        if (icon) icon.textContent = '🌙';
+        if (text) text.textContent = 'Modo Escuro';
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        const icon = document.getElementById('themeToggleIcon');
+        const text = document.getElementById('themeToggleText');
+        if (icon) icon.textContent = '☀️';
+        if (text) text.textContent = 'Modo Claro';
+      }
+      localStorage.setItem('atrium_theme', theme);
+    },
+    toggleTheme() {
+      const nextTheme = this.currentTheme === 'light' ? 'dark' : 'light';
+      this.setTheme(nextTheme);
+      this.toast(`Tema alterado para Modo ${nextTheme === 'light' ? 'Claro' : 'Escuro'}.`, 'success');
     },
     bindNavigation() {
       document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => this.switchView(button.dataset.view)));
@@ -907,7 +940,43 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('globalSearch')?.addEventListener('input', event => this.globalSearch(event.target.value));
       byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
       byId('jsonImportInput')?.addEventListener('change', event => this.importJson(event.target.files[0]));
-      byId('exportAuditButton')?.addEventListener('click', () => this.exportJson(Store.state.audit, `atrium-senda-auditoria-${isoDate()}.json`));
+      byId('exportAuditButton')?.addEventListener('click', () => this.exportJson(Store.state.audit, `atrium-auditoria-${isoDate()}.json`));
+
+      // Área de Trabalho (Astrea)
+      byId('btnDashboardNewTask')?.addEventListener('click', () => this.openTaskModal());
+      byId('astreaTaskFilters')?.addEventListener('click', event => {
+        const button = event.target.closest('button[data-astrea-filter]'); if (!button) return;
+        this.astreaTaskFilter = button.dataset.astreaFilter;
+        byId('astreaTaskFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
+        this.renderAstreaTasks();
+      });
+
+      // Atendimentos & CRM (Projuris / Astrea)
+      byId('newLeadButton')?.addEventListener('click', () => this.openLeadModal());
+      byId('leadStatusFilters')?.addEventListener('click', event => {
+        const button = event.target.closest('button[data-lead-filter]'); if (!button) return;
+        this.leadStatusFilter = button.dataset.leadFilter;
+        byId('leadStatusFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
+        this.renderLeads();
+      });
+      byId('leadSearch')?.addEventListener('input', () => this.renderLeads(byId('leadSearch').value));
+
+      // Financeiro & Requisições
+      byId('financialFilters')?.addEventListener('click', event => {
+        const button = event.target.closest('button[data-fin-filter]'); if (!button) return;
+        this.financialFilter = button.dataset.finFilter;
+        byId('financialFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
+        this.renderFinancial();
+      });
+      byId('financialSearch')?.addEventListener('input', () => this.renderFinancial(byId('financialSearch').value));
+      byId('btnGenDocPrestacao')?.addEventListener('click', () => this.openDocumentGenerator({ type: 'prestacao_contas' }));
+      byId('newFinancialEntryButton')?.addEventListener('click', () => this.openProcessModal());
+
+      // Documentos & Minutas
+      byId('btnOpenDocGenModal')?.addEventListener('click', () => this.openDocumentGenerator());
+      byId('quickDocGenButton')?.addEventListener('click', () => this.openDocumentGenerator());
+      byId('btnGenDocProcess')?.addEventListener('click', () => this.openDocumentGenerator());
+      byId('btnGenDocContact')?.addEventListener('click', () => this.openDocumentGenerator());
 
       // Agenda Externa
       byId('configureCalendarButton')?.addEventListener('click', () => this.openCalendarConfigModal());
@@ -1145,14 +1214,18 @@ ${id.lawyerOab} - ${id.officeName}`;
         document.getElementById('viewTitle').textContent = section.dataset.title;
         document.getElementById('viewEyebrow').textContent = section.dataset.eyebrow;
       }
+      if (view === 'dashboard') this.renderDashboard();
+      if (view === 'leads') this.renderLeads();
+      if (view === 'financial') this.renderFinancial();
+      if (view === 'documents') this.renderDocuments();
       if (view === 'prompts') this.renderPrompts();
       if (view === 'links') this.renderLinks();
       document.getElementById('sidebar').classList.remove('open');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     renderAll() {
-      ['renderOfficeIdentity', 'renderMetrics', 'renderWeeklyDistribution', 'renderPriorities', 'renderActivity', 'renderSources', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderAgenda', 'renderMonitoring', 'renderPrompts', 'renderLinks', 'renderConfiguration', 'renderAudit'].forEach(method => {
-        try { this[method](); } catch (error) { console.error(`Falha em ${method}:`, error); }
+      ['renderOfficeIdentity', 'renderDashboard', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderLeads', 'renderFinancial', 'renderDocuments', 'renderAgenda', 'renderMonitoring', 'renderPrompts', 'renderLinks', 'renderConfiguration', 'renderAudit'].forEach(method => {
+        try { this[method]?.(); } catch (error) { console.error(`Falha em ${method}:`, error); }
       });
     },
     renderOfficeIdentity() {
@@ -1286,79 +1359,391 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (prevBtn) prevBtn.style.display = index > 0 ? 'inline-block' : 'none';
       if (nextBtn) nextBtn.textContent = index === total - 1 ? '🚀 Concluir e Começar' : 'Próximo →';
     },
+    renderDashboard() {
+      this.renderOfficeIdentity();
+      this.renderMetrics();
+      this.renderAstreaTasks();
+      this.renderAstreaWidgets();
+    },
     renderMetrics() {
       const newIntimations = Store.state.intimations.filter(item => item.status === 'nova').length;
       const deadlines = Store.state.tasks.filter(task => !TERMINAL_STATUSES.includes(task.status) && daysUntil(task.deadline) >= 0 && daysUntil(task.deadline) <= 7).length;
       const activeTasks = Store.state.tasks.filter(task => !TERMINAL_STATUSES.includes(task.status)).length;
       const activeSources = Store.state.sources.filter(source => source.status === 'ok').length;
-      document.getElementById('metricInbox').textContent = newIntimations;
-      document.getElementById('metricDeadlines').textContent = deadlines;
-      document.getElementById('metricTasks').textContent = activeTasks;
-      document.getElementById('metricSources').textContent = `${activeSources}/${Store.state.sources.length}`;
-      document.getElementById('inboxBadge').textContent = newIntimations;
-      document.getElementById('notificationDot').style.display = newIntimations ? '' : 'none';
-      document.getElementById('heroSummary').textContent = newIntimations || deadlines
-        ? `${newIntimations} intimação(ões) nova(s) e ${deadlines} prazo(s) nos próximos sete dias precisam de conferência.`
-        : 'Nenhuma ocorrência urgente foi identificada nas fontes ativas.';
+      const mInbox = document.getElementById('metricInbox');
+      const mDead = document.getElementById('metricDeadlines');
+      const mTasks = document.getElementById('metricTasks');
+      const mSources = document.getElementById('metricSources');
+      const inBadge = document.getElementById('inboxBadge');
+      const notifDot = document.getElementById('notificationDot');
+      if (mInbox) mInbox.textContent = newIntimations;
+      if (mDead) mDead.textContent = deadlines;
+      if (mTasks) mTasks.textContent = activeTasks;
+      if (mSources) mSources.textContent = `${activeSources}/${Store.state.sources.length}`;
+      if (inBadge) inBadge.textContent = newIntimations;
+      if (notifDot) notifDot.style.display = newIntimations ? '' : 'none';
     },
-    renderWeeklyDistribution() {
-      const activeTasks = Store.state.tasks.filter(t => !TERMINAL_STATUSES.includes(t.status));
-      const dayCounts = [0, 0, 0, 0, 0];
+    renderAstreaTasks() {
+      const listEl = document.getElementById('astreaTaskList');
+      if (!listEl) return;
+      const filter = this.astreaTaskFilter || 'all';
+      const tasks = Store.state.tasks || [];
+      const filtered = tasks.filter(t => {
+        if (TERMINAL_STATUSES.includes(t.status)) return false;
+        if (filter === 'all') return true;
+        const lower = String(t.title || '').toLowerCase() + ' ' + String(t.type || '').toLowerCase();
+        if (filter === 'prazo') return lower.includes('prazo') || lower.includes('decisão') || lower.includes('recurso');
+        if (filter === 'audiencia') return lower.includes('audiência') || lower.includes('audiencia') || lower.includes('julgamento');
+        if (filter === 'tarefa') return !lower.includes('audiência') && !lower.includes('prazo');
+        return true;
+      }).sort((a, b) => (daysUntil(a.deadline) - daysUntil(b.deadline)) || (a.priority === 'urgente' ? -1 : 1));
 
-      activeTasks.forEach(task => {
-        if (!task.deadline) return;
-        const parts = String(task.deadline).split('-');
-        if (parts.length === 3) {
-          const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-          if (!isNaN(d.getTime())) {
-            const dayOfWeek = d.getDay(); // 0 Dom, 1 Seg, 2 Ter, 3 Qua, 4 Qui, 5 Sex, 6 Sab
-            if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-              dayCounts[dayOfWeek - 1]++;
+      const countEl = document.getElementById('astreaTaskCount');
+      if (countEl) countEl.textContent = `${filtered.length} tarefas`;
+
+      if (!filtered.length) {
+        listEl.innerHTML = '<div class="empty-column" style="padding:24px;text-align:center;"><p>✓ Nenhuma tarefa pendente neste filtro.</p></div>';
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(task => {
+        const titleLower = String(task.title || '').toLowerCase();
+        let typeBadge = 'tarefa';
+        let typeLabel = 'Tarefa';
+        if (titleLower.includes('prazo') || titleLower.includes('recurso') || titleLower.includes('decisão')) {
+          typeBadge = 'prazo';
+          typeLabel = 'Prazo';
+        } else if (titleLower.includes('audiência') || titleLower.includes('audiencia') || titleLower.includes('julgamento')) {
+          typeBadge = 'audiencia';
+          typeLabel = 'Audiência';
+        } else if (titleLower.includes('reunião') || titleLower.includes('reuniao') || titleLower.includes('atendimento')) {
+          typeBadge = 'reuniao';
+          typeLabel = 'Reunião';
+        }
+
+        const days = daysUntil(task.deadline);
+        const dateFormatted = task.deadline ? formatDate(task.deadline) : 'Sem data';
+        const dateClass = days < 0 ? 'style="color:var(--danger);font-weight:700;"' : days <= 2 ? 'style="color:var(--warning);font-weight:700;"' : '';
+
+        return `
+          <div class="astrea-task-item" data-astrea-task-id="${escapeHtml(task.id)}">
+            <input type="checkbox" class="astrea-task-check" data-complete-task-id="${escapeHtml(task.id)}" title="Concluir tarefa">
+            <div class="astrea-task-body">
+              <div class="astrea-task-title">${escapeHtml(task.title)}</div>
+              <div class="astrea-task-process">
+                <span>${escapeHtml(task.client || task.process || 'Atividade interna')}</span>
+                ${task.process ? `<small>· ${escapeHtml(task.process)}</small>` : ''}
+              </div>
+              <div class="astrea-task-tags">
+                <span class="task-tag ${typeBadge}">${typeLabel}</span>
+                ${task.responsible ? `<span class="task-tag user">👤 ${escapeHtml(task.responsible)}</span>` : ''}
+                ${task.points ? `<span class="task-tag" style="background:rgba(212,175,55,0.15);color:var(--gold);">${task.points} pts</span>` : ''}
+              </div>
+            </div>
+            <div class="astrea-task-date" ${dateClass}>${dateFormatted}</div>
+          </div>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('[data-astrea-task-id]').forEach(item => {
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('[data-complete-task-id]')) return;
+          const task = Store.state.tasks.find(t => t.id === item.dataset.astreaTaskId);
+          if (task) this.openTaskModal(task);
+        });
+      });
+
+      listEl.querySelectorAll('[data-complete-task-id]').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+          e.stopPropagation();
+          const task = Store.state.tasks.find(t => t.id === chk.dataset.completeTaskId);
+          if (task) {
+            task.status = 'concluido';
+            task.completedAt = new Date().toISOString();
+            Store.audit('Tarefa concluída', task.title);
+            Store.save();
+            this.renderAll();
+            this.toast('Tarefa concluída com sucesso!', 'success');
+          }
+        });
+      });
+    },
+    renderAstreaWidgets() {
+      const tasks = Store.state.tasks || [];
+      const completed = tasks.filter(t => TERMINAL_STATUSES.includes(t.status)).length;
+      const late = tasks.filter(t => !TERMINAL_STATUSES.includes(t.status) && daysUntil(t.deadline) < 0).length;
+      const pending = tasks.filter(t => !TERMINAL_STATUSES.includes(t.status) && daysUntil(t.deadline) >= 0).length;
+
+      const compEl = document.getElementById('widgetCompletedTasks');
+      const lateEl = document.getElementById('widgetLateTasks');
+      const pendEl = document.getElementById('widgetPendingTasks');
+      if (compEl) compEl.textContent = completed;
+      if (lateEl) lateEl.textContent = late;
+      if (pendEl) pendEl.textContent = pending;
+
+      const processes = Store.state.processes || [];
+      const procActive = processes.filter(p => !p.archived).length;
+      const pActiveEl = document.getElementById('widgetProcActive');
+      const pInactiveEl = document.getElementById('widgetProcInactive');
+      if (pActiveEl) pActiveEl.textContent = procActive;
+      if (pInactiveEl) pInactiveEl.textContent = Math.max(0, processes.length - procActive);
+
+      const leads = Store.state.leads || [];
+      const activeLeads = leads.filter(l => l.status !== 'fechado' && l.status !== 'declinado').length;
+      const lEl = document.getElementById('widgetActiveLeads');
+      if (lEl) lEl.textContent = activeLeads;
+
+      let totalHonorarios = 0;
+      processes.forEach(p => {
+        if (p.feeAmount) totalHonorarios += Number(p.feeAmount);
+      });
+      const honEl = document.getElementById('widgetHonorariosPending');
+      if (honEl) honEl.textContent = formatCurrency(totalHonorarios);
+
+      let totalMinutes = 0;
+      tasks.forEach(t => {
+        if (Array.isArray(t.timeLogs)) {
+          totalMinutes += totalTimeMinutes(t.timeLogs);
+        }
+      });
+      const tsEl = document.getElementById('widgetTimesheetHours');
+      if (tsEl) tsEl.textContent = formatMinutes(totalMinutes) || '0h 0m';
+
+      const docCountEl = document.getElementById('widgetDocsCount');
+      if (docCountEl) docCountEl.textContent = Store.state.customDocs?.length || 5;
+
+      const remindersEl = document.getElementById('astreaRemindersList');
+      if (remindersEl) {
+        const agenda = Store.state.agenda || [];
+        const upcomingAgenda = agenda.slice(0, 4);
+        if (!upcomingAgenda.length) {
+          remindersEl.innerHTML = '<div class="empty-column" style="padding:8px;"><small style="color:var(--muted);">Nenhum lembrete imediato.</small></div>';
+        } else {
+          remindersEl.innerHTML = upcomingAgenda.map(item => `
+            <div class="astrea-reminder-item" data-agenda-id="${escapeHtml(item.id)}" style="cursor:pointer;">
+              <span class="astrea-reminder-date">${formatDate(item.date)}</span>
+              <div><strong>${escapeHtml(item.title)}</strong><small style="display:block;color:var(--muted);">${escapeHtml(item.client || item.process || 'Compromisso')}</small></div>
+            </div>
+          `).join('');
+          remindersEl.querySelectorAll('[data-agenda-id]').forEach(el => {
+            el.addEventListener('click', () => {
+              const ev = Store.state.agenda.find(a => a.id === el.dataset.agendaId);
+              if (ev) this.openAgendaModal(ev);
+            });
+          });
+        }
+      }
+    },
+    renderLeads(query = '') {
+      const listEl = document.getElementById('leadTableBody');
+      if (!listEl) return;
+      const filter = this.leadStatusFilter || 'all';
+      const needle = normalizeText(query);
+      const leads = Store.state.leads || [];
+
+      const filtered = leads.filter(l => {
+        if (filter !== 'all' && l.status !== filter) return false;
+        if (!needle) return true;
+        return normalizeText(`${l.client} ${l.serviceType} ${l.origin} ${l.responsible}`).includes(needle);
+      });
+
+      const countEl = document.getElementById('leadCount');
+      if (countEl) countEl.textContent = `${filtered.length} atendimentos`;
+
+      if (!filtered.length) {
+        listEl.innerHTML = '<tr><td colspan="7" class="empty-table" style="text-align:center;padding:24px;color:var(--muted);">Nenhum atendimento ou oportunidade registrada. Clique em "+ Novo Atendimento" para cadastrar.</td></tr>';
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(l => {
+        const statusMap = {
+          novo: '<span class="lead-status-chip novo">Novo</span>',
+          em_analise: '<span class="lead-status-chip em_analise">Em Análise</span>',
+          proposta: '<span class="lead-status-chip proposta">Proposta Enviada</span>',
+          fechado: '<span class="lead-status-chip fechado">Fechado</span>',
+          declinado: '<span class="lead-status-chip declinado">Declinado</span>'
+        };
+        const statusHtml = statusMap[l.status] || '<span class="lead-status-chip novo">Novo</span>';
+        const valueFormatted = l.estimatedFee ? formatCurrency(Number(l.estimatedFee)) : 'A definir';
+
+        return `
+          <tr data-lead-id="${escapeHtml(l.id)}" style="cursor:pointer;">
+            <td><strong>${escapeHtml(l.client || 'Interessado')}</strong></td>
+            <td>${escapeHtml(l.serviceType || 'Consulta Inicial')}</td>
+            <td><span class="status-chip muted">${escapeHtml(l.origin || 'Direto')}</span></td>
+            <td><strong style="color:var(--gold);">${valueFormatted}</strong></td>
+            <td>${escapeHtml(l.responsible || 'Advogado(a)')}</td>
+            <td>${formatDate(l.registeredAt || isoDate())}</td>
+            <td>${statusHtml}</td>
+          </tr>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('[data-lead-id]').forEach(row => {
+        row.addEventListener('click', () => {
+          const lead = Store.state.leads.find(l => l.id === row.dataset.leadId);
+          if (lead) this.openLeadModal(lead);
+        });
+      });
+    },
+    openLeadModal(defaults = {}) {
+      const editing = Boolean(defaults.id);
+      const fields = [
+        { name: 'client', label: 'Nome do Cliente / Interessado', required: true, full: true, placeholder: 'Ex: Maria da Silva' },
+        { name: 'serviceType', label: 'Tipo de Ação / Serviço Jurídico', required: true, full: true, placeholder: 'Ex: Concessão de Aposentadoria Especial' },
+        {
+          name: 'status', label: 'Status do Atendimento', type: 'select',
+          options: [
+            { value: 'novo', label: 'Novo Lead / Contato Inicial' },
+            { value: 'em_analise', label: 'Em Análise Documental' },
+            { value: 'proposta', label: 'Proposta de Honorários Enviada' },
+            { value: 'fechado', label: 'Contrato Fechado (Virou Cliente)' },
+            { value: 'declinado', label: 'Declinado / Não Viável' }
+          ]
+        },
+        {
+          name: 'origin', label: 'Origem da Captação', type: 'select',
+          options: [
+            { value: 'Indicação de Cliente', label: 'Indicação de Cliente' },
+            { value: 'Google / Site', label: 'Google / Site' },
+            { value: 'Instagram / Redes Sociais', label: 'Instagram / Redes Sociais' },
+            { value: 'Parceiro / Correspondente', label: 'Parceiro / Correspondente' },
+            { value: 'Sindicato / Associação', label: 'Sindicato / Associação' },
+            { value: 'Passante / Balcão', label: 'Passante / Balcão' },
+            { value: 'Outro', label: 'Outro' }
+          ]
+        },
+        { name: 'estimatedFee', label: 'Honorários Estimados (R$)', type: 'number', placeholder: 'Ex: 5000' },
+        { name: 'responsible', label: 'Responsável pelo Atendimento', placeholder: 'Ex: Dr. Ricardo' },
+        { name: 'notes', label: 'Observações & Relato do Caso', type: 'textarea', full: true, placeholder: 'Descreva a pretensão do cliente e próximos passos...' }
+      ];
+
+      this.openModal('lead', editing ? 'Editar Atendimento' : 'Novo Atendimento / Oportunidade', 'CRM Jurídico', fields, {
+        status: 'novo',
+        origin: 'Indicação de Cliente',
+        responsible: window.KellerAuth?.currentUser?.displayName || 'Advogado(a)',
+        ...defaults
+      });
+    },
+    renderFinancial(query = '') {
+      const listEl = document.getElementById('financialTableBody');
+      if (!listEl) return;
+      const filter = this.financialFilter || 'all';
+      const needle = normalizeText(query);
+      const processes = Store.state.processes || [];
+
+      let totalHonorarios = 0;
+      let rpvCount = 0;
+
+      const rows = [];
+      processes.forEach(proc => {
+        if (proc.feeAmount) totalHonorarios += Number(proc.feeAmount);
+        if (proc.requisitionStatus || proc.rpvAmount) {
+          rpvCount++;
+          const gross = Number(proc.rpvAmount || proc.economicValue || 0);
+          const feePct = Number(proc.feePercentage || 30);
+          const feeAmount = proc.feeAmount ? Number(proc.feeAmount) : (gross * feePct / 100);
+          const netClient = Math.max(0, gross - feeAmount);
+
+          if (filter === 'all' || filter === 'rpv') {
+            if (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.requisitionStatus}`).includes(needle)) {
+              rows.push(`
+                <tr>
+                  <td><strong>${escapeHtml(proc.number || 'Processo sem número')}</strong></td>
+                  <td>${escapeHtml(proc.client || 'Cliente')}</td>
+                  <td><span class="status-chip connected">RPV / Alvará (${feePct}%)</span></td>
+                  <td>${formatCurrency(gross)}</td>
+                  <td><strong style="color:var(--gold);">${formatCurrency(feeAmount)}</strong></td>
+                  <td><strong style="color:var(--success);">${formatCurrency(netClient)}</strong></td>
+                  <td><span class="status-chip ${proc.requisitionStatus === 'pago' ? 'connected' : 'warning'}">${escapeHtml(proc.requisitionStatus || 'Aguardando Pagamento')}</span></td>
+                </tr>
+              `);
+            }
+          }
+        } else if (filter === 'all' || filter === 'honorarios') {
+          if (proc.feeAmount || proc.feeMonthly) {
+            const feeVal = Number(proc.feeAmount || proc.feeMonthly || 0);
+            if (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.feeType}`).includes(needle)) {
+              rows.push(`
+                <tr>
+                  <td><strong>${escapeHtml(proc.number || 'Contrato')}</strong></td>
+                  <td>${escapeHtml(proc.client || 'Cliente')}</td>
+                  <td><span class="status-chip muted">${escapeHtml(proc.feeType || 'Honorários Contratuais')}</span></td>
+                  <td>${formatCurrency(feeVal)}</td>
+                  <td><strong style="color:var(--gold);">${formatCurrency(feeVal)}</strong></td>
+                  <td>—</td>
+                  <td><span class="status-chip connected">Ativo</span></td>
+                </tr>
+              `);
             }
           }
         }
       });
 
-      const maxCount = Math.max(...dayCounts, 1);
-      const totalPrazos = dayCounts.reduce((a, b) => a + b, 0);
-      const avg = totalPrazos > 0 ? (totalPrazos / 5).toFixed(1) : '0.0';
+      const honEl = document.getElementById('finMetricHonorarios');
+      const rpvEl = document.getElementById('finMetricRpvCount');
+      if (honEl) honEl.textContent = formatCurrency(totalHonorarios);
+      if (rpvEl) rpvEl.textContent = `${rpvCount} requisições`;
 
-      for (let i = 0; i < 5; i++) {
-        const count = dayCounts[i];
-        const bar = document.getElementById(`chartBar${i}`);
-        if (bar) {
-          const pct = Math.max(25, Math.min(100, Math.round((count / maxCount) * 100)));
-          bar.style.height = `${pct}%`;
-          const valEl = bar.querySelector('.chart-val');
-          if (valEl) valEl.textContent = count;
+      listEl.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" class="empty-table" style="text-align:center;padding:24px;color:var(--muted);">Nenhum lançamento financeiro ou requisição RPV localizada.</td></tr>';
+    },
+    renderDocuments() {
+      const grid = document.getElementById('documentsTemplateGrid');
+      if (!grid) return;
+      const templates = [
+        {
+          id: 'procuracao',
+          title: 'Procuração Ad Judicia et Extra',
+          category: 'Contratual / Mandato',
+          description: 'Poderes gerais para o foro e poderes específicos para acordos, recebimento de RPVs e levantamento de alvarás.'
+        },
+        {
+          id: 'contrato',
+          title: 'Contrato de Honorários Advocatícios (Quota Litis)',
+          category: 'Financeiro / Honorários',
+          description: 'Fixação de honorários sobre o proveito econômico (Art. 50 do Código de Ética e Disciplina da OAB).'
+        },
+        {
+          id: 'hipossuficiencia',
+          title: 'Declaração de Hipossuficiência Econômica',
+          category: 'Processual',
+          description: 'Pedido de Gratuidade da Justiça conforme Art. 98 e 99 do CPC/2015.'
+        },
+        {
+          id: 'quesitos',
+          title: 'Quesitos Periciais Previdenciários / Médicos',
+          category: 'Provas / Perícia',
+          description: 'Quesitação técnica oficial para perícia médica judicial (Art. 465 do CPC).'
+        },
+        {
+          id: 'prestacao_contas',
+          title: 'Termo de Prestação de Contas & Repasse de RPV',
+          category: 'Prestação de Contas',
+          description: 'Discriminação de valores brutos, retenções fiscais, honorários e comprovante de repasse ao cliente.'
         }
-      }
+      ];
 
-      const avgEl = document.getElementById('chartAvgStat');
-      if (avgEl) avgEl.textContent = avg;
-    },
-    renderPriorities() {
-      const tasks = Store.state.tasks
-        .filter(task => !TERMINAL_STATUSES.includes(task.status))
-        .sort((a, b) => (daysUntil(a.deadline) - daysUntil(b.deadline)) || (a.priority === 'urgente' ? -1 : 1))
-        .slice(0, 4);
-      document.getElementById('priorityList').innerHTML = tasks.length ? tasks.map((task, index) => `
-        <button class="priority-item" data-task-id="${escapeHtml(task.id)}">
-          <span class="priority-number">${index + 1}</span>
-          <div><strong>${escapeHtml(task.title)}</strong><small>${escapeHtml(task.client || task.process || 'Tarefa interna')} · ${formatDate(task.deadline)}</small></div>
-          <span class="priority-status" style="background:${task.priority === 'urgente' ? 'var(--danger)' : task.status === 'revisao' ? 'var(--warning)' : 'var(--gold)'}"></span>
-        </button>`).join('') : '<div class="empty-column">Nenhuma prioridade para hoje.</div>';
-      document.querySelectorAll('#priorityList [data-task-id]').forEach(button => button.addEventListener('click', () => {
-        const task = Store.state.tasks.find(item => item.id === button.dataset.taskId); if (task) this.openTaskModal(task);
-      }));
-    },
-    renderActivity() {
-      document.getElementById('activityTimeline').innerHTML = Store.state.audit.slice(0, 5).map(item => `
-        <div class="timeline-item" data-view-link="audit" tabindex="0"><span class="timeline-marker"></span><div class="timeline-copy"><strong>${escapeHtml(item.action)}</strong><span>${escapeHtml(item.detail)}</span></div><time class="timeline-time">${formatDateTime(item.at)}</time></div>`).join('');
-    },
-    renderSources() {
-      document.getElementById('sourceSummary').innerHTML = Store.state.sources.slice(0, 5).map(source => `
-        <div class="source-summary-item" data-view-link="monitoring" tabindex="0"><span class="source-mark">${escapeHtml(source.short)}</span><div><strong>${escapeHtml(source.name)}</strong><small>${escapeHtml(source.detail)}</small></div><span class="health-dot ${source.status === 'ok' ? 'ok' : source.status === 'attention' ? 'attention' : 'off'}"></span></div>`).join('');
+      grid.innerHTML = templates.map(t => `
+        <div class="prompt-card">
+          <div class="prompt-card-header">
+            <span class="prompt-category-badge">${escapeHtml(t.category)}</span>
+            <span class="status-chip connected">Modelo Oficial</span>
+          </div>
+          <h4>${escapeHtml(t.title)}</h4>
+          <p>${escapeHtml(t.description)}</p>
+          <div class="prompt-card-actions">
+            <button class="button gold btn-full" data-generate-doc-type="${escapeHtml(t.id)}">
+              ⚡ Preencher e Gerar Minuta
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      grid.querySelectorAll('[data-generate-doc-type]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.openDocumentGenerator({ type: btn.dataset.generateDocType });
+        });
+      });
     },
     filteredIntimations() {
       const filter = this.inboxFilter;
@@ -3346,6 +3731,18 @@ ${id.lawyerOab} - ${id.officeName}`;
           Store.state.settings.lawyerOab = record.registration;
         }
         Store.audit(editing ? 'Termo atualizado' : 'Termo adicionado', `${record.name} · ${record.registration}`);
+      } else if (this.modalMode.mode === 'lead') {
+        const editing = Boolean(this.modalMode.defaults.id);
+        const record = {
+          id: this.modalMode.defaults.id || uid('lead'),
+          registeredAt: this.modalMode.defaults.registeredAt || isoDate(),
+          ...this.modalMode.defaults,
+          ...data,
+          estimatedFee: data.estimatedFee ? Number(data.estimatedFee) : null,
+          updatedAt: new Date().toISOString()
+        };
+        Store.upsert('leads', record);
+        Store.audit(editing ? 'Atendimento atualizado' : 'Novo atendimento registrado', `${record.client} · ${record.serviceType}`);
       } else if (this.modalMode.mode === 'source') {
         const record = { ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() }; Store.upsert('sources', record); Store.audit('Fonte atualizada', `${record.name} · ${record.status}`);
       } else if (this.modalMode.mode === 'prompt') {
@@ -3671,9 +4068,10 @@ ${id.lawyerOab} - ${id.officeName}`;
     initialized = true;
     App.init().catch(err => { console.error('App.init failed:', err); window.KellerAuth.logout(); });
   };
-  window.AtriumSenda = { App, Store };
-  window.JurisFlow = window.AtriumSenda;
-  window.KellerCentral = window.AtriumSenda;
+  window.Atrium = { App, Store };
+  window.AtriumSenda = window.Atrium;
+  window.JurisFlow = window.Atrium;
+  window.KellerCentral = window.Atrium;
   window.addEventListener('keller:authenticated', boot);
   if (window.KellerAuth?.authenticated) boot();
 })();
