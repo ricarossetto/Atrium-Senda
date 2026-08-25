@@ -216,12 +216,13 @@ async function readPortalConfiguration() {
 }
 
 function publicCertificatePortals(config, secrets) {
-  return config.portals.filter(portal => portal.usesCertificate).map(portal => ({
+  return config.portals.filter(portal => portal.accountScoped && portal.group !== 'Sistemas do escritório').map(portal => ({
     id: portal.id,
     name: portal.name,
     short: portal.short || portal.name.slice(0, 3).toUpperCase(),
     enabled: Boolean(portal.enabled),
-    certificateMode: portal.certificateMode || 'windows-store',
+    authStrategy: portal.authStrategy || 'manual-persistent-session',
+    certificateMode: portal.certificateMode || (portal.strategy === 'pje' ? 'pjeoffice' : 'windows-store'),
     group: portal.group || 'Outros tribunais',
     system: portal.system || portal.strategy || 'Portal judicial',
     automationLevel: portal.automationLevel || 'supported',
@@ -968,6 +969,18 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req);
       const user = await security.updateUserStatus(body.userId, body);
       return json(res, 200, { ok: true, user });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/mfa/enable') {
+      const session = assertAuthenticated(req, true);
+      const body = await readJson(req);
+      const result = await security.enableUserMfa(session.username, body);
+      return json(res, 200, result);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/mfa/disable') {
+      const session = assertAuthenticated(req, true);
+      const body = await readJson(req);
+      const result = await security.disableUserMfa(session.username, body);
+      return json(res, 200, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/sync') {
       assertAuthenticated(req, true);

@@ -4,149 +4,150 @@
     {
       "id": "djen-cnj", "name": "DJEN / Comunica PJe", "short": "DJ", "group": "Fontes nacionais", "system": "Comunica PJe",
       "enabled": true, "accountScoped": false, "url": "https://comunicaapi.pje.jus.br/api/v1/comunicacao", "strategy": "djen",
-      "ufOab": "", "numeroOab": "", "lookbackDays": 3, "queryOabVariants": true, "pageSize": 50, "maxPages": 40,
-      "requestSpacingMs": 500, "usesCertificate": false
+      "authStrategy": "public", "ufOab": "", "numeroOab": "", "lookbackDays": 3, "queryOabVariants": true, "pageSize": 50, "maxPages": 40,
+      "requestSpacingMs": 500
     },
     {
       "id": "datajud-cnj", "name": "DataJud / CNJ", "short": "DJD", "group": "Fontes nacionais", "system": "API pública",
-      "enabled": true, "accountScoped": false, "url": "https://api-publica.datajud.cnj.jus.br", "strategy": "datajud", "autoRefreshKey": true,
+      "enabled": true, "accountScoped": false, "url": "https://api-publica.datajud.cnj.jus.br", "strategy": "datajud",
+      "authStrategy": "public", "autoRefreshKey": true,
       "keyPageUrl": "https://datajud-wiki.cnj.jus.br/api-publica/acesso/", "maxProcessesPerRun": 250, "movementLookbackDays": 7,
-      "requestSpacingMs": 150, "timeoutMs": 45000, "usesCertificate": false
+      "requestSpacingMs": 150, "timeoutMs": 45000
     },
     {
       "id": "eproc-tjrs-1g", "name": "TJRS · eproc 1º grau", "short": "RS1", "group": "Justiça Estadual", "system": "eproc",
       "court": "TJRS 1º grau", "enabled": false, "accountScoped": true, "url": "https://eproc1g.tjrs.jus.br/eproc/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "eproc-tjrs-2g", "name": "TJRS · eproc 2º grau", "short": "RS2", "group": "Justiça Estadual", "system": "eproc",
       "court": "TJRS 2º grau", "enabled": false, "accountScoped": true, "url": "https://eproc2g.tjrs.jus.br/eproc/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "eproc-tjsc-1g", "name": "TJSC · eproc 1º grau", "short": "SC1", "group": "Justiça Estadual", "system": "eproc",
       "court": "TJSC 1º grau", "enabled": false, "accountScoped": true, "url": "https://eproc1g.tjsc.jus.br/eproc/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "eproc-tjsc-2g", "name": "TJSC · eproc 2º grau", "short": "SC2", "group": "Justiça Estadual", "system": "eproc",
       "court": "TJSC 2º grau", "enabled": false, "accountScoped": true, "url": "https://eproc2g.tjsc.jus.br/eproc/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "eproc-tjsp-1g", "name": "TJSP · eproc 1º grau", "short": "SP1", "group": "Justiça Estadual", "system": "eproc",
       "court": "TJSP 1º grau", "enabled": false, "accountScoped": true, "url": "https://eproc1g.tjsp.jus.br/eproc/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "eproc-tjsp-2g", "name": "TJSP · eproc 2º grau", "short": "SP2", "group": "Justiça Estadual", "system": "eproc",
       "court": "TJSP 2º grau", "enabled": false, "accountScoped": true, "url": "https://eproc2g.tjsp.jus.br/eproc/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "esaj-tjsp", "name": "TJSP · e-SAJ legado", "short": "SAJ", "group": "Justiça Estadual", "system": "e-SAJ / Web Signer",
       "court": "TJSP e-SAJ", "enabled": false, "accountScoped": true, "url": "https://esaj.tjsp.jus.br/esaj", "strategy": "intimations",
-      "itemSelector": "table tbody tr", "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "experimental",
+      "authStrategy": "manual-persistent-session", "itemSelector": "table tbody tr", "automationLevel": "experimental",
       "manualFirstLogin": true, "notice": "O TJSP está migrando gradualmente do e-SAJ para o eproc; a cobertura do legado exige validação acompanhada."
     },
     {
       "id": "pje-tjmt-1g", "name": "TJMT · PJe 1º grau", "short": "MT1", "group": "Justiça Estadual", "system": "PJe",
       "court": "TJMT 1º grau", "enabled": false, "accountScoped": true, "url": "https://pje.tjmt.jus.br",
-      "dataUrl": "https://pje.tjmt.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje", "usesCertificate": true,
-      "certificateMode": "pjeoffice", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
+      "dataUrl": "https://pje.tjmt.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje",
+      "authStrategy": "pjeoffice-local", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
     },
     {
       "id": "pje-tjmt-2g", "name": "TJMT · PJe 2º grau", "short": "MT2", "group": "Justiça Estadual", "system": "PJe",
       "court": "TJMT 2º grau", "enabled": false, "accountScoped": true, "url": "https://pje2.tjmt.jus.br",
-      "dataUrl": "https://pje2.tjmt.jus.br/pje2/Painel/painel_usuario/advogado.seam", "strategy": "pje", "usesCertificate": true,
-      "certificateMode": "pjeoffice", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
+      "dataUrl": "https://pje2.tjmt.jus.br/pje2/Painel/painel_usuario/advogado.seam", "strategy": "pje",
+      "authStrategy": "pjeoffice-local", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
     },
     {
       "id": "pje-trt4-1g", "name": "TRT4 · PJe 1º grau", "short": "T41", "group": "Justiça do Trabalho", "system": "PJe-JT",
       "court": "TRT4 1º grau", "enabled": false, "accountScoped": true, "url": "https://pje.trt4.jus.br",
-      "dataUrl": "https://pje.trt4.jus.br/primeirograu/Painel/painel_usuario/list.seam", "strategy": "pje", "usesCertificate": true,
-      "certificateMode": "pjeoffice", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
+      "dataUrl": "https://pje.trt4.jus.br/primeirograu/Painel/painel_usuario/list.seam", "strategy": "pje",
+      "authStrategy": "pjeoffice-local", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
     },
     {
       "id": "pje-trt4-2g", "name": "TRT4 · PJe 2º grau", "short": "T42", "group": "Justiça do Trabalho", "system": "PJe-JT",
       "court": "TRT4 2º grau", "enabled": false, "accountScoped": true, "url": "https://pje.trt4.jus.br",
-      "dataUrl": "https://pje.trt4.jus.br/segundograu/Painel/painel_usuario/list.seam", "strategy": "pje", "usesCertificate": true,
-      "certificateMode": "pjeoffice", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
+      "dataUrl": "https://pje.trt4.jus.br/segundograu/Painel/painel_usuario/list.seam", "strategy": "pje",
+      "authStrategy": "pjeoffice-local", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
     },
     {
       "id": "pje-trf1-1g", "name": "TRF1 · PJe 1º grau", "short": "F11", "group": "Justiça Federal", "system": "PJe",
       "court": "TRF1 1º grau", "enabled": false, "accountScoped": true, "url": "https://pje1g.trf1.jus.br",
-      "dataUrl": "https://pje1g.trf1.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje", "usesCertificate": true,
-      "certificateMode": "pjeoffice", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
+      "dataUrl": "https://pje1g.trf1.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje",
+      "authStrategy": "pjeoffice-local", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
     },
     {
       "id": "pje-trf1-2g", "name": "TRF1 · PJe 2º grau", "short": "F12", "group": "Justiça Federal", "system": "PJe",
       "court": "TRF1 2º grau", "enabled": false, "accountScoped": true, "url": "https://pje2g.trf1.jus.br",
-      "dataUrl": "https://pje2g.trf1.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje", "usesCertificate": true,
-      "certificateMode": "pjeoffice", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
+      "dataUrl": "https://pje2g.trf1.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje",
+      "authStrategy": "pjeoffice-local", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
     },
     {
       "id": "eproc-trf2", "name": "TRF2 · eproc regional", "short": "F2", "group": "Justiça Federal", "system": "eproc",
       "court": "TRF2 · JFRJ · JFES", "enabled": false, "accountScoped": true, "url": "https://eproc.trf2.jus.br/eproc/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported", "notice": "Base regional oficial com abrangência TRF2, JFRJ e JFES."
+      "authStrategy": "credentials-totp", "automationLevel": "supported", "notice": "Base regional oficial com abrangência TRF2, JFRJ e JFES."
     },
     {
       "id": "pje-trf3-1g", "name": "TRF3 · PJe 1º grau", "short": "F31", "group": "Justiça Federal", "system": "PJe",
       "court": "TRF3 1º grau · SP/MS", "enabled": false, "accountScoped": true, "url": "https://pje1g.trf3.jus.br",
-      "dataUrl": "https://pje1g.trf3.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje", "usesCertificate": true,
-      "certificateMode": "pjeoffice", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
+      "dataUrl": "https://pje1g.trf3.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje",
+      "authStrategy": "pjeoffice-local", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
     },
     {
       "id": "pje-trf3-2g", "name": "TRF3 · PJe 2º grau", "short": "F32", "group": "Justiça Federal", "system": "PJe",
       "court": "TRF3 2º grau", "enabled": false, "accountScoped": true, "url": "https://pje2g.trf3.jus.br",
-      "dataUrl": "https://pje2g.trf3.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje", "usesCertificate": true,
-      "certificateMode": "pjeoffice", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
+      "dataUrl": "https://pje2g.trf3.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje",
+      "authStrategy": "pjeoffice-local", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported"
     },
     {
       "id": "eproc-jfrs", "name": "TRF4 · JFRS eproc 1º grau", "short": "FRS", "group": "Justiça Federal", "system": "eproc",
       "court": "Justiça Federal/RS", "enabled": false, "accountScoped": true, "url": "https://eproc.jfrs.jus.br/eprocV2/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "eproc-jfsc", "name": "TRF4 · JFSC eproc 1º grau", "short": "FSC", "group": "Justiça Federal", "system": "eproc",
       "court": "Justiça Federal/SC", "enabled": false, "accountScoped": true, "url": "https://eproc.jfsc.jus.br/eprocV2/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "eproc-jfpr", "name": "TRF4 · JFPR eproc 1º grau", "short": "FPR", "group": "Justiça Federal", "system": "eproc",
       "court": "Justiça Federal/PR", "enabled": false, "accountScoped": true, "url": "https://eproc.jfpr.jus.br/eprocV2/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "eproc-trf4-2g", "name": "TRF4 · eproc 2º grau", "short": "F42", "group": "Justiça Federal", "system": "eproc",
       "court": "TRF4 2º grau", "enabled": false, "accountScoped": true, "url": "https://eproc.trf4.jus.br/eproc2trf4/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "pje-trf5", "name": "TRF5 · PJe 1º e 2º graus", "short": "F5", "group": "Justiça Federal", "system": "PJe",
       "court": "TRF5 · AL/CE/PB/PE/RN/SE", "enabled": false, "accountScoped": true, "url": "https://pje.trf5.jus.br",
-      "dataUrl": "https://pje.trf5.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje", "usesCertificate": true,
-      "certificateMode": "pjeoffice", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported",
+      "dataUrl": "https://pje.trf5.jus.br/pje/Painel/painel_usuario/advogado.seam", "strategy": "pje",
+      "authStrategy": "pjeoffice-local", "autoCertificateLogin": true, "trustedAuthOrigins": ["https://sso.cloud.pje.jus.br"], "automationLevel": "supported",
       "notice": "Portal regional PJe 2.x para os dois graus da 5ª Região."
     },
     {
       "id": "eproc-trf6-1g", "name": "TRF6 · eproc 1º grau", "short": "F61", "group": "Justiça Federal", "system": "eproc",
       "court": "TRF6 1º grau · MG", "enabled": false, "accountScoped": true, "url": "https://eproc1g.trf6.jus.br/eproc/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "eproc-trf6-2g", "name": "TRF6 · eproc 2º grau", "short": "F62", "group": "Justiça Federal", "system": "eproc",
       "court": "TRF6 2º grau", "enabled": false, "accountScoped": true, "url": "https://eproc2g.trf6.jus.br/eproc/", "strategy": "eproc",
-      "usesCertificate": true, "certificateMode": "windows-store", "automationLevel": "supported"
+      "authStrategy": "credentials-totp", "automationLevel": "supported"
     },
     {
       "id": "advbox", "name": "ADVBOX", "group": "Sistemas do escritório", "enabled": false, "accountScoped": true,
-      "url": "https://app.advbox.com.br/", "strategy": "tasks", "itemSelector": "a[href*='/tasks/'], a[href*='/activities/']", "usesCertificate": false
+      "url": "https://app.advbox.com.br/", "strategy": "tasks", "authStrategy": "manual-persistent-session", "itemSelector": "a[href*='/tasks/'], a[href*='/activities/']"
     },
     {
       "id": "legalone", "name": "Legal One", "group": "Sistemas do escritório", "enabled": false, "accountScoped": true,
       "url": "https://kelleradv.novajus.com.br/", "dataUrl": "https://kelleradv.novajus.com.br/processos/processos/search",
-      "strategy": "processes", "itemSelector": "table tbody tr", "usesCertificate": false
+      "strategy": "processes", "authStrategy": "manual-persistent-session", "itemSelector": "table tbody tr"
     }
   ]
 }

@@ -33,7 +33,11 @@ jobs:
         run: |
           npx playwright install chromium --with-deps
 
-      - name: Run Full Audit & Test Suite (9 Suites)
+      - name: Run Integrity Syntax Checks
+        run: |
+          npm run check
+
+      - name: Run Full Audit & Test Suite (11 Suites)
         run: |
           npm test
         env:

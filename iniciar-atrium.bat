@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 chcp 65001 > nul
 title ATRIUM — Escritório Integrado
 cls
@@ -19,6 +19,21 @@ if %errorlevel% neq 0 (
 )
 
 echo [OK] Node.js detectado com sucesso.
+
+if not exist node_modules (
+    echo.
+    echo [Instalação Inicial] Configurando o ATRIUM pela primeira vez no seu computador...
+    echo [Instalação Inicial] Instalando dependências necessárias (isso leva menos de 1 minuto)...
+    echo.
+    call npm install --no-audit --no-fund
+    if %errorlevel% neq 0 (
+        echo [ERRO] Falha ao instalar dependências do ATRIUM.
+        pause
+        exit /b 1
+    )
+    echo [OK] Dependências instaladas com sucesso!
+)
+
 echo.
 echo Iniciando servidor local do ATRIUM na porta 4173...
 echo Abrindo seu navegador automaticamente...

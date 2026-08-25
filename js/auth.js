@@ -39,6 +39,25 @@
         byId('authTabLogin')?.classList.remove('active');
         this.show('authRegisterForm');
       });
+      byId('skipMfaButton')?.addEventListener('click', async () => {
+        this.feedback('');
+        try {
+          if (state.registrationSetupToken) {
+            const result = await request('/api/auth/register/verify', { method: 'POST', body: { setupToken: state.registrationSetupToken, skipMfa: true } });
+            state.registrationSetupToken = null;
+            byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
+            byId('authTabLogin')?.classList.add('active'); byId('authTabRegister')?.classList.remove('active');
+            this.show('authLoginForm'); this.feedback(result.message, 'success');
+            return;
+          }
+          if (state.setupToken) {
+            const result = await request('/api/auth/setup/verify', { method: 'POST', body: { setupToken: state.setupToken, skipMfa: true } });
+            state.authenticated = true; state.csrfToken = result.csrfToken; state.user = result.user;
+            byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
+            this.enter(result.user);
+          }
+        } catch (error) { this.feedback(error.message, 'error'); }
+      });
       byId('copyRecoveryCodes').addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(byId('authRecoveryCodes').textContent); this.feedback('Códigos copiados. Guarde-os fora deste computador.', 'success'); }
         catch { this.feedback('Não foi possível copiar automaticamente. Selecione e copie os códigos.', 'error'); }
@@ -79,7 +98,7 @@
         byId('authManualSecret').textContent = result.manualSecret;
         formElement.reset();
         this.show('authTotpSetupForm');
-        this.feedback('Vincule o autenticador para concluir a solicitação de acesso.', 'success');
+        this.feedback('Vincule o autenticador ou clique em "Configurar mais tarde" para prosseguir.', 'success');
         byId('authTotpSetupForm').elements.code.focus();
       } catch (error) {
         this.feedback(error.message, 'error');
@@ -114,7 +133,12 @@
         const result = await request('/api/auth/setup/verify', { method: 'POST', body: { setupToken: state.setupToken, code: form.get('code') } });
         state.authenticated = true; state.csrfToken = result.csrfToken; state.pendingUser = result.user;
         byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
-        byId('authRecoveryCodes').textContent = result.recoveryCodes.join('\n'); this.show('authRecoveryStep');
+        if (result.recoveryCodes && result.recoveryCodes.length > 0) {
+          byId('authRecoveryCodes').textContent = result.recoveryCodes.join('\n');
+          this.show('authRecoveryStep');
+        } else {
+          this.enter(result.user);
+        }
       } catch (error) { this.feedback(error.message, 'error'); }
       finally { this.busy(formElement, false); }
     },

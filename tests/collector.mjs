@@ -5,7 +5,7 @@ import { collectDatajud, datajudInternals } from '../collector/adapters/datajud.
 import { assertTrustedPortal, pjeInternals } from '../collector/adapters/pje.mjs';
 
 const portalCatalog = JSON.parse(await readFile(new URL('../collector/portals.example.json', import.meta.url), 'utf8'));
-const authenticatedPortals = portalCatalog.portals.filter(item => item.usesCertificate);
+const authenticatedPortals = portalCatalog.portals.filter(item => item.accountScoped && item.group !== 'Sistemas do escritório');
 assert.equal(authenticatedPortals.length, 23, 'o catálogo deve reunir os 23 acessos judiciais autenticados previstos');
 assert(authenticatedPortals.every(item => item.enabled === false), 'o catálogo autenticado deve iniciar zerado');
 for (const id of ['eproc-tjrs-1g', 'eproc-tjrs-2g', 'pje-trt4-1g', 'pje-trt4-2g', 'pje-tjmt-1g', 'pje-tjmt-2g', 'eproc-tjsc-1g', 'eproc-tjsc-2g', 'eproc-tjsp-1g', 'eproc-tjsp-2g', 'esaj-tjsp', 'pje-trf1-1g', 'eproc-trf2', 'pje-trf3-1g', 'eproc-trf4-2g', 'pje-trf5', 'eproc-trf6-2g']) {

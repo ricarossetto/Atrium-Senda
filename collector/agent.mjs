@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { generateTotp, SecurityManager } from '../lib/security.mjs';
 import { JudicialSessionManager, SESSION_STATUS } from '../lib/judicial/session-manager.mjs';
 import { createModernizedPfx } from '../lib/judicial/a1-sandbox.mjs';
+import { getAuthAdapter, AUTH_STRATEGIES } from '../lib/judicial/auth-adapters.mjs';
 import { collectDjen } from './adapters/djen.mjs';
 import { collectDatajud } from './adapters/datajud.mjs';
 import { collectPje } from './adapters/pje.mjs';
@@ -55,8 +56,17 @@ try {
     try {
       releaseLock = await sessionManager.acquireLock('agent-local', portal.id);
       const clientCerts = [];
+      const authStrategy = portal.authStrategy || (
+        portal.strategy === 'pje' ? AUTH_STRATEGIES.PJEOFFICE_LOCAL :
+        portal.strategy === 'eproc' ? AUTH_STRATEGIES.CREDENTIALS_TOTP :
+        AUTH_STRATEGIES.MANUAL_PERSISTENT_SESSION
+      );
+      const authAdapter = getAuthAdapter(authStrategy);
+      const portalCreds = judicialSecrets.portalCredentials?.[portal.id] || null;
+      const totpSecret = judicialSecrets.totpSecrets?.[portal.id]?.secret || null;
+      const credentials = portalCreds ? { ...portalCreds, totpSecret } : (totpSecret ? { totpSecret } : null);
 
-      if (portal.usesCertificate) {
+      if (authStrategy === AUTH_STRATEGIES.CLIENT_CERT_MTLS) {
         const pfxPath = judicialSecrets.certificate?.path || process.env.A1_PFX_PATH;
         const passphrase = judicialSecrets.certificate?.passphrase || process.env.A1_PFX_PASSPHRASE;
         if (pfxPath && passphrase && existsSync(pfxPath)) {
@@ -82,7 +92,7 @@ try {
         clientCertificates: clientCerts.length ? clientCerts : undefined
       });
 
-      await collectPortal(context, portal, payload);
+      await collectPortal(context, portal, payload, authAdapter, credentials);
       await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.CONNECTED);
     } catch (portalError) {
       console.error(`Erro na coleta do portal ${portal.name}:`, portalError.message);
@@ -129,23 +139,33 @@ async function collectPublicPortal(portal, target) {
   }
 }
 
-async function collectPortal(context, portal, target) {
+async function collectPortal(context, portal, target, authAdapter = null, credentials = null) {
   const checkedAt = new Date().toISOString();
   const page = await context.newPage();
   try {
     console.log(`Verificando ${portal.name}…`);
-    if (portal.certificateMode === 'pjeoffice' && !(await pjeOfficeAvailable())) {
-      target.sources.push(source(portal, 'attention', checkedAt, 'PJeOffice Pro oficial não está respondendo em 127.0.0.1:8800. Inicie o aplicativo e autentique novamente.'));
-      return;
+    if (authAdapter && authAdapter.strategy === AUTH_STRATEGIES.PJEOFFICE_LOCAL) {
+      const pjeCheck = await authAdapter.checkHealth();
+      if (!pjeCheck.available) {
+        target.sources.push(source(portal, 'attention', checkedAt, 'PJeOffice Pro oficial não está respondendo em 127.0.0.1:8800. Inicie o aplicativo e autentique novamente.'));
+        return;
+      }
     }
+
     await page.goto(portal.dataUrl || portal.url, { waitUntil: 'domcontentloaded', timeout: 90_000 });
     await page.waitForTimeout(2_000);
 
     if (await needsHumanAuthentication(page)) {
-      await tryAutomatedCertificateLogin(page, portal);
-      await tryAutomatedTotp(page, portal);
+      if (authAdapter && authAdapter.strategy === AUTH_STRATEGIES.CREDENTIALS_TOTP && credentials?.username) {
+        try {
+          await authAdapter.authenticate(context, page, portal, credentials);
+        } catch (authErr) {
+          console.warn(`[AuthAdapter] Tentativa automatizada em ${portal.name}:`, authErr.message);
+        }
+      }
+
       await page.waitForTimeout(2_000);
-      if (interactive && !headless) {
+      if (interactive && !headless && (await needsHumanAuthentication(page))) {
         console.log(`${portal.name}: conclua login, QR code, CAPTCHA ou 2FA na janela aberta. Aguardando até ${Math.round(loginWaitMs / 1000)} segundos…`);
         await waitForHumanAuthentication(page, portal, loginWaitMs);
       }

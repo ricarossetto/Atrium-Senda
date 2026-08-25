@@ -48,8 +48,9 @@
           <p>Leia o QR code com Microsoft Authenticator, Google Authenticator, 1Password ou outro app TOTP.</p>
           <img id="authQrCode" class="auth-qr" alt="QR code para configurar o segundo fator">
           <details><summary>Configurar manualmente</summary><code id="authManualSecret" class="auth-manual-secret"></code></details>
-          <label>Código de seis dígitos<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
-          <button class="button gold auth-submit" type="submit">Confirmar e ativar proteção</button>
+          <label>Código de seis dígitos<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6"></label>
+          <button class="button gold auth-submit" type="submit">Confirmar e ativar proteção 2FA</button>
+          <button type="button" class="button ghost auth-submit" id="skipMfaButton" style="margin-top: 8px;">Configurar mais tarde (sem 2FA)</button>
         </form>
 
         <div id="authRecoveryStep" class="auth-step">

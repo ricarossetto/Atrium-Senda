@@ -112,10 +112,41 @@ try {
   response = await fetch(`${server.baseUrl}/api/auth/status`, { headers: { Cookie: trustedCookie } });
   assert(!(await response.json()).authenticated, 'O navegador continuou confiável após a revogação.');
 
+  // Teste de MFA Opcional: usuário registrado com skipMfa consegue logar apenas com senha
+  const optionalUserPwd = 'Advogado-SemMfa-2026!';
+  response = await postJson(`${server.baseUrl}/api/auth/register`, { username: 'adv_sem_mfa', displayName: 'Advogado Sem MFA', email: 'semmfa@example.test', password: optionalUserPwd });
+  const optReg = await response.json();
+  response = await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: optReg.setupToken, skipMfa: true });
+  assert(response.ok && (await response.json()).status === 'pending_approval', 'Registro sem MFA falhou na verificação.');
+  
+  // Aprovar usuário sem MFA
+  response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'admin', password, code: generateTotp(payload.manualSecret) });
+  const adminLog = await response.json();
+  const adminCookie = response.headers.get('set-cookie').split(';')[0];
+  const allUsers = (await (await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: adminCookie } })).json()).users;
+  const optUserObj = allUsers.find(u => u.username === 'adv_sem_mfa');
+  await postJson(`${server.baseUrl}/api/auth/users/manage`, { userId: optUserObj.id, status: 'active' }, { Cookie: adminCookie, 'X-CSRF-Token': adminLog.csrfToken });
+
+  // Login do usuário sem MFA (sem fornecer code)
+  response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'adv_sem_mfa', password: optionalUserPwd });
+  const optLogin = await response.json();
+  assert(response.ok && optLogin.authenticated, 'Usuário sem MFA não conseguiu logar apenas com senha.');
+  const optCookie = response.headers.get('set-cookie').split(';')[0];
+
+  // Ativar MFA posteriormente
+  const newSecret = 'JBSWY3DPEHPK3PXP';
+  response = await postJson(`${server.baseUrl}/api/auth/mfa/enable`, { password: optionalUserPwd, code: generateTotp(newSecret), totpSecret: newSecret }, { Cookie: optCookie, 'X-CSRF-Token': optLogin.csrfToken });
+  const optEnable = await response.json();
+  assert(response.ok && optEnable.mfaEnabled, 'Falha ao ativar MFA posteriormente.');
+
+  // Agora login exige código
+  response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'adv_sem_mfa', password: optionalUserPwd });
+  assert(response.status === 401, 'Usuário que ativou MFA conseguiu logar sem código.');
+
   for (let index = 0; index < 5; index++) await postJson(`${server.baseUrl}/api/auth/login`, { username: 'bloqueio', password: 'Incorreta-123456!', code: '000000' });
   response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'bloqueio', password: 'Incorreta-123456!', code: '000000' });
   assert(response.status === 429 && response.headers.has('retry-after'), 'Limitação de tentativas não bloqueou o atacante.');
-  console.log('Security test aprovado: senha, TOTP por usuário, aprovação administrativa, papéis, navegador confiável, revogação, recuperação, sessão, CSRF, rate limit, CSP, arquivos privados, estado principal e coleta criptografados.');
+  console.log('Security test aprovado: senha, TOTP por usuário, MFA opcional e ativação posterior, aprovação administrativa, papéis, navegador confiável, revogação, recuperação individual, sessão, CSRF, rate limit, CSP, arquivos privados, estado principal e coleta criptografados.');
 } finally { await server.stop(); }
 
 function assert(condition, message) { if (!condition) throw new Error(message); }
