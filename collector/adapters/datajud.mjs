@@ -1,4 +1,5 @@
 const API_BASE = 'https://api-publica.datajud.cnj.jus.br';
+const OFFICIAL_DEFAULT_KEY = 'cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
 const OFFICIAL_KEY_PAGE = 'https://datajud-wiki.cnj.jus.br/api-publica/acesso/';
 const PROCESS_RE = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/g;
 const STATE_ALIASES = {
@@ -15,7 +16,7 @@ export async function collectDatajud(portal, config, target, options = {}) {
     ...processNumbersFrom(target),
     ...(options.seedProcessNumbers || []).map(formatProcessNumber).filter(Boolean)
   ].map(value => [digits(value), value])).values()].slice(0, Math.min(500, Math.max(1, Number(portal.maxProcessesPerRun || 250))));
-  let apiKey = normalizeApiKey(options.apiKey || process.env.DATAJUD_API_KEY);
+  let apiKey = normalizeApiKey(options.apiKey || process.env.DATAJUD_API_KEY) || OFFICIAL_DEFAULT_KEY;
   let refreshedKey = false;
   let found = 0;
   let updated = 0;
@@ -24,10 +25,10 @@ export async function collectDatajud(portal, config, target, options = {}) {
 
   if (!numbers.length) return { queried: 0, found, updated, partial, failed, refreshedKey, complete: true };
   if (!apiKey && allowKeyRefresh(portal)) {
-    apiKey = await fetchCurrentPublicKey(fetchImpl, portal);
+    apiKey = await fetchCurrentPublicKey(fetchImpl, portal).catch(() => OFFICIAL_DEFAULT_KEY);
     refreshedKey = true;
   }
-  if (!apiKey) throw new Error('A chave pública do DataJud não está configurada e não pôde ser obtida da página oficial.');
+  if (!apiKey) apiKey = OFFICIAL_DEFAULT_KEY;
 
   for (const number of numbers) {
     const alias = aliasForProcess(number);
@@ -133,6 +134,61 @@ function mergeDatajudRecord(record, number, alias, portal, config, target) {
   processRecord.datajudUpdatedAt = toIso(record.dataHoraUltimaAtualizacao || record['@timestamp']) || now;
   processRecord.collectedAt = now;
   processRecord.movements = movements.slice(0, 20).map(item => ({ code: String(item.codigo ?? ''), name: normalizeText(item.nome || ''), at: toIso(item.dataHora) }));
+
+  // Auto-detecção inteligente do cliente e parte contrária
+  const monitoredTerms = [...(target.terms || []), config.monitoredTerm].filter(Boolean);
+  const monitoredTokens = monitoredTerms.map(t => [digits(t.oabNumber || t.registration || ''), normalizeText(t.name || '')]).flat().filter(Boolean);
+  
+  let detectedClient = processRecord.client || '';
+  let detectedOpponent = processRecord.counterpart || '';
+
+  const polos = Array.isArray(record.dadosBasicos?.polo) ? record.dadosBasicos.polo : (Array.isArray(record.polos) ? record.polos : []);
+  if (polos.length > 0) {
+    let lawyerPolo = null;
+    for (const p of polos) {
+      const isMonitored = (Array.isArray(p.partes) ? p.partes : []).some(parte => {
+        const advs = Array.isArray(parte.advogado) ? parte.advogado : (Array.isArray(parte.advogados) ? parte.advogados : []);
+        return advs.some(adv => {
+          const advStr = normalizeText(`${adv.nome || ''} ${adv.inscricao || ''} ${adv.numero || ''} ${adv.oab || ''}`);
+          return monitoredTokens.some(token => token && advStr.toLowerCase().includes(token.toLowerCase()));
+        });
+      });
+      if (isMonitored) {
+        lawyerPolo = p.polo || p.tipoPolo || 'AT';
+        break;
+      }
+    }
+
+    polos.forEach(p => {
+      const pType = p.polo || p.tipoPolo || 'AT';
+      const names = (Array.isArray(p.partes) ? p.partes : []).map(pt => pt.pessoa?.nome || pt.nome).filter(Boolean);
+      if (names.length > 0) {
+        if (lawyerPolo) {
+          if (pType === lawyerPolo && !detectedClient) detectedClient = names.join(', ');
+          else if (pType !== lawyerPolo && !detectedOpponent) detectedOpponent = names.join(', ');
+        } else {
+          if ((pType === 'AT' || pType === 'ATIVO') && !detectedClient) detectedClient = names.join(', ');
+          else if ((pType === 'PA' || pType === 'PASSIVO') && !detectedOpponent) detectedOpponent = names.join(', ');
+        }
+      }
+    });
+  }
+
+  if (detectedClient) {
+    processRecord.client = detectedClient;
+    if (detectedOpponent) processRecord.counterpart = detectedOpponent;
+    target.contacts = target.contacts || [];
+    if (!target.contacts.some(c => String(c.name || '').toLowerCase() === detectedClient.toLowerCase())) {
+      target.contacts.push({
+        id: `contact:${digits(normalizedNumber)}:${digits(detectedClient).slice(0, 10) || 'auto'}`,
+        name: detectedClient,
+        role: 'cliente',
+        registeredAt: now.slice(0, 10),
+        source: portal.name || 'DataJud/CNJ'
+      });
+    }
+  }
+
   if (!existing) target.processes.push(processRecord);
 
   const isNewMovement = latestAt && (!previousAt || timestamp(latestAt) > timestamp(previousAt));

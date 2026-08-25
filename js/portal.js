@@ -663,6 +663,17 @@ ${id.lawyerOab} - ${id.officeName}`;
           if (s.id === 'djen') s.id = 'djen-cnj';
           if (s.id === 'datajud') s.id = 'datajud-cnj';
         });
+        const defaultSources = [
+          { id: 'external-calendar', name: 'Agenda Externa (Webcal)', short: 'CAL', method: 'Webcal/iCal', status: 'planned', lastCheck: null, detail: 'Sincronize com Google Agenda, Outlook ou Apple' },
+          { id: 'djen-cnj', name: 'DJEN / CNJ Oficial', short: 'CNJ', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Conector de diários e publicações' },
+          { id: 'datajud-cnj', name: 'DataJud / CNJ', short: 'DJD', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Enriquecimento de andamentos processuais' },
+          { id: 'a1', name: 'Portais com certificado A1 / PJe', short: 'A1', method: 'Agente local seguro', status: 'off', lastCheck: null, detail: 'Integração direta com tribunais' }
+        ];
+        defaultSources.forEach(ds => {
+          if (!this.state.sources.some(s => s.id === ds.id)) {
+            this.state.sources.push(deepClone(ds));
+          }
+        });
         const seen = new Set();
         this.state.sources = this.state.sources.filter(s => {
           if (!s?.id || seen.has(s.id)) return false;
@@ -821,25 +832,26 @@ ${id.lawyerOab} - ${id.officeName}`;
     },
     setTheme(theme) {
       this.currentTheme = theme;
+      const icon = document.getElementById('themeToggleIcon');
+      const text = document.getElementById('themeToggleText');
+      const btn = document.getElementById('themeToggleButton');
       if (theme === 'light') {
         document.documentElement.setAttribute('data-theme', 'light');
-        const icon = document.getElementById('themeToggleIcon');
-        const text = document.getElementById('themeToggleText');
-        if (icon) icon.textContent = '🌙';
-        if (text) text.textContent = 'Modo Escuro';
+        if (icon) icon.textContent = '☀️';
+        if (text) text.textContent = 'Tema Claro';
+        if (btn) btn.title = 'Tema Claro ativo. Clique para alternar para o Modo Escuro';
       } else {
         document.documentElement.removeAttribute('data-theme');
-        const icon = document.getElementById('themeToggleIcon');
-        const text = document.getElementById('themeToggleText');
-        if (icon) icon.textContent = '☀️';
-        if (text) text.textContent = 'Modo Claro';
+        if (icon) icon.textContent = '🌙';
+        if (text) text.textContent = 'Tema Escuro';
+        if (btn) btn.title = 'Tema Escuro ativo. Clique para alternar para o Modo Claro';
       }
       localStorage.setItem('atrium_theme', theme);
     },
     toggleTheme() {
       const nextTheme = this.currentTheme === 'light' ? 'dark' : 'light';
       this.setTheme(nextTheme);
-      this.toast(`Tema alterado para Modo ${nextTheme === 'light' ? 'Claro' : 'Escuro'}.`, 'success');
+      this.toast(`Tema alternado para Modo ${nextTheme === 'light' ? 'Claro' : 'Escuro'}.`, 'success');
     },
     bindNavigation() {
       document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => this.switchView(button.dataset.view)));
@@ -915,6 +927,10 @@ ${id.lawyerOab} - ${id.officeName}`;
         this.inboxSort = event.target.value;
         this.renderInbox();
       });
+      byId('inboxCutoffSelect')?.addEventListener('change', event => {
+        this.inboxCutoff = event.target.value;
+        this.renderInbox();
+      });
       document.querySelectorAll('.list-head-sort').forEach(btn => {
         btn.addEventListener('click', () => {
           const col = btn.dataset.inboxSortCol;
@@ -937,6 +953,25 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (this.configurationSection === 'users') this.loadAuthUsers().then(() => this.renderConfiguration());
         else this.renderConfiguration();
       });
+
+      // Alertas & Auditoria
+      byId('auditFilters')?.addEventListener('click', event => {
+        const button = event.target.closest('button[data-audit-filter]'); if (!button) return;
+        this.auditFilter = button.dataset.auditFilter;
+        byId('auditFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
+        this.renderAudit(this.auditFilter, byId('auditSearch')?.value);
+      });
+      byId('auditSearch')?.addEventListener('input', () => this.renderAudit(this.auditFilter, byId('auditSearch').value));
+      byId('btnExportAuditLog')?.addEventListener('click', () => this.exportJson(Store.state.audit, `atrium-auditoria-${isoDate()}.json`));
+      byId('btnClearAuditLog')?.addEventListener('click', () => {
+        if (confirm('Deseja realmente limpar o histórico de auditoria local?')) {
+          Store.state.audit = [];
+          Store.audit('Auditoria limpa', 'Histórico de eventos resetado pelo usuário');
+          this.renderAudit();
+          this.toast('Histórico de auditoria reiniciado.', 'success');
+        }
+      });
+
       byId('globalSearch')?.addEventListener('input', event => this.globalSearch(event.target.value));
       byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
       byId('jsonImportInput')?.addEventListener('change', event => this.importJson(event.target.files[0]));
@@ -985,7 +1020,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('calendarConfigBackdrop')?.addEventListener('click', event => { if (event.target === byId('calendarConfigBackdrop')) this.closeCalendarConfigModal(); });
       byId('calendarConfigForm')?.addEventListener('submit', event => this.handleCalendarConfigSubmit(event));
 
-      // Assistente IA (Google Gemini)
+      // Assistente IA (Google Gemini) & Codex Legal Skills
       byId('btnOpenGeminiKeyModal')?.addEventListener('click', () => this.openGeminiKeyModal());
       byId('geminiKeyClose')?.addEventListener('click', () => this.closeGeminiKeyModal());
       byId('geminiKeyCancel')?.addEventListener('click', () => this.closeGeminiKeyModal());
@@ -999,6 +1034,35 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (event.key === 'Enter' && !event.shiftKey) {
           event.preventDefault();
           byId('aiChatForm').requestSubmit();
+        }
+      });
+
+      // Codex Legal Skills Selector
+      const skillSelect = byId('codexSkillSelect');
+      const skillDesc = byId('codexSkillDescription');
+      const updateSkillDesc = () => {
+        const skills = window.CODEX_LEGAL_SKILLS || [];
+        const sel = skillSelect?.value;
+        const current = skills.find(s => s.id === sel);
+        if (skillDesc && current) {
+          skillDesc.textContent = `${current.title}: ${current.description}`;
+        }
+      };
+      if (skillSelect) {
+        skillSelect.addEventListener('change', updateSkillDesc);
+        updateSkillDesc();
+      }
+      byId('btnApplyCodexSkill')?.addEventListener('click', () => {
+        const skills = window.CODEX_LEGAL_SKILLS || [];
+        const sel = skillSelect?.value;
+        const current = skills.find(s => s.id === sel);
+        if (current) {
+          const input = byId('aiChatInput');
+          if (input) {
+            input.value = `[$${current.id}]\n${current.instructions.slice(0, 450)}...\n\n[INSTRUÇÃO DO USUÁRIO]: `;
+            input.focus();
+          }
+          this.toast(`Skill "${current.name}" carregada no prompt.`, 'success');
         }
       });
 
@@ -1748,8 +1812,21 @@ ${id.lawyerOab} - ${id.officeName}`;
     filteredIntimations() {
       const filter = this.inboxFilter;
       const sort = this.inboxSort || 'date-desc';
+      const cutoff = this.inboxCutoff || 'today';
+      const todayStr = isoDate();
 
       let items = Store.state.intimations.filter(item => {
+        const pubDate = (item.publishedAt || '').slice(0, 10);
+        if (cutoff === 'today' && pubDate && pubDate < todayStr) return false;
+        if (cutoff === '7days' && pubDate) {
+          const d7 = new Date(); d7.setDate(d7.getDate() - 7);
+          if (pubDate < d7.toISOString().slice(0, 10)) return false;
+        }
+        if (cutoff === '30days' && pubDate) {
+          const d30 = new Date(); d30.setDate(d30.getDate() - 30);
+          if (pubDate < d30.toISOString().slice(0, 10)) return false;
+        }
+
         if (filter === 'pendentes') return item.status !== 'prazo' && item.status !== 'tarefa' && item.status !== 'arquivada';
         if (filter === 'prazo') return item.status === 'prazo' || item.status === 'tarefa';
         if (filter === 'all') return true;
@@ -2570,10 +2647,63 @@ ${id.lawyerOab} - ${id.officeName}`;
         const source = Store.state.sources.find(item => item.id === row.dataset.sourceId); if (source) this.openSourceModal(source);
       }));
     },
-    renderAudit() {
+    renderAudit(filter = 'all', query = '') {
       const list = document.getElementById('auditList');
+      const badge = document.getElementById('auditCountBadge');
       if (!list) return;
-      list.innerHTML = Store.state.audit.map(item => `<div class="audit-item"><time>${formatDateTime(item.at)}</time><div><strong>${escapeHtml(item.action)}</strong><small>${escapeHtml(item.detail)}</small></div><small>${escapeHtml(item.actor)}</small></div>`).join('');
+
+      this.auditFilter = filter || this.auditFilter || 'all';
+      this.auditQuery = query !== undefined ? query : (this.auditQuery || '');
+
+      let events = Store.state.audit || [];
+      const q = String(this.auditQuery || '').toLowerCase().trim();
+      if (q) {
+        events = events.filter(e => String(e.action || '').toLowerCase().includes(q) || String(e.detail || '').toLowerCase().includes(q) || String(e.actor || '').toLowerCase().includes(q));
+      }
+      if (this.auditFilter && this.auditFilter !== 'all') {
+        events = events.filter(e => {
+          const a = String(e.action || '').toLowerCase();
+          const d = String(e.detail || '').toLowerCase();
+          if (this.auditFilter === 'security') return a.includes('auth') || a.includes('login') || a.includes('senha') || a.includes('2fa') || a.includes('totp') || a.includes('chave') || a.includes('sessão');
+          if (this.auditFilter === 'sync') return a.includes('sincroniz') || a.includes('colet') || a.includes('djen') || a.includes('datajud') || a.includes('import');
+          if (this.auditFilter === 'task') return a.includes('tarefa') || a.includes('prazo') || a.includes('kanban');
+          if (this.auditFilter === 'process') return a.includes('processo') || a.includes('caso') || a.includes('cliente');
+          return true;
+        });
+      }
+
+      if (badge) badge.textContent = `${events.length} evento${events.length === 1 ? '' : 's'}`;
+
+      if (!events.length) {
+        list.innerHTML = `<div class="empty-detail" style="padding:32px 16px;text-align:center;"><span>✦</span><h3>Nenhum evento registrado</h3><p>Não há eventos de auditoria para os filtros selecionados.</p></div>`;
+        return;
+      }
+
+      list.innerHTML = `
+        <div class="responsive-table">
+          <table class="sortable-table">
+            <thead>
+              <tr>
+                <th style="width:170px;">Data e Hora</th>
+                <th style="width:140px;">Usuário / Agente</th>
+                <th>Ação Executada</th>
+                <th>Detalhes do Evento</th>
+                <th style="width:100px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${events.map(item => `
+                <tr>
+                  <td><time style="font-size:12px;color:var(--muted);">${formatDateTime(item.at)}</time></td>
+                  <td><strong style="font-size:12.5px;">${escapeHtml(item.actor || 'Sistema')}</strong></td>
+                  <td><span class="gold-pill" style="font-size:11px;">${escapeHtml(item.action)}</span></td>
+                  <td><span style="font-size:12.5px;color:var(--text);">${escapeHtml(item.detail || '')}</span></td>
+                  <td><span class="status-chip connected" style="font-size:10.5px;">Registrado</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
     },
     initials(value) { return String(value).trim().split(/\s+/).slice(0,2).map(part => part[0]).join('').toUpperCase(); },
     globalSearch(query) {

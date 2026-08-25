@@ -15,7 +15,8 @@ export async function collectDjen(portal, config, target, options = {}) {
     throw new Error('O monitoramento DJEN aceita somente o endpoint oficial do CNJ.');
   }
 
-  const { start, end } = saoPauloDateWindow(Number(portal.lookbackDays || 2));
+  const cutoff = portal.cutoffDate || options.cutoffDate || null;
+  const { start, end } = saoPauloDateWindow(Number(portal.lookbackDays || 2), cutoff);
   const result = await fetchPages({ endpoint, variant: number, uf, start, end, portal, fetchImpl, sleep });
 
   const unique = [...new Map(result.items.map(item => [String(item.id), item])).values()];
@@ -186,9 +187,12 @@ function htmlToText(value) {
 
 function normalizeText(value) { return String(value || '').replace(/\s+/g, ' ').trim(); }
 
-function saoPauloDateWindow(days) {
-  const safeDays = Math.min(30, Math.max(1, Number.isFinite(days) ? Math.trunc(days) : 2));
+function saoPauloDateWindow(days, cutoffDate) {
   const end = dateInSaoPaulo(new Date());
+  if (cutoffDate && typeof cutoffDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(cutoffDate)) {
+    return { start: cutoffDate > end ? end : cutoffDate, end };
+  }
+  const safeDays = Math.min(30, Math.max(1, Number.isFinite(days) ? Math.trunc(days) : 2));
   const startDate = new Date(`${end}T12:00:00-03:00`);
   startDate.setDate(startDate.getDate() - (safeDays - 1));
   return { start: dateInSaoPaulo(startDate), end };

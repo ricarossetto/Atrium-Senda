@@ -99,6 +99,7 @@ try {
   await page.locator('[name="points"]').fill('90');
   await page.locator('[name="phase"]').fill('Judicial');
   await page.locator('#modalForm button[type="submit"]').click();
+  await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   const configRow = page.locator('#configurationList [data-config-index]', { hasText: 'TAREFA EDITÁVEL DO TESTE' });
   await configRow.waitFor(); await configRow.locator('.config-row-info').click();
   await page.locator('#modalBackdrop:not(.hidden)').waitFor();
