@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
 import { SecurityManager, generateTotp } from '../lib/security.mjs';
 import { EmailService } from '../lib/email/email-service.mjs';
 import { postJson, startTestServer } from './helpers.mjs';
@@ -14,7 +15,7 @@ console.log('  ATRIUM — SUÍTE DE TESTES: MOTOR SMTP E ENVIO DE PUBLICAÇÃO')
 console.log('===============================================================\n');
 
 // 1. Testes Unitários do EmailService com Mock Transporter
-console.log('[1/4] Testando EmailService isolado (criptografia, sanitização, XSS e templates)...');
+console.log('[1/5] Testando EmailService isolado (criptografia, sanitização, XSS e templates)...');
 
 const mockSentMessages = [];
 const mockTransporter = {
@@ -236,7 +237,7 @@ try {
 }
 
 // 2. Testes de Integração HTTP via Servidor Real (Autenticação, RBAC e CSRF)
-console.log('\n[2/4] Testando endpoints HTTP de e-mail com autenticação e CSRF...');
+console.log('\n[2/5] Testando endpoints HTTP de e-mail com autenticação e CSRF...');
 
 const server = await startTestServer();
 const adminPassword = 'Senha-Segura-2026!';
@@ -335,7 +336,7 @@ try {
   console.log('✓ Autenticação e CSRF validados.');
 
   // 3. Testes de Controle de Acesso Baseado em Função (RBAC)
-  console.log('\n[3/4] Testando autorização de e-mail por perfil (Admin vs Colaborador)...');
+  console.log('\n[3/5] Testando autorização de e-mail por perfil (Admin vs Colaborador)...');
 
   // COLABORADOR: GET status deve ser PERMITIDO (status higienizado)
   res = await fetch(`${server.baseUrl}/api/integrations/email/status`, { headers: { Cookie: collabCookie } });
@@ -402,7 +403,7 @@ try {
   console.log('✓ Controle de acesso administrativo (Admin vs Colaborador) 100% verificado.');
 
   // 4. Testes de Envio Manual de Publicação por E-mail (Fluxo Completo no Servidor)
-  console.log('\n[4/4] Testando fluxo de envio de publicação por e-mail no servidor real...');
+  console.log('\n[4/5] Testando fluxo de envio de publicação por e-mail no servidor real...');
 
   // Adicionar uma publicação judicial legítima ao estado persistido
   res = await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: adminCookie } });
@@ -490,6 +491,137 @@ try {
   }
 
   console.log('✓ Envio manual de publicação por e-mail 100% verificado no servidor real.');
+
+  // 5. Testes E2E no DOM Real via Playwright (Master Admin vs Admin vs Collaborator)
+  console.log('\n[5/5] Testando visibilidade do botão e abertura de modal no DOM real via Playwright...');
+
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+
+  try {
+    // 5.1 MASTER ADMIN (role: master_admin):
+    // Realiza login com a conta 'admin'
+    await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
+    await page.locator('#authLoginForm.active').waitFor();
+    await page.locator('#authLoginForm [name="username"]').fill('admin');
+    await page.locator('#authLoginForm [name="password"]').fill(adminPassword);
+    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(setupData.manualSecret));
+    await page.locator('#authLoginForm button[type="submit"]').click();
+    await page.locator('#appShell:not(.hidden)').waitFor();
+
+    // Desativa tour guiado no DOM do teste
+    await page.evaluate(() => {
+      localStorage.setItem('jurisflow_tour_seen', 'true');
+      localStorage.setItem('atrium_tour_seen', 'true');
+      window.KellerCentral?.App?.closeGuidedTour?.();
+      document.getElementById('guidedTourBackdrop')?.classList.add('hidden');
+    });
+
+    // Abrir aba Publicações & DJEN
+    await page.locator('button[data-view="inbox"]').click();
+    await page.locator('#view-inbox.active').waitFor();
+
+    // Clicar na publicação de teste
+    const pubRowMaster = page.locator(`.inbox-row[data-intimation-id="${canonicalTestPublication.id}"]`);
+    await pubRowMaster.waitFor();
+    await pubRowMaster.click();
+
+    // Validar que o botão [ ✉️ Enviar por e-mail ] EXISTE e ESTÁ VISÍVEL para Master Admin
+    const emailBtnMaster = page.locator('#intimationDetail [data-detail-action="send-email"]');
+    assert.equal(await emailBtnMaster.count(), 1, 'Botão de enviar por e-mail não foi renderizado para master_admin!');
+    assert(await emailBtnMaster.isVisible(), 'Botão de enviar por e-mail não está visível para master_admin!');
+
+    // Clicar no botão e verificar abertura do modal
+    await emailBtnMaster.click();
+    const emailModal = page.locator('#publicationEmailBackdrop');
+    await emailModal.waitFor({ state: 'visible' });
+    assert.equal(await emailModal.isVisible(), true, 'Modal de envio de publicação não abriu ao clicar!');
+    assert.equal(await page.locator('#publicationEmailIdInput').inputValue(), canonicalTestPublication.id, 'ID no modal incorreto.');
+
+    // Fechar modal pelo botão Cancelar
+    await page.locator('#publicationEmailCancel').click();
+    await emailModal.waitFor({ state: 'hidden' });
+
+    // 5.2 ADMIN (role: admin):
+    // Cadastrar e ativar um admin secundário
+    const admin2Password = 'Admin-Secundario-2026!';
+    const regRes = await postJson(`${server.baseUrl}/api/auth/register`, {
+      username: 'admin2',
+      displayName: 'Admin Secundário',
+      email: 'admin2@escritorio.adv.br',
+      password: admin2Password
+    });
+    const reg2Data = await regRes.json();
+    await postJson(`${server.baseUrl}/api/auth/register/verify`, {
+      setupToken: reg2Data.setupToken,
+      code: generateTotp(reg2Data.manualSecret)
+    });
+
+    // Master Admin aprova admin2 e define papel como 'admin'
+    const usersListRes = await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: adminCookie } });
+    const allUsers = (await usersListRes.json()).users;
+    const admin2User = allUsers.find(u => u.username === 'admin2');
+    assert(admin2User, 'admin2 não encontrado na lista de usuários.');
+
+    await postJson(`${server.baseUrl}/api/auth/users/manage`, {
+      userId: admin2User.id,
+      status: 'active',
+      role: 'admin'
+    }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+
+    // Logout do Master Admin
+    await page.evaluate(() => window.KellerAuth?.logout());
+    await page.locator('#authLoginForm.active').waitFor();
+
+    // Login do Admin Secundário
+    await page.locator('#authLoginForm [name="username"]').fill('admin2');
+    await page.locator('#authLoginForm [name="password"]').fill(admin2Password);
+    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(reg2Data.manualSecret));
+    await page.locator('#authLoginForm button[type="submit"]').click();
+    await page.locator('#appShell:not(.hidden)').waitFor();
+
+    // Abrir aba Publicações e detalhe
+    await page.locator('button[data-view="inbox"]').click();
+    await page.locator('#view-inbox.active').waitFor();
+    await page.locator(`.inbox-row[data-intimation-id="${canonicalTestPublication.id}"]`).click();
+
+    // Validar que o botão EXISTE e ESTÁ VISÍVEL para Admin
+    const emailBtnAdmin = page.locator('#intimationDetail [data-detail-action="send-email"]');
+    assert.equal(await emailBtnAdmin.count(), 1, 'Botão de enviar por e-mail não foi renderizado para admin!');
+    assert(await emailBtnAdmin.isVisible(), 'Botão de enviar por e-mail não está visível para admin!');
+
+    // Clicar e verificar abertura do modal
+    await emailBtnAdmin.click();
+    await emailModal.waitFor({ state: 'visible' });
+    await page.locator('#publicationEmailClose').click();
+    await emailModal.waitFor({ state: 'hidden' });
+
+    // 5.3 COLLABORATOR (role: collaborator):
+    // Logout do Admin
+    await page.evaluate(() => window.KellerAuth?.logout());
+    await page.locator('#authLoginForm.active').waitFor();
+
+    // Login do Colaborador
+    await page.locator('#authLoginForm [name="username"]').fill('colaborador');
+    await page.locator('#authLoginForm [name="password"]').fill(collaboratorPassword);
+    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(regData.manualSecret));
+    await page.locator('#authLoginForm button[type="submit"]').click();
+    await page.locator('#appShell:not(.hidden)').waitFor();
+
+    // Abrir aba Publicações e detalhe
+    await page.locator('button[data-view="inbox"]').click();
+    await page.locator('#view-inbox.active').waitFor();
+    await page.locator(`.inbox-row[data-intimation-id="${canonicalTestPublication.id}"]`).click();
+
+    // Validar que o botão NÃO EXISTE no DOM para Colaborador
+    const emailBtnCollab = page.locator('#intimationDetail [data-detail-action="send-email"]');
+    assert.equal(await emailBtnCollab.count(), 0, 'Botão de enviar por e-mail foi renderizado indevidamente para colaborador!');
+
+    console.log('✓ Visibilidade no DOM e abertura de modal (Master Admin, Admin, Collaborator) 100% validados.');
+  } finally {
+    await browser.close();
+  }
 } finally {
   await server.stop();
 }

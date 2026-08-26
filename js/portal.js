@@ -2322,7 +2322,8 @@ ${id.lawyerOab} - ${id.officeName}`;
       const dLeft = daysUntil(fatalDate);
       const isUrgent = Boolean(item.urgent || item.priority === 'urgente');
       const isImportant = Boolean(item.important);
-      const isPrivileged = window.KellerAuth?.user?.role === 'master_admin' || window.KellerAuth?.user?.role === 'admin';
+      const currentUser = window.KellerAuth?.currentUser;
+      const isPrivileged = currentUser?.role === 'master_admin' || currentUser?.role === 'admin';
       const emailActionBtn = isPrivileged
         ? `<button class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail" title="Enviar publicação por e-mail">✉️ Enviar por e-mail</button>`
         : '';
@@ -4146,7 +4147,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (!backdrop) return;
       const recipientInput = document.getElementById('emailTestRecipientInput');
       if (recipientInput && !recipientInput.value) {
-        recipientInput.value = window.KellerAuth?.user?.email || document.getElementById('emailFromAddressInput')?.value || '';
+        recipientInput.value = window.KellerAuth?.currentUser?.email || document.getElementById('emailFromAddressInput')?.value || '';
       }
       backdrop.classList.remove('hidden');
     },
