@@ -1633,7 +1633,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       const activeCutoffIntimations = this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []);
       const newIntimations = activeCutoffIntimations.filter(item => item.status === 'nova').length;
       const deadlines = Store.state.tasks.filter(task => !TERMINAL_STATUSES.includes(task.status) && daysUntil(task.deadline) >= 0 && daysUntil(task.deadline) <= 7).length;
-      const activeTasks = Store.state.tasks.filter(task => !TERMINAL_STATUSES.includes(task.status)).length;
+      const activeProcesses = (Store.state.processes || []).filter(process => process.monitoring !== 'inactive').length;
       const activeSources = Store.state.sources.filter(source => source.status === 'ok').length;
       const mInbox = document.getElementById('metricInbox');
       const mDead = document.getElementById('metricDeadlines');
@@ -1643,7 +1643,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       const notifDot = document.getElementById('notificationDot');
       if (mInbox) mInbox.textContent = newIntimations;
       if (mDead) mDead.textContent = deadlines;
-      if (mTasks) mTasks.textContent = activeTasks;
+      if (mTasks) mTasks.textContent = activeProcesses;
       if (mSources) mSources.textContent = `${activeSources}/${Store.state.sources.length}`;
       if (inBadge) {
         inBadge.textContent = newIntimations;
