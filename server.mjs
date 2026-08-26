@@ -1156,6 +1156,16 @@ function assertAuthenticated(req, requireCsrf = false) {
   if (requireCsrf) security.requireCsrf(req, session);
   return session;
 }
+function isPrivilegedRole(role) {
+  return role === 'master_admin' || role === 'admin';
+}
+function assertAdmin(req, requireCsrf = false, customMessage = 'Você não possui permissão para administrar a integração de e-mail.') {
+  const session = assertAuthenticated(req, requireCsrf);
+  if (!isPrivilegedRole(session.role)) {
+    throw Object.assign(new Error(customMessage), { statusCode: 403 });
+  }
+  return session;
+}
 function remoteAddress(req) { return req.socket.remoteAddress || ''; }
 
 async function serveStatic(req, res) {
@@ -1562,7 +1572,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/integrations/email/configure') {
-      const session = assertAuthenticated(req, true);
+      const session = assertAdmin(req, true, 'Você não possui permissão para administrar a integração de e-mail.');
       const body = await readJson(req, 100_000);
       const status = await emailService.configure(body);
       await appendServerAudit('Configuração de e-mail atualizada', `Host: ${status.host}:${status.port} (${status.userMasked})`, session.displayName || session.username);
@@ -1570,7 +1580,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/integrations/email/test') {
-      const session = assertAuthenticated(req, true);
+      const session = assertAdmin(req, true, 'Você não possui permissão para administrar a integração de e-mail.');
       const body = await readJson(req, 100_000);
       try {
         const result = await emailService.sendTestEmail(body);

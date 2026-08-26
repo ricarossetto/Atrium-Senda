@@ -14,7 +14,7 @@ console.log('  ATRIUM — SUÍTE DE TESTES: MOTOR SMTP E E-MAIL SEGURO');
 console.log('===============================================================\n');
 
 // 1. Testes Unitários do EmailService com Mock Transporter
-console.log('[1/2] Testando EmailService isolado (criptografia, validação e sanitização)...');
+console.log('[1/3] Testando EmailService isolado (criptografia, validação e sanitização)...');
 
 const mockSentMessages = [];
 const mockTransporter = {
@@ -149,11 +149,12 @@ try {
   await rm(unitTestDir, { recursive: true, force: true });
 }
 
-// 2. Testes de Integração HTTP via Servidor Real
-console.log('\n[2/2] Testando endpoints HTTP de e-mail com autenticação e CSRF...');
+// 2. Testes de Integração HTTP via Servidor Real (Autenticação, RBAC e CSRF)
+console.log('\n[2/3] Testando endpoints HTTP de e-mail com autenticação e CSRF...');
 
 const server = await startTestServer();
 const adminPassword = 'Senha-Segura-2026!';
+const collaboratorPassword = 'Colaborador-2026!';
 
 try {
   // Testes sem autenticação (deve retornar 401)
@@ -166,22 +167,23 @@ try {
   res = await postJson(`${server.baseUrl}/api/integrations/email/test`, { recipient: 'test@test.com' });
   assert.equal(res.status, 401, 'Test de e-mail acessível sem autenticação!');
 
-  // Setup do Administrador
+  // Setup do Administrador Principal (Master Admin)
   res = await postJson(`${server.baseUrl}/api/auth/setup`, { username: 'admin', displayName: 'Admin Titular', password: adminPassword });
   const setupData = await res.json();
   res = await postJson(`${server.baseUrl}/api/auth/setup/verify`, { setupToken: setupData.setupToken, code: generateTotp(setupData.manualSecret) });
   const verified = await res.json();
-  const cookie = res.headers.get('set-cookie').split(';')[0];
-  const csrf = verified.csrfToken;
+  const adminCookie = res.headers.get('set-cookie').split(';')[0];
+  const adminCsrf = verified.csrfToken;
 
-  // Status inicial autenticado
-  res = await fetch(`${server.baseUrl}/api/integrations/email/status`, { headers: { Cookie: cookie } });
+  // Status inicial autenticado (Admin)
+  res = await fetch(`${server.baseUrl}/api/integrations/email/status`, { headers: { Cookie: adminCookie } });
   assert.equal(res.status, 200, 'Status autenticado falhou.');
   let statusBody = await res.json();
   assert.equal(statusBody.ok, true);
   assert.equal(statusBody.status.configured, false);
+  assert.equal(statusBody.status.password, undefined, 'A senha apareceu no status público!');
 
-  // Tentativa de POST sem CSRF (deve retornar 403)
+  // Tentativa de POST pelo Admin sem CSRF (deve retornar 403)
   res = await postJson(`${server.baseUrl}/api/integrations/email/configure`, {
     host: 'smtp.teste.com',
     port: 465,
@@ -189,15 +191,92 @@ try {
     user: 'admin@teste.com',
     password: 'AppPassword123!',
     fromAddress: 'admin@teste.com'
-  }, { Cookie: cookie });
+  }, { Cookie: adminCookie });
   assert.equal(res.status, 403, 'POST de configuração foi aceito sem token CSRF!');
 
   res = await postJson(`${server.baseUrl}/api/integrations/email/test`, {
     recipient: 'destino@teste.com'
-  }, { Cookie: cookie });
+  }, { Cookie: adminCookie });
   assert.equal(res.status, 403, 'POST de teste de e-mail foi aceito sem token CSRF!');
 
-  // Teste de validação de campos inválidos com CSRF
+  // Cadastro e Aprovação de um Colaborador
+  res = await postJson(`${server.baseUrl}/api/auth/register`, {
+    username: 'colaborador',
+    displayName: 'Pessoa Colaboradora',
+    email: 'colaborador@escritorio.adv.br',
+    password: collaboratorPassword
+  });
+  const regData = await res.json();
+  res = await postJson(`${server.baseUrl}/api/auth/register/verify`, {
+    setupToken: regData.setupToken,
+    code: generateTotp(regData.manualSecret)
+  });
+  assert.equal(res.status, 200, 'Registro de colaborador falhou.');
+
+  // Admin aprova o colaborador
+  res = await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: adminCookie } });
+  const usersList = (await res.json()).users;
+  const collabUser = usersList.find(u => u.username === 'colaborador');
+  assert(collabUser, 'Colaborador não encontrado na lista.');
+
+  res = await postJson(`${server.baseUrl}/api/auth/users/manage`, {
+    userId: collabUser.id,
+    status: 'active'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 200, 'Aprovação de colaborador falhou.');
+
+  // Login do Colaborador
+  res = await postJson(`${server.baseUrl}/api/auth/login`, {
+    username: 'colaborador',
+    password: collaboratorPassword,
+    code: generateTotp(regData.manualSecret)
+  });
+  assert.equal(res.status, 200, 'Login do colaborador falhou.');
+  const collabLogin = await res.json();
+  const collabCookie = res.headers.get('set-cookie').split(';')[0];
+  const collabCsrf = collabLogin.csrfToken;
+  assert.equal(collabLogin.user.role, 'collaborator', 'Role do colaborador deveria ser collaborator.');
+
+  console.log('✓ Autenticação e CSRF validados.');
+
+  // 3. Testes de Controle de Acesso Baseado em Função (RBAC)
+  console.log('\n[3/3] Testando autorização de e-mail por perfil (Admin vs Colaborador)...');
+
+  // COLABORADOR: GET status deve ser PERMITIDO (status higienizado)
+  res = await fetch(`${server.baseUrl}/api/integrations/email/status`, { headers: { Cookie: collabCookie } });
+  assert.equal(res.status, 200, 'Colaborador deveria conseguir consultar status higienizado de e-mail.');
+  const collabStatus = await res.json();
+  assert.equal(collabStatus.ok, true);
+  assert.equal(collabStatus.status.password, undefined, 'A senha apareceu na consulta do colaborador!');
+
+  // COLABORADOR: POST configure + CSRF deve ser BLOQUEADO com 403
+  res = await postJson(`${server.baseUrl}/api/integrations/email/configure`, {
+    host: 'smtp.hacker.com',
+    port: 587,
+    secure: false,
+    user: 'colaborador@escritorio.adv.br',
+    password: 'Tentativa-Nao-Autorizada',
+    fromAddress: 'colaborador@escritorio.adv.br'
+  }, { Cookie: collabCookie, 'X-CSRF-Token': collabCsrf });
+  assert.equal(res.status, 403, 'Colaborador conseguiu chamar POST /api/integrations/email/configure!');
+  const collabConfigErr = await res.json();
+  assert(
+    collabConfigErr.message.includes('não possui permissão') || collabConfigErr.message.includes('administrar'),
+    'Mensagem de 403 do colaborador incorreta.'
+  );
+
+  // COLABORADOR: POST test + CSRF deve ser BLOQUEADO com 403
+  res = await postJson(`${server.baseUrl}/api/integrations/email/test`, {
+    recipient: 'qualquer@destino.com'
+  }, { Cookie: collabCookie, 'X-CSRF-Token': collabCsrf });
+  assert.equal(res.status, 403, 'Colaborador conseguiu chamar POST /api/integrations/email/test!');
+  const collabTestErr = await res.json();
+  assert(
+    collabTestErr.message.includes('não possui permissão') || collabTestErr.message.includes('administrar'),
+    'Mensagem de 403 do teste do colaborador incorreta.'
+  );
+
+  // ADMIN: POST com parâmetros inválidos é autorizado pelo RBAC e chega na validação (400)
   res = await postJson(`${server.baseUrl}/api/integrations/email/configure`, {
     host: 'smtp.teste.com',
     port: 465,
@@ -205,19 +284,28 @@ try {
     user: 'admin@teste.com',
     password: 'AppPassword123!',
     fromAddress: 'endereco-invalido'
-  }, { Cookie: cookie, 'X-CSRF-Token': csrf });
-  assert.equal(res.status, 400, 'Aceitou e-mail de remetente inválido.');
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 400, 'Admin deveria ter acesso autorizado e passar pela validação de formato.');
 
   res = await postJson(`${server.baseUrl}/api/integrations/email/test`, {
     recipient: 'destinatario-invalido'
-  }, { Cookie: cookie, 'X-CSRF-Token': csrf });
-  assert.equal(res.status, 400, 'Aceitou e-mail de destinatário inválido.');
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 400, 'Admin deveria ter acesso autorizado e passar pela validação de formato.');
 
-  console.log('✓ Endpoints HTTP de e-mail 100% validados com autenticação e CSRF.');
+  // Validação do Audit Log: garantir ausência de senhas
+  res = await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: adminCookie } });
+  const appStateData = await res.json();
+  const auditEntries = appStateData.state?.audit || [];
+  for (const entry of auditEntries) {
+    assert(!entry.detail?.includes('AppPassword123!'), 'A senha SMTP vazou no audit log!');
+    assert(!entry.detail?.includes('Segredo-Ultra-Secreto'), 'A senha SMTP vazou no audit log!');
+  }
+
+  console.log('✓ Controle de acesso administrativo (Admin vs Colaborador) 100% verificado.');
 } finally {
   await server.stop();
 }
 
 console.log('\n===============================================================');
-console.log('  SUÍTE DE TESTES DE E-MAIL (SMTP): 100% APROVADA!');
+console.log('  SUÍTE DE TESTES DE E-MAIL (SMTP & RBAC): 100% APROVADA!');
 console.log('===============================================================\n');
