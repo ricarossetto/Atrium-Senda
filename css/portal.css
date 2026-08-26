@@ -763,6 +763,7 @@ td small { color: var(--muted); }
 .legal-logo { color: #fff; background: #db3b31; }
 .certificate-logo { color: #111; background: linear-gradient(145deg,var(--gold-soft),var(--gold)); }
 .cnj-logo { color: #fff; background: #286b52; }
+.email-logo { color: #fff; background: #2563eb; }
 .integration-copy h3 { margin: 12px 0 7px; font: 600 20px var(--font-serif); }
 .integration-copy p { min-height: 48px; margin: 0 0 15px; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .architecture-card { display: flex; align-items: center; justify-content: space-between; gap: 25px; margin-top: 16px; padding: 24px; }

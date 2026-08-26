@@ -882,6 +882,23 @@
             </div>
             <div class="integration-copy"><span class="status-chip connected">Pronto</span><h3>Importador de Planilhas</h3><p>Importe processos, contatos e clientes em lote via planilhas XLSX ou relatórios XLS do eproc.</p><button class="button gold" data-view-link="importer">Abrir importador</button></div>
           </article>
+          <article class="integration-card card">
+            <div class="integration-logo email-logo">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <path d="M22 6l-10 7L2 6"/>
+              </svg>
+            </div>
+            <div class="integration-copy">
+              <span class="status-chip muted" id="emailIntegrationStatus">Não configurado</span>
+              <h3>E-mail &amp; Notificações</h3>
+              <p id="emailIntegrationDetail">Configure o transporte SMTP seguro para envio de comunicações e boletins do escritório.</p>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="button gold" id="btnConfigureEmail">Configurar SMTP</button>
+                <button class="button ghost hidden" id="btnTestEmail">Enviar e-mail de teste</button>
+              </div>
+            </div>
+          </article>
         </div>
         <article class="card architecture-card">
           <div><p class="eyebrow">Arquitetura protegida</p><h3>Separação entre interface e credenciais</h3></div>
@@ -1905,6 +1922,90 @@
         <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
           <button class="button ghost" id="financialEntryCancel" type="button">Cancelar</button>
           <button class="button gold" type="submit">Salvar Lançamento</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <!-- Modal de Configuração SMTP (E-mail Seguro) -->
+  <div class="modal-backdrop hidden" id="emailConfigBackdrop">
+    <section class="modal card email-config-modal" role="dialog" aria-modal="true" aria-labelledby="emailConfigTitle" style="max-width:580px; width:92%;">
+      <header class="modal-header">
+        <div>
+          <p class="eyebrow">Integrações &amp; Infraestrutura</p>
+          <h3 id="emailConfigTitle">Configuração de Servidor SMTP</h3>
+        </div>
+        <button class="icon-button" id="emailConfigClose" type="button" aria-label="Fechar modal">✕</button>
+      </header>
+      <form id="emailConfigForm">
+        <div class="modal-body form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:20px;">
+          <label style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Servidor SMTP (Host) *</span>
+            <input id="emailHostInput" name="host" type="text" placeholder="ex: smtp.gmail.com ou mail.escritorio.adv.br" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Porta *</span>
+            <input id="emailPortInput" name="port" type="number" min="1" max="65535" value="465" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+          </label>
+          <label style="display:flex; flex-direction:column; justify-content:center; gap:6px; padding-top:14px;">
+            <span style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--ivory); cursor:pointer;">
+              <input id="emailSecureInput" name="secure" type="checkbox" checked style="width:16px; height:16px; cursor:pointer;">
+              Conexão Segura (SSL / TLS)
+            </span>
+            <small style="color:var(--muted); font-size:10px;">Porta 465 (SSL) ou 587 (STARTTLS)</small>
+          </label>
+          <label style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Usuário / E-mail de Autenticação *</span>
+            <input id="emailUserInput" name="user" type="text" placeholder="ex: contato@escritorio.adv.br" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+          </label>
+          <label style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Senha SMTP / Senha de Aplicativo *</span>
+            <input id="emailPasswordInput" name="password" type="password" placeholder="Digite a senha SMTP ou senha de app" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+            <small style="color:var(--muted); font-size:10.5px;">A senha é criptografada em repouso (AES-256-GCM) e nunca é exposta na interface.</small>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Nome do Remetente</span>
+            <input id="emailFromNameInput" name="fromName" type="text" placeholder="ex: Atrium Senda Advocacia" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">E-mail do Remetente (From) *</span>
+            <input id="emailFromAddressInput" name="fromAddress" type="email" placeholder="ex: contato@escritorio.adv.br" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+          </label>
+          <div style="grid-column:span 2; background:var(--panel-soft); padding:12px; border-radius:8px; border:1px solid var(--line); font-size:11.5px; color:var(--muted); line-height:1.5;">
+            🔒 <strong>Zero Trust:</strong> Ao salvar, o ATRIUM testará imediatamente o handshake com o servidor SMTP antes de ativar a integração.
+          </div>
+        </div>
+        <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
+          <button class="button ghost" id="emailConfigCancel" type="button">Cancelar</button>
+          <button class="button gold" id="emailConfigSubmitBtn" type="submit">Salvar e Validar Conexão</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <!-- Modal de Teste de Envio de E-mail -->
+  <div class="modal-backdrop hidden" id="emailTestBackdrop">
+    <section class="modal card email-test-modal" role="dialog" aria-modal="true" aria-labelledby="emailTestTitle" style="max-width:480px; width:92%;">
+      <header class="modal-header">
+        <div>
+          <p class="eyebrow">Teste de Comunicação</p>
+          <h3 id="emailTestTitle">Enviar E-mail de Teste</h3>
+        </div>
+        <button class="icon-button" id="emailTestClose" type="button" aria-label="Fechar modal">✕</button>
+      </header>
+      <form id="emailTestForm">
+        <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+          <p style="margin:0; font-size:12.5px; color:var(--muted); line-height:1.5;">
+            Um e-mail de verificação com a assinatura do escritório será enviado imediatamente utilizando a conta SMTP configurada.
+          </p>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">E-mail do Destinatário *</span>
+            <input id="emailTestRecipientInput" name="recipient" type="email" placeholder="ex: seuemail@escritorio.adv.br" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+          </label>
+        </div>
+        <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
+          <button class="button ghost" id="emailTestCancel" type="button">Cancelar</button>
+          <button class="button gold" id="emailTestSubmitBtn" type="submit">🚀 Enviar Teste Agora</button>
         </footer>
       </form>
     </section>

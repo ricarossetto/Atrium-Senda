@@ -11,6 +11,7 @@ import { SecurityManager, verifyTotp } from './lib/security.mjs';
 import { buildRelevantOfficeContext } from './lib/ai-context.mjs';
 import { collectDjen } from './collector/adapters/djen.mjs';
 import { JudicialOrchestrator } from './lib/judicial/orchestrator.mjs';
+import { EmailService } from './lib/email/email-service.mjs';
 import { runA1Sandbox } from './lib/judicial/a1-sandbox.mjs';
 import { runTotpSandbox, parseTotpUri } from './lib/judicial/totp-sandbox.mjs';
 import {
@@ -78,6 +79,12 @@ const judicialOrchestrator = new JudicialOrchestrator({
   portalsConfig: defaultPortalsList
 });
 await judicialOrchestrator.init();
+
+const emailService = new EmailService({
+  dataDirectory: DATA_DIR,
+  securityManager: security
+});
+await emailService.init();
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -336,6 +343,24 @@ async function saveAiApiKey(apiKey) {
     updatedAt: new Date().toISOString()
   };
   await writeFile(AI_SECRETS_FILE, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
+}
+
+async function appendServerAudit(action, detail, actor = 'Administrador') {
+  try {
+    const envelope = await readAppStateEnvelope();
+    if (!envelope?.state) return;
+    const state = envelope.state;
+    if (!Array.isArray(state.audit)) state.audit = [];
+    state.audit.unshift({
+      id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
+      at: new Date().toISOString(),
+      action,
+      detail: String(detail || '').slice(0, 500),
+      actor: String(actor || 'Sistema').slice(0, 100)
+    });
+    state.audit = state.audit.slice(0, 1000);
+    await saveAppStateDirect(state, envelope.revision || null);
+  } catch {}
 }
 
 async function readPublicAppStateEnvelope() {
@@ -1527,6 +1552,34 @@ const server = http.createServer(async (req, res) => {
       const currentEnv = await readAppStateEnvelope();
       const saved = await saveAppStateDirect(migrationResult.state, currentEnv.revision || null);
       return json(res, 200, { ok: true, message: 'Estado legado importado e migrado com sucesso!', ...saved });
+    }
+
+    // Integração de E-mail (SMTP Seguro)
+    if (req.method === 'GET' && url.pathname === '/api/integrations/email/status') {
+      assertAuthenticated(req);
+      const status = await emailService.getStatus();
+      return json(res, 200, { ok: true, status });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/integrations/email/configure') {
+      const session = assertAuthenticated(req, true);
+      const body = await readJson(req, 100_000);
+      const status = await emailService.configure(body);
+      await appendServerAudit('Configuração de e-mail atualizada', `Host: ${status.host}:${status.port} (${status.userMasked})`, session.displayName || session.username);
+      return json(res, 200, { ok: true, message: 'Configuração SMTP validada e salva com sucesso!', status });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/integrations/email/test') {
+      const session = assertAuthenticated(req, true);
+      const body = await readJson(req, 100_000);
+      try {
+        const result = await emailService.sendTestEmail(body);
+        await appendServerAudit('Teste de e-mail enviado', `Destinatário: ${result.recipient}`, session.displayName || session.username);
+        return json(res, 200, result);
+      } catch (testErr) {
+        await appendServerAudit('Teste de e-mail falhou', `Destinatário: ${body?.recipient || 'não informado'} — ${testErr.message}`, session.displayName || session.username);
+        throw testErr;
+      }
     }
 
     // Disparo de Publicações por Email (Estilo Astrea)

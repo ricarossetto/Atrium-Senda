@@ -1369,6 +1369,14 @@ ${id.lawyerOab} - ${id.officeName}`;
       });
       byId('btnNewPrompt')?.addEventListener('click', () => this.openNewPromptModal());
       byId('btnNewLink')?.addEventListener('click', () => this.openNewLinkModal());
+      byId('btnConfigureEmail')?.addEventListener('click', () => this.openEmailConfigModal());
+      byId('emailConfigClose')?.addEventListener('click', () => this.closeEmailConfigModal());
+      byId('emailConfigCancel')?.addEventListener('click', () => this.closeEmailConfigModal());
+      byId('emailConfigForm')?.addEventListener('submit', (e) => this.submitEmailConfig(e));
+      byId('btnTestEmail')?.addEventListener('click', () => this.openEmailTestModal());
+      byId('emailTestClose')?.addEventListener('click', () => this.closeEmailTestModal());
+      byId('emailTestCancel')?.addEventListener('click', () => this.closeEmailTestModal());
+      byId('emailTestForm')?.addEventListener('submit', (e) => this.submitEmailTest(e));
       byId('promptsGrid')?.addEventListener('click', (e) => {
         const copyBtn = e.target.closest('[data-copy-prompt]');
         if (copyBtn) {
@@ -1480,7 +1488,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (view === 'links') this.renderLinks();
       if (view === 'configuration') this.renderConfiguration();
       if (view === 'audit') this.renderAudit();
-      if (view === 'integrations') this.refreshJudicialStatus();
+      if (view === 'integrations') { this.refreshJudicialStatus(); this.loadEmailStatus(); }
       document.getElementById('sidebar').classList.remove('open');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
@@ -4001,6 +4009,170 @@ ${id.lawyerOab} - ${id.officeName}`;
         launchBtn.textContent = status.interactiveCollectorRunning ? 'Primeira conexão em andamento…' : 'Abrir primeira conexão';
       }
     },
+    async loadEmailStatus() {
+      const chip = document.getElementById('emailIntegrationStatus');
+      const detail = document.getElementById('emailIntegrationDetail');
+      const btnConfig = document.getElementById('btnConfigureEmail');
+      const btnTest = document.getElementById('btnTestEmail');
+
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/integrations/email/status');
+        const data = await response.json().catch(() => ({}));
+        const status = data?.status || {};
+
+        if (status.configured) {
+          if (chip) {
+            chip.textContent = 'SMTP conectado';
+            chip.className = 'status-chip connected';
+          }
+          if (detail) {
+            const lastTestInfo = status.lastTestAt
+              ? ` · Último teste: ${new Date(status.lastTestAt).toLocaleDateString('pt-BR')} (${status.lastTestStatus === 'success' ? 'Sucesso' : 'Falhou'})`
+              : '';
+            detail.textContent = `Host: ${status.host}:${status.port} · Remetente: ${status.fromAddress}${lastTestInfo}`;
+          }
+          if (btnConfig) btnConfig.textContent = 'Reconfigurar SMTP';
+          if (btnTest) btnTest.classList.remove('hidden');
+        } else {
+          if (chip) {
+            chip.textContent = 'Não configurado';
+            chip.className = 'status-chip muted';
+          }
+          if (detail) {
+            detail.textContent = 'Configure o transporte SMTP seguro para envio de comunicações e boletins do escritório.';
+          }
+          if (btnConfig) btnConfig.textContent = 'Configurar SMTP';
+          if (btnTest) btnTest.classList.add('hidden');
+        }
+        return status;
+      } catch (err) {
+        if (chip) {
+          chip.textContent = 'Erro ao verificar';
+          chip.className = 'status-chip danger';
+        }
+      }
+    },
+    async openEmailConfigModal() {
+      const backdrop = document.getElementById('emailConfigBackdrop');
+      if (!backdrop) return;
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/integrations/email/status');
+        const data = await response.json().catch(() => ({}));
+        const status = data?.status || {};
+
+        const hostInput = document.getElementById('emailHostInput');
+        const portInput = document.getElementById('emailPortInput');
+        const secureInput = document.getElementById('emailSecureInput');
+        const userInput = document.getElementById('emailUserInput');
+        const passwordInput = document.getElementById('emailPasswordInput');
+        const fromNameInput = document.getElementById('emailFromNameInput');
+        const fromAddressInput = document.getElementById('emailFromAddressInput');
+
+        if (hostInput) hostInput.value = status.host || '';
+        if (portInput) portInput.value = status.port || 465;
+        if (secureInput) secureInput.checked = status.secure !== false;
+        if (userInput) userInput.value = status.userMasked || '';
+        if (passwordInput) {
+          passwordInput.value = '';
+          passwordInput.placeholder = status.configured ? 'Deixe em branco para manter a senha atual' : 'Digite a senha SMTP ou senha de app';
+          passwordInput.required = !status.configured;
+        }
+        if (fromNameInput) fromNameInput.value = status.fromName || Store.state.settings?.officeName || '';
+        if (fromAddressInput) fromAddressInput.value = status.fromAddress || '';
+
+        backdrop.classList.remove('hidden');
+      } catch (err) {
+        this.toast('Não foi possível carregar a configuração SMTP.', 'error');
+      }
+    },
+    closeEmailConfigModal() {
+      document.getElementById('emailConfigBackdrop')?.classList.add('hidden');
+    },
+    async submitEmailConfig(event) {
+      if (event) event.preventDefault();
+      const submitBtn = document.getElementById('emailConfigSubmitBtn');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Validando conexão SMTP...';
+      }
+
+      const host = document.getElementById('emailHostInput')?.value?.trim();
+      const port = Number(document.getElementById('emailPortInput')?.value);
+      const secure = document.getElementById('emailSecureInput')?.checked;
+      const user = document.getElementById('emailUserInput')?.value?.trim();
+      const password = document.getElementById('emailPasswordInput')?.value;
+      const fromName = document.getElementById('emailFromNameInput')?.value?.trim();
+      const fromAddress = document.getElementById('emailFromAddressInput')?.value?.trim();
+
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/integrations/email/configure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ host, port, secure, user, password, fromName, fromAddress })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Falha ao salvar configuração SMTP.');
+
+        this.closeEmailConfigModal();
+        this.toast('Configuração SMTP validada e salva com sucesso!', 'success');
+        await this.loadEmailStatus();
+      } catch (err) {
+        this.toast(err.message || 'Erro ao conectar ao servidor SMTP.', 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Salvar e Validar Conexão';
+        }
+      }
+    },
+    openEmailTestModal() {
+      const backdrop = document.getElementById('emailTestBackdrop');
+      if (!backdrop) return;
+      const recipientInput = document.getElementById('emailTestRecipientInput');
+      if (recipientInput && !recipientInput.value) {
+        recipientInput.value = window.KellerAuth?.user?.email || document.getElementById('emailFromAddressInput')?.value || '';
+      }
+      backdrop.classList.remove('hidden');
+    },
+    closeEmailTestModal() {
+      document.getElementById('emailTestBackdrop')?.classList.add('hidden');
+    },
+    async submitEmailTest(event) {
+      if (event) event.preventDefault();
+      const submitBtn = document.getElementById('emailTestSubmitBtn');
+      const recipient = document.getElementById('emailTestRecipientInput')?.value?.trim();
+
+      if (!recipient) {
+        this.toast('Informe o e-mail de destino do teste.', 'warning');
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Enviando e-mail de teste...';
+      }
+
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/integrations/email/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ recipient })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Falha no envio de teste.');
+
+        this.closeEmailTestModal();
+        this.toast(payload.message || `E-mail de teste enviado para ${recipient}!`, 'success');
+        await this.loadEmailStatus();
+      } catch (err) {
+        this.toast(err.message || 'Erro ao enviar e-mail de teste.', 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '🚀 Enviar Teste Agora';
+        }
+      }
+    },
     async testA1Sandbox() {
       const btn = document.getElementById('btnRunA1Sandbox');
       if (btn) { btn.disabled = true; btn.textContent = '🧪 Executando Sandbox...'; }
@@ -5087,6 +5259,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         Store.save(); this.renderSources(); this.renderMonitoring(); this.renderMetrics();
         document.getElementById('forgetTrustedDeviceButton').classList.toggle('hidden', !window.KellerAuth.trustedDevice);
         await this.refreshJudicialStatus(false);
+        await this.loadEmailStatus();
       } catch { /* O modo estático continua disponível. */ }
     },
     async syncWhenIdle() {

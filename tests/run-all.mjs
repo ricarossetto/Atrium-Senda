@@ -37,8 +37,10 @@ const checkFiles = [
   'tests/judicial_sandbox.mjs',
   'tests/smoke.mjs',
   'lib/state-migrations.mjs',
+  'lib/email/email-service.mjs',
   'scripts/state-doctor.mjs',
-  'tests/state_migrations.mjs'
+  'tests/state_migrations.mjs',
+  'tests/email_service.mjs'
 ];
 
 const testSuites = [
@@ -53,6 +55,7 @@ const testSuites = [
   { name: 'Diagnóstico do Sistema, Backups Criptografados & Feedback Beta', file: 'tests/system_diagnostic.mjs' },
   { name: 'Arquitetura Judicial, A1 Sandbox (mTLS) & TOTP Sandbox', file: 'tests/judicial_sandbox.mjs' },
   { name: 'Higiene de Estado, Migrações Determinísticas & Recuperação', file: 'tests/state_migrations.mjs' },
+  { name: 'Motor SMTP e Entrega Segura de E-mail de Teste', file: 'tests/email_service.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 
