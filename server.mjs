@@ -11,7 +11,7 @@ import { SecurityManager, verifyTotp } from './lib/security.mjs';
 import { buildRelevantOfficeContext } from './lib/ai-context.mjs';
 import { collectDjen } from './collector/adapters/djen.mjs';
 import { JudicialOrchestrator } from './lib/judicial/orchestrator.mjs';
-import { EmailService } from './lib/email/email-service.mjs';
+import { EmailService, maskEmail } from './lib/email/email-service.mjs';
 import { runA1Sandbox } from './lib/judicial/a1-sandbox.mjs';
 import { runTotpSandbox, parseTotpUri } from './lib/judicial/totp-sandbox.mjs';
 import {
@@ -1589,6 +1589,46 @@ const server = http.createServer(async (req, res) => {
       } catch (testErr) {
         await appendServerAudit('Teste de e-mail falhou', `Destinatário: ${body?.recipient || 'não informado'} — ${testErr.message}`, session.displayName || session.username);
         throw testErr;
+      }
+    }
+
+    // Envio manual de publicação/intimação capturada por e-mail
+    if (req.method === 'POST' && (url.pathname === '/api/intimations/email' || url.pathname === '/api/publications/email')) {
+      const session = assertAdmin(req, true, 'Você não possui permissão para enviar publicações por e-mail.');
+      const body = await readJson(req, 100_000);
+
+      const publicationId = String(body.publicationId || body.id || '').trim();
+      const recipient = String(body.recipient || '').trim();
+
+      if (!publicationId) {
+        throw Object.assign(new Error('ID da publicação não informado.'), { statusCode: 400 });
+      }
+      if (!recipient) {
+        throw Object.assign(new Error('Informe o endereço de e-mail do destinatário.'), { statusCode: 400 });
+      }
+
+      const envelope = await readAppStateEnvelope();
+      const state = envelope.state || {};
+      const intimations = Array.isArray(state.intimations) ? state.intimations : [];
+      const canonicalPublication = intimations.find(item => item && (item.id === publicationId || item.externalId === publicationId));
+
+      if (!canonicalPublication) {
+        throw Object.assign(new Error('Publicação não localizada no acervo do escritório.'), { statusCode: 404 });
+      }
+
+      const maskedRecipient = maskEmail(recipient);
+      const procRef = canonicalPublication.process || canonicalPublication.number || canonicalPublication.id;
+
+      try {
+        const result = await emailService.sendPublicationEmail({
+          recipient,
+          publication: canonicalPublication
+        });
+        await appendServerAudit('Publicação enviada por e-mail', `Publicação ${procRef} enviada para ${maskedRecipient}`, session.displayName || session.username);
+        return json(res, 200, result);
+      } catch (err) {
+        await appendServerAudit('Falha ao enviar publicação por e-mail', `Publicação ${procRef} para ${maskedRecipient} — ${err.message}`, session.displayName || session.username);
+        throw err;
       }
     }
 

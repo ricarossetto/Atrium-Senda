@@ -950,6 +950,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           this.closeCalendarConfigModal();
           this.closeGeminiKeyModal();
           this.closeFinancialEntryModal();
+          this.closePublicationEmailModal();
           this.closeGlobalSearchPalette();
         }
         if (event.key === 'Enter') {
@@ -1377,6 +1378,12 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('emailTestClose')?.addEventListener('click', () => this.closeEmailTestModal());
       byId('emailTestCancel')?.addEventListener('click', () => this.closeEmailTestModal());
       byId('emailTestForm')?.addEventListener('submit', (e) => this.submitEmailTest(e));
+      byId('publicationEmailClose')?.addEventListener('click', () => this.closePublicationEmailModal());
+      byId('publicationEmailCancel')?.addEventListener('click', () => this.closePublicationEmailModal());
+      byId('publicationEmailBackdrop')?.addEventListener('click', (e) => {
+        if (e.target === byId('publicationEmailBackdrop')) this.closePublicationEmailModal();
+      });
+      byId('publicationEmailForm')?.addEventListener('submit', (e) => this.submitPublicationEmail(e));
       byId('promptsGrid')?.addEventListener('click', (e) => {
         const copyBtn = e.target.closest('[data-copy-prompt]');
         if (copyBtn) {
@@ -2315,6 +2322,10 @@ ${id.lawyerOab} - ${id.officeName}`;
       const dLeft = daysUntil(fatalDate);
       const isUrgent = Boolean(item.urgent || item.priority === 'urgente');
       const isImportant = Boolean(item.important);
+      const isPrivileged = window.KellerAuth?.user?.role === 'master_admin' || window.KellerAuth?.user?.role === 'admin';
+      const emailActionBtn = isPrivileged
+        ? `<button class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail" title="Enviar publicação por e-mail">✉️ Enviar por e-mail</button>`
+        : '';
 
       container.innerHTML = `
         <div class="detail-header">
@@ -2343,10 +2354,15 @@ ${id.lawyerOab} - ${id.officeName}`;
           <button class="button ghost" data-detail-action="triagem">Marcar em triagem</button>
           <button class="button ghost" data-detail-action="prazo">Confirmar triagem</button>
           <button class="button ghost" data-detail-action="task">Criar tarefa (${act.days}d)</button>
+          ${emailActionBtn}
         </div>`;
       container.querySelectorAll('[data-detail-action]').forEach(button => button.addEventListener('click', () => this.handleIntimationAction(item, button.dataset.detailAction)));
     },
     handleIntimationAction(item, action) {
+      if (action === 'send-email') {
+        this.openPublicationEmailModal(item);
+        return;
+      }
       if (action === 'ai-analyze') {
         this.switchView('assistant');
         setTimeout(() => {
@@ -4170,6 +4186,76 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.textContent = '🚀 Enviar Teste Agora';
+        }
+      }
+    },
+    openPublicationEmailModal(item) {
+      if (!item) return;
+      const backdrop = document.getElementById('publicationEmailBackdrop');
+      if (!backdrop) return;
+      const idInput = document.getElementById('publicationEmailIdInput');
+      const refEl = document.getElementById('publicationEmailRef');
+      const recipientInput = document.getElementById('publicationEmailRecipientInput');
+      const submitBtn = document.getElementById('publicationEmailSubmitBtn');
+
+      if (idInput) idInput.value = item.id;
+      if (refEl) refEl.textContent = item.process || item.number || item.title || 'Publicação judicial';
+      if (recipientInput) recipientInput.value = '';
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar';
+      }
+
+      backdrop.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      if (recipientInput) setTimeout(() => recipientInput.focus(), 50);
+    },
+    closePublicationEmailModal() {
+      const backdrop = document.getElementById('publicationEmailBackdrop');
+      if (backdrop) backdrop.classList.add('hidden');
+      if (document.getElementById('modalBackdrop')?.classList.contains('hidden')) {
+        document.body.style.overflow = '';
+      }
+    },
+    async submitPublicationEmail(event) {
+      if (event) event.preventDefault();
+      const publicationId = document.getElementById('publicationEmailIdInput')?.value;
+      const recipient = document.getElementById('publicationEmailRecipientInput')?.value?.trim();
+      const submitBtn = document.getElementById('publicationEmailSubmitBtn');
+
+      if (!publicationId) {
+        this.toast('Identificador da publicação não encontrado.', 'error');
+        return;
+      }
+      if (!recipient) {
+        this.toast('Informe o endereço de e-mail do destinatário.', 'warning');
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Enviando...';
+      }
+
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/intimations/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ publicationId, recipient })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.message || 'Falha ao enviar publicação por e-mail.');
+        }
+
+        this.closePublicationEmailModal();
+        this.toast('Publicação enviada por e-mail.', 'success');
+      } catch (err) {
+        this.toast(err.message || 'Falha ao enviar publicação.', 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Enviar';
         }
       }
     },

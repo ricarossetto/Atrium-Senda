@@ -2011,6 +2011,36 @@
     </section>
   </div>
 
+  <!-- Modal de Envio Manual de Publicação por E-mail -->
+  <div class="modal-backdrop hidden" id="publicationEmailBackdrop">
+    <section class="modal card publication-email-modal" role="dialog" aria-modal="true" aria-labelledby="publicationEmailTitle" style="max-width:480px; width:92%;">
+      <header class="modal-header">
+        <div>
+          <p class="eyebrow">Comunicação Judicial</p>
+          <h3 id="publicationEmailTitle">Enviar publicação por e-mail</h3>
+        </div>
+        <button class="icon-button" id="publicationEmailClose" type="button" aria-label="Fechar modal">✕</button>
+      </header>
+      <form id="publicationEmailForm">
+        <input type="hidden" id="publicationEmailIdInput" name="publicationId">
+        <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+          <div style="background:var(--panel-soft); padding:12px; border-radius:8px; border:1px solid var(--line); font-size:12.5px; color:var(--muted); line-height:1.5;">
+            <p style="margin:0 0 4px; font-weight:600; color:var(--ivory);">Publicação:</p>
+            <p style="margin:0; font-family:monospace; color:var(--gold); font-size:13px;" id="publicationEmailRef">5000000-00.2026.4.04.0000</p>
+          </div>
+          <label style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Destinatário *</span>
+            <input id="publicationEmailRecipientInput" name="recipient" type="email" placeholder="ex: cliente@dominio.com.br ou colega@escritorio.adv.br" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+          </label>
+        </div>
+        <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
+          <button class="button ghost" id="publicationEmailCancel" type="button">Cancelar</button>
+          <button class="button gold" id="publicationEmailSubmitBtn" type="submit">Enviar</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
   <input class="hidden" type="file" id="jsonImportInput" accept="application/json,.json">
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
   <script src="js/jsqr.js?v=5.0.0-beta" defer></script>

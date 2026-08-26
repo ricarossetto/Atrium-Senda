@@ -18,7 +18,7 @@ export async function startTestServer() {
     env: {
       ...process.env,
       PORT: String(port), HOST: '127.0.0.1', KELLER_DATA_DIR: dataDirectory, JURISFLOW_DATA_DIR: dataDirectory,
-      KELLER_SKIP_COLLECTOR_ENV: 'true',
+      KELLER_SKIP_COLLECTOR_ENV: 'true', ATRIUM_MOCK_SMTP: 'true',
       AUTH_SESSION_SECRET: randomBytes(48).toString('base64url'), AUTH_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
       COLLECTOR_INGEST_TOKEN: collectorToken, COOKIE_SECURE: 'false', ADVBOX_WEBCAL_URL: ''
     },
