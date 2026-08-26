@@ -13,6 +13,17 @@ import { collectDjen } from './collector/adapters/djen.mjs';
 import { JudicialOrchestrator } from './lib/judicial/orchestrator.mjs';
 import { runA1Sandbox } from './lib/judicial/a1-sandbox.mjs';
 import { runTotpSandbox, parseTotpUri } from './lib/judicial/totp-sandbox.mjs';
+import {
+  CURRENT_SCHEMA_VERSION,
+  CURRENT_DATA_VERSION,
+  CURRENT_RUNTIME_SCHEMA_VERSION,
+  CURRENT_UI_SCHEMA_VERSION,
+  runStateMigrations,
+  validateAppState,
+  applySafeDefaults,
+  FutureSchemaError,
+  CorruptedStateError
+} from './lib/state-migrations.mjs';
 import ExcelJS from 'exceljs';
 import * as xlsxModule from 'xlsx';
 const XLSX = xlsxModule.default || xlsxModule;
@@ -24,11 +35,27 @@ await loadEnv(ENV_FILE);
 await ensureLocalSecrets(ENV_FILE);
 if (String(process.env.KELLER_SKIP_COLLECTOR_ENV).toLowerCase() !== 'true') await loadEnv(COLLECTOR_ENV_FILE);
 
+let APP_VERSION = '2.0.0-beta';
+try {
+  const pkg = JSON.parse(await readFile(path.join(ROOT, 'package.json'), 'utf8'));
+  if (pkg.version) APP_VERSION = pkg.version;
+} catch {}
+
+let BUILD_ID = 'dev';
+try {
+  const headContent = await readFile(path.join(ROOT, '.git', 'HEAD'), 'utf8');
+  BUILD_ID = headContent.trim().slice(0, 7);
+} catch {
+  BUILD_ID = randomBytes(4).toString('hex');
+}
+
 const DATA_DIR = path.resolve(process.env.JURISFLOW_DATA_DIR || process.env.KELLER_DATA_DIR || path.join(ROOT, 'data'));
 const RUNTIME_FILE = path.join(DATA_DIR, 'runtime.json');
 const APP_STATE_FILE = path.join(DATA_DIR, 'app-state.json');
 const INTEGRATIONS_FILE = path.join(DATA_DIR, 'judicial-integrations.json');
 const AI_SECRETS_FILE = path.join(DATA_DIR, 'ai-secrets.json');
+const MIGRATIONS_DIR = path.join(DATA_DIR, 'migrations', 'pre-migration');
+const RECOVERY_DIR = path.join(DATA_DIR, 'recovery');
 const DEFAULT_PORTALS_FILE = existsSync(path.join(ROOT, 'collector', 'portals.json')) ? path.join(ROOT, 'collector', 'portals.json') : path.join(ROOT, 'collector', 'portals.example.json');
 const PORTALS_FILE = path.resolve(process.env.JURISFLOW_PORTALS_FILE || process.env.KELLER_PORTALS_FILE || DEFAULT_PORTALS_FILE);
 const COLLECTOR_AGENT_FILE = path.join(ROOT, 'collector', 'agent.mjs');
@@ -115,8 +142,117 @@ async function saveRuntime(payload) {
   };
   await writeFile(RUNTIME_FILE, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
 }
-async function readAppStateEnvelope() {
+let serverStateStatus = 'INITIALIZING';
+let stateRecoveryDetails = null;
+let lastMigrationAt = null;
+
+async function createPreMigrationBackup(rawEncryptedEnvelope) {
+  await mkdir(MIGRATIONS_DIR, { recursive: true });
+  const filename = `pre-migration-${new Date().toISOString().replace(/[:.]/g, '-')}.atrium-backup`;
+  const targetPath = path.join(MIGRATIONS_DIR, filename);
+  await writeFile(targetPath, JSON.stringify(rawEncryptedEnvelope, null, 2), { encoding: 'utf8', mode: 0o600 });
+  return targetPath;
+}
+
+async function quarantineCorruptState(rawContent, reason) {
+  await mkdir(RECOVERY_DIR, { recursive: true });
+  const filename = `app-state-corrupt-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+  const targetPath = path.join(RECOVERY_DIR, filename);
+  await writeFile(targetPath, typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent, null, 2), { encoding: 'utf8', mode: 0o600 });
+  return targetPath;
+}
+
+async function initServerState() {
+  if (!existsSync(APP_STATE_FILE)) {
+    serverStateStatus = 'NEW_INSTALL';
+    return { status: 'NEW_INSTALL' };
+  }
+
+  let rawText;
+  let envelope;
   try {
+    rawText = await readFile(APP_STATE_FILE, 'utf8');
+    envelope = JSON.parse(rawText);
+  } catch (err) {
+    const corruptFile = await quarantineCorruptState(rawText || '', 'JSON_PARSE_ERROR');
+    serverStateStatus = 'RECOVERY_REQUIRED';
+    stateRecoveryDetails = { reason: 'ARQUIVO_JSON_CORROMPIDO', file: corruptFile, error: err.message, at: new Date().toISOString() };
+    return { status: serverStateStatus, details: stateRecoveryDetails };
+  }
+
+  let decryptedState;
+  try {
+    if (!envelope || !envelope.encrypted) throw new Error('Envelope criptografado inválido ou sem payload.');
+    decryptedState = JSON.parse(security.decrypt(envelope.encrypted));
+  } catch (err) {
+    const corruptFile = await quarantineCorruptState(rawText, 'DECRYPTION_ERROR');
+    serverStateStatus = 'RECOVERY_REQUIRED';
+    stateRecoveryDetails = { reason: 'FALHA_DESCRIPTOGRAFIA', file: corruptFile, error: err.message, at: new Date().toISOString() };
+    return { status: serverStateStatus, details: stateRecoveryDetails };
+  }
+
+  const foundVersion = Number(decryptedState.schemaVersion ?? decryptedState.version ?? 1);
+
+  if (foundVersion > CURRENT_SCHEMA_VERSION) {
+    serverStateStatus = 'FUTURE_SCHEMA_ERROR';
+    stateRecoveryDetails = {
+      reason: 'FUTURE_SCHEMA',
+      foundVersion,
+      expectedVersion: CURRENT_SCHEMA_VERSION,
+      message: `Estes dados foram criados por uma versão mais nova do ATRIUM (schema ${foundVersion} > ${CURRENT_SCHEMA_VERSION}). Atualize o ATRIUM.`
+    };
+    return { status: serverStateStatus, details: stateRecoveryDetails };
+  }
+
+  if (foundVersion < CURRENT_SCHEMA_VERSION) {
+    try {
+      await createPreMigrationBackup(envelope);
+    } catch (backupErr) {
+      serverStateStatus = 'RECOVERY_REQUIRED';
+      stateRecoveryDetails = { reason: 'PRE_MIGRATION_BACKUP_FAILED', error: backupErr.message, at: new Date().toISOString() };
+      return { status: serverStateStatus, details: stateRecoveryDetails };
+    }
+
+    let migrationResult;
+    try {
+      migrationResult = runStateMigrations(decryptedState, APP_VERSION);
+    } catch (migErr) {
+      const corruptFile = await quarantineCorruptState(rawText, 'MIGRATION_EXECUTION_ERROR');
+      serverStateStatus = 'RECOVERY_REQUIRED';
+      stateRecoveryDetails = { reason: 'MIGRATION_FAILED', file: corruptFile, error: migErr.message, at: new Date().toISOString() };
+      return { status: serverStateStatus, details: stateRecoveryDetails };
+    }
+
+    try {
+      await saveAppStateDirect(migrationResult.state, envelope.revision || envelope.updatedAt || null);
+      lastMigrationAt = migrationResult.state.migratedAt;
+      serverStateStatus = 'READY';
+      return { status: 'READY', migrated: true, fromVersion: migrationResult.fromVersion, toVersion: migrationResult.toVersion };
+    } catch (saveErr) {
+      serverStateStatus = 'RECOVERY_REQUIRED';
+      stateRecoveryDetails = { reason: 'ATOMIC_SAVE_FAILED', error: saveErr.message, at: new Date().toISOString() };
+      return { status: serverStateStatus, details: stateRecoveryDetails };
+    }
+  }
+
+  try {
+    validateAppState(decryptedState, CURRENT_SCHEMA_VERSION);
+    serverStateStatus = 'READY';
+    return { status: 'READY' };
+  } catch (valErr) {
+    const corruptFile = await quarantineCorruptState(rawText, 'VALIDATION_FAILED');
+    serverStateStatus = 'RECOVERY_REQUIRED';
+    stateRecoveryDetails = { reason: 'VALIDATION_FAILED', file: corruptFile, error: valErr.message, at: new Date().toISOString() };
+    return { status: serverStateStatus, details: stateRecoveryDetails };
+  }
+}
+
+async function readAppStateEnvelope() {
+  if (serverStateStatus === 'RECOVERY_REQUIRED' || serverStateStatus === 'FUTURE_SCHEMA_ERROR') {
+    return { state: null, revision: null, status: serverStateStatus, recoveryDetails: stateRecoveryDetails };
+  }
+  try {
+    if (!existsSync(APP_STATE_FILE)) return { state: null, revision: null };
     const envelope = JSON.parse(await readFile(APP_STATE_FILE, 'utf8'));
     return { state: JSON.parse(security.decrypt(envelope.encrypted)), revision: envelope.revision || envelope.updatedAt || null };
   } catch (error) {
@@ -124,22 +260,25 @@ async function readAppStateEnvelope() {
     return { state: null, revision: null };
   }
 }
+
 async function readAppState() { return (await readAppStateEnvelope()).state; }
-async function saveAppState(value, expectedRevision = null) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
-  if (value.contacts === undefined) value.contacts = [];
-  if (value.customPrompts === undefined) value.customPrompts = [];
-  if (value.customLinks === undefined) value.customLinks = [];
-  if (value.settings && typeof value.settings === 'object') delete value.settings.geminiApiKey;
-  for (const key of ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'customPrompts', 'customLinks']) {
-    if (!Array.isArray(value[key])) value[key] = [];
-    if (value[key].length > 10_000) throw Object.assign(new Error(`Coleção inválida: ${key}.`), { statusCode: 400 });
+
+async function saveAppStateDirect(value, expectedRevision = null) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
   }
+
+  value.appVersion = APP_VERSION;
+  value.schemaVersion = CURRENT_SCHEMA_VERSION;
+  value.dataVersion = CURRENT_DATA_VERSION;
+
+  validateAppState(value, CURRENT_SCHEMA_VERSION);
+  value = applySafeDefaults(value);
+
   const current = await readAppStateEnvelope();
   if (current.revision && expectedRevision !== current.revision) {
     throw Object.assign(new Error('Os dados foram atualizados em outra aba ou pelo importador. Recarregue a Central antes de salvar.'), { statusCode: 409 });
   }
-  // Garantir trilha de auditoria imutável (append-only) no backend
   if (current.state?.audit && Array.isArray(current.state.audit)) {
     const mergedAudit = [...(value.audit || [])];
     for (const entry of current.state.audit) {
@@ -150,10 +289,31 @@ async function saveAppState(value, expectedRevision = null) {
     mergedAudit.sort((a, b) => new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime());
     value.audit = mergedAudit.slice(0, 1000);
   }
+
   await mkdir(DATA_DIR, { recursive: true });
-  const envelope = { version: 1, algorithm: 'aes-256-gcm', revision: randomBytes(18).toString('base64url'), encrypted: security.encrypt(JSON.stringify(value)), updatedAt: new Date().toISOString() };
-  await writeFile(APP_STATE_FILE, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
-  return { updatedAt: envelope.updatedAt, revision: envelope.revision };
+  const envelope = {
+    version: 1,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    appVersion: APP_VERSION,
+    algorithm: 'aes-256-gcm',
+    revision: randomBytes(18).toString('base64url'),
+    encrypted: security.encrypt(JSON.stringify(value)),
+    updatedAt: new Date().toISOString()
+  };
+
+  const tmpFile = `${APP_STATE_FILE}.tmp-${randomBytes(6).toString('hex')}`;
+  await writeFile(tmpFile, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
+  await rename(tmpFile, APP_STATE_FILE);
+
+  serverStateStatus = 'READY';
+  return { updatedAt: envelope.updatedAt, revision: envelope.revision, schemaVersion: CURRENT_SCHEMA_VERSION };
+}
+
+async function saveAppState(value, expectedRevision = null) {
+  if (serverStateStatus === 'RECOVERY_REQUIRED') {
+    throw Object.assign(new Error('O sistema está em Modo de Recuperação. Não é permitido sobrescrever dados corrompidos sem restauração prévia.'), { statusCode: 423 });
+  }
+  return saveAppStateDirect(value, expectedRevision);
 }
 
 async function readAiApiKey() {
@@ -179,7 +339,47 @@ async function saveAiApiKey(apiKey) {
 }
 
 async function readPublicAppStateEnvelope() {
+  if (serverStateStatus === 'RECOVERY_REQUIRED') {
+    return {
+      stateStatus: 'RECOVERY_REQUIRED',
+      state: null,
+      revision: null,
+      recoveryDetails: stateRecoveryDetails,
+      message: 'O ATRIUM encontrou um problema ao abrir os dados existentes. Nenhum dado foi sobrescrito.'
+    };
+  }
+  if (serverStateStatus === 'FUTURE_SCHEMA_ERROR') {
+    return {
+      stateStatus: 'FUTURE_SCHEMA_ERROR',
+      state: null,
+      revision: null,
+      recoveryDetails: stateRecoveryDetails,
+      message: stateRecoveryDetails?.message || 'Versão de dados incompatível.'
+    };
+  }
+  if (serverStateStatus === 'NEW_INSTALL') {
+    return {
+      stateStatus: 'NEW_INSTALL',
+      state: null,
+      revision: null,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      appVersion: APP_VERSION,
+      buildId: BUILD_ID
+    };
+  }
+
   let envelope = await readAppStateEnvelope();
+  if (!envelope.state) {
+    return {
+      stateStatus: 'NEW_INSTALL',
+      state: null,
+      revision: null,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      appVersion: APP_VERSION,
+      buildId: BUILD_ID
+    };
+  }
+
   const legacyKey = String(envelope.state?.settings?.geminiApiKey || '').trim();
   if (legacyKey) {
     await saveAiApiKey(legacyKey);
@@ -187,7 +387,14 @@ async function readPublicAppStateEnvelope() {
     const saved = await saveAppState(envelope.state, envelope.revision);
     envelope = { state: envelope.state, revision: saved.revision };
   }
-  return envelope;
+  return {
+    stateStatus: 'READY',
+    state: envelope.state,
+    revision: envelope.revision,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    appVersion: APP_VERSION,
+    buildId: BUILD_ID
+  };
 }
 
 async function readJudicialSecrets() {
@@ -1268,6 +1475,60 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, ...saved });
     }
 
+    if (req.method === 'GET' && url.pathname === '/api/system/state-diagnostics') {
+      assertAuthenticated(req);
+      const profileCount = await judicialOrchestrator.sessionManager.countProfiles();
+      const stateFileExists = existsSync(APP_STATE_FILE);
+      const runtimeFileExists = existsSync(RUNTIME_FILE);
+      return json(res, 200, {
+        appVersion: APP_VERSION,
+        buildId: BUILD_ID,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        expectedSchemaVersion: CURRENT_SCHEMA_VERSION,
+        runtimeSchemaVersion: CURRENT_RUNTIME_SCHEMA_VERSION,
+        uiSchemaVersion: CURRENT_UI_SCHEMA_VERSION,
+        stateStatus: serverStateStatus,
+        stateSource: serverStateStatus === 'NEW_INSTALL' ? 'NEW_INSTALL' : 'SERVER',
+        stateFileExists,
+        stateReadable: serverStateStatus === 'READY',
+        stateValid: serverStateStatus === 'READY',
+        runtimeFileExists,
+        profileCount,
+        lastMigrationAt,
+        recoveryDetails: stateRecoveryDetails
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/system/rebuild-runtime') {
+      assertAuthenticated(req, true);
+      await saveRuntime(emptyRuntime());
+      return json(res, 200, { ok: true, message: 'Dados derivados e runtime reconstruídos com sucesso.' });
+    }
+
+    if (req.method === 'POST' && url.pathname.startsWith('/api/integrations/judicial/portals/') && url.pathname.endsWith('/clear-session')) {
+      const session = assertAuthenticated(req, true);
+      const parts = url.pathname.split('/');
+      const portalId = parts[parts.length - 2];
+      if (!portalId) throw Object.assign(new Error('ID do portal inválido.'), { statusCode: 400 });
+      const result = await judicialOrchestrator.sessionManager.clearPortalSession(session.username, portalId);
+      return json(res, 200, {
+        ok: true,
+        portalId,
+        message: `Sessão do tribunal ${portalId} limpa com sucesso. Certificado A1, senhas e processos foram preservados.`
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/state/import-legacy') {
+      assertAuthenticated(req, true);
+      const body = await readJson(req, 4_000_000);
+      const legacy = body.legacyState;
+      if (!legacy || typeof legacy !== 'object') throw Object.assign(new Error('Estado legado inválido.'), { statusCode: 400 });
+      const migrationResult = runStateMigrations(legacy, APP_VERSION);
+      const currentEnv = await readAppStateEnvelope();
+      const saved = await saveAppStateDirect(migrationResult.state, currentEnv.revision || null);
+      return json(res, 200, { ok: true, message: 'Estado legado importado e migrado com sucesso!', ...saved });
+    }
+
     // Disparo de Publicações por Email (Estilo Astrea)
     if (req.method === 'POST' && url.pathname === '/api/email/publications') {
       assertAuthenticated(req, true);
@@ -1823,6 +2084,9 @@ Diretrizes essenciais:
     json(res, error.statusCode || 500, { message }, headers);
   }
 });
+
+const stateInitResult = await initServerState();
+console.log(`[ATRIUM Persistência]: Estado inicializado com status "${stateInitResult.status}". Schema v${CURRENT_SCHEMA_VERSION}.`);
 
 server.listen(PORT, HOST, () => {
   console.log(`Atrium Senda — Plataforma de Gestão Jurídica Inteligente: http://${HOST}:${PORT}`);

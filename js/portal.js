@@ -640,18 +640,64 @@ ${id.lawyerOab} - ${id.officeName}`;
   const Store = {
     state: null,
     revision: null,
+    stateStatus: null,
+    recoveryDetails: null,
+    serverMeta: null,
     saveTimer: null,
     flushPromise: Promise.resolve(),
     async load() {
       let persisted = null;
+      let serverPayload = null;
       try {
         const response = await window.KellerAuth.secureFetch('/api/state', { headers: { Accept: 'application/json' } });
-        if (response.ok) { const payload = await response.json(); persisted = payload.state; this.revision = payload.revision || null; }
-      } catch { /* usa migração local ou demonstração */ }
-      if (!persisted) {
-        try { persisted = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { /* armazenamento antigo inválido */ }
+        if (response.ok) {
+          serverPayload = await response.json();
+          persisted = serverPayload.state;
+          this.revision = serverPayload.revision || null;
+          this.stateStatus = serverPayload.stateStatus || 'READY';
+          this.serverMeta = { appVersion: serverPayload.appVersion, buildId: serverPayload.buildId, schemaVersion: serverPayload.schemaVersion };
+        }
+      } catch { /* servidor indisponível — modo offline seguro */ }
+
+      if (this.stateStatus === 'RECOVERY_REQUIRED' || this.stateStatus === 'FUTURE_SCHEMA_ERROR') {
+        this.recoveryDetails = serverPayload?.recoveryDetails || null;
+        this.state = deepClone(sampleState);
+        this.state.settings.demoMode = true;
+        this.ensureShape();
+        return;
       }
-      this.state = persisted?.version === 1 ? persisted : deepClone(sampleState);
+
+      if (!persisted && this.stateStatus === 'NEW_INSTALL') {
+        let legacyData = null;
+        try { legacyData = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { /* legado corrompido — ignorar */ }
+        if (legacyData && typeof legacyData === 'object' && (legacyData.version === 1 || Array.isArray(legacyData.processes))) {
+          try {
+            const importResp = await window.KellerAuth.secureFetch('/api/state/import-legacy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ legacyState: legacyData })
+            });
+            if (importResp.ok) {
+              const importResult = await importResp.json();
+              this.revision = importResult.revision || null;
+              localStorage.removeItem(STORAGE_KEY);
+              const freshResp = await window.KellerAuth.secureFetch('/api/state', { headers: { Accept: 'application/json' } });
+              if (freshResp.ok) {
+                const fresh = await freshResp.json();
+                persisted = fresh.state;
+                this.revision = fresh.revision || null;
+                this.stateStatus = 'READY';
+              }
+            }
+          } catch { /* importação falhou — continuar com sampleState */ }
+        }
+      }
+
+      if (!persisted) {
+        this.state = deepClone(sampleState);
+      } else {
+        this.state = persisted;
+      }
       this.ensureShape();
       this.save();
     },
@@ -2766,6 +2812,34 @@ ${id.lawyerOab} - ${id.officeName}`;
                 </ul>
               </div>
             </div>
+
+            <div style="border-top: 1px solid var(--line); padding-top: 20px; margin-top: 8px;">
+              <h4 style="margin: 0 0 12px; font-size: 1rem; color: var(--ivory);">🧹 Higiene de Dados</h4>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
+                  <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">App Version</p>
+                  <p style="margin: 0; font-size: 14px; color: var(--ivory); font-weight: 600;">${escapeHtml(Store.serverMeta?.appVersion || d.app.version || '—')}</p>
+                </div>
+                <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
+                  <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">Build ID</p>
+                  <p style="margin: 0; font-size: 14px; color: var(--ivory); font-family: monospace;">${escapeHtml(Store.serverMeta?.buildId || '—')}</p>
+                </div>
+                <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
+                  <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">Schema Version</p>
+                  <p style="margin: 0; font-size: 14px; color: var(--ivory); font-weight: 600;">v${escapeHtml(String(Store.serverMeta?.schemaVersion || '?'))}</p>
+                </div>
+                <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
+                  <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">Estado</p>
+                  <p style="margin: 0; font-size: 14px; color: ${Store.stateStatus === 'READY' ? 'var(--emerald)' : 'var(--danger)'}; font-weight: 600;">${escapeHtml(Store.stateStatus || 'READY')}</p>
+                </div>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <button type="button" class="button ghost" id="btnClearUiCache" title="Remove apenas caches transitórios do navegador. Seus processos, tarefas e dados jurídicos permanecem intactos.">🧹 Limpar cache da interface</button>
+                <button type="button" class="button ghost" id="btnResetVisualPrefs" title="Reseta tema e layout para o padrão. Nenhum dado jurídico é afetado.">🎨 Resetar preferências visuais</button>
+                <button type="button" class="button ghost" id="btnRebuildRuntime" title="Reconstrói dados derivados e runtime no servidor sem afetar processos ou tarefas.">🔄 Recriar dados derivados</button>
+                <button type="button" class="button ghost" id="btnManagePortalSessions" title="Gerencie sessões de login dos portais judiciais. A1, TOTP e processos são preservados.">🏛️ Gerenciar sessões do tribunal</button>
+              </div>
+            </div>
           </div>
         `;
 
@@ -2774,6 +2848,35 @@ ${id.lawyerOab} - ${id.officeName}`;
         });
         document.getElementById('btnOpenFeedbackModal')?.addEventListener('click', () => {
           this.openFeedbackModal();
+        });
+        document.getElementById('btnClearUiCache')?.addEventListener('click', () => {
+          const uiKeys = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('atrium:cache:')) uiKeys.push(key);
+          }
+          uiKeys.forEach(k => localStorage.removeItem(k));
+          this.toast('Cache da interface limpo com sucesso. Dados jurídicos preservados.', 'success');
+        });
+        document.getElementById('btnResetVisualPrefs')?.addEventListener('click', () => {
+          localStorage.removeItem('atrium_theme');
+          localStorage.removeItem('jurisflow_theme');
+          localStorage.removeItem('atrium_sidebar_collapsed');
+          localStorage.removeItem('atrium_tour_seen');
+          localStorage.removeItem('jurisflow_tour_seen');
+          this.setTheme('dark');
+          this.toast('Preferências visuais resetadas para o padrão. Dados jurídicos preservados.', 'success');
+        });
+        document.getElementById('btnRebuildRuntime')?.addEventListener('click', async () => {
+          try {
+            const resp = await window.KellerAuth.secureFetch('/api/system/rebuild-runtime', { method: 'POST' });
+            const data = await resp.json();
+            this.toast(data.message || 'Runtime reconstruído com sucesso.', 'success');
+          } catch { this.toast('Falha ao reconstruir dados derivados.', 'error'); }
+        });
+        document.getElementById('btnManagePortalSessions')?.addEventListener('click', () => {
+          this.switchView('integrations');
+          this.toast('Abra um portal judicial e use "Limpar sessão local" para resetar a conexão desse tribunal.', 'info');
         });
       } catch (err) {
         container.innerHTML = `<div class="empty-detail"><span style="color:var(--danger)">⚠️</span><h3>Erro ao gerar diagnóstico</h3><p>${escapeHtml(err.message)}</p></div>`;

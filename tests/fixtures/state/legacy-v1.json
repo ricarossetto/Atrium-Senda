@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "terms": [{ "id": "term-1", "name": "Advogado Legado", "registration": "OAB/RS 12345", "active": true, "primary": true }],
+  "sources": [
+    { "id": "djen", "name": "DJEN Antigo", "short": "CNJ", "status": "ok" },
+    { "id": "datajud", "name": "DataJud Antigo", "short": "DJD", "status": "ok" }
+  ],
+  "intimations": [{ "id": "int-1", "title": "Publicação Legada", "status": "nova", "source": "DJEN" }],
+  "tasks": [
+    { "id": "task-1", "title": "Tarefa Legada", "status": "triagem", "priority": "normal" },
+    { "id": "task-2", "title": "Recurso Pendente", "status": "andamento", "priority": "urgente" }
+  ],
+  "processes": [
+    { "id": "proc-1", "number": "0001234-56.2024.8.21.0001", "client": "Cliente Legado", "rpvAmount": 15000, "feeStatus": "pago" },
+    { "id": "proc-2", "number": "0009876-54.2024.4.04.7100", "client": "Outro Cliente", "economicValue": 30000 }
+  ],
+  "contacts": [{ "id": "cont-1", "name": "Cliente Legado", "type": "client" }],
+  "agenda": [{ "id": "ag-1", "title": "Audiência Legada", "date": "2024-06-15", "time": "09:00" }],
+  "audit": [{ "id": "aud-1", "at": "2024-01-01T00:00:00Z", "action": "Sistema inicializado", "actor": "Sistema" }],
+  "settings": {
+    "officeName": "Escritório Legado",
+    "lawyerName": "Dr. Advogado",
+    "geminiApiKey": "AIzaSyLegacyKey123456789",
+    "demoMode": false
+  }
+}

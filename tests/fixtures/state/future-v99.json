@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 99,
+  "dataVersion": 99,
+  "version": 99,
+  "terms": [],
+  "sources": [],
+  "processes": [{ "id": "proc-future", "number": "0000001-00.2030.8.21.0001", "client": "Future Client" }],
+  "tasks": [],
+  "settings": { "officeName": "Future Office" }
+}
