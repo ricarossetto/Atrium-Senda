@@ -34,7 +34,8 @@ const {
   migrate3To4,
   migrate4To5,
   migrate5To6,
-  migrate6To7
+  migrate6To7,
+  migrate7To8
 } = await import(migrationsUrl);
 
 const FIXTURES = path.join(ROOT, 'tests', 'fixtures', 'state');
@@ -338,6 +339,24 @@ test('migrate6To7 initializes configuration catalogs and migrationHistory', () =
   assert.ok(typeof result.configuration === 'object');
   assert.ok(Array.isArray(result.configuration.taskDefinitions));
   assert.ok(Array.isArray(result.migrationHistory));
+});
+
+test('migrate7To8 normalizes publication treatmentStatus and metadata', () => {
+  const input = {
+    schemaVersion: 7,
+    intimations: [
+      { id: 'int-1', title: 'Intimação Nova', status: 'nova', text: 'Texto original' },
+      { id: 'int-2', title: 'Intimação Arquivada', status: 'arquivada', text: 'Texto arquivado' },
+      { id: 'int-3', title: 'Intimação Conferida', status: 'prazo', text: 'Texto conferido' }
+    ]
+  };
+  const result = migrate7To8(input);
+  assert.equal(result.schemaVersion, 8);
+  assert.equal(result.dataVersion, 8);
+  assert.equal(result.intimations[0].treatmentStatus, 'untreated');
+  assert.equal(result.intimations[0].text, 'Texto original');
+  assert.equal(result.intimations[1].treatmentStatus, 'discarded');
+  assert.equal(result.intimations[2].treatmentStatus, 'treated');
 });
 
 // ─────────────────────────────────────────

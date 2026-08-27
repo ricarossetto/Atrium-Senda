@@ -163,11 +163,10 @@ try {
   assert(firstInboxReference.includes('·') && /\d{7}-\d{2}/.test(firstInboxReference), 'A caixa de intimações não exibiu processo e partes na mesma linha.');
   assert(await page.locator('#inboxList .act-chip').count() > 0, 'As tags do classificador de atos não foram renderizadas na caixa de entrada.');
 
-  // Teste: ordenação por prazo e data clicando no cabeçalho
-  await page.locator('button[data-inbox-sort-col="deadline"]').click();
-  assert(await page.locator('#inboxSortIconDeadline').textContent() !== '↕', 'Ordenação por prazo fatal no cabeçalho falhou.');
+  // Teste: ordenação por data clicando no cabeçalho e por controle de atenção
   await page.locator('button[data-inbox-sort-col="date"]').click();
   assert(await page.locator('#inboxSortIconDate').textContent() !== '↕', 'Ordenação por data no cabeçalho falhou.');
+  await page.locator('#inboxSortSelect').selectOption('priority-urgent');
 
   await page.locator('#inboxList button.inbox-row').first().click();
   await page.locator('#intimationDetail .act-chip').waitFor();

@@ -1694,6 +1694,131 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // Tratamento de Publicações / Intimações (Workflow de Triagem)
+    if (
+      (req.method === 'PATCH' || req.method === 'POST') &&
+      ((url.pathname.startsWith('/api/intimations/') && url.pathname.endsWith('/treatment')) ||
+       (url.pathname.startsWith('/api/publications/') && url.pathname.endsWith('/treatment')) ||
+       url.pathname === '/api/intimations/treatment' ||
+       url.pathname === '/api/publications/treatment')
+    ) {
+      const session = assertAuthenticated(req, true);
+      if (session.status === 'pending' || session.status === 'inactive') {
+        throw Object.assign(new Error('Usuário inativo ou com cadastro pendente.'), { statusCode: 403 });
+      }
+
+      const body = await readJson(req, 100_000);
+      let publicationId = '';
+      if (url.pathname.startsWith('/api/intimations/') || url.pathname.startsWith('/api/publications/')) {
+        const parts = url.pathname.split('/');
+        if (parts.length >= 5) {
+          publicationId = decodeURIComponent(parts[3] || '').trim();
+        }
+      }
+      if (!publicationId) {
+        publicationId = String(body.publicationId || body.id || '').trim();
+      }
+      if (!publicationId) {
+        throw Object.assign(new Error('ID da publicação não informado.'), { statusCode: 400 });
+      }
+
+      const action = String(body.action || '').trim();
+      if (!['start_review', 'mark_treated', 'discard', 'reopen', 'restore'].includes(action)) {
+        throw Object.assign(new Error('Ação de tratamento inválida.'), { statusCode: 400 });
+      }
+
+      const envelope = await readAppStateEnvelope();
+      if (body.revision !== undefined && body.revision !== null && envelope.revision !== body.revision) {
+        throw Object.assign(
+          new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'),
+          { statusCode: 409 }
+        );
+      }
+
+      const state = envelope.state || {};
+      if (!Array.isArray(state.intimations)) state.intimations = [];
+      const itemIndex = state.intimations.findIndex(
+        it => it && (it.id === publicationId || it.externalId === publicationId)
+      );
+      if (itemIndex === -1) {
+        throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
+      }
+
+      const item = state.intimations[itemIndex];
+      const actorName = session.displayName || session.username || 'Advogado';
+      const nowIso = new Date().toISOString();
+      const procRef = item.process || item.number || item.title || item.id;
+      let auditLabel = '';
+      let auditDetail = `Processo: ${procRef}`;
+
+      switch (action) {
+        case 'start_review':
+          item.treatmentStatus = 'in_review';
+          item.treatmentStartedAt = nowIso;
+          item.treatmentStartedBy = actorName;
+          auditLabel = 'Análise de publicação iniciada';
+          break;
+
+        case 'mark_treated':
+          item.treatmentStatus = 'treated';
+          item.treatedAt = nowIso;
+          item.treatedBy = actorName;
+          if (body.note) {
+            item.treatmentNote = String(body.note).trim();
+          }
+          auditLabel = 'Publicação marcada como tratada';
+          break;
+
+        case 'discard':
+          item.treatmentStatus = 'discarded';
+          item.discardedAt = nowIso;
+          item.discardedBy = actorName;
+          if (body.note) {
+            item.treatmentNote = String(body.note).trim();
+            auditDetail += ` — Motivo: ${item.treatmentNote}`;
+          }
+          auditLabel = 'Publicação descartada';
+          break;
+
+        case 'reopen':
+          item.treatmentStatus = 'in_review';
+          item.treatmentStartedAt = nowIso;
+          item.treatmentStartedBy = actorName;
+          item.treatedAt = null;
+          item.treatedBy = null;
+          auditLabel = 'Publicação reaberta';
+          break;
+
+        case 'restore':
+          item.treatmentStatus = 'untreated';
+          item.discardedAt = null;
+          item.discardedBy = null;
+          item.treatmentNote = null;
+          auditLabel = 'Publicação restaurada';
+          break;
+      }
+
+      if (!Array.isArray(state.audit)) state.audit = [];
+      state.audit.unshift({
+        id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
+        at: nowIso,
+        action: auditLabel,
+        detail: String(auditDetail || '').slice(0, 500),
+        actor: String(actorName || 'Sistema').slice(0, 100)
+      });
+      state.audit = state.audit.slice(0, 1000);
+
+      const saved = await saveAppStateDirect(state, envelope.revision || null);
+
+      return json(res, 200, {
+        ok: true,
+        action,
+        intimation: item,
+        revision: saved.revision,
+        message: `${auditLabel} com sucesso.`
+      });
+    }
+
     // Disparo de Publicações por Email (Estilo Astrea)
     if (req.method === 'POST' && url.pathname === '/api/email/publications') {
       assertAuthenticated(req, true);

@@ -167,6 +167,27 @@
     return new Intl.DateTimeFormat('pt-BR').format(new Date(year, month - 1, day));
   };
   const formatDateTime = value => value ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : 'Nunca';
+  const isDateToday = dateVal => {
+    if (!dateVal) return false;
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return false;
+    const today = new Date();
+    return d.getFullYear() === today.getFullYear() &&
+           d.getMonth() === today.getMonth() &&
+           d.getDate() === today.getDate();
+  };
+  const formatPublicationAge = dateVal => {
+    if (!dateVal) return 'Data não informada';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return 'Data não informada';
+    const now = new Date();
+    const d1 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return 'Hoje';
+    if (diffDays === 1) return 'Há 1 dia';
+    return `Há ${diffDays} dias`;
+  };
   const uid = prefix => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const ACT_RULES = [
     { regex: /\b(embargos?\s+de\s+declara[cç][aã]o|embargos?\s+declarat[oó]rios?)\b/i, category: 'Embargos de Declaração', days: 5, priority: 'importante', label: 'Embargos (5d)', css: 'embargos' },
@@ -848,10 +869,13 @@ ${id.lawyerOab} - ${id.officeName}`;
     });
   }
 
+  const byId = id => document.getElementById(id);
+
   const App = {
     currentView: 'dashboard',
-    inboxFilter: 'pendentes',
-    inboxSort: 'date-desc',
+    inboxFilter: 'untreated',
+    inboxSort: 'priority-urgent',
+    inboxCutoff: 'all',
     currentTourSlide: 0,
     tempOfficeLogo: null,
     selectedIntimation: null,
@@ -1005,8 +1029,40 @@ ${id.lawyerOab} - ${id.officeName}`;
         const button = event.target.closest('button[data-filter]'); if (!button) return;
         this.inboxFilter = button.dataset.filter;
         byId('inboxFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
+        document.querySelectorAll('#publicationsMetrics .pub-metric-card').forEach(card => card.classList.toggle('active', card.dataset.filter === this.inboxFilter));
         this.renderInbox();
       });
+      byId('publicationsMetrics')?.addEventListener('click', event => {
+        const card = event.target.closest('.pub-metric-card[data-filter]'); if (!card) return;
+        this.inboxFilter = card.dataset.filter;
+        document.querySelectorAll('#publicationsMetrics .pub-metric-card').forEach(c => c.classList.toggle('active', c === card));
+        byId('inboxFilters')?.querySelectorAll('button').forEach(item => item.classList.toggle('active', item.dataset.filter === this.inboxFilter));
+        this.renderInbox();
+      });
+
+      // Modais de Triagem e Tratamento de Publicações
+      byId('discardPublicationClose')?.addEventListener('click', () => this.closeDiscardModal());
+      byId('discardPublicationCancel')?.addEventListener('click', () => this.closeDiscardModal());
+      byId('discardPublicationBackdrop')?.addEventListener('click', event => { if (event.target === byId('discardPublicationBackdrop')) this.closeDiscardModal(); });
+      byId('discardPublicationForm')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const id = byId('discardPublicationIdInput')?.value;
+        const note = byId('discardReasonInput')?.value;
+        this.closeDiscardModal();
+        await this.applyTreatmentAction(id, 'discard', note);
+      });
+
+      byId('treatPublicationClose')?.addEventListener('click', () => this.closeTreatModal());
+      byId('treatPublicationCancel')?.addEventListener('click', () => this.closeTreatModal());
+      byId('treatPublicationBackdrop')?.addEventListener('click', event => { if (event.target === byId('treatPublicationBackdrop')) this.closeTreatModal(); });
+      byId('treatPublicationForm')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const id = byId('treatPublicationIdInput')?.value;
+        const note = byId('treatNoteInput')?.value;
+        this.closeTreatModal();
+        await this.applyTreatmentAction(id, 'mark_treated', note);
+      });
+
       byId('inboxSortSelect')?.addEventListener('change', event => {
         this.inboxSort = event.target.value;
         this.renderInbox();
@@ -1682,8 +1738,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.renderAstreaWidgets();
     },
     renderMetrics() {
-      const activeCutoffIntimations = this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []);
-      const newIntimations = activeCutoffIntimations.filter(item => item.status === 'nova').length;
+      const untreatedIntimations = (Store.state.intimations || []).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').length;
       const deadlines = Store.state.tasks.filter(task => !TERMINAL_STATUSES.includes(task.status) && daysUntil(task.deadline) >= 0 && daysUntil(task.deadline) <= 7).length;
       const activeProcesses = (Store.state.processes || []).filter(process => process.monitoring !== 'inactive').length;
       const activeSources = Store.state.sources.filter(source => source.status === 'ok').length;
@@ -1693,15 +1748,38 @@ ${id.lawyerOab} - ${id.officeName}`;
       const mSources = document.getElementById('metricSources');
       const inBadge = document.getElementById('inboxBadge');
       const notifDot = document.getElementById('notificationDot');
-      if (mInbox) mInbox.textContent = newIntimations;
+      if (mInbox) mInbox.textContent = untreatedIntimations;
       if (mDead) mDead.textContent = deadlines;
       if (mTasks) mTasks.textContent = activeProcesses;
       if (mSources) mSources.textContent = `${activeSources}/${Store.state.sources.length}`;
       if (inBadge) {
-        inBadge.textContent = newIntimations;
-        inBadge.style.display = newIntimations > 0 ? 'inline-block' : 'none';
+        inBadge.textContent = untreatedIntimations;
+        inBadge.style.display = untreatedIntimations > 0 ? 'inline-block' : 'none';
       }
-      if (notifDot) notifDot.style.display = newIntimations ? '' : 'none';
+      if (notifDot) notifDot.style.display = untreatedIntimations ? '' : 'none';
+      this.renderPublicationsMetrics();
+    },
+    renderPublicationsMetrics() {
+      const intimations = Array.isArray(Store.state.intimations) ? Store.state.intimations : [];
+      const untreated = intimations.filter(i => (i.treatmentStatus || 'untreated') === 'untreated').length;
+      const inReview = intimations.filter(i => i.treatmentStatus === 'in_review').length;
+      const treatedToday = intimations.filter(i => i.treatmentStatus === 'treated' && isDateToday(i.treatedAt)).length;
+      const discardedToday = intimations.filter(i => i.treatmentStatus === 'discarded' && isDateToday(i.discardedAt)).length;
+
+      const elUntreated = document.getElementById('pubMetricUntreated');
+      const elInReview = document.getElementById('pubMetricInReview');
+      const elTreatedToday = document.getElementById('pubMetricTreatedToday');
+      const elDiscardedToday = document.getElementById('pubMetricDiscardedToday');
+
+      if (elUntreated) elUntreated.textContent = String(untreated);
+      if (elInReview) elInReview.textContent = String(inReview);
+      if (elTreatedToday) elTreatedToday.textContent = String(treatedToday);
+      if (elDiscardedToday) elDiscardedToday.textContent = String(discardedToday);
+
+      const filter = this.inboxFilter || 'untreated';
+      document.querySelectorAll('#publicationsMetrics .pub-metric-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.filter === filter);
+      });
     },
     renderAstreaTasks() {
       const listEl = document.getElementById('astreaTaskList');
@@ -2219,12 +2297,12 @@ ${id.lawyerOab} - ${id.officeName}`;
       });
     },
     filteredIntimations() {
-      const filter = this.inboxFilter;
-      const sort = this.inboxSort || 'date-desc';
-      const cutoff = this.inboxCutoff || 'today';
+      const filter = this.inboxFilter || 'untreated';
+      const sort = this.inboxSort || 'priority-urgent';
+      const cutoff = this.inboxCutoff || 'all';
       const todayStr = isoDate();
 
-      let items = Store.state.intimations.filter(item => {
+      let items = (Store.state.intimations || []).filter(item => {
         const pubDate = (item.publishedAt || '').slice(0, 10);
         if (cutoff === 'today' && pubDate && pubDate < todayStr) return false;
         if (cutoff === '7days' && pubDate) {
@@ -2236,39 +2314,35 @@ ${id.lawyerOab} - ${id.officeName}`;
           if (pubDate < d30.toISOString().slice(0, 10)) return false;
         }
 
-        if (filter === 'pendentes') return item.status !== 'prazo' && item.status !== 'tarefa' && item.status !== 'arquivada';
-        if (filter === 'prazo') return item.status === 'prazo' || item.status === 'tarefa';
+        const tStatus = item.treatmentStatus || 'untreated';
+
+        if (filter === 'untreated' || filter === 'pendentes') return tStatus === 'untreated';
+        if (filter === 'in_review') return tStatus === 'in_review';
+        if (filter === 'treated') return tStatus === 'treated';
+        if (filter === 'discarded') return tStatus === 'discarded';
         if (filter === 'all') return true;
-        if (filter === 'nova') return item.status === 'nova';
         if (filter === 'urgente') return Boolean(item.urgent || item.priority === 'urgente');
         if (filter === 'importante') return Boolean(item.important);
         if (filter === 'prazo-fatal') {
           const act = classifyIntimationAct(item.text, item.title, item.type);
           return item.fatalDeadline || act.days > 0;
         }
+        if (filter === 'triagem') return item.status === 'triagem' || tStatus === 'in_review';
+        if (filter === 'prazo') return item.status === 'prazo' || tStatus === 'treated';
         return item.status === filter;
       });
 
       items.sort((a, b) => {
-        const actA = classifyIntimationAct(a.text, a.title, a.type);
-        const actB = classifyIntimationAct(b.text, b.title, b.type);
-        const fatalA = a.fatalDeadline || (actA.days > 0 ? addDays(a.publishedAt || isoDate(), actA.days) : null);
-        const fatalB = b.fatalDeadline || (actB.days > 0 ? addDays(b.publishedAt || isoDate(), actB.days) : null);
-
-        if (sort === 'deadline-asc') {
-          const dA = fatalA ? daysUntil(fatalA) : 99999;
-          const dB = fatalB ? daysUntil(fatalB) : 99999;
-          return dA - dB;
-        }
-        if (sort === 'deadline-desc') {
-          const dA = fatalA ? daysUntil(fatalA) : -99999;
-          const dB = fatalB ? daysUntil(fatalB) : -99999;
-          return dB - dA;
-        }
         if (sort === 'priority-urgent') {
           const urgA = (a.urgent || a.priority === 'urgente') ? 1 : 0;
           const urgB = (b.urgent || b.priority === 'urgente') ? 1 : 0;
           if (urgA !== urgB) return urgB - urgA;
+          const impA = a.important ? 1 : 0;
+          const impB = b.important ? 1 : 0;
+          if (impA !== impB) return impB - impA;
+          if ((a.treatmentStatus || 'untreated') === 'untreated' && (b.treatmentStatus || 'untreated') === 'untreated') {
+            return new Date(a.publishedAt || 0) - new Date(b.publishedAt || 0);
+          }
           return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
         }
         if (sort === 'priority-important') {
@@ -2280,10 +2354,12 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (sort === 'date-asc') {
           return new Date(a.publishedAt || 0) - new Date(b.publishedAt || 0);
         }
+        if (sort === 'date-desc') {
+          return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+        }
         if (sort === 'process') {
           return String(a.process || '').localeCompare(String(b.process || ''));
         }
-        // default: date-desc
         return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
       });
 
@@ -2295,80 +2371,188 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (direct && !/^(?:cliente|partes?) (?:não|nao) identificad/i.test(direct)) return direct;
       return [process?.client, process?.opposingParty].map(value => String(value || '').trim()).filter(Boolean).filter((value, index, values) => values.indexOf(value) === index).join(' × ');
     },
-    renderInbox() {
-      const items = this.filteredIntimations();
-
-      const dateBtn = document.querySelector('button[data-inbox-sort-col="date"]');
-      const deadlineBtn = document.querySelector('button[data-inbox-sort-col="deadline"]');
-      const dateIcon = document.getElementById('inboxSortIconDate');
-      const deadlineIcon = document.getElementById('inboxSortIconDeadline');
-
-      if (dateBtn && dateIcon) {
-        dateBtn.classList.toggle('active', this.inboxSort === 'date-desc' || this.inboxSort === 'date-asc');
-        dateIcon.textContent = this.inboxSort === 'date-asc' ? '▲' : this.inboxSort === 'date-desc' ? '▼' : '↕';
-      }
-      if (deadlineBtn && deadlineIcon) {
-        deadlineBtn.classList.toggle('active', this.inboxSort === 'deadline-asc' || this.inboxSort === 'deadline-desc');
-        deadlineIcon.textContent = this.inboxSort === 'deadline-asc' ? '▲' : this.inboxSort === 'deadline-desc' ? '▼' : '↕';
-      }
-
-      document.getElementById('inboxList').innerHTML = items.length ? items.map(item => {
-        const act = classifyIntimationAct(item.text, item.title, item.type);
-        const fatalDate = item.fatalDeadline || (act.days > 0 ? addDays(item.publishedAt || isoDate(), act.days) : null);
-        const dLeft = fatalDate ? daysUntil(fatalDate) : null;
-        const chipClass = dLeft !== null && dLeft <= 3 ? 'danger' : dLeft !== null && dLeft <= 7 ? 'warning' : 'normal';
-        const urgentBadge = (item.urgent || item.priority === 'urgente') ? '<span class="badge-urgent">URGENTE</span>' : '';
-        const importantBadge = item.important ? '<span class="badge-important">IMPORTANTE</span>' : '';
-        const deadlineChip = fatalDate ? `<span class="deadline-chip ${chipClass}">${act.days ? `${act.days}d · ` : ''}fatal: ${formatDate(fatalDate)}</span>` : '<small style="color:var(--muted)">Sem prazo fatal</small>';
-
-        return `
-        <button class="inbox-row ${this.selectedIntimation === item.id ? 'active' : ''} ${(item.urgent || item.priority === 'urgente') ? 'is-urgent' : ''} ${item.important ? 'is-important' : ''}" data-intimation-id="${escapeHtml(item.id)}">
-          <span class="inbox-primary">
-            <i class="unread-dot ${item.unread ? '' : 'read'}"></i>
-            <span>
-              <div style="display:flex;align-items:center;flex-wrap:wrap;">${urgentBadge}${importantBadge}<strong>${escapeHtml(item.title)}</strong></div>
-              <small class="inbox-case-line"><b>${escapeHtml(item.process || 'Sem processo vinculado')}</b>${this.intimationParties(item) ? `<em>· ${escapeHtml(this.intimationParties(item))}</em>` : '<em>· Partes ainda não identificadas</em>'}</small>
-            </span>
-          </span>
-          <span class="source-label"><span class="act-chip ${act.css}">${escapeHtml(act.label)}</span></span>
-          <span class="deadline-label">${deadlineChip}</span>
-          <span class="date-label">${formatDate(item.publishedAt)}</span>
-          <span>${this.statusChip(item.status)}</span>
-        </button>`;
-      }).join('') : '<div class="empty-detail"><span>✓</span><h3>Nenhuma ocorrência</h3><p>Não há intimações neste filtro ou ordenação.</p></div>';
-      document.querySelectorAll('[data-intimation-id]').forEach(button => button.addEventListener('click', () => this.selectIntimation(button.dataset.intimationId)));
-      if (this.selectedIntimation) this.renderIntimationDetail();
+    treatmentStatusBadge(treatmentStatus) {
+      const status = treatmentStatus || 'untreated';
+      const badges = {
+        untreated: { label: 'Não tratada', css: 'treatment-untreated' },
+        in_review: { label: 'Em análise', css: 'treatment-in-review' },
+        treated: { label: 'Tratada', css: 'treatment-treated' },
+        discarded: { label: 'Descartada', css: 'treatment-discarded' }
+      };
+      const badge = badges[status] || badges.untreated;
+      return `<span class="treatment-badge ${badge.css}">${badge.label}</span>`;
     },
     statusChip(status) {
       const labels = { nova: 'Nova', triagem: 'Em triagem', prazo: 'Prazo conferido', tarefa: 'Tarefa criada', arquivada: 'Arquivada' };
       const classes = { nova: 'warning', triagem: 'planned', prazo: 'connected', tarefa: 'connected', arquivada: 'muted' };
       return `<span class="status-chip ${classes[status] || 'muted'}">${labels[status] || escapeHtml(status)}</span>`;
     },
+    renderInbox() {
+      this.renderPublicationsMetrics();
+      const items = this.filteredIntimations();
+
+      const dateBtn = document.querySelector('button[data-inbox-sort-col="date"]');
+      const dateIcon = document.getElementById('inboxSortIconDate');
+      if (dateBtn && dateIcon) {
+        dateBtn.classList.toggle('active', this.inboxSort === 'date-desc' || this.inboxSort === 'date-asc');
+        dateIcon.textContent = this.inboxSort === 'date-asc' ? '▲' : this.inboxSort === 'date-desc' ? '▼' : '↕';
+      }
+
+      const emptyMsg = (this.inboxFilter === 'untreated' || !this.inboxFilter)
+        ? '<div class="empty-detail"><span>✓</span><h3>Não há publicações pendentes de tratamento.</h3><p>Todas as publicações capturadas estão em análise, tratadas ou descartadas.</p></div>'
+        : '<div class="empty-detail"><span>✓</span><h3>Nenhuma publicação encontrada</h3><p>Não há publicações para o filtro ou ordenação selecionados.</p></div>';
+
+      document.getElementById('inboxList').innerHTML = items.length ? items.map(item => {
+        const act = classifyIntimationAct(item.text, item.title, item.type);
+        const isUrgent = Boolean(item.urgent || item.priority === 'urgente');
+        const urgentBadge = isUrgent ? '<span class="badge-urgent">URGENTE</span>' : '';
+        const importantBadge = item.important ? '<span class="badge-important">IMPORTANTE</span>' : '';
+        const ageText = formatPublicationAge(item.publishedAt);
+        const tStatus = item.treatmentStatus || 'untreated';
+        const isUntreated = tStatus === 'untreated';
+
+        return `
+        <button class="inbox-row ${this.selectedIntimation === item.id ? 'active' : ''} ${isUrgent ? 'is-urgent' : ''} ${item.important ? 'is-important' : ''} ${isUntreated ? 'row-untreated' : ''}" data-intimation-id="${escapeHtml(item.id)}" aria-label="Publicação ${escapeHtml(item.title)}">
+          <span class="inbox-primary">
+            <i class="unread-dot ${item.unread ? '' : 'read'}" title="${item.unread ? 'Não lida' : 'Lida'}"></i>
+            <span>
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">${urgentBadge}${importantBadge}<strong>${escapeHtml(item.title)}</strong></div>
+              <small class="inbox-case-line"><b>${escapeHtml(item.process || 'Sem processo vinculado')}</b>${this.intimationParties(item) ? `<em> · ${escapeHtml(this.intimationParties(item))}</em>` : '<em> · Partes não identificadas</em>'}</small>
+            </span>
+          </span>
+          <span class="source-label"><span class="act-chip ${act.css}">${escapeHtml(act.label)}</span></span>
+          <span class="date-label">
+            <span class="pub-age ${isUntreated ? 'age-untreated' : ''}">${ageText}</span>
+            <small class="pub-full-date">${formatDate(item.publishedAt)}</small>
+          </span>
+          <span>${this.treatmentStatusBadge(item.treatmentStatus)}</span>
+        </button>`;
+      }).join('') : emptyMsg;
+
+      document.querySelectorAll('[data-intimation-id]').forEach(button => button.addEventListener('click', () => this.selectIntimation(button.dataset.intimationId)));
+      if (this.selectedIntimation) {
+        this.renderIntimationDetail();
+      }
+    },
     selectIntimation(id) {
       this.selectedIntimation = id;
       const item = Store.state.intimations.find(record => record.id === id);
-      if (item) { item.unread = false; Store.save(); }
-      this.renderInbox(); this.renderMetrics();
+      if (item && item.unread) {
+        item.unread = false;
+        Store.save();
+      }
+      this.renderInbox();
+      this.renderPublicationsMetrics();
+      this.renderMetrics();
+      this.renderIntimationDetail();
     },
     renderIntimationDetail() {
       const item = Store.state.intimations.find(record => record.id === this.selectedIntimation);
       const container = document.getElementById('intimationDetail');
-      if (!item) return;
+      if (!container) return;
+      if (!item) {
+        container.innerHTML = '<div class="empty-detail"><span>✦</span><h3>Selecione uma publicação</h3><p>O texto original, o processo, alertas de urgência e o fluxo de tratamento aparecerão aqui.</p></div>';
+        return;
+      }
+
       const act = classifyIntimationAct(item.text, item.title, item.type);
-      const fatalDate = item.fatalDeadline || addDays(item.publishedAt || isoDate(), act.days);
-      const dLeft = daysUntil(fatalDate);
       const isUrgent = Boolean(item.urgent || item.priority === 'urgente');
       const isImportant = Boolean(item.important);
+      const tStatus = item.treatmentStatus || 'untreated';
       const currentUser = window.KellerAuth?.currentUser;
       const isPrivileged = currentUser?.role === 'master_admin' || currentUser?.role === 'admin';
       const emailActionBtn = isPrivileged
-        ? `<button class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail" title="Enviar publicação por e-mail">✉️ Enviar por e-mail</button>`
+        ? `<button type="button" class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail" title="Enviar publicação por e-mail">✉️ Enviar por e-mail</button>`
         : '';
+
+      let treatmentInfoHtml = '';
+      if (tStatus === 'treated') {
+        treatmentInfoHtml = `
+        <div class="treatment-info-banner treated">
+          <div class="treatment-info-icon">✓</div>
+          <div class="treatment-info-text">
+            <strong>Tratada por ${escapeHtml(item.treatedBy || 'Advogado')}</strong>
+            <span>${item.treatedAt ? formatDateTime(item.treatedAt) : 'Data registrada'}</span>
+            ${item.treatmentNote ? `<small class="treatment-note-display">Obs: ${escapeHtml(item.treatmentNote)}</small>` : ''}
+          </div>
+        </div>`;
+      } else if (tStatus === 'discarded') {
+        treatmentInfoHtml = `
+        <div class="treatment-info-banner discarded">
+          <div class="treatment-info-icon">✕</div>
+          <div class="treatment-info-text">
+            <strong>Descartada por ${escapeHtml(item.discardedBy || 'Advogado')}</strong>
+            <span>${item.discardedAt ? formatDateTime(item.discardedAt) : 'Data registrada'}</span>
+            ${item.treatmentNote ? `<small class="treatment-note-display">Motivo: ${escapeHtml(item.treatmentNote)}</small>` : ''}
+          </div>
+        </div>`;
+      } else if (tStatus === 'in_review') {
+        treatmentInfoHtml = `
+        <div class="treatment-info-banner in-review">
+          <div class="treatment-info-icon">🔍</div>
+          <div class="treatment-info-text">
+            <strong>Em análise por ${escapeHtml(item.treatmentStartedBy || 'Advogado')}</strong>
+            <span>Iniciada em ${item.treatmentStartedAt ? formatDateTime(item.treatmentStartedAt) : 'Hoje'}</span>
+          </div>
+        </div>`;
+      }
+
+      const linkedTaskIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : (item.taskId ? [item.taskId] : []);
+      const linkedTasks = (Store.state.tasks || []).filter(t => linkedTaskIds.includes(t.id) || t.intimationId === item.id || t.sourceIntimationId === item.id);
+      let linkedTasksHtml = '';
+      if (linkedTasks.length > 0) {
+        linkedTasksHtml = `
+        <div class="linked-tasks-card">
+          <div class="linked-tasks-header">
+            <span>📋 Providência criada (${linkedTasks.length})</span>
+          </div>
+          <div class="linked-tasks-list">
+            ${linkedTasks.map(task => `
+              <div class="linked-task-item">
+                <div class="linked-task-info">
+                  <strong>Tarefa: ${escapeHtml(task.title)}</strong>
+                  <small>${task.responsible ? `Responsável: ${escapeHtml(task.responsible)}` : ''} ${task.deadline ? `· Prazo: ${formatDate(task.deadline)}` : ''}</small>
+                </div>
+                <button type="button" class="button ghost" data-open-task-id="${escapeHtml(task.id)}" style="padding:4px 10px; font-size:12px;">Abrir tarefa</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+      }
+
+      let actionButtonsHtml = '';
+      if (tStatus === 'untreated') {
+        actionButtonsHtml = `
+          <button type="button" class="button gold" data-detail-action="start-review" id="btnStartReview">▶ Iniciar análise</button>
+          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>
+          <button type="button" class="button ghost btn-success-action" data-detail-action="treat" id="btnMarkTreated">✓ Marcar como tratada</button>
+          <button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">Descartar</button>
+          ${emailActionBtn}
+        `;
+      } else if (tStatus === 'in_review') {
+        actionButtonsHtml = `
+          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>
+          <button type="button" class="button gold btn-success-action" data-detail-action="treat" id="btnMarkTreated">✓ Marcar como tratada</button>
+          <button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">Descartar</button>
+          ${emailActionBtn}
+        `;
+      } else if (tStatus === 'treated') {
+        actionButtonsHtml = `
+          <button type="button" class="button ghost" data-detail-action="reopen" id="btnReopenPublication">↩ Reabrir</button>
+          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>
+          ${emailActionBtn}
+        `;
+      } else if (tStatus === 'discarded') {
+        actionButtonsHtml = `
+          <button type="button" class="button ghost" data-detail-action="restore" id="btnRestorePublication">↩ Restaurar</button>
+          ${emailActionBtn}
+        `;
+      }
 
       container.innerHTML = `
         <div class="detail-header">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-            ${this.statusChip(item.status)}
+            ${this.treatmentStatusBadge(item.treatmentStatus)}
             <span class="act-chip ${act.css}">${escapeHtml(act.label)}</span>
             ${isUrgent ? '<span class="badge-urgent">URGENTE</span>' : ''}
             ${isImportant ? '<span class="badge-important">IMPORTANTE</span>' : ''}
@@ -2376,90 +2560,183 @@ ${id.lawyerOab} - ${id.officeName}`;
           <h2>${escapeHtml(item.title)}</h2>
           <p>${escapeHtml(item.court || 'Origem judicial não informada')}</p>
         </div>
+        ${treatmentInfoHtml}
         <div class="detail-meta">
           <div><small>Processo</small><strong>${escapeHtml(item.process || 'Não identificado')}</strong></div>
           <div><small>Partes</small><strong>${escapeHtml(this.intimationParties(item) || 'Ainda não identificadas')}</strong></div>
-          <div><small>Publicação</small><strong>${formatDate(item.publishedAt)}</strong></div>
-          <div><small>Prazo Fatal Estimado</small><strong>${formatDate(fatalDate)} (${act.days}d · ${dLeft >= 0 ? `${dLeft}d restantes` : 'vencido'})</strong></div>
+          <div><small>Publicação</small><strong>${formatDate(item.publishedAt)} (${formatPublicationAge(item.publishedAt)})</strong></div>
+          <div><small>Responsável</small><strong>${escapeHtml(item.responsible || item.lawyers || 'Advogado')}</strong></div>
         </div>
-        <p class="eyebrow">Texto original preservado</p>
+        ${linkedTasksHtml}
+        <p class="eyebrow" style="margin-top:16px;">Texto original preservado</p>
         <div class="original-text">${escapeHtml(item.text || 'Sem texto original.')}</div>
-        <div class="detail-actions" style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button class="button gold" data-detail-action="ai-analyze">✦ Analisar com IA</button>
-          <button class="button ghost btn-toggle-flag ${isUrgent ? 'active-urgent' : ''}" data-detail-action="toggle-urgent">${isUrgent ? 'Remover Urgência' : 'Marcar Urgente'}</button>
-          <button class="button ghost btn-toggle-flag ${isImportant ? 'active-important' : ''}" data-detail-action="toggle-important">${isImportant ? 'Remover Destaque' : 'Marcar Importante'}</button>
-          <button class="button ghost" data-detail-action="edit">Editar dados</button>
-          <button class="button ghost" data-detail-action="triagem">Marcar em triagem</button>
-          <button class="button ghost" data-detail-action="prazo">Confirmar triagem</button>
-          <button class="button ghost" data-detail-action="task">Criar tarefa (${act.days}d)</button>
-          ${emailActionBtn}
+        <div class="detail-actions" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+          ${actionButtonsHtml}
         </div>`;
+
       container.querySelectorAll('[data-detail-action]').forEach(button => button.addEventListener('click', () => this.handleIntimationAction(item, button.dataset.detailAction)));
+      container.querySelectorAll('[data-open-task-id]').forEach(button => button.addEventListener('click', () => {
+        const tId = button.dataset.openTaskId;
+        const task = Store.state.tasks.find(t => t.id === tId);
+        if (task) this.openTaskModal(task);
+      }));
     },
-    handleIntimationAction(item, action) {
+    async handleIntimationAction(item, action) {
+      if (!item) return;
+
       if (action === 'send-email') {
         this.openPublicationEmailModal(item);
         return;
       }
-      if (action === 'ai-analyze') {
-        this.switchView('assistant');
-        setTimeout(() => {
-          this.sendAiMessage(`Analise a seguinte intimação judicial recebida no sistema:\n\n1. O que o magistrado/tribunal determinou?\n2. Qual é a estimativa preliminar do prazo processual do CPC/CPP/CLT e quais hipóteses foram usadas na contagem?\n3. Qual é a medida judicial ou providência sugerida para conferência do escritório?\n\nNão trate a estimativa como prazo fatal confirmado; indique a necessidade de validar o processo e o calendário oficial.\n\nProcesso: ${item.process || 'Não identificado'}\nTribunal: ${item.court || 'Não informado'}\nData da Publicação: ${formatDate(item.publishedAt)}\nTexto da Intimação:\n${item.text || ''}`);
-        }, 150);
-        return;
-      }
-      if (action === 'toggle-urgent') {
-        const currentlyUrgent = Boolean(item.urgent || item.priority === 'urgente');
-        if (currentlyUrgent) {
-          item.urgent = false;
-          item.priority = 'normal';
-        } else {
-          item.urgent = true;
-          item.priority = 'urgente';
-        }
-        Store.audit(item.urgent ? 'Marcada como urgente' : 'Urgência removida', item.title);
-        Store.save();
-        this.renderAll();
-        this.renderIntimationDetail();
-        this.toast(item.urgent ? 'Intimação marcada como URGENTE!' : 'Urgência removida com sucesso.', 'success');
-        return;
-      }
-      if (action === 'toggle-important') {
-        item.important = !item.important;
-        Store.audit(item.important ? 'Marcada como importante' : 'Destaque removido', item.title);
-        Store.save();
-        this.renderAll();
-        this.renderIntimationDetail();
-        this.toast(item.important ? 'Intimação marcada como IMPORTANTE!' : 'Destaque removido.', 'success');
-        return;
-      }
-      if (action === 'edit') { this.openIntimationModal(item); return; }
       if (action === 'task') {
         const act = classifyIntimationAct(item.text, item.title, item.type);
         const suggestedDeadline = addDays(item.publishedAt || isoDate(), act.days);
         this.openTaskModal({
-          title: `Analisar ${act.category}: ${item.title}`,
+          title: `Analisar publicação: ${item.title}`,
           description: item.text,
           process: item.process,
           client: item.client,
           source: item.source || 'DJEN',
           intimationId: item.id,
           deadline: suggestedDeadline,
-          priority: (item.urgent || act.priority === 'urgente') ? 'urgente' : 'normal',
+          priority: (item.urgent || item.priority === 'urgente') ? 'urgente' : (act.priority || 'normal'),
           status: 'triagem'
         });
         return;
       }
-      item.status = action;
-      Store.audit(action === 'prazo' ? 'Triagem confirmada' : 'Intimação colocada em triagem', `${item.title} · ${item.process || 'sem processo'}`);
-      Store.save();
-      this.renderAll();
-      if (this.selectedIntimation === item.id && this.inboxFilter === 'pendentes' && action === 'prazo') {
-        const remaining = this.filteredIntimations();
-        this.selectedIntimation = remaining[0]?.id || null;
+      if (action === 'start-review') {
+        await this.applyTreatmentAction(item.id, 'start_review');
+        return;
       }
+      if (action === 'treat') {
+        this.openTreatModal(item);
+        return;
+      }
+      if (action === 'discard') {
+        this.openDiscardModal(item);
+        return;
+      }
+      if (action === 'reopen') {
+        await this.applyTreatmentAction(item.id, 'reopen');
+        return;
+      }
+      if (action === 'restore') {
+        await this.applyTreatmentAction(item.id, 'restore');
+        return;
+      }
+    },
+    async applyTreatmentAction(intimationId, action, note = null) {
+      const item = Store.state.intimations.find(i => i.id === intimationId);
+      if (!item) return;
+
+      const actor = window.KellerAuth?.currentUser?.displayName || window.KellerAuth?.currentUser?.username || 'Advogado';
+      const nowIso = new Date().toISOString();
+
+      try {
+        if (window.KellerAuth?.csrfToken) {
+          const res = await fetch(`/api/intimations/${encodeURIComponent(intimationId)}/treatment`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': window.KellerAuth?.csrfToken || ''
+            },
+            body: JSON.stringify({
+              action,
+              note,
+              revision: Store.revision
+            })
+          });
+
+          if (res.status === 409) {
+            this.toast('Esta publicação foi atualizada por outro usuário. Recarregue os dados.', 'warning');
+            if (typeof this.syncAppState === 'function') await this.syncAppState();
+            return;
+          }
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.intimation) {
+              const idx = Store.state.intimations.findIndex(i => i.id === intimationId);
+              if (idx !== -1) {
+                Store.state.intimations[idx] = data.intimation;
+              }
+              if (data.revision) Store.revision = data.revision;
+            }
+            this.renderInbox();
+            this.renderPublicationsMetrics();
+            this.renderMetrics();
+            this.renderIntimationDetail();
+            this.toast(data.message || 'Tratamento atualizado com sucesso!', 'success');
+            return;
+          }
+        }
+      } catch (networkErr) {
+        console.warn('Fallback local para ação de tratamento:', networkErr);
+      }
+
+      const procRef = item.process || item.id;
+      if (action === 'start_review') {
+        item.treatmentStatus = 'in_review';
+        item.treatmentStartedAt = nowIso;
+        item.treatmentStartedBy = actor;
+        Store.audit('Análise de publicação iniciada', `Processo: ${procRef}`);
+      } else if (action === 'mark_treated') {
+        item.treatmentStatus = 'treated';
+        item.treatedAt = nowIso;
+        item.treatedBy = actor;
+        if (note) item.treatmentNote = String(note).trim();
+        Store.audit('Publicação marcada como tratada', `Processo: ${procRef}`);
+      } else if (action === 'discard') {
+        item.treatmentStatus = 'discarded';
+        item.discardedAt = nowIso;
+        item.discardedBy = actor;
+        if (note) item.treatmentNote = String(note).trim();
+        Store.audit('Publicação descartada', `Processo: ${procRef}${item.treatmentNote ? ' — Motivo: ' + item.treatmentNote : ''}`);
+      } else if (action === 'reopen') {
+        item.treatmentStatus = 'in_review';
+        item.treatmentStartedAt = nowIso;
+        item.treatmentStartedBy = actor;
+        item.treatedAt = null;
+        item.treatedBy = null;
+        Store.audit('Publicação reaberta', `Processo: ${procRef}`);
+      } else if (action === 'restore') {
+        item.treatmentStatus = 'untreated';
+        item.discardedAt = null;
+        item.discardedBy = null;
+        item.treatmentNote = null;
+        Store.audit('Publicação restaurada', `Processo: ${procRef}`);
+      }
+
+      Store.save();
+      this.renderInbox();
+      this.renderPublicationsMetrics();
+      this.renderMetrics();
       this.renderIntimationDetail();
-      this.toast(action === 'prazo' ? 'Triagem confirmada! Intimação movida para Conferidas.' : 'Intimação em triagem.', 'success');
+      this.toast('Tratamento atualizado com sucesso.', 'success');
+    },
+    openDiscardModal(item) {
+      if (!item) return;
+      byId('discardPublicationIdInput').value = item.id;
+      byId('discardPublicationProcessRef').textContent = item.process || 'Sem processo vinculado';
+      byId('discardPublicationTitleRef').textContent = item.title || 'Publicação';
+      byId('discardReasonInput').value = '';
+      byId('discardPublicationBackdrop').classList.remove('hidden');
+      byId('discardReasonInput').focus();
+    },
+    closeDiscardModal() {
+      byId('discardPublicationBackdrop')?.classList.add('hidden');
+    },
+    openTreatModal(item) {
+      if (!item) return;
+      byId('treatPublicationIdInput').value = item.id;
+      byId('treatPublicationProcessRef').textContent = item.process || 'Sem processo vinculado';
+      byId('treatPublicationTitleRef').textContent = item.title || 'Publicação';
+      byId('treatNoteInput').value = '';
+      byId('treatPublicationBackdrop').classList.remove('hidden');
+      byId('treatNoteInput').focus();
+    },
+    closeTreatModal() {
+      byId('treatPublicationBackdrop')?.classList.add('hidden');
     },
     renderKanban() {
       const board = document.getElementById('kanbanBoard');
@@ -5325,9 +5602,34 @@ ${id.lawyerOab} - ${id.officeName}`;
         delete data.addMinutes;
         delete data.timeDescription;
         const responsibleList = [data.responsible, ...String(data.responsibles || '').split(/[,;]/)].map(item => item.trim()).filter(Boolean);
-        const record = { id: this.modalMode.defaults.id || uid('task'), createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(), source: this.modalMode.defaults.source || 'Interna', intimationId: this.modalMode.defaults.intimationId || null, ...data, points: Number(data.points) || 0, responsibles: [...new Set(responsibleList)], history, timeLogs };
+        const record = {
+          id: this.modalMode.defaults.id || uid('task'),
+          createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          source: this.modalMode.defaults.source || 'Interna',
+          intimationId: this.modalMode.defaults.intimationId || null,
+          sourceIntimationId: this.modalMode.defaults.intimationId || this.modalMode.defaults.sourceIntimationId || null,
+          ...data,
+          points: Number(data.points) || 0,
+          responsibles: [...new Set(responsibleList)],
+          history,
+          timeLogs
+        };
         Store.upsert('tasks', record);
-        if (record.intimationId) { const intimation = Store.state.intimations.find(item => item.id === record.intimationId); if (intimation) { intimation.status = 'tarefa'; intimation.completedAt = new Date().toISOString(); intimation.taskId = record.id; } }
+        if (record.intimationId) {
+          const intimation = Store.state.intimations.find(item => item.id === record.intimationId);
+          if (intimation) {
+            if (!Array.isArray(intimation.linkedTaskIds)) intimation.linkedTaskIds = [];
+            if (!intimation.linkedTaskIds.includes(record.id)) intimation.linkedTaskIds.push(record.id);
+            intimation.taskId = record.id;
+            if (!intimation.treatmentStatus || intimation.treatmentStatus === 'untreated') {
+              intimation.treatmentStatus = 'in_review';
+              intimation.treatmentStartedAt = intimation.treatmentStartedAt || new Date().toISOString();
+              intimation.treatmentStartedBy = intimation.treatmentStartedBy || currentActor;
+            }
+            Store.audit('Tarefa criada a partir de publicação', `${record.title} · ${intimation.process || intimation.id}`);
+          }
+        }
         Store.audit(this.modalMode.defaults.id ? 'Tarefa atualizada' : 'Tarefa atribuída', `${record.title}${record.process ? ` · ${record.process}` : ''}${record.points ? ` · ${record.points} pontos` : ''}${addMinutes > 0 ? ` · ${formatMinutes(addMinutes)} apontados` : ''}`);
       } else if (this.modalMode.mode === 'intimation') {
         const editing = Boolean(this.modalMode.defaults.id);

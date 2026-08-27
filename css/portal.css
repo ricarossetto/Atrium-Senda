@@ -4034,3 +4034,354 @@ td small { color: var(--text-secondary); }
   color: #ef4444;
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
+
+/* ============================================================
+   TRIAGEM E TRATAMENTO DE PUBLICAÇÕES (NOVO WORKFLOW)
+   ============================================================ */
+
+.publications-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pub-metric-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.pub-metric-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.pub-metric-card.active {
+  border-color: var(--gold);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 1px var(--gold);
+}
+
+.pub-metric-card.primary-focus {
+  background: var(--surface);
+  border-color: var(--gold);
+  border-left: 4px solid var(--gold);
+}
+
+.pub-metric-card.primary-focus.active {
+  background: var(--surface-raised);
+  box-shadow: 0 2px 8px rgba(184, 144, 71, 0.15);
+}
+
+.pub-metric-icon {
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--surface-raised);
+  flex-shrink: 0;
+}
+
+.pub-metric-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.pub-metric-content strong {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.pub-metric-content span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Badges de Status de Tratamento */
+.treatment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.treatment-badge.treatment-untreated {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde047;
+}
+
+.treatment-badge.treatment-in-review {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.treatment-badge.treatment-treated {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.treatment-badge.treatment-discarded {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+/* Dark Theme overrides for Treatment Badges */
+[data-theme="dark"] .treatment-badge.treatment-untreated,
+body:not([data-theme="light"]) .treatment-badge.treatment-untreated {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+[data-theme="dark"] .treatment-badge.treatment-in-review,
+body:not([data-theme="light"]) .treatment-badge.treatment-in-review {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+[data-theme="dark"] .treatment-badge.treatment-treated,
+body:not([data-theme="light"]) .treatment-badge.treatment-treated {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+[data-theme="dark"] .treatment-badge.treatment-discarded,
+body:not([data-theme="light"]) .treatment-badge.treatment-discarded {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+/* Idade da Publicação */
+.pub-age {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pub-age.age-untreated {
+  color: var(--gold);
+}
+
+.pub-full-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: block;
+}
+
+/* Linha de publicação não tratada */
+.inbox-row.row-untreated {
+  border-left: 3px solid var(--gold);
+}
+
+/* Banners de Informação de Tratamento no Painel de Detalhes */
+.treatment-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.treatment-info-banner.treated {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.treatment-info-banner.discarded {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.treatment-info-banner.in-review {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+[data-theme="dark"] .treatment-info-banner.treated,
+body:not([data-theme="light"]) .treatment-info-banner.treated {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  color: #86efac;
+}
+
+[data-theme="dark"] .treatment-info-banner.discarded,
+body:not([data-theme="light"]) .treatment-info-banner.discarded {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .treatment-info-banner.in-review,
+body:not([data-theme="light"]) .treatment-info-banner.in-review {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+}
+
+.treatment-info-icon {
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.treatment-info-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.treatment-info-text strong {
+  font-weight: 600;
+}
+
+.treatment-note-display {
+  font-size: 12px;
+  margin-top: 3px;
+  opacity: 0.9;
+}
+
+/* Card de Providências Criadas / Tarefas Vinculadas */
+.linked-tasks-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.linked-tasks-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.linked-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.linked-task-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.linked-task-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.linked-task-info strong {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.linked-task-info small {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Botões da Action Bar */
+.btn-success-action {
+  color: #166534 !important;
+  border-color: #86efac !important;
+}
+
+.btn-success-action:hover {
+  background: #dcfce7 !important;
+}
+
+.btn-danger-action {
+  color: #dc2626 !important;
+  border-color: #fca5a5 !important;
+}
+
+.btn-danger-action:hover {
+  background: #fee2e2 !important;
+}
+
+[data-theme="dark"] .btn-success-action,
+body:not([data-theme="light"]) .btn-success-action {
+  color: #4ade80 !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+}
+
+[data-theme="dark"] .btn-success-action:hover,
+body:not([data-theme="light"]) .btn-success-action:hover {
+  background: rgba(34, 197, 94, 0.15) !important;
+}
+
+[data-theme="dark"] .btn-danger-action,
+body:not([data-theme="light"]) .btn-danger-action {
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+[data-theme="dark"] .btn-danger-action:hover,
+body:not([data-theme="light"]) .btn-danger-action:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+
+/* Responsividade Mobile para Action Bar e Métricas */
+@media (max-width: 768px) {
+  .publications-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .detail-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .detail-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}
