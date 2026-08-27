@@ -18,6 +18,7 @@ const checkFiles = [
   'scripts/migrate-judicial-secrets.mjs',
   'js/auth.js',
   'js/portal.js',
+  'js/app/bootstrap.js',
   'js/prompts-data.js',
   'js/office-data.js',
   'collector/agent.mjs',
@@ -44,7 +45,8 @@ const checkFiles = [
   'tests/visual_light_foundation.mjs',
   'tests/visual_publications_light.mjs',
   'tests/publications_treatment.mjs',
-  'tests/configuration_persistence.mjs'
+  'tests/configuration_persistence.mjs',
+  'tests/frontend_module_foundation.mjs'
 ];
 
 const testSuites = [
@@ -62,6 +64,7 @@ const testSuites = [
   { name: 'Motor SMTP e Entrega Segura de E-mail de Teste', file: 'tests/email_service.mjs' },
   { name: 'Workflow de Tratamento e Triagem de Publicações', file: 'tests/publications_treatment.mjs' },
   { name: 'Persistência de Configurações, Coalescing e Reload', file: 'tests/configuration_persistence.mjs' },
+  { name: 'Fundação de ES Modules e Segurança de Arquivos Estáticos', file: 'tests/frontend_module_foundation.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 

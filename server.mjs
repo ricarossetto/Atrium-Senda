@@ -92,6 +92,18 @@ const mimeTypes = {
 };
 const publicFiles = new Set(['index.html', 'css/portal.css', 'js/jsqr.js', 'js/auth.js', 'js/portal.js', 'js/prompts-data.js', 'js/skills-data.js', 'js/office-data.js']);
 const publicDirectories = ['assets/images/', 'assets/fonts/', 'assets/team/', 'assets/icons/'];
+const publicFrontendDirectories = [
+  { prefix: 'js/app/', extensions: new Set(['.js']) },
+  { prefix: 'js/core/', extensions: new Set(['.js']) },
+  { prefix: 'js/components/', extensions: new Set(['.js']) },
+  { prefix: 'js/views/', extensions: new Set(['.js']) },
+  { prefix: 'js/features/', extensions: new Set(['.js']) },
+  { prefix: 'css/components/', extensions: new Set(['.css']) },
+  { prefix: 'css/views/', extensions: new Set(['.css']) }
+];
+const privateStaticPrefixes = ['data/', '.git/', '.github/', 'lib/', 'tests/', 'scripts/', 'collector/'];
+const privateStaticFiles = new Set(['.env', 'package.json', 'pnpm-lock.yaml', 'package-lock.json', 'yarn.lock']);
+const privateStaticExtensions = new Set(['.key', '.pem', '.pfx', '.p12', '.crt']);
 const emptyRuntime = () => ({ events: [], tasks: [], intimations: [], processes: [], sources: [], updatedAt: null });
 let interactiveCollector = null;
 
@@ -1168,13 +1180,45 @@ function assertAdmin(req, requireCsrf = false, customMessage = 'Você não possu
 }
 function remoteAddress(req) { return req.socket.remoteAddress || ''; }
 
+function decodeStaticPath(rawPath) {
+  let decoded = rawPath;
+  for (let depth = 0; depth < 4; depth += 1) {
+    const next = decodeURIComponent(decoded);
+    if (next === decoded) return decoded;
+    decoded = next;
+  }
+  throw new URIError('Caminho com codificação excessiva.');
+}
+
+function isExplicitlyPublicFrontendFile(relative) {
+  const extension = path.extname(relative).toLowerCase();
+  return publicFrontendDirectories.some(({ prefix, extensions }) => relative.startsWith(prefix) && extensions.has(extension));
+}
+
+function isPrivateStaticPath(relative) {
+  const segments = relative.split('/').filter(Boolean);
+  return privateStaticFiles.has(relative)
+    || privateStaticPrefixes.some(prefix => relative.startsWith(prefix))
+    || privateStaticExtensions.has(path.extname(relative).toLowerCase())
+    || segments.some(segment => segment.startsWith('.'));
+}
+
 async function serveStatic(req, res) {
-  const rawPath = new URL(req.url, `http://${req.headers.host || 'localhost'}`).pathname;
+  const requestTarget = String(req.url || '/');
+  const queryIndex = requestTarget.indexOf('?');
+  const rawPath = queryIndex >= 0 ? requestTarget.slice(0, queryIndex) : requestTarget;
   let requested;
-  try { requested = decodeURIComponent(rawPath); } catch { return json(res, 400, { message: 'Caminho inválido.' }); }
-  const relative = requested === '/' ? 'index.html' : requested.replace(/^\/+/, '').replaceAll('\\', '/');
-  const allowed = publicFiles.has(relative) || publicDirectories.some(directory => relative.startsWith(directory));
-  if (!allowed || relative.includes('..') || relative.startsWith('.')) return json(res, 404, { message: 'Arquivo não encontrado.' });
+  try { requested = decodeStaticPath(rawPath); } catch { return json(res, 400, { message: 'Caminho inválido.' }); }
+  const normalized = requested.replaceAll('\\', '/');
+  const segments = normalized.split('/').filter(Boolean);
+  if (normalized.includes('\0') || segments.some(segment => segment === '.' || segment === '..')) {
+    return json(res, 404, { message: 'Arquivo não encontrado.' });
+  }
+  const relative = normalized === '/' ? 'index.html' : normalized.replace(/^\/+/, '');
+  const allowed = publicFiles.has(relative)
+    || publicDirectories.some(directory => relative.startsWith(directory))
+    || isExplicitlyPublicFrontendFile(relative);
+  if (!allowed || isPrivateStaticPath(relative)) return json(res, 404, { message: 'Arquivo não encontrado.' });
   const file = path.resolve(ROOT, relative);
   if (!file.startsWith(`${ROOT}${path.sep}`)) return json(res, 404, { message: 'Arquivo não encontrado.' });
   try {
