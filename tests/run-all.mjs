@@ -46,7 +46,8 @@ const checkFiles = [
   'tests/visual_publications_light.mjs',
   'tests/publications_treatment.mjs',
   'tests/configuration_persistence.mjs',
-  'tests/frontend_module_foundation.mjs'
+  'tests/frontend_module_foundation.mjs',
+  'tests/frontend_module_boot.mjs'
 ];
 
 const testSuites = [
@@ -65,6 +66,7 @@ const testSuites = [
   { name: 'Workflow de Tratamento e Triagem de Publicações', file: 'tests/publications_treatment.mjs' },
   { name: 'Persistência de Configurações, Coalescing e Reload', file: 'tests/configuration_persistence.mjs' },
   { name: 'Fundação de ES Modules e Segurança de Arquivos Estáticos', file: 'tests/frontend_module_foundation.mjs' },
+  { name: 'Boot Nativo do Portal e Compatibilidade Legada', file: 'tests/frontend_module_boot.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 

@@ -1,3 +1,5 @@
+import '../portal.js';
+
 export const MODULE_FOUNDATION_READY_EVENT = 'atrium:module-foundation-ready';
 
 function announceModuleFoundationReady() {
