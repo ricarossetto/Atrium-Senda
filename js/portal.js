@@ -1,6 +1,7 @@
 import { Store, STORE_PERSISTENCE_CONFLICT_EVENT, isoDate, uid } from './core/store.js';
 import { createGlobalSearch } from './components/global-search.js';
 import { createModal } from './components/modal.js';
+import { createOnboarding } from './components/onboarding.js';
 import { createTheme } from './components/theme.js';
 import { Toast } from './components/toast.js';
 
@@ -624,6 +625,7 @@ ${id.lawyerOab} - ${id.officeName}`;
 
   let globalSearchComponent;
   let modalComponent;
+  let onboardingComponent;
   let themeComponent;
 
   function getGlobalSearchComponent() {
@@ -643,6 +645,17 @@ ${id.lawyerOab} - ${id.officeName}`;
       onModeChange: modalMode => { App.modalMode = modalMode; }
     });
     return modalComponent;
+  }
+
+  function getOnboardingComponent() {
+    onboardingComponent ||= createOnboarding({
+      getSettings: () => Store.state?.settings,
+      saveState: () => Store.save(),
+      showToast: (message, type) => App.toast(message, type),
+      onSlideChange: slide => { App.currentTourSlide = slide; },
+      onTimerChange: timer => { App.tourTimer = timer; }
+    });
+    return onboardingComponent;
   }
 
   function getThemeComponent() {
@@ -725,7 +738,6 @@ ${id.lawyerOab} - ${id.officeName}`;
           this.closeModal();
           this.closeJudicialSetup();
           this.closeOfficeSetup();
-          this.closeGuidedTour();
           this.closeCalendarConfigModal();
           this.closeGeminiKeyModal();
           this.closeFinancialEntryModal();
@@ -742,8 +754,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('dismissBanner')?.addEventListener('click', () => { byId('environmentBanner')?.classList.add('hidden'); Store.state.settings.dismissedBanner = true; Store.save(); });
       byId('syncButton')?.addEventListener('click', () => this.syncAll());
       byId('agendaSyncButton')?.addEventListener('click', () => this.syncAll());
-      byId('tourButton')?.addEventListener('click', () => this.openGuidedTour(true));
-      byId('btnOpenTourFromConfig')?.addEventListener('click', () => this.openGuidedTour(true));
+      getOnboardingComponent().init();
       byId('newTaskButton')?.addEventListener('click', () => this.openTaskModal());
       byId('newContactButton')?.addEventListener('click', () => this.openContactModal());
       byId('newAgendaButton')?.addEventListener('click', () => this.openAgendaModal());
@@ -765,29 +776,6 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('officeLogoInput')?.addEventListener('change', event => this.handleOfficeLogoUpload(event.target.files?.[0]));
       byId('btnRemoveOfficeLogo')?.addEventListener('click', () => { this.tempOfficeLogo = null; this.updateOfficeLogoPreview(); });
       byId('officeSetupForm')?.addEventListener('submit', event => this.handleOfficeSetupSubmit(event));
-
-      // Apresentação Guiada (Tour)
-      byId('tourCloseButton')?.addEventListener('click', () => this.closeGuidedTour());
-      byId('tourSkipButton')?.addEventListener('click', () => this.closeGuidedTour());
-      byId('tourPrevButton')?.addEventListener('click', () => this.showTourSlide(this.currentTourSlide - 1));
-      byId('tourNextButton')?.addEventListener('click', () => this.showTourSlide(this.currentTourSlide + 1));
-      byId('guidedTourBackdrop')?.addEventListener('click', event => { if (event.target === byId('guidedTourBackdrop')) this.closeGuidedTour(); });
-      byId('tourDots')?.addEventListener('click', event => {
-        const dot = event.target.closest('.tour-dot');
-        if (dot && dot.dataset.slideTarget !== undefined) this.showTourSlide(Number(dot.dataset.slideTarget));
-      });
-      document.addEventListener('keydown', event => {
-        const backdrop = byId('guidedTourBackdrop');
-        if (backdrop && !backdrop.classList.contains('hidden')) {
-          if (event.key === 'Escape') {
-            this.closeGuidedTour();
-          } else if (event.key === 'ArrowRight') {
-            this.showTourSlide(this.currentTourSlide + 1);
-          } else if (event.key === 'ArrowLeft') {
-            this.showTourSlide(this.currentTourSlide - 1);
-          }
-        }
-      });
 
       getModalComponent().init();
       byId('modalForm')?.addEventListener('submit', event => this.handleModalSubmit(event));
@@ -1439,51 +1427,16 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.toast('Identidade do escritório salva com sucesso!', 'success');
     },
     checkFirstAccessTour() {
-      const seen = localStorage.getItem('atrium_tour_seen') || localStorage.getItem('jurisflow_tour_seen') || Store.state.settings?.guidedTourSeen;
-      if (!seen) {
-        if (this.tourTimer) window.clearTimeout(this.tourTimer);
-        this.tourTimer = window.setTimeout(() => this.openGuidedTour(), 600);
-      }
+      getOnboardingComponent().checkFirstAccess();
     },
     openGuidedTour(force = false) {
-      const seen = localStorage.getItem('atrium_tour_seen') || localStorage.getItem('jurisflow_tour_seen') || Store.state.settings?.guidedTourSeen;
-      if (seen && !force) return;
-      this.currentTourSlide = 0;
-      this.showTourSlide(0);
-      document.getElementById('guidedTourBackdrop')?.classList.remove('hidden');
+      getOnboardingComponent().open(force);
     },
     closeGuidedTour() {
-      if (this.tourTimer) window.clearTimeout(this.tourTimer);
-      document.getElementById('guidedTourBackdrop')?.classList.add('hidden');
-      localStorage.setItem('atrium_tour_seen', 'true');
-      localStorage.setItem('jurisflow_tour_seen', 'true');
-      if (Store.state?.settings) {
-        Store.state.settings.guidedTourSeen = true;
-        Store.save();
-      }
+      getOnboardingComponent().close();
     },
     showTourSlide(index) {
-      const slides = document.querySelectorAll('.tour-slide');
-      const dots = document.querySelectorAll('.tour-dot');
-      const total = slides.length;
-      if (index < 0) index = 0;
-      if (index >= total) {
-        this.closeGuidedTour();
-        this.toast('Apresentação concluída! Bom trabalho.', 'success');
-        return;
-      }
-      this.currentTourSlide = index;
-
-      slides.forEach((s, i) => s.classList.toggle('active', i === index));
-      dots.forEach((d, i) => {
-        d.classList.toggle('active', i === index);
-        d.setAttribute('aria-selected', String(i === index));
-      });
-
-      const prevBtn = document.getElementById('tourPrevButton');
-      const nextBtn = document.getElementById('tourNextButton');
-      if (prevBtn) prevBtn.style.display = index > 0 ? 'inline-block' : 'none';
-      if (nextBtn) nextBtn.textContent = index === total - 1 ? '🚀 Começar a usar o Atrium' : 'Próximo →';
+      getOnboardingComponent().showSlide(index);
     },
     renderDashboard() {
       this.renderOfficeIdentity();
