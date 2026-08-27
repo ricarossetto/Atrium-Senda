@@ -40,7 +40,8 @@ const checkFiles = [
   'lib/email/email-service.mjs',
   'scripts/state-doctor.mjs',
   'tests/state_migrations.mjs',
-  'tests/email_service.mjs'
+  'tests/email_service.mjs',
+  'tests/visual_light_foundation.mjs'
 ];
 
 const testSuites = [
