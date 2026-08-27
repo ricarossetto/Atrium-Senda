@@ -10,6 +10,17 @@ import { postJson, startTestServer } from './helpers.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
+const portalSource = await readFile(path.join(ROOT, 'js', 'portal.js'), 'utf8');
+const serverSource = await readFile(path.join(ROOT, 'server.mjs'), 'utf8');
+const indexSource = await readFile(path.join(ROOT, 'index.html'), 'utf8');
+assert(!portalSource.includes('/api/email/publications'), 'O frontend ainda contém o endpoint legado /api/email/publications.');
+assert(!serverSource.includes("url.pathname === '/api/email/publications'"), 'O endpoint legado /api/email/publications ainda está ativo no servidor.');
+assert(!serverSource.includes('process.env.SMTP_HOST'), 'O servidor ainda contém o caminho SMTP paralelo de Publicações.');
+assert(!serverSource.includes('process.env.SMTP_USER'), 'O servidor ainda contém usuário do SMTP paralelo de Publicações.');
+assert(!serverSource.includes('process.env.SMTP_PASS'), 'O servidor ainda contém senha do SMTP paralelo de Publicações.');
+assert(!/id="emailTargetAddress"[^>]*\svalue=/i.test(indexSource), 'O destinatário do boletim ainda possui valor hardcoded no frontend.');
+assert(!/targetEmailInput\?\.value\?\.trim\(\)\s*\|\|/.test(portalSource), 'O destinatário do boletim ainda possui fallback hardcoded no frontend.');
+
 console.log('\n===============================================================');
 console.log('  ATRIUM — SUÍTE DE TESTES: MOTOR SMTP E ENVIO DE PUBLICAÇÃO');
 console.log('===============================================================\n');
@@ -200,6 +211,34 @@ try {
   assert(xssMail.html.includes('&amp;'), '& não foi escapado como &amp;.');
   assert(xssMail.html.includes('&quot;aspas duplas&quot;'), 'Aspas duplas não foram escapadas.');
   assert(xssMail.html.includes('&#39;aspas simples&#39;'), 'Aspas simples não foram escapadas.');
+
+  // Digest de várias publicações usa um único transporte e conteúdo já resolvido pelo backend
+  const digestStart = mockSentMessages.length;
+  const digestResult = await emailService.sendPublicationsDigestEmail({
+    recipient: 'destinatario.digest@example.test',
+    publications: [pubWithProcess, maliciousPub]
+  });
+  assert.equal(digestResult.ok, true, 'Digest deveria retornar ok: true.');
+  assert.equal(digestResult.count, 2, 'Digest deveria representar exatamente duas publicações.');
+  assert.equal(mockSentMessages.length, digestStart + 1, 'Digest deve usar exatamente um envio SMTP.');
+  const digestMail = mockSentMessages.at(-1);
+  assert.equal(digestMail.to, 'destinatario.digest@example.test', 'Destinatário do digest incorreto.');
+  assert(digestMail.text.includes(pubWithProcess.process), 'Digest text/plain não contém a primeira publicação.');
+  assert(digestMail.text.includes(maliciousPub.text), 'Digest text/plain não contém a segunda publicação.');
+  assert(!digestMail.html.includes('<script>'), 'Digest HTML não escapou conteúdo judicial malicioso.');
+  assert(digestMail.html.includes('&lt;script&gt;'), 'Digest HTML deveria conter o conteúdo judicial escapado.');
+  assert.equal(digestResult.emailHtml, digestMail.html, 'Preview canônico deve corresponder ao HTML efetivamente enviado.');
+  assert.equal(digestResult.emailText, digestMail.text, 'Preview canônico deve corresponder ao text/plain efetivamente enviado.');
+  await assert.rejects(
+    () => emailService.sendPublicationsDigestEmail({ recipient: 'invalido', publications: [pubWithProcess] }),
+    /destinatário válido/,
+    'Digest deveria rejeitar destinatário inválido.'
+  );
+  await assert.rejects(
+    () => emailService.sendPublicationsDigestEmail({ recipient: 'destino@example.test', publications: [] }),
+    /ao menos uma publicação/,
+    'Digest deveria rejeitar lista vazia.'
+  );
 
   // Teste de validação de destinatário na publicação
   await assert.rejects(
@@ -393,6 +432,12 @@ try {
   res = await postJson(`${server.baseUrl}/api/intimations/email`, { publicationId: 'pub-001', recipient: 'test@test.com' });
   assert.equal(res.status, 401, 'Envio de publicação acessível sem autenticação!');
 
+  res = await postJson(`${server.baseUrl}/api/publications/email/batch`, { publicationIds: ['pub-001'], recipient: 'destino@example.test' });
+  assert.equal(res.status, 401, 'Envio batch de publicações acessível sem autenticação!');
+
+  res = await postJson(`${server.baseUrl}/api/email/publications`, { publications: [{ text: 'conteúdo arbitrário' }] });
+  assert([404, 405].includes(res.status), 'Endpoint legado /api/email/publications ainda responde como rota ativa.');
+
   // Setup do Administrador Principal (Master Admin)
   res = await postJson(`${server.baseUrl}/api/auth/setup`, {
     username: 'admin',
@@ -435,6 +480,12 @@ try {
     recipient: 'destino@teste.com'
   }, { Cookie: adminCookie });
   assert.equal(res.status, 403, 'POST de envio de publicação foi aceito sem token CSRF!');
+
+  res = await postJson(`${server.baseUrl}/api/publications/email/batch`, {
+    publicationIds: ['pub-001'],
+    recipient: 'destino@example.test'
+  }, { Cookie: adminCookie });
+  assert.equal(res.status, 403, 'POST batch de publicações foi aceito sem token CSRF!');
 
   // Cadastro e Aprovação de um Colaborador
   res = await postJson(`${server.baseUrl}/api/auth/register`, {
@@ -524,6 +575,12 @@ try {
     collabPubErr.message.includes('não possui permissão'),
     'Mensagem de 403 do envio de publicação pelo colaborador incorreta.'
   );
+
+  res = await postJson(`${server.baseUrl}/api/publications/email/batch`, {
+    publicationIds: ['pub-001'],
+    recipient: 'destino@example.test'
+  }, { Cookie: collabCookie, 'X-CSRF-Token': collabCsrf });
+  assert.equal(res.status, 403, 'Colaborador conseguiu chamar POST /api/publications/email/batch!');
 
   // ADMIN: POST com parâmetros inválidos é autorizado pelo RBAC e chega na validação (400)
   res = await postJson(`${server.baseUrl}/api/integrations/email/configure`, {
@@ -647,7 +704,7 @@ try {
     id: 'int-canon-777',
     title: 'Intimação para Manifestação sobre Laudo Pericial',
     process: '5002086-73.2022.4.04.7133',
-    client: 'Roberto Roque Junges',
+    client: 'Cliente Teste Canônico',
     court: 'TRF4 — 2ª Vara Federal de Novo Hamburgo',
     publishedAt: new Date().toISOString().slice(0, 10),
     source: 'DJEN Oficial',
@@ -657,7 +714,21 @@ try {
     unread: true,
     createdAt: new Date().toISOString()
   };
-  stateToUpdate.intimations.push(canonicalTestPublication);
+  const secondCanonicalPublication = {
+    id: 'int-canon-778',
+    title: 'Publicação Canônica Secundária',
+    process: '5000000-00.2026.4.04.7000',
+    client: 'Cliente Teste Secundário',
+    court: 'TRF4 — Vara de Testes Automatizados',
+    publishedAt: '2026-08-27',
+    source: 'DJEN Oficial',
+    term: 'Advogada Teste · OAB/RS 000000',
+    text: 'CONTEÚDO CANÔNICO SECUNDÁRIO DO BACKEND',
+    status: 'nova',
+    unread: true,
+    createdAt: new Date().toISOString()
+  };
+  stateToUpdate.intimations.push(canonicalTestPublication, secondCanonicalPublication);
 
   res = await postJson(`${server.baseUrl}/api/state`, { state: stateToUpdate }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
   assert.equal(res.status, 200, 'Falha ao salvar estado inicial com intimação.');
@@ -676,6 +747,36 @@ try {
   }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
   assert.equal(res.status, 400, 'Deveria retornar 400 para destinatário inválido.');
 
+  res = await postJson(`${server.baseUrl}/api/publications/email/batch`, {
+    publicationIds: ['int-canon-777'],
+    recipient: 'email-completamente-invalido'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 400, 'Batch deveria retornar 400 para destinatário inválido.');
+
+  res = await postJson(`${server.baseUrl}/api/publications/email/batch`, {
+    publicationIds: ['int-canon-777'],
+    recipient: 'destino.batch@example.test'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 409, 'Batch sem SMTP configurado deveria falhar de forma controlada.');
+
+  res = await postJson(`${server.baseUrl}/api/publications/email/batch`, {
+    publicationIds: [],
+    recipient: 'destino.batch@example.test'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 400, 'Batch vazio deveria ser rejeitado.');
+
+  res = await postJson(`${server.baseUrl}/api/publications/email/batch`, {
+    publicationIds: Array.from({ length: 101 }, (_, index) => `pub-${index}`),
+    recipient: 'destino.batch@example.test'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 400, 'Batch acima de 100 itens deveria ser rejeitado.');
+
+  res = await postJson(`${server.baseUrl}/api/publications/email/batch`, {
+    publicationIds: ['int-canon-777', 'id-inexistente'],
+    recipient: 'destino.batch@example.test'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 404, 'Batch com qualquer ID inexistente deveria ser rejeitado integralmente.');
+
   // Configurar SMTP no servidor como Admin
   res = await postJson(`${server.baseUrl}/api/integrations/email/configure`, {
     host: 'smtp.servidor-teste.adv.br',
@@ -692,7 +793,7 @@ try {
   // O servidor DEVE ignorar subject/html/text enviados pelo cliente e processar a publicação canônica
   res = await postJson(`${server.baseUrl}/api/intimations/email`, {
     publicationId: 'int-canon-777',
-    recipient: 'cliente.roberto@gmail.com',
+    recipient: 'cliente.canonico@example.test',
     subject: 'ASSUNTO FORJADO PELO CLIENTE',
     html: '<h1>CONTEUDO FORJADO PELO CLIENTE</h1>',
     text: 'TEXTO FORJADO PELO CLIENTE'
@@ -702,6 +803,25 @@ try {
   const sendResp = await res.json();
   assert.equal(sendResp.ok, true, 'Resposta não continha ok: true.');
   assert(sendResp.message.includes('Publicação enviada com sucesso'), 'Mensagem de sucesso incorreta.');
+
+  res = await postJson(`${server.baseUrl}/api/publications/email/batch`, {
+    publicationIds: ['int-canon-777', 'int-canon-778', 'int-canon-777'],
+    recipient: 'destinatario.batch@example.test',
+    publications: [{
+      id: 'int-canon-777',
+      process: 'PROCESSO FORJADO PELO CLIENTE',
+      text: 'CONTEÚDO FORJADO PELO CLIENTE'
+    }],
+    title: 'TÍTULO FORJADO PELO CLIENTE'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 200, 'Envio batch canônico falhou.');
+  const batchResponse = await res.json();
+  assert.equal(batchResponse.count, 2, 'IDs duplicados deveriam ser normalizados antes do digest.');
+  assert(batchResponse.emailText.includes(canonicalTestPublication.text), 'Digest não contém a primeira publicação canônica.');
+  assert(batchResponse.emailText.includes(secondCanonicalPublication.text), 'Digest não contém a segunda publicação canônica.');
+  assert(!batchResponse.emailText.includes('CONTEÚDO FORJADO PELO CLIENTE'), 'Digest confiou em conteúdo judicial fornecido pelo cliente.');
+  assert(!batchResponse.emailText.includes('PROCESSO FORJADO PELO CLIENTE'), 'Digest confiou em processo fornecido pelo cliente.');
+  assert(!batchResponse.emailText.includes('TÍTULO FORJADO PELO CLIENTE'), 'Digest confiou em título fornecido pelo cliente.');
 
   // Validação de Imutabilidade da Intimação: Enviar e-mail NÃO altera status nem unread
   res = await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: adminCookie } });
@@ -715,8 +835,21 @@ try {
   const auditList = postStateData.state?.audit || [];
   const emailAudit = auditList.find(a => a.action === 'Publicação enviada por e-mail');
   assert(emailAudit, 'Auditoria de envio de publicação não encontrada!');
-  assert(emailAudit.detail.includes('cl***@gmail.com'), 'Destinatário no audit log não foi mascarado.');
+  assert(emailAudit.detail.includes('cl***@example.test'), 'Destinatário no audit log não foi mascarado.');
   assert(emailAudit.detail.includes('5002086-73.2022.4.04.7133') || emailAudit.detail.includes('int-canon-777'), 'Audit log não indicou a publicação.');
+  const batchAudit = auditList.find(a => a.action === 'Boletim de publicações enviado por e-mail');
+  assert(batchAudit, 'Auditoria de envio batch não encontrada.');
+  assert.equal(batchAudit.actor, 'Admin Titular', 'Auditoria batch não registrou o ator autenticado.');
+  assert(batchAudit.detail.includes('2 publicações'), 'Auditoria batch não registrou a quantidade normalizada.');
+  assert(batchAudit.detail.includes('de***@example.test'), 'Destinatário batch não foi mascarado na auditoria.');
+  assert(!batchAudit.detail.includes('destinatario.batch@example.test'), 'Auditoria batch contém destinatário sem máscara.');
+  assert(!batchAudit.detail.includes(canonicalTestPublication.text), 'Auditoria batch despejou conteúdo judicial integral.');
+  const batchFailureAudit = auditList.find(a => a.action === 'Falha ao enviar boletim de publicações'
+    && a.detail.includes('de***@example.test'));
+  assert(batchFailureAudit, 'Falha do envio batch não foi auditada com destinatário mascarado.');
+  assert.equal(batchFailureAudit.actor, 'Admin Titular', 'Auditoria de falha batch não registrou o ator autenticado.');
+  assert(!batchFailureAudit.detail.includes('destino.batch@example.test'), 'Auditoria de falha batch contém destinatário sem máscara.');
+  assert(!batchFailureAudit.detail.includes(canonicalTestPublication.text), 'Auditoria de falha batch contém conteúdo judicial integral.');
 
   for (const entry of auditList) {
     assert(!entry.detail?.includes('Senha-Super-Secreta-12345!'), 'Senha SMTP vazou no audit log!');
@@ -775,6 +908,33 @@ try {
     await page.locator('#publicationEmailCancel').click();
     await emailModal.waitFor({ state: 'hidden' });
 
+    // O boletim em lote continua manual: abrir o modal não pode enviar nada
+    const batchRequests = [];
+    page.on('request', request => {
+      if (request.method() === 'POST' && request.url().includes('/api/publications/email/batch')) batchRequests.push(request);
+    });
+    await page.locator('#btnEmailPublications').click();
+    const batchModal = page.locator('#publicationsEmailModalBackdrop');
+    await batchModal.waitFor({ state: 'visible' });
+    await page.waitForTimeout(300);
+    assert.equal(batchRequests.length, 0, 'Abrir o modal de boletim disparou envio automático.');
+    assert.equal(await page.locator('#emailTargetAddress').inputValue(), '', 'Destinatário do boletim deveria iniciar vazio.');
+    assert.equal(await page.locator('#btnOpenGmailWeb').count(), 0, 'Fallback Gmail legado ainda está exposto na UI.');
+
+    await page.locator('#emailTargetAddress').fill('destino.ui@example.test');
+    const batchResponsePromise = page.waitForResponse(response => response.url().includes('/api/publications/email/batch') && response.request().method() === 'POST');
+    await page.locator('#btnSendEmailDirect').click();
+    const batchUiResponse = await batchResponsePromise;
+    assert.equal(batchUiResponse.status(), 200, 'Envio batch explícito pela UI falhou.');
+    assert.equal(batchRequests.length, 1, 'Clique explícito deveria disparar exatamente um envio batch.');
+    const batchPayload = batchRequests[0].postDataJSON();
+    assert.deepEqual(Object.keys(batchPayload).sort(), ['publicationIds', 'recipient'], 'Frontend batch enviou campos além de recipient e publicationIds.');
+    assert(Array.isArray(batchPayload.publicationIds) && batchPayload.publicationIds.length > 0, 'Frontend batch não enviou IDs de publicação.');
+    assert(batchPayload.publicationIds.every(id => typeof id === 'string'), 'Frontend batch enviou objetos em vez de IDs.');
+    await page.locator('#emailPreviewContainer').getByText('CONTEÚDO CANÔNICO SECUNDÁRIO DO BACKEND').waitFor();
+    await page.locator('#publicationsEmailCancel').click();
+    await batchModal.waitFor({ state: 'hidden' });
+
     // 5.2 ADMIN (role: admin):
     // Cadastrar e ativar um admin secundário
     const admin2Password = 'Admin-Secundario-2026!';
@@ -810,13 +970,19 @@ try {
     await page.locator('#authLoginForm [name="username"]').fill('admin2');
     await page.locator('#authLoginForm [name="password"]').fill(admin2Password);
     await page.locator('#authLoginForm [name="code"]').fill(generateTotp(reg2Data.manualSecret));
+    const adminStateResponse = page.waitForResponse(response => response.url().endsWith('/api/state')
+      && response.request().method() === 'GET'
+      && response.status() === 200);
     await page.locator('#authLoginForm button[type="submit"]').click();
+    await adminStateResponse;
     await page.locator('#appShell:not(.hidden)').waitFor();
 
     // Abrir aba Publicações e detalhe
     await page.locator('button[data-view="inbox"]').click();
     await page.locator('#view-inbox.active').waitFor();
-    await page.locator(`.inbox-row[data-intimation-id="${canonicalTestPublication.id}"]`).click();
+    const adminPublicationRow = page.locator(`#view-inbox.active .inbox-row[data-intimation-id="${canonicalTestPublication.id}"]`);
+    await adminPublicationRow.waitFor({ state: 'visible' });
+    await adminPublicationRow.click();
 
     // Validar que o botão EXISTE e ESTÁ VISÍVEL para Admin
     const emailBtnAdmin = page.locator('#intimationDetail [data-detail-action="send-email"]');

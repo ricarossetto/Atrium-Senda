@@ -1733,7 +1733,73 @@ const server = http.createServer(async (req, res) => {
         await appendServerAudit('Publicação enviada por e-mail', `Publicação ${procRef} enviada para ${maskedRecipient}`, session.displayName || session.username);
         return json(res, 200, result);
       } catch (err) {
-        await appendServerAudit('Falha ao enviar publicação por e-mail', `Publicação ${procRef} para ${maskedRecipient} — ${err.message}`, session.displayName || session.username);
+        await appendServerAudit('Falha ao enviar publicação por e-mail', `Publicação ${procRef} para ${maskedRecipient} — falha no transporte`, session.displayName || session.username);
+        throw err;
+      }
+    }
+
+    // Envio manual de boletim com publicações resolvidas exclusivamente no backend
+    if (req.method === 'POST' && url.pathname === '/api/publications/email/batch') {
+      const session = assertAdmin(req, true, 'Você não possui permissão para enviar publicações por e-mail.');
+      const body = await readJson(req, 100_000);
+      const recipient = String(body.recipient || '').trim();
+      const rawPublicationIds = body.publicationIds;
+      const maskedRecipient = maskEmail(recipient);
+      let publicationIds = [];
+      let canonicalPublications = [];
+
+      try {
+        if (!Array.isArray(rawPublicationIds) || rawPublicationIds.length === 0) {
+          throw Object.assign(new Error('Informe ao menos um ID de publicação.'), { statusCode: 400 });
+        }
+        if (rawPublicationIds.length > 100) {
+          throw Object.assign(new Error('O boletim aceita no máximo 100 publicações por envio.'), { statusCode: 400 });
+        }
+        if (rawPublicationIds.some(id => typeof id !== 'string' || !id.trim())) {
+          throw Object.assign(new Error('A lista de publicações contém um ID inválido.'), { statusCode: 400 });
+        }
+
+        publicationIds = [...new Set(rawPublicationIds.map(id => id.trim()))];
+        const envelope = await readAppStateEnvelope();
+        const state = envelope.state || {};
+        const intimations = Array.isArray(state.intimations) ? state.intimations : [];
+        const publicationsById = new Map();
+        intimations.forEach(item => {
+          if (!item || typeof item !== 'object') return;
+          if (item.id) publicationsById.set(String(item.id), item);
+          if (item.externalId) publicationsById.set(String(item.externalId), item);
+        });
+
+        canonicalPublications = publicationIds.map(id => publicationsById.get(id));
+        if (canonicalPublications.some(publication => !publication)) {
+          throw Object.assign(new Error('Uma ou mais publicações não foram localizadas no acervo do escritório.'), { statusCode: 404 });
+        }
+
+        const references = canonicalPublications
+          .slice(0, 10)
+          .map(publication => String(publication.id || publication.externalId || 'sem-id').slice(0, 80))
+          .join(', ');
+        const referencesSuffix = canonicalPublications.length > 10 ? ', …' : '';
+        const auditDetail = `${canonicalPublications.length} publicações [${references}${referencesSuffix}] para ${maskedRecipient}`;
+        const result = await emailService.sendPublicationsDigestEmail({
+          recipient,
+          publications: canonicalPublications
+        });
+        await appendServerAudit('Boletim de publicações enviado por e-mail', auditDetail, session.displayName || session.username);
+        return json(res, 200, result);
+      } catch (err) {
+        const attemptedCount = publicationIds.length || (Array.isArray(rawPublicationIds) ? rawPublicationIds.length : 0);
+        const resolvedReferences = canonicalPublications
+          .filter(Boolean)
+          .slice(0, 10)
+          .map(publication => String(publication.id || publication.externalId || 'sem-id').slice(0, 80))
+          .join(', ');
+        const referenceDetail = resolvedReferences ? ` [${resolvedReferences}]` : '';
+        await appendServerAudit(
+          'Falha ao enviar boletim de publicações',
+          `${attemptedCount} publicações${referenceDetail} para ${maskedRecipient} — solicitação recusada`,
+          session.displayName || session.username
+        );
         throw err;
       }
     }
@@ -1894,142 +1960,6 @@ const server = http.createServer(async (req, res) => {
         intimation: item,
         revision: saved.revision,
         message: `${auditLabel} com sucesso.`
-      });
-    }
-
-    // Disparo de Publicações por Email (Estilo Astrea)
-    if (req.method === 'POST' && url.pathname === '/api/email/publications') {
-      assertAuthenticated(req, true);
-      const body = await readJson(req, 2_000_000);
-      const targetEmail = String(body.email || '').trim();
-      const publications = Array.isArray(body.publications) ? body.publications : [];
-      const recipientName = String(body.recipientName || 'Doutor(a)').trim();
-      const dateStr = body.date || new Date().toLocaleDateString('pt-BR');
-      
-      const emailSubject = `Atrium — Publicações de ${dateStr} no ${recipientName}`;
-      
-      const safeEsc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-      let itemsHtml = '';
-      let itemsText = '';
-      
-      publications.forEach((item, idx) => {
-        const processNum = item.process || item.number || 'Processo sem número';
-        const court = item.court || item.source || 'Diário de Justiça Eletrônico Nacional';
-        const county = item.county || item.courtUnit || '';
-        const pubDate = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('pt-BR') : dateStr;
-        const dispDate = item.disponibilizadoEm || pubDate;
-        const term = item.term || recipientName;
-        const text = item.text || item.description || 'Sem conteúdo adicional';
-        const client = item.client || 'Não informado';
-        const opposing = item.opposingParty || '';
-        const parties = `${client}${opposing ? ` vs ${opposing}` : ''}`;
-        const lawyers = item.lawyers || `${recipientName} (OAB)`;
-        const link = item.link || (processNum.includes('.8.21.') ? `https://www.tjrs.jus.br/novo/busca/?return=proc&client=wp_index&q=${processNum.replace(/\D/g, '')}` : `https://eproc.trf4.jus.br`);
-        
-        itemsHtml += `
-        <div style="margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; color: #1e293b;">
-          <p style="margin: 0 0 4px 0; font-weight: 700; color: #0f172a; font-size: 15px;">${safeEsc(court)}</p>
-          ${county ? `<p style="margin: 0 0 4px 0; color: #475569;">Vara: ${safeEsc(county)}</p>` : ''}
-          <p style="margin: 0 0 10px 0; color: #64748b; font-size: 13px;">Divulgado em ${dispDate} - Publicado em ${pubDate}</p>
-          
-          <p style="margin: 0 0 6px 0;"><strong>Processo:</strong> <span style="font-family: monospace; color: #0f172a;">${safeEsc(processNum)}</span></p>
-          <p style="margin: 0 0 6px 0;"><strong>Nome de pesquisa:</strong> ${safeEsc(term)}</p>
-          <p style="margin: 0 0 12px 0;"><strong>Termo encontrado:</strong> ${safeEsc(term)}</p>
-          
-          <div style="background: #f8fafc; border-left: 4px solid #b8860b; padding: 12px 14px; margin: 10px 0; border-radius: 0 8px 8px 0;">
-            <p style="margin: 0 0 6px 0; font-size: 13px; color: #475569;"><strong>Publicação Processo:</strong> ${safeEsc(processNum)} <strong>Órgão:</strong> ${safeEsc(court)} <strong>Data de disponibilização:</strong> ${dispDate} <strong>Tipo de comunicação:</strong> Intimação</p>
-            <p style="margin: 0 0 6px 0; font-size: 13px; color: #475569;"><strong>Meio:</strong> Diário de Justiça Eletrônico Nacional <strong>Inteiro teor:</strong> <a href="${safeEsc(link)}" style="color: #2563eb; text-decoration: underline;" target="_blank">Consultar no Tribunal</a></p>
-            <p style="margin: 0 0 6px 0; font-size: 13px; color: #334155;"><strong>Partes:</strong> ${safeEsc(parties)}</p>
-            <p style="margin: 0 0 8px 0; font-size: 13px; color: #334155;"><strong>Advogado(s):</strong> ${safeEsc(lawyers)}</p>
-            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 13px; white-space: pre-wrap; color: #0f172a; line-height: 1.5;">${safeEsc(text)}</div>
-          </div>
-        </div>`;
-
-        itemsText += `\n------------------------------------------------------------\n` +
-          `${court}\n` +
-          (county ? `Vara: ${county}\n` : '') +
-          `Divulgado em ${dispDate} - Publicado em ${pubDate}\n\n` +
-          `Processo: ${processNum}\n` +
-          `Nome de pesquisa: ${term}\n` +
-          `Termo encontrado: ${term}\n\n` +
-          `Partes: ${parties}\n` +
-          `Advogados: ${lawyers}\n\n` +
-          `Conteúdo da Publicação:\n${text}\n` +
-          `Consulta: ${link}\n`;
-      });
-      
-      const fullHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>${safeEsc(emailSubject)}</title></head>
-<body style="margin: 0; padding: 24px; background: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <div style="max-width: 680px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
-    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 24px 32px; border-bottom: 3px solid #b8860b; color: #ffffff;">
-      <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; color: #d4af37;">ATRIUM SENDA</h1>
-      <p style="margin: 4px 0 0 0; font-size: 13px; color: #cbd5e1;">Gestão Jurídica Inteligente &amp; Monitoramento Processual</p>
-    </div>
-    <div style="padding: 32px;">
-      <p style="margin: 0 0 16px 0; font-size: 16px; color: #0f172a; font-weight: 600;">Olá ${safeEsc(recipientName.toUpperCase())},</p>
-      <p style="margin: 0 0 24px 0; font-size: 15px; color: #334155;">Você recebeu <strong>${publications.length} nova(s) publicação(ões)</strong> em ${dateStr}:</p>
-      
-      ${itemsHtml || '<p style="color: #64748b;">Nenhuma nova publicação registrada no período.</p>'}
-      
-      <div style="margin-top: 32px; padding: 16px; background: #f8fafc; border-radius: 8px; text-align: center; font-size: 12px; color: #64748b;">
-        Este boletim foi gerado automaticamente pelo Atrium Senda com base nas consultas ao DJEN e Tribunais Oficiais.<br>
-        Ambiente Local Protegido (Zero Trust).
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
-
-      const fullPlain = `ATRIUM SENDA — GESTÃO JURÍDICA INTELIGENTE\n` +
-        `Boletim de Publicações de ${dateStr}\n\n` +
-        `Olá ${recipientName.toUpperCase()},\n` +
-        `Você recebeu ${publications.length} nova(s) publicação(ões) em ${dateStr}:\n` +
-        itemsText + `\n\nAtrium Senda — Gestão Jurídica Inteligente`;
-
-      const mailtoUrl = `mailto:${encodeURIComponent(targetEmail)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(fullPlain.slice(0, 1800))}`;
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(fullPlain.slice(0, 1800))}`;
-
-      let sentDirectly = false;
-      let smtpMessage = '';
-      if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && targetEmail) {
-        try {
-          const nodemailer = await import('nodemailer').catch(() => null);
-          if (nodemailer) {
-            const transporter = nodemailer.default.createTransport({
-              host: process.env.SMTP_HOST,
-              port: Number(process.env.SMTP_PORT) || 587,
-              secure: process.env.SMTP_PORT === '465',
-              auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-            });
-            await transporter.sendMail({
-              from: `Atrium Publicações <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
-              to: targetEmail,
-              subject: emailSubject,
-              text: fullPlain,
-              html: fullHtml
-            });
-            sentDirectly = true;
-            smtpMessage = `E-mail enviado diretamente via SMTP para ${targetEmail}.`;
-          }
-        } catch (err) {
-          smtpMessage = `Falha no envio direto SMTP: ${err.message}.`;
-        }
-      }
-
-      return json(res, 200, {
-        ok: true,
-        sentDirectly,
-        subject: emailSubject,
-        recipient: targetEmail,
-        count: publications.length,
-        emailHtml: fullHtml,
-        emailText: fullPlain,
-        mailtoUrl,
-        gmailUrl,
-        message: smtpMessage || 'Boletim de publicações gerado com sucesso no padrão Astrea!'
       });
     }
 

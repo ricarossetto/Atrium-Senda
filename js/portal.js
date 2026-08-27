@@ -881,33 +881,39 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('btnSendEmailDirect')?.addEventListener('click', async () => {
         const targetEmail = byId('emailTargetAddress')?.value?.trim();
         if (!targetEmail) return this.toast('Informe um e-mail de destino.', 'error');
+        const publicationIds = (this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []))
+          .map(item => item?.id || item?.externalId)
+          .filter(Boolean);
+        if (!publicationIds.length) return this.toast('Nenhuma publicação foi selecionada para o boletim.', 'error');
+
+        const sendButton = byId('btnSendEmailDirect');
+        if (sendButton) {
+          sendButton.disabled = true;
+          sendButton.textContent = 'Enviando…';
+        }
         this.toast('Processando envio do boletim de publicações…');
-        const items = this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []);
-        const lawyerName = Store.state.terms[0]?.name || window.KellerAuth?.currentUser?.displayName || 'Dr(a). Advogado(a)';
         try {
-          const resp = await window.KellerAuth.secureFetch('/api/email/publications', {
+          const resp = await window.KellerAuth.secureFetch('/api/publications/email/batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: targetEmail, recipientName: lawyerName, publications: items, date: new Date().toLocaleDateString('pt-BR') })
+            body: JSON.stringify({ recipient: targetEmail, publicationIds })
           });
-          const data = await resp.json();
-          if (data.ok) {
-            this.toast(data.message || 'Boletim gerado / enviado com sucesso!', 'success');
-            Store.audit('Boletim de publicações gerado', `${targetEmail} (${items.length} intimações)`);
-          } else {
-            this.toast(data.message || 'Falha no envio.', 'error');
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok) throw new Error(data.message || 'Falha no envio.');
+
+          this.currentEmailBulletin = data;
+          const previewContainer = byId('emailPreviewContainer');
+          if (previewContainer) {
+            previewContainer.innerHTML = data.emailHtml || '<div style="padding:16px;">Boletim enviado com sucesso.</div>';
           }
+          this.toast(data.message || 'Boletim enviado com sucesso!', 'success');
         } catch (err) {
           this.toast(`Erro na requisição: ${err.message}`, 'error');
-        }
-      });
-
-      byId('btnOpenGmailWeb')?.addEventListener('click', () => {
-        if (this.currentEmailBulletin?.gmailUrl) {
-          window.open(this.currentEmailBulletin.gmailUrl, '_blank', 'noopener,noreferrer');
-        } else {
-          const target = byId('emailTargetAddress')?.value || '';
-          window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(target)}`, '_blank');
+        } finally {
+          if (sendButton) {
+            sendButton.disabled = false;
+            sendButton.textContent = '🚀 Enviar E-mail via Servidor';
+          }
         }
       });
 
@@ -3280,46 +3286,13 @@ ${id.lawyerOab} - ${id.officeName}`;
         tribunals: 'TJRS, TRF4, STJ, TST, TJSC, TJPR, TJSP'
       });
     },
-    async openPublicationsEmailModal() {
-      const items = this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []);
-      const lawyerName = Store.state.terms[0]?.name || window.KellerAuth?.currentUser?.displayName || 'Dr(a). Advogado(a)';
-      const targetEmailInput = document.getElementById('emailTargetAddress');
-      const targetEmail = targetEmailInput?.value?.trim() || 'ricardodelucarossetto1998@gmail.com';
-      
+    openPublicationsEmailModal() {
+      this.currentEmailBulletin = null;
       const previewContainer = document.getElementById('emailPreviewContainer');
       if (previewContainer) {
-        previewContainer.innerHTML = '<div style="padding:24px;text-align:center;color:#64748b;">✦ Consolidando dados do DJEN e gerando boletim padrão Astrea…</div>';
+        previewContainer.innerHTML = '<div style="padding:24px;text-align:center;color:#64748b;">✦ Informe o destinatário e confirme o envio manual para gerar o boletim com dados canônicos do servidor.</div>';
       }
-      
       document.getElementById('publicationsEmailModalBackdrop')?.classList.remove('hidden');
-
-      try {
-        const resp = await window.KellerAuth.secureFetch('/api/email/publications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: targetEmail,
-            recipientName: lawyerName,
-            publications: items,
-            date: new Date().toLocaleDateString('pt-BR')
-          })
-        });
-        const data = await resp.json();
-        if (data.ok) {
-          this.currentEmailBulletin = data;
-          if (previewContainer) {
-            previewContainer.innerHTML = data.emailHtml;
-          }
-        } else {
-          if (previewContainer) {
-            previewContainer.innerHTML = `<div style="color:var(--danger);padding:16px;">Erro ao gerar boletim: ${escapeHtml(data.message)}</div>`;
-          }
-        }
-      } catch (err) {
-        if (previewContainer) {
-          previewContainer.innerHTML = `<div style="color:var(--danger);padding:16px;">Falha na comunicação: ${escapeHtml(err.message)}</div>`;
-        }
-      }
     },
     closePublicationsEmailModal() {
       document.getElementById('publicationsEmailModalBackdrop')?.classList.add('hidden');
