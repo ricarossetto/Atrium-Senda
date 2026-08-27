@@ -1384,6 +1384,43 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (e.target === byId('publicationEmailBackdrop')) this.closePublicationEmailModal();
       });
       byId('publicationEmailForm')?.addEventListener('submit', (e) => this.submitPublicationEmail(e));
+      byId('btnAddEmailReceiver')?.addEventListener('click', () => this.openEmailReceiverModal());
+      byId('emailReceiverModalClose')?.addEventListener('click', () => this.closeEmailReceiverModal());
+      byId('receiverCancelBtn')?.addEventListener('click', () => this.closeEmailReceiverModal());
+      byId('emailReceiverModalBackdrop')?.addEventListener('click', (e) => {
+        if (e.target === byId('emailReceiverModalBackdrop')) this.closeEmailReceiverModal();
+      });
+      byId('receiverTypeInternal')?.addEventListener('change', () => {
+        byId('receiverInternalFields')?.classList.remove('hidden');
+        byId('receiverExternalFields')?.classList.add('hidden');
+      });
+      byId('receiverTypeExternal')?.addEventListener('change', () => {
+        byId('receiverInternalFields')?.classList.add('hidden');
+        byId('receiverExternalFields')?.classList.remove('hidden');
+      });
+      byId('emailReceiverForm')?.addEventListener('submit', (e) => this.submitEmailReceiver(e));
+      byId('emailReceiversList')?.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('[data-receiver-action="toggle"]');
+        if (toggleBtn) {
+          const id = toggleBtn.dataset.receiverId;
+          const currentEnabled = toggleBtn.dataset.receiverEnabled === 'true';
+          this.toggleEmailReceiver(id, currentEnabled);
+          return;
+        }
+        const editBtn = e.target.closest('[data-receiver-action="edit"]');
+        if (editBtn) {
+          const id = editBtn.dataset.receiverId;
+          const receiver = (this.emailReceivers || []).find(r => r.id === id);
+          if (receiver) this.openEmailReceiverModal(receiver);
+          return;
+        }
+        const delBtn = e.target.closest('[data-receiver-action="delete"]');
+        if (delBtn) {
+          const id = delBtn.dataset.receiverId;
+          this.deleteEmailReceiver(id);
+          return;
+        }
+      });
       byId('promptsGrid')?.addEventListener('click', (e) => {
         const copyBtn = e.target.closest('[data-copy-prompt]');
         if (copyBtn) {
@@ -4061,6 +4098,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           if (btnConfig) btnConfig.textContent = 'Configurar SMTP';
           if (btnTest) btnTest.classList.add('hidden');
         }
+        await this.loadEmailReceivers();
         return status;
       } catch (err) {
         if (chip) {
@@ -4258,6 +4296,274 @@ ${id.lawyerOab} - ${id.officeName}`;
           submitBtn.disabled = false;
           submitBtn.textContent = 'Enviar';
         }
+      }
+    },
+    async loadEmailReceivers() {
+      const currentUser = window.KellerAuth?.currentUser;
+      const isAdmin = currentUser?.role === 'master_admin' || currentUser?.role === 'admin';
+      const section = document.getElementById('emailReceiversSection');
+      const addBtn = document.getElementById('btnAddEmailReceiver');
+
+      if (!isAdmin) {
+        if (section) section.classList.add('hidden');
+        if (addBtn) addBtn.classList.add('hidden');
+        return;
+      }
+      if (section) section.classList.remove('hidden');
+      if (addBtn) addBtn.classList.remove('hidden');
+
+      try {
+        const response = await window.KellerAuth.secureFetch('/api/integrations/email/receivers', {
+          headers: { Accept: 'application/json' }
+        });
+        if (!response.ok) return;
+        const data = await response.json().catch(() => ({}));
+        this.emailReceivers = Array.isArray(data.receivers) ? data.receivers : [];
+        this.renderEmailReceivers(this.emailReceivers);
+      } catch (err) {
+        console.error('Erro ao carregar destinatários de e-mail:', err);
+      }
+    },
+    renderEmailReceivers(receivers = []) {
+      const countEl = document.getElementById('emailReceiversCount');
+      const listEl = document.getElementById('emailReceiversList');
+      if (countEl) {
+        countEl.textContent = `${receivers.length} cadastrado${receivers.length === 1 ? '' : 's'}`;
+      }
+      if (!listEl) return;
+
+      if (!receivers.length) {
+        listEl.innerHTML = `
+          <div style="padding:14px; background:var(--panel-soft); border-radius:8px; border:1px solid var(--line); text-align:center;">
+            <p style="margin:0; font-size:12.5px; color:var(--muted); font-style:italic;">Nenhum destinatário cadastrado para receber publicações.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = receivers.map(r => {
+        const isInternal = r.type === 'internal';
+        const isUserInactive = isInternal && r.userStatus && r.userStatus !== 'active';
+        let statusBadge = '';
+
+        if (isUserInactive) {
+          statusBadge = `<span class="badge-chip" style="font-size:11px; padding:2px 8px; border-radius:10px; background:rgba(204,51,51,0.15); color:var(--danger); border:1px solid var(--danger); font-weight:600;">Usuário Inativo</span>`;
+        } else if (r.enabled) {
+          statusBadge = `<span class="badge-chip" style="font-size:11px; padding:2px 8px; border-radius:10px; background:rgba(56,161,105,0.15); color:var(--success); border:1px solid var(--success); font-weight:600;">Ativo</span>`;
+        } else {
+          statusBadge = `<span class="badge-chip" style="font-size:11px; padding:2px 8px; border-radius:10px; background:var(--panel); color:var(--muted); border:1px solid var(--line); font-weight:600;">Inativo</span>`;
+        }
+
+        const typeBadge = isInternal
+          ? `<span class="badge-chip" style="font-size:11px; padding:2px 6px; border-radius:4px; background:var(--panel); border:1px solid var(--line); color:var(--muted);">Usuário interno</span>`
+          : `<span class="badge-chip" style="font-size:11px; padding:2px 6px; border-radius:4px; background:var(--panel); border:1px solid var(--line); color:var(--muted);">Externo</span>`;
+
+        return `
+          <div class="email-receiver-item" data-receiver-id="${escapeHtml(r.id)}" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:10px 14px; background:var(--panel-soft); border-radius:8px; border:1px solid var(--line);">
+            <div style="display:flex; flex-direction:column; gap:2px; min-width:200px;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <strong style="font-size:13.5px; color:var(--ivory);">${escapeHtml(r.name || 'Sem nome')}</strong>
+                ${typeBadge}
+                ${statusBadge}
+              </div>
+              <span style="font-size:12.5px; color:var(--muted); font-family:monospace;">${escapeHtml(r.email || 'Sem e-mail')}</span>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="button ghost" data-receiver-action="toggle" data-receiver-id="${escapeHtml(r.id)}" data-receiver-enabled="${r.enabled ? 'true' : 'false'}" style="padding:4px 10px; font-size:12px;" title="${r.enabled ? 'Desativar recebimento' : 'Ativar recebimento'}">
+                ${r.enabled ? 'Desativar' : 'Ativar'}
+              </button>
+              <button class="button ghost" data-receiver-action="edit" data-receiver-id="${escapeHtml(r.id)}" style="padding:4px 10px; font-size:12px;" title="Editar destinatário">
+                Editar
+              </button>
+              <button class="button ghost" data-receiver-action="delete" data-receiver-id="${escapeHtml(r.id)}" style="padding:4px 8px; font-size:12px; color:var(--danger);" title="Remover destinatário">
+                ✕
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    },
+    async openEmailReceiverModal(receiverToEdit = null) {
+      const backdrop = document.getElementById('emailReceiverModalBackdrop');
+      if (!backdrop) return;
+
+      const titleEl = document.getElementById('emailReceiverModalTitle');
+      const idInput = document.getElementById('receiverIdInput');
+      const editTypeInput = document.getElementById('receiverEditTypeInput');
+      const typeContainer = document.getElementById('receiverTypeSelectorContainer');
+      const typeInternalRadio = document.getElementById('receiverTypeInternal');
+      const typeExternalRadio = document.getElementById('receiverTypeExternal');
+      const internalFields = document.getElementById('receiverInternalFields');
+      const externalFields = document.getElementById('receiverExternalFields');
+      const userSelect = document.getElementById('receiverUserSelect');
+      const nameInput = document.getElementById('receiverNameInput');
+      const emailInput = document.getElementById('receiverEmailInput');
+      const enabledInput = document.getElementById('receiverEnabledInput');
+
+      // Buscar lista de usuários internos do sistema
+      let activeUsers = [];
+      try {
+        const usersResp = await window.KellerAuth.secureFetch('/api/auth/users', { headers: { Accept: 'application/json' } });
+        if (usersResp.ok) {
+          const usersData = await usersResp.json().catch(() => ({}));
+          activeUsers = (usersData.users || []).filter(u => u.status === 'active' && u.email && u.email.trim());
+        }
+      } catch (err) {
+        console.error('Falha ao obter lista de usuários:', err);
+      }
+
+      if (userSelect) {
+        if (activeUsers.length) {
+          userSelect.innerHTML = activeUsers.map(u => `
+            <option value="${escapeHtml(u.id)}">${escapeHtml(u.displayName || u.username)} (${escapeHtml(u.email)})</option>
+          `).join('');
+        } else {
+          userSelect.innerHTML = `<option value="">Nenhum usuário ativo com e-mail cadastrado</option>`;
+        }
+      }
+
+      if (receiverToEdit) {
+        if (titleEl) titleEl.textContent = 'Editar destinatário de publicações';
+        if (idInput) idInput.value = receiverToEdit.id;
+        if (editTypeInput) editTypeInput.value = receiverToEdit.type;
+        if (typeContainer) typeContainer.classList.add('hidden');
+
+        if (receiverToEdit.type === 'internal') {
+          if (internalFields) internalFields.classList.remove('hidden');
+          if (externalFields) externalFields.classList.add('hidden');
+          if (userSelect) {
+            userSelect.value = receiverToEdit.userId;
+            userSelect.disabled = true;
+          }
+        } else {
+          if (internalFields) internalFields.classList.add('hidden');
+          if (externalFields) externalFields.classList.remove('hidden');
+          if (nameInput) nameInput.value = receiverToEdit.name || '';
+          if (emailInput) emailInput.value = receiverToEdit.email || '';
+        }
+        if (enabledInput) enabledInput.checked = Boolean(receiverToEdit.enabled);
+      } else {
+        if (titleEl) titleEl.textContent = 'Adicionar destinatário de publicações';
+        if (idInput) idInput.value = '';
+        if (editTypeInput) editTypeInput.value = '';
+        if (typeContainer) typeContainer.classList.remove('hidden');
+        if (typeInternalRadio) typeInternalRadio.checked = true;
+        if (typeExternalRadio) typeExternalRadio.checked = false;
+        if (internalFields) internalFields.classList.remove('hidden');
+        if (externalFields) externalFields.classList.add('hidden');
+        if (userSelect) {
+          userSelect.disabled = false;
+          if (activeUsers.length) userSelect.selectedIndex = 0;
+        }
+        if (nameInput) nameInput.value = '';
+        if (emailInput) emailInput.value = '';
+        if (enabledInput) enabledInput.checked = true;
+      }
+
+      backdrop.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    },
+    closeEmailReceiverModal() {
+      const backdrop = document.getElementById('emailReceiverModalBackdrop');
+      if (backdrop) backdrop.classList.add('hidden');
+      if (document.getElementById('modalBackdrop')?.classList.contains('hidden')) {
+        document.body.style.overflow = '';
+      }
+    },
+    async submitEmailReceiver(event) {
+      if (event) event.preventDefault();
+      const submitBtn = document.getElementById('receiverSubmitBtn');
+      const id = document.getElementById('receiverIdInput')?.value;
+      const editType = document.getElementById('receiverEditTypeInput')?.value;
+      const isEditing = Boolean(id);
+      const isInternal = isEditing ? (editType === 'internal') : document.getElementById('receiverTypeInternal')?.checked;
+      const enabled = Boolean(document.getElementById('receiverEnabledInput')?.checked);
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Salvando...';
+      }
+
+      try {
+        if (isEditing) {
+          const payload = { enabled };
+          if (!isInternal) {
+            payload.name = document.getElementById('receiverNameInput')?.value?.trim();
+            payload.email = document.getElementById('receiverEmailInput')?.value?.trim();
+          }
+          const response = await window.KellerAuth.secureFetch(`/api/integrations/email/receivers/${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const resData = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(resData.message || 'Falha ao atualizar destinatário.');
+
+          this.toast('Destinatário atualizado com sucesso!', 'success');
+        } else {
+          let payload = { type: isInternal ? 'internal' : 'external', enabled };
+          if (isInternal) {
+            payload.userId = document.getElementById('receiverUserSelect')?.value;
+            if (!payload.userId) throw new Error('Selecione um usuário ativo.');
+          } else {
+            payload.name = document.getElementById('receiverNameInput')?.value?.trim();
+            payload.email = document.getElementById('receiverEmailInput')?.value?.trim();
+            if (!payload.name) throw new Error('Informe o nome do destinatário.');
+            if (!payload.email) throw new Error('Informe o e-mail do destinatário.');
+          }
+
+          const response = await window.KellerAuth.secureFetch('/api/integrations/email/receivers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const resData = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(resData.message || 'Falha ao cadastrar destinatário.');
+
+          this.toast('Destinatário cadastrado com sucesso!', 'success');
+        }
+
+        this.closeEmailReceiverModal();
+        await this.loadEmailReceivers();
+      } catch (err) {
+        this.toast(err.message || 'Erro ao processar destinatário.', 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Salvar Destinatário';
+        }
+      }
+    },
+    async toggleEmailReceiver(id, currentEnabled) {
+      if (!id) return;
+      try {
+        const response = await window.KellerAuth.secureFetch(`/api/integrations/email/receivers/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ enabled: !currentEnabled })
+        });
+        const resData = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(resData.message || 'Falha ao alterar status.');
+        this.toast(`Destinatário ${!currentEnabled ? 'ativado' : 'desativado'}.`, 'success');
+        await this.loadEmailReceivers();
+      } catch (err) {
+        this.toast(err.message || 'Erro ao alterar status.', 'error');
+      }
+    },
+    async deleteEmailReceiver(id) {
+      if (!id) return;
+      if (!confirm('Remover este destinatário das notificações de publicações?')) return;
+      try {
+        const response = await window.KellerAuth.secureFetch(`/api/integrations/email/receivers/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { Accept: 'application/json' }
+        });
+        const resData = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(resData.message || 'Falha ao remover destinatário.');
+        this.toast('Destinatário removido.', 'success');
+        await this.loadEmailReceivers();
+      } catch (err) {
+        this.toast(err.message || 'Erro ao remover destinatário.', 'error');
       }
     },
     async testA1Sandbox() {

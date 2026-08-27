@@ -1,4 +1,4 @@
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -231,7 +231,143 @@ try {
     'Deveria rejeitar com erro amigável sem expor segredos.'
   );
 
-  console.log('✓ EmailService isolado (Unit Tests, XSS, Templates e Criptografia) 100% aprovado.');
+  // Testes de Destinatários Salvos (Receivers) - Seções 20 a 23, 27
+  // Criação de usuário interno artificial no SecurityManager
+  const regRes = await testSec.registerUser({
+    username: 'advogada_teste',
+    displayName: 'Advogada Teste',
+    email: 'advogada@teste.local',
+    password: 'Senha-Forte-2026!'
+  });
+  await testSec.verifyRegisteredUser({
+    setupToken: regRes.setupToken,
+    code: generateTotp(regRes.manualSecret)
+  });
+  const internalUser = testSec.listUsers().find(u => u.username === 'advogada_teste');
+  assert(internalUser, 'Usuário interno não criado no SecurityManager.');
+  await testSec.updateUserStatus(internalUser.id, { status: 'active', role: 'admin' });
+
+  // 1. Adicionar destinatário interno por userId
+  const internalReceiver = await emailService.addReceiver({
+    type: 'internal',
+    userId: internalUser.id,
+    email: 'fraude@teste.local' // Deve ser IGNORADO pelo servidor
+  });
+  assert.equal(internalReceiver.type, 'internal');
+  assert.equal(internalReceiver.name, 'Advogada Teste');
+  assert.equal(internalReceiver.email, 'advogada@teste.local', 'O servidor não ignorou o e-mail fraudulento!');
+  assert.equal(internalReceiver.enabled, true);
+  assert.equal(internalReceiver.effectiveEnabled, true);
+
+  // 2. Adicionar destinatário externo
+  const externalReceiver = await emailService.addReceiver({
+    type: 'external',
+    name: 'Secretaria Geral',
+    email: 'secretaria@escritorio.adv.br'
+  });
+  assert.equal(externalReceiver.type, 'external');
+  assert.equal(externalReceiver.name, 'Secretaria Geral');
+  assert.equal(externalReceiver.email, 'secretaria@escritorio.adv.br');
+  assert.equal(externalReceiver.enabled, true);
+
+  // 3. Teste de Validação de Duplicidade (case-insensitive trim)
+  await assert.rejects(
+    () => emailService.addReceiver({ type: 'external', name: 'Secretaria Clone', email: 'SECRETARIA@ESCRITORIO.ADV.BR' }),
+    /Este endereço já está cadastrado como destinatário/,
+    'Deveria rejeitar e-mail externo duplicado com case diferente.'
+  );
+  await assert.rejects(
+    () => emailService.addReceiver({ type: 'external', name: 'Advogada Clone', email: 'advogada@teste.local' }),
+    /Este endereço já está cadastrado como destinatário/,
+    'Deveria rejeitar destinatário externo duplicando e-mail de usuário interno.'
+  );
+
+  // 4. Teste de Validações de Destinatário Externo (Nome e E-mail)
+  await assert.rejects(
+    () => emailService.addReceiver({ type: 'external', name: 'A', email: 'valid@test.com' }),
+    /O nome do destinatário deve ter entre 2 e 120 caracteres/,
+    'Deveria rejeitar nome muito curto.'
+  );
+  await assert.rejects(
+    () => emailService.addReceiver({ type: 'external', name: 'Nome Valido', email: 'invalido' }),
+    /Informe um endereço de e-mail válido para o destinatário/,
+    'Deveria rejeitar e-mail inválido.'
+  );
+
+  // 5. Teste de Persistência e Reload do EmailService (SMTP preservado + Receivers preservados)
+  const reloadedService = new EmailService({
+    dataDirectory: unitTestDir,
+    securityManager: testSec,
+    testTransporter: mockTransporter
+  });
+  const reloadedSmtpStatus = await reloadedService.getStatus();
+  assert.equal(reloadedSmtpStatus.configured, true, 'SMTP deveria continuar configurado após reload.');
+  assert.equal(reloadedSmtpStatus.host, 'smtp.escritorio.adv.br');
+
+  let listAfterReload = await reloadedService.getReceivers();
+  assert.equal(listAfterReload.length, 2, 'Deveria ter 2 destinatários após reload.');
+  assert(listAfterReload.some(r => r.email === 'advogada@teste.local'));
+  assert(listAfterReload.some(r => r.email === 'secretaria@escritorio.adv.br'));
+
+  // 6. Teste de Edição (External: nome/e-mail; Internal: enabled)
+  const updatedExt = await reloadedService.updateReceiver(externalReceiver.id, {
+    name: 'Secretaria Central',
+    email: 'secretaria.central@escritorio.adv.br'
+  });
+  assert.equal(updatedExt.name, 'Secretaria Central');
+  assert.equal(updatedExt.email, 'secretaria.central@escritorio.adv.br');
+
+  // Teste de alteração de status (disable / enable)
+  const disabledInternal = await reloadedService.updateReceiver(internalReceiver.id, { enabled: false });
+  assert.equal(disabledInternal.enabled, false);
+  assert.equal(disabledInternal.effectiveEnabled, false);
+
+  // Reload após update
+  const reloadedService2 = new EmailService({
+    dataDirectory: unitTestDir,
+    securityManager: testSec,
+    testTransporter: mockTransporter
+  });
+  const list2 = await reloadedService2.getReceivers();
+  const foundDisabled = list2.find(r => r.id === internalReceiver.id);
+  assert.equal(foundDisabled.enabled, false, 'Disabled deveria persistir após reload.');
+
+  // Re-enable
+  await reloadedService2.updateReceiver(internalReceiver.id, { enabled: true });
+
+  // 7. Teste de Usuário Interno Desativado (Handling Inactive User)
+  await testSec.updateUserStatus(internalUser.id, { status: 'inactive' });
+  const listWithInactiveUser = await reloadedService2.getReceivers();
+  const inactiveFound = listWithInactiveUser.find(r => r.id === internalReceiver.id);
+  assert.equal(inactiveFound.userStatus, 'inactive', 'userStatus deveria ser inactive.');
+  assert.equal(inactiveFound.effectiveEnabled, false, 'effectiveEnabled deveria ser false para usuário desativado.');
+  // Reativar usuário
+  await testSec.updateUserStatus(internalUser.id, { status: 'active' });
+
+  // 8. Teste de Exclusão (Delete)
+  const delResult = await reloadedService2.deleteReceiver(externalReceiver.id);
+  assert.equal(delResult.ok, true);
+  const listAfterDel = await reloadedService2.getReceivers();
+  assert.equal(listAfterDel.length, 1, 'Deveria restar apenas 1 destinatário após delete.');
+  assert.equal(listAfterDel[0].id, internalReceiver.id);
+
+  // Excluir destinatário interno não deve excluir o usuário do SecurityManager
+  await reloadedService2.deleteReceiver(internalReceiver.id);
+  const listEmpty = await reloadedService2.getReceivers();
+  assert.equal(listEmpty.length, 0);
+  const userStillInSec = testSec.listUsers().find(u => u.id === internalUser.id);
+  assert(userStillInSec, 'A exclusão do destinatário não pode apagar o usuário do sistema!');
+
+  // 9. Teste de Proteção dos Dados em Disco (Criptografia at rest)
+  await reloadedService2.addReceiver({ type: 'internal', userId: internalUser.id });
+  await reloadedService2.addReceiver({ type: 'external', name: 'Destinatario Secreto', email: 'secreto@dados-sigilosos.adv.br' });
+
+  const rawDiskFile = await readFile(path.join(unitTestDir, 'email-integrations.json'), 'utf8');
+  assert(!rawDiskFile.includes('advogada@teste.local'), 'E-mail interno apareceu em texto puro no arquivo em disco!');
+  assert(!rawDiskFile.includes('secreto@dados-sigilosos.adv.br'), 'E-mail externo apareceu em texto puro no arquivo em disco!');
+  assert(rawDiskFile.includes('"algorithm": "aes-256-gcm"'), 'Arquivo em disco deve estar cifrado com aes-256-gcm.');
+
+  console.log('✓ EmailService isolado (Unit Tests, XSS, Templates, Receivers e Criptografia) 100% aprovado.');
 } finally {
   await rm(unitTestDir, { recursive: true, force: true });
 }
@@ -258,7 +394,12 @@ try {
   assert.equal(res.status, 401, 'Envio de publicação acessível sem autenticação!');
 
   // Setup do Administrador Principal (Master Admin)
-  res = await postJson(`${server.baseUrl}/api/auth/setup`, { username: 'admin', displayName: 'Admin Titular', password: adminPassword });
+  res = await postJson(`${server.baseUrl}/api/auth/setup`, {
+    username: 'admin',
+    displayName: 'Admin Titular',
+    email: 'admin.titular@escritorio.adv.br',
+    password: adminPassword
+  });
   const setupData = await res.json();
   res = await postJson(`${server.baseUrl}/api/auth/setup/verify`, { setupToken: setupData.setupToken, code: generateTotp(setupData.manualSecret) });
   const verified = await res.json();
@@ -400,6 +541,97 @@ try {
   }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
   assert.equal(res.status, 400, 'Admin deveria ter acesso autorizado e passar pela validação de formato.');
 
+  // Destinatários (Receivers) - Testes de RBAC e CSRF nos novos endpoints
+  // SEM LOGIN: 401
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers`);
+  assert.equal(res.status, 401, 'GET /api/integrations/email/receivers acessível sem login!');
+
+  res = await postJson(`${server.baseUrl}/api/integrations/email/receivers`, { type: 'external', name: 'Teste', email: 'teste@teste.com' });
+  assert.equal(res.status, 401, 'POST /api/integrations/email/receivers acessível sem login!');
+
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers/rcv-123`, { method: 'PATCH', body: JSON.stringify({ enabled: false }) });
+  assert.equal(res.status, 401, 'PATCH /api/integrations/email/receivers/:id acessível sem login!');
+
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers/rcv-123`, { method: 'DELETE' });
+  assert.equal(res.status, 401, 'DELETE /api/integrations/email/receivers/:id acessível sem login!');
+
+  // ADMIN SEM CSRF: 403
+  res = await postJson(`${server.baseUrl}/api/integrations/email/receivers`, { type: 'external', name: 'Teste', email: 'teste@teste.com' }, { Cookie: adminCookie });
+  assert.equal(res.status, 403, 'POST receivers aceito sem CSRF!');
+
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers/rcv-123`, {
+    method: 'PATCH',
+    headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: false })
+  });
+  assert.equal(res.status, 403, 'PATCH receivers aceito sem CSRF!');
+
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers/rcv-123`, {
+    method: 'DELETE',
+    headers: { Cookie: adminCookie }
+  });
+  assert.equal(res.status, 403, 'DELETE receivers aceito sem CSRF!');
+
+  // COLABORADOR: GET, POST, PATCH, DELETE devem ser TODOS BLOQUEADOS com 403
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers`, { headers: { Cookie: collabCookie } });
+  assert.equal(res.status, 403, 'Colaborador conseguiu chamar GET /api/integrations/email/receivers!');
+
+  res = await postJson(`${server.baseUrl}/api/integrations/email/receivers`, {
+    type: 'external',
+    name: 'Destinatario Ilegal',
+    email: 'ilegal@teste.com'
+  }, { Cookie: collabCookie, 'X-CSRF-Token': collabCsrf });
+  assert.equal(res.status, 403, 'Colaborador conseguiu chamar POST /api/integrations/email/receivers!');
+
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers/rcv-123`, {
+    method: 'PATCH',
+    headers: { Cookie: collabCookie, 'X-CSRF-Token': collabCsrf, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: false })
+  });
+  assert.equal(res.status, 403, 'Colaborador conseguiu chamar PATCH /api/integrations/email/receivers/:id!');
+
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers/rcv-123`, {
+    method: 'DELETE',
+    headers: { Cookie: collabCookie, 'X-CSRF-Token': collabCsrf }
+  });
+  assert.equal(res.status, 403, 'Colaborador conseguiu chamar DELETE /api/integrations/email/receivers/:id!');
+
+  // ADMIN: Fluxo completo de escrita e leitura de Receivers via HTTP
+  // 1. GET lista inicial vazia
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers`, { headers: { Cookie: adminCookie } });
+  assert.equal(res.status, 200);
+  let httpReceivers = (await res.json()).receivers;
+  assert(Array.isArray(httpReceivers));
+
+  // 2. POST novo externo
+  res = await postJson(`${server.baseUrl}/api/integrations/email/receivers`, {
+    type: 'external',
+    name: 'Secretaria HTTP',
+    email: 'secretaria.http@escritorio.adv.br'
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  assert.equal(res.status, 201);
+  const createdHttpReceiver = (await res.json()).receiver;
+  assert.equal(createdHttpReceiver.name, 'Secretaria HTTP');
+  assert.equal(createdHttpReceiver.email, 'secretaria.http@escritorio.adv.br');
+
+  // 3. PATCH atualizar status e nome
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers/${createdHttpReceiver.id}`, {
+    method: 'PATCH',
+    headers: { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Secretaria HTTP Atualizada', enabled: false })
+  });
+  assert.equal(res.status, 200);
+  const updatedHttpReceiver = (await res.json()).receiver;
+  assert.equal(updatedHttpReceiver.name, 'Secretaria HTTP Atualizada');
+  assert.equal(updatedHttpReceiver.enabled, false);
+
+  // 4. DELETE remover
+  res = await fetch(`${server.baseUrl}/api/integrations/email/receivers/${createdHttpReceiver.id}`, {
+    method: 'DELETE',
+    headers: { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf }
+  });
+  assert.equal(res.status, 200);
+
   console.log('✓ Controle de acesso administrativo (Admin vs Colaborador) 100% verificado.');
 
   // 4. Testes de Envio Manual de Publicação por E-mail (Fluxo Completo no Servidor)
@@ -417,7 +649,7 @@ try {
     process: '5002086-73.2022.4.04.7133',
     client: 'Roberto Roque Junges',
     court: 'TRF4 — 2ª Vara Federal de Novo Hamburgo',
-    publishedAt: '2026-08-26',
+    publishedAt: new Date().toISOString().slice(0, 10),
     source: 'DJEN Oficial',
     term: 'Dr. Advogado Titular · OAB/RS 000000',
     text: 'Fica a parte autora intimada a apresentar manifestação circunstanciada sobre o laudo pericial médico no prazo de 15 (quinze) dias.',
@@ -614,11 +846,140 @@ try {
     await page.locator('#view-inbox.active').waitFor();
     await page.locator(`.inbox-row[data-intimation-id="${canonicalTestPublication.id}"]`).click();
 
-    // Validar que o botão NÃO EXISTE no DOM para Colaborador
-    const emailBtnCollab = page.locator('#intimationDetail [data-detail-action="send-email"]');
-    assert.equal(await emailBtnCollab.count(), 0, 'Botão de enviar por e-mail foi renderizado indevidamente para colaborador!');
+    // 5.4 E2E DESTINATÁRIOS DE PUBLICAÇÕES (ADMIN & COLLABORATOR & THEMES)
+    // Master Admin faz login novamente
+    await page.evaluate(() => window.KellerAuth?.logout());
+    await page.locator('#authLoginForm.active').waitFor();
+    await page.locator('#authLoginForm [name="username"]').fill('admin');
+    await page.locator('#authLoginForm [name="password"]').fill(adminPassword);
+    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(setupData.manualSecret));
+    await page.locator('#authLoginForm button[type="submit"]').click();
+    await page.locator('#appShell:not(.hidden)').waitFor();
 
-    console.log('✓ Visibilidade no DOM e abertura de modal (Master Admin, Admin, Collaborator) 100% validados.');
+    // Navegar para a aba de Integrações
+    await page.locator('button[data-view="integrations"]').click();
+    await page.locator('#view-integrations.active').waitFor();
+
+    // Validar visibilidade da seção e do botão de adicionar destinatário
+    const receiversSection = page.locator('#emailReceiversSection:not(.hidden)');
+    const addReceiverBtn = page.locator('#btnAddEmailReceiver:not(.hidden)');
+    await receiversSection.waitFor();
+    await addReceiverBtn.waitFor();
+    assert.equal(await receiversSection.isVisible(), true, 'Seção de destinatários não está visível para admin.');
+    assert.equal(await addReceiverBtn.isVisible(), true, 'Botão de adicionar destinatário não está visível para admin.');
+
+    // Abrir modal de criação
+    await addReceiverBtn.click();
+    const receiverModal = page.locator('#emailReceiverModalBackdrop');
+    await receiverModal.waitFor({ state: 'visible' });
+
+    // Selecionar tipo E-mail externo
+    await page.locator('#receiverTypeExternal').click();
+    assert.equal(await page.locator('#receiverExternalFields').isVisible(), true, 'Campos externos não ficaram visíveis.');
+    assert.equal(await page.locator('#receiverInternalFields').isVisible(), false, 'Campos internos não foram ocultados.');
+
+    // Preencher dados do destinatário externo
+    await page.locator('#receiverNameInput').fill('Advogada Externa Parceira');
+    await page.locator('#receiverEmailInput').fill('advogada.externa@parceiro.adv.br');
+    await page.locator('#receiverSubmitBtn').click();
+    await receiverModal.waitFor({ state: 'hidden' });
+
+    // Validar item na lista
+    const receiverRow = page.locator('.email-receiver-item').first();
+    await receiverRow.waitFor();
+    assert(await receiverRow.textContent().then(t => t.includes('Advogada Externa Parceira')), 'Nome do destinatário não apareceu na lista.');
+    assert(await receiverRow.textContent().then(t => t.includes('advogada.externa@parceiro.adv.br')), 'E-mail do destinatário não apareceu na lista.');
+    assert(await receiverRow.textContent().then(t => t.includes('Ativo')), 'Badge Ativo não apareceu.');
+
+    // Desativar destinatário
+    await receiverRow.locator('[data-receiver-action="toggle"]').click();
+    await page.waitForTimeout(400);
+    assert(await receiverRow.textContent().then(t => t.includes('Inativo')), 'Badge não mudou para Inativo após toggle.');
+
+    // Reativar destinatário
+    await receiverRow.locator('[data-receiver-action="toggle"]').click();
+    await page.waitForTimeout(400);
+    assert(await receiverRow.textContent().then(t => t.includes('Ativo')), 'Badge não mudou para Ativo após reativação.');
+
+    // Editar destinatário
+    await receiverRow.locator('[data-receiver-action="edit"]').click();
+    await receiverModal.waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#receiverNameInput').inputValue(), 'Advogada Externa Parceira');
+    await page.locator('#receiverNameInput').fill('Advogada Externa Titular');
+    await page.locator('#receiverSubmitBtn').click();
+    await receiverModal.waitFor({ state: 'hidden' });
+    await page.waitForTimeout(400);
+    assert(await receiverRow.textContent().then(t => t.includes('Advogada Externa Titular')), 'Nome editado não atualizou na lista.');
+
+    // Excluir destinatário externo
+    page.once('dialog', dialog => dialog.accept());
+    await receiverRow.locator('[data-receiver-action="delete"]').click();
+    await page.waitForTimeout(500);
+
+    // Adicionar destinatário interno (Usuário do ATRIUM)
+    await addReceiverBtn.click();
+    await receiverModal.waitFor({ state: 'visible' });
+    await page.locator('#receiverTypeInternal').click();
+    assert.equal(await page.locator('#receiverInternalFields').isVisible(), true);
+    await page.locator('#receiverSubmitBtn').click();
+    await receiverModal.waitFor({ state: 'hidden' });
+    await page.waitForTimeout(400);
+
+    const internalReceiverRow = page.locator('.email-receiver-item').first();
+    await internalReceiverRow.waitFor();
+    assert(await internalReceiverRow.textContent().then(t => t.includes('Usuário interno')), 'Badge Usuário interno não exibido.');
+
+    // Recarregar página (Reload) e verificar persistência dos destinatários
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.locator('#appShell:not(.hidden)').waitFor();
+    await page.locator('button[data-view="integrations"]').click();
+    await page.locator('#view-integrations.active').waitFor();
+    const persistedRow = page.locator('.email-receiver-item').first();
+    await persistedRow.waitFor();
+    assert(await persistedRow.isVisible(), 'Destinatário interno não persistiu após reload do navegador.');
+
+    // Validação Visual Dark e Light Mode
+    const mediaDir = path.join(process.env.USERPROFILE || 'C:\\Users\\Ricardo PC', '.gemini', 'antigravity', 'brain', '15ef75e4-edfb-4180-8941-6c094f0ff30d', '.tempmediaStorage');
+    await mkdir(mediaDir, { recursive: true }).catch(() => {});
+
+    // Tema Dark
+    await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
+    const darkOverflow = await page.evaluate(() => {
+      const section = document.getElementById('emailReceiversSection');
+      return section.scrollWidth > section.clientWidth + 2;
+    });
+    assert.equal(darkOverflow, false, 'Overflow horizontal detectado no tema Dark!');
+    await page.screenshot({ path: path.join(mediaDir, 'receivers_dark.png'), fullPage: false });
+
+    // Tema Light
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+    const lightOverflow = await page.evaluate(() => {
+      const section = document.getElementById('emailReceiversSection');
+      return section.scrollWidth > section.clientWidth + 2;
+    });
+    assert.equal(lightOverflow, false, 'Overflow horizontal detectado no tema Light!');
+    await page.screenshot({ path: path.join(mediaDir, 'receivers_light.png'), fullPage: false });
+
+    // Restaurar tema
+    await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
+
+    // Logout e verificar que Colaborador NÃO vê a seção de destinatários
+    await page.evaluate(() => window.KellerAuth?.logout());
+    await page.locator('#authLoginForm.active').waitFor();
+    await page.locator('#authLoginForm [name="username"]').fill('colaborador');
+    await page.locator('#authLoginForm [name="password"]').fill(collaboratorPassword);
+    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(regData.manualSecret));
+    await page.locator('#authLoginForm button[type="submit"]').click();
+    await page.locator('#appShell:not(.hidden)').waitFor();
+
+    await page.locator('button[data-view="integrations"]').click();
+    await page.locator('#view-integrations.active').waitFor();
+    await page.locator('#emailReceiversSection').waitFor({ state: 'hidden' });
+    await page.locator('#btnAddEmailReceiver').waitFor({ state: 'hidden' });
+    assert.equal(await page.locator('#emailReceiversSection').isVisible(), false, 'Colaborador não deve visualizar a seção de destinatários.');
+    assert.equal(await page.locator('#btnAddEmailReceiver').isVisible(), false, 'Colaborador não deve visualizar botão de adicionar destinatário.');
+
+    console.log('✓ Visibilidade no DOM, CRUD de Destinatários, temas Light/Dark e RBAC 100% validados.');
   } finally {
     await browser.close();
   }

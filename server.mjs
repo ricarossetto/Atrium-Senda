@@ -1592,6 +1592,68 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // Destinatários de Publicações (E-mail & Notificações)
+    if (req.method === 'GET' && url.pathname === '/api/integrations/email/receivers') {
+      assertAdmin(req, false, 'Você não possui permissão para consultar os destinatários de e-mail.');
+      const receivers = await emailService.getReceivers();
+      return json(res, 200, { ok: true, receivers });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/integrations/email/receivers') {
+      const session = assertAdmin(req, true, 'Você não possui permissão para cadastrar destinatários de e-mail.');
+      const body = await readJson(req, 100_000);
+      const receiver = await emailService.addReceiver(body);
+      const masked = maskEmail(receiver.email);
+      await appendServerAudit(
+        'Destinatário de publicações adicionado',
+        `${receiver.name} — ${masked} — ${receiver.type === 'internal' ? 'interno' : 'externo'}`,
+        session.displayName || session.username
+      );
+      return json(res, 201, { ok: true, receiver, message: 'Destinatário cadastrado com sucesso!' });
+    }
+
+    if ((req.method === 'PATCH' || req.method === 'POST') && (url.pathname.startsWith('/api/integrations/email/receivers/') || url.pathname === '/api/integrations/email/receivers/update')) {
+      const session = assertAdmin(req, true, 'Você não possui permissão para editar destinatários de e-mail.');
+      const body = await readJson(req, 100_000);
+      const id = url.pathname.startsWith('/api/integrations/email/receivers/')
+        ? url.pathname.slice('/api/integrations/email/receivers/'.length).trim()
+        : String(body.id || '').trim();
+
+      const receiver = await emailService.updateReceiver(id, body);
+      const masked = maskEmail(receiver.email);
+      const actionName = (body.enabled !== undefined && Object.keys(body).length === 1)
+        ? `Destinatário ${receiver.enabled ? 'ativado' : 'desativado'}`
+        : 'Destinatário de publicações atualizado';
+
+      await appendServerAudit(
+        actionName,
+        `${receiver.name} — ${masked} — ${receiver.type === 'internal' ? 'interno' : 'externo'}`,
+        session.displayName || session.username
+      );
+      return json(res, 200, { ok: true, receiver, message: 'Destinatário atualizado com sucesso!' });
+    }
+
+    if ((req.method === 'DELETE' || req.method === 'POST') && (url.pathname.startsWith('/api/integrations/email/receivers/') || url.pathname === '/api/integrations/email/receivers/delete' || (req.method === 'DELETE' && url.pathname === '/api/integrations/email/receivers'))) {
+      const session = assertAdmin(req, true, 'Você não possui permissão para remover destinatários de e-mail.');
+      let body = {};
+      if (req.method === 'POST') {
+        body = await readJson(req, 100_000);
+      }
+      const id = url.pathname.startsWith('/api/integrations/email/receivers/')
+        ? url.pathname.slice('/api/integrations/email/receivers/'.length).trim()
+        : String(url.searchParams.get('id') || body.id || '').trim();
+
+      const result = await emailService.deleteReceiver(id);
+      const removed = result.removed;
+      const masked = maskEmail(removed?.email);
+      await appendServerAudit(
+        'Destinatário de publicações removido',
+        `${removed?.name || id} — ${masked} — ${removed?.type === 'internal' ? 'interno' : 'externo'}`,
+        session.displayName || session.username
+      );
+      return json(res, 200, { ok: true, message: 'Destinatário removido com sucesso!', ...result });
+    }
+
     // Envio manual de publicação/intimação capturada por e-mail
     if (req.method === 'POST' && (url.pathname === '/api/intimations/email' || url.pathname === '/api/publications/email')) {
       const session = assertAdmin(req, true, 'Você não possui permissão para enviar publicações por e-mail.');

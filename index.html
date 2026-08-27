@@ -893,9 +893,24 @@
               <span class="status-chip muted" id="emailIntegrationStatus">Não configurado</span>
               <h3>E-mail &amp; Notificações</h3>
               <p id="emailIntegrationDetail">Configure o transporte SMTP seguro para envio de comunicações e boletins do escritório.</p>
-              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
                 <button class="button gold" id="btnConfigureEmail">Configurar SMTP</button>
                 <button class="button ghost hidden" id="btnTestEmail">Enviar e-mail de teste</button>
+                <button class="button ghost hidden" id="btnAddEmailReceiver">+ Adicionar destinatário</button>
+              </div>
+
+              <!-- Seção de Destinatários Salvos de Publicações -->
+              <div class="email-receivers-section hidden" id="emailReceiversSection" style="margin-top:14px; border-top:1px solid var(--line); padding-top:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+                  <div>
+                    <h4 style="margin:0; font-size:13.5px; font-weight:700; color:var(--ivory); letter-spacing:0.02em;">Destinatários de publicações</h4>
+                    <p style="margin:2px 0 0; font-size:12px; color:var(--muted);">Lista de endereços habilitados para notificações judiciais.</p>
+                  </div>
+                  <span id="emailReceiversCount" class="badge-chip" style="font-size:11.5px; color:var(--muted); background:var(--panel-soft); padding:3px 8px; border-radius:12px; border:1px solid var(--line);">0 cadastrados</span>
+                </div>
+                <div id="emailReceiversList" class="email-receivers-list" style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                  <!-- Linhas renderizadas dinamicamente pelo portal.js -->
+                </div>
               </div>
             </div>
           </article>
@@ -2036,6 +2051,74 @@
         <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
           <button class="button ghost" id="publicationEmailCancel" type="button">Cancelar</button>
           <button class="button gold" id="publicationEmailSubmitBtn" type="submit">Enviar</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <!-- Modal de Destinatário de Publicações -->
+  <div class="modal-backdrop hidden" id="emailReceiverModalBackdrop">
+    <section class="modal card email-receiver-modal" role="dialog" aria-modal="true" aria-labelledby="emailReceiverModalTitle" style="max-width:500px; width:92%;">
+      <header class="modal-header">
+        <div>
+          <p class="eyebrow">Notificações por E-mail</p>
+          <h3 id="emailReceiverModalTitle">Adicionar destinatário de publicações</h3>
+        </div>
+        <button class="icon-button" id="emailReceiverModalClose" type="button" aria-label="Fechar modal">✕</button>
+      </header>
+      <form id="emailReceiverForm">
+        <input type="hidden" id="receiverIdInput" name="id">
+        <input type="hidden" id="receiverEditTypeInput" name="editType">
+        <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+          <!-- Seletor de Tipo (apenas ao criar novo) -->
+          <div id="receiverTypeSelectorContainer" style="display:flex; flex-direction:column; gap:6px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Tipo de Destinatário</span>
+            <div style="display:flex; gap:16px; align-items:center;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--ivory); cursor:pointer;">
+                <input type="radio" name="receiverType" id="receiverTypeInternal" value="internal" checked>
+                <span>Usuário do ATRIUM</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--ivory); cursor:pointer;">
+                <input type="radio" name="receiverType" id="receiverTypeExternal" value="external">
+                <span>E-mail externo</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Campos para Usuário Interno -->
+          <div id="receiverInternalFields" style="display:flex; flex-direction:column; gap:6px;">
+            <label style="display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:12px; font-weight:600; color:var(--muted);">Selecionar Usuário Ativo *</span>
+              <select id="receiverUserSelect" name="userId" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+                <option value="">Carregando usuários...</option>
+              </select>
+            </label>
+            <small style="font-size:11.5px; color:var(--muted);">O nome e o e-mail serão obtidos e atualizados automaticamente a partir do cadastro do usuário.</small>
+          </div>
+
+          <!-- Campos para Destinatário Externo -->
+          <div id="receiverExternalFields" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+            <label style="display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:12px; font-weight:600; color:var(--muted);">Nome do Destinatário *</span>
+              <input id="receiverNameInput" name="receiverName" type="text" placeholder="ex: Secretaria, Contador, Cliente" maxlength="120" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:12px; font-weight:600; color:var(--muted);">Endereço de E-mail *</span>
+              <input id="receiverEmailInput" name="receiverEmail" type="email" placeholder="ex: secretaria@escritorio.adv.br" maxlength="254" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+            </label>
+          </div>
+
+          <!-- Checkbox de Status Ativo -->
+          <div style="border-top:1px solid var(--line); padding-top:10px; margin-top:4px;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ivory); cursor:pointer;">
+              <input type="checkbox" id="receiverEnabledInput" name="enabled" checked>
+              <span>Destinatário ativo para notificações</span>
+            </label>
+          </div>
+        </div>
+        <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
+          <button class="button ghost" id="receiverCancelBtn" type="button">Cancelar</button>
+          <button class="button gold" id="receiverSubmitBtn" type="submit">Salvar Destinatário</button>
         </footer>
       </form>
     </section>
