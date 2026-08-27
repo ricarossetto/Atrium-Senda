@@ -3856,7 +3856,12 @@ ${id.lawyerOab} - ${id.officeName}`;
       }).join('')}</div>`;
       document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
       document.getElementById('modalBackdrop').classList.remove('hidden');
-      setTimeout(() => document.querySelector('#modalFields input, #modalFields textarea')?.focus(), 20);
+      setTimeout(() => {
+        const modalFields = document.getElementById('modalFields');
+        if (modalFields && (!document.activeElement || !modalFields.contains(document.activeElement))) {
+          modalFields.querySelector('input, textarea')?.focus();
+        }
+      }, 20);
     },
     closeModal() { document.getElementById('modalBackdrop').classList.add('hidden'); this.modalMode = null; document.getElementById('modalForm').reset(); },
     openTaskModal(defaults = {}) {

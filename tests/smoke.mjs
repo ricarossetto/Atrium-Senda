@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -11,8 +12,21 @@ const pageErrors = [];
 const responseErrors = [];
 page.on('pageerror', error => { console.error('PAGE ERROR:', error); pageErrors.push(error.message); });
 page.on('console', msg => console.log('PAGE LOG:', msg.text()));
-page.on('response', response => {
-  if (response.status() >= 400) responseErrors.push(`${response.request().method()} ${new URL(response.url()).pathname} → ${response.status()}`);
+page.on('request', req => {
+  if (req.url().includes('/api/state')) {
+    console.log(`[REQ ${req.method()} /api/state]`);
+  }
+});
+page.on('response', async response => {
+  const pathname = new URL(response.url()).pathname;
+  if (pathname.startsWith('/api/')) {
+    console.log(`[RES ${response.status()} ${response.request().method()} ${pathname}]`);
+  }
+  if (response.status() >= 400) {
+    const body = await response.text().catch(() => '');
+    console.error(`[HTTP ${response.status()} ERROR] ${response.request().method()} ${pathname}: ${body}`);
+    responseErrors.push(`${response.request().method()} ${pathname} → ${response.status()}: ${body}`);
+  }
 });
 
 try {
@@ -97,21 +111,50 @@ try {
   await page.locator('#view-configuration.active').waitFor();
   assert(await page.locator('#configurationTabs button').count() >= 10, 'Abas de configurações não foram renderizadas.');
   await page.locator('#newConfigurationButton').click();
+  await page.locator('#modalBackdrop').waitFor({ state: 'visible' });
   await page.locator('[name="name"]').fill('TAREFA EDITÁVEL DO TESTE');
   await page.locator('[name="points"]').fill('90');
   await page.locator('[name="phase"]').fill('Judicial');
+  const createSavePromise = page.waitForResponse(r => r.url().endsWith('/api/state') && r.request().method() === 'POST' && r.status() === 200);
   await page.locator('#modalForm button[type="submit"]').click();
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
-  await page.waitForTimeout(200);
+  await createSavePromise;
+
+  await page.waitForTimeout(100);
   const configRow = page.locator('#configurationList [data-config-index]', { hasText: 'TAREFA EDITÁVEL DO TESTE' });
   await configRow.waitFor({ state: 'visible' });
   await configRow.click();
   await page.locator('#modalBackdrop').waitFor({ state: 'visible' });
+  await page.locator('#modalForm [name="points"]').waitFor({ state: 'visible' });
   await page.locator('#modalForm [name="points"]').fill('95');
+  assert.equal(await page.locator('#modalForm [name="points"]').inputValue(), '95', 'Campo points não recebeu 95.');
+  assert.equal(await page.locator('#modalForm [name="name"]').inputValue(), 'TAREFA EDITÁVEL DO TESTE', 'Campo name foi alterado indevidamente durante edição.');
+
+  const editSavePromise = page.waitForResponse(r => r.url().endsWith('/api/state') && r.request().method() === 'POST' && r.status() === 200);
   await page.locator('#modalForm button[type="submit"]').click();
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
-  await page.waitForFunction(() => window.KellerCentral?.Store.state.configuration.taskDefinitions.some(item => item.name === 'TAREFA EDITÁVEL DO TESTE' && Number(item.points) === 95));
-  await page.locator('#configurationList [data-config-index]', { hasText: '95 pontos' }).waitFor();
+  await editSavePromise;
+
+  // Nível A: DOM / UI
+  await page.locator('#configurationList [data-config-index]', { hasText: '95 pontos' }).waitFor({ state: 'visible' });
+
+  // Nível B: STORE em memória
+  const storePoints = await page.evaluate(() => {
+    const item = window.KellerCentral?.Store?.state?.configuration?.taskDefinitions?.find(t => t.name === 'TAREFA EDITÁVEL DO TESTE');
+    return item ? Number(item.points) : null;
+  });
+  assert.equal(storePoints, 95, 'Store em memória não contém 95 pontos.');
+
+  // Nível C: BACKEND persistido (/api/state)
+  const backendPoints = await page.evaluate(async () => {
+    const res = await window.KellerAuth.secureFetch('/api/state', { headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const item = json.state?.configuration?.taskDefinitions?.find(t => t.name === 'TAREFA EDITÁVEL DO TESTE');
+    return item ? Number(item.points) : null;
+  });
+  assert.equal(backendPoints, 95, 'Backend /api/state não persistiu 95 pontos.');
+
   await page.locator('#configurationTabs [data-config-section="users"]').click();
   await page.locator('#configurationList [data-auth-user-id]', { hasText: 'Advogado Administrador' }).waitFor();
   assert(await page.locator('#configurationList [data-auth-user-id]').count() === 1, 'A aba Usuários não exibiu as contas reais de autenticação.');
@@ -306,7 +349,6 @@ try {
   await server.stop();
 }
 
-function assert(condition, message) { if (!condition) throw new Error(message); }
 async function capture(name) {
   if (!process.env.KELLER_VISUAL_QA_PATH) return;
   await mkdir(process.env.KELLER_VISUAL_QA_PATH, { recursive: true });

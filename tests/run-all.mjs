@@ -43,7 +43,8 @@ const checkFiles = [
   'tests/email_service.mjs',
   'tests/visual_light_foundation.mjs',
   'tests/visual_publications_light.mjs',
-  'tests/publications_treatment.mjs'
+  'tests/publications_treatment.mjs',
+  'tests/configuration_persistence.mjs'
 ];
 
 const testSuites = [
@@ -60,6 +61,7 @@ const testSuites = [
   { name: 'Higiene de Estado, Migrações Determinísticas & Recuperação', file: 'tests/state_migrations.mjs' },
   { name: 'Motor SMTP e Entrega Segura de E-mail de Teste', file: 'tests/email_service.mjs' },
   { name: 'Workflow de Tratamento e Triagem de Publicações', file: 'tests/publications_treatment.mjs' },
+  { name: 'Persistência de Configurações, Coalescing e Reload', file: 'tests/configuration_persistence.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 
