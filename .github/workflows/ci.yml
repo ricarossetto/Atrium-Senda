@@ -58,3 +58,35 @@ jobs:
           name: atrium-visual-qa-screenshots
           path: artifacts/visual-qa/
           retention-days: 14
+
+  judicial-a1-windows:
+    name: Judicial A1 Windows Verification
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: |
+          npm ci || npm install --no-audit --no-fund
+        shell: bash
+
+      - name: Install Playwright Browsers (Chromium)
+        run: |
+          npx playwright install chromium
+        shell: bash
+
+      - name: Run Full A1 Sandbox & Judicial Suite on Windows
+        run: |
+          node tests/judicial_sandbox.mjs
+        shell: bash
+        env:
+          CI: true
+          NODE_ENV: test
+
