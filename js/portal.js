@@ -160,6 +160,16 @@
     return html;
   }
   const normalizeText = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const parseLocalDate = value => {
+    if (!value) return null;
+    const str = String(value).slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const [year, month, day] = str.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  };
   const formatDate = value => {
     if (!value) return '—';
     const [year, month, day] = String(value).slice(0, 10).split('-').map(Number);
@@ -168,18 +178,16 @@
   };
   const formatDateTime = value => value ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : 'Nunca';
   const isDateToday = dateVal => {
-    if (!dateVal) return false;
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return false;
+    const d = parseLocalDate(dateVal);
+    if (!d) return false;
     const today = new Date();
     return d.getFullYear() === today.getFullYear() &&
            d.getMonth() === today.getMonth() &&
            d.getDate() === today.getDate();
   };
   const formatPublicationAge = dateVal => {
-    if (!dateVal) return 'Data não informada';
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return 'Data não informada';
+    const d = parseLocalDate(dateVal);
+    if (!d) return 'Data não informada';
     const now = new Date();
     const d1 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -190,44 +198,26 @@
   };
   const uid = prefix => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const ACT_RULES = [
-    { regex: /\b(embargos?\s+de\s+declara[cç][aã]o|embargos?\s+declarat[oó]rios?)\b/i, category: 'Embargos de Declaração', days: 5, priority: 'importante', label: 'Embargos (5d)', css: 'embargos' },
-    { regex: /\b(audi[eê]nc|sess[aã]o\s+de\s+julgamento|designad.{0,30}audi)\b/i, category: 'Audiência', days: 7, priority: 'urgente', label: 'Audiência (7d prep)', css: 'audiencia' },
-    { regex: /\b(apelac|agravo\s+de\s+instrumento|recurso\s+inominado|recurso\s+especial|recurso\s+extraordin[aá]rio|recurso\s+ordin[aá]rio|recurs(o|ar))\b/i, category: 'Recurso', days: 15, priority: 'importante', label: 'Recurso (15d)', css: 'recurso' },
-    { regex: /\b(contestac|contestaç|conteste|defes(a|ar)|apresentar\s+defesa)\b/i, category: 'Contestação', days: 15, priority: 'importante', label: 'Contestação (15d)', css: 'contestacao' },
-    { regex: /\b(cumprimento\s+de\s+senten[cç]|pague|pagamento.{0,30}volunt|multa.{0,30}10%|execu[cç][aã]o)\b/i, category: 'Cumprimento de Sentença', days: 15, priority: 'urgente', label: 'Cumprimento (15d)', css: 'cumprimento' },
-    { regex: /\b(manifest|impugn|r[eé]plic|especifica(r|cao|ção).{0,20}prov|contrarraz)\b/i, category: 'Manifestação', days: 15, priority: 'normal', label: 'Manifestação (15d)', css: 'manifestacao' },
-    { regex: /\b(edital|recupera[cç][aã]o\s+judicial|fal[eê]ncia|concedo\s+o\s+prazo)\b/i, category: 'Edital / Geral', days: 15, priority: 'normal', label: 'Edital (15d)', css: 'recurso' },
-    { regex: /\b(senten[cç]|ac[oó]rd[aã]o)\b/i, category: 'Sentença / Acórdão', days: 15, priority: 'importante', label: 'Sentença (15d)', css: 'recurso' },
-    { regex: /\b(decis[aã]o)\b/i, category: 'Decisão Interlocutória', days: 15, priority: 'normal', label: 'Decisão (15d)', css: 'recurso' },
-    { regex: /\b(despacho|ato\s+ordinat[oó]rio)\b/i, category: 'Despacho', days: 15, priority: 'normal', label: 'Despacho (15d)', css: 'rotina' }
+    { regex: /\b(embargos?\s+de\s+declara[cç][aã]o|embargos?\s+declarat[oó]rios?)\b/i, category: 'Embargos de Declaração', priority: 'importante', label: 'Embargos', css: 'embargos' },
+    { regex: /\b(audi[eê]nc|sess[aã]o\s+de\s+julgamento|designad.{0,30}audi)\b/i, category: 'Audiência', priority: 'urgente', label: 'Audiência', css: 'audiencia' },
+    { regex: /\b(apelac|agravo\s+de\s+instrumento|recurso\s+inominado|recurso\s+especial|recurso\s+extraordin[aá]rio|recurso\s+ordin[aá]rio|recurs(o|ar))\b/i, category: 'Recurso', priority: 'importante', label: 'Recurso', css: 'recurso' },
+    { regex: /\b(contestac|contestaç|conteste|defes(a|ar)|apresentar\s+defesa)\b/i, category: 'Contestação', priority: 'importante', label: 'Contestação', css: 'contestacao' },
+    { regex: /\b(cumprimento\s+de\s+senten[cç]|pague|pagamento.{0,30}volunt|multa.{0,30}10%|execu[cç][aã]o)\b/i, category: 'Cumprimento de Sentença', priority: 'urgente', label: 'Cumprimento', css: 'cumprimento' },
+    { regex: /\b(manifest|impugn|r[eé]plic|especifica(r|cao|ção).{0,20}prov|contrarraz)\b/i, category: 'Manifestação', priority: 'normal', label: 'Manifestação', css: 'manifestacao' },
+    { regex: /\b(edital|recupera[cç][aã]o\s+judicial|fal[eê]ncia|concedo\s+o\s+prazo)\b/i, category: 'Edital / Geral', priority: 'normal', label: 'Edital', css: 'recurso' },
+    { regex: /\b(senten[cç]|ac[oó]rd[aã]o)\b/i, category: 'Sentença / Acórdão', priority: 'importante', label: 'Sentença', css: 'recurso' },
+    { regex: /\b(decis[aã]o)\b/i, category: 'Decisão Interlocutória', priority: 'normal', label: 'Decisão', css: 'recurso' },
+    { regex: /\b(despacho|ato\s+ordinat[oó]rio)\b/i, category: 'Despacho', priority: 'normal', label: 'Despacho', css: 'rotina' }
   ];
 
   function classifyIntimationAct(text = '', title = '', type = '') {
     const combined = `${title} ${type} ${text}`;
-    
-    // 1. Extração de prazo explícito mencionado diretamente na decisão/despacho (ex: "prazo de 10 dias", "em 5 dias", "prazo de 30 dias")
-    const explicitMatch = combined.match(/\bprazo\s+(?:de\s+)?(\d{1,2})\s+dias?\b/i) || combined.match(/\bno\s+prazo\s+de\s+(\d{1,2})\s+dias?\b/i) || combined.match(/\bem\s+(\d{1,2})\s+dias?\b/i);
-    const explicitDays = explicitMatch ? parseInt(explicitMatch[1], 10) : null;
-
     for (const rule of ACT_RULES) {
       if (rule.regex.test(combined)) {
-        if (explicitDays && explicitDays !== rule.days && explicitDays > 0 && explicitDays <= 60) {
-          return {
-            ...rule,
-            days: explicitDays,
-            label: `${rule.category.split(' ')[0]} (${explicitDays}d)`
-          };
-        }
         return rule;
       }
     }
-
-    if (explicitDays && explicitDays > 0 && explicitDays <= 60) {
-      return { category: 'Intimação', days: explicitDays, priority: 'normal', label: `Intimação (${explicitDays}d)`, css: 'rotina' };
-    }
-
-    // Regra Padrão do CPC: Quando não há certeza ou para prazos gerais, o padrão é SEMPRE 15 dias úteis
-    return { category: 'Prazo Geral', days: 15, priority: 'normal', label: 'Prazo Geral (15d)', css: 'rotina' };
+    return { category: 'Publicação', priority: 'normal', label: 'Publicação', css: 'rotina' };
   }
 
   function addDays(isoString, days) {
@@ -2324,8 +2314,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (filter === 'urgente') return Boolean(item.urgent || item.priority === 'urgente');
         if (filter === 'importante') return Boolean(item.important);
         if (filter === 'prazo-fatal') {
-          const act = classifyIntimationAct(item.text, item.title, item.type);
-          return item.fatalDeadline || act.days > 0;
+          return Boolean(item.fatalDeadline);
         }
         if (filter === 'triagem') return item.status === 'triagem' || tStatus === 'in_review';
         if (filter === 'prazo') return item.status === 'prazo' || tStatus === 'treated';
@@ -2589,8 +2578,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         return;
       }
       if (action === 'task') {
-        const act = classifyIntimationAct(item.text, item.title, item.type);
-        const suggestedDeadline = addDays(item.publishedAt || isoDate(), act.days);
+        const isUrgent = Boolean(item.urgent || item.priority === 'urgente');
         this.openTaskModal({
           title: `Analisar publicação: ${item.title}`,
           description: item.text,
@@ -2598,8 +2586,8 @@ ${id.lawyerOab} - ${id.officeName}`;
           client: item.client,
           source: item.source || 'DJEN',
           intimationId: item.id,
-          deadline: suggestedDeadline,
-          priority: (item.urgent || item.priority === 'urgente') ? 'urgente' : (act.priority || 'normal'),
+          deadline: '',
+          priority: isUrgent ? 'urgente' : 'normal',
           status: 'triagem'
         });
         return;
@@ -2629,90 +2617,50 @@ ${id.lawyerOab} - ${id.officeName}`;
       const item = Store.state.intimations.find(i => i.id === intimationId);
       if (!item) return;
 
-      const actor = window.KellerAuth?.currentUser?.displayName || window.KellerAuth?.currentUser?.username || 'Advogado';
-      const nowIso = new Date().toISOString();
-
       try {
-        if (window.KellerAuth?.csrfToken) {
-          const res = await fetch(`/api/intimations/${encodeURIComponent(intimationId)}/treatment`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': window.KellerAuth?.csrfToken || ''
-            },
-            body: JSON.stringify({
-              action,
-              note,
-              revision: Store.revision
-            })
-          });
+        const res = await fetch(`/api/intimations/${encodeURIComponent(intimationId)}/treatment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.KellerAuth?.csrfToken || ''
+          },
+          body: JSON.stringify({
+            action,
+            note,
+            revision: Store.revision || Store.state?.revision || undefined
+          })
+        });
 
-          if (res.status === 409) {
-            this.toast('Esta publicação foi atualizada por outro usuário. Recarregue os dados.', 'warning');
-            if (typeof this.syncAppState === 'function') await this.syncAppState();
-            return;
-          }
-
-          if (res.ok) {
-            const data = await res.json();
-            if (data.intimation) {
-              const idx = Store.state.intimations.findIndex(i => i.id === intimationId);
-              if (idx !== -1) {
-                Store.state.intimations[idx] = data.intimation;
-              }
-              if (data.revision) Store.revision = data.revision;
-            }
-            this.renderInbox();
-            this.renderPublicationsMetrics();
-            this.renderMetrics();
-            this.renderIntimationDetail();
-            this.toast(data.message || 'Tratamento atualizado com sucesso!', 'success');
-            return;
-          }
+        if (res.status === 409) {
+          const errData = await res.json().catch(() => ({}));
+          this.toast(errData.error || 'Esta publicação foi atualizada por outro usuário. Recarregue os dados.', 'warning');
+          if (typeof this.syncAppState === 'function') await this.syncAppState();
+          return;
         }
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.intimation) {
+            const idx = Store.state.intimations.findIndex(i => i.id === intimationId);
+            if (idx !== -1) {
+              Store.state.intimations[idx] = data.intimation;
+            }
+            if (data.revision) Store.revision = data.revision;
+          }
+          this.renderInbox();
+          this.renderPublicationsMetrics();
+          this.renderMetrics();
+          this.renderIntimationDetail();
+          this.toast(data.message || 'Tratamento atualizado com sucesso!', 'success');
+          return;
+        }
+
+        const errData = await res.json().catch(() => ({}));
+        this.toast(errData.error || 'Não foi possível atualizar o tratamento da publicação. Tente novamente.', 'error');
       } catch (networkErr) {
-        console.warn('Fallback local para ação de tratamento:', networkErr);
+        console.error('Falha na requisição de tratamento:', networkErr);
+        this.toast('Não foi possível atualizar o tratamento da publicação. Tente novamente.', 'error');
       }
-
-      const procRef = item.process || item.id;
-      if (action === 'start_review') {
-        item.treatmentStatus = 'in_review';
-        item.treatmentStartedAt = nowIso;
-        item.treatmentStartedBy = actor;
-        Store.audit('Análise de publicação iniciada', `Processo: ${procRef}`);
-      } else if (action === 'mark_treated') {
-        item.treatmentStatus = 'treated';
-        item.treatedAt = nowIso;
-        item.treatedBy = actor;
-        if (note) item.treatmentNote = String(note).trim();
-        Store.audit('Publicação marcada como tratada', `Processo: ${procRef}`);
-      } else if (action === 'discard') {
-        item.treatmentStatus = 'discarded';
-        item.discardedAt = nowIso;
-        item.discardedBy = actor;
-        if (note) item.treatmentNote = String(note).trim();
-        Store.audit('Publicação descartada', `Processo: ${procRef}${item.treatmentNote ? ' — Motivo: ' + item.treatmentNote : ''}`);
-      } else if (action === 'reopen') {
-        item.treatmentStatus = 'in_review';
-        item.treatmentStartedAt = nowIso;
-        item.treatmentStartedBy = actor;
-        item.treatedAt = null;
-        item.treatedBy = null;
-        Store.audit('Publicação reaberta', `Processo: ${procRef}`);
-      } else if (action === 'restore') {
-        item.treatmentStatus = 'untreated';
-        item.discardedAt = null;
-        item.discardedBy = null;
-        item.treatmentNote = null;
-        Store.audit('Publicação restaurada', `Processo: ${procRef}`);
-      }
-
-      Store.save();
-      this.renderInbox();
-      this.renderPublicationsMetrics();
-      this.renderMetrics();
-      this.renderIntimationDetail();
-      this.toast('Tratamento atualizado com sucesso.', 'success');
     },
     openDiscardModal(item) {
       if (!item) return;
@@ -3319,7 +3267,6 @@ ${id.lawyerOab} - ${id.officeName}`;
     openIntimationDetailModal(item) {
       if (!item) return;
       const act = classifyIntimationAct(item.text, item.title, item.type);
-      const suggestedDeadline = addDays(item.publishedAt || isoDate(), act.days);
       const parties = this.intimationParties(item) || 'Partes ainda não identificadas';
       this.openModal('intimationDetail', 'Detalhes da intimação', 'Análise processual DJEN / Diário', [
         { name: 'title', label: 'Título do ato publicado', value: item.title, full: true },
@@ -3327,11 +3274,11 @@ ${id.lawyerOab} - ${id.officeName}`;
         { name: 'parties', label: 'Partes vinculadas', value: parties },
         { name: 'court', label: 'Tribunal / Unidade judiciária', value: item.court || 'Não informado' },
         { name: 'publishedAt', label: 'Data da publicação', value: formatDate(item.publishedAt) },
-        { name: 'actInfo', label: 'Classificação do ato e prazo sugerido', value: `${act.category.toUpperCase()} (${act.label}) — Prazo estimado: ${act.days} dias úteis (Vencimento sugerido: ${formatDate(suggestedDeadline)})`, full: true },
+        { name: 'actInfo', label: 'Classificação do ato', value: act.category ? act.category.toUpperCase() : 'PUBLICAÇÃO', full: true },
         { name: 'text', label: 'Teor integral da publicação', type: 'textarea', full: true, value: item.text || 'Sem texto original.' }
-      ], { ...item, suggestedDeadline, _act: act });
+      ], { ...item, deadline: '', _act: act });
       const submitButton = document.querySelector('#modalForm footer .button.gold');
-      if (submitButton) submitButton.textContent = `Criar tarefa no Kanban (${act.days}d)`;
+      if (submitButton) submitButton.textContent = 'Criar tarefa no Kanban';
     },
     renderAgenda() {
       const selected = this.agendaSelectedDate;
@@ -3377,7 +3324,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           type: 'intimation',
           id: i.id,
           date: targetDate,
-          time: `${act.days}d prazo`,
+          time: i.fatalDeadline ? 'Prazo fatal' : 'Publicação',
           title: i.title,
           subtitle: `${i.process || 'Sem processo'} · ${this.intimationParties(i) || 'Partes não vinculadas'}`,
           act,
@@ -5573,17 +5520,17 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (this.modalMode.mode === 'intimationDetail') {
         const item = this.modalMode.defaults;
         const act = item._act || classifyIntimationAct(item.text, item.title, item.type);
-        const suggestedDeadline = addDays(item.publishedAt || isoDate(), act.days);
+        const isUrgent = Boolean(item.urgent || item.priority === 'urgente');
         this.closeModal();
         this.openTaskModal({
-          title: `Cumprir ${act.category}: ${item.title}`,
+          title: `Analisar publicação: ${item.title}`,
           description: item.text,
           process: item.process,
           client: item.client,
           source: item.source || 'DJEN',
           intimationId: item.id,
-          deadline: suggestedDeadline,
-          priority: act.priority || 'normal',
+          deadline: '',
+          priority: isUrgent ? 'urgente' : 'normal',
           status: 'triagem'
         });
         return;

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { startTestServer, postJson } from './helpers.mjs';
 import { generateTotp } from '../lib/security.mjs';
-import { runStateMigrations, CURRENT_SCHEMA_VERSION } from '../lib/state-migrations.mjs';
+import { runStateMigrations, migrate7To8, migrate8To9, CURRENT_SCHEMA_VERSION } from '../lib/state-migrations.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -40,9 +40,9 @@ async function testAsync(name, fn) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 1. TESTES UNITÁRIOS DO MODELO DE MIGRAÇÃO E IMUTABILIDADE
+// 1. TESTES UNITÁRIOS DO MODELO DE MIGRAÇÃO, TIMESTAMPS E TIMEZONE
 // ─────────────────────────────────────────────────────────────
-console.log('[1/4] Testando migração de schema e defaults de tratamento...');
+console.log('[1/4] Testando migração de schema, imutabilidade e timezone...');
 
 test('Migração v7 -> v8 atribui treatmentStatus = untreated por padrão sem perder dados', () => {
   const v7State = {
@@ -99,44 +99,84 @@ test('Migração v7 -> v8 atribui treatmentStatus = untreated por padrão sem pe
   assert.equal(it1.unread, true);
   assert.equal(it1.status, 'nova');
 
-  // it2: arquivada -> discarded
+  // it2: arquivada -> discarded sem fabricar timestamp
   assert.equal(it2.treatmentStatus, 'discarded');
   assert.equal(it2.text, 'Processo extinto.');
   assert.equal(it2.status, 'arquivada');
+  assert.equal(it2.discardedAt, null);
+  assert.equal(it2.discardedBy, 'Sistema (Migração)');
 
-  // it3: prazo -> treated
+  // it3: prazo -> treated sem fabricar timestamp
   assert.equal(it3.treatmentStatus, 'treated');
   assert.equal(it3.text, 'Audiência designada.');
   assert.equal(it3.status, 'prazo');
+  assert.equal(it3.treatedAt, null);
+  assert.equal(it3.treatedBy, 'Sistema (Migração)');
 });
 
-test('Imutabilidade: Texto jurídico original e dados do processo permanecem idênticos', () => {
-  const originalText = 'Texto de sentença de mérito com deferimento de tutela de urgência.';
-  const originalProcess = '5002086-73.2022.4.04.7133';
-  const originalCourt = 'Tribunal Regional Federal da 4ª Região';
-  const originalSource = 'DJEN Oficial';
-
-  const state = {
-    schemaVersion: 7,
-    intimations: [{
-      id: 'int-immutable-test',
-      title: 'Sentença de Mérito',
-      process: originalProcess,
-      court: originalCourt,
-      source: originalSource,
-      publishedAt: '2026-08-25',
-      text: originalText,
-      status: 'nova'
-    }]
+test('Migration 7->8 e 8->9 não fabricam treatedAt/discardedAt e limpam legados incorretos', () => {
+  const v8State = {
+    schemaVersion: 8,
+    intimations: [
+      {
+        id: 'int-fab-1',
+        treatmentStatus: 'treated',
+        treatedBy: 'Sistema (Migração)',
+        treatedAt: '2026-08-20',
+        publishedAt: '2026-08-20'
+      },
+      {
+        id: 'int-real-1',
+        treatmentStatus: 'treated',
+        treatedBy: 'Dr. Ricardo Rossetto',
+        treatedAt: '2026-08-20T14:30:00.000Z',
+        publishedAt: '2026-08-20'
+      },
+      {
+        id: 'int-fab-2',
+        treatmentStatus: 'discarded',
+        discardedBy: 'Sistema (Migração)',
+        discardedAt: '2026-08-20',
+        publishedAt: '2026-08-20'
+      }
+    ]
   };
 
-  const migrated = runStateMigrations(state, '2.0.0-beta').state;
-  const item = migrated.intimations[0];
+  const v9State = migrate8To9(v8State);
+  assert.equal(v9State.schemaVersion, 9);
+  assert.equal(v9State.intimations[0].treatedAt, null, 'Timestamp fabricado deve ser limpo para null');
+  assert.equal(v9State.intimations[1].treatedAt, '2026-08-20T14:30:00.000Z', 'Timestamp real do usuário deve ser preservado');
+  assert.equal(v9State.intimations[2].discardedAt, null, 'Timestamp de descarte fabricado deve ser limpo para null');
+});
 
-  assert.equal(item.text, originalText);
-  assert.equal(item.process, originalProcess);
-  assert.equal(item.court, originalCourt);
-  assert.equal(item.source, originalSource);
+test('Timezone America/Sao_Paulo: cálculo de idade da publicação baseado em data local', () => {
+  const parseLocalDate = value => {
+    if (!value) return null;
+    const str = String(value).slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const [year, month, day] = str.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const formatPublicationAge = (dateVal, refNow = new Date()) => {
+    const d = parseLocalDate(dateVal);
+    if (!d) return 'Data não informada';
+    const now = refNow;
+    const d1 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return 'Hoje';
+    if (diffDays === 1) return 'Há 1 dia';
+    return `Há ${diffDays} dias`;
+  };
+
+  const fakeNow = new Date(2026, 7, 27, 10, 0, 0); // 27 de Agosto de 2026
+  assert.equal(formatPublicationAge('2026-08-27', fakeNow), 'Hoje');
+  assert.equal(formatPublicationAge('2026-08-26', fakeNow), 'Há 1 dia');
+  assert.equal(formatPublicationAge('2026-08-22', fakeNow), 'Há 5 dias');
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -234,13 +274,37 @@ try {
     }
   ];
 
-  await postJson(`${server.baseUrl}/api/state`, { state }, {
+  res = await postJson(`${server.baseUrl}/api/state`, { state }, {
     Cookie: sessionCookie,
     'X-CSRF-Token': csrfToken
   });
+  const savedState = await res.json();
+  let currentRev = savedState.revision;
 
-  await testAsync('Transição: untreated -> in_review (start_review)', async () => {
-    const res = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
+  // ── SEGURANÇA E CONCORRÊNCIA ──
+  await testAsync('Segurança: Requisição sem login retorna 401 Unauthorized', async () => {
+    const unauthRes = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'start_review', revision: currentRev })
+    });
+    assert.equal(unauthRes.status, 401);
+  });
+
+  await testAsync('Segurança: Requisição sem CSRF token retorna 403 Forbidden', async () => {
+    const noCsrfRes = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': sessionCookie
+      },
+      body: JSON.stringify({ action: 'start_review', revision: currentRev })
+    });
+    assert.equal(noCsrfRes.status, 403);
+  });
+
+  await testAsync('Concorrência: Requisição sem revision quando o servidor possui revision retorna 409', async () => {
+    const noRevRes = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -249,17 +313,28 @@ try {
       },
       body: JSON.stringify({ action: 'start_review' })
     });
-
-    assert.equal(res.status, 200);
-    const data = await res.json();
-    assert.equal(data.ok, true);
-    assert.equal(data.intimation.treatmentStatus, 'in_review');
-    assert.equal(data.intimation.treatmentStartedBy, 'Dr. Ricardo Rossetto');
-    assert.ok(data.intimation.treatmentStartedAt);
-    assert.equal(data.intimation.text, 'Intime-se o autor para emendar a petição inicial em 15 dias sob pena de indeferimento.');
+    assert.equal(noRevRes.status, 409);
+    const errData = await noRevRes.json();
+    assert.match(errData.message, /Revisão de estado obrigatória/i);
   });
 
-  await testAsync('Transição: in_review -> treated (mark_treated)', async () => {
+  await testAsync('Concorrência: Revision divergente retorna status 409 Conflict', async () => {
+    const badRevRes = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': sessionCookie,
+        'X-CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({ action: 'start_review', revision: 999999 })
+    });
+    assert.equal(badRevRes.status, 409);
+    const data = await badRevRes.json();
+    assert.match(data.message, /outro usuário/i);
+  });
+
+  // ── MÁQUINA DE ESTADOS E TRANSIÇÕES VÁLIDAS ──
+  await testAsync('Transição: untreated -> in_review (start_review) com actor de sessão autenticado', async () => {
     const res = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
       method: 'POST',
       headers: {
@@ -267,7 +342,50 @@ try {
         'Cookie': sessionCookie,
         'X-CSRF-Token': csrfToken
       },
-      body: JSON.stringify({ action: 'mark_treated', note: 'Emenda elaborada e protocolada' })
+      body: JSON.stringify({
+        action: 'start_review',
+        revision: currentRev,
+        actor: 'Hacker Fraudulento'
+      })
+    });
+
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.ok, true);
+    assert.equal(data.intimation.treatmentStatus, 'in_review');
+    assert.equal(data.intimation.treatmentStartedBy, 'Dr. Ricardo Rossetto', 'Actor deve ser derivado da sessão autenticada');
+    assert.ok(data.intimation.treatmentStartedAt);
+    currentRev = data.revision;
+  });
+
+  await testAsync('Máquina de Estados: Transição inválida in_review -> restore retorna 409', async () => {
+    const invalidRes = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': sessionCookie,
+        'X-CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({ action: 'restore', revision: currentRev })
+    });
+    assert.equal(invalidRes.status, 409);
+    const err = await invalidRes.json();
+    assert.match(err.message, /Transição inválida/i);
+  });
+
+  await testAsync('Transição: in_review -> treated (mark_treated) e limpeza de metadados contraditórios', async () => {
+    const res = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': sessionCookie,
+        'X-CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({
+        action: 'mark_treated',
+        note: 'Emenda elaborada e protocolada',
+        revision: currentRev
+      })
     });
 
     assert.equal(res.status, 200);
@@ -276,10 +394,28 @@ try {
     assert.equal(data.intimation.treatmentStatus, 'treated');
     assert.equal(data.intimation.treatedBy, 'Dr. Ricardo Rossetto');
     assert.equal(data.intimation.treatmentNote, 'Emenda elaborada e protocolada');
+    assert.equal(data.intimation.discardedAt, null);
+    assert.equal(data.intimation.discardedBy, null);
     assert.ok(data.intimation.treatedAt);
+    currentRev = data.revision;
   });
 
-  await testAsync('Transição: treated -> in_review (reopen)', async () => {
+  await testAsync('Máquina de Estados: Transição inválida treated -> discard retorna 409', async () => {
+    const invalidRes = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': sessionCookie,
+        'X-CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({ action: 'discard', note: 'Tentando descartar tratada', revision: currentRev })
+    });
+    assert.equal(invalidRes.status, 409);
+    const err = await invalidRes.json();
+    assert.match(err.message, /Transição inválida/i);
+  });
+
+  await testAsync('Transição: treated -> in_review (reopen) com limpeza de treatedAt/treatedBy', async () => {
     const res = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
       method: 'POST',
       headers: {
@@ -287,7 +423,7 @@ try {
         'Cookie': sessionCookie,
         'X-CSRF-Token': csrfToken
       },
-      body: JSON.stringify({ action: 'reopen' })
+      body: JSON.stringify({ action: 'reopen', revision: currentRev })
     });
 
     assert.equal(res.status, 200);
@@ -296,6 +432,8 @@ try {
     assert.equal(data.intimation.treatmentStatus, 'in_review');
     assert.equal(data.intimation.treatedAt, null);
     assert.equal(data.intimation.treatedBy, null);
+    assert.equal(data.intimation.treatmentNote, null);
+    currentRev = data.revision;
   });
 
   await testAsync('Transição: in_review -> discarded (discard com nota)', async () => {
@@ -306,7 +444,11 @@ try {
         'Cookie': sessionCookie,
         'X-CSRF-Token': csrfToken
       },
-      body: JSON.stringify({ action: 'discard', note: 'Publicação duplicada do DJEN' })
+      body: JSON.stringify({
+        action: 'discard',
+        note: 'Publicação duplicada do DJEN',
+        revision: currentRev
+      })
     });
 
     assert.equal(res.status, 200);
@@ -315,10 +457,28 @@ try {
     assert.equal(data.intimation.treatmentStatus, 'discarded');
     assert.equal(data.intimation.discardedBy, 'Dr. Ricardo Rossetto');
     assert.equal(data.intimation.treatmentNote, 'Publicação duplicada do DJEN');
+    assert.equal(data.intimation.treatedAt, null);
+    assert.equal(data.intimation.treatedBy, null);
     assert.ok(data.intimation.discardedAt);
+    currentRev = data.revision;
   });
 
-  await testAsync('Transição: discarded -> untreated (restore)', async () => {
+  await testAsync('Máquina de Estados: Transição inválida discarded -> mark_treated retorna 409', async () => {
+    const invalidRes = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': sessionCookie,
+        'X-CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({ action: 'mark_treated', revision: currentRev })
+    });
+    assert.equal(invalidRes.status, 409);
+    const err = await invalidRes.json();
+    assert.match(err.message, /Transição inválida/i);
+  });
+
+  await testAsync('Transição: discarded -> untreated (restore) e limpeza de descarte', async () => {
     const res = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
       method: 'POST',
       headers: {
@@ -326,7 +486,7 @@ try {
         'Cookie': sessionCookie,
         'X-CSRF-Token': csrfToken
       },
-      body: JSON.stringify({ action: 'restore' })
+      body: JSON.stringify({ action: 'restore', revision: currentRev })
     });
 
     assert.equal(res.status, 200);
@@ -335,23 +495,25 @@ try {
     assert.equal(data.intimation.treatmentStatus, 'untreated');
     assert.equal(data.intimation.discardedAt, null);
     assert.equal(data.intimation.discardedBy, null);
+    assert.equal(data.intimation.treatedAt, null);
+    assert.equal(data.intimation.treatedBy, null);
     assert.equal(data.intimation.treatmentNote, null);
+    currentRev = data.revision;
   });
 
-  await testAsync('Validação de Concorrência: conflito de revision retorna status 409', async () => {
-    const res = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
+  await testAsync('Máquina de Estados: Transição inválida untreated -> restore retorna 409', async () => {
+    const invalidRes = await fetch(`${server.baseUrl}/api/intimations/pub-test-1/treatment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Cookie': sessionCookie,
         'X-CSRF-Token': csrfToken
       },
-      body: JSON.stringify({ action: 'start_review', revision: 999999 })
+      body: JSON.stringify({ action: 'restore', revision: currentRev })
     });
-
-    assert.equal(res.status, 409);
-    const data = await res.json();
-    assert.match(data.message, /outro usuário/i);
+    assert.equal(invalidRes.status, 409);
+    const err = await invalidRes.json();
+    assert.match(err.message, /Transição inválida/i);
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -396,7 +558,30 @@ try {
       const untreatedCount = await page.textContent('#pubMetricUntreated');
       assert.ok(Number(untreatedCount) >= 2, `Contador de não tratadas deve ser >= 2 (encontrado: ${untreatedCount})`);
 
-      // Selecionar primeira publicação não tratada
+      // ── TESTE BUG 3: Filtro "Prazo fatal" sem publicações com fatalDeadline explícito retorna 0 ──
+      const fatalCountZero = await page.evaluate(() => {
+        const app = window.Atrium?.App || window.JurisFlow?.App;
+        app.inboxFilter = 'prazo-fatal';
+        const items = app.filteredIntimations();
+        app.inboxFilter = 'untreated';
+        return items.length;
+      });
+      assert.equal(fatalCountZero, 0, 'Filtro prazo-fatal sem flag explícita fatalDeadline deve retornar zero registros');
+
+      const fatalCountWithFlag = await page.evaluate(() => {
+        const app = window.Atrium?.App || window.JurisFlow?.App;
+        const store = window.Atrium?.Store || window.JurisFlow?.Store;
+        const item = store.state.intimations[0];
+        item.fatalDeadline = '2026-09-01';
+        app.inboxFilter = 'prazo-fatal';
+        const items = app.filteredIntimations();
+        delete item.fatalDeadline;
+        app.inboxFilter = 'untreated';
+        return items.length;
+      });
+      assert.equal(fatalCountWithFlag, 1, 'Filtro prazo-fatal com flag explícita fatalDeadline deve retornar o registro');
+
+      // Selecionar primeira publicação não tratada (pub-test-1 com texto "15 dias")
       const firstRow = page.locator('.inbox-row[data-intimation-id="pub-test-1"]');
       await firstRow.click();
       await page.waitForSelector('#intimationDetail .detail-header', { state: 'visible' });
@@ -405,7 +590,67 @@ try {
       const detailBadgeText = await page.textContent('#intimationDetail .treatment-badge');
       assert.match(detailBadgeText, /Não tratada/i);
 
-      // Clicar em "Iniciar análise"
+      // ── TESTE BUG 1 & BUG 2: Criar tarefa a partir de publicação com "15 dias" mantém deadline vazio ──
+      await page.click('#btnCreateTask');
+      await page.locator('#modalBackdrop').waitFor({ state: 'visible' });
+
+      const taskProcessVal = await page.inputValue('#field-process');
+      const taskDeadlineVal = await page.inputValue('#field-deadline');
+      assert.equal(taskProcessVal, '5001111-22.2026.8.21.0001');
+      assert.equal(taskDeadlineVal, '', 'O deadline da tarefa criada a partir da publicação deve iniciar vazio!');
+
+      // Fechar modal de tarefa
+      await page.click('#modalBackdrop .button.ghost, #modalCloseBtn');
+      await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
+      await page.waitForTimeout(300);
+
+      // ── TESTE BUG 1: Testar também publicação com "recurso especial" ──
+      const secondRow = page.locator('.inbox-row[data-intimation-id="pub-test-2"]');
+      await secondRow.click();
+      await page.waitForTimeout(300);
+      await page.click('#btnCreateTask');
+      await page.locator('#modalBackdrop').waitFor({ state: 'visible' });
+
+      const task2DeadlineVal = await page.inputValue('#field-deadline');
+      assert.equal(task2DeadlineVal, '', 'O deadline da tarefa com recurso especial deve iniciar vazio!');
+
+      await page.click('#modalBackdrop .button.ghost, #modalCloseBtn');
+      await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
+      await page.waitForTimeout(300);
+
+      // Voltar para pub-test-1
+      await firstRow.click();
+      await page.waitForTimeout(300);
+
+      // ── TESTE BUG 6: Simular falha de rede/servidor durante applyTreatmentAction ──
+      await page.evaluate(() => {
+        window.__origFetch = window.fetch;
+        window.fetch = async (url, opts) => {
+          if (String(url).includes('/treatment')) {
+            throw new Error('Falha de rede simulada');
+          }
+          return window.__origFetch(url, opts);
+        };
+      });
+
+      // Tentar iniciar análise durante falha
+      await page.click('#btnStartReview');
+      await page.waitForTimeout(400);
+
+      // Confirmar que status local NÃO mudou
+      const stateUntreated = await page.evaluate(() => {
+        const store = window.Atrium?.Store || window.JurisFlow?.Store;
+        const item = store?.state?.intimations?.find(i => i.id === 'pub-test-1');
+        return item?.treatmentStatus;
+      });
+      assert.equal(stateUntreated, 'untreated', 'Falha de backend/rede NÃO deve alterar treatmentStatus local!');
+
+      // Restaurar fetch original
+      await page.evaluate(() => {
+        window.fetch = window.__origFetch;
+      });
+
+      // Clicar em "Iniciar análise" com rede normal
       await page.click('#btnStartReview');
       await page.waitForTimeout(400);
 
@@ -424,11 +669,8 @@ try {
       await page.click('#btnCreateTask');
       await page.locator('#modalBackdrop').waitFor({ state: 'visible' });
 
-      // Verificar se formulário da tarefa foi pré-preenchido
-      const taskProcessVal = await page.inputValue('#field-process');
-      assert.equal(taskProcessVal, '5001111-22.2026.8.21.0001');
-
-      // Submeter criação de tarefa
+      // Preencher deadline manualmente e submeter criação de tarefa
+      await page.fill('#field-deadline', '2026-09-10');
       await page.click('#modalForm button[type="submit"]');
       await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
       await page.waitForTimeout(300);
@@ -512,6 +754,49 @@ try {
 
       const restoredBadge = await page.textContent('#intimationDetail .treatment-badge');
       assert.match(restoredBadge, /Não tratada/i);
+    });
+
+    await testAsync('BUG 10 — Computed Styles no Tema Light: Badges possuem cores claras', async () => {
+      await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+      await page.waitForTimeout(200);
+
+      const badgeColors = await page.evaluate(() => {
+        const createAndMeasure = (className) => {
+          const el = document.createElement('span');
+          el.className = `treatment-badge ${className}`;
+          document.body.appendChild(el);
+          const computed = window.getComputedStyle(el);
+          const res = {
+            bg: computed.backgroundColor,
+            color: computed.color
+          };
+          document.body.removeChild(el);
+          return res;
+        };
+
+        return {
+          untreated: createAndMeasure('treatment-untreated'),
+          inReview: createAndMeasure('treatment-in-review'),
+          treated: createAndMeasure('treatment-treated'),
+          discarded: createAndMeasure('treatment-discarded')
+        };
+      });
+
+      // untreated: #fef3c7 -> rgb(254, 243, 199), text: #92400e -> rgb(146, 64, 14)
+      assert.equal(badgeColors.untreated.bg, 'rgb(254, 243, 199)', 'Untreated badge deve ter fundo light no tema claro');
+      assert.equal(badgeColors.untreated.color, 'rgb(146, 64, 14)', 'Untreated badge deve ter texto escuro no tema claro');
+
+      // in_review: #dbeafe -> rgb(219, 234, 254), text: #1e40af -> rgb(30, 64, 175)
+      assert.equal(badgeColors.inReview.bg, 'rgb(219, 234, 254)', 'In-review badge deve ter fundo light no tema claro');
+      assert.equal(badgeColors.inReview.color, 'rgb(30, 64, 175)', 'In-review badge deve ter texto azul no tema claro');
+
+      // treated: #dcfce7 -> rgb(220, 252, 231), text: #166534 -> rgb(22, 101, 52)
+      assert.equal(badgeColors.treated.bg, 'rgb(220, 252, 231)', 'Treated badge deve ter fundo verde light no tema claro');
+      assert.equal(badgeColors.treated.color, 'rgb(22, 101, 52)', 'Treated badge deve ter texto verde escuro no tema claro');
+
+      // discarded: #f1f5f9 -> rgb(241, 245, 249), text: #475569 -> rgb(71, 85, 105)
+      assert.equal(badgeColors.discarded.bg, 'rgb(241, 245, 249)', 'Discarded badge deve ter fundo cinza light no tema claro');
+      assert.equal(badgeColors.discarded.color, 'rgb(71, 85, 105)', 'Discarded badge deve ter texto ardósia no tema claro');
     });
 
     await testAsync('E2E Mobile & Dark Theme: Responsividade em 390x844 e tema escuro', async () => {

@@ -35,7 +35,8 @@ const {
   migrate4To5,
   migrate5To6,
   migrate6To7,
-  migrate7To8
+  migrate7To8,
+  migrate8To9
 } = await import(migrationsUrl);
 
 const FIXTURES = path.join(ROOT, 'tests', 'fixtures', 'state');
@@ -345,9 +346,9 @@ test('migrate7To8 normalizes publication treatmentStatus and metadata', () => {
   const input = {
     schemaVersion: 7,
     intimations: [
-      { id: 'int-1', title: 'Intimação Nova', status: 'nova', text: 'Texto original' },
-      { id: 'int-2', title: 'Intimação Arquivada', status: 'arquivada', text: 'Texto arquivado' },
-      { id: 'int-3', title: 'Intimação Conferida', status: 'prazo', text: 'Texto conferido' }
+      { id: 'int-1', title: 'Intimação Nova', status: 'nova', text: 'Texto original', publishedAt: '2026-08-20' },
+      { id: 'int-2', title: 'Intimação Arquivada', status: 'arquivada', text: 'Texto arquivado', publishedAt: '2026-08-20' },
+      { id: 'int-3', title: 'Intimação Conferida', status: 'prazo', text: 'Texto conferido', publishedAt: '2026-08-20' }
     ]
   };
   const result = migrate7To8(input);
@@ -356,7 +357,44 @@ test('migrate7To8 normalizes publication treatmentStatus and metadata', () => {
   assert.equal(result.intimations[0].treatmentStatus, 'untreated');
   assert.equal(result.intimations[0].text, 'Texto original');
   assert.equal(result.intimations[1].treatmentStatus, 'discarded');
+  assert.equal(result.intimations[1].discardedAt, null, 'discardedAt must not be fabricated from publishedAt');
   assert.equal(result.intimations[2].treatmentStatus, 'treated');
+  assert.equal(result.intimations[2].treatedAt, null, 'treatedAt must not be fabricated from publishedAt');
+});
+
+test('migrate8To9 cleanses legacy fabricated timestamps on migrated records', () => {
+  const input = {
+    schemaVersion: 8,
+    intimations: [
+      {
+        id: 'int-1',
+        treatmentStatus: 'treated',
+        treatedBy: 'Sistema (Migração)',
+        treatedAt: '2026-08-20',
+        publishedAt: '2026-08-20'
+      },
+      {
+        id: 'int-2',
+        treatmentStatus: 'treated',
+        treatedBy: 'Dr. Ricardo',
+        treatedAt: '2026-08-20T10:00:00.000Z',
+        publishedAt: '2026-08-20'
+      },
+      {
+        id: 'int-3',
+        treatmentStatus: 'discarded',
+        discardedBy: 'Sistema (Migração)',
+        discardedAt: '2026-08-20',
+        publishedAt: '2026-08-20'
+      }
+    ]
+  };
+  const result = migrate8To9(input);
+  assert.equal(result.schemaVersion, 9);
+  assert.equal(result.dataVersion, 9);
+  assert.equal(result.intimations[0].treatedAt, null, 'Fabricated timestamp must be cleansed to null');
+  assert.equal(result.intimations[1].treatedAt, '2026-08-20T10:00:00.000Z', 'Real user timestamp must be preserved');
+  assert.equal(result.intimations[2].discardedAt, null, 'Fabricated timestamp must be cleansed to null');
 });
 
 // ─────────────────────────────────────────

@@ -1728,11 +1728,19 @@ const server = http.createServer(async (req, res) => {
       }
 
       const envelope = await readAppStateEnvelope();
-      if (body.revision !== undefined && body.revision !== null && envelope.revision !== body.revision) {
-        throw Object.assign(
-          new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'),
-          { statusCode: 409 }
-        );
+      if (envelope.revision !== undefined && envelope.revision !== null) {
+        if (body.revision === undefined || body.revision === null || body.revision === '') {
+          throw Object.assign(
+            new Error('Revisão de estado obrigatória.'),
+            { statusCode: 409 }
+          );
+        }
+        if (body.revision !== envelope.revision) {
+          throw Object.assign(
+            new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'),
+            { statusCode: 409 }
+          );
+        }
       }
 
       const state = envelope.state || {};
@@ -1745,6 +1753,21 @@ const server = http.createServer(async (req, res) => {
       }
 
       const item = state.intimations[itemIndex];
+      const currentStatus = item.treatmentStatus || 'untreated';
+      const ALLOWED_TRANSITIONS = {
+        untreated: ['start_review', 'mark_treated', 'discard'],
+        in_review: ['mark_treated', 'discard'],
+        treated: ['reopen'],
+        discarded: ['restore']
+      };
+      const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
+      if (!allowed.includes(action)) {
+        throw Object.assign(
+          new Error(`Transição inválida: ação "${action}" não é permitida para publicação com status "${currentStatus}".`),
+          { statusCode: 409 }
+        );
+      }
+
       const actorName = session.displayName || session.username || 'Advogado';
       const nowIso = new Date().toISOString();
       const procRef = item.process || item.number || item.title || item.id;
@@ -1754,8 +1777,12 @@ const server = http.createServer(async (req, res) => {
       switch (action) {
         case 'start_review':
           item.treatmentStatus = 'in_review';
-          item.treatmentStartedAt = nowIso;
-          item.treatmentStartedBy = actorName;
+          item.treatmentStartedAt = item.treatmentStartedAt || nowIso;
+          item.treatmentStartedBy = item.treatmentStartedBy || actorName;
+          item.discardedAt = null;
+          item.discardedBy = null;
+          item.treatedAt = null;
+          item.treatedBy = null;
           auditLabel = 'Análise de publicação iniciada';
           break;
 
@@ -1763,9 +1790,9 @@ const server = http.createServer(async (req, res) => {
           item.treatmentStatus = 'treated';
           item.treatedAt = nowIso;
           item.treatedBy = actorName;
-          if (body.note) {
-            item.treatmentNote = String(body.note).trim();
-          }
+          item.discardedAt = null;
+          item.discardedBy = null;
+          item.treatmentNote = body.note ? String(body.note).trim() : null;
           auditLabel = 'Publicação marcada como tratada';
           break;
 
@@ -1773,8 +1800,10 @@ const server = http.createServer(async (req, res) => {
           item.treatmentStatus = 'discarded';
           item.discardedAt = nowIso;
           item.discardedBy = actorName;
-          if (body.note) {
-            item.treatmentNote = String(body.note).trim();
+          item.treatedAt = null;
+          item.treatedBy = null;
+          item.treatmentNote = body.note ? String(body.note).trim() : null;
+          if (item.treatmentNote) {
             auditDetail += ` — Motivo: ${item.treatmentNote}`;
           }
           auditLabel = 'Publicação descartada';
@@ -1786,6 +1815,9 @@ const server = http.createServer(async (req, res) => {
           item.treatmentStartedBy = actorName;
           item.treatedAt = null;
           item.treatedBy = null;
+          item.treatmentNote = null;
+          item.discardedAt = null;
+          item.discardedBy = null;
           auditLabel = 'Publicação reaberta';
           break;
 
@@ -1793,6 +1825,8 @@ const server = http.createServer(async (req, res) => {
           item.treatmentStatus = 'untreated';
           item.discardedAt = null;
           item.discardedBy = null;
+          item.treatedAt = null;
+          item.treatedBy = null;
           item.treatmentNote = null;
           auditLabel = 'Publicação restaurada';
           break;

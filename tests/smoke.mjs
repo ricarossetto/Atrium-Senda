@@ -172,8 +172,9 @@ try {
   await page.locator('#intimationDetail .act-chip').waitFor();
   await page.locator('#intimationDetail button[data-detail-action="task"]').click();
   await page.locator('#modalTitle', { hasText: 'Nova tarefa' }).waitFor();
-  const suggestedDeadline = await page.locator('#modalForm [name="deadline"]').inputValue();
-  assert(suggestedDeadline && /^\d{4}-\d{2}-\d{2}$/.test(suggestedDeadline), 'O estimador de prazo não preencheu o prazo sugerido na tarefa.');
+  const taskDeadline = await page.locator('#modalForm [name="deadline"]').inputValue();
+  assert(taskDeadline === '', 'O prazo da tarefa a partir da publicação deve iniciar vazio para escolha manual.');
+  await page.locator('#modalForm [name="deadline"]').fill('2026-08-30');
   await page.locator('#modalForm button[type="submit"]').click();
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
 
