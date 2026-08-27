@@ -41,7 +41,8 @@ const checkFiles = [
   'scripts/state-doctor.mjs',
   'tests/state_migrations.mjs',
   'tests/email_service.mjs',
-  'tests/visual_light_foundation.mjs'
+  'tests/visual_light_foundation.mjs',
+  'tests/visual_publications_light.mjs'
 ];
 
 const testSuites = [
