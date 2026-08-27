@@ -1314,134 +1314,386 @@ td small { color: var(--text-secondary); }
 /* Apresentação Guiada / Guided Tour Modal */
 .guided-tour-modal {
   width: min(680px, 92vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   padding: 0;
   overflow: hidden;
   border-radius: 20px;
-  background: #121210;
-  border: 1px solid rgba(201, 168, 76, 0.25);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85);
+  background: var(--panel-bg, #161614);
+  border: 1px solid rgba(201, 168, 76, 0.28);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
 }
+
 .tour-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 28px 16px;
+  padding: 18px 24px 14px;
   border-bottom: 1px solid var(--line);
-  background: radial-gradient(circle at 80% 20%, rgba(201, 168, 76, 0.08), transparent 70%), #141412;
+  background: var(--panel-soft, #1a1a18);
+  flex-shrink: 0;
 }
+
 .tour-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--gold);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
 }
+
 .tour-slides-container {
-  padding: 32px 32px 24px;
-  min-height: 310px;
+  padding: 24px 28px 20px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 280px;
 }
+
 .tour-slide {
   display: none;
-  animation: fadeInSlide 0.25s ease;
+  animation: fadeInSlide 0.22s ease;
 }
+
 .tour-slide.active {
   display: block;
 }
+
 @keyframes fadeInSlide {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
 .tour-slide-hero {
   display: flex;
   align-items: center;
-  gap: 20px;
-  margin-bottom: 18px;
+  gap: 18px;
+  margin-bottom: 16px;
 }
+
 .tour-icon-box {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: radial-gradient(circle, rgba(201, 168, 76, 0.18), rgba(20, 20, 18, 0.8));
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  background: radial-gradient(circle, rgba(201, 168, 76, 0.18), rgba(20, 20, 18, 0.5));
   border: 1px solid var(--gold);
   display: grid;
   place-items: center;
   color: var(--gold);
   flex-shrink: 0;
 }
+
 .tour-icon-box svg {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
 }
+
 .tour-slide-hero h2 {
   margin: 0 0 4px;
   font-family: var(--font-serif);
-  font-size: 24px;
-  color: var(--ivory);
+  font-size: 22px;
+  color: var(--ivory, #f5f5f0);
 }
+
 .tour-slide-hero p {
   margin: 0;
-  color: var(--gold-soft);
+  color: var(--gold-soft, #c9a84c);
   font-size: 13px;
+  font-weight: 500;
 }
+
 .tour-slide-body {
-  color: #c4bfb5;
-  font-size: 14px;
-  line-height: 1.65;
+  color: var(--ink-secondary, #a8a29e);
+  font-size: 13.5px;
+  line-height: 1.6;
 }
+
+.tour-slide-body p {
+  margin: 0 0 14px;
+}
+
 .tour-features-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 14px;
 }
+
 .tour-feature-card {
   padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+}
+
+.tour-feature-card strong {
+  display: block;
+  font-size: 13px;
+  color: var(--gold, #d4af37);
+  margin-bottom: 3px;
+}
+
+.tour-feature-card span {
+  font-size: 12px;
+  color: var(--muted, #a8a29e);
+  line-height: 1.45;
+}
+
+.tour-note {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(201, 168, 76, 0.08);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  color: var(--ink-secondary, #a8a29e);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.tour-integrations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.tour-integration-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--line);
 }
-.tour-feature-card strong {
+
+.tour-integration-info strong {
   display: block;
   font-size: 13px;
-  color: var(--gold);
-  margin-bottom: 3px;
+  color: var(--ivory, #f5f5f0);
+  margin-bottom: 2px;
 }
-.tour-feature-card span {
-  font-size: 12px;
-  color: #a8a296;
-  line-height: 1.4;
+
+.tour-integration-info span {
+  font-size: 11.5px;
+  color: var(--muted, #a8a29e);
+  line-height: 1.35;
 }
+
+.tour-status-tag {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tour-status-tag.tag-available {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.tour-status-tag.tag-configuring {
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
 .tour-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 28px 22px;
+  padding: 14px 24px 18px;
   border-top: 1px solid var(--line);
-  background: #0e0e0d;
+  background: var(--panel-soft, #141412);
+  flex-shrink: 0;
 }
+
 .tour-dots {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
+
 .tour-dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: none;
   border-radius: 50%;
-  background: #33312c;
+  background: #3f3e3a;
   cursor: pointer;
   transition: all 0.2s ease;
 }
+
 .tour-dot.active {
-  background: var(--gold);
+  background: var(--gold, #d4af37);
   width: 22px;
   border-radius: 99px;
 }
+
 .tour-nav-actions {
   display: flex;
   gap: 10px;
+}
+
+/* Light Theme Overrides for Guided Tour */
+[data-theme="light"] .guided-tour-modal {
+  background: #ffffff;
+  border: 1px solid rgba(180, 140, 38, 0.3);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+[data-theme="light"] .tour-header {
+  background: #fbfbf9;
+  border-bottom: 1px solid #e7e5e4;
+}
+
+[data-theme="light"] .tour-badge {
+  color: #854d0e;
+}
+
+[data-theme="light"] .tour-icon-box {
+  background: radial-gradient(circle, rgba(201, 168, 76, 0.15), #fafaf9);
+  border-color: #ca8a04;
+  color: #a16207;
+}
+
+[data-theme="light"] .tour-slide-hero h2 {
+  color: #1c1917;
+}
+
+[data-theme="light"] .tour-slide-hero p {
+  color: #854d0e;
+}
+
+[data-theme="light"] .tour-slide-body {
+  color: #44403c;
+}
+
+[data-theme="light"] .tour-feature-card {
+  background: #f7f7f5;
+  border: 1px solid #e7e5e4;
+}
+
+[data-theme="light"] .tour-feature-card strong {
+  color: #854d0e;
+}
+
+[data-theme="light"] .tour-feature-card span {
+  color: #57534e;
+}
+
+[data-theme="light"] .tour-note {
+  background: #fefce8;
+  border: 1px solid #fef08a;
+  color: #713f12;
+}
+
+[data-theme="light"] .tour-integration-item {
+  background: #f7f7f5;
+  border: 1px solid #e7e5e4;
+}
+
+[data-theme="light"] .tour-integration-info strong {
+  color: #1c1917;
+}
+
+[data-theme="light"] .tour-integration-info span {
+  color: #57534e;
+}
+
+[data-theme="light"] .tour-status-tag.tag-available {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+
+[data-theme="light"] .tour-status-tag.tag-configuring {
+  background: #fef9c3;
+  color: #854d0e;
+  border-color: #fde047;
+}
+
+[data-theme="light"] .tour-footer {
+  background: #fbfbf9;
+  border-top: 1px solid #e7e5e4;
+}
+
+[data-theme="light"] .tour-dot {
+  background: #d6d3d1;
+}
+
+[data-theme="light"] .tour-dot.active {
+  background: #ca8a04;
+}
+
+@media (max-width: 600px) {
+  .guided-tour-modal {
+    width: 95vw;
+    max-height: 92vh;
+    border-radius: 14px;
+  }
+  .tour-header {
+    padding: 14px 16px 12px;
+  }
+  .tour-slides-container {
+    padding: 16px 16px 14px;
+    min-height: auto;
+  }
+  .tour-slide-hero {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .tour-icon-box {
+    width: 46px;
+    height: 46px;
+  }
+  .tour-icon-box svg {
+    width: 24px;
+    height: 24px;
+  }
+  .tour-slide-hero h2 {
+    font-size: 18px;
+  }
+  .tour-slide-hero p {
+    font-size: 12px;
+  }
+  .tour-slide-body {
+    font-size: 12.5px;
+  }
+  .tour-features-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .tour-footer {
+    padding: 12px 16px 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .tour-dots {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    margin-top: 4px;
+  }
+  .tour-nav-actions {
+    order: 2;
+  }
+  #tourSkipButton {
+    order: 1;
+    font-size: 12px;
+    padding: 4px 8px;
+  }
 }
 
 /* Caixa de Intimações - Prazos e Urgências */

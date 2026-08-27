@@ -330,13 +330,13 @@
               <div class="search-palette-results" id="searchPaletteResults"></div>
             </div>
           </div>
-          <button class="button ghost" id="tourButton" title="Apresentação Guiada do Atrium">
+          <button class="button ghost" id="tourButton" title="Ver apresentação do Atrium" aria-label="Ver apresentação do Atrium">
             <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            <span>Guia / Tour</span>
+            <span>Apresentação</span>
           </button>
           <button class="button ghost" id="quickDocGenButton" title="Gerar Minuta de Procuração ou Contrato">
             <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1021,7 +1021,7 @@
       <section class="view" id="view-configuration" data-title="Configurações do escritório" data-eyebrow="Identidade, tarefas e equipe">
         <div class="section-toolbar configuration-toolbar">
           <div class="filter-tabs config-tabs" id="configurationTabs"></div>
-          <div class="toolbar-actions config-actions"><div class="table-search compact-search"><input id="configurationSearch" type="search" placeholder="Buscar nesta configuração"></div><button class="button gold" id="newConfigurationButton">+ Novo item</button></div>
+          <div class="toolbar-actions config-actions"><div class="table-search compact-search"><input id="configurationSearch" type="search" placeholder="Buscar nesta configuração"></div><button class="button ghost" id="btnOpenTourFromConfig" type="button" title="Ver apresentação do Atrium">Ver Apresentação</button><button class="button gold" id="newConfigurationButton">+ Novo item</button></div>
         </div>
         <div class="configuration-metrics" id="configurationMetrics"></div>
         <article class="card config-catalog">
@@ -1651,14 +1651,14 @@
             <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="#FFF5D0"/>
             <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="#D4AF37"/>
           </svg>
-          <span id="tourModalTitle">Apresentação Guiada · Atrium Senda</span>
+          <span id="tourModalTitle">Apresentação do Atrium · Escritório Integrado</span>
         </div>
         <button class="icon-button" id="tourCloseButton" aria-label="Fechar apresentação">×</button>
       </header>
 
       <div class="tour-slides-container">
         <!-- Slide 1: Boas-Vindas -->
-        <article class="tour-slide active" data-slide="0">
+        <article class="tour-slide active" data-slide="0" aria-label="Slide 1 de 6: Bem-vindo ao Atrium">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="brand-monogram-svg" style="width:40px;height:40px;" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1668,66 +1668,69 @@
               </svg>
             </div>
             <div>
-              <h2>Bem-vindo ao Atrium Senda</h2>
-              <p>Plataforma de gestão jurídica inteligente, centralizada e soberana.</p>
+              <h2>Bem-vindo ao Atrium</h2>
+              <p>Seu escritório jurídico em um único ambiente.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            O <strong>Atrium Senda</strong> une o <em>Atrium</em> (ponto central romano de recepção, convergência e segurança Zero Trust) com a <em>Senda</em> (o fluxo contínuo de trabalho, controle de prazos e eficiência). Tenha controle absoluto sem mensalidades abusivas nem dependência de terceiros.
+            <p>O Atrium reúne processos, publicações, tarefas, agenda, documentos, contatos, financeiro e integrações em uma interface centralizada para a rotina do escritório.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>100% White Label</strong><span>Personalize com o nome, logo e identidade do seu próprio escritório.</span></div>
-              <div class="tour-feature-card"><strong>Criptografia &amp; Segurança</strong><span>Autenticação TOTP 2FA e chaves isoladas no seu computador.</span></div>
+              <div class="tour-feature-card"><strong>Gestão Integrada</strong><span>Processos, tarefas, agenda, documentos e financeiro no mesmo ambiente.</span></div>
+              <div class="tour-feature-card"><strong>Segurança &amp; Proteção</strong><span>Dados persistidos com proteção criptográfica, controle de acesso e autenticação em duas etapas quando ativada.</span></div>
             </div>
           </div>
         </article>
 
-        <!-- Slide 2: Meu Dia & Painel -->
-        <article class="tour-slide" data-slide="1">
+        <!-- Slide 2: Área de Trabalho -->
+        <article class="tour-slide" data-slide="1" aria-label="Slide 2 de 6: Área de Trabalho">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 6l2 2 4-4M4 12l2 2 4-4M4 18l2 2 4-4"/><path d="M14 6h6M14 12h6M14 18h6"/>
+                <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
               </svg>
             </div>
             <div>
-              <h2>Painel Executivo &amp; Bento Grid</h2>
-              <p>Clareza instantânea sobre o que exige sua atenção a cada manhã.</p>
+              <h2>Sua rotina em primeiro plano</h2>
+              <p>Visão operacional clara e centralizada para o dia a dia.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            Ao abrir seu Atrium Senda, o painel central organiza automaticamente suas prioridades do dia, o gráfico semanal de distribuição de prazos, intimações recém-chegadas e o status das suas fontes oficiais.
+            <p>A Área de Trabalho concentra o que exige atenção no dia, reduzindo a necessidade de navegar por várias telas.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Foco Diário Inteligente</strong><span>Tarefas críticas ordenadas por urgência e prazo fatal.</span></div>
-              <div class="tour-feature-card"><strong>Distribuição Semanal</strong><span>Visualização gráfica dos volumes de prazos de segunda a sexta.</span></div>
+              <div class="tour-feature-card"><strong>Prioridades do Dia</strong><span>Acompanhe tarefas críticas, prazos iminentes e próximos compromissos.</span></div>
+              <div class="tour-feature-card"><strong>Painel Operacional</strong><span>Indicadores rápidos de distribuição de atividades, publicações pendentes e acervo.</span></div>
             </div>
           </div>
         </article>
 
-        <!-- Slide 3: Intimações & DJEN Oficial -->
-        <article class="tour-slide" data-slide="2">
+        <!-- Slide 3: Publicações -->
+        <article class="tour-slide" data-slide="2" aria-label="Slide 3 de 6: Publicações sob controle">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 8h8M8 12h5"/>
-                <path d="M18 13a2.5 2.5 0 0 0-2.5 2.5v1.5l-1 1h7l-1-1v-1.5A2.5 2.5 0 0 0 18 13zM17 19a1 1 0 0 0 2 0"/>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                <path d="M18 15a2.5 2.5 0 0 0-2.5 2.5v1.5l-1 1h7l-1-1v-1.5A2.5 2.5 0 0 0 18 15z"/>
               </svg>
             </div>
             <div>
-              <h2>Intimações &amp; DJEN Oficial</h2>
-              <p>Conectado diretamente à API pública oficial do CNJ.</p>
+              <h2>Publicações sob controle</h2>
+              <p>Triagem estruturada e tratamento rigoroso de intimações.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            Basta clicar em <strong>"Sincronizar"</strong> para buscar suas publicações pelo número da OAB em tempo real. O sistema calcula os prazos do CPC (15 dias úteis, 5 dias, etc.), destaca urgências e permite transformar publicações em tarefas no Kanban com 1 clique.
+            <p>Acompanhe publicações e intimações capturadas com preservação integral do texto original. O Atrium separa a leitura do tratamento efetivo e permite criar providências vinculadas ao processo.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Alertas Urgentes &amp; Prazos</strong><span>Marque publicações críticas e ordene por menor prazo fatal com um clique no cabeçalho.</span></div>
-              <div class="tour-feature-card"><strong>Trilha de Conferência</strong><span>Texto original integral do Diário com identificação de partes e processo.</span></div>
+              <div class="tour-feature-card"><strong>Fluxo de Triagem</strong><span>Organize itens em: Não tratada, Em análise, Tratada e Descartada.</span></div>
+              <div class="tour-feature-card"><strong>Criação de Providências</strong><span>Crie tarefas para a equipe a partir da publicação com histórico preservado.</span></div>
+            </div>
+            <div class="tour-note">
+              <small><em>Nota:</em> O tratamento de publicações no Atrium organiza o fluxo interno do escritório e não substitui nem equivale a ciência judicial nos tribunais.</small>
             </div>
           </div>
         </article>
 
-        <!-- Slide 4: Kanban, Minutas & Processos -->
-        <article class="tour-slide" data-slide="3">
+        <!-- Slide 4: Processos, Tarefas e Agenda -->
+        <article class="tour-slide" data-slide="3" aria-label="Slide 4 de 6: Processos, Tarefas e Agenda">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1735,77 +1738,96 @@
               </svg>
             </div>
             <div>
-              <h2>Kanban, Minutas &amp; Assistente IA</h2>
-              <p>Gestão visual de fluxos de trabalho e produção documental.</p>
+              <h2>Do processo à providência</h2>
+              <p>Acompanhamento processual, Kanban e calendário unificados.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            Acompanhe o andamento dos prazos por colunas (Triagem, Em Elaboração, Revisão e Concluídas), use a IA com sua chave Gemini para análise de intimações e gere Procurações e Contratos com preenchimento automático.
+            <p>Mantenha o cadastro e o acompanhamento dos processos integrados com tarefas e compromissos. Distribua responsabilidades, defina prioridades e visualize prazos no calendário e no quadro Kanban.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Assistente Jurídico IA</strong><span>Análise inteligente de teses, pedidos e publicações judiciais.</span></div>
-              <div class="tour-feature-card"><strong>Gerador de Minutas</strong><span>Procurações Art. 105 CPC e Contratos de Honorários com seus dados.</span></div>
+              <div class="tour-feature-card"><strong>Kanban Jurídico</strong><span>Fluxo visual de trabalho por fases de elaboração, revisão e conclusão.</span></div>
+              <div class="tour-feature-card"><strong>Agenda &amp; Compromissos</strong><span>Prazos, audiências e reuniões organizados cronologicamente.</span></div>
             </div>
           </div>
         </article>
 
-        <!-- Slide 5: Importador eproc & Planilhas -->
-        <article class="tour-slide" data-slide="4">
-          <div class="tour-slide-hero">
-            <div class="tour-icon-box">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="12" height="12" rx="1.5"/><path d="M3 7h12M3 11h12M7 3v12M11 3v12"/><path d="M18 10l3-3m0 0l3 3m-3-3v7" stroke-width="2"/><rect x="15" y="16" width="6" height="5" rx="1" fill="currentColor" fill-opacity="0.2" stroke-width="1.8"/><path d="M16.5 16v-1.5a1.5 1.5 0 0 1 3 0V16" stroke-width="1.6"/>
-              </svg>
-            </div>
-            <div>
-              <h2>Importador eproc (.XLS) &amp; Excel</h2>
-              <p>Traga todo o seu acervo processual em segundos.</p>
-            </div>
-          </div>
-          <div class="tour-slide-body">
-            Arraste seu relatório exportado diretamente do <strong>eproc (TJRS, TRF4, TJSC, TJSP)</strong> ou qualquer planilha Excel/CSV. O sistema reconhece colunas, números CNJ, clientes, réus, comarcas e valores da causa automaticamente com pré-visualização.
-            <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Compatibilidade Total</strong><span>Lê relatórios .XLS do tribunal, arquivos .XLSX e .CSV.</span></div>
-              <div class="tour-feature-card"><strong>Deduplicação Automática</strong><span>Evita processos e contatos duplicados com consolidação segura.</span></div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Slide 6: Personalização & Certificado A1 -->
-        <article class="tour-slide" data-slide="5">
+        <!-- Slide 5: Ferramentas do Escritório -->
+        <article class="tour-slide" data-slide="4" aria-label="Slide 5 de 6: Ferramentas do Escritório">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/>
+                <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
               </svg>
             </div>
             <div>
-              <h2>Personalização &amp; Certificado A1</h2>
-              <p>Deixe o Atrium Senda com a cara do seu escritório.</p>
+              <h2>Mais do que acompanhamento processual</h2>
+              <p>Ferramentas de apoio à produção e gestão da advocacia.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            Clique no card do escritório no canto inferior esquerdo para colocar a <strong>logo e o nome da sua banca</strong>. Configure também seu <strong>Certificado Digital A1</strong> e o PJeOffice local para consultas judiciais avançadas.
+            <p>Recursos complementares para o dia a dia da banca, integrando contatos de clientes, controle financeiro de honorários, gerador de minutas contratuais e assistente de inteligência artificial.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Logo &amp; Marca Própria</strong><span>Sua marca no painel, barra lateral e em todos os documentos.</span></div>
-              <div class="tour-feature-card"><strong>A1 Protegido no Agente</strong><span>Sua senha e certificado nunca saem do seu computador.</span></div>
+              <div class="tour-feature-card"><strong>Contatos &amp; Financeiro</strong><span>Gestão de clientes, partes contrárias, faturamento e honorários.</span></div>
+              <div class="tour-feature-card"><strong>Minutas &amp; Assistente IA</strong><span>Geração de procurações e assistente para apoiar pesquisa e organização de informações.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Slide 6: Integrações e Controle -->
+        <article class="tour-slide" data-slide="5" aria-label="Slide 6 de 6: Integrações e Controle">
+          <div class="tour-slide-hero">
+            <div class="tour-icon-box">
+              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/><path d="M7 11h2l1.5-3 2 6 1.5-3h2" stroke-width="1.8"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Integrações quando você precisar</h2>
+              <p>Conectividade modular com estados claros e visíveis.</p>
+            </div>
+          </div>
+          <div class="tour-slide-body">
+            <p>Conecte o Atrium aos serviços necessários para o seu fluxo de trabalho, com transparência sobre a disponibilidade de cada canal.</p>
+            <div class="tour-integrations-list">
+              <div class="tour-integration-item">
+                <div class="tour-integration-info">
+                  <strong>DJEN / CNJ &amp; DataJud</strong>
+                  <span>Captura de publicações e dados processuais via API pública oficial.</span>
+                </div>
+                <span class="tour-status-tag tag-available">Disponível</span>
+              </div>
+              <div class="tour-integration-item">
+                <div class="tour-integration-info">
+                  <strong>E-mail SMTP &amp; Planilhas</strong>
+                  <span>Envio de intimações por e-mail e importação de planilhas de processos (.XLSX/.CSV).</span>
+                </div>
+                <span class="tour-status-tag tag-available">Disponível</span>
+              </div>
+              <div class="tour-integration-item">
+                <div class="tour-integration-info">
+                  <strong>Certificado Digital A1 &amp; Agente</strong>
+                  <span>Ambiente seguro em sandbox local para consultas processuais autenticadas.</span>
+                </div>
+                <span class="tour-status-tag tag-configuring">Em Configuração</span>
+              </div>
             </div>
           </div>
         </article>
       </div>
 
       <footer class="tour-footer">
-        <button type="button" class="button ghost" id="tourSkipButton">Pular Apresentação</button>
-        <div class="tour-dots" id="tourDots">
-          <span class="tour-dot active" data-slide-target="0"></span>
-          <span class="tour-dot" data-slide-target="1"></span>
-          <span class="tour-dot" data-slide-target="2"></span>
-          <span class="tour-dot" data-slide-target="3"></span>
-          <span class="tour-dot" data-slide-target="4"></span>
-          <span class="tour-dot" data-slide-target="5"></span>
+        <button type="button" class="button ghost" id="tourSkipButton" aria-label="Pular apresentação guiada">Pular Apresentação</button>
+        <div class="tour-dots" id="tourDots" role="tablist" aria-label="Navegação dos slides da apresentação">
+          <button type="button" class="tour-dot active" data-slide-target="0" role="tab" aria-selected="true" aria-label="Slide 1 de 6" title="Slide 1"></button>
+          <button type="button" class="tour-dot" data-slide-target="1" role="tab" aria-selected="false" aria-label="Slide 2 de 6" title="Slide 2"></button>
+          <button type="button" class="tour-dot" data-slide-target="2" role="tab" aria-selected="false" aria-label="Slide 3 de 6" title="Slide 3"></button>
+          <button type="button" class="tour-dot" data-slide-target="3" role="tab" aria-selected="false" aria-label="Slide 4 de 6" title="Slide 4"></button>
+          <button type="button" class="tour-dot" data-slide-target="4" role="tab" aria-selected="false" aria-label="Slide 5 de 6" title="Slide 5"></button>
+          <button type="button" class="tour-dot" data-slide-target="5" role="tab" aria-selected="false" aria-label="Slide 6 de 6" title="Slide 6"></button>
         </div>
         <div class="tour-nav-actions">
-          <button type="button" class="button ghost" id="tourPrevButton" style="display:none;">← Anterior</button>
-          <button type="button" class="button gold" id="tourNextButton">Próximo →</button>
+          <button type="button" class="button ghost" id="tourPrevButton" style="display:none;" aria-label="Voltar para slide anterior">← Anterior</button>
+          <button type="button" class="button gold" id="tourNextButton" aria-label="Avançar para próximo slide">Próximo →</button>
         </div>
       </footer>
     </section>

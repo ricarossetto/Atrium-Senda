@@ -978,7 +978,8 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('dismissBanner')?.addEventListener('click', () => { byId('environmentBanner')?.classList.add('hidden'); Store.state.settings.dismissedBanner = true; Store.save(); });
       byId('syncButton')?.addEventListener('click', () => this.syncAll());
       byId('agendaSyncButton')?.addEventListener('click', () => this.syncAll());
-      byId('tourButton')?.addEventListener('click', () => this.openGuidedTour());
+      byId('tourButton')?.addEventListener('click', () => this.openGuidedTour(true));
+      byId('btnOpenTourFromConfig')?.addEventListener('click', () => this.openGuidedTour(true));
       byId('newTaskButton')?.addEventListener('click', () => this.openTaskModal());
       byId('newContactButton')?.addEventListener('click', () => this.openContactModal());
       byId('newAgendaButton')?.addEventListener('click', () => this.openAgendaModal());
@@ -1006,9 +1007,22 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('tourSkipButton')?.addEventListener('click', () => this.closeGuidedTour());
       byId('tourPrevButton')?.addEventListener('click', () => this.showTourSlide(this.currentTourSlide - 1));
       byId('tourNextButton')?.addEventListener('click', () => this.showTourSlide(this.currentTourSlide + 1));
+      byId('guidedTourBackdrop')?.addEventListener('click', event => { if (event.target === byId('guidedTourBackdrop')) this.closeGuidedTour(); });
       byId('tourDots')?.addEventListener('click', event => {
         const dot = event.target.closest('.tour-dot');
         if (dot && dot.dataset.slideTarget !== undefined) this.showTourSlide(Number(dot.dataset.slideTarget));
+      });
+      document.addEventListener('keydown', event => {
+        const backdrop = byId('guidedTourBackdrop');
+        if (backdrop && !backdrop.classList.contains('hidden')) {
+          if (event.key === 'Escape') {
+            this.closeGuidedTour();
+          } else if (event.key === 'ArrowRight') {
+            this.showTourSlide(this.currentTourSlide + 1);
+          } else if (event.key === 'ArrowLeft') {
+            this.showTourSlide(this.currentTourSlide - 1);
+          }
+        }
       });
 
       byId('modalClose')?.addEventListener('click', () => this.closeModal());
@@ -1714,12 +1728,15 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.currentTourSlide = index;
 
       slides.forEach((s, i) => s.classList.toggle('active', i === index));
-      dots.forEach((d, i) => d.classList.toggle('active', i === index));
+      dots.forEach((d, i) => {
+        d.classList.toggle('active', i === index);
+        d.setAttribute('aria-selected', String(i === index));
+      });
 
       const prevBtn = document.getElementById('tourPrevButton');
       const nextBtn = document.getElementById('tourNextButton');
       if (prevBtn) prevBtn.style.display = index > 0 ? 'inline-block' : 'none';
-      if (nextBtn) nextBtn.textContent = index === total - 1 ? '🚀 Concluir e Começar' : 'Próximo →';
+      if (nextBtn) nextBtn.textContent = index === total - 1 ? '🚀 Começar a usar o Atrium' : 'Próximo →';
     },
     renderDashboard() {
       this.renderOfficeIdentity();
@@ -6010,6 +6027,7 @@ ${id.lawyerOab} - ${id.officeName}`;
   window.AtriumSenda = window.Atrium;
   window.JurisFlow = window.Atrium;
   window.KellerCentral = window.Atrium;
+  window.portalApp = App;
   window.addEventListener('keller:authenticated', boot);
   if (window.KellerAuth?.authenticated) boot();
 })();
