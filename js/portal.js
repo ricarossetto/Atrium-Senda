@@ -1,4 +1,8 @@
 import { Store, STORE_PERSISTENCE_CONFLICT_EVENT, isoDate, uid } from './core/store.js';
+import { createGlobalSearch } from './components/global-search.js';
+import { createModal } from './components/modal.js';
+import { createTheme } from './components/theme.js';
+import { Toast } from './components/toast.js';
 
 (() => {
   'use strict';
@@ -618,6 +622,37 @@ ${id.lawyerOab} - ${id.officeName}`;
 
   const byId = id => document.getElementById(id);
 
+  let globalSearchComponent;
+  let modalComponent;
+  let themeComponent;
+
+  function getGlobalSearchComponent() {
+    globalSearchComponent ||= createGlobalSearch({
+      getState: () => Store.state,
+      normalizeText,
+      escapeHtml,
+      formatDate,
+      onSelect: selection => App.handleGlobalSearchSelection(selection)
+    });
+    return globalSearchComponent;
+  }
+
+  function getModalComponent() {
+    modalComponent ||= createModal({
+      escapeHtml,
+      onModeChange: modalMode => { App.modalMode = modalMode; }
+    });
+    return modalComponent;
+  }
+
+  function getThemeComponent() {
+    themeComponent ||= createTheme({
+      showToast: (message, type) => App.toast(message, type),
+      onChange: theme => { App.currentTheme = theme; }
+    });
+    return themeComponent;
+  }
+
   const App = {
     currentView: 'dashboard',
     inboxFilter: 'untreated',
@@ -663,32 +698,13 @@ ${id.lawyerOab} - ${id.officeName}`;
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     },
     initTheme() {
-      const savedTheme = localStorage.getItem('atrium_theme') || localStorage.getItem('jurisflow_theme') || 'dark';
-      this.setTheme(savedTheme);
-      document.getElementById('themeToggleButton')?.addEventListener('click', () => this.toggleTheme());
+      getThemeComponent().init();
     },
     setTheme(theme) {
-      this.currentTheme = theme;
-      const icon = document.getElementById('themeToggleIcon');
-      const text = document.getElementById('themeToggleText');
-      const btn = document.getElementById('themeToggleButton');
-      if (theme === 'light') {
-        document.documentElement.setAttribute('data-theme', 'light');
-        if (icon) icon.textContent = '☀️';
-        if (text) text.textContent = 'Tema Claro';
-        if (btn) btn.title = 'Tema Claro ativo. Clique para alternar para o Modo Escuro';
-      } else {
-        document.documentElement.removeAttribute('data-theme');
-        if (icon) icon.textContent = '🌙';
-        if (text) text.textContent = 'Tema Escuro';
-        if (btn) btn.title = 'Tema Escuro ativo. Clique para alternar para o Modo Claro';
-      }
-      localStorage.setItem('atrium_theme', theme);
+      getThemeComponent().setTheme(theme);
     },
     toggleTheme() {
-      const nextTheme = this.currentTheme === 'light' ? 'dark' : 'light';
-      this.setTheme(nextTheme);
-      this.toast(`Tema alternado para Modo ${nextTheme === 'light' ? 'Claro' : 'Escuro'}.`, 'success');
+      getThemeComponent().toggleTheme();
     },
     bindNavigation() {
       const sidebar = document.getElementById('sidebar');
@@ -705,14 +721,6 @@ ${id.lawyerOab} - ${id.officeName}`;
       document.addEventListener('click', event => { const link = event.target.closest('[data-view-link]'); if (link) this.switchView(link.dataset.viewLink); });
       document.getElementById('menuToggle')?.addEventListener('click', () => document.getElementById('sidebar')?.classList.toggle('open'));
       document.addEventListener('keydown', event => {
-        if (((event.key === 'k' || event.key === 'K') && (event.ctrlKey || event.metaKey)) || (event.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName))) {
-          event.preventDefault();
-          const searchInput = document.getElementById('globalSearch');
-          if (searchInput) {
-            searchInput.focus();
-            searchInput.select();
-          }
-        }
         if (event.key === 'Escape') {
           this.closeModal();
           this.closeJudicialSetup();
@@ -722,7 +730,6 @@ ${id.lawyerOab} - ${id.officeName}`;
           this.closeGeminiKeyModal();
           this.closeFinancialEntryModal();
           this.closePublicationEmailModal();
-          this.closeGlobalSearchPalette();
         }
         if (event.key === 'Enter') {
           const interactive = event.target.closest('[data-view-link], [data-process-id], [data-contact-id], [data-agenda-id], [data-source-id], #primaryTermCard, .sidebar-office');
@@ -782,9 +789,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         }
       });
 
-      byId('modalClose')?.addEventListener('click', () => this.closeModal());
-      byId('modalCancel')?.addEventListener('click', () => this.closeModal());
-      byId('modalBackdrop')?.addEventListener('click', event => { if (event.target === byId('modalBackdrop')) this.closeModal(); });
+      getModalComponent().init();
       byId('modalForm')?.addEventListener('submit', event => this.handleModalSubmit(event));
       byId('inboxFilters')?.addEventListener('click', event => {
         const button = event.target.closest('button[data-filter]'); if (!button) return;
@@ -872,22 +877,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         this.toast('Filtros de auditoria redefinidos.', 'info');
       });
 
-      let searchDebounceTimer = null;
-      byId('globalSearch')?.addEventListener('input', event => {
-        clearTimeout(searchDebounceTimer);
-        searchDebounceTimer = setTimeout(() => this.performGlobalSearch(event.target.value), 180);
-      });
-      byId('globalSearch')?.addEventListener('keydown', event => {
-        if (event.key === 'Escape') {
-          this.closeGlobalSearchPalette();
-          byId('globalSearch')?.blur();
-        }
-      });
-      document.addEventListener('click', event => {
-        if (!event.target.closest('.global-search-container')) {
-          this.closeGlobalSearchPalette();
-        }
-      });
+      getGlobalSearchComponent().init();
       byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
       byId('jsonImportInput')?.addEventListener('change', event => this.importJson(event.target.files[0]));
       byId('exportAuditButton')?.addEventListener('click', () => this.exportJson(Store.state.audit, `atrium-auditoria-${isoDate()}.json`));
@@ -3440,187 +3430,44 @@ ${id.lawyerOab} - ${id.officeName}`;
         </div>`;
     },
     closeGlobalSearchPalette() {
-      const palette = document.getElementById('globalSearchPalette');
-      if (palette) palette.classList.add('hidden');
+      getGlobalSearchComponent().close();
     },
     performGlobalSearch(query) {
-      const trimmed = String(query || '').trim();
-      const palette = document.getElementById('globalSearchPalette');
-      const resultsEl = document.getElementById('searchPaletteResults');
-      if (!palette || !resultsEl) return;
-
-      if (!trimmed || trimmed.length < 2) {
-        palette.classList.add('hidden');
-        resultsEl.innerHTML = '';
-        return;
+      getGlobalSearchComponent().perform(query);
+    },
+    handleGlobalSearchSelection({ target, id }) {
+      if (target === 'process') {
+        this.switchView('processes');
+        const process = Store.state.processes.find(item => item.id === id);
+        if (process) {
+          const input = document.getElementById('processSearch');
+          if (input) input.value = process.number || process.client || '';
+          this.renderProcesses(process.number || process.client || '');
+        }
+      } else if (target === 'contact') {
+        this.switchView('contacts');
+        const contact = Store.state.contacts.find(item => item.id === id);
+        if (contact) {
+          const input = document.getElementById('contactSearch');
+          if (input) input.value = contact.name || '';
+          this.renderContacts(contact.name || '');
+        }
+      } else if (target === 'task') {
+        this.switchView('kanban');
+        const task = Store.state.tasks.find(item => item.id === id);
+        if (task) this.openTaskModal(task);
+      } else if (target === 'intimation') {
+        this.switchView('inbox');
+        this.inboxSelectedId = id;
+        this.renderInbox();
       }
-
-      const needle = normalizeText(trimmed);
-      const processes = (Store.state.processes || []).filter(item =>
-        normalizeText(`${item.number} ${item.client} ${item.court} ${item.actionType}`).includes(needle)
-      ).slice(0, 4);
-
-      const contacts = (Store.state.contacts || []).filter(item =>
-        normalizeText(`${item.name} ${item.document} ${item.email} ${item.phone}`).includes(needle)
-      ).slice(0, 4);
-
-      const tasks = (Store.state.tasks || []).filter(item =>
-        normalizeText(`${item.title} ${item.client} ${item.process} ${item.responsible}`).includes(needle)
-      ).slice(0, 4);
-
-      const intimations = (Store.state.intimations || []).filter(item =>
-        normalizeText(`${item.title} ${item.client} ${item.process} ${item.court}`).includes(needle)
-      ).slice(0, 4);
-
-      const totalMatches = processes.length + contacts.length + tasks.length + intimations.length;
-
-      if (totalMatches === 0) {
-        resultsEl.innerHTML = `<div class="search-palette-empty">Nenhum resultado localizado para <strong>"${escapeHtml(trimmed)}"</strong>.</div>`;
-        palette.classList.remove('hidden');
-        return;
-      }
-
-      const groups = [];
-
-      if (processes.length > 0) {
-        groups.push(`
-          <div class="search-palette-group">
-            <div class="search-palette-group-title">
-              <span>Processos (${processes.length})</span>
-            </div>
-            ${processes.map(p => `
-              <div class="search-palette-item" data-search-target="process" data-search-id="${escapeHtml(p.id)}">
-                <span class="search-palette-icon">⚖️</span>
-                <div class="search-palette-info">
-                  <strong>${escapeHtml(p.number || 'Processo S/N')}</strong>
-                  <small>${escapeHtml(p.client || 'Cliente')} · ${escapeHtml(p.court || 'Tribunal')}</small>
-                </div>
-                <span class="search-palette-badge">${escapeHtml(p.actionType || 'Ação')}</span>
-              </div>
-            `).join('')}
-          </div>
-        `);
-      }
-
-      if (contacts.length > 0) {
-        groups.push(`
-          <div class="search-palette-group">
-            <div class="search-palette-group-title">
-              <span>Contatos (${contacts.length})</span>
-            </div>
-            ${contacts.map(c => `
-              <div class="search-palette-item" data-search-target="contact" data-search-id="${escapeHtml(c.id)}">
-                <span class="search-palette-icon">👤</span>
-                <div class="search-palette-info">
-                  <strong>${escapeHtml(c.name || 'Contato')}</strong>
-                  <small>${escapeHtml(c.document || c.email || c.phone || 'Sem documento')}</small>
-                </div>
-                <span class="search-palette-badge">${escapeHtml(c.role || 'Cliente')}</span>
-              </div>
-            `).join('')}
-          </div>
-        `);
-      }
-
-      if (tasks.length > 0) {
-        groups.push(`
-          <div class="search-palette-group">
-            <div class="search-palette-group-title">
-              <span>Tarefas &amp; Prazos (${tasks.length})</span>
-            </div>
-            ${tasks.map(t => `
-              <div class="search-palette-item" data-search-target="task" data-search-id="${escapeHtml(t.id)}">
-                <span class="search-palette-icon">📋</span>
-                <div class="search-palette-info">
-                  <strong>${escapeHtml(t.title || 'Tarefa')}</strong>
-                  <small>${escapeHtml(t.client || t.process || 'Prazo: ' + formatDate(t.deadline))}</small>
-                </div>
-                <span class="search-palette-badge">${escapeHtml(t.status || 'Pendente')}</span>
-              </div>
-            `).join('')}
-          </div>
-        `);
-      }
-
-      if (intimations.length > 0) {
-        groups.push(`
-          <div class="search-palette-group">
-            <div class="search-palette-group-title">
-              <span>Publicações &amp; DJEN (${intimations.length})</span>
-            </div>
-            ${intimations.map(i => `
-              <div class="search-palette-item" data-search-target="intimation" data-search-id="${escapeHtml(i.id)}">
-                <span class="search-palette-icon">📬</span>
-                <div class="search-palette-info">
-                  <strong>${escapeHtml(i.title || 'Publicação')}</strong>
-                  <small>${escapeHtml(i.process || i.court || 'DataJud')}</small>
-                </div>
-                <span class="search-palette-badge">${escapeHtml(i.category || 'Intimação')}</span>
-              </div>
-            `).join('')}
-          </div>
-        `);
-      }
-
-      resultsEl.innerHTML = groups.join('');
-      palette.classList.remove('hidden');
-
-      resultsEl.querySelectorAll('.search-palette-item').forEach(item => {
-        item.addEventListener('click', () => {
-          const target = item.dataset.searchTarget;
-          const id = item.dataset.searchId;
-          this.closeGlobalSearchPalette();
-          const searchInput = document.getElementById('globalSearch');
-          if (searchInput) searchInput.value = '';
-
-          if (target === 'process') {
-            this.switchView('processes');
-            const proc = Store.state.processes.find(p => p.id === id);
-            if (proc) {
-              const input = document.getElementById('processSearch');
-              if (input) input.value = proc.number || proc.client || '';
-              this.renderProcesses(proc.number || proc.client || '');
-            }
-          } else if (target === 'contact') {
-            this.switchView('contacts');
-            const contact = Store.state.contacts.find(c => c.id === id);
-            if (contact) {
-              const input = document.getElementById('contactSearch');
-              if (input) input.value = contact.name || '';
-              this.renderContacts(contact.name || '');
-            }
-          } else if (target === 'task') {
-            this.switchView('kanban');
-            const task = Store.state.tasks.find(t => t.id === id);
-            if (task) this.openTaskModal(task);
-          } else if (target === 'intimation') {
-            this.switchView('inbox');
-            this.inboxSelectedId = id;
-            this.renderInbox();
-          }
-        });
-      });
     },
     openModal(mode, title, eyebrow, fields, defaults = {}, topHtml = '') {
-      this.modalMode = { mode, defaults };
-      document.getElementById('modalTitle').textContent = title;
-      document.getElementById('modalEyebrow').textContent = eyebrow;
-      document.getElementById('modalFields').innerHTML = `${topHtml}<div class="form-grid">${fields.map(field => {
-        const value = defaults[field.name] ?? field.value ?? '';
-        if (field.type === 'textarea') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><textarea id="field-${field.name}" name="${field.name}" ${field.required ? 'required' : ''}>${escapeHtml(value)}</textarea>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
-        if (field.type === 'select') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><select id="field-${field.name}" name="${field.name}">${field.options.map(option => `<option value="${escapeHtml(option.value)}" ${String(value) === String(option.value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div>`;
-        return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><input id="field-${field.name}" name="${field.name}" type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''}>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
-      }).join('')}</div>`;
-      document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
-      document.getElementById('modalBackdrop').classList.remove('hidden');
-      setTimeout(() => {
-        const modalFields = document.getElementById('modalFields');
-        if (modalFields && (!document.activeElement || !modalFields.contains(document.activeElement))) {
-          modalFields.querySelector('input, textarea')?.focus();
-        }
-      }, 20);
+      getModalComponent().open(mode, title, eyebrow, fields, defaults, topHtml);
     },
-    closeModal() { document.getElementById('modalBackdrop').classList.add('hidden'); this.modalMode = null; document.getElementById('modalForm').reset(); },
+    closeModal() {
+      getModalComponent().close();
+    },
     openTaskModal(defaults = {}) {
       const definitions = Store.state.configuration?.taskDefinitions || [];
       const totalTime = totalTimeMinutes(defaults.timeLogs);
@@ -5774,8 +5621,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url);
     },
     toast(message, type = '') {
-      const toast = document.createElement('div'); toast.className = `toast ${type}`; toast.textContent = message;
-      document.getElementById('toastRegion').appendChild(toast); setTimeout(() => toast.remove(), 4300);
+      return Toast.show(message, type);
     }
   };
 

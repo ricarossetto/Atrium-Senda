@@ -21,6 +21,10 @@ const checkFiles = [
   'js/app/bootstrap.js',
   'js/core/api.js',
   'js/core/store.js',
+  'js/components/modal.js',
+  'js/components/toast.js',
+  'js/components/theme.js',
+  'js/components/global-search.js',
   'js/prompts-data.js',
   'js/office-data.js',
   'collector/agent.mjs',
@@ -50,7 +54,8 @@ const checkFiles = [
   'tests/configuration_persistence.mjs',
   'tests/frontend_module_foundation.mjs',
   'tests/frontend_module_boot.mjs',
-  'tests/store_module.mjs'
+  'tests/store_module.mjs',
+  'tests/shared_components.mjs'
 ];
 
 const testSuites = [
@@ -71,6 +76,7 @@ const testSuites = [
   { name: 'Fundação de ES Modules e Segurança de Arquivos Estáticos', file: 'tests/frontend_module_foundation.mjs' },
   { name: 'Boot Nativo do Portal e Compatibilidade Legada', file: 'tests/frontend_module_boot.mjs' },
   { name: 'Store Modular, Persistência, Concorrência e Recovery', file: 'tests/store_module.mjs' },
+  { name: 'Componentes Globais Compartilhados, Foco e Navegação', file: 'tests/shared_components.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 
