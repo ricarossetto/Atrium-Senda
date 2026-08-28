@@ -5,6 +5,7 @@ import { createOnboarding } from './components/onboarding.js';
 import { createTheme } from './components/theme.js';
 import { Toast } from './components/toast.js';
 import { createAgendaFeature } from './features/agenda.js';
+import { createContactsFeature } from './features/contacts.js';
 import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js';
 import { createProcessesFeature } from './features/processes.js';
 import { createTasksFeature } from './features/tasks.js';
@@ -573,6 +574,7 @@ ${id.lawyerOab} - ${id.officeName}`;
   let onboardingComponent;
   let themeComponent;
   let agendaFeature;
+  let contactsFeature;
   let publicationsFeature;
   let processesFeature;
   let tasksFeature;
@@ -703,6 +705,20 @@ ${id.lawyerOab} - ${id.officeName}`;
     return processesFeature;
   }
 
+  function getContactsFeature() {
+    contactsFeature ||= createContactsFeature({
+      store: Store,
+      documentRef: document,
+      normalizeText,
+      escapeHtml,
+      formatDate,
+      sortRecords,
+      updateTableSortHeaders,
+      openModal: (...args) => App.openModal(...args)
+    });
+    return contactsFeature;
+  }
+
   function getAgendaFeature() {
     agendaFeature ||= createAgendaFeature({
       store: Store,
@@ -735,7 +751,6 @@ ${id.lawyerOab} - ${id.officeName}`;
     configurationSection: 'taskDefinitions',
     modalMode: null,
     judicialStatus: null,
-    contactSort: { field: 'name', direction: 'asc' },
     get agendaSelectedDate() { return getAgendaFeature().selectedDate; },
     set agendaSelectedDate(value) { getAgendaFeature().selectedDate = value; },
     get agendaCalendarMonthOffset() { return getAgendaFeature().calendarMonthOffset; },
@@ -818,7 +833,6 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('syncButton')?.addEventListener('click', () => this.syncAll());
       byId('agendaSyncButton')?.addEventListener('click', () => this.syncAll());
       getOnboardingComponent().init();
-      byId('newContactButton')?.addEventListener('click', () => this.openContactModal());
       byId('newConfigurationButton')?.addEventListener('click', () => this.openConfigurationModal());
       byId('newTermButton')?.addEventListener('click', () => this.openTermModal());
       byId('primaryTermCard')?.addEventListener('click', () => {
@@ -840,9 +854,9 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('modalForm')?.addEventListener('submit', event => this.handleModalSubmit(event));
       getTasksFeature().init();
       getProcessesFeature().init();
+      getContactsFeature().init();
       getAgendaFeature().init();
       getPublicationsFeature().init();
-      byId('contactSearch')?.addEventListener('input', () => this.renderContacts(byId('contactSearch').value));
       byId('configurationSearch')?.addEventListener('input', () => this.renderConfiguration(byId('configurationSearch').value));
       byId('configurationTabs')?.addEventListener('click', event => {
         const button = event.target.closest('button[data-config-section]'); if (!button) return;
@@ -1024,13 +1038,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           if (table === 'process') {
             getProcessesFeature().handleSort(field);
           } else if (table === 'contact') {
-            if (this.contactSort.field === field) {
-              this.contactSort.direction = this.contactSort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-              this.contactSort.field = field;
-              this.contactSort.direction = field.includes('At') || field.includes('date') ? 'desc' : 'asc';
-            }
-            this.renderContacts(byId('contactSearch')?.value || '');
+            getContactsFeature().handleSort(field);
           }
         });
       });
@@ -1946,33 +1954,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       return getProcessesFeature().render(query);
     },
     renderContacts(query = '') {
-      const needle = normalizeText(query);
-      let records = Store.state.contacts.filter(item => !needle || normalizeText(`${item.name} ${item.document} ${item.mobile} ${item.phone} ${item.email} ${item.origin} ${item.contactRole || ''} ${item.leadOrigin || ''} ${item.city || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
-      records = sortRecords(records, this.contactSort);
-      updateTableSortHeaders('contactTable', this.contactSort);
-      document.getElementById('contactCount').textContent = `${Store.state.contacts.length} contatos`;
-      const roleMap = { cliente: 'Cliente', testemunha: 'Testemunha', perito: 'Perito Judicial', adverso: 'Adv. Adverso', correspondente: 'Correspondente', preposto: 'Preposto', outro: 'Outro' };
-      document.getElementById('contactTableBody').innerHTML = records.length ? records.map(item => {
-        const regDate = item.registeredAt || item.createdAt;
-        const roleLabel = roleMap[item.contactRole] || (item.contactRole ? escapeHtml(item.contactRole) : 'Cliente');
-        const roleBadge = `<span class="fee-chip fixo" style="font-size:0.72rem;padding:2px 6px;margin-right:4px;">${roleLabel}</span>`;
-        const originLabel = item.leadOrigin ? escapeHtml(item.leadOrigin) : escapeHtml(item.origin || 'Direta');
-        return `
-        <tr data-contact-id="${escapeHtml(item.id)}" tabindex="0">
-          <td>
-            ${roleBadge}<strong>${escapeHtml(item.name)}</strong>
-            <small>${escapeHtml(item.profession || 'Pessoa cadastrada')}</small>
-          </td>
-          <td><strong>${escapeHtml(item.document || '—')}</strong><small>${escapeHtml(item.rg || '')}</small></td>
-          <td><strong>${escapeHtml(item.mobile || item.phone || '—')}</strong><small>${escapeHtml(item.email || '')}</small></td>
-          <td><strong>${escapeHtml(item.city || '—')}</strong><small>${escapeHtml([item.state, item.country].filter(Boolean).join(' · '))}</small></td>
-          <td><strong>${formatDate(regDate)}</strong><small>${item.externalId ? `ID ${escapeHtml(item.externalId)}` : 'Manual'}</small></td>
-          <td>${originLabel}</td>
-        </tr>`;
-      }).join('') : '<tr><td colspan="6">Nenhum contato encontrado.</td></tr>';
-      document.querySelectorAll('#contactTableBody [data-contact-id]').forEach(row => row.addEventListener('click', () => {
-        const item = Store.state.contacts.find(record => record.id === row.dataset.contactId); if (item) this.openContactModal(item);
-      }));
+      return getContactsFeature().render(query);
     },
     async loadAuthUsers() {
       try {
@@ -2494,17 +2476,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       return getProcessesFeature().openProcessModal(defaults);
     },
     openContactModal(defaults = {}) {
-      this.openModal('contact', defaults.id ? 'Detalhes do contato' : 'Novo contato', 'Cadastro de pessoas', [
-        { name: 'name', label: 'Nome completo / razão social', required: true, full: true },
-        { name: 'contactRole', label: 'Papel do contato', type: 'select', options: [{value:'cliente',label:'Cliente / Outorgante'},{value:'testemunha',label:'Testemunha'},{value:'perito',label:'Perito Judicial / Assistente'},{value:'adverso',label:'Advogado Adverso / Parte Contrária'},{value:'correspondente',label:'Correspondente Jurídico'},{value:'preposto',label:'Preposto / Representante'},{value:'outro',label:'Outro Contato'}] },
-        { name: 'leadOrigin', label: 'Origem do contato / captação', type: 'select', options: [{value:'indicacao',label:'Indicação de Cliente'},{value:'parceria',label:'Parceria Profissional'},{value:'balcao',label:'Balcão / Atendimento Direto'},{value:'redes_sociais',label:'Redes Sociais / WhatsApp'},{value:'google_site',label:'Google / Site do Escritório'},{value:'convenio',label:'Convênio / Entidade Sindical'},{value:'outro',label:'Outra Origem'}] },
-        { name: 'document', label: 'CPF / CNPJ' }, { name: 'rg', label: 'RG' },
-        { name: 'birthDate', label: 'Data de nascimento', type: 'date' }, { name: 'profession', label: 'Profissão' }, { name: 'maritalStatus', label: 'Estado civil' },
-        { name: 'mobile', label: 'Celular' }, { name: 'phone', label: 'Telefone' }, { name: 'email', label: 'E-mail', type: 'email' },
-        { name: 'origin', label: 'Origem (texto livre)' }, { name: 'city', label: 'Cidade' }, { name: 'state', label: 'Estado' },
-        { name: 'address', label: 'Endereço', full: true }, { name: 'district', label: 'Bairro' }, { name: 'zip', label: 'CEP' },
-        { name: 'notes', label: 'Anotações gerais', type: 'textarea', full: true }
-      ], { source: 'Interna', contactRole: 'cliente', leadOrigin: 'indicacao', ...defaults });
+      return getContactsFeature().openContactModal(defaults);
     },
     openAgendaModal(defaults = {}) {
       return getAgendaFeature().openModal(defaults);
@@ -3937,9 +3909,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       } else if (this.modalMode.mode === 'process') {
         getProcessesFeature().saveProcess(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'contact') {
-        const editing = Boolean(this.modalMode.defaults.id);
-        const record = { id: this.modalMode.defaults.id || uid('contact'), externalId: this.modalMode.defaults.externalId || null, registeredAt: this.modalMode.defaults.registeredAt || isoDate(), ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() };
-        Store.upsert('contacts', record); Store.audit(editing ? 'Contato atualizado' : 'Contato cadastrado', record.name);
+        getContactsFeature().saveContact(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'agenda') {
         getAgendaFeature().saveRecord(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'configuration') {
