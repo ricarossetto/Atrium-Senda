@@ -322,7 +322,23 @@ try {
   await page.locator('#view-kanban.active').waitFor();
 
   card = page.locator('#kanbanBoard [data-task-id="task-characterization"]');
-  await card.dragTo(page.locator('#kanbanBoard [data-column="andamento"] .column-cards'));
+  const targetColumn = page.locator('#kanbanBoard [data-column="andamento"]');
+  await card.waitFor({ state: 'visible' });
+  await targetColumn.waitFor({ state: 'visible' });
+  await card.scrollIntoViewIfNeeded();
+  await targetColumn.scrollIntoViewIfNeeded();
+  await page.evaluate(() => {
+    const source = document.querySelector('#kanbanBoard [data-task-id="task-characterization"]');
+    const target = document.querySelector('#kanbanBoard [data-column="andamento"]');
+    if (!(source instanceof HTMLElement)) throw new Error('Card de origem ausente antes do drag-and-drop.');
+    if (!(target instanceof HTMLElement)) throw new Error('Coluna de destino ausente antes do drag-and-drop.');
+
+    const dataTransfer = new DataTransfer();
+    source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer }));
+    source.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer }));
+  });
   await page.locator('#kanbanBoard [data-column="andamento"] [data-task-id="task-characterization"]').waitFor();
   let moved = await page.evaluate(() => window.Atrium.Store.state.tasks.find(task => task.id === 'task-characterization'));
   assert.equal(moved.status, 'andamento');
