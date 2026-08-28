@@ -1,8 +1,16 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { generateTotp } from '../lib/security.mjs';
 import { startTestServer } from './helpers.mjs';
 
 console.log('\n=== TESTES DE DIAGNÓSTICO DO SISTEMA, BACKUPS & FEEDBACK BETA ===\n');
+
+const portalSource = await readFile(new URL('../js/portal.js', import.meta.url), 'utf8');
+assert.match(
+  portalSource,
+  /KellerAuth\.secureFetch\(['"]\/api\/system\/backup\/create['"]\s*,/,
+  'A geração de backup na UI deve atravessar secureFetch para enviar o CSRF da sessão.'
+);
 
 const server = await startTestServer();
 

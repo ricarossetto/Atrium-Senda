@@ -2019,7 +2019,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       document.getElementById('btnCreateBackupNow')?.addEventListener('click', async () => {
         try {
           this.toast('Gerando cópia de segurança cifrada…', 'info');
-          const resp = await fetch('/api/system/backup/create', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' } });
+          const resp = await window.KellerAuth.secureFetch('/api/system/backup/create', { method: 'POST', headers: { Accept: 'application/json' } });
           const data = await resp.json();
           if (!data.ok || !data.backupData) throw new Error(data.message || 'Falha ao criar backup.');
           const blob = new Blob([JSON.stringify(data.backupData, null, 2)], { type: 'application/json' });
