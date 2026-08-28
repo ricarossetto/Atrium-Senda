@@ -4,6 +4,7 @@ import { createModal } from './components/modal.js';
 import { createOnboarding } from './components/onboarding.js';
 import { createTheme } from './components/theme.js';
 import { Toast } from './components/toast.js';
+import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js';
 
 (() => {
   'use strict';
@@ -87,16 +88,6 @@ import { Toast } from './components/toast.js';
     return html;
   }
   const normalizeText = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  const parseLocalDate = value => {
-    if (!value) return null;
-    const str = String(value).slice(0, 10);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-      const [year, month, day] = str.split('-').map(Number);
-      return new Date(year, month - 1, day);
-    }
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? null : d;
-  };
   const formatDate = value => {
     if (!value) return '—';
     const [year, month, day] = String(value).slice(0, 10).split('-').map(Number);
@@ -104,47 +95,6 @@ import { Toast } from './components/toast.js';
     return new Intl.DateTimeFormat('pt-BR').format(new Date(year, month - 1, day));
   };
   const formatDateTime = value => value ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : 'Nunca';
-  const isDateToday = dateVal => {
-    const d = parseLocalDate(dateVal);
-    if (!d) return false;
-    const today = new Date();
-    return d.getFullYear() === today.getFullYear() &&
-           d.getMonth() === today.getMonth() &&
-           d.getDate() === today.getDate();
-  };
-  const formatPublicationAge = dateVal => {
-    const d = parseLocalDate(dateVal);
-    if (!d) return 'Data não informada';
-    const now = new Date();
-    const d1 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const diffDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 0) return 'Hoje';
-    if (diffDays === 1) return 'Há 1 dia';
-    return `Há ${diffDays} dias`;
-  };
-  const ACT_RULES = [
-    { regex: /\b(embargos?\s+de\s+declara[cç][aã]o|embargos?\s+declarat[oó]rios?)\b/i, category: 'Embargos de Declaração', priority: 'importante', label: 'Embargos', css: 'embargos' },
-    { regex: /\b(audi[eê]nc|sess[aã]o\s+de\s+julgamento|designad.{0,30}audi)\b/i, category: 'Audiência', priority: 'urgente', label: 'Audiência', css: 'audiencia' },
-    { regex: /\b(apelac|agravo\s+de\s+instrumento|recurso\s+inominado|recurso\s+especial|recurso\s+extraordin[aá]rio|recurso\s+ordin[aá]rio|recurs(o|ar))\b/i, category: 'Recurso', priority: 'importante', label: 'Recurso', css: 'recurso' },
-    { regex: /\b(contestac|contestaç|conteste|defes(a|ar)|apresentar\s+defesa)\b/i, category: 'Contestação', priority: 'importante', label: 'Contestação', css: 'contestacao' },
-    { regex: /\b(cumprimento\s+de\s+senten[cç]|pague|pagamento.{0,30}volunt|multa.{0,30}10%|execu[cç][aã]o)\b/i, category: 'Cumprimento de Sentença', priority: 'urgente', label: 'Cumprimento', css: 'cumprimento' },
-    { regex: /\b(manifest|impugn|r[eé]plic|especifica(r|cao|ção).{0,20}prov|contrarraz)\b/i, category: 'Manifestação', priority: 'normal', label: 'Manifestação', css: 'manifestacao' },
-    { regex: /\b(edital|recupera[cç][aã]o\s+judicial|fal[eê]ncia|concedo\s+o\s+prazo)\b/i, category: 'Edital / Geral', priority: 'normal', label: 'Edital', css: 'recurso' },
-    { regex: /\b(senten[cç]|ac[oó]rd[aã]o)\b/i, category: 'Sentença / Acórdão', priority: 'importante', label: 'Sentença', css: 'recurso' },
-    { regex: /\b(decis[aã]o)\b/i, category: 'Decisão Interlocutória', priority: 'normal', label: 'Decisão', css: 'recurso' },
-    { regex: /\b(despacho|ato\s+ordinat[oó]rio)\b/i, category: 'Despacho', priority: 'normal', label: 'Despacho', css: 'rotina' }
-  ];
-
-  function classifyIntimationAct(text = '', title = '', type = '') {
-    const combined = `${title} ${type} ${text}`;
-    for (const rule of ACT_RULES) {
-      if (rule.regex.test(combined)) {
-        return rule;
-      }
-    }
-    return { category: 'Publicação', priority: 'normal', label: 'Publicação', css: 'rotina' };
-  }
 
   function addDays(isoString, days) {
     if (!isoString) return '';
@@ -627,6 +577,7 @@ ${id.lawyerOab} - ${id.officeName}`;
   let modalComponent;
   let onboardingComponent;
   let themeComponent;
+  let publicationsFeature;
 
   function getGlobalSearchComponent() {
     globalSearchComponent ||= createGlobalSearch({
@@ -666,14 +617,34 @@ ${id.lawyerOab} - ${id.officeName}`;
     return themeComponent;
   }
 
+  function getPublicationsFeature() {
+    publicationsFeature ||= createPublicationsFeature({
+      store: Store,
+      escapeHtml,
+      formatDate,
+      formatDateTime,
+      showToast: (message, type) => App.toast(message, type),
+      onOpenTask: task => App.openTaskModal(task),
+      onOpenIntimation: () => App.openIntimationModal(),
+      onImportJson: file => App.importJson(file),
+      onRenderGlobalMetrics: () => App.renderMetrics(),
+      onSyncAppState: () => App.syncAppState?.()
+    });
+    return publicationsFeature;
+  }
+
   const App = {
     currentView: 'dashboard',
-    inboxFilter: 'untreated',
-    inboxSort: 'priority-urgent',
-    inboxCutoff: 'all',
+    get inboxFilter() { return getPublicationsFeature().inboxFilter; },
+    set inboxFilter(value) { getPublicationsFeature().inboxFilter = value; },
+    get inboxSort() { return getPublicationsFeature().inboxSort; },
+    set inboxSort(value) { getPublicationsFeature().inboxSort = value; },
+    get inboxCutoff() { return getPublicationsFeature().inboxCutoff; },
+    set inboxCutoff(value) { getPublicationsFeature().inboxCutoff = value; },
     currentTourSlide: 0,
     tempOfficeLogo: null,
-    selectedIntimation: null,
+    get selectedIntimation() { return getPublicationsFeature().selectedIntimation; },
+    set selectedIntimation(value) { getPublicationsFeature().selectedIntimation = value; },
     configurationSection: 'taskDefinitions',
     modalMode: null,
     judicialStatus: null,
@@ -759,7 +730,6 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('newContactButton')?.addEventListener('click', () => this.openContactModal());
       byId('newAgendaButton')?.addEventListener('click', () => this.openAgendaModal());
       byId('newConfigurationButton')?.addEventListener('click', () => this.openConfigurationModal());
-      byId('newIntimationButton')?.addEventListener('click', () => this.openIntimationModal());
       byId('newProcessButton')?.addEventListener('click', () => this.openProcessModal());
       byId('newTermButton')?.addEventListener('click', () => this.openTermModal());
       byId('primaryTermCard')?.addEventListener('click', () => {
@@ -779,64 +749,7 @@ ${id.lawyerOab} - ${id.officeName}`;
 
       getModalComponent().init();
       byId('modalForm')?.addEventListener('submit', event => this.handleModalSubmit(event));
-      byId('inboxFilters')?.addEventListener('click', event => {
-        const button = event.target.closest('button[data-filter]'); if (!button) return;
-        this.inboxFilter = button.dataset.filter;
-        byId('inboxFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
-        document.querySelectorAll('#publicationsMetrics .pub-metric-card').forEach(card => card.classList.toggle('active', card.dataset.filter === this.inboxFilter));
-        this.renderInbox();
-      });
-      byId('publicationsMetrics')?.addEventListener('click', event => {
-        const card = event.target.closest('.pub-metric-card[data-filter]'); if (!card) return;
-        this.inboxFilter = card.dataset.filter;
-        document.querySelectorAll('#publicationsMetrics .pub-metric-card').forEach(c => c.classList.toggle('active', c === card));
-        byId('inboxFilters')?.querySelectorAll('button').forEach(item => item.classList.toggle('active', item.dataset.filter === this.inboxFilter));
-        this.renderInbox();
-      });
-
-      // Modais de Triagem e Tratamento de Publicações
-      byId('discardPublicationClose')?.addEventListener('click', () => this.closeDiscardModal());
-      byId('discardPublicationCancel')?.addEventListener('click', () => this.closeDiscardModal());
-      byId('discardPublicationBackdrop')?.addEventListener('click', event => { if (event.target === byId('discardPublicationBackdrop')) this.closeDiscardModal(); });
-      byId('discardPublicationForm')?.addEventListener('submit', async event => {
-        event.preventDefault();
-        const id = byId('discardPublicationIdInput')?.value;
-        const note = byId('discardReasonInput')?.value;
-        this.closeDiscardModal();
-        await this.applyTreatmentAction(id, 'discard', note);
-      });
-
-      byId('treatPublicationClose')?.addEventListener('click', () => this.closeTreatModal());
-      byId('treatPublicationCancel')?.addEventListener('click', () => this.closeTreatModal());
-      byId('treatPublicationBackdrop')?.addEventListener('click', event => { if (event.target === byId('treatPublicationBackdrop')) this.closeTreatModal(); });
-      byId('treatPublicationForm')?.addEventListener('submit', async event => {
-        event.preventDefault();
-        const id = byId('treatPublicationIdInput')?.value;
-        const note = byId('treatNoteInput')?.value;
-        this.closeTreatModal();
-        await this.applyTreatmentAction(id, 'mark_treated', note);
-      });
-
-      byId('inboxSortSelect')?.addEventListener('change', event => {
-        this.inboxSort = event.target.value;
-        this.renderInbox();
-      });
-      byId('inboxCutoffSelect')?.addEventListener('change', event => {
-        this.inboxCutoff = event.target.value;
-        this.renderInbox();
-      });
-      document.querySelectorAll('.list-head-sort').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const col = btn.dataset.inboxSortCol;
-          if (col === 'date') {
-            this.inboxSort = this.inboxSort === 'date-desc' ? 'date-asc' : 'date-desc';
-          } else if (col === 'deadline') {
-            this.inboxSort = this.inboxSort === 'deadline-asc' ? 'deadline-desc' : 'deadline-asc';
-          }
-          if (byId('inboxSortSelect')) byId('inboxSortSelect').value = this.inboxSort;
-          this.renderInbox();
-        });
-      });
+      getPublicationsFeature().init();
       byId('processSearch')?.addEventListener('input', () => this.renderProcesses(byId('processSearch').value));
       byId('contactSearch')?.addEventListener('input', () => this.renderContacts(byId('contactSearch').value));
       byId('configurationSearch')?.addEventListener('input', () => this.renderConfiguration(byId('configurationSearch').value));
@@ -866,83 +779,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       });
 
       getGlobalSearchComponent().init();
-      byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
-      byId('jsonImportInput')?.addEventListener('change', event => this.importJson(event.target.files[0]));
       byId('exportAuditButton')?.addEventListener('click', () => this.exportJson(Store.state.audit, `atrium-auditoria-${isoDate()}.json`));
-
-      // Disparo de Publicações por Email (Estilo Astrea)
-      byId('btnEmailPublications')?.addEventListener('click', () => this.openPublicationsEmailModal());
-      byId('publicationsEmailClose')?.addEventListener('click', () => this.closePublicationsEmailModal());
-      byId('publicationsEmailCancel')?.addEventListener('click', () => this.closePublicationsEmailModal());
-      byId('publicationsEmailModalBackdrop')?.addEventListener('click', (e) => {
-        if (e.target === byId('publicationsEmailModalBackdrop')) this.closePublicationsEmailModal();
-      });
-
-      byId('btnSendEmailDirect')?.addEventListener('click', async () => {
-        const targetEmail = byId('emailTargetAddress')?.value?.trim();
-        if (!targetEmail) return this.toast('Informe um e-mail de destino.', 'error');
-        const publicationIds = (this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []))
-          .map(item => item?.id || item?.externalId)
-          .filter(Boolean);
-        if (!publicationIds.length) return this.toast('Nenhuma publicação foi selecionada para o boletim.', 'error');
-
-        const sendButton = byId('btnSendEmailDirect');
-        if (sendButton) {
-          sendButton.disabled = true;
-          sendButton.textContent = 'Enviando…';
-        }
-        this.toast('Processando envio do boletim de publicações…');
-        try {
-          const resp = await window.KellerAuth.secureFetch('/api/publications/email/batch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ recipient: targetEmail, publicationIds })
-          });
-          const data = await resp.json().catch(() => ({}));
-          if (!resp.ok) throw new Error(data.message || 'Falha no envio.');
-
-          this.currentEmailBulletin = data;
-          const previewContainer = byId('emailPreviewContainer');
-          if (previewContainer) {
-            previewContainer.innerHTML = data.emailHtml || '<div style="padding:16px;">Boletim enviado com sucesso.</div>';
-          }
-          this.toast(data.message || 'Boletim enviado com sucesso!', 'success');
-        } catch (err) {
-          this.toast(`Erro na requisição: ${err.message}`, 'error');
-        } finally {
-          if (sendButton) {
-            sendButton.disabled = false;
-            sendButton.textContent = '🚀 Enviar E-mail via Servidor';
-          }
-        }
-      });
-
-      byId('btnCopyEmailHtml')?.addEventListener('click', async () => {
-        if (!this.currentEmailBulletin?.emailHtml) return this.toast('Nenhum conteúdo para copiar.', 'error');
-        try {
-          const blob = new Blob([this.currentEmailBulletin.emailHtml], { type: 'text/html' });
-          const textBlob = new Blob([this.currentEmailBulletin.emailText || ''], { type: 'text/plain' });
-          await navigator.clipboard.write([
-            new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })
-          ]);
-          this.toast('HTML e texto do e-mail copiados com sucesso!', 'success');
-        } catch {
-          await navigator.clipboard.writeText(this.currentEmailBulletin.emailText || '');
-          this.toast('Texto do e-mail copiado com sucesso!', 'success');
-        }
-      });
-
-      byId('btnDownloadEmailHtml')?.addEventListener('click', () => {
-        if (!this.currentEmailBulletin?.emailHtml) return this.toast('Gere o boletim primeiro.', 'error');
-        const blob = new Blob([this.currentEmailBulletin.emailHtml], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `boletim-publicacoes-${isoDate()}.html`;
-        a.click();
-        URL.revokeObjectURL(url);
-        this.toast('Arquivo HTML baixado com sucesso.', 'success');
-      });
 
       // Área de Trabalho (Astrea)
       byId('btnDashboardNewTask')?.addEventListener('click', () => this.openTaskModal());
@@ -1179,12 +1016,6 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('emailTestClose')?.addEventListener('click', () => this.closeEmailTestModal());
       byId('emailTestCancel')?.addEventListener('click', () => this.closeEmailTestModal());
       byId('emailTestForm')?.addEventListener('submit', (e) => this.submitEmailTest(e));
-      byId('publicationEmailClose')?.addEventListener('click', () => this.closePublicationEmailModal());
-      byId('publicationEmailCancel')?.addEventListener('click', () => this.closePublicationEmailModal());
-      byId('publicationEmailBackdrop')?.addEventListener('click', (e) => {
-        if (e.target === byId('publicationEmailBackdrop')) this.closePublicationEmailModal();
-      });
-      byId('publicationEmailForm')?.addEventListener('submit', (e) => this.submitPublicationEmail(e));
       byId('btnAddEmailReceiver')?.addEventListener('click', () => this.openEmailReceiverModal());
       byId('emailReceiverModalClose')?.addEventListener('click', () => this.closeEmailReceiverModal());
       byId('receiverCancelBtn')?.addEventListener('click', () => this.closeEmailReceiverModal());
@@ -1451,7 +1282,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.renderAstreaWidgets();
     },
     renderMetrics() {
-      const untreatedIntimations = (Store.state.intimations || []).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').length;
+      const untreatedIntimations = getPublicationsFeature().getUntreatedCount();
       const deadlines = Store.state.tasks.filter(task => !TERMINAL_STATUSES.includes(task.status) && daysUntil(task.deadline) >= 0 && daysUntil(task.deadline) <= 7).length;
       const activeProcesses = (Store.state.processes || []).filter(process => process.monitoring !== 'inactive').length;
       const activeSources = Store.state.sources.filter(source => source.status === 'ok').length;
@@ -1473,26 +1304,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.renderPublicationsMetrics();
     },
     renderPublicationsMetrics() {
-      const intimations = Array.isArray(Store.state.intimations) ? Store.state.intimations : [];
-      const untreated = intimations.filter(i => (i.treatmentStatus || 'untreated') === 'untreated').length;
-      const inReview = intimations.filter(i => i.treatmentStatus === 'in_review').length;
-      const treatedToday = intimations.filter(i => i.treatmentStatus === 'treated' && isDateToday(i.treatedAt)).length;
-      const discardedToday = intimations.filter(i => i.treatmentStatus === 'discarded' && isDateToday(i.discardedAt)).length;
-
-      const elUntreated = document.getElementById('pubMetricUntreated');
-      const elInReview = document.getElementById('pubMetricInReview');
-      const elTreatedToday = document.getElementById('pubMetricTreatedToday');
-      const elDiscardedToday = document.getElementById('pubMetricDiscardedToday');
-
-      if (elUntreated) elUntreated.textContent = String(untreated);
-      if (elInReview) elInReview.textContent = String(inReview);
-      if (elTreatedToday) elTreatedToday.textContent = String(treatedToday);
-      if (elDiscardedToday) elDiscardedToday.textContent = String(discardedToday);
-
-      const filter = this.inboxFilter || 'untreated';
-      document.querySelectorAll('#publicationsMetrics .pub-metric-card').forEach(card => {
-        card.classList.toggle('active', card.dataset.filter === filter);
-      });
+      return getPublicationsFeature().renderMetrics();
     },
     renderAstreaTasks() {
       const listEl = document.getElementById('astreaTaskList');
@@ -2010,89 +1822,13 @@ ${id.lawyerOab} - ${id.officeName}`;
       });
     },
     filteredIntimations() {
-      const filter = this.inboxFilter || 'untreated';
-      const sort = this.inboxSort || 'priority-urgent';
-      const cutoff = this.inboxCutoff || 'all';
-      const todayStr = isoDate();
-
-      let items = (Store.state.intimations || []).filter(item => {
-        const pubDate = (item.publishedAt || '').slice(0, 10);
-        if (cutoff === 'today' && pubDate && pubDate < todayStr) return false;
-        if (cutoff === '7days' && pubDate) {
-          const d7 = new Date(); d7.setDate(d7.getDate() - 7);
-          if (pubDate < d7.toISOString().slice(0, 10)) return false;
-        }
-        if (cutoff === '30days' && pubDate) {
-          const d30 = new Date(); d30.setDate(d30.getDate() - 30);
-          if (pubDate < d30.toISOString().slice(0, 10)) return false;
-        }
-
-        const tStatus = item.treatmentStatus || 'untreated';
-
-        if (filter === 'untreated' || filter === 'pendentes') return tStatus === 'untreated';
-        if (filter === 'in_review') return tStatus === 'in_review';
-        if (filter === 'treated') return tStatus === 'treated';
-        if (filter === 'discarded') return tStatus === 'discarded';
-        if (filter === 'all') return true;
-        if (filter === 'urgente') return Boolean(item.urgent || item.priority === 'urgente');
-        if (filter === 'importante') return Boolean(item.important);
-        if (filter === 'prazo-fatal') {
-          return Boolean(item.fatalDeadline);
-        }
-        if (filter === 'triagem') return item.status === 'triagem' || tStatus === 'in_review';
-        if (filter === 'prazo') return item.status === 'prazo' || tStatus === 'treated';
-        return item.status === filter;
-      });
-
-      items.sort((a, b) => {
-        if (sort === 'priority-urgent') {
-          const urgA = (a.urgent || a.priority === 'urgente') ? 1 : 0;
-          const urgB = (b.urgent || b.priority === 'urgente') ? 1 : 0;
-          if (urgA !== urgB) return urgB - urgA;
-          const impA = a.important ? 1 : 0;
-          const impB = b.important ? 1 : 0;
-          if (impA !== impB) return impB - impA;
-          if ((a.treatmentStatus || 'untreated') === 'untreated' && (b.treatmentStatus || 'untreated') === 'untreated') {
-            return new Date(a.publishedAt || 0) - new Date(b.publishedAt || 0);
-          }
-          return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
-        }
-        if (sort === 'priority-important') {
-          const impA = a.important ? 1 : 0;
-          const impB = b.important ? 1 : 0;
-          if (impA !== impB) return impB - impA;
-          return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
-        }
-        if (sort === 'date-asc') {
-          return new Date(a.publishedAt || 0) - new Date(b.publishedAt || 0);
-        }
-        if (sort === 'date-desc') {
-          return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
-        }
-        if (sort === 'process') {
-          return String(a.process || '').localeCompare(String(b.process || ''));
-        }
-        return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
-      });
-
-      return items;
+      return getPublicationsFeature().filteredItems();
     },
     intimationParties(item) {
-      const process = Store.state.processes.find(record => record.number === item.process);
-      const direct = String(item.client || '').trim();
-      if (direct && !/^(?:cliente|partes?) (?:não|nao) identificad/i.test(direct)) return direct;
-      return [process?.client, process?.opposingParty].map(value => String(value || '').trim()).filter(Boolean).filter((value, index, values) => values.indexOf(value) === index).join(' × ');
+      return getPublicationsFeature().intimationParties(item);
     },
     treatmentStatusBadge(treatmentStatus) {
-      const status = treatmentStatus || 'untreated';
-      const badges = {
-        untreated: { label: 'Não tratada', css: 'treatment-untreated' },
-        in_review: { label: 'Em análise', css: 'treatment-in-review' },
-        treated: { label: 'Tratada', css: 'treatment-treated' },
-        discarded: { label: 'Descartada', css: 'treatment-discarded' }
-      };
-      const badge = badges[status] || badges.untreated;
-      return `<span class="treatment-badge ${badge.css}">${badge.label}</span>`;
+      return getPublicationsFeature().treatmentStatusBadge(treatmentStatus);
     },
     statusChip(status) {
       const labels = { nova: 'Nova', triagem: 'Em triagem', prazo: 'Prazo conferido', tarefa: 'Tarefa criada', arquivada: 'Arquivada' };
@@ -2100,314 +1836,31 @@ ${id.lawyerOab} - ${id.officeName}`;
       return `<span class="status-chip ${classes[status] || 'muted'}">${labels[status] || escapeHtml(status)}</span>`;
     },
     renderInbox() {
-      this.renderPublicationsMetrics();
-      const items = this.filteredIntimations();
-
-      const dateBtn = document.querySelector('button[data-inbox-sort-col="date"]');
-      const dateIcon = document.getElementById('inboxSortIconDate');
-      if (dateBtn && dateIcon) {
-        dateBtn.classList.toggle('active', this.inboxSort === 'date-desc' || this.inboxSort === 'date-asc');
-        dateIcon.textContent = this.inboxSort === 'date-asc' ? '▲' : this.inboxSort === 'date-desc' ? '▼' : '↕';
-      }
-
-      const emptyMsg = (this.inboxFilter === 'untreated' || !this.inboxFilter)
-        ? '<div class="empty-detail"><span>✓</span><h3>Não há publicações pendentes de tratamento.</h3><p>Todas as publicações capturadas estão em análise, tratadas ou descartadas.</p></div>'
-        : '<div class="empty-detail"><span>✓</span><h3>Nenhuma publicação encontrada</h3><p>Não há publicações para o filtro ou ordenação selecionados.</p></div>';
-
-      document.getElementById('inboxList').innerHTML = items.length ? items.map(item => {
-        const act = classifyIntimationAct(item.text, item.title, item.type);
-        const isUrgent = Boolean(item.urgent || item.priority === 'urgente');
-        const urgentBadge = isUrgent ? '<span class="badge-urgent">URGENTE</span>' : '';
-        const importantBadge = item.important ? '<span class="badge-important">IMPORTANTE</span>' : '';
-        const ageText = formatPublicationAge(item.publishedAt);
-        const tStatus = item.treatmentStatus || 'untreated';
-        const isUntreated = tStatus === 'untreated';
-
-        return `
-        <button class="inbox-row ${this.selectedIntimation === item.id ? 'active' : ''} ${isUrgent ? 'is-urgent' : ''} ${item.important ? 'is-important' : ''} ${isUntreated ? 'row-untreated' : ''}" data-intimation-id="${escapeHtml(item.id)}" aria-label="Publicação ${escapeHtml(item.title)}">
-          <span class="inbox-primary">
-            <i class="unread-dot ${item.unread ? '' : 'read'}" title="${item.unread ? 'Não lida' : 'Lida'}"></i>
-            <span>
-              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">${urgentBadge}${importantBadge}<strong>${escapeHtml(item.title)}</strong></div>
-              <small class="inbox-case-line"><b>${escapeHtml(item.process || 'Sem processo vinculado')}</b>${this.intimationParties(item) ? `<em> · ${escapeHtml(this.intimationParties(item))}</em>` : '<em> · Partes não identificadas</em>'}</small>
-            </span>
-          </span>
-          <span class="source-label"><span class="act-chip ${act.css}">${escapeHtml(act.label)}</span></span>
-          <span class="date-label">
-            <span class="pub-age ${isUntreated ? 'age-untreated' : ''}">${ageText}</span>
-            <small class="pub-full-date">${formatDate(item.publishedAt)}</small>
-          </span>
-          <span>${this.treatmentStatusBadge(item.treatmentStatus)}</span>
-        </button>`;
-      }).join('') : emptyMsg;
-
-      document.querySelectorAll('[data-intimation-id]').forEach(button => button.addEventListener('click', () => this.selectIntimation(button.dataset.intimationId)));
-      if (this.selectedIntimation) {
-        this.renderIntimationDetail();
-      }
+      return getPublicationsFeature().renderInbox();
     },
     selectIntimation(id) {
-      this.selectedIntimation = id;
-      const item = Store.state.intimations.find(record => record.id === id);
-      if (item && item.unread) {
-        item.unread = false;
-        Store.save();
-      }
-      this.renderInbox();
-      this.renderPublicationsMetrics();
-      this.renderMetrics();
-      this.renderIntimationDetail();
+      return getPublicationsFeature().select(id);
     },
     renderIntimationDetail() {
-      const item = Store.state.intimations.find(record => record.id === this.selectedIntimation);
-      const container = document.getElementById('intimationDetail');
-      if (!container) return;
-      if (!item) {
-        container.innerHTML = '<div class="empty-detail"><span>✦</span><h3>Selecione uma publicação</h3><p>O texto original, o processo, alertas de urgência e o fluxo de tratamento aparecerão aqui.</p></div>';
-        return;
-      }
-
-      const act = classifyIntimationAct(item.text, item.title, item.type);
-      const isUrgent = Boolean(item.urgent || item.priority === 'urgente');
-      const isImportant = Boolean(item.important);
-      const tStatus = item.treatmentStatus || 'untreated';
-      const currentUser = window.KellerAuth?.currentUser;
-      const isPrivileged = currentUser?.role === 'master_admin' || currentUser?.role === 'admin';
-      const emailActionBtn = isPrivileged
-        ? `<button type="button" class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail" title="Enviar publicação por e-mail">✉️ Enviar por e-mail</button>`
-        : '';
-
-      let treatmentInfoHtml = '';
-      if (tStatus === 'treated') {
-        treatmentInfoHtml = `
-        <div class="treatment-info-banner treated">
-          <div class="treatment-info-icon">✓</div>
-          <div class="treatment-info-text">
-            <strong>Tratada por ${escapeHtml(item.treatedBy || 'Advogado')}</strong>
-            <span>${item.treatedAt ? formatDateTime(item.treatedAt) : 'Data registrada'}</span>
-            ${item.treatmentNote ? `<small class="treatment-note-display">Obs: ${escapeHtml(item.treatmentNote)}</small>` : ''}
-          </div>
-        </div>`;
-      } else if (tStatus === 'discarded') {
-        treatmentInfoHtml = `
-        <div class="treatment-info-banner discarded">
-          <div class="treatment-info-icon">✕</div>
-          <div class="treatment-info-text">
-            <strong>Descartada por ${escapeHtml(item.discardedBy || 'Advogado')}</strong>
-            <span>${item.discardedAt ? formatDateTime(item.discardedAt) : 'Data registrada'}</span>
-            ${item.treatmentNote ? `<small class="treatment-note-display">Motivo: ${escapeHtml(item.treatmentNote)}</small>` : ''}
-          </div>
-        </div>`;
-      } else if (tStatus === 'in_review') {
-        treatmentInfoHtml = `
-        <div class="treatment-info-banner in-review">
-          <div class="treatment-info-icon">🔍</div>
-          <div class="treatment-info-text">
-            <strong>Em análise por ${escapeHtml(item.treatmentStartedBy || 'Advogado')}</strong>
-            <span>Iniciada em ${item.treatmentStartedAt ? formatDateTime(item.treatmentStartedAt) : 'Hoje'}</span>
-          </div>
-        </div>`;
-      }
-
-      const linkedTaskIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : (item.taskId ? [item.taskId] : []);
-      const linkedTasks = (Store.state.tasks || []).filter(t => linkedTaskIds.includes(t.id) || t.intimationId === item.id || t.sourceIntimationId === item.id);
-      let linkedTasksHtml = '';
-      if (linkedTasks.length > 0) {
-        linkedTasksHtml = `
-        <div class="linked-tasks-card">
-          <div class="linked-tasks-header">
-            <span>📋 Providência criada (${linkedTasks.length})</span>
-          </div>
-          <div class="linked-tasks-list">
-            ${linkedTasks.map(task => `
-              <div class="linked-task-item">
-                <div class="linked-task-info">
-                  <strong>Tarefa: ${escapeHtml(task.title)}</strong>
-                  <small>${task.responsible ? `Responsável: ${escapeHtml(task.responsible)}` : ''} ${task.deadline ? `· Prazo: ${formatDate(task.deadline)}` : ''}</small>
-                </div>
-                <button type="button" class="button ghost" data-open-task-id="${escapeHtml(task.id)}" style="padding:4px 10px; font-size:12px;">Abrir tarefa</button>
-              </div>
-            `).join('')}
-          </div>
-        </div>`;
-      }
-
-      let actionButtonsHtml = '';
-      if (tStatus === 'untreated') {
-        actionButtonsHtml = `
-          <button type="button" class="button gold" data-detail-action="start-review" id="btnStartReview">▶ Iniciar análise</button>
-          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>
-          <button type="button" class="button ghost btn-success-action" data-detail-action="treat" id="btnMarkTreated">✓ Marcar como tratada</button>
-          <button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">Descartar</button>
-          ${emailActionBtn}
-        `;
-      } else if (tStatus === 'in_review') {
-        actionButtonsHtml = `
-          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>
-          <button type="button" class="button gold btn-success-action" data-detail-action="treat" id="btnMarkTreated">✓ Marcar como tratada</button>
-          <button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">Descartar</button>
-          ${emailActionBtn}
-        `;
-      } else if (tStatus === 'treated') {
-        actionButtonsHtml = `
-          <button type="button" class="button ghost" data-detail-action="reopen" id="btnReopenPublication">↩ Reabrir</button>
-          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>
-          ${emailActionBtn}
-        `;
-      } else if (tStatus === 'discarded') {
-        actionButtonsHtml = `
-          <button type="button" class="button ghost" data-detail-action="restore" id="btnRestorePublication">↩ Restaurar</button>
-          ${emailActionBtn}
-        `;
-      }
-
-      container.innerHTML = `
-        <div class="detail-header">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-            ${this.treatmentStatusBadge(item.treatmentStatus)}
-            <span class="act-chip ${act.css}">${escapeHtml(act.label)}</span>
-            ${isUrgent ? '<span class="badge-urgent">URGENTE</span>' : ''}
-            ${isImportant ? '<span class="badge-important">IMPORTANTE</span>' : ''}
-          </div>
-          <h2>${escapeHtml(item.title)}</h2>
-          <p>${escapeHtml(item.court || 'Origem judicial não informada')}</p>
-        </div>
-        ${treatmentInfoHtml}
-        <div class="detail-meta">
-          <div><small>Processo</small><strong>${escapeHtml(item.process || 'Não identificado')}</strong></div>
-          <div><small>Partes</small><strong>${escapeHtml(this.intimationParties(item) || 'Ainda não identificadas')}</strong></div>
-          <div><small>Publicação</small><strong>${formatDate(item.publishedAt)} (${formatPublicationAge(item.publishedAt)})</strong></div>
-          <div><small>Responsável</small><strong>${escapeHtml(item.responsible || item.lawyers || 'Advogado')}</strong></div>
-        </div>
-        ${linkedTasksHtml}
-        <p class="eyebrow" style="margin-top:16px;">Texto original preservado</p>
-        <div class="original-text">${escapeHtml(item.text || 'Sem texto original.')}</div>
-        <div class="detail-actions" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-          ${actionButtonsHtml}
-        </div>`;
-
-      container.querySelectorAll('[data-detail-action]').forEach(button => button.addEventListener('click', () => this.handleIntimationAction(item, button.dataset.detailAction)));
-      container.querySelectorAll('[data-open-task-id]').forEach(button => button.addEventListener('click', () => {
-        const tId = button.dataset.openTaskId;
-        const task = Store.state.tasks.find(t => t.id === tId);
-        if (task) this.openTaskModal(task);
-      }));
+      return getPublicationsFeature().renderDetail();
     },
     async handleIntimationAction(item, action) {
-      if (!item) return;
-
-      if (action === 'send-email') {
-        this.openPublicationEmailModal(item);
-        return;
-      }
-      if (action === 'task') {
-        const isUrgent = Boolean(item.urgent || item.priority === 'urgente');
-        this.openTaskModal({
-          title: `Analisar publicação: ${item.title}`,
-          description: item.text,
-          process: item.process,
-          client: item.client,
-          source: item.source || 'DJEN',
-          intimationId: item.id,
-          deadline: '',
-          priority: isUrgent ? 'urgente' : 'normal',
-          status: 'triagem'
-        });
-        return;
-      }
-      if (action === 'start-review') {
-        await this.applyTreatmentAction(item.id, 'start_review');
-        return;
-      }
-      if (action === 'treat') {
-        this.openTreatModal(item);
-        return;
-      }
-      if (action === 'discard') {
-        this.openDiscardModal(item);
-        return;
-      }
-      if (action === 'reopen') {
-        await this.applyTreatmentAction(item.id, 'reopen');
-        return;
-      }
-      if (action === 'restore') {
-        await this.applyTreatmentAction(item.id, 'restore');
-        return;
-      }
+      return getPublicationsFeature().handleAction(item, action);
     },
     async applyTreatmentAction(intimationId, action, note = null) {
-      const item = Store.state.intimations.find(i => i.id === intimationId);
-      if (!item) return;
-
-      try {
-        const res = await fetch(`/api/intimations/${encodeURIComponent(intimationId)}/treatment`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': window.KellerAuth?.csrfToken || ''
-          },
-          body: JSON.stringify({
-            action,
-            note,
-            revision: Store.revision || Store.state?.revision || undefined
-          })
-        });
-
-        if (res.status === 409) {
-          const errData = await res.json().catch(() => ({}));
-          this.toast(errData.error || 'Esta publicação foi atualizada por outro usuário. Recarregue os dados.', 'warning');
-          if (typeof this.syncAppState === 'function') await this.syncAppState();
-          return;
-        }
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.intimation) {
-            const idx = Store.state.intimations.findIndex(i => i.id === intimationId);
-            if (idx !== -1) {
-              Store.state.intimations[idx] = data.intimation;
-            }
-            if (data.revision) Store.revision = data.revision;
-          }
-          this.renderInbox();
-          this.renderPublicationsMetrics();
-          this.renderMetrics();
-          this.renderIntimationDetail();
-          this.toast(data.message || 'Tratamento atualizado com sucesso!', 'success');
-          return;
-        }
-
-        const errData = await res.json().catch(() => ({}));
-        this.toast(errData.error || 'Não foi possível atualizar o tratamento da publicação. Tente novamente.', 'error');
-      } catch (networkErr) {
-        console.error('Falha na requisição de tratamento:', networkErr);
-        this.toast('Não foi possível atualizar o tratamento da publicação. Tente novamente.', 'error');
-      }
+      return getPublicationsFeature().applyTreatmentAction(intimationId, action, note);
     },
     openDiscardModal(item) {
-      if (!item) return;
-      byId('discardPublicationIdInput').value = item.id;
-      byId('discardPublicationProcessRef').textContent = item.process || 'Sem processo vinculado';
-      byId('discardPublicationTitleRef').textContent = item.title || 'Publicação';
-      byId('discardReasonInput').value = '';
-      byId('discardPublicationBackdrop').classList.remove('hidden');
-      byId('discardReasonInput').focus();
+      return getPublicationsFeature().openDiscardModal(item);
     },
     closeDiscardModal() {
-      byId('discardPublicationBackdrop')?.classList.add('hidden');
+      return getPublicationsFeature().closeDiscardModal();
     },
     openTreatModal(item) {
-      if (!item) return;
-      byId('treatPublicationIdInput').value = item.id;
-      byId('treatPublicationProcessRef').textContent = item.process || 'Sem processo vinculado';
-      byId('treatPublicationTitleRef').textContent = item.title || 'Publicação';
-      byId('treatNoteInput').value = '';
-      byId('treatPublicationBackdrop').classList.remove('hidden');
-      byId('treatNoteInput').focus();
+      return getPublicationsFeature().openTreatModal(item);
     },
     closeTreatModal() {
-      byId('treatPublicationBackdrop')?.classList.add('hidden');
+      return getPublicationsFeature().closeTreatModal();
     },
     renderKanban() {
       const board = document.getElementById('kanbanBoard');
@@ -3287,15 +2740,10 @@ ${id.lawyerOab} - ${id.officeName}`;
       });
     },
     openPublicationsEmailModal() {
-      this.currentEmailBulletin = null;
-      const previewContainer = document.getElementById('emailPreviewContainer');
-      if (previewContainer) {
-        previewContainer.innerHTML = '<div style="padding:24px;text-align:center;color:#64748b;">✦ Informe o destinatário e confirme o envio manual para gerar o boletim com dados canônicos do servidor.</div>';
-      }
-      document.getElementById('publicationsEmailModalBackdrop')?.classList.remove('hidden');
+      return getPublicationsFeature().openPublicationsEmailModal();
     },
     closePublicationsEmailModal() {
-      document.getElementById('publicationsEmailModalBackdrop')?.classList.add('hidden');
+      return getPublicationsFeature().closePublicationsEmailModal();
     },
     renderAudit(filter = 'all', query = '') {
       const list = document.getElementById('auditList');
@@ -4005,74 +3453,13 @@ ${id.lawyerOab} - ${id.officeName}`;
       }
     },
     openPublicationEmailModal(item) {
-      if (!item) return;
-      const backdrop = document.getElementById('publicationEmailBackdrop');
-      if (!backdrop) return;
-      const idInput = document.getElementById('publicationEmailIdInput');
-      const refEl = document.getElementById('publicationEmailRef');
-      const recipientInput = document.getElementById('publicationEmailRecipientInput');
-      const submitBtn = document.getElementById('publicationEmailSubmitBtn');
-
-      if (idInput) idInput.value = item.id;
-      if (refEl) refEl.textContent = item.process || item.number || item.title || 'Publicação judicial';
-      if (recipientInput) recipientInput.value = '';
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Enviar';
-      }
-
-      backdrop.classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-      if (recipientInput) setTimeout(() => recipientInput.focus(), 50);
+      return getPublicationsFeature().openPublicationEmailModal(item);
     },
     closePublicationEmailModal() {
-      const backdrop = document.getElementById('publicationEmailBackdrop');
-      if (backdrop) backdrop.classList.add('hidden');
-      if (document.getElementById('modalBackdrop')?.classList.contains('hidden')) {
-        document.body.style.overflow = '';
-      }
+      return getPublicationsFeature().closePublicationEmailModal();
     },
     async submitPublicationEmail(event) {
-      if (event) event.preventDefault();
-      const publicationId = document.getElementById('publicationEmailIdInput')?.value;
-      const recipient = document.getElementById('publicationEmailRecipientInput')?.value?.trim();
-      const submitBtn = document.getElementById('publicationEmailSubmitBtn');
-
-      if (!publicationId) {
-        this.toast('Identificador da publicação não encontrado.', 'error');
-        return;
-      }
-      if (!recipient) {
-        this.toast('Informe o endereço de e-mail do destinatário.', 'warning');
-        return;
-      }
-
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Enviando...';
-      }
-
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/intimations/email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ publicationId, recipient })
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(payload.message || 'Falha ao enviar publicação por e-mail.');
-        }
-
-        this.closePublicationEmailModal();
-        this.toast('Publicação enviada por e-mail.', 'success');
-      } catch (err) {
-        this.toast(err.message || 'Falha ao enviar publicação.', 'error');
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Enviar';
-        }
-      }
+      return getPublicationsFeature().submitPublicationEmail(event);
     },
     async loadEmailReceivers() {
       const currentUser = window.KellerAuth?.currentUser;
