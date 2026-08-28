@@ -173,12 +173,17 @@ O backend deve ser a autoridade das transições de tratamento.
 
 ## 17. E-mail
 
-- O `EmailService` moderno é a arquitetura preferencial.
-- Não crie novo caminho SMTP paralelo.
-- `/api/email/publications` é dívida técnica legada.
-- Não expanda esse endpoint.
-- Consolidação ou remoção deve ocorrer em missão específica, após auditoria de consumidores.
-- Conteúdo canônico de publicação enviado por e-mail deve vir do backend.
+- O `EmailService` é o único transporte SMTP autorizado para e-mails de Publicações. Não crie caminho SMTP paralelo.
+- O endpoint removido `/api/email/publications` não deve ser reintroduzido.
+- O frontend nunca deve fornecer conteúdo judicial como source of truth para envio.
+- O envio individual usa a arquitetura canônica baseada em ID: `POST /api/intimations/email`, com o alias `POST /api/publications/email`.
+- Antes do envio individual, o backend resolve a publicação canônica persistida.
+- O envio em lote usa `POST /api/publications/email/batch` e recebe somente os identificadores das publicações e o destinatário, nunca objetos judiciais completos como autoridade.
+- No envio em lote, o backend também resolve as publicações canônicas persistidas.
+- Todo envio de publicação por e-mail exige autenticação, perfil `admin` ou `master_admin` e proteção CSRF.
+- O envio é exclusivamente manual. Nunca crie auto-send, cron de e-mail nem envio automático após importação, tratamento ou sincronização.
+- Não reintroduza `SMTP_HOST`, `SMTP_USER` ou `SMTP_PASS` como segundo transporte específico para Publicações, fallback Gmail ou fallback `mailto` contendo conteúdo judicial.
+- Nunca defina endereço pessoal hardcoded como destinatário default ou fallback.
 
 ## 18. Segurança de arquivos estáticos
 
