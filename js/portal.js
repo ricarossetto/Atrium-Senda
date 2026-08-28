@@ -6,19 +6,12 @@ import { createTheme } from './components/theme.js';
 import { Toast } from './components/toast.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js';
+import { createTasksFeature } from './features/tasks.js';
 
 (() => {
   'use strict';
 
   const TERMINAL_STATUSES = ['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada'];
-  const KANBAN_COLUMNS = [
-    { id: 'triagem', title: 'Entrada & triagem', color: '#c9a84c' },
-    { id: 'prioridade', title: 'Prioridade', color: '#e5a84b' },
-    { id: 'andamento', title: 'Em andamento', color: '#6f9fd8' },
-    { id: 'aguardando', title: 'Aguardando', color: '#a887c7' },
-    { id: 'revisao', title: 'Revisão', color: '#d68a67' },
-    { id: 'concluida', title: 'Concluída', color: '#40b879' }
-  ];
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
   function normalizeExternalUrl(value) {
@@ -580,6 +573,7 @@ ${id.lawyerOab} - ${id.officeName}`;
   let themeComponent;
   let agendaFeature;
   let publicationsFeature;
+  let tasksFeature;
 
   function getGlobalSearchComponent() {
     globalSearchComponent ||= createGlobalSearch({
@@ -635,6 +629,55 @@ ${id.lawyerOab} - ${id.officeName}`;
     return publicationsFeature;
   }
 
+  function linkTaskToPublication({ record, currentActor }) {
+    if (!record.intimationId) return;
+    const intimation = Store.state.intimations.find(item => item.id === record.intimationId);
+    if (!intimation) return;
+    if (!Array.isArray(intimation.linkedTaskIds)) intimation.linkedTaskIds = [];
+    if (!intimation.linkedTaskIds.includes(record.id)) intimation.linkedTaskIds.push(record.id);
+    intimation.taskId = record.id;
+    if (!intimation.treatmentStatus || intimation.treatmentStatus === 'untreated') {
+      intimation.treatmentStatus = 'in_review';
+      intimation.treatmentStartedAt = intimation.treatmentStartedAt || new Date().toISOString();
+      intimation.treatmentStartedBy = intimation.treatmentStartedBy || currentActor;
+    }
+    Store.audit('Tarefa criada a partir de publicação', `${record.title} · ${intimation.process || intimation.id}`);
+  }
+
+  function analyzeTaskWithAi(description) {
+    App.switchView('assistant');
+    const aiInput = document.getElementById('aiChatInput');
+    if (aiInput) {
+      aiInput.value = `Por favor, analise a seguinte intimação judicial, estime preliminarmente os prazos em dias úteis (CPC/2015), explicite as hipóteses usadas e sugira providências para conferência humana. Não trate a estimativa como prazo fatal confirmado.\n\n${description}`;
+      aiInput.focus();
+    }
+  }
+
+  function getTasksFeature() {
+    tasksFeature ||= createTasksFeature({
+      store: Store,
+      documentRef: document,
+      windowRef: window,
+      navigatorRef: navigator,
+      escapeHtml,
+      formatDate,
+      formatMinutes,
+      totalTimeMinutes,
+      daysUntil,
+      decodeHtmlEntities,
+      initials: name => App.initials(name),
+      isTerminalStatus: status => TERMINAL_STATUSES.includes(status),
+      getCurrentUserName: () => window.KellerAuth?.currentUser?.displayName,
+      openModal: (...args) => App.openModal(...args),
+      closeModal: () => App.closeModal(),
+      showToast: (message, type) => App.toast(message, type),
+      onRenderAll: () => App.renderAll(),
+      onAnalyzeWithAi: analyzeTaskWithAi,
+      onTaskSaved: linkTaskToPublication
+    });
+    return tasksFeature;
+  }
+
   function getAgendaFeature() {
     agendaFeature ||= createAgendaFeature({
       store: Store,
@@ -675,6 +718,9 @@ ${id.lawyerOab} - ${id.officeName}`;
     set agendaCalendarMonthOffset(value) { getAgendaFeature().calendarMonthOffset = value; },
     get agendaTypeFilter() { return getAgendaFeature().typeFilter; },
     set agendaTypeFilter(value) { getAgendaFeature().typeFilter = value; },
+    get activeTimeSheetTaskId() { return getTasksFeature().activeTimeSheetTaskId; },
+    get timeSheetStartedAt() { return getTasksFeature().timeSheetStartedAt; },
+    get timeSheetInterval() { return getTasksFeature().timeSheetInterval; },
     aiChatHistory: [],
     aiConfigured: false,
     isAiTyping: false,
@@ -748,7 +794,6 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('syncButton')?.addEventListener('click', () => this.syncAll());
       byId('agendaSyncButton')?.addEventListener('click', () => this.syncAll());
       getOnboardingComponent().init();
-      byId('newTaskButton')?.addEventListener('click', () => this.openTaskModal());
       byId('newContactButton')?.addEventListener('click', () => this.openContactModal());
       byId('newConfigurationButton')?.addEventListener('click', () => this.openConfigurationModal());
       byId('newProcessButton')?.addEventListener('click', () => this.openProcessModal());
@@ -770,6 +815,7 @@ ${id.lawyerOab} - ${id.officeName}`;
 
       getModalComponent().init();
       byId('modalForm')?.addEventListener('submit', event => this.handleModalSubmit(event));
+      getTasksFeature().init();
       getAgendaFeature().init();
       getPublicationsFeature().init();
       byId('processSearch')?.addEventListener('input', () => this.renderProcesses(byId('processSearch').value));
@@ -1425,12 +1471,8 @@ ${id.lawyerOab} - ${id.officeName}`;
       listEl.querySelectorAll('[data-complete-task-id]').forEach(chk => {
         chk.addEventListener('change', (e) => {
           e.stopPropagation();
-          const task = Store.state.tasks.find(t => t.id === chk.dataset.completeTaskId);
+          const task = getTasksFeature().completeTask(chk.dataset.completeTaskId);
           if (task) {
-            task.status = 'concluida';
-            task.completedAt = new Date().toISOString();
-            Store.audit('Tarefa concluída', task.title);
-            Store.save();
             this.renderAll();
             this.toast('Tarefa concluída com sucesso!', 'success');
           }
@@ -1866,128 +1908,22 @@ ${id.lawyerOab} - ${id.officeName}`;
       return getPublicationsFeature().closeTreatModal();
     },
     renderKanban() {
-      const board = document.getElementById('kanbanBoard');
-      board.innerHTML = KANBAN_COLUMNS.map(column => {
-        const tasks = Store.state.tasks.filter(task => task.status === column.id);
-        return `<section class="kanban-column" data-column="${column.id}"><header class="column-header"><div class="column-title"><i class="column-dot" style="background:${column.color}"></i>${escapeHtml(column.title)}<span class="column-count">${tasks.length}</span></div><span>···</span></header><div class="column-cards">${tasks.length ? tasks.map(task => this.taskCard(task)).join('') : '<div class="empty-column">Arraste tarefas para cá</div>'}</div></section>`;
-      }).join('');
-      board.querySelectorAll('.task-card').forEach(card => {
-        card.addEventListener('dragstart', () => { card.classList.add('dragging'); card.dataset.dragging = 'true'; });
-        card.addEventListener('dragend', () => { card.classList.remove('dragging'); delete card.dataset.dragging; });
-        card.addEventListener('click', event => {
-          if (event.target.closest('.timesheet-btn')) return;
-          const task = Store.state.tasks.find(item => item.id === card.dataset.taskId);
-          if (task) this.openTaskModal(task);
-        });
-      });
-      board.querySelectorAll('[data-timesheet-start]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          this.startTimeSheet(btn.dataset.timesheetStart);
-        });
-      });
-      board.querySelectorAll('[data-timesheet-stop]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          this.stopTimeSheet();
-        });
-      });
-      board.querySelectorAll('.kanban-column').forEach(column => {
-        column.addEventListener('dragover', event => { event.preventDefault(); column.classList.add('drag-over'); });
-        column.addEventListener('dragleave', () => column.classList.remove('drag-over'));
-        column.addEventListener('drop', event => {
-          event.preventDefault(); column.classList.remove('drag-over');
-          const dragged = board.querySelector('.task-card[data-dragging="true"]');
-          if (dragged) this.moveTask(dragged.dataset.taskId, column.dataset.column);
-        });
-      });
+      return getTasksFeature().renderKanban();
     },
     taskCard(task) {
-      const overdue = daysUntil(task.deadline) < 0 && task.status !== 'concluida';
-      const timeMins = totalTimeMinutes(task.timeLogs);
-      const timeBadge = timeMins > 0 ? `<span class="task-timelog" title="Tempo total registrado no TimeSheet">⏱ ${formatMinutes(timeMins)}</span>` : '';
-      const isTimerRunning = this.activeTimeSheetTaskId === task.id;
-      const timerBtn = isTimerRunning
-        ? `<button type="button" class="timesheet-btn active timesheet-live" data-timesheet-stop="${escapeHtml(task.id)}" title="Clique para pausar e salvar apontamento no TimeSheet">⏹ ${this.formatElapsedTimer()}</button>`
-        : `<button type="button" class="timesheet-btn" data-timesheet-start="${escapeHtml(task.id)}" title="Iniciar cronômetro de TimeSheet">▶ Iniciar</button>`;
-
-      const points = Number(task.points) || (task.priority === 'urgente' ? 25 : 10);
-      return `<article class="task-card ${isTimerRunning ? 'timer-active' : ''}" draggable="true" data-task-id="${escapeHtml(task.id)}">
-        <div class="task-top">
-          <span class="task-source">${escapeHtml(task.source || 'INTERNA')}</span>
-          <span class="task-badges">
-            <b class="task-points" title="Pontuação TaskScore ADVBOX">✦ ${points} pts</b>
-            ${timeBadge}
-            ${task.priority === 'urgente' ? '<span class="task-priority" title="Urgente">!</span>' : ''}
-          </span>
-        </div>
-        <h4>${escapeHtml(task.title)}</h4>
-        <p>${escapeHtml(task.description || 'Sem descrição')}</p>
-        <div class="task-tags">
-          ${task.client ? `<span>${escapeHtml(task.client)}</span>` : ''}
-          ${task.process ? `<span>${escapeHtml(task.process)}</span>` : ''}
-        </div>
-        ${task.fatalDeadline ? `<div class="fatal-date">Prazo fatal: ${formatDate(task.fatalDeadline)}</div>` : ''}
-        <footer class="task-footer">
-          <div class="task-footer-left">
-            <span class="task-date ${overdue ? 'overdue' : ''}">${overdue ? 'Atrasada · ' : ''}${formatDate(task.deadline)}</span>
-            ${timerBtn}
-          </div>
-          <span class="task-avatar">${escapeHtml(this.initials(task.responsible || 'Advogado(a)'))}</span>
-        </footer>
-      </article>`;
+      return getTasksFeature().renderCard(task);
     },
     startTimeSheet(taskId) {
-      if (this.activeTimeSheetTaskId === taskId) return;
-      this.stopTimeSheet();
-      this.activeTimeSheetTaskId = taskId;
-      this.timeSheetStartedAt = Date.now();
-      clearInterval(this.timeSheetInterval);
-      this.timeSheetInterval = setInterval(() => {
-        const liveBtn = document.querySelector(`.timesheet-live[data-timesheet-stop="${this.activeTimeSheetTaskId}"]`);
-        if (liveBtn) liveBtn.textContent = `⏹ ${this.formatElapsedTimer()}`;
-      }, 1000);
-      this.renderKanban();
-      this.toast('Cronômetro TimeSheet iniciado na tarefa!', 'success');
+      return getTasksFeature().startTimeSheet(taskId);
     },
     stopTimeSheet() {
-      if (!this.activeTimeSheetTaskId) return;
-      const elapsedMs = Date.now() - this.timeSheetStartedAt;
-      const minutes = Math.max(1, Math.round(elapsedMs / 60000));
-      const task = Store.state.tasks.find(t => t.id === this.activeTimeSheetTaskId);
-      if (task) {
-        if (!Array.isArray(task.timeLogs)) task.timeLogs = [];
-        task.timeLogs.push({
-          id: uid('tlog'),
-          minutes,
-          date: isoDate(),
-          author: window.KellerAuth?.currentUser?.displayName || 'Advogado',
-          description: 'Apontamento via Cronômetro TimeSheet'
-        });
-        task.timeSpentMinutes = (task.timeSpentMinutes || 0) + minutes;
-        Store.audit('TimeSheet registrado', `${task.title}: +${minutes} min`);
-        Store.save();
-      }
-      clearInterval(this.timeSheetInterval);
-      this.activeTimeSheetTaskId = null;
-      this.timeSheetStartedAt = null;
-      this.timeSheetInterval = null;
-      this.renderKanban();
-      this.toast(`TimeSheet: ${minutes} min adicionados à tarefa.`, 'success');
+      return getTasksFeature().stopTimeSheet();
     },
     formatElapsedTimer() {
-      if (!this.timeSheetStartedAt) return '00:00:00';
-      const sec = Math.floor((Date.now() - this.timeSheetStartedAt) / 1000);
-      const h = String(Math.floor(sec / 3600)).padStart(2, '0');
-      const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
-      const s = String(sec % 60).padStart(2, '0');
-      return `${h}:${m}:${s}`;
+      return getTasksFeature().formatElapsedTimer();
     },
     moveTask(taskId, status) {
-      const task = Store.state.tasks.find(item => item.id === taskId); if (!task || task.status === status) return;
-      const previous = task.status; task.status = status; task.updatedAt = new Date().toISOString();
-      Store.audit('Tarefa movimentada', `${task.title}: ${previous} → ${status}`);
-      this.renderAll(); this.toast('Tarefa movimentada com sucesso.', 'success');
+      return getTasksFeature().moveTask(taskId, status);
     },
     renderProcesses(query = '') {
       const needle = normalizeText(query);
@@ -2615,124 +2551,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       getModalComponent().close();
     },
     openTaskModal(defaults = {}) {
-      const definitions = Store.state.configuration?.taskDefinitions || [];
-      const totalTime = totalTimeMinutes(defaults.timeLogs);
-      const timeNote = totalTime > 0 ? `Tempo total acumulado nesta tarefa: ${formatMinutes(totalTime)}.` : '';
-      const cleanDescription = decodeHtmlEntities(defaults.description || defaults.text || '');
-      const cleanTitle = decodeHtmlEntities(defaults.title || '');
-
-      let completionBarHtml = '';
-      if (defaults.id) {
-        const isDone = TERMINAL_STATUSES.includes(defaults.status);
-        completionBarHtml = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding:10px 14px; background:var(--panel-soft); border-radius:10px; border:1px solid var(--line);">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:12px; color:var(--muted); font-weight:600;">Situação da Tarefa:</span>
-            <span class="status-chip ${isDone ? 'connected' : 'warning'}">${isDone ? 'Concluída' : 'Em andamento'}</span>
-          </div>
-          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask" style="padding:6px 14px; font-size:12px; font-weight:600;">✓ Marcar como Concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask" style="padding:6px 14px; font-size:12px;">↩ Reabrir Tarefa</button>`}
-        </div>`;
-      }
-
-      let intimationCardHtml = completionBarHtml;
-      if (cleanDescription) {
-        intimationCardHtml += `
-        <div class="task-intimation-card">
-          <div class="task-intimation-header">
-            <div class="task-intimation-title">
-              <svg class="nav-svg" style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span>Publicação / Texto da Intimação</span>
-            </div>
-            <div class="task-intimation-actions">
-              <button type="button" class="task-btn-action" id="btnCopyTaskIntimation">Copiar texto</button>
-              <button type="button" class="task-btn-action" id="btnAiAnalyzeTask">✦ Analisar com IA</button>
-            </div>
-          </div>
-          <div class="task-intimation-body" id="taskIntimationBody">${escapeHtml(cleanDescription)}</div>
-        </div>`;
-      }
-
-      this.openModal('task', defaults.id ? 'Editar tarefa' : 'Nova tarefa', 'Fluxo interno', [
-        { name: 'title', label: 'Título da tarefa', required: true, full: true, placeholder: 'Ex: Manifestação sobre despacho do DJEN' },
-        { name: 'taskDefinition', label: 'Definição de modelo', type: 'select', options: [{ value: '', label: 'Selecione um modelo de tarefa' }, ...definitions.map(item => ({ value: item.name, label: `${item.name} (${item.points} pts)` }))] },
-        { name: 'process', label: 'Número do processo', placeholder: 'Ex: 5002086-73.2022.4.04.7133' },
-        { name: 'client', label: 'Cliente', placeholder: 'Ex: Roberto Roque Junges' },
-        { name: 'fatalDeadline', label: 'Prazo fatal', type: 'date', note: 'Prazo peremptório (sujeito à conferência humana).' },
-        { name: 'deadline', label: 'Prazo interno', type: 'date' },
-        { name: 'date', label: 'Data da atividade', type: 'date' },
-        { name: 'time', label: 'Horário', type: 'time' },
-        { name: 'responsible', label: 'Responsável principal', value: defaults.responsible || window.KellerAuth?.currentUser?.displayName || 'Advogado(a)' },
-        { name: 'responsibles', label: 'Outros responsáveis', placeholder: 'Separe os nomes por vírgula' },
-        { name: 'status', label: 'Coluna (Quadro Kanban)', type: 'select', options: KANBAN_COLUMNS.map(column => ({ value: column.id, label: column.title })) },
-        { name: 'priority', label: 'Prioridade', type: 'select', options: [{value:'normal',label:'Normal'},{value:'importante',label:'Importante'},{value:'urgente',label:'Urgente'}] },
-        { name: 'points', label: 'Pontuação', type: 'number', value: defaults.points || 0 },
-        { name: 'addMinutes', label: 'Apontar tempo (minutos)', type: 'number', placeholder: 'Ex: 45', note: timeNote },
-        { name: 'timeDescription', label: 'Atividade no apontamento', placeholder: 'Ex: Elaboração de minuta recursal' },
-        { name: 'description', label: 'Comentário interno / orientações', type: 'textarea', full: true, note: 'Nunca registre senha, QR code ou segredo do certificado neste campo.' },
-        { name: 'actionType', label: 'Tipo de ação' },
-        { name: 'protocol', label: 'Protocolo / Local' }
-      ], {
-        status: 'triagem',
-        priority: 'normal',
-        source: 'Interna',
-        ...defaults,
-        title: cleanTitle,
-        description: cleanDescription,
-        taskDefinition: defaults.taskDefinition || (definitions.some(item => item.name === cleanTitle) ? cleanTitle : ''),
-        responsibles: Array.isArray(defaults.responsibles) ? defaults.responsibles.join(', ') : (defaults.responsibles || '')
-      }, intimationCardHtml);
-
-      document.getElementById('btnDirectCompleteTask')?.addEventListener('click', () => {
-        const task = Store.state.tasks.find(t => t.id === defaults.id);
-        if (task) {
-          task.status = 'concluida';
-          task.completedAt = new Date().toISOString();
-          Store.audit('Tarefa concluída', task.title);
-          Store.save();
-          this.closeModal();
-          this.renderAll();
-          this.toast('Tarefa concluída e removida do painel ativo!', 'success');
-        }
-      });
-
-      document.getElementById('btnDirectReopenTask')?.addEventListener('click', () => {
-        const task = Store.state.tasks.find(t => t.id === defaults.id);
-        if (task) {
-          task.status = 'triagem';
-          delete task.completedAt;
-          Store.audit('Tarefa reaberta', task.title);
-          Store.save();
-          this.closeModal();
-          this.renderAll();
-          this.toast('Tarefa reaberta no fluxo!', 'success');
-        }
-      });
-
-      const selector = document.getElementById('field-taskDefinition');
-      selector?.addEventListener('change', () => {
-        const definition = definitions.find(item => item.name === selector.value); if (!definition) return;
-        if (document.getElementById('field-title')) document.getElementById('field-title').value = definition.name;
-        if (document.getElementById('field-points')) document.getElementById('field-points').value = definition.points;
-      });
-
-      document.getElementById('btnCopyTaskIntimation')?.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(cleanDescription);
-          this.toast('Texto da intimação copiado com sucesso!', 'success');
-        } catch {
-          this.toast('Não foi possível copiar o texto.', 'error');
-        }
-      });
-
-      document.getElementById('btnAiAnalyzeTask')?.addEventListener('click', () => {
-        this.closeModal();
-        this.switchView('assistant');
-        const aiInput = document.getElementById('aiChatInput');
-        if (aiInput) {
-          aiInput.value = `Por favor, analise a seguinte intimação judicial, estime preliminarmente os prazos em dias úteis (CPC/2015), explicite as hipóteses usadas e sugira providências para conferência humana. Não trate a estimativa como prazo fatal confirmado.\n\n${cleanDescription}`;
-          aiInput.focus();
-        }
-      });
+      return getTasksFeature().openTaskModal(defaults);
     },
     openIntimationModal(defaults = {}) {
       this.openModal('intimation', defaults.id ? 'Editar intimação' : 'Nova intimação', 'Registro judicial', [
@@ -4243,47 +4062,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       }
       const data = Object.fromEntries(new FormData(event.currentTarget).entries());
       if (this.modalMode.mode === 'task') {
-        const history = Array.isArray(this.modalMode.defaults.history) ? [...this.modalMode.defaults.history] : [];
-        const currentActor = window.KellerAuth?.currentUser?.displayName || 'Advogado(a)';
-        history.push({ at: new Date().toISOString(), action: this.modalMode.defaults.id ? 'Tarefa atualizada' : 'Tarefa atribuída', actor: currentActor });
-        const timeLogs = Array.isArray(this.modalMode.defaults.timeLogs) ? [...this.modalMode.defaults.timeLogs] : [];
-        const addMinutes = Number(data.addMinutes);
-        if (addMinutes > 0) {
-          timeLogs.push({ id: uid('time'), date: isoDate(), minutes: addMinutes, description: data.timeDescription || 'Trabalho realizado', actor: currentActor });
-          history.push({ at: new Date().toISOString(), action: `Apontamento de tempo: ${formatMinutes(addMinutes)}`, actor: currentActor });
-        }
-        delete data.addMinutes;
-        delete data.timeDescription;
-        const responsibleList = [data.responsible, ...String(data.responsibles || '').split(/[,;]/)].map(item => item.trim()).filter(Boolean);
-        const record = {
-          id: this.modalMode.defaults.id || uid('task'),
-          createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          source: this.modalMode.defaults.source || 'Interna',
-          intimationId: this.modalMode.defaults.intimationId || null,
-          sourceIntimationId: this.modalMode.defaults.intimationId || this.modalMode.defaults.sourceIntimationId || null,
-          ...data,
-          points: Number(data.points) || 0,
-          responsibles: [...new Set(responsibleList)],
-          history,
-          timeLogs
-        };
-        Store.upsert('tasks', record);
-        if (record.intimationId) {
-          const intimation = Store.state.intimations.find(item => item.id === record.intimationId);
-          if (intimation) {
-            if (!Array.isArray(intimation.linkedTaskIds)) intimation.linkedTaskIds = [];
-            if (!intimation.linkedTaskIds.includes(record.id)) intimation.linkedTaskIds.push(record.id);
-            intimation.taskId = record.id;
-            if (!intimation.treatmentStatus || intimation.treatmentStatus === 'untreated') {
-              intimation.treatmentStatus = 'in_review';
-              intimation.treatmentStartedAt = intimation.treatmentStartedAt || new Date().toISOString();
-              intimation.treatmentStartedBy = intimation.treatmentStartedBy || currentActor;
-            }
-            Store.audit('Tarefa criada a partir de publicação', `${record.title} · ${intimation.process || intimation.id}`);
-          }
-        }
-        Store.audit(this.modalMode.defaults.id ? 'Tarefa atualizada' : 'Tarefa atribuída', `${record.title}${record.process ? ` · ${record.process}` : ''}${record.points ? ` · ${record.points} pontos` : ''}${addMinutes > 0 ? ` · ${formatMinutes(addMinutes)} apontados` : ''}`);
+        getTasksFeature().saveTask(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'intimation') {
         const editing = Boolean(this.modalMode.defaults.id);
         const primaryTerm = Store.state.terms.find(term => term.primary) || Store.state.terms[0];
@@ -4581,7 +4360,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         countCont++;
       });
       (data.tasks || []).forEach(task => {
-        Store.upsert('tasks', task, 'title');
+        getTasksFeature().upsertExternalTask(task, 'title');
         countTasks++;
       });
 
@@ -4628,12 +4407,13 @@ ${id.lawyerOab} - ${id.officeName}`;
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || 'Servidor de integração indisponível.');
         if (Store.state.settings.demoMode && (Number(data.imported) > 0 || (data.intimations && data.intimations.length > 0))) {
-          ['agenda', 'tasks', 'intimations', 'processes'].forEach(collection => {
+          ['agenda', 'intimations', 'processes'].forEach(collection => {
             Store.state[collection] = Store.state[collection].filter(item => !String(item.id || '').includes('demo'));
           });
+          getTasksFeature().removeTasksWhere(item => String(item.id || '').includes('demo'));
         }
         (data.events || []).forEach(event => Store.upsert('agenda', event, 'externalId'));
-        (data.tasks || []).forEach(task => Store.upsert('tasks', task, 'externalId'));
+        (data.tasks || []).forEach(task => getTasksFeature().upsertExternalTask(task, 'externalId'));
         (data.intimations || []).forEach(item => Store.upsert('intimations', item, 'externalId'));
         (data.processes || []).forEach(item => Store.upsert('processes', item, 'number'));
         (data.sources || []).forEach(source => Store.upsert('sources', source, 'id'));
@@ -4664,16 +4444,17 @@ ${id.lawyerOab} - ${id.officeName}`;
           const hasCollections = ['intimations', 'tasks', 'processes', 'agenda'].some(key => Array.isArray(payload[key]));
           if (hasCollections) {
             if (Store.state.settings.demoMode) {
-              ['agenda', 'tasks', 'intimations', 'processes'].forEach(collection => {
+              ['agenda', 'intimations', 'processes'].forEach(collection => {
                 Store.state[collection] = Store.state[collection].filter(item => !String(item.id || '').includes('demo'));
               });
+              getTasksFeature().removeTasksWhere(item => String(item.id || '').includes('demo'));
             }
             (payload.intimations || []).forEach(record => {
               Store.upsert('intimations', { id: record.id || uid('int'), source: record.source || 'Arquivo JSON', status: record.status || 'nova', unread: true, title: record.title || 'Intimação importada', process: record.process || '', client: record.client || '', court: record.court || '', publishedAt: record.publishedAt || isoDate(), text: record.text || record.description || '', term: record.term || defaultTerm, createdAt: new Date().toISOString(), ...record });
               imported++;
             });
             (payload.tasks || []).forEach(record => {
-              Store.upsert('tasks', { id: record.id || uid('task'), title: record.title || 'Tarefa importada', status: record.status || 'triagem', source: record.source || 'Arquivo JSON', priority: record.priority || 'normal', responsible: record.responsible || 'Advogado', createdAt: new Date().toISOString(), ...record });
+              getTasksFeature().upsertExternalTask({ id: record.id || uid('task'), title: record.title || 'Tarefa importada', status: record.status || 'triagem', source: record.source || 'Arquivo JSON', priority: record.priority || 'normal', responsible: record.responsible || 'Advogado', createdAt: new Date().toISOString(), ...record });
               imported++;
             });
             (payload.processes || []).forEach(record => {
