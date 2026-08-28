@@ -6,6 +6,7 @@ import { createTheme } from './components/theme.js';
 import { Toast } from './components/toast.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createContactsFeature } from './features/contacts.js';
+import { createFinancialFeature } from './features/financial.js';
 import { createLeadsFeature } from './features/leads.js';
 import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js';
 import { createProcessesFeature } from './features/processes.js';
@@ -576,6 +577,7 @@ ${id.lawyerOab} - ${id.officeName}`;
   let themeComponent;
   let agendaFeature;
   let contactsFeature;
+  let financialFeature;
   let leadsFeature;
   let publicationsFeature;
   let processesFeature;
@@ -735,6 +737,19 @@ ${id.lawyerOab} - ${id.officeName}`;
     return leadsFeature;
   }
 
+  function getFinancialFeature() {
+    financialFeature ||= createFinancialFeature({
+      store: Store,
+      documentRef: document,
+      normalizeText,
+      escapeHtml,
+      formatCurrency,
+      showToast: (message, type) => App.toast(message, type),
+      renderDashboardFinancialWidgets: () => App.renderAstreaWidgets()
+    });
+    return financialFeature;
+  }
+
   function getAgendaFeature() {
     agendaFeature ||= createAgendaFeature({
       store: Store,
@@ -872,6 +887,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       getProcessesFeature().init();
       getContactsFeature().init();
       getLeadsFeature().init();
+      getFinancialFeature().init();
       getAgendaFeature().init();
       getPublicationsFeature().init();
       byId('configurationSearch')?.addEventListener('input', () => this.renderConfiguration(byId('configurationSearch').value));
@@ -917,22 +933,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       });
 
       // Financeiro & Requisições
-      byId('financialFilters')?.addEventListener('click', event => {
-        const button = event.target.closest('button[data-fin-filter]'); if (!button) return;
-        this.financialFilter = button.dataset.finFilter;
-        byId('financialFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
-        this.renderFinancial();
-      });
-      byId('financialSearch')?.addEventListener('input', () => this.renderFinancial(byId('financialSearch').value));
       byId('btnGenDocPrestacao')?.addEventListener('click', () => this.openDocumentGenerator({ type: 'prestacao_contas' }));
-      byId('newFinancialEntryButton')?.addEventListener('click', () => this.openFinancialEntryModal());
-      byId('financialEntryClose')?.addEventListener('click', () => this.closeFinancialEntryModal());
-      byId('financialEntryCancel')?.addEventListener('click', () => this.closeFinancialEntryModal());
-      byId('financialEntryBackdrop')?.addEventListener('click', event => { if (event.target === byId('financialEntryBackdrop')) this.closeFinancialEntryModal(); });
-      byId('financialEntryForm')?.addEventListener('submit', event => this.handleFinancialEntrySubmit(event));
-      byId('finGrossInput')?.addEventListener('input', () => this.updateFinancialModalSummary());
-      byId('finFeePctInput')?.addEventListener('input', () => this.updateFinancialModalSummary());
-      byId('finTypeSelect')?.addEventListener('change', () => this.updateFinancialModalSummary());
 
       // Documentos & Minutas
       byId('btnOpenDocGenModal')?.addEventListener('click', () => this.openDocumentGenerator());
@@ -1610,150 +1611,19 @@ ${id.lawyerOab} - ${id.officeName}`;
       return getLeadsFeature().openLeadModal(defaults);
     },
     renderFinancial(query = '') {
-      const listEl = document.getElementById('financialTableBody');
-      if (!listEl) return;
-      const filter = this.financialFilter || 'all';
-      const needle = normalizeText(query);
-      const processes = Store.state.processes || [];
-
-      const FINANCIAL_STATUS_MAP = {
-        requisitado: { label: 'Requisitado / Expedido', chipClass: 'muted', isFinal: false },
-        aguardando_deposito: { label: 'Aguardando Depósito', chipClass: 'warning', isFinal: false },
-        disponivel_saque: { label: 'Disponível para Saque', chipClass: 'info', isFinal: false },
-        repassado: { label: 'Repassado & Quitado', chipClass: 'connected', isFinal: true },
-        pago: { label: 'Repassado & Quitado', chipClass: 'connected', isFinal: true },
-        quitado: { label: 'Repassado & Quitado', chipClass: 'connected', isFinal: true }
-      };
-
-      let totalHonorariosAFaturar = 0;
-      let rpvCount = 0;
-
-      const rows = [];
-      processes.forEach(proc => {
-        const isPaid = proc.feeStatus === 'pago' || proc.feeStatus === 'quitado' || proc.requisitionStatus === 'repassado' || proc.requisitionStatus === 'pago';
-        
-        // Cálculo canônico do RPV / Precatório (BUG-003)
-        if (proc.requisitionStatus || proc.requisitionAmount || proc.rpvAmount) {
-          rpvCount++;
-          const gross = Number(proc.requisitionAmount ?? proc.rpvAmount ?? proc.economicValue ?? 0);
-          const feePct = Number(proc.feePercentage ?? 30);
-          const feeAmount = proc.feeAmount ? Number(proc.feeAmount) : (gross * feePct / 100);
-          const netClient = Math.max(0, gross - feeAmount);
-          const statusInfo = FINANCIAL_STATUS_MAP[proc.requisitionStatus] || { label: proc.requisitionStatus || 'Requisitado', chipClass: 'warning', isFinal: false };
-
-          if (!isPaid && !statusInfo.isFinal) {
-            totalHonorariosAFaturar += feeAmount;
-          }
-
-          if (filter === 'all' || filter === 'rpv') {
-            if (!needle || normalizeText(`${proc.number} ${proc.client} ${statusInfo.label}`).includes(needle)) {
-              rows.push(`
-                <tr>
-                  <td><strong>${escapeHtml(proc.number || 'Processo sem número')}</strong></td>
-                  <td>${escapeHtml(proc.client || 'Cliente')}</td>
-                  <td><span class="status-chip connected">RPV / Alvará (${feePct}%)</span></td>
-                  <td>${formatCurrency(gross)}</td>
-                  <td><strong style="color:var(--gold);">${formatCurrency(feeAmount)}</strong></td>
-                  <td><strong style="color:var(--success);">${formatCurrency(netClient)}</strong></td>
-                  <td><span class="status-chip ${statusInfo.chipClass}">${escapeHtml(statusInfo.label)}</span></td>
-                </tr>
-              `);
-            }
-          }
-        } else if (filter === 'all' || filter === 'honorarios') {
-          if (proc.feeAmount || proc.feeMonthly) {
-            const feeVal = Number(proc.feeAmount || proc.feeMonthly || 0);
-            if (!isPaid) totalHonorariosAFaturar += feeVal;
-            if (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.feeType}`).includes(needle)) {
-              rows.push(`
-                <tr>
-                  <td><strong>${escapeHtml(proc.number || 'Contrato')}</strong></td>
-                  <td>${escapeHtml(proc.client || 'Cliente')}</td>
-                  <td><span class="status-chip muted">${escapeHtml(proc.feeType || 'Honorários Contratuais')}</span></td>
-                  <td>${formatCurrency(feeVal)}</td>
-                  <td><strong style="color:var(--gold);">${formatCurrency(feeVal)}</strong></td>
-                  <td>—</td>
-                  <td><span class="status-chip ${isPaid ? 'connected' : 'warning'}">${isPaid ? 'Quitado' : 'A Faturar'}</span></td>
-                </tr>
-              `);
-            }
-          }
-        }
-      });
-
-      const honEl = document.getElementById('finMetricHonorarios');
-      const rpvEl = document.getElementById('finMetricRpvCount');
-      if (honEl) honEl.textContent = formatCurrency(totalHonorariosAFaturar);
-      if (rpvEl) rpvEl.textContent = `${rpvCount} requisições`;
-
-      listEl.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" class="empty-table" style="text-align:center;padding:24px;color:var(--muted);">Nenhum lançamento financeiro ou requisição RPV localizada.</td></tr>';
+      return getFinancialFeature().render(query);
     },
     openFinancialEntryModal() {
-      const backdrop = document.getElementById('financialEntryBackdrop');
-      if (!backdrop) return;
-      const select = document.getElementById('finProcessSelect');
-      const processes = Store.state.processes || [];
-      if (select) {
-        select.innerHTML = '<option value="">Selecione o processo ou cliente...</option>' +
-          processes.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.number || 'S/N')} — ${escapeHtml(p.client || 'Cliente')}</option>`).join('');
-      }
-      const form = document.getElementById('financialEntryForm');
-      if (form) form.reset();
-      this.updateFinancialModalSummary();
-      backdrop.classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
+      return getFinancialFeature().openEntryModal();
     },
     closeFinancialEntryModal() {
-      const backdrop = document.getElementById('financialEntryBackdrop');
-      if (backdrop) backdrop.classList.add('hidden');
-      if (document.getElementById('modalBackdrop')?.classList.contains('hidden')) {
-        document.body.style.overflow = '';
-      }
+      return getFinancialFeature().closeEntryModal();
     },
     updateFinancialModalSummary() {
-      const gross = parseFloat(document.getElementById('finGrossInput')?.value) || 0;
-      const feePct = parseFloat(document.getElementById('finFeePctInput')?.value) || 0;
-      const fee = (gross * feePct) / 100;
-      const net = Math.max(0, gross - fee);
-      const sumGross = document.getElementById('finSumGross');
-      const sumFee = document.getElementById('finSumFee');
-      const sumNet = document.getElementById('finSumNet');
-      if (sumGross) sumGross.textContent = formatCurrency(gross);
-      if (sumFee) sumFee.textContent = formatCurrency(fee);
-      if (sumNet) sumNet.textContent = formatCurrency(net);
+      return getFinancialFeature().updateModalSummary();
     },
     handleFinancialEntrySubmit(event) {
-      event.preventDefault();
-      const form = event.currentTarget;
-      const data = new FormData(form);
-      const processId = data.get('processId');
-      const entryType = data.get('entryType');
-      const status = data.get('status');
-      const grossAmount = parseFloat(data.get('grossAmount')) || 0;
-      const feePercentage = parseFloat(data.get('feePercentage')) || 30;
-      const feeAmount = (grossAmount * feePercentage) / 100;
-
-      const process = Store.state.processes.find(p => p.id === processId);
-      if (!process) {
-        this.toast('Selecione um processo válido para vincular o lançamento.', 'error');
-        return;
-      }
-
-      process.requisitionAmount = grossAmount;
-      process.feePercentage = feePercentage;
-      process.feeAmount = feeAmount;
-      process.requisitionStatus = status;
-      process.feeType = entryType === 'rpv' ? 'RPV / Precatório' : (entryType === 'exito' ? 'Quota Litis' : 'Honorários');
-      process.updatedAt = new Date().toISOString();
-
-      Store.upsert('processes', process);
-      Store.audit('Lançamento financeiro registrado', `${process.number || process.client}: ${formatCurrency(grossAmount)} (${status})`);
-      Store.save();
-
-      this.closeFinancialEntryModal();
-      this.renderFinancial();
-      this.renderAstreaWidgets();
-      this.toast('Lançamento financeiro salvo com sucesso!', 'success');
+      return getFinancialFeature().handleEntrySubmit(event);
     },
     renderDocuments() {
       const grid = document.getElementById('documentsTemplateGrid');
