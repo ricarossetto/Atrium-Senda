@@ -6,6 +6,7 @@ import { createTheme } from './components/theme.js';
 import { Toast } from './components/toast.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createContactsFeature } from './features/contacts.js';
+import { createLeadsFeature } from './features/leads.js';
 import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js';
 import { createProcessesFeature } from './features/processes.js';
 import { createTasksFeature } from './features/tasks.js';
@@ -575,6 +576,7 @@ ${id.lawyerOab} - ${id.officeName}`;
   let themeComponent;
   let agendaFeature;
   let contactsFeature;
+  let leadsFeature;
   let publicationsFeature;
   let processesFeature;
   let tasksFeature;
@@ -719,6 +721,20 @@ ${id.lawyerOab} - ${id.officeName}`;
     return contactsFeature;
   }
 
+  function getLeadsFeature() {
+    leadsFeature ||= createLeadsFeature({
+      store: Store,
+      documentRef: document,
+      normalizeText,
+      escapeHtml,
+      formatDate,
+      formatCurrency,
+      openModal: (...args) => App.openModal(...args),
+      getCurrentUserName: () => window.KellerAuth?.currentUser?.displayName
+    });
+    return leadsFeature;
+  }
+
   function getAgendaFeature() {
     agendaFeature ||= createAgendaFeature({
       store: Store,
@@ -855,6 +871,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       getTasksFeature().init();
       getProcessesFeature().init();
       getContactsFeature().init();
+      getLeadsFeature().init();
       getAgendaFeature().init();
       getPublicationsFeature().init();
       byId('configurationSearch')?.addEventListener('input', () => this.renderConfiguration(byId('configurationSearch').value));
@@ -898,16 +915,6 @@ ${id.lawyerOab} - ${id.officeName}`;
         byId('astreaTaskFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
         this.renderAstreaTasks();
       });
-
-      // Atendimentos & CRM (Projuris / Astrea)
-      byId('newLeadButton')?.addEventListener('click', () => this.openLeadModal());
-      byId('leadStatusFilters')?.addEventListener('click', event => {
-        const button = event.target.closest('button[data-lead-filter]'); if (!button) return;
-        this.leadStatusFilter = button.dataset.leadFilter;
-        byId('leadStatusFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
-        this.renderLeads();
-      });
-      byId('leadSearch')?.addEventListener('input', () => this.renderLeads(byId('leadSearch').value));
 
       // Financeiro & Requisições
       byId('financialFilters')?.addEventListener('click', event => {
@@ -1597,95 +1604,10 @@ ${id.lawyerOab} - ${id.officeName}`;
       }
     },
     renderLeads(query = '') {
-      const listEl = document.getElementById('leadTableBody');
-      if (!listEl) return;
-      const filter = this.leadStatusFilter || 'all';
-      const needle = normalizeText(query);
-      const leads = Store.state.leads || [];
-
-      const filtered = leads.filter(l => {
-        if (filter !== 'all' && l.status !== filter) return false;
-        if (!needle) return true;
-        return normalizeText(`${l.client} ${l.serviceType} ${l.origin} ${l.responsible}`).includes(needle);
-      });
-
-      const countEl = document.getElementById('leadCount');
-      if (countEl) countEl.textContent = `${filtered.length} atendimentos`;
-
-      if (!filtered.length) {
-        listEl.innerHTML = '<tr><td colspan="7" class="empty-table" style="text-align:center;padding:24px;color:var(--muted);">Nenhum atendimento ou oportunidade registrada. Clique em "+ Novo Atendimento" para cadastrar.</td></tr>';
-        return;
-      }
-
-      listEl.innerHTML = filtered.map(l => {
-        const statusMap = {
-          novo: '<span class="lead-status-chip novo">Novo</span>',
-          em_analise: '<span class="lead-status-chip em_analise">Em Análise</span>',
-          proposta: '<span class="lead-status-chip proposta">Proposta Enviada</span>',
-          fechado: '<span class="lead-status-chip fechado">Fechado</span>',
-          declinado: '<span class="lead-status-chip declinado">Declinado</span>'
-        };
-        const statusHtml = statusMap[l.status] || '<span class="lead-status-chip novo">Novo</span>';
-        const valueFormatted = l.estimatedFee ? formatCurrency(Number(l.estimatedFee)) : 'A definir';
-
-        return `
-          <tr data-lead-id="${escapeHtml(l.id)}" style="cursor:pointer;">
-            <td><strong>${escapeHtml(l.client || 'Interessado')}</strong></td>
-            <td>${escapeHtml(l.serviceType || 'Consulta Inicial')}</td>
-            <td><span class="status-chip muted">${escapeHtml(l.origin || 'Direto')}</span></td>
-            <td><strong style="color:var(--gold);">${valueFormatted}</strong></td>
-            <td>${escapeHtml(l.responsible || 'Advogado(a)')}</td>
-            <td>${formatDate(l.registeredAt || isoDate())}</td>
-            <td>${statusHtml}</td>
-          </tr>
-        `;
-      }).join('');
-
-      listEl.querySelectorAll('[data-lead-id]').forEach(row => {
-        row.addEventListener('click', () => {
-          const lead = Store.state.leads.find(l => l.id === row.dataset.leadId);
-          if (lead) this.openLeadModal(lead);
-        });
-      });
+      return getLeadsFeature().render(query);
     },
     openLeadModal(defaults = {}) {
-      const editing = Boolean(defaults.id);
-      const fields = [
-        { name: 'client', label: 'Nome do Cliente / Interessado', required: true, full: true, placeholder: 'Ex: Maria da Silva' },
-        { name: 'serviceType', label: 'Tipo de Ação / Serviço Jurídico', required: true, full: true, placeholder: 'Ex: Concessão de Aposentadoria Especial' },
-        {
-          name: 'status', label: 'Status do Atendimento', type: 'select',
-          options: [
-            { value: 'novo', label: 'Novo Lead / Contato Inicial' },
-            { value: 'em_analise', label: 'Em Análise Documental' },
-            { value: 'proposta', label: 'Proposta de Honorários Enviada' },
-            { value: 'fechado', label: 'Contrato Fechado (Virou Cliente)' },
-            { value: 'declinado', label: 'Declinado / Não Viável' }
-          ]
-        },
-        {
-          name: 'origin', label: 'Origem da Captação', type: 'select',
-          options: [
-            { value: 'Indicação de Cliente', label: 'Indicação de Cliente' },
-            { value: 'Google / Site', label: 'Google / Site' },
-            { value: 'Instagram / Redes Sociais', label: 'Instagram / Redes Sociais' },
-            { value: 'Parceiro / Correspondente', label: 'Parceiro / Correspondente' },
-            { value: 'Sindicato / Associação', label: 'Sindicato / Associação' },
-            { value: 'Passante / Balcão', label: 'Passante / Balcão' },
-            { value: 'Outro', label: 'Outro' }
-          ]
-        },
-        { name: 'estimatedFee', label: 'Honorários Estimados (R$)', type: 'number', placeholder: 'Ex: 5000' },
-        { name: 'responsible', label: 'Responsável pelo Atendimento', placeholder: 'Ex: Dr. Ricardo' },
-        { name: 'notes', label: 'Observações & Relato do Caso', type: 'textarea', full: true, placeholder: 'Descreva a pretensão do cliente e próximos passos...' }
-      ];
-
-      this.openModal('lead', editing ? 'Editar Atendimento' : 'Novo Atendimento / Oportunidade', 'CRM Jurídico', fields, {
-        status: 'novo',
-        origin: 'Indicação de Cliente',
-        responsible: window.KellerAuth?.currentUser?.displayName || 'Advogado(a)',
-        ...defaults
-      });
+      return getLeadsFeature().openLeadModal(defaults);
     },
     renderFinancial(query = '') {
       const listEl = document.getElementById('financialTableBody');
@@ -3950,17 +3872,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         }
         Store.audit(editing ? 'Termo atualizado' : 'Termo adicionado', `${record.name} · ${record.registration}`);
       } else if (this.modalMode.mode === 'lead') {
-        const editing = Boolean(this.modalMode.defaults.id);
-        const record = {
-          id: this.modalMode.defaults.id || uid('lead'),
-          registeredAt: this.modalMode.defaults.registeredAt || isoDate(),
-          ...this.modalMode.defaults,
-          ...data,
-          estimatedFee: data.estimatedFee ? Number(data.estimatedFee) : null,
-          updatedAt: new Date().toISOString()
-        };
-        Store.upsert('leads', record);
-        Store.audit(editing ? 'Atendimento atualizado' : 'Novo atendimento registrado', `${record.client} · ${record.serviceType}`);
+        getLeadsFeature().saveLead(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'source') {
         const record = { ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() }; Store.upsert('sources', record); Store.audit('Fonte atualizada', `${record.name} · ${record.status}`);
       } else if (this.modalMode.mode === 'datajud') {
