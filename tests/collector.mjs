@@ -17,12 +17,12 @@ assert.equal(djenInternals.htmlToText('<style>.x{}</style><p class="fixed">Intim
 assert.equal(djenInternals.safeOfficialLink('https://pje.tjrs.jus.br/documento'), 'https://pje.tjrs.jus.br/documento');
 assert.equal(djenInternals.safeOfficialLink('https://jus.br.evil.example/documento'), '');
 
-const target = { events: [], tasks: [], intimations: [], processes: [], sources: [] };
+const target = { events: [], tasks: [], intimations: [], processes: [], contacts: [], sources: [] };
 const calls = [];
 await collectDjen({
   id: 'djen-cnj', name: 'DJEN / Comunica PJe', url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
-  numeroOab: '135294', ufOab: 'RS', queryOabVariants: true, requestSpacingMs: 0
-}, { monitoredTerm: { name: 'Ricardo De Luca Rossetto', registration: 'OAB/RS 135294' } }, target, {
+  numeroOab: '111111', ufOab: 'RS', queryOabVariants: true, requestSpacingMs: 0
+}, { monitoredTerm: { id: 'term-coletora-teste', name: 'Advogada Coletora Teste', registration: 'OAB/RS 111111' } }, target, {
   sleep: async () => {},
   fetchImpl: async url => {
     calls.push(String(url));
@@ -40,7 +40,7 @@ await collectDjen({
       link: 'https://pje.tjrs.jus.br/documento',
       destinatarios: [{ nome: 'PARTE DE TESTE' }]
     };
-    return new Response(JSON.stringify(variant === '135294' ? { count: 1, items: [item] } : { count: 0, items: [] }), {
+    return new Response(JSON.stringify(variant === '111111' ? { count: 1, items: [item] } : { count: 0, items: [] }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
     });
   }
@@ -64,7 +64,7 @@ assert.equal(datajudInternals.aliasForProcess('1234567-89.2026.5.04.0001'), 'trt
 assert.equal(datajudInternals.normalizeApiKey('Authorization: APIKey chave-publica=='), 'chave-publica==');
 
 const datajudTarget = {
-  events: [], tasks: [], intimations: [], sources: [],
+  events: [], tasks: [], intimations: [], contacts: [], sources: [],
   processes: [{ number: '1234567-89.2026.8.21.0001', lastMovementAt: '2026-08-15T10:00:00.000Z', source: 'eproc' }]
 };
 let datajudCalls = 0;

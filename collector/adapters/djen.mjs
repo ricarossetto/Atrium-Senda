@@ -132,9 +132,10 @@ function appendDjenItem(item, portal, config, target) {
   const title = canceledReason ? `${communicationType} cancelada` : [communicationType, documentType].filter(Boolean).join(' · ');
   const description = normalizeText([item.nomeClasse, recipients, text, canceledReason && `Cancelamento: ${canceledReason}`].filter(Boolean).join(' · '));
   const term = `${config.monitoredTerm?.name || 'Advogado(a) Titular'} · ${config.monitoredTerm?.registration || 'OAB/UF 000000'}`;
+  const monitoredTermId = termIdentity(config.monitoredTerm);
   const now = new Date().toISOString();
 
-  target.intimations.push({
+  const incoming = {
     id: externalId,
     externalId,
     source: portal.name || 'DJEN/CNJ',
@@ -147,12 +148,34 @@ function appendDjenItem(item, portal, config, target) {
     client: decodeHtmlEntities(recipients),
     publishedAt,
     term,
+    monitoredTermIds: monitoredTermId ? [monitoredTermId] : [],
     status: 'nova',
     unread: true,
     createdAt: now,
     certificateUrl: safeCertificateUrl(item.hash),
     officialLink: safeOfficialLink(item.link || item.url)
-  });
+  };
+  const existing = target.intimations.find(record => (record.externalId || record.id) === externalId);
+  if (!existing) {
+    target.intimations.push(incoming);
+    return;
+  }
+
+  for (const field of ['source', 'type', 'title', 'text', 'description', 'court', 'process', 'client', 'publishedAt', 'certificateUrl', 'officialLink']) {
+    if (incoming[field] !== '' && incoming[field] !== null && incoming[field] !== undefined) existing[field] = incoming[field];
+  }
+  existing.monitoredTermIds = [...new Set([...(existing.monitoredTermIds || []), ...incoming.monitoredTermIds].filter(Boolean))];
+  existing.term ||= term;
+}
+
+function termIdentity(term) {
+  if (!term || typeof term !== 'object') return '';
+  if (String(term.id || '').trim()) return String(term.id).trim();
+  const registration = String(term.registration || '');
+  const uf = String(term.oabUf || registration.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i)?.[1] || '').toUpperCase();
+  const number = String(term.oabNumber || registration).replace(/\D/g, '');
+  if (uf && number) return `oab:${uf}:${number}`;
+  return normalizeText(term.name || '').toLocaleLowerCase('pt-BR');
 }
 
 function validDjenItem(item) {
@@ -214,4 +237,4 @@ async function fetchWithTimeout(fetchImpl, url, timeoutMs) {
   } finally { clearTimeout(timer); }
 }
 
-export const djenInternals = { formatProcessNumber, htmlToText, safeOfficialLink, saoPauloDateWindow, validDjenItem };
+export const djenInternals = { formatProcessNumber, htmlToText, safeOfficialLink, saoPauloDateWindow, termIdentity, validDjenItem };

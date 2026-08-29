@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { SecurityManager, verifyTotp } from './lib/security.mjs';
 import { buildRelevantOfficeContext } from './lib/ai-context.mjs';
 import { collectDjen } from './collector/adapters/djen.mjs';
+import { collectDatajud, mergeExternalContacts, mergeExternalProcesses } from './collector/adapters/datajud.mjs';
 import { JudicialOrchestrator } from './lib/judicial/orchestrator.mjs';
 import { EmailService, maskEmail } from './lib/email/email-service.mjs';
 import { runA1Sandbox } from './lib/judicial/a1-sandbox.mjs';
@@ -104,7 +105,7 @@ const publicFrontendDirectories = [
 const privateStaticPrefixes = ['data/', '.git/', '.github/', 'lib/', 'tests/', 'scripts/', 'collector/'];
 const privateStaticFiles = new Set(['.env', 'package.json', 'pnpm-lock.yaml', 'package-lock.json', 'yarn.lock']);
 const privateStaticExtensions = new Set(['.key', '.pem', '.pfx', '.p12', '.crt']);
-const emptyRuntime = () => ({ events: [], tasks: [], intimations: [], processes: [], sources: [], updatedAt: null });
+const emptyRuntime = () => ({ events: [], tasks: [], intimations: [], processes: [], contacts: [], sources: [], updatedAt: null });
 let interactiveCollector = null;
 
 async function loadEnv(file) {
@@ -1157,7 +1158,22 @@ function mergeBy(left = [], right = [], key = 'externalId') {
   }
   return result;
 }
-function sanitizeArray(value, max = 10_000) { return Array.isArray(value) ? value.filter(item => item && typeof item === 'object' && !Array.isArray(item)).slice(0, max) : []; }
+function sanitizeRecord(value, depth = 0) {
+  if (depth > 12) return null;
+  if (Array.isArray(value)) return value.slice(0, 10_000).map(item => sanitizeRecord(item, depth + 1));
+  if (!value || typeof value !== 'object') return value;
+  const clean = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (['__proto__', 'prototype', 'constructor'].includes(key)) continue;
+    clean[key] = sanitizeRecord(item, depth + 1);
+  }
+  return clean;
+}
+function sanitizeArray(value, max = 10_000) {
+  return Array.isArray(value)
+    ? value.filter(item => item && typeof item === 'object' && !Array.isArray(item)).slice(0, max).map(item => sanitizeRecord(item))
+    : [];
+}
 function collectorAuthorized(req) {
   const authorization = String(req.headers.authorization || '');
   const expected = `Bearer ${process.env.COLLECTOR_INGEST_TOKEN}`;
@@ -2318,13 +2334,25 @@ Diretrizes essenciais:
     if (req.method === 'POST' && url.pathname === '/api/ingest') {
       if (!collectorAuthorized(req)) return json(res, 401, { message: 'Coletor não autorizado.' });
       const incoming = await readJson(req, 5_000_000); const runtime = await readRuntime();
+      const collections = {
+        events: sanitizeArray(incoming.events),
+        tasks: sanitizeArray(incoming.tasks),
+        intimations: sanitizeArray(incoming.intimations),
+        processes: sanitizeArray(incoming.processes),
+        contacts: sanitizeArray(incoming.contacts),
+        sources: sanitizeArray(incoming.sources)
+      };
       const next = {
-        events: mergeBy(runtime.events, sanitizeArray(incoming.events)), tasks: mergeBy(runtime.tasks, sanitizeArray(incoming.tasks)),
-        intimations: mergeBy(runtime.intimations, sanitizeArray(incoming.intimations)), processes: mergeBy(runtime.processes, sanitizeArray(incoming.processes), 'number'),
-        sources: mergeBy(runtime.sources, sanitizeArray(incoming.sources), 'id'), updatedAt: new Date().toISOString()
+        events: mergeBy(runtime.events, collections.events),
+        tasks: mergeBy(runtime.tasks, collections.tasks),
+        intimations: mergeBy(runtime.intimations, collections.intimations),
+        processes: mergeExternalProcesses(runtime.processes, collections.processes),
+        contacts: mergeExternalContacts(runtime.contacts, collections.contacts),
+        sources: mergeBy(runtime.sources, collections.sources, 'id'),
+        updatedAt: new Date().toISOString()
       };
       await saveRuntime(next);
-      const imported = ['events', 'tasks', 'intimations', 'processes'].reduce((sum, key) => sum + sanitizeArray(incoming[key]).length, 0);
+      const imported = ['events', 'tasks', 'intimations', 'processes', 'contacts'].reduce((sum, key) => sum + collections[key].length, 0);
       return json(res, 200, { ok: true, imported, updatedAt: next.updatedAt });
     }
     if (req.method === 'GET' && url.pathname === '/api/import/template') {
@@ -2357,71 +2385,139 @@ Diretrizes essenciais:
     if (req.method === 'POST' && url.pathname === '/api/sync') {
       assertAuthenticated(req, true);
       const runtime = await readRuntime();
-      let events = runtime.events;
-      let tasks = runtime.tasks;
-      let intimations = runtime.intimations;
-      let processes = runtime.processes;
+      let events = sanitizeArray(runtime.events);
+      let tasks = sanitizeArray(runtime.tasks);
+      let intimations = sanitizeArray(runtime.intimations);
+      let processes = sanitizeArray(runtime.processes);
+      let contacts = sanitizeArray(runtime.contacts);
       let calendarImported = 0;
-      let djenImported = 0;
-      const sources = [...runtime.sources];
+      let judicialImported = 0;
+      let sources = sanitizeArray(runtime.sources);
       let appState = null;
       try {
         const envelope = await readAppStateEnvelope();
         if (envelope?.state) appState = envelope.state;
       } catch { /* sem estado salvo */ }
 
-      // 1. Sincronização automática com DJEN / CNJ Oficial para os termos monitorados
+      // 1. Discovery judicial canônico: termos monitorados -> DJEN -> CNJ -> DataJud.
       if (process.env.KELLER_SKIP_COLLECTOR_ENV !== 'true') {
-        try {
-          const terms = appState?.terms?.length ? appState.terms : [];
-          for (const term of terms) {
-            const { uf, num } = extractOabAndUf(term);
-            if (num && num.length >= 3) {
-              const target = { intimations: [], tasks: [], processes: [], sources: [] };
-              const portal = {
-                id: 'djen-cnj',
-                name: 'DJEN / CNJ Oficial',
-                url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
-                lookbackDays: 30,
-                queryOabVariants: false,
-                ufOab: uf,
-                numeroOab: num,
-                timeoutMs: 25_000
-              };
-              const djenResult = await collectDjen(portal, { monitoredTerm: { ...term, oabUf: uf, oabNumber: num } }, target);
-              if (target.intimations.length) {
-                intimations = mergeBy(intimations, target.intimations, 'externalId');
-                tasks = mergeBy(tasks, target.tasks, 'externalId');
-                djenImported += target.intimations.length;
-              }
-              const sourceIdx = sources.findIndex(s => s.id === 'djen-cnj' || s.id === 'djen');
-              const updatedSource = {
-                id: 'djen-cnj',
-                name: 'DJEN / CNJ Oficial',
-                short: 'CNJ',
-                method: 'API pública oficial',
-                status: 'ok',
-                lastCheck: new Date().toISOString(),
-                detail: `${djenResult.records || 0} publicação(ões) lida(s) para OAB/${uf} ${num}`
-              };
-              if (sourceIdx >= 0) sources[sourceIdx] = updatedSource;
-              else sources.push(updatedSource);
-            }
+        const monitoredTerms = sanitizeArray(appState?.terms)
+          .filter(term => term.active !== false)
+          .map(term => ({ ...term, ...extractOabAndUf(term) }))
+          .filter(term => term.num && term.num.length >= 3 && /^[A-Z]{2}$/.test(term.uf))
+          .map(term => ({ ...term, oabUf: term.uf, oabNumber: term.num }));
+        const target = {
+          intimations,
+          tasks,
+          processes: mergeExternalProcesses(sanitizeArray(appState?.processes), processes),
+          contacts: mergeExternalContacts(sanitizeArray(appState?.contacts), contacts),
+          sources: [],
+          terms: monitoredTerms
+        };
+        const initialCounts = {
+          intimations: target.intimations.length,
+          tasks: target.tasks.length,
+          processes: target.processes.length,
+          contacts: target.contacts.length
+        };
+        const djenFailures = [];
+        let djenRecords = 0;
+
+        for (const term of monitoredTerms) {
+          try {
+            const result = await collectDjen({
+              id: 'djen-cnj',
+              name: 'DJEN / CNJ Oficial',
+              url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
+              lookbackDays: 30,
+              queryOabVariants: false,
+              ufOab: term.oabUf,
+              numeroOab: term.oabNumber,
+              timeoutMs: 25_000
+            }, { monitoredTerm: term, monitoredTerms }, target);
+            djenRecords += result.records || 0;
+            if (!result.complete) djenFailures.push(`OAB/${term.oabUf} ${term.oabNumber}: coleta parcial`);
+          } catch (error) {
+            djenFailures.push(`OAB/${term.oabUf} ${term.oabNumber}: ${String(error.message).slice(0, 80)}`);
           }
-        } catch (error) {
-          const sourceIdx = sources.findIndex(s => s.id === 'djen-cnj' || s.id === 'djen');
-          const errorSource = {
+        }
+
+        const setSource = (aliases, record) => {
+          const index = sources.findIndex(source => aliases.includes(source.id));
+          if (index >= 0) sources[index] = { ...sources[index], ...record };
+          else sources.push(record);
+        };
+        if (monitoredTerms.length) {
+          setSource(['djen-cnj', 'djen'], {
             id: 'djen-cnj',
             name: 'DJEN / CNJ Oficial',
             short: 'CNJ',
             method: 'API pública oficial',
-            status: 'attention',
+            status: djenFailures.length ? 'attention' : 'ok',
             lastCheck: new Date().toISOString(),
-            detail: `Aviso DJEN: ${String(error.message).slice(0, 120)}`
-          };
-          if (sourceIdx >= 0) sources[sourceIdx] = errorSource;
-          else sources.push(errorSource);
+            detail: djenFailures.length
+              ? `${djenRecords} publicação(ões) lida(s); ${djenFailures.join(' | ').slice(0, 240)}`
+              : `${djenRecords} publicação(ões) lida(s) para ${monitoredTerms.length} OAB(s) monitorada(s)`
+          });
         }
+
+        const knownProcesses = new Set(target.processes.map(item => String(item.number || '').replace(/\D/g, '')).filter(value => value.length === 20));
+        const processNumbers = [
+          ...target.processes
+            .filter(item => item.monitoring !== 'inactive' && !String(item.id || '').includes('demo'))
+            .map(item => item.number),
+          ...target.intimations
+            .filter(item => !String(item.id || '').includes('demo'))
+            .filter(item => {
+              const key = String(item.process || '').replace(/\D/g, '');
+              return key.length === 20 && !knownProcesses.has(key);
+            })
+            .map(item => item.process)
+        ];
+
+        if (processNumbers.length) {
+          try {
+            const datajudResult = await collectDatajud({
+              id: 'datajud-cnj',
+              name: 'DataJud / CNJ',
+              autoRefreshKey: true,
+              keyPageUrl: 'https://datajud-wiki.cnj.jus.br/api-publica/acesso/',
+              maxProcessesPerRun: 250,
+              movementLookbackDays: 7,
+              requestSpacingMs: 150,
+              timeoutMs: 45_000
+            }, { monitoredTerms }, target, {
+              apiKey: appState?.settings?.datajudApiKey,
+              processNumbers
+            });
+            setSource(['datajud-cnj', 'datajud'], {
+              id: 'datajud-cnj',
+              name: 'DataJud / CNJ',
+              short: 'DJD',
+              method: 'API pública oficial',
+              status: datajudResult.complete ? 'ok' : 'attention',
+              lastCheck: new Date().toISOString(),
+              detail: `${datajudResult.found}/${datajudResult.queried} processo(s) localizado(s); ${datajudResult.updated} atualizado(s)${datajudResult.failed ? `; ${datajudResult.failed} falha(s)` : ''}`
+            });
+          } catch (error) {
+            setSource(['datajud-cnj', 'datajud'], {
+              id: 'datajud-cnj',
+              name: 'DataJud / CNJ',
+              short: 'DJD',
+              method: 'API pública oficial',
+              status: 'attention',
+              lastCheck: new Date().toISOString(),
+              detail: `Aviso DataJud: ${String(error.message).slice(0, 120)}`
+            });
+          }
+        }
+
+        intimations = target.intimations;
+        tasks = target.tasks;
+        processes = mergeExternalProcesses(processes, target.processes.filter(item => item.datajudAlias || /DataJud/i.test(String(item.source || ''))));
+        contacts = mergeExternalContacts(contacts, target.contacts.filter(item => item.datajudAlias || /DataJud/i.test(String(item.source || ''))));
+        judicialImported = ['intimations', 'tasks', 'processes', 'contacts']
+          .reduce((total, key) => total + Math.max(0, target[key].length - initialCounts[key]), 0);
       }
 
       // 2. Sincronização com Agenda Externa (Webcal / iCalendar)
@@ -2443,6 +2539,7 @@ Diretrizes essenciais:
         tasks,
         intimations,
         processes,
+        contacts,
         sources: mergeBy([], sources, 'id'),
         updatedAt: new Date().toISOString()
       };
@@ -2450,7 +2547,7 @@ Diretrizes essenciais:
 
       return json(res, 200, {
         ...updatedRuntime,
-        imported: calendarImported + djenImported
+        imported: calendarImported + judicialImported
       });
     }
     if (req.method === 'GET' || req.method === 'HEAD') return serveStatic(req, res);

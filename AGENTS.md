@@ -163,6 +163,12 @@ Publicação tratada no ATRIUM não significa ciência judicial.
 Não automatize ciência nem use texto de interface que confunda esses conceitos.
 O backend deve ser a autoridade das transições de tratamento.
 
+O discovery judicial canônico deve encadear DJEN → número CNJ → DataJud → processo e
+contatos para todos os termos monitorados. Preserve campos manuais melhores, deduplique
+por identidades estáveis e mantenha todas as associações quando mais de um advogado for
+localizado. Discovery é somente leitura: nunca abra prazo, envie e-mail ou pratique ato
+processual automaticamente.
+
 ## 16. Prazos jurídicos
 
 - Nunca infira deadline jurídico automaticamente por regex ou texto da publicação.

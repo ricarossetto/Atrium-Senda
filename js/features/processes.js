@@ -43,6 +43,19 @@ export function createProcessesFeature({
       return { ...sort };
     },
 
+    upsertExternalProcess(record) {
+      const incoming = safeExternalRecord(record);
+      const identity = processIdentity(incoming);
+      if (!identity) return null;
+      store.state.processes = Array.isArray(store.state.processes) ? store.state.processes : [];
+      const index = store.state.processes.findIndex(item => processIdentity(item) === identity);
+      const merged = mergeExternalProcess(index >= 0 ? store.state.processes[index] : null, incoming);
+      if (!merged.id) merged.id = incoming.id || uid('proc');
+      if (index >= 0) store.state.processes[index] = merged;
+      else store.state.processes.unshift(merged);
+      return merged;
+    },
+
     render(query = '') {
       const needle = normalizeText(query);
       let records = store.state.processes.filter(item => !needle || normalizeText(`${item.number} ${item.client} ${item.court} ${item.county || ''} ${item.nb || ''} ${item.opposingParty || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
@@ -229,4 +242,86 @@ export function createProcessesFeature({
   };
 
   return feature;
+}
+
+function mergeExternalProcess(existing, incoming) {
+  const current = safeExternalRecord(existing);
+  const external = safeExternalRecord(incoming);
+  const merged = { ...current };
+  const officialFields = new Set(['court', 'actionType', 'subject', 'datajudAlias', 'collectedAt']);
+  for (const [field, value] of Object.entries(external)) {
+    if (!meaningful(value) || ['lastMovement', 'lastMovementAt', 'movements', 'monitoredTermIds', 'source'].includes(field)) continue;
+    if (['id', 'externalId', 'number'].includes(field)) {
+      if (!meaningful(merged[field])) merged[field] = value;
+    } else if (field === 'datajudUpdatedAt') {
+      if (!timestamp(merged[field]) || timestamp(value) >= timestamp(merged[field])) merged[field] = value;
+    } else if (officialFields.has(field)) {
+      merged[field] = value;
+    } else if (!meaningful(merged[field])) {
+      merged[field] = value;
+    }
+  }
+  merged.number = formatProcessNumber(external.number || current.number) || String(external.number || current.number || '').trim();
+  const source = mergeSources(current.source, external.source);
+  if (source) merged.source = source;
+  const monitoredTermIds = uniqueStrings([...(current.monitoredTermIds || []), ...(external.monitoredTermIds || [])]);
+  if (monitoredTermIds.length) merged.monitoredTermIds = monitoredTermIds;
+  const currentMovementAt = timestamp(current.lastMovementAt);
+  const incomingMovementAt = timestamp(external.lastMovementAt);
+  if (incomingMovementAt && (!currentMovementAt || incomingMovementAt > currentMovementAt || (incomingMovementAt === currentMovementAt && !meaningful(current.lastMovement)))) {
+    merged.lastMovementAt = external.lastMovementAt;
+    if (meaningful(external.lastMovement)) merged.lastMovement = external.lastMovement;
+  }
+  if (Array.isArray(current.movements) || Array.isArray(external.movements)) merged.movements = mergeMovements(current.movements, external.movements);
+  return merged;
+}
+
+function mergeMovements(left, right) {
+  const byIdentity = new Map();
+  for (const movement of [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])]) {
+    if (!movement || typeof movement !== 'object' || Array.isArray(movement)) continue;
+    const clean = safeExternalRecord(movement);
+    const key = `${clean.code || ''}:${timestamp(clean.at)}:${String(clean.name || '').trim()}`;
+    if (!byIdentity.has(key)) byIdentity.set(key, clean);
+  }
+  return [...byIdentity.values()].sort((a, b) => timestamp(b.at) - timestamp(a.at)).slice(0, 20);
+}
+
+function processIdentity(record) {
+  const digits = String(record?.number || '').replace(/\D/g, '');
+  if (digits.length === 20) return `number:${digits}`;
+  const externalId = String(record?.externalId || record?.id || '').trim();
+  return externalId ? `external:${externalId}` : '';
+}
+
+function formatProcessNumber(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length === 20
+    ? `${digits.slice(0, 7)}-${digits.slice(7, 9)}.${digits.slice(9, 13)}.${digits.slice(13, 14)}.${digits.slice(14, 16)}.${digits.slice(16)}`
+    : '';
+}
+
+function safeExternalRecord(record) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return {};
+  return Object.fromEntries(Object.entries(record).filter(([key]) => !['__proto__', 'prototype', 'constructor'].includes(key)));
+}
+
+function meaningful(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+function mergeSources(left, right) {
+  return [...new Set([...(String(left || '').split(' + ')), right].map(value => String(value || '').trim()).filter(Boolean))].join(' + ');
+}
+
+function timestamp(value) {
+  const parsed = Date.parse(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function uniqueStrings(values) {
+  return [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
 }

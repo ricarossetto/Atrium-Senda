@@ -34,6 +34,19 @@ export function createContactsFeature({
       return { ...sort };
     },
 
+    upsertExternalContact(record) {
+      const incoming = safeExternalRecord(record);
+      if (!meaningful(incoming.name)) return null;
+      store.state.contacts = Array.isArray(store.state.contacts) ? store.state.contacts : [];
+      const index = contactMatchIndex(store.state.contacts, incoming);
+      const merged = mergeExternalContact(index >= 0 ? store.state.contacts[index] : null, incoming);
+      if (!merged.id) merged.id = incoming.id || uid('contact');
+      if (!meaningful(merged.contactRole) && isExternalContact(incoming)) merged.contactRole = 'outro';
+      if (index >= 0) store.state.contacts[index] = merged;
+      else store.state.contacts.unshift(merged);
+      return merged;
+    },
+
     render(query = '') {
       const needle = normalizeText(query);
       let records = store.state.contacts.filter(item => !needle || normalizeText(`${item.name} ${item.document} ${item.mobile} ${item.phone} ${item.email} ${item.origin} ${item.contactRole || ''} ${item.leadOrigin || ''} ${item.city || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
@@ -97,4 +110,91 @@ export function createContactsFeature({
   };
 
   return feature;
+}
+
+function mergeExternalContact(existing, incoming) {
+  const current = safeExternalRecord(existing);
+  const external = safeExternalRecord(incoming);
+  const merged = { ...current };
+  for (const [field, value] of Object.entries(external)) {
+    if (!meaningful(value) || ['source', 'relatedProcessNumbers', 'monitoredTermIds', 'contactRole'].includes(field)) continue;
+    if (['datajudAlias', 'collectedAt'].includes(field) || !meaningful(merged[field])) merged[field] = value;
+  }
+  const currentWasExternal = /DataJud/i.test(String(current.source || ''));
+  if (meaningful(external.contactRole) && (!meaningful(current.contactRole) || (currentWasExternal && current.contactRole === 'outro'))) {
+    merged.contactRole = external.contactRole;
+  }
+  const source = mergeSources(current.source, external.source);
+  if (source) merged.source = source;
+  const relatedProcessNumbers = uniqueStrings([...(current.relatedProcessNumbers || []), ...(external.relatedProcessNumbers || [])]);
+  if (relatedProcessNumbers.length) merged.relatedProcessNumbers = relatedProcessNumbers;
+  const monitoredTermIds = uniqueStrings([...(current.monitoredTermIds || []), ...(external.monitoredTermIds || [])]);
+  if (monitoredTermIds.length) merged.monitoredTermIds = monitoredTermIds;
+  return merged;
+}
+
+function isExternalContact(record) {
+  return meaningful(record?.externalId)
+    || meaningful(record?.datajudAlias)
+    || /DataJud/i.test(String(record?.source || ''));
+}
+
+function contactMatchIndex(records, incoming) {
+  const document = normalizeDocument(incoming.document);
+  let strongerIdentityAmbiguous = false;
+  if (document) {
+    const matches = matchingIndexes(records, record => normalizeDocument(record.document) === document);
+    if (matches.length === 1) return matches[0];
+    if (matches.length > 1) strongerIdentityAmbiguous = true;
+  }
+  const externalId = String(incoming.externalId || '').trim();
+  if (externalId) {
+    const matches = matchingIndexes(records, record => String(record.externalId || '').trim() === externalId);
+    if (matches.length === 1) return matches[0];
+    if (matches.length > 1) return -1;
+  }
+  if (strongerIdentityAmbiguous) return -1;
+  const name = normalizeIdentity(incoming.name);
+  if (!name) return -1;
+  const matches = matchingIndexes(records, record => {
+    if (normalizeIdentity(record.name) !== name) return false;
+    const recordExternalId = String(record.externalId || '').trim();
+    const conflictingExternalId = externalId && recordExternalId && recordExternalId !== externalId;
+    const recordDocument = normalizeDocument(record.document);
+    const conflictingDocument = document && recordDocument && recordDocument !== document;
+    return !conflictingExternalId && !conflictingDocument;
+  });
+  return matches.length === 1 ? matches[0] : -1;
+}
+
+function matchingIndexes(records, predicate) {
+  return records.map((record, index) => predicate(record) ? index : -1).filter(index => index >= 0);
+}
+
+function safeExternalRecord(record) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return {};
+  return Object.fromEntries(Object.entries(record).filter(([key]) => !['__proto__', 'prototype', 'constructor'].includes(key)));
+}
+
+function meaningful(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+function normalizeDocument(value) {
+  return String(value || '').replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+}
+
+function normalizeIdentity(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function mergeSources(left, right) {
+  return [...new Set([...(String(left || '').split(' + ')), right].map(value => String(value || '').trim()).filter(Boolean))].join(' + ');
+}
+
+function uniqueStrings(values) {
+  return [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
 }

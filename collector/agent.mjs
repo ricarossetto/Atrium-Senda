@@ -40,7 +40,7 @@ const preBrowserPortals = publicPortals.filter(portal => portal.strategy === 'dj
 const postBrowserPortals = publicPortals.filter(portal => portal.strategy === 'datajud');
 const browserPortals = portals.filter(portal => !['djen', 'datajud'].includes(portal.strategy));
 
-const payload = { events: [], tasks: [], intimations: [], processes: [], sources: [] };
+const payload = { events: [], tasks: [], intimations: [], processes: [], contacts: [], sources: [] };
 const existingProcessNumbers = await loadExistingProcessNumbers();
 
 try {

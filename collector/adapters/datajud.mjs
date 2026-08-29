@@ -12,10 +12,11 @@ const STATE_ALIASES = {
 export async function collectDatajud(portal, config, target, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const sleep = options.sleep || (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)));
-  const numbers = [...new Map([
-    ...processNumbersFrom(target),
-    ...(options.seedProcessNumbers || []).map(formatProcessNumber).filter(Boolean)
-  ].map(value => [digits(value), value])).values()].slice(0, Math.min(500, Math.max(1, Number(portal.maxProcessesPerRun || 250))));
+  const candidates = Array.isArray(options.processNumbers)
+    ? options.processNumbers
+    : [...processNumbersFrom(target), ...(options.seedProcessNumbers || [])];
+  const numbers = [...new Map(candidates.map(formatProcessNumber).filter(Boolean).map(value => [digits(value), value])).values()]
+    .slice(0, Math.min(500, Math.max(1, Number(portal.maxProcessesPerRun || 250))));
   let apiKey = normalizeApiKey(options.apiKey || process.env.DATAJUD_API_KEY) || OFFICIAL_DEFAULT_KEY;
   let refreshedKey = false;
   let found = 0;
@@ -105,106 +106,317 @@ async function fetchCurrentPublicKey(fetchImpl, portal) {
 }
 
 function mergeDatajudRecord(record, number, alias, portal, config, target) {
+  target.processes = Array.isArray(target.processes) ? target.processes : [];
+  target.intimations = Array.isArray(target.intimations) ? target.intimations : [];
+  target.tasks = Array.isArray(target.tasks) ? target.tasks : [];
+  target.contacts = Array.isArray(target.contacts) ? target.contacts : [];
   const normalizedNumber = formatProcessNumber(record.numeroProcesso || number) || number;
   const existing = target.processes.find(item => digits(item.number) === digits(normalizedNumber));
   const movements = [...(Array.isArray(record.movimentos) ? record.movimentos : [])].sort((a, b) => timestamp(b?.dataHora) - timestamp(a?.dataHora));
   const latest = movements[0] || {};
-  const latestAt = toIso(latest.dataHora || record.dataHoraUltimaAtualizacao || record['@timestamp']);
+  const latestAt = toIso(latest.dataHora);
   const previousAt = toIso(existing?.lastMovementAt);
   const subject = (Array.isArray(record.assuntos) ? record.assuntos.map(item => item?.nome).filter(Boolean) : []).join(' · ');
-  const court = normalizeText([record.tribunal, record.grau, record.orgaoJulgador?.nome].filter(Boolean).join(' · ')) || alias.toUpperCase();
-  const movementText = normalizeText(latest.nome || existing?.lastMovement || 'Movimentação consultada no DataJud');
+  const court = normalizeText([record.tribunal, record.grau, record.orgaoJulgador?.nome].filter(Boolean).join(' · '));
+  const movementText = normalizeText(latest.nome || '');
   const now = new Date().toISOString();
-  const processRecord = existing || {
+  const incomingProcess = {
     id: `${portal.id}:process:${normalizedNumber}`,
     externalId: `${portal.id}:process:${normalizedNumber}`,
     number: normalizedNumber,
-    client: '',
-    secrecy: false,
-    monitoring: 'active'
+    source: portal.name || 'DataJud/CNJ',
+    datajudAlias: `api_publica_${alias}`,
+    datajudUpdatedAt: toIso(record.dataHoraUltimaAtualizacao || record['@timestamp']),
+    collectedAt: now,
+    monitoring: 'active',
+    ...(court ? { court } : {}),
+    ...(normalizeText(record.classe?.nome) ? { actionType: normalizeText(record.classe.nome) } : {}),
+    ...(subject ? { subject } : {}),
+    ...(movementText && latestAt ? {
+      lastMovement: movementText,
+      lastMovementAt: latestAt,
+      movements: movements.slice(0, 20).map(item => ({ code: String(item.codigo ?? ''), name: normalizeText(item.nome || ''), at: toIso(item.dataHora) }))
+    } : {})
   };
-  processRecord.number = normalizedNumber;
-  processRecord.court = court;
-  processRecord.actionType = normalizeText(record.classe?.nome || processRecord.actionType || '');
-  processRecord.subject = subject || processRecord.subject || '';
-  processRecord.lastMovement = movementText;
-  processRecord.lastMovementAt = latestAt || previousAt || now.slice(0, 10);
-  processRecord.source = mergeSources(processRecord.source, portal.name || 'DataJud/CNJ');
-  processRecord.datajudAlias = `api_publica_${alias}`;
-  processRecord.datajudUpdatedAt = toIso(record.dataHoraUltimaAtualizacao || record['@timestamp']) || now;
-  processRecord.collectedAt = now;
-  processRecord.movements = movements.slice(0, 20).map(item => ({ code: String(item.codigo ?? ''), name: normalizeText(item.nome || ''), at: toIso(item.dataHora) }));
-
-  // Auto-detecção inteligente do cliente e parte contrária
-  const monitoredTerms = [...(target.terms || []), config.monitoredTerm].filter(Boolean);
-  const monitoredTokens = monitoredTerms.map(t => [digits(t.oabNumber || t.registration || ''), normalizeText(t.name || '')]).flat().filter(Boolean);
-  
-  let detectedClient = processRecord.client || '';
-  let detectedOpponent = processRecord.counterpart || '';
-
+  const monitoredTerms = uniqueTerms([...(target.terms || []), ...(config.monitoredTerms || []), config.monitoredTerm].filter(Boolean));
   const polos = Array.isArray(record.dadosBasicos?.polo) ? record.dadosBasicos.polo : (Array.isArray(record.polos) ? record.polos : []);
-  if (polos.length > 0) {
-    let lawyerPolo = null;
-    for (const p of polos) {
-      const isMonitored = (Array.isArray(p.partes) ? p.partes : []).some(parte => {
-        const advs = Array.isArray(parte.advogado) ? parte.advogado : (Array.isArray(parte.advogados) ? parte.advogados : []);
-        return advs.some(adv => {
-          const advStr = normalizeText(`${adv.nome || ''} ${adv.inscricao || ''} ${adv.numero || ''} ${adv.oab || ''}`);
-          return monitoredTokens.some(token => token && advStr.toLowerCase().includes(token.toLowerCase()));
-        });
-      });
-      if (isMonitored) {
-        lawyerPolo = p.polo || p.tipoPolo || 'AT';
-        break;
-      }
-    }
-
-    polos.forEach(p => {
-      const pType = p.polo || p.tipoPolo || 'AT';
-      const names = (Array.isArray(p.partes) ? p.partes : []).map(pt => pt.pessoa?.nome || pt.nome).filter(Boolean);
-      if (names.length > 0) {
-        if (lawyerPolo) {
-          if (pType === lawyerPolo && !detectedClient) detectedClient = names.join(', ');
-          else if (pType !== lawyerPolo && !detectedOpponent) detectedOpponent = names.join(', ');
-        } else {
-          if ((pType === 'AT' || pType === 'ATIVO') && !detectedClient) detectedClient = names.join(', ');
-          else if ((pType === 'PA' || pType === 'PASSIVO') && !detectedOpponent) detectedOpponent = names.join(', ');
-        }
-      }
+  const parties = polos.flatMap(polo => {
+    const pole = normalizePole(polo.polo || polo.tipoPolo);
+    return (Array.isArray(polo.partes) ? polo.partes : []).map(party => {
+      const matchedTerms = monitoredTerms.filter(term => partyMatchesTerm(party, term));
+      return { party, pole, matchedTerms };
     });
+  });
+  const representedPoles = [...new Set(parties.filter(item => item.matchedTerms.length).map(item => item.pole).filter(Boolean))];
+  const representedPole = representedPoles.length === 1 ? representedPoles[0] : '';
+  const relatedTermIds = target.intimations
+    .filter(item => digits(item.process) === digits(normalizedNumber))
+    .flatMap(item => item.monitoredTermIds || []);
+  const matchedTermIds = parties.flatMap(item => item.matchedTerms.map(termIdentity));
+  incomingProcess.monitoredTermIds = uniqueStrings([...(existing?.monitoredTermIds || []), ...relatedTermIds, ...matchedTermIds]);
+
+  const discoveredContacts = parties.map(({ party, pole, matchedTerms }) => partyContact(party, {
+    alias,
+    normalizedNumber,
+    now,
+    portal,
+    contactRole: representedPole
+      ? (pole === representedPole ? (matchedTerms.length ? 'cliente' : 'outro') : 'adverso')
+      : 'outro',
+    monitoredTermIds: representedPole && pole === representedPole
+      ? matchedTerms.map(termIdentity)
+      : incomingProcess.monitoredTermIds
+  })).filter(Boolean);
+  const clients = discoveredContacts.filter(contact => contact.contactRole === 'cliente');
+  const opponents = discoveredContacts.filter(contact => contact.contactRole === 'adverso');
+  if (clients.length === 1) incomingProcess.client = clients[0].name;
+  if (opponents.length === 1) {
+    incomingProcess.counterpart = opponents[0].name;
+    incomingProcess.opposingParty = opponents[0].name;
   }
 
-  if (detectedClient) {
-    processRecord.client = detectedClient;
-    if (detectedOpponent) processRecord.counterpart = detectedOpponent;
-    target.contacts = target.contacts || [];
-    if (!target.contacts.some(c => String(c.name || '').toLowerCase() === detectedClient.toLowerCase())) {
-      target.contacts.push({
-        id: `contact:${digits(normalizedNumber)}:${digits(detectedClient).slice(0, 10) || 'auto'}`,
-        name: detectedClient,
-        role: 'cliente',
-        registeredAt: now.slice(0, 10),
-        source: portal.name || 'DataJud/CNJ'
-      });
-    }
-  }
-
-  if (!existing) target.processes.push(processRecord);
+  const before = JSON.stringify(existing || null);
+  const processRecord = mergeExternalProcessRecord(existing, incomingProcess);
+  if (existing) Object.assign(existing, processRecord);
+  else target.processes.push(processRecord);
+  target.contacts = mergeExternalContacts(target.contacts || [], discoveredContacts);
 
   const isNewMovement = latestAt && (!previousAt || timestamp(latestAt) > timestamp(previousAt));
   const recentEnough = latestAt && Date.now() - timestamp(latestAt) <= Math.max(1, Number(portal.movementLookbackDays || 7)) * 86_400_000;
   if (isNewMovement && recentEnough) {
     const eventId = `datajud:${digits(normalizedNumber)}:${String(latest.codigo || 'mov')}:${latestAt}`;
-    target.tasks.push({
+    const task = {
       id: `task:${eventId}`, externalId: `task:${eventId}`,
       title: 'Revisar nova movimentação no DataJud',
       description: normalizeText([movementText, processRecord.actionType, subject, court].filter(Boolean).join(' · ')),
       status: 'triagem', source: portal.name || 'DataJud/CNJ', client: processRecord.client || '', process: normalizedNumber,
-      deadline: '', priority: 'normal', responsible: config.monitoredTerm?.shortName || config.monitoredTerm?.name || 'Advogado(a)', createdAt: now
-    });
+      deadline: '', priority: 'normal',
+      responsible: incomingProcess.monitoredTermIds.length === 1
+        ? monitoredTerms.find(term => termIdentity(term) === incomingProcess.monitoredTermIds[0])?.shortName
+          || monitoredTerms.find(term => termIdentity(term) === incomingProcess.monitoredTermIds[0])?.name
+          || 'Advogado(a)'
+        : 'Equipe jurídica',
+      monitoredTermIds: incomingProcess.monitoredTermIds,
+      createdAt: now
+    };
+    const taskIndex = target.tasks.findIndex(item => (item.externalId || item.id) === task.externalId);
+    if (taskIndex >= 0) {
+      const currentTask = target.tasks[taskIndex];
+      const mergedTask = { ...currentTask };
+      for (const [field, value] of Object.entries(task)) {
+        if (meaningful(value) && !meaningful(mergedTask[field])) mergedTask[field] = value;
+      }
+      mergedTask.source = mergeSources(currentTask.source, task.source);
+      mergedTask.monitoredTermIds = uniqueStrings([...(currentTask.monitoredTermIds || []), ...task.monitoredTermIds]);
+      target.tasks[taskIndex] = mergedTask;
+    } else target.tasks.push(task);
   }
-  return !previousAt || timestamp(processRecord.lastMovementAt) > timestamp(previousAt);
+  return before !== JSON.stringify(processRecord);
 }
+
+export function mergeExternalProcesses(left = [], right = []) {
+  const result = (Array.isArray(left) ? left : []).map(record => safeRecord(record));
+  for (const record of Array.isArray(right) ? right : []) {
+    const incoming = safeRecord(record);
+    const identity = processIdentity(incoming);
+    const index = identity ? result.findIndex(item => processIdentity(item) === identity) : -1;
+    if (index >= 0) result[index] = mergeExternalProcessRecord(result[index], incoming);
+    else result.push(mergeExternalProcessRecord(null, incoming));
+  }
+  return result;
+}
+
+export function mergeExternalProcessRecord(existing, incoming) {
+  const current = safeRecord(existing || {});
+  const external = safeRecord(incoming || {});
+  const merged = { ...current };
+  const officialFields = new Set(['court', 'actionType', 'subject', 'datajudAlias', 'collectedAt']);
+
+  for (const [field, value] of Object.entries(external)) {
+    if (!meaningful(value) || ['lastMovement', 'lastMovementAt', 'movements', 'monitoredTermIds', 'source'].includes(field)) continue;
+    if (field === 'id' || field === 'externalId' || field === 'number') {
+      if (!meaningful(merged[field])) merged[field] = value;
+    } else if (field === 'datajudUpdatedAt') {
+      if (!timestamp(merged[field]) || timestamp(value) >= timestamp(merged[field])) merged[field] = value;
+    } else if (officialFields.has(field)) {
+      merged[field] = value;
+    } else if (!meaningful(merged[field])) {
+      merged[field] = value;
+    }
+  }
+
+  const canonicalNumber = formatProcessNumber(external.number || current.number);
+  if (canonicalNumber) merged.number = canonicalNumber;
+  merged.source = mergeSources(current.source, external.source);
+  merged.monitoredTermIds = uniqueStrings([...(current.monitoredTermIds || []), ...(external.monitoredTermIds || [])]);
+  const currentMovementAt = timestamp(current.lastMovementAt);
+  const incomingMovementAt = timestamp(external.lastMovementAt);
+  if (incomingMovementAt && (!currentMovementAt || incomingMovementAt > currentMovementAt || (incomingMovementAt === currentMovementAt && !meaningful(current.lastMovement)))) {
+    merged.lastMovementAt = external.lastMovementAt;
+    if (meaningful(external.lastMovement)) merged.lastMovement = external.lastMovement;
+  }
+  if (Array.isArray(current.movements) || Array.isArray(external.movements)) merged.movements = mergeMovements(current.movements, external.movements);
+  return merged;
+}
+
+export function mergeExternalContacts(left = [], right = []) {
+  const result = (Array.isArray(left) ? left : []).map(record => safeRecord(record));
+  for (const record of Array.isArray(right) ? right : []) {
+    const incoming = safeRecord(record);
+    const index = contactMatchIndex(result, incoming);
+    if (index >= 0) result[index] = mergeExternalContactRecord(result[index], incoming);
+    else result.push(mergeExternalContactRecord(null, incoming));
+  }
+  return result;
+}
+
+export function mergeExternalContactRecord(existing, incoming) {
+  const current = safeRecord(existing || {});
+  const external = safeRecord(incoming || {});
+  const merged = { ...current };
+  for (const [field, value] of Object.entries(external)) {
+    if (!meaningful(value) || ['source', 'relatedProcessNumbers', 'monitoredTermIds', 'contactRole'].includes(field)) continue;
+    if (['datajudAlias', 'collectedAt'].includes(field) || !meaningful(merged[field])) merged[field] = value;
+  }
+  const currentWasExternal = /DataJud/i.test(String(current.source || ''));
+  if (!meaningful(current.contactRole) || (currentWasExternal && current.contactRole === 'outro')) {
+    merged.contactRole = external.contactRole || current.contactRole || 'outro';
+  }
+  merged.source = mergeSources(current.source, external.source);
+  merged.relatedProcessNumbers = uniqueStrings([...(current.relatedProcessNumbers || []), ...(external.relatedProcessNumbers || [])]);
+  merged.monitoredTermIds = uniqueStrings([...(current.monitoredTermIds || []), ...(external.monitoredTermIds || [])]);
+  return merged;
+}
+
+function partyContact(party, { alias, normalizedNumber, now, portal, contactRole, monitoredTermIds }) {
+  const person = party?.pessoa && typeof party.pessoa === 'object' ? party.pessoa : party;
+  const name = normalizeText(person?.nome || party?.nome || '');
+  if (!name) return null;
+  const document = normalizeText(person?.numeroDocumentoPrincipal || party?.numeroDocumentoPrincipal || person?.documento || party?.documento || person?.cpf || person?.cnpj || '');
+  const addressData = person?.endereco && typeof person.endereco === 'object' ? person.endereco : {};
+  const address = normalizeText(typeof person?.endereco === 'string'
+    ? person.endereco
+    : [addressData.logradouro, addressData.numero, addressData.complemento].filter(Boolean).join(', '));
+  const sourceId = normalizeText(party?.id || person?.id || '');
+  const externalId = sourceId
+    ? `datajud:party:${sourceId}`
+    : document
+      ? `datajud:document:${normalizeDocument(document)}`
+      : `datajud:${digits(normalizedNumber)}:party:${normalizeIdentity(name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+  return {
+    id: `contact:${externalId}`,
+    externalId,
+    name,
+    contactRole,
+    ...(document ? { document } : {}),
+    ...(normalizeText(person?.rg || party?.rg) ? { rg: normalizeText(person?.rg || party?.rg) } : {}),
+    ...(normalizeText(person?.celular || party?.celular) ? { mobile: normalizeText(person?.celular || party?.celular) } : {}),
+    ...(normalizeText(person?.telefone || party?.telefone) ? { phone: normalizeText(person?.telefone || party?.telefone) } : {}),
+    ...(normalizeText(person?.email || party?.email) ? { email: normalizeText(person?.email || party?.email) } : {}),
+    ...(normalizeText(person?.cidade || addressData.municipio) ? { city: normalizeText(person?.cidade || addressData.municipio) } : {}),
+    ...(normalizeText(person?.uf || person?.estado || addressData.uf) ? { state: normalizeText(person?.uf || person?.estado || addressData.uf) } : {}),
+    ...(address ? { address } : {}),
+    ...(normalizeText(person?.bairro || addressData.bairro) ? { district: normalizeText(person?.bairro || addressData.bairro) } : {}),
+    ...(normalizeText(person?.cep || addressData.cep) ? { zip: normalizeText(person?.cep || addressData.cep) } : {}),
+    source: portal.name || 'DataJud/CNJ',
+    datajudAlias: `api_publica_${alias}`,
+    relatedProcessNumbers: [normalizedNumber],
+    monitoredTermIds: uniqueStrings(monitoredTermIds),
+    registeredAt: now.slice(0, 10),
+    collectedAt: now
+  };
+}
+
+function partyMatchesTerm(party, term) {
+  const lawyers = Array.isArray(party?.advogado) ? party.advogado : (Array.isArray(party?.advogados) ? party.advogados : []);
+  const termOab = digits(term?.oabNumber || term?.registration || '');
+  const termRegistration = String(term?.registration || '');
+  const termUf = normalizeText(term?.oabUf || termRegistration.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i)?.[1] || '').toUpperCase();
+  const termName = normalizeIdentity(term?.name);
+  return lawyers.some(lawyer => {
+    const lawyerRegistration = String(lawyer?.inscricao || lawyer?.numero || lawyer?.oab || '');
+    const lawyerOab = digits(lawyerRegistration);
+    const lawyerUf = normalizeText(lawyer?.uf || lawyer?.oabUf || lawyerRegistration.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i)?.[1] || '').toUpperCase();
+    const lawyerName = normalizeIdentity(lawyer?.nome);
+    const exactName = termName && lawyerName && termName === lawyerName;
+    const exactRegistration = termOab && lawyerOab && termOab === lawyerOab && termUf && lawyerUf && termUf === lawyerUf;
+    return Boolean(exactName || exactRegistration);
+  });
+}
+
+function contactMatchIndex(records, incoming) {
+  const document = normalizeDocument(incoming.document);
+  let strongerIdentityAmbiguous = false;
+  if (document) {
+    const matches = records.map((record, index) => normalizeDocument(record.document) === document ? index : -1).filter(index => index >= 0);
+    if (matches.length === 1) return matches[0];
+    if (matches.length > 1) strongerIdentityAmbiguous = true;
+  }
+  const externalId = normalizeText(incoming.externalId);
+  if (externalId) {
+    const matches = records.map((record, index) => normalizeText(record.externalId) === externalId ? index : -1).filter(index => index >= 0);
+    if (matches.length === 1) return matches[0];
+    if (matches.length > 1) return -1;
+  }
+  if (strongerIdentityAmbiguous) return -1;
+  const name = normalizeIdentity(incoming.name);
+  if (!name) return -1;
+  const matches = records.map((record, index) => {
+    if (normalizeIdentity(record.name) !== name) return -1;
+    const conflictingExternalId = externalId && normalizeText(record.externalId) && normalizeText(record.externalId) !== externalId;
+    const conflictingDocument = document && normalizeDocument(record.document) && normalizeDocument(record.document) !== document;
+    return conflictingExternalId || conflictingDocument ? -1 : index;
+  }).filter(index => index >= 0);
+  return matches.length === 1 ? matches[0] : -1;
+}
+
+function processIdentity(record) {
+  const number = digits(record?.number);
+  if (number) return `number:${number}`;
+  const externalId = normalizeText(record?.externalId || record?.id);
+  return externalId ? `external:${externalId}` : '';
+}
+
+function mergeMovements(left, right) {
+  const combined = [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])];
+  const byIdentity = new Map();
+  for (const movement of combined) {
+    if (!movement || typeof movement !== 'object') continue;
+    const key = `${movement.code || ''}:${toIso(movement.at) || movement.at || ''}:${normalizeText(movement.name)}`;
+    if (!byIdentity.has(key)) byIdentity.set(key, safeRecord(movement));
+  }
+  return [...byIdentity.values()].sort((a, b) => timestamp(b.at) - timestamp(a.at)).slice(0, 20);
+}
+
+function safeRecord(record) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return {};
+  return Object.fromEntries(Object.entries(record).filter(([key]) => !['__proto__', 'prototype', 'constructor'].includes(key)));
+}
+
+function meaningful(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+function uniqueTerms(terms) {
+  return [...new Map(terms.map(term => [termIdentity(term), term]).filter(([id]) => id)).values()];
+}
+
+function termIdentity(term) {
+  if (String(term?.id || '').trim()) return String(term.id).trim();
+  const registration = String(term?.registration || '');
+  const uf = String(term?.oabUf || registration.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i)?.[1] || '').toUpperCase();
+  const number = digits(term?.oabNumber || registration);
+  if (uf && number) return `oab:${uf}:${number}`;
+  return normalizeIdentity(term?.name);
+}
+
+function normalizePole(value) { return normalizeText(value || '').toUpperCase(); }
+function normalizeDocument(value) { return String(value || '').replace(/[^A-Za-z0-9]/g, '').toLowerCase(); }
+function normalizeIdentity(value) { return normalizeText(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+function uniqueStrings(values) { return [...new Set((Array.isArray(values) ? values : []).map(value => String(value || '').trim()).filter(Boolean))]; }
 
 function processNumbersFrom(target) {
   const values = [];
@@ -251,4 +463,10 @@ async function fetchWithTimeout(fetchImpl, url, options, timeoutMs) {
   finally { clearTimeout(timer); }
 }
 
-export const datajudInternals = { aliasForProcess, formatProcessNumber, normalizeApiKey, processNumbersFrom };
+export const datajudInternals = {
+  aliasForProcess,
+  formatProcessNumber,
+  mergeDatajudRecord,
+  normalizeApiKey,
+  processNumbersFrom
+};
