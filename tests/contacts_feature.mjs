@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { chromium } from 'playwright';
 import { generateTotp } from '../lib/security.mjs';
 import { createContactsFeature } from '../js/features/contacts.js';
+import { isoDate } from '../js/core/store.js';
 import { postJson, startTestServer } from './helpers.mjs';
 
 console.log('\n===============================================================');
@@ -144,10 +145,9 @@ try {
   await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
 
-  const fixture = await page.evaluate(async () => {
+  const fixture = await page.evaluate(async today => {
     const store = window.Atrium.Store;
     const app = window.portalApp;
-    const today = new Date().toISOString().slice(0, 10);
     store.state.settings.demoMode = false;
     store.state.contacts = [
       {
@@ -173,7 +173,7 @@ try {
     app.renderAll();
     await store.flush();
     return { today };
-  });
+  }, isoDate());
 
   const leadsBefore = await page.evaluate(() => JSON.stringify(window.Atrium.Store.state.leads));
   await page.click('button[data-view="contacts"]');

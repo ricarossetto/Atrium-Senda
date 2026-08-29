@@ -4,10 +4,13 @@ const STORAGE_KEY = 'jurisflow_storage_v1';
 
 export const STORE_PERSISTENCE_CONFLICT_EVENT = 'atrium:store-persistence-conflict';
 
-export const isoDate = (offset = 0) => {
-  const date = new Date();
+export const isoDate = (offset = 0, baseDate = new Date()) => {
+  const date = new Date(baseDate);
   date.setDate(date.getDate() + offset);
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 export const uid = prefix => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

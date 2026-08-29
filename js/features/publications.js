@@ -23,12 +23,12 @@ export function classifyIntimationAct(text = '', title = '', type = '') {
 
 export function parsePublicationLocalDate(value) {
   if (!value) return null;
-  const str = String(value).slice(0, 10);
+  const str = String(value).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
     const [year, month, day] = str.split('-').map(Number);
     return new Date(year, month - 1, day);
   }
-  const date = new Date(value);
+  const date = new Date(str);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -57,19 +57,15 @@ export function filterPublications(items, {
   cutoff = 'all',
   now = new Date()
 } = {}) {
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = isoDate(0, now);
   const filtered = (Array.isArray(items) ? items : []).filter(item => {
     const pubDate = (item.publishedAt || '').slice(0, 10);
     if (cutoff === 'today' && pubDate && pubDate < todayStr) return false;
     if (cutoff === '7days' && pubDate) {
-      const date7 = new Date(now);
-      date7.setDate(date7.getDate() - 7);
-      if (pubDate < date7.toISOString().slice(0, 10)) return false;
+      if (pubDate < isoDate(-7, now)) return false;
     }
     if (cutoff === '30days' && pubDate) {
-      const date30 = new Date(now);
-      date30.setDate(date30.getDate() - 30);
-      if (pubDate < date30.toISOString().slice(0, 10)) return false;
+      if (pubDate < isoDate(-30, now)) return false;
     }
 
     const treatmentStatus = item.treatmentStatus || 'untreated';

@@ -12,6 +12,7 @@ import {
   formatPublicationAge,
   parsePublicationLocalDate
 } from '../js/features/publications.js';
+import { isoDate } from '../js/core/store.js';
 import { postJson, startTestServer } from './helpers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -78,6 +79,31 @@ assert.equal(localDate.getMonth(), 7);
 assert.equal(localDate.getDate(), 28, 'Data YYYY-MM-DD deve permanecer no mesmo dia local.');
 assert.equal(formatPublicationAge('2026-08-28', referenceNow), 'Hoje');
 assert.equal(formatPublicationAge('2026-08-27', referenceNow), 'Há 1 dia');
+
+const originalTimezone = process.env.TZ;
+process.env.TZ = 'America/Sao_Paulo';
+try {
+  const lateLocalInstant = new Date('2026-08-29T01:30:00.000Z');
+  assert.equal(isoDate(0, lateLocalInstant), '2026-08-28', 'isoDate deve preservar o dia civil local após 21h em São Paulo.');
+  assert.equal(isoDate(1, lateLocalInstant), '2026-08-29', 'Offset de isoDate deve avançar pelo calendário local.');
+
+  const parsedTimestamp = parsePublicationLocalDate(lateLocalInstant.toISOString());
+  assert.equal(parsedTimestamp.getFullYear(), 2026);
+  assert.equal(parsedTimestamp.getMonth(), 7);
+  assert.equal(parsedTimestamp.getDate(), 28, 'Timestamp ISO deve ser convertido para o dia local do instante, sem truncamento UTC.');
+
+  assert.deepEqual(
+    filterPublications(
+      [{ id: 'local-today', publishedAt: '2026-08-28', treatmentStatus: 'untreated' }],
+      { filter: 'all', cutoff: 'today', now: lateLocalInstant }
+    ).map(item => item.id),
+    ['local-today'],
+    'Filtro de hoje deve usar a fronteira do dia civil local.'
+  );
+} finally {
+  if (originalTimezone === undefined) delete process.env.TZ;
+  else process.env.TZ = originalTimezone;
+}
 
 for (const text of ['apelação', 'embargos de declaração', 'prazo de 15 dias', 'contestação']) {
   const classification = classifyIntimationAct(text);

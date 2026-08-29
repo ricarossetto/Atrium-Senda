@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { startTestServer, postJson } from './helpers.mjs';
 import { generateTotp } from '../lib/security.mjs';
+import { isoDate } from '../js/core/store.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ARTIFACTS_DIR = path.join(ROOT, 'artifacts', 'light-foundation');
@@ -41,7 +42,7 @@ try {
   res = await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: adminCookie } });
   const stateEnv = await res.json();
   const state = stateEnv.state || {};
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = isoDate();
 
   state.processes = [
     {

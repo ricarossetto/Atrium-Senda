@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { generateTotp } from '../lib/security.mjs';
 import { createLeadsFeature } from '../js/features/leads.js';
+import { isoDate } from '../js/core/store.js';
 import { postJson, startTestServer } from './helpers.mjs';
 
 console.log('\n===============================================================');
@@ -140,9 +141,8 @@ try {
   await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
 
-  const today = await page.evaluate(async () => {
+  const today = await page.evaluate(async todayValue => {
     const store = window.Atrium.Store;
-    const todayValue = new Date().toISOString().slice(0, 10);
     store.state.settings.demoMode = false;
     store.state.leads = [
       { id: 'lead-novo', client: 'Ágata Cliente Sintética', serviceType: 'Aposentadoria Sintética', status: 'novo', origin: 'Indicação de Cliente', estimatedFee: 5000, responsible: 'Advogada Alfa', notes: 'Relato secreto alfa', registeredAt: '2026-08-20' },
@@ -157,7 +157,7 @@ try {
     window.portalApp.renderAll();
     await store.flush();
     return todayValue;
-  });
+  }, isoDate());
 
   const isolationBefore = await page.evaluate(() => ({
     contacts: JSON.stringify(window.Atrium.Store.state.contacts),

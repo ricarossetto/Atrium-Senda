@@ -5,6 +5,7 @@ import { chromium } from 'playwright';
 import { startTestServer, postJson } from './helpers.mjs';
 import { generateTotp } from '../lib/security.mjs';
 import { runStateMigrations, migrate7To8, migrate8To9, CURRENT_SCHEMA_VERSION } from '../lib/state-migrations.mjs';
+import { isoDate } from '../js/core/store.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -226,7 +227,7 @@ try {
     }
   ];
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = isoDate();
   state.intimations = [
     {
       id: 'pub-test-1',
