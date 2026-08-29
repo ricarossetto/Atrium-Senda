@@ -16,7 +16,9 @@ import { createAssistantFeature } from './features/assistant.js';
 import { createContactsFeature } from './features/contacts.js';
 import { createDocumentsFeature } from './features/documents.js';
 import { createFinancialFeature } from './features/financial.js';
+import { createJudicialIntegrationsFeature } from './features/judicial-integrations.js';
 import { createLeadsFeature } from './features/leads.js';
+import { createMonitoringFeature } from './features/monitoring.js';
 import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js';
 import { createProcessesFeature } from './features/processes.js';
 import { createPromptsFeature } from './features/prompts.js';
@@ -225,7 +227,9 @@ import { createTasksFeature } from './features/tasks.js';
   let contactsFeature;
   let documentsFeature;
   let financialFeature;
+  let judicialIntegrationsFeature;
   let leadsFeature;
+  let monitoringFeature;
   let publicationsFeature;
   let processesFeature;
   let promptsFeature;
@@ -452,6 +456,37 @@ import { createTasksFeature } from './features/tasks.js';
     return promptsFeature;
   }
 
+  function getJudicialIntegrationsFeature() {
+    if (!judicialIntegrationsFeature) judicialIntegrationsFeature = createJudicialIntegrationsFeature({
+      documentRef: document,
+      windowRef: window,
+      secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
+      escapeHtml,
+      showToast: (message, type) => App.toast(message, type),
+      audit: (action, detail) => Store.audit(action, detail),
+      onSyncAll: () => App.syncAll()
+    });
+    return judicialIntegrationsFeature;
+  }
+
+  function getMonitoringFeature() {
+    if (!monitoringFeature) monitoringFeature = createMonitoringFeature({
+      store: Store,
+      documentRef: document,
+      escapeHtml,
+      formatDateTime,
+      initials: name => App.initials(name),
+      uid,
+      openModal: (...args) => App.openModal(...args),
+      showToast: (message, type) => App.toast(message, type),
+      closeModal: () => App.closeModal(),
+      getFilteredIntimations: () => App.filteredIntimations(),
+      onOpenJudicialSetup: () => getJudicialIntegrationsFeature().open(),
+      onOpenCalendarConfig: () => App.openCalendarConfigModal()
+    });
+    return monitoringFeature;
+  }
+
   const App = {
     currentView: 'dashboard',
     get inboxFilter() { return getPublicationsFeature().inboxFilter; },
@@ -466,7 +501,8 @@ import { createTasksFeature } from './features/tasks.js';
     set selectedIntimation(value) { getPublicationsFeature().selectedIntimation = value; },
     configurationSection: 'taskDefinitions',
     modalMode: null,
-    judicialStatus: null,
+    get judicialStatus() { return getJudicialIntegrationsFeature().status; },
+    set judicialStatus(value) { getJudicialIntegrationsFeature().status = value; },
     get agendaSelectedDate() { return getAgendaFeature().selectedDate; },
     set agendaSelectedDate(value) { getAgendaFeature().selectedDate = value; },
     get agendaCalendarMonthOffset() { return getAgendaFeature().calendarMonthOffset; },
@@ -554,12 +590,6 @@ import { createTasksFeature } from './features/tasks.js';
       byId('agendaSyncButton')?.addEventListener('click', () => this.syncAll());
       getOnboardingComponent().init();
       byId('newConfigurationButton')?.addEventListener('click', () => this.openConfigurationModal());
-      byId('newTermButton')?.addEventListener('click', () => this.openTermModal());
-      byId('primaryTermCard')?.addEventListener('click', () => {
-        const term = Store.state.terms[0] || { id: uid('term'), name: 'Dr(a). Advogado(a) Titular', registration: 'OAB/UF 000000', type: 'oab', active: true };
-        this.openTermModal(term);
-      });
-
       // Personalização do Escritório
       document.querySelector('.sidebar-office')?.addEventListener('click', () => this.openOfficeSetup());
       byId('officeSetupClose')?.addEventListener('click', () => this.closeOfficeSetup());
@@ -582,6 +612,8 @@ import { createTasksFeature } from './features/tasks.js';
       getPublicationsFeature().init();
       getAssistantFeature().init();
       getPromptsFeature().init();
+      getMonitoringFeature().init();
+      getJudicialIntegrationsFeature().init();
       byId('configurationSearch')?.addEventListener('input', () => this.renderConfiguration(byId('configurationSearch').value));
       byId('configurationTabs')?.addEventListener('click', event => {
         const button = event.target.closest('button[data-config-section]'); if (!button) return;
@@ -631,22 +663,6 @@ import { createTasksFeature } from './features/tasks.js';
       byId('calendarConfigBackdrop')?.addEventListener('click', event => { if (event.target === byId('calendarConfigBackdrop')) this.closeCalendarConfigModal(); });
       byId('calendarConfigForm')?.addEventListener('submit', event => this.handleCalendarConfigSubmit(event));
 
-      byId('certificateGuideButton').addEventListener('click', () => this.openJudicialSetup());
-      byId('judicialSetupClose').addEventListener('click', () => this.closeJudicialSetup());
-      byId('judicialSetupBackdrop').addEventListener('click', event => { if (event.target === byId('judicialSetupBackdrop')) this.closeJudicialSetup(); });
-      byId('certificateFileInput').addEventListener('change', event => { byId('certificateFileName').textContent = event.target.files[0]?.name || 'Selecionar certificado'; });
-      byId('certificateSetupForm').addEventListener('submit', event => this.saveCertificate(event));
-      byId('portalQrInput').addEventListener('change', event => this.readPortalQr(event.target.files[0]));
-      byId('portalTotpForm').addEventListener('submit', event => this.savePortalTotp(event));
-      byId('removePortalTotpButton').addEventListener('click', () => this.removePortalTotp());
-      byId('resetJudicialConnectionsButton').addEventListener('click', () => this.resetJudicialConnections());
-      byId('syncJudicialNowButton')?.addEventListener('click', () => this.syncJudicialNow());
-      byId('portalCoverageList').addEventListener('click', event => {
-        const button = event.target.closest('[data-configure-totp]'); if (!button) return;
-        byId('totpPortalSelect').value = button.dataset.configureTotp;
-        byId('totpSetupSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        byId('portalQrInput').focus();
-      });
       byId('kanbanFilterButton').addEventListener('click', event => { event.currentTarget.classList.toggle('active'); this.toast('Filtro pessoal aplicado ao quadro.', 'success'); });
       // Importador de planilhas
       const dropzone = byId('importerDropzone');
@@ -1600,52 +1616,8 @@ import { createTasksFeature } from './features/tasks.js';
     renderMiniCalendar() {
       return getAgendaFeature().renderMiniCalendar();
     },
-    renderMonitoring() {
-      const term = Store.state.terms[0] || { name: 'Dr(a). Advogado(a) Titular', registration: 'OAB/UF 000000' };
-      const nameEl = document.getElementById('primaryTermName');
-      const regEl = document.getElementById('primaryTermRegistration');
-      const avatarEl = document.getElementById('primaryTermAvatar');
-      if (nameEl) nameEl.textContent = term.name || 'Dr(a). Advogado(a) Titular';
-      if (regEl) regEl.textContent = `${term.registration || 'OAB/UF 000000'} · Advogado(a) monitorado(a) principal`;
-      if (avatarEl) avatarEl.textContent = this.initials(term.name || 'AD');
-
-      const issues = Store.state.sources.filter(source => ['attention', 'error'].includes(source.status)).length;
-      const activeCutoffIntimations = this.filteredIntimations ? this.filteredIntimations() : (Store.state.intimations || []);
-      const newCount = activeCutoffIntimations.filter(item => item.status === 'nova').length;
-      document.getElementById('termSourceCount').textContent = Store.state.sources.length;
-      document.getElementById('termIssueCount').textContent = issues;
-      document.getElementById('termNewCount').textContent = newCount;
-      document.getElementById('monitorSourceList').innerHTML = Store.state.sources.map(source => `
-        <div class="source-row" data-source-id="${escapeHtml(source.id)}" tabindex="0"><div class="source-name"><span class="source-mark">${escapeHtml(source.short)}</span><div><strong>${escapeHtml(source.name)}</strong><small>${escapeHtml(source.detail)}</small></div></div><span class="source-method">${escapeHtml(source.method)}</span><span class="source-check">${source.lastCheck ? formatDateTime(source.lastCheck) : 'Ainda não verificada'}</span><span>${source.status === 'ok' ? '<span class="status-chip connected">Ativo</span>' : source.status === 'attention' ? '<span class="status-chip warning">Atenção</span>' : source.status === 'error' ? '<span class="status-chip danger">Falha</span>' : source.status === 'planned' ? '<span class="status-chip planned">Preparado</span>' : '<span class="status-chip muted">Desativado</span>'}</span><span class="row-menu" aria-hidden="true">⚙</span></div>`).join('');
-      document.querySelectorAll('#monitorSourceList [data-source-id]').forEach(row => row.addEventListener('click', () => {
-        const sourceId = row.dataset.sourceId;
-        if (sourceId === 'a1' || sourceId === 'pje') {
-          this.openJudicialSetup();
-        } else if (sourceId === 'external-calendar' || sourceId === 'advbox-calendar') {
-          this.openCalendarConfigModal();
-        } else if (sourceId === 'djen-cnj' || sourceId === 'djen') {
-          const term = Store.state.terms[0] || {};
-          this.openTermModal(term);
-        } else if (sourceId === 'datajud-cnj' || sourceId === 'datajud') {
-          this.openDataJudConfigModal();
-        } else {
-          const source = Store.state.sources.find(item => item.id === sourceId);
-          if (source) this.openSourceModal(source);
-        }
-      }));
-    },
-    openDataJudConfigModal() {
-      const currentKey = Store.state.settings?.datajudApiKey || 'cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
-      this.openModal('datajud', 'Configuração DataJud / CNJ', 'Integração Oficial de Andamentos', [
-        { name: 'apiKey', label: 'Chave Pública da API DataJud (CNJ)', full: true, value: currentKey, note: 'Chave pública oficial mantida pelo CNJ (datajud-wiki.cnj.jus.br).' },
-        { name: 'autoSync', label: 'Enriquecimento Automático', type: 'select', options: [{ value: 'active', label: 'Ativo (buscar andamentos ao cadastrar processo)' }, { value: 'manual', label: 'Apenas manual (sob demanda)' }] },
-        { name: 'tribunals', label: 'Abrangência de Tribunais', full: true, value: 'TJRS, TRF4, STJ, TST, TJSC, TJPR, TJSP' }
-      ], {
-        apiKey: currentKey,
-        autoSync: 'active',
-        tribunals: 'TJRS, TRF4, STJ, TST, TJSC, TJPR, TJSP'
-      });
-    },
+    renderMonitoring() { return getMonitoringFeature().render(); },
+    openDataJudConfigModal() { return getMonitoringFeature().openDataJudConfigModal(); },
     openPublicationsEmailModal() {
       return getPublicationsFeature().openPublicationsEmailModal();
     },
@@ -1787,217 +1759,12 @@ import { createTasksFeature } from './features/tasks.js';
       if (Array.isArray(values.responsibles)) values.responsibles = values.responsibles.join(', ');
       this.openModal('configuration', index === null ? 'Novo item de configuração' : 'Editar configuração', 'Estrutura do escritório', fields, { ...values, _section: section, _index: index });
     },
-    openTermModal(defaults = {}) {
-      const reg = defaults.registration || '';
-      let defaultOab = defaults.oabNumber || '';
-      let defaultUf = defaults.oabUf || '';
-      if (!defaultOab && reg) {
-        const ufMatch = reg.match(/([A-Z]{2})/i);
-        if (ufMatch) defaultUf = ufMatch[1].toUpperCase();
-        const numMatch = reg.replace(/\D/g, '');
-        if (numMatch) defaultOab = numMatch;
-      }
-      if (!defaultUf) defaultUf = 'RS';
-
-      const UF_OPTIONS = [
-        { value: 'RS', label: 'RS — Rio Grande do Sul' },
-        { value: 'SP', label: 'SP — São Paulo' },
-        { value: 'SC', label: 'SC — Santa Catarina' },
-        { value: 'PR', label: 'PR — Paraná' },
-        { value: 'RJ', label: 'RJ — Rio de Janeiro' },
-        { value: 'MG', label: 'MG — Minas Gerais' },
-        { value: 'DF', label: 'DF — Distrito Federal' },
-        { value: 'BA', label: 'BA — Bahia' },
-        { value: 'GO', label: 'GO — Goiás' },
-        { value: 'PE', label: 'PE — Pernambuco' },
-        { value: 'CE', label: 'CE — Ceará' },
-        { value: 'ES', label: 'ES — Espírito Santo' },
-        { value: 'MT', label: 'MT — Mato Grosso' },
-        { value: 'MS', label: 'MS — Mato Grosso do Sul' },
-        { value: 'MA', label: 'MA — Maranhão' },
-        { value: 'PA', label: 'PA — Pará' },
-        { value: 'PB', label: 'PB — Paraíba' },
-        { value: 'RN', label: 'RN — Rio Grande do Norte' },
-        { value: 'AL', label: 'AL — Alagoas' },
-        { value: 'SE', label: 'SE — Sergipe' },
-        { value: 'PI', label: 'PI — Piauí' },
-        { value: 'TO', label: 'TO — Tocantins' },
-        { value: 'RO', label: 'RO — Rondônia' },
-        { value: 'AC', label: 'AC — Acre' },
-        { value: 'AM', label: 'AM — Amazonas' },
-        { value: 'AP', label: 'AP — Amapá' },
-        { value: 'RR', label: 'RR — Roraima' }
-      ];
-
-      this.openModal('term', defaults.id ? 'Editar termo monitorado' : 'Adicionar termo monitorado', 'Monitoramento DJEN & Tribunais', [
-        { name: 'name', label: 'Nome completo ou razão social', required: true, full: true, placeholder: 'Ex: André da Silva', value: defaults.name || '' },
-        { name: 'type', label: 'Tipo de identificador', type: 'select', full: true, options: [{ value: 'oab', label: 'Inscrição OAB (Advogado)' }, { value: 'document', label: 'CPF ou CNPJ' }, { value: 'name', label: 'Nome Textual' }] },
-        { name: 'oabNumber', label: 'Número da OAB (somente números)', placeholder: 'Ex: 123456', note: 'Digite somente os números da sua OAB, preservando o zero à esquerda quando existir.' },
-        { name: 'oabUf', label: 'Estado / Seccional (UF)', type: 'select', value: defaultUf, options: UF_OPTIONS },
-        { name: 'document', label: 'CPF ou CNPJ', placeholder: 'Ex: 000.000.000-00 ou 00.000.000/0001-00' }
-      ], { type: 'oab', oabNumber: defaultOab, oabUf: defaultUf, ...defaults });
-
-      const typeSelect = document.getElementById('field-type');
-      const oabNumberField = document.getElementById('field-oabNumber')?.closest('.field');
-      const oabUfField = document.getElementById('field-oabUf')?.closest('.field');
-      const docField = document.getElementById('field-document')?.closest('.field');
-
-      const updateFieldsVisibility = () => {
-        const val = typeSelect?.value || 'oab';
-        if (val === 'oab') {
-          if (oabNumberField) oabNumberField.style.display = '';
-          if (oabUfField) oabUfField.style.display = '';
-          if (docField) docField.style.display = 'none';
-        } else if (val === 'document') {
-          if (oabNumberField) oabNumberField.style.display = 'none';
-          if (oabUfField) oabUfField.style.display = 'none';
-          if (docField) docField.style.display = '';
-        } else {
-          if (oabNumberField) oabNumberField.style.display = 'none';
-          if (oabUfField) oabUfField.style.display = 'none';
-          if (docField) docField.style.display = 'none';
-        }
-      };
-
-      typeSelect?.addEventListener('change', updateFieldsVisibility);
-      updateFieldsVisibility();
-    },
-    openSourceModal(defaults = {}) {
-      this.openModal('source', 'Detalhes da fonte', 'Monitoramento e integração', [
-        { name: 'name', label: 'Fonte', required: true, full: true }, { name: 'short', label: 'Sigla' }, { name: 'method', label: 'Método' },
-        { name: 'status', label: 'Situação', type: 'select', options: [{value:'ok',label:'Ativa'},{value:'attention',label:'Atenção'},{value:'error',label:'Falha'},{value:'planned',label:'Preparada'},{value:'off',label:'Desativada'}] },
-        { name: 'detail', label: 'Detalhes operacionais', type: 'textarea', full: true, note: 'Não insira senhas, tokens ou conteúdo do certificado.' }
-      ], defaults);
-    },
-    async openJudicialSetup() {
-      document.getElementById('judicialSetupBackdrop').classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-      await this.refreshJudicialStatus(true);
-    },
-    closeJudicialSetup() {
-      const backdrop = document.getElementById('judicialSetupBackdrop');
-      if (!backdrop || backdrop.classList.contains('hidden')) return;
-      backdrop.classList.add('hidden');
-      if (document.getElementById('modalBackdrop').classList.contains('hidden')) document.body.style.overflow = '';
-      document.getElementById('portalTotpSecret').value = '';
-      document.getElementById('portalTotpCode').value = '';
-      document.getElementById('certificatePassphrase').value = '';
-    },
-    async refreshJudicialStatus(showError = false) {
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/integrations/judicial', { headers: { Accept: 'application/json' } });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'Não foi possível verificar o certificado.');
-        this.judicialStatus = data;
-        this.renderJudicialSetup();
-      } catch (error) {
-        if (showError) this.toast(error.message, 'error');
-        const chip = document.getElementById('certificateIntegrationStatus');
-        chip.textContent = 'Servidor precisa ser reiniciado'; chip.className = 'status-chip warning';
-      }
-    },
-    renderJudicialSetup() {
-      const status = this.judicialStatus; if (!status) return;
-      const certificate = status.certificate || {};
-      const portals = status.portals || [];
-      const totpCount = portals.filter(portal => portal.totpConfigured).length;
-      const setStatusIcon = (id, ok) => {
-        const element = document.getElementById(id);
-        if (element) {
-          element.className = `setup-status-icon ${ok ? 'ok' : 'off'}`;
-          element.textContent = ok ? '✓' : '·';
-        }
-      };
-      setStatusIcon('setupCertificateIcon', certificate.valid);
-      setStatusIcon('setupPjeOfficeIcon', status.pjeOffice?.available);
-      setStatusIcon('setupTotpIcon', totpCount > 0);
-
-      const sc = document.getElementById('setupCertificateStatus');
-      if (sc) sc.textContent = certificate.valid ? 'A1 validado no Sandbox' : certificate.accessible ? 'Senha ou contêiner inválido' : 'Selecione o PFX';
-
-      const sp = document.getElementById('setupPjeOfficeStatus');
-      if (sp) sp.textContent = status.pjeOffice?.available ? 'Aplicativo oficial disponível' : 'Abra o PJeOffice Pro';
-
-      const st = document.getElementById('setupTotpStatus');
-      if (st) st.textContent = totpCount ? `${totpCount} portal(is) vinculado(s)` : 'Nenhum QR vinculado';
-
-      const fileBadge = document.getElementById('certificateFileBadge');
-      if (fileBadge) {
-        fileBadge.textContent = certificate.valid ? (certificate.status === 'operational' ? 'A1 OPERATIONAL' : 'Certificado Ativo') : 'Não configurado';
-        fileBadge.className = `status-chip ${certificate.valid ? 'connected' : 'muted'}`;
-      }
-
-      const a1Card = document.getElementById('a1ActiveCard');
-      const certForm = document.getElementById('certificateSetupForm');
-      const btnTestA1 = document.getElementById('btnRunA1Sandbox');
-      const btnReplace = document.getElementById('btnReplaceCertToggle');
-      const holderNameEl = document.getElementById('a1HolderName');
-      const docAndIssuerEl = document.getElementById('a1DocAndIssuer');
-
-      if (btnTestA1) {
-        btnTestA1.onclick = () => this.testA1Sandbox();
-      }
-      if (btnReplace && certForm && a1Card) {
-        btnReplace.onclick = () => {
-          certForm.classList.toggle('hidden');
-          btnReplace.textContent = certForm.classList.contains('hidden') ? 'Substituir' : 'Cancelar';
-        };
-      }
-
-      if (certificate.valid || certificate.accessible) {
-        if (a1Card) a1Card.classList.remove('hidden');
-        if (certForm) certForm.classList.add('hidden');
-        if (holderNameEl) holderNameEl.textContent = certificate.summary?.holder || certificate.fileName || 'Certificado A1 Ativo';
-        if (docAndIssuerEl) {
-          docAndIssuerEl.textContent = `${certificate.summary?.documentMasked ? 'CPF ' + certificate.summary.documentMasked + ' · ' : ''}${certificate.summary?.issuer ? certificate.summary.issuer.split(',')[0] : 'ICP-Brasil'}${certificate.summary?.notAfter ? ' · Vigente até ' + new Date(certificate.summary.notAfter).toLocaleDateString('pt-BR') : ''}`;
-        }
-      } else {
-        if (a1Card) a1Card.classList.add('hidden');
-        if (certForm) certForm.classList.remove('hidden');
-      }
-
-      const cardChip = document.getElementById('certificateIntegrationStatus');
-      if (cardChip) {
-        cardChip.textContent = certificate.valid ? `A1 Operacional · ${totpCount} 2FA` : 'Configuração necessária';
-        cardChip.className = `status-chip ${certificate.valid ? 'connected' : 'warning'}`;
-      }
-
-      const cardDetail = document.getElementById('certificateIntegrationDetail');
-      if (cardDetail) {
-        cardDetail.textContent = certificate.valid
-          ? `${certificate.summary?.holder || certificate.fileName || 'Certificado'} validado com mTLS Sandbox. ${portals.filter(portal => portal.enabled).length} portal(is) habilitado(s) e ${totpCount} segundo(s) fator(es) protegido(s).`
-          : 'Ative o A1, selecione os tribunais e vincule um QR novo de cada portal em um único assistente protegido.';
-      }
-
-      const coverageList = document.getElementById('portalCoverageList');
-      if (coverageList) {
-        const portalGroups = portals.reduce((groups, portal) => { (groups[portal.group || 'Outros tribunais'] ||= []).push(portal); return groups; }, {});
-        coverageList.innerHTML = portals.length ? Object.entries(portalGroups).map(([group, items]) => `
-          <section class="portal-coverage-group">
-            <header><strong>${escapeHtml(group)}</strong><span>${items.length} portal(is)</span></header>
-            ${items.map(portal => `
-              <label class="portal-coverage-row ${portal.automationLevel === 'experimental' ? 'experimental' : ''}">
-                <input type="checkbox" data-portal-enabled value="${escapeHtml(portal.id)}" ${portal.enabled ? 'checked' : ''}>
-                <span><strong>${escapeHtml(portal.name)}</strong><small>${portal.automationLevel === 'experimental' ? 'Cobertura experimental · primeiro acesso acompanhado' : portal.supportsTotp ? portal.totpConfigured ? '2FA vinculado e verificado' : 'Sem QR/2FA vinculado' : 'Sessão com certificado, sem TOTP local'}</small></span>
-                <span class="portal-method">${escapeHtml(portal.system || (portal.certificateMode === 'pjeoffice' ? 'PJeOffice oficial' : 'Certificado do Windows'))}</span>
-                ${portal.supportsTotp ? `<button class="button ghost portal-qr-button" type="button" data-configure-totp="${escapeHtml(portal.id)}">${portal.totpConfigured ? 'Trocar QR' : 'Vincular 2FA'}</button>` : '<span></span>'}
-              </label>`).join('')}
-          </section>`).join('') : '<div class="setup-loading">Nenhum portal com certificado foi configurado.</div>';
-      }
-
-      const totpSelect = document.getElementById('totpPortalSelect');
-      if (totpSelect) {
-        const selectedPortal = totpSelect.value;
-        totpSelect.innerHTML = `<option value="">Selecione o tribunal</option>${portals.filter(portal => portal.supportsTotp).map(portal => `<option value="${escapeHtml(portal.id)}">${escapeHtml(portal.name)}${portal.totpConfigured ? ' · vinculado' : ''}</option>`).join('')}`;
-        if (portals.some(portal => portal.id === selectedPortal && portal.supportsTotp)) totpSelect.value = selectedPortal;
-      }
-
-      const launchBtn = document.getElementById('launchPortalLoginButton');
-      if (launchBtn) {
-        launchBtn.disabled = Boolean(status.interactiveCollectorRunning);
-        launchBtn.textContent = status.interactiveCollectorRunning ? 'Primeira conexão em andamento…' : 'Abrir primeira conexão';
-      }
-    },
+    openTermModal(defaults = {}) { return getMonitoringFeature().openTermModal(defaults); },
+    openSourceModal(defaults = {}) { return getMonitoringFeature().openSourceModal(defaults); },
+    openJudicialSetup() { return getJudicialIntegrationsFeature().open(); },
+    closeJudicialSetup() { return getJudicialIntegrationsFeature().close(); },
+    refreshJudicialStatus(showError = false) { return getJudicialIntegrationsFeature().refreshStatus(showError); },
+    renderJudicialSetup() { return getJudicialIntegrationsFeature().renderStatus(); },
     async loadEmailStatus() {
       const chip = document.getElementById('emailIntegrationStatus');
       const detail = document.getElementById('emailIntegrationDetail');
@@ -2440,206 +2207,15 @@ import { createTasksFeature } from './features/tasks.js';
         this.toast(err.message || 'Erro ao remover destinatário.', 'error');
       }
     },
-    async testA1Sandbox() {
-      const btn = document.getElementById('btnRunA1Sandbox');
-      if (btn) { btn.disabled = true; btn.textContent = '🧪 Executando Sandbox...'; }
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/integrations/judicial/a1/sandbox', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({})
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'Falha ao executar sandbox do certificado.');
-        
-        const sandbox = data.sandbox || {};
-        if (sandbox.steps) {
-          for (const step of sandbox.steps) {
-            const el = document.getElementById(`chkStep-${step.id}`);
-            if (el) {
-              const ok = step.status === 'OK';
-              el.innerHTML = `<span>${escapeHtml(step.name)}:</span> <strong style="color:${ok ? '#4ade80' : '#f87171'}">${ok ? '✓ OK' : '✗ Falha'}</strong>`;
-            }
-          }
-        }
-        if (sandbox.operational) {
-          this.toast('Certificado A1 validado 100% no Sandbox (mTLS + Playwright + Assinatura)!', 'success');
-          const chip = document.getElementById('certificateFileBadge');
-          if (chip) { chip.textContent = 'A1 OPERATIONAL'; chip.className = 'status-chip connected'; }
-        } else {
-          this.toast(`A1 Sandbox: ${sandbox.errorMessage || 'Falha na validação'}`, 'error');
-        }
-      } catch (err) {
-        this.toast(`Erro no Sandbox: ${err.message}`, 'error');
-      } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '🧪 Testar Certificado no Sandbox'; }
-      }
-    },
-    async saveCertificate(event) {
-      event.preventDefault();
-      const form = event.currentTarget;
-      const file = document.getElementById('certificateFileInput')?.files[0];
-      const passphrase = document.getElementById('certificatePassphrase')?.value;
-      if (!file || !passphrase) return this.toast('Selecione o PFX e informe a senha atual.', 'error');
-      this.setFormBusy(form, true);
-      try {
-        if (file.size > 5_000_000) throw new Error('O certificado deve ter no máximo 5 MB.');
-        const pfxBase64 = await this.fileToBase64(file);
-        await this.judicialRequest('/api/integrations/judicial/certificate', { fileName: file.name, pfxBase64, passphrase });
-        form.reset();
-        const fn = document.getElementById('certificateFileName');
-        if (fn) fn.textContent = 'Selecionar certificado';
-        Store.audit('Certificado A1 configurado', 'Contêiner validado pelo Windows e armazenado cifrado no agente local.');
-        this.toast('Certificado validado com sucesso! Sincronizando dados judiciais...', 'success');
-        await this.refreshJudicialStatus();
-        await this.syncAll();
-      } catch (error) { this.toast(error.message, 'error'); }
-      finally { this.setFormBusy(form, false); }
-    },
-    async readPortalQr(file) {
-      const status = document.getElementById('portalQrStatus');
-      const secretInput = document.getElementById('portalTotpSecret');
-      secretInput.value = '';
-      if (!file) {
-        status.textContent = 'Selecionar QR code';
-        return;
-      }
-      status.textContent = 'Decodificando imagem do QR code…';
-
-      try {
-        let raw = '';
-
-        // 1. Decodificação universal via jsQR (Canvas 2D, suportado em 100% dos navegadores)
-        if (typeof window.jsQR === 'function') {
-          try {
-            const img = new Image();
-            const imgLoaded = new Promise((resolve, reject) => {
-              img.onload = () => resolve();
-              img.onerror = () => reject(new Error('Falha ao carregar arquivo de imagem.'));
-            });
-            const objectUrl = URL.createObjectURL(file);
-            img.src = objectUrl;
-            await imgLoaded;
-            URL.revokeObjectURL(objectUrl);
-
-            const canvas = document.createElement('canvas');
-            canvas.width = img.naturalWidth || img.width;
-            canvas.height = img.naturalHeight || img.height;
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const qrResult = window.jsQR(imageData.data, imageData.width, imageData.height, {
-              inversionAttempts: 'attemptBoth'
-            });
-            if (qrResult?.data) {
-              raw = String(qrResult.data || '').trim();
-            }
-          } catch (err) {
-            console.warn('Tentativa com jsQR:', err);
-          }
-        }
-
-        // 2. Fallback via BarcodeDetector nativo (se disponível)
-        if (!raw && ('BarcodeDetector' in window)) {
-          try {
-            const detector = new BarcodeDetector({ formats: ['qr_code'] });
-            const bitmap = await createImageBitmap(file);
-            const codes = await detector.detect(bitmap);
-            bitmap.close?.();
-            raw = codes.find(code => code.rawValue)?.rawValue?.trim() || '';
-          } catch (err) {
-            console.warn('Tentativa com BarcodeDetector:', err);
-          }
-        }
-
-        if (!raw) {
-          throw new Error('Não foi possível ler o QR Code da imagem. Verifique se o enquadramento está nítido ou cole a chave manual Base32.');
-        }
-
-        secretInput.value = raw;
-        status.textContent = `${file.name} · QR lido com sucesso`;
-        this.toast('QR Code decodificado com sucesso! Digite o código de 6 dígitos para validar.', 'success');
-        document.getElementById('portalTotpCode').focus();
-      } catch (error) {
-        status.textContent = file.name;
-        this.toast(error.message, 'error');
-      }
-    },
-    async savePortalTotp(event) {
-      event.preventDefault(); const form = event.currentTarget;
-      const portalId = document.getElementById('totpPortalSelect').value;
-      const secret = document.getElementById('portalTotpSecret').value;
-      const code = document.getElementById('portalTotpCode').value;
-      if (!portalId || !secret || !/^\d{6}$/.test(code)) return this.toast('Selecione o portal, o QR/chave e informe o código atual de seis dígitos.', 'error');
-      this.setFormBusy(form, true);
-      try {
-        await this.judicialRequest('/api/integrations/judicial/2fa', { portalId, secret, code });
-        document.getElementById('portalTotpSecret').value = ''; document.getElementById('portalTotpCode').value = ''; document.getElementById('portalQrInput').value = '';
-        document.getElementById('portalQrStatus').textContent = 'Selecionar QR code';
-        Store.audit('Segundo fator judicial ativado', `${this.judicialStatus?.portals?.find(portal => portal.id === portalId)?.name || portalId} · código TOTP validado.`);
-        this.toast('QR validado. O segundo fator desse portal está ativo.', 'success');
-        await this.refreshJudicialStatus();
-      } catch (error) { this.toast(error.message, 'error'); }
-      finally { this.setFormBusy(form, false); }
-    },
-    async removePortalTotp() {
-      const portalId = document.getElementById('totpPortalSelect').value;
-      if (!portalId) return this.toast('Selecione o portal cujo vínculo local deve ser removido.', 'error');
-      try {
-        await this.judicialRequest('/api/integrations/judicial/2fa', { portalId, remove: true });
-        document.getElementById('portalTotpSecret').value = ''; document.getElementById('portalTotpCode').value = '';
-        Store.audit('Segundo fator judicial removido', `${this.judicialStatus?.portals?.find(portal => portal.id === portalId)?.name || portalId} · segredo local removido.`);
-        this.toast('Vínculo local removido. Isso não desativa o 2FA no portal.', 'success');
-        await this.refreshJudicialStatus();
-      } catch (error) { this.toast(error.message, 'error'); }
-    },
-    async savePortalCoverage() {
-      const enabledIds = [...document.querySelectorAll('[data-portal-enabled]:checked')].map(input => input.value);
-      try {
-        await this.judicialRequest('/api/integrations/judicial/portals', { enabledIds });
-        Store.audit('Cobertura judicial atualizada', `${enabledIds.length} portal(is) com certificado habilitado(s).`);
-        this.toast('Cobertura dos tribunais salva.', 'success'); await this.refreshJudicialStatus();
-      } catch (error) { this.toast(error.message, 'error'); }
-    },
-    async resetJudicialConnections() {
-      const confirmed = window.confirm('Isso removerá todos os QR Codes/2FA, desmarcará os tribunais e apagará as sessões judiciais locais. O certificado A1 será preservado. Continuar?');
-      if (!confirmed) return;
-      const button = document.getElementById('resetJudicialConnectionsButton');
-      if (button) button.disabled = true;
-      try {
-        const result = await this.judicialRequest('/api/integrations/judicial/reset', { confirm: 'ZERAR_ACESSOS_JUDICIAIS' });
-        document.getElementById('portalTotpSecret').value = ''; document.getElementById('portalTotpCode').value = ''; document.getElementById('portalQrInput').value = '';
-        Store.audit('Acessos judiciais zerados', `QR/2FA, cobertura e sessões locais removidos. Certificado A1 ${result.certificatePreserved ? 'preservado' : 'não estava configurado'}.`);
-        this.toast(result.certificatePreserved ? 'Acessos zerados. O certificado A1 foi preservado.' : 'Acessos zerados; nenhum certificado estava configurado.', 'success');
-        await this.refreshJudicialStatus();
-      } catch (error) { this.toast(error.message, 'error'); }
-      finally { if (button) button.disabled = false; }
-    },
-    async syncJudicialNow() {
-      const button = document.getElementById('syncJudicialNowButton');
-      if (button) {
-        button.disabled = true;
-        button.textContent = 'Sincronizando acervo e intimações…';
-      }
-      try {
-        await this.syncAll();
-        this.toast('Sincronização com DJEN e tribunais concluída com sucesso!', 'success');
-        Store.audit('Sincronização judicial autônoma', 'Coleta de intimações DJEN, DataJud e tribunais.');
-      } catch (error) {
-        this.toast(error.message || 'Falha ao sincronizar.', 'error');
-      } finally {
-        if (button) {
-          button.disabled = false;
-          button.textContent = '✦ Sincronizar Acervo e Intimações Agora';
-        }
-      }
-    },
-    async judicialRequest(url, body) {
-      const response = await window.KellerAuth.secureFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || 'A configuração judicial não foi concluída.');
-      return data;
-    },
+    testA1Sandbox() { return getJudicialIntegrationsFeature().testA1Sandbox(); },
+    saveCertificate(event) { return getJudicialIntegrationsFeature().saveCertificate(event); },
+    readPortalQr(file) { return getJudicialIntegrationsFeature().readPortalQr(file); },
+    savePortalTotp(event) { return getJudicialIntegrationsFeature().savePortalTotp(event); },
+    removePortalTotp() { return getJudicialIntegrationsFeature().removePortalTotp(); },
+    savePortalCoverage() { return getJudicialIntegrationsFeature().savePortalCoverage(); },
+    resetJudicialConnections() { return getJudicialIntegrationsFeature().resetConnections(); },
+    syncJudicialNow() { return getJudicialIntegrationsFeature().syncNow(); },
+    judicialRequest(url, body) { return getJudicialIntegrationsFeature().request(url, body); },
     async forgetTrustedDevice() {
       try {
         const response = await window.KellerAuth.secureFetch('/api/auth/trusted-device/revoke', { method: 'POST', headers: { Accept: 'application/json' } });
@@ -2649,12 +2225,8 @@ import { createTasksFeature } from './features/tasks.js';
         this.toast('Confiança removida. O próximo acesso exigirá autenticação completa.', 'success');
       } catch (error) { this.toast(error.message, 'error'); }
     },
-    setFormBusy(form, busy) { form.querySelectorAll('input, select, button').forEach(element => { element.disabled = busy; }); },
-    async fileToBase64(file) {
-      const bytes = new Uint8Array(await file.arrayBuffer()); let binary = '';
-      for (let offset = 0; offset < bytes.length; offset += 32_768) binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768));
-      return btoa(binary);
-    },
+    setFormBusy(form, busy) { return getJudicialIntegrationsFeature().setFormBusy(form, busy); },
+    fileToBase64(file) { return getJudicialIntegrationsFeature().fileToBase64(file); },
     openCalendarConfigModal() {
       const url = Store.state.settings.calendarUrl || Store.state.settings.externalCalendarUrl || '';
       const input = document.getElementById('calendarInputUrl');
@@ -2854,44 +2426,13 @@ import { createTasksFeature } from './features/tasks.js';
         Store.save();
         Store.audit(index === null || index === undefined || index === '' ? 'Configuração adicionada' : 'Configuração atualizada', `${section} · ${typeof record === 'string' ? record : record.name || record.event || record.group || 'item'}`);
       } else if (this.modalMode.mode === 'term') {
-        const editing = Boolean(this.modalMode.defaults.id);
-        let registration = data.registration;
-        let oabNumber = data.oabNumber ? String(data.oabNumber).replace(/\D/g, '') : '';
-        let oabUf = data.oabUf ? String(data.oabUf).toUpperCase() : '';
-        if (data.type === 'oab' && oabNumber) {
-          registration = `OAB/${oabUf || 'RS'} ${oabNumber}`;
-        } else if (!registration) {
-          registration = data.document || data.name;
-        }
-        const record = {
-          id: this.modalMode.defaults.id || uid('term'),
-          active: true,
-          ...this.modalMode.defaults,
-          ...data,
-          registration,
-          oabNumber: oabNumber || undefined,
-          oabUf: oabUf || undefined,
-          updatedAt: new Date().toISOString()
-        };
-        Store.upsert('terms', record);
-        if (Store.state.terms[0]?.id === record.id) {
-          Store.state.settings.lawyerName = record.name;
-          Store.state.settings.lawyerOab = record.registration;
-        }
-        Store.audit(editing ? 'Termo atualizado' : 'Termo adicionado', `${record.name} · ${record.registration}`);
+        getMonitoringFeature().saveTerm(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'lead') {
         getLeadsFeature().saveLead(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'source') {
-        const record = { ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() }; Store.upsert('sources', record); Store.audit('Fonte atualizada', `${record.name} · ${record.status}`);
+        getMonitoringFeature().saveSource(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'datajud') {
-        if (!Store.state.settings) Store.state.settings = {};
-        Store.state.settings.datajudApiKey = data.apiKey || '';
-        Store.audit('Configuração DataJud atualizada', `Chave configurada (${(data.apiKey || '').slice(0, 10)}…)`);
-        Store.save();
-        this.renderMonitoring();
-        if (!await Store.flush()) throw new Error('Não foi possível persistir a configuração. Tente novamente.');
-        this.toast('Configurações do DataJud salvas com sucesso!', 'success');
-        this.closeModal();
+        await getMonitoringFeature().saveDataJud(data);
         return;
       } else if (this.modalMode.mode === 'prompt') {
         getPromptsFeature().savePrompt(data, this.modalMode.defaults);
