@@ -1195,6 +1195,8 @@ function assertAdmin(req, requireCsrf = false, customMessage = 'Você não possu
   return session;
 }
 
+const JUDICIAL_ADMIN_FORBIDDEN_MESSAGE = 'Você não possui permissão para administrar a integração judicial.';
+
 const ENCRYPTED_BACKUP_FORMAT = 'atrium-encrypted-backup-v1';
 
 function canonicalEmptyBackupState() {
@@ -1681,7 +1683,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname.startsWith('/api/integrations/judicial/portals/') && url.pathname.endsWith('/clear-session')) {
-      const session = assertAuthenticated(req, true);
+      const session = assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
       const parts = url.pathname.split('/');
       const portalId = parts[parts.length - 2];
       if (!portalId) throw Object.assign(new Error('ID do portal inválido.'), { statusCode: 400 });
@@ -2209,6 +2211,7 @@ Diretrizes essenciais:
 
     if (CLOUD_MODE) {
       if (['/api/integrations/judicial/certificate', '/api/integrations/judicial/reset', '/api/integrations/judicial/connect', '/api/integrations/judicial/a1/sandbox'].includes(url.pathname)) {
+        assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
         return json(res, 503, { ok: false, message: 'Operações com certificado digital local e sessões de desktop não estão disponíveis em ambiente de nuvem.' });
       }
       if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/sync') {
@@ -2241,14 +2244,14 @@ Diretrizes essenciais:
 
     // A1 Certificate Sandbox Execution
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/a1/sandbox') {
-      assertAuthenticated(req, true);
+      assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
       const result = await judicialOrchestrator.runA1Test();
       return json(res, 200, { ok: true, sandbox: result });
     }
 
     // TOTP Sandbox Execution
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/totp/sandbox') {
-      assertAuthenticated(req, true);
+      assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
       const body = await readJson(req);
       let result;
       if (body.portalId) {
@@ -2263,7 +2266,7 @@ Diretrizes essenciais:
 
     // TOTP Parse QR / Migration
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/totp/parse') {
-      assertAuthenticated(req, true);
+      assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
       const body = await readJson(req);
       const raw = body.qrData || body.secret;
       if (!raw) throw Object.assign(new Error('Nenhum dado de QR ou segredo recebido.'), { statusCode: 400 });
@@ -2273,7 +2276,7 @@ Diretrizes essenciais:
 
     // Certificate Upload with Sandbox Validation
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/certificate') {
-      assertAuthenticated(req, true);
+      assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
       const body = await readJson(req, 7_500_000);
       const fileName = path.basename(String(body.fileName || 'certificado.pfx'));
       if (!/\.(pfx|p12)$/i.test(fileName)) throw Object.assign(new Error('Selecione um certificado .pfx ou .p12.'), { statusCode: 400 });
@@ -2299,7 +2302,7 @@ Diretrizes essenciais:
       });
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/2fa') {
-      assertAuthenticated(req, true); const body = await readJson(req); const config = await readPortalConfiguration();
+      assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE); const body = await readJson(req); const config = await readPortalConfiguration();
       let portal = config.portals.find(item => item.id === String(body.portalId || ''));
       if (!portal) {
         const portalId = String(body.portalId || 'pje-custom');
@@ -2320,16 +2323,16 @@ Diretrizes essenciais:
       return json(res, 200, { ok: true, portalId: portal.id, verified: true });
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/portals') {
-      assertAuthenticated(req, true); const body = await readJson(req); const result = await updatePortalCoverage(body.enabledIds);
+      assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE); const body = await readJson(req); const result = await updatePortalCoverage(body.enabledIds);
       return json(res, 200, { ok: true, ...result });
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/reset') {
-      assertAuthenticated(req, true); const body = await readJson(req);
+      assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE); const body = await readJson(req);
       if (body.confirm !== 'ZERAR_ACESSOS_JUDICIAIS') throw Object.assign(new Error('Confirmação de segurança inválida.'), { statusCode: 400 });
       return json(res, 200, { ok: true, ...(await resetJudicialConnections()) });
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/connect') {
-      assertAuthenticated(req, true); const body = await readJson(req); return json(res, 202, await startInteractiveCollector(body.portalIds));
+      assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE); const body = await readJson(req); return json(res, 202, await startInteractiveCollector(body.portalIds));
     }
     if (req.method === 'POST' && url.pathname === '/api/ingest') {
       if (!collectorAuthorized(req)) return json(res, 401, { message: 'Coletor não autorizado.' });
