@@ -46,7 +46,7 @@ assert.match(portalSource, /closeFinancialEntryModal\(\) \{\s*return getFinancia
 assert.match(portalSource, /updateFinancialModalSummary\(\) \{\s*return getFinancialFeature\(\)\.updateModalSummary\(\);\s*\}/);
 assert.match(portalSource, /handleFinancialEntrySubmit\(event\) \{\s*return getFinancialFeature\(\)\.handleEntrySubmit\(event\);\s*\}/);
 assert.equal((portalSource.match(/btnGenDocPrestacao'\)\?\.addEventListener/g) || []).length, 1, 'Bridge de prestação de contas deve permanecer único.');
-assert.match(portalSource, /btnGenDocPrestacao'\)\?\.addEventListener\('click', \(\) => this\.openDocumentGenerator\(\{ type: 'prestacao_contas' \}\)\)/);
+assert.match(portalSource, /btnGenDocPrestacao'\)\?\.addEventListener\('click', \(\) => this\.openDocumentGenerator\(\{ type: 'prestacao_contas_rpv' \}\)\)/);
 assert.equal(financialSource.includes('generatePrestacaoContasRpvText'), false);
 assert.equal(financialSource.includes('prestacao de contas'), false);
 assert.match(processesSource, /store\.upsert\('processes', record\)/, 'Processos deve conservar seu CRUD canônico.');
@@ -436,7 +436,7 @@ try {
     app.openDocumentGenerator = original;
     return calls;
   });
-  assert.deepEqual(documentBridge, [{ type: 'prestacao_contas' }]);
+  assert.deepEqual(documentBridge, [{ type: 'prestacao_contas_rpv' }]);
   assert.equal(await page.locator('#docGeneratorBackdrop').evaluate(element => element.classList.contains('hidden')), false);
   await page.evaluate(() => window.portalApp.closeDocumentGenerator());
 

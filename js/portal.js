@@ -457,6 +457,32 @@ ${id.lawyerName}
 ${id.lawyerOab} - ${id.officeName}`;
   }
 
+  const DOCUMENT_TYPE_ALIASES = Object.freeze({
+    contrato: 'contrato_honorarios',
+    hipossuficiencia: 'declaracao_hipo',
+    quesitos: 'quesitos_prev',
+    prestacao_contas: 'prestacao_contas_rpv'
+  });
+
+  const DOCUMENT_GENERATORS = Object.freeze({
+    procuracao: generateProcuracaoText,
+    procuracao_prev: generateProcuracaoPrevText,
+    contrato_honorarios: generateContratoText,
+    declaracao_hipo: generateDeclaracaoHipoText,
+    quesitos_prev: generateQuesitosPrevText,
+    prestacao_contas_rpv: generatePrestacaoContasRpvText,
+    requerimento_inss: generateRequerimentoInssText,
+    termo_renuncia: generateTermoRenunciaText,
+    substabelecimento: generateSubstabelecimentoText
+  });
+
+  function resolveDocumentType(type) {
+    const requested = String(type ?? '').trim();
+    if (!requested) return null;
+    const canonical = DOCUMENT_TYPE_ALIASES[requested] || requested;
+    return Object.hasOwn(DOCUMENT_GENERATORS, canonical) ? canonical : null;
+  }
+
   function isBrazilianHoliday(date) {
     const m = date.getMonth() + 1;
     const d = date.getDate();
@@ -926,7 +952,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       });
 
       // Financeiro & Requisições
-      byId('btnGenDocPrestacao')?.addEventListener('click', () => this.openDocumentGenerator({ type: 'prestacao_contas' }));
+      byId('btnGenDocPrestacao')?.addEventListener('click', () => this.openDocumentGenerator({ type: 'prestacao_contas_rpv' }));
 
       // Documentos & Minutas
       byId('btnOpenDocGenModal')?.addEventListener('click', () => this.openDocumentGenerator());
@@ -1630,25 +1656,25 @@ ${id.lawyerOab} - ${id.officeName}`;
           description: 'Poderes gerais para o foro e poderes específicos para acordos, recebimento de RPVs e levantamento de alvarás.'
         },
         {
-          id: 'contrato',
+          id: 'contrato_honorarios',
           title: 'Contrato de Honorários Advocatícios (Quota Litis)',
           category: 'Financeiro / Honorários',
           description: 'Fixação de honorários sobre o proveito econômico (Art. 50 do Código de Ética e Disciplina da OAB).'
         },
         {
-          id: 'hipossuficiencia',
+          id: 'declaracao_hipo',
           title: 'Declaração de Hipossuficiência Econômica',
           category: 'Processual',
           description: 'Pedido de Gratuidade da Justiça conforme Art. 98 e 99 do CPC/2015.'
         },
         {
-          id: 'quesitos',
+          id: 'quesitos_prev',
           title: 'Quesitos Periciais Previdenciários / Médicos',
           category: 'Provas / Perícia',
           description: 'Quesitação técnica oficial para perícia médica judicial (Art. 465 do CPC).'
         },
         {
-          id: 'prestacao_contas',
+          id: 'prestacao_contas_rpv',
           title: 'Termo de Prestação de Contas & Repasse de RPV',
           category: 'Prestação de Contas',
           description: 'Discriminação de valores brutos, retenções fiscais, honorários e comprovante de repasse ao cliente.'
@@ -3817,7 +3843,16 @@ ${id.lawyerOab} - ${id.officeName}`;
       this.closeModal();
       this.toast('Registro salvo com sucesso.', 'success');
     },
-    openDocumentGenerator({ contactId = null, processId = null, type = 'procuracao' } = {}) {
+    openDocumentGenerator(options = {}) {
+      const { contactId = null, processId = null } = options || {};
+      const requestedType = options?.type === undefined || options?.type === null || String(options.type).trim() === ''
+        ? 'procuracao'
+        : options.type;
+      const type = resolveDocumentType(requestedType);
+      if (!type) {
+        this.toast('Tipo de documento não reconhecido. Selecione um modelo válido.', 'error');
+        return false;
+      }
       const contacts = Store.state.contacts || [];
       const processes = Store.state.processes || [];
       const contactSelect = document.getElementById('docGenContactSelect');
@@ -3835,34 +3870,39 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (processId && processes.some(p => p.id === processId)) processSelect.value = processId;
       }
 
-      if (typeSelect && type) typeSelect.value = type;
+      if (typeSelect) {
+        typeSelect.value = type;
+        if (typeSelect.value !== type) {
+          this.toast('Tipo de documento não disponível no seletor.', 'error');
+          return false;
+        }
+      }
 
-      this.updateDocPreview();
+      if (!this.updateDocPreview()) return false;
       document.getElementById('docGeneratorBackdrop').classList.remove('hidden');
+      return true;
     },
     closeDocumentGenerator() {
       document.getElementById('docGeneratorBackdrop').classList.add('hidden');
     },
     updateDocPreview() {
-      const type = document.getElementById('docGenTypeSelect')?.value || 'procuracao';
+      const type = resolveDocumentType(document.getElementById('docGenTypeSelect')?.value);
+      if (!type) {
+        const previewArea = document.getElementById('docGenPreviewText');
+        if (previewArea) previewArea.value = '';
+        this.toast('Tipo de documento não reconhecido. Selecione um modelo válido.', 'error');
+        return false;
+      }
       const contactId = document.getElementById('docGenContactSelect')?.value;
       const processId = document.getElementById('docGenProcessSelect')?.value;
       const contact = Store.state.contacts.find(c => c.id === contactId);
       const process = Store.state.processes.find(p => p.id === processId);
 
-      let text = '';
-      if (type === 'procuracao') text = generateProcuracaoText(contact, process);
-      else if (type === 'procuracao_prev') text = generateProcuracaoPrevText(contact, process);
-      else if (type === 'contrato_honorarios') text = generateContratoText(contact, process);
-      else if (type === 'declaracao_hipo') text = generateDeclaracaoHipoText(contact);
-      else if (type === 'quesitos_prev') text = generateQuesitosPrevText(contact, process);
-      else if (type === 'prestacao_contas_rpv') text = generatePrestacaoContasRpvText(contact, process);
-      else if (type === 'requerimento_inss') text = generateRequerimentoInssText(contact, process);
-      else if (type === 'termo_renuncia') text = generateTermoRenunciaText(contact, process);
-      else if (type === 'substabelecimento') text = generateSubstabelecimentoText(contact, process);
+      const text = DOCUMENT_GENERATORS[type](contact, process);
 
       const previewArea = document.getElementById('docGenPreviewText');
       if (previewArea) previewArea.value = text;
+      return true;
     },
     async copyDocToClipboard() {
       const text = document.getElementById('docGenPreviewText').value;
