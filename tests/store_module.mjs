@@ -2,20 +2,22 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { generateTotp } from '../lib/security.mjs';
+import { Store as NodeStore } from '../js/core/store.js';
 import { startTestServer } from './helpers.mjs';
+
+const isolatedCoalescing = await assertDeterministicCoalescing();
+assert.equal(isolatedCoalescing.flushRequestCount, 1, 'Uma rajada coalescida deve executar exatamente um flushRequest.');
 
 const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ locale: 'pt-BR', viewport: { width: 1280, height: 720 } });
 const pageErrors = [];
 let stateReads = 0;
-let stateWrites = 0;
 
 page.on('pageerror', error => pageErrors.push(error.message));
 page.on('request', request => {
   if (new URL(request.url()).pathname !== '/api/state') return;
   if (request.method() === 'GET') stateReads += 1;
-  if (request.method() === 'POST') stateWrites += 1;
 });
 
 await page.addInitScript(() => {
@@ -85,7 +87,6 @@ try {
     stateStatus: 'NEW_INSTALL'
   }, 'Store exportado deve ser o objeto canônico e preservar NEW_INSTALL no primeiro boot.');
 
-  stateWrites = 0;
   const persistedProbe = await page.evaluate(async () => {
     const store = window.Atrium.Store;
     const id = 'store-module-coalescing';
@@ -107,7 +108,6 @@ try {
   });
   assert.equal(persistedProbe.saved, true, 'Save/flush deve persistir com sucesso.');
   assert.ok(persistedProbe.revision, 'Save deve atualizar revision.');
-  assert.equal(stateWrites, 1, 'Saves coalescidos devem gerar um único write final.');
 
   const backendProbe = await page.evaluate(async () => {
     const response = await window.KellerAuth.secureFetch('/api/state', { headers: { Accept: 'application/json' } });
@@ -237,6 +237,65 @@ try {
 } finally {
   await browser.close();
   await server.stop();
+}
+
+async function assertDeterministicCoalescing() {
+  const original = {
+    flushRequest: NodeStore.flushRequest,
+    flushPromise: NodeStore.flushPromise,
+    saveTimer: NodeStore.saveTimer,
+    state: NodeStore.state,
+    revision: NodeStore.revision
+  };
+  let flushRequestCount = 0;
+  const observedFlushes = [];
+
+  try {
+    clearTimeout(NodeStore.saveTimer);
+    NodeStore.saveTimer = null;
+    NodeStore.flushPromise = Promise.resolve();
+    NodeStore.state = { tasks: [], audit: [] };
+    NodeStore.revision = 'coalescing-r0';
+    NodeStore.flushRequest = async function () {
+      flushRequestCount += 1;
+      observedFlushes.push({
+        points: this.state.tasks.find(item => item.id === 'store-module-coalescing')?.points,
+        auditAction: this.state.audit[0]?.action,
+        revision: this.revision
+      });
+      return true;
+    };
+
+    NodeStore.upsert('tasks', {
+      id: 'store-module-coalescing',
+      title: 'Persistência sintética do Store',
+      status: 'triagem',
+      points: 90,
+      createdAt: new Date().toISOString()
+    });
+    const record = NodeStore.state.tasks.find(item => item.id === 'store-module-coalescing');
+    record.points = 92;
+    NodeStore.save();
+    record.points = 95;
+    NodeStore.save();
+    NodeStore.audit('Auditoria sintética do Store', 'Coalescing 90 → 92 → 95', 'Advogada Teste');
+
+    const saved = await NodeStore.flush();
+    assert.equal(saved, true, 'O flush coalescido isolado deve concluir com sucesso.');
+    assert.deepEqual(observedFlushes, [{
+      points: 95,
+      auditAction: 'Auditoria sintética do Store',
+      revision: 'coalescing-r0'
+    }], 'O único flushRequest deve observar o último estado e a auditoria da rajada.');
+    return { flushRequestCount };
+  } finally {
+    clearTimeout(NodeStore.saveTimer);
+    NodeStore.flushRequest = original.flushRequest;
+    NodeStore.flushPromise = original.flushPromise;
+    NodeStore.saveTimer = original.saveTimer;
+    NodeStore.state = original.state;
+    NodeStore.revision = original.revision;
+  }
 }
 
 async function assertStatusScenarios() {
