@@ -220,6 +220,15 @@ try {
   const individualRequests = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await page.addInitScript(() => {
+    const nativeSetTimeout = globalThis.setTimeout;
+    globalThis.__publicationConflictReloads = 0;
+    globalThis.setTimeout = function (handler, timeout, ...args) {
+      if (timeout === 700) {
+        globalThis.__publicationConflictReloads += 1;
+        return 0;
+      }
+      return nativeSetTimeout.call(this, handler, timeout, ...args);
+    };
     localStorage.setItem('jurisflow_tour_completed', 'true');
     localStorage.setItem('jurisflow_tour_seen', 'true');
     localStorage.setItem('atrium_tour_seen', 'true');
@@ -327,6 +336,31 @@ try {
   assert.equal(globalSelection.activeId, 'int-demo-2', 'A linha ativa deve acompanhar a seleção feita pela Global Search.');
   assert.equal(globalSelection.unread, false, 'Selecionar pela Global Search deve preservar a política canônica de leitura.');
   assert.match(globalSelection.detail, /Movimentação processual aguardando análise/i, 'O detalhe deve corresponder à publicação selecionada na busca.');
+
+  await page.route('**/api/intimations/int-demo-2/treatment', async route => {
+    await route.fulfill({
+      status: 409,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'Conflito canônico de revisão' })
+    });
+  });
+  const conflictBefore = await page.evaluate(() => {
+    const item = window.Atrium.Store.state.intimations.find(record => record.id === 'int-demo-2');
+    return { revision: window.Atrium.Store.revision, treatmentStatus: item?.treatmentStatus ?? null };
+  });
+  await page.evaluate(() => window.portalApp.applyTreatmentAction('int-demo-2', 'start_review'));
+  const conflictAfter = await page.evaluate(() => {
+    const item = window.Atrium.Store.state.intimations.find(record => record.id === 'int-demo-2');
+    return {
+      revision: window.Atrium.Store.revision,
+      treatmentStatus: item?.treatmentStatus ?? null,
+      reloads: globalThis.__publicationConflictReloads
+    };
+  });
+  assert.equal(conflictAfter.revision, conflictBefore.revision, '409 não pode adotar revision fabricada no frontend.');
+  assert.equal(conflictAfter.treatmentStatus, conflictBefore.treatmentStatus, '409 não pode aplicar transição local de tratamento.');
+  assert.equal(conflictAfter.reloads, 1, 'O wiring real do portal deve agendar exatamente um reload canônico após 409.');
+  await page.locator('#toastRegion .toast.warning', { hasText: 'Conflito canônico de revisão' }).waitFor();
   assert.deepEqual(pageErrors, [], `A feature gerou pageerror: ${pageErrors.join(' | ')}`);
   await context.close();
 } finally {

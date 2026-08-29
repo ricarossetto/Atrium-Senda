@@ -520,7 +520,7 @@ export function createPublicationsFeature({
         });
         if (response.status === 409) {
           const errorData = await response.json().catch(() => ({}));
-          toast(errorData.error || 'Esta publicação foi atualizada por outro usuário. Recarregue os dados.', 'warning');
+          toast(errorData.error || errorData.message || 'Esta publicação foi atualizada por outro usuário. Recarregue os dados.', 'warning');
           await onSyncAppState?.();
           return;
         }

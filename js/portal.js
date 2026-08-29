@@ -632,7 +632,9 @@ ${id.lawyerOab} - ${id.officeName}`;
       onOpenIntimation: () => App.openIntimationModal(),
       onImportJson: file => App.importJson(file),
       onRenderGlobalMetrics: () => App.renderMetrics(),
-      onSyncAppState: () => App.syncAppState?.()
+      onSyncAppState: () => {
+        window.setTimeout(() => window.location.reload(), 700);
+      }
     });
     return publicationsFeature;
   }
