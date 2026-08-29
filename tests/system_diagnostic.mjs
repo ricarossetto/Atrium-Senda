@@ -11,6 +11,29 @@ assert.match(
   /KellerAuth\.secureFetch\(['"]\/api\/system\/backup\/create['"]\s*,/,
   'A geração de backup na UI deve atravessar secureFetch para enviar o CSRF da sessão.'
 );
+const backupUiSource = portalSource.slice(
+  portalSource.indexOf('async renderBackups()'),
+  portalSource.indexOf('openFeedbackModal()', portalSource.indexOf('async renderBackups()'))
+);
+assert.equal(
+  (backupUiSource.match(/KellerAuth\.secureFetch\(['"]\/api\/system\/backup\/restore['"]\s*,/g) || []).length,
+  1,
+  'A restauração na UI deve executar exatamente uma request via secureFetch por evento.'
+);
+assert.doesNotMatch(
+  backupUiSource,
+  /\bfetch\(['"]\/api\/system\/backup\/restore['"]\s*,/,
+  'A restauração não pode usar fetch cru.'
+);
+assert.equal(
+  (backupUiSource.match(/inputRestoreBackup['"]\)\?\.addEventListener\(['"]change['"]/g) || []).length,
+  1,
+  'renderBackups deve registrar um único listener de restore no DOM recém-renderizado.'
+);
+assert.ok(
+  backupUiSource.indexOf('container.innerHTML =') < backupUiSource.indexOf("inputRestoreBackup')?.addEventListener"),
+  'renderBackups deve substituir o DOM antes de registrar o listener, evitando duplicação após novo init/render.'
+);
 
 const server = await startTestServer();
 

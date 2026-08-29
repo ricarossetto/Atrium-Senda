@@ -2048,9 +2048,8 @@ ${id.lawyerOab} - ${id.officeName}`;
           const text = await file.text();
           const backupData = JSON.parse(text);
           this.toast('Validando integridade e restaurando dados…', 'info');
-          const resp = await fetch('/api/system/backup/restore', {
+          const resp = await window.KellerAuth.secureFetch('/api/system/backup/restore', {
             method: 'POST',
-            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
             body: JSON.stringify({ backupData })
           });

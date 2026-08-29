@@ -1178,6 +1178,109 @@ function assertAdmin(req, requireCsrf = false, customMessage = 'Você não possu
   }
   return session;
 }
+
+const ENCRYPTED_BACKUP_FORMAT = 'atrium-encrypted-backup-v1';
+
+function canonicalEmptyBackupState() {
+  return applySafeDefaults({
+    appVersion: APP_VERSION,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    dataVersion: CURRENT_DATA_VERSION
+  });
+}
+
+function createEncryptedBackupPayload(state, { createdBy, purpose, sourceRevision } = {}) {
+  const plaintext = JSON.stringify(state);
+  return {
+    format: ENCRYPTED_BACKUP_FORMAT,
+    createdAt: new Date().toISOString(),
+    createdBy: createdBy || 'system',
+    appVersion: APP_VERSION,
+    ...(purpose ? { purpose } : {}),
+    ...(sourceRevision ? { sourceRevision } : {}),
+    encryptedState: security.encrypt(plaintext),
+    checksum: createHash('sha256').update(plaintext).digest('hex')
+  };
+}
+
+function invalidBackup(message) {
+  return Object.assign(new Error(message), { statusCode: 400 });
+}
+
+function decryptAndValidateBackup(backup) {
+  if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
+    throw invalidBackup('Formato de arquivo de backup inválido.');
+  }
+  if (backup.format !== ENCRYPTED_BACKUP_FORMAT) {
+    throw invalidBackup('Formato ou versão do arquivo de backup não é suportado.');
+  }
+  const encrypted = backup.encryptedState;
+  if (!encrypted || typeof encrypted !== 'object' || Array.isArray(encrypted)
+    || !['iv', 'tag', 'ciphertext'].every(field => typeof encrypted[field] === 'string' && encrypted[field])) {
+    throw invalidBackup('Payload criptografado do backup é inválido ou está ausente.');
+  }
+  if (backup.checksum !== undefined && !/^[a-f0-9]{64}$/i.test(String(backup.checksum))) {
+    throw invalidBackup('Checksum do backup possui formato inválido.');
+  }
+
+  let plaintext;
+  let restoredState;
+  try {
+    plaintext = security.decrypt(encrypted);
+    restoredState = JSON.parse(plaintext);
+  } catch {
+    throw invalidBackup('Falha ao descriptografar o backup. Verifique se a chave do escritório é a mesma.');
+  }
+
+  if (backup.checksum) {
+    const actualChecksum = createHash('sha256').update(JSON.stringify(restoredState)).digest('hex');
+    if (actualChecksum !== backup.checksum) {
+      throw invalidBackup('Falha de integridade: o checksum do backup não confere.');
+    }
+  }
+
+  try {
+    validateAppState(restoredState, CURRENT_SCHEMA_VERSION);
+  } catch (error) {
+    if (error instanceof FutureSchemaError) throw error;
+    throw invalidBackup(`O estado contido no backup é inválido: ${error.message}`);
+  }
+  return restoredState;
+}
+
+async function writePrivateJsonAtomically(targetPath, payload) {
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  const tmpFile = `${targetPath}.tmp-${randomBytes(6).toString('hex')}`;
+  try {
+    await writeFile(tmpFile, JSON.stringify(payload, null, 2), { encoding: 'utf8', mode: 0o600 });
+    await rename(tmpFile, targetPath);
+  } catch (error) {
+    await unlink(tmpFile).catch(() => {});
+    throw error;
+  }
+  return targetPath;
+}
+
+async function createPreRestoreSafetySnapshot(currentEnv, session) {
+  if (!currentEnv?.state) return null;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const suffix = randomBytes(4).toString('hex');
+  const targetPath = path.join(DATA_DIR, 'backups', `safety-snapshot-pre-restore-${timestamp}-${suffix}.atrium-backup`);
+  const payload = createEncryptedBackupPayload(currentEnv.state, {
+    createdBy: session.username,
+    purpose: 'pre-restore-safety-snapshot',
+    sourceRevision: currentEnv.revision
+  });
+  await writePrivateJsonAtomically(targetPath, payload);
+  return targetPath;
+}
+
+async function waitForRestoreConcurrencyTestWindow() {
+  if (process.env.NODE_ENV !== 'test') return;
+  const requested = Number(process.env.ATRIUM_TEST_RESTORE_BEFORE_SAVE_DELAY_MS || 0);
+  const delayMs = Number.isFinite(requested) ? Math.min(Math.max(requested, 0), 5_000) : 0;
+  if (delayMs > 0) await new Promise(resolve => setTimeout(resolve, delayMs));
+}
 function remoteAddress(req) { return req.socket.remoteAddress || ''; }
 
 function decodeStaticPath(rawPath) {
@@ -1446,19 +1549,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/system/backup/create') {
       const session = assertAuthenticated(req, true);
       const appEnv = await readAppStateEnvelope();
-      const state = appEnv.state || {};
+      const state = appEnv.state || canonicalEmptyBackupState();
       const backupDir = path.join(DATA_DIR, 'backups');
       await mkdir(backupDir, { recursive: true });
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupPayload = {
-        format: 'atrium-encrypted-backup-v1',
-        createdAt: new Date().toISOString(),
-        createdBy: session.username,
-        appVersion: '2.0.0',
-        encryptedState: security.encrypt(JSON.stringify(state)),
-        checksum: createHash('sha256').update(JSON.stringify(state)).digest('hex')
-      };
+      const backupPayload = createEncryptedBackupPayload(state, { createdBy: session.username });
 
       const backupFileName = `atrium-backup-${timestamp}.atrium-backup`;
       const backupFilePath = path.join(backupDir, backupFileName);
@@ -1476,37 +1572,21 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/system/backup/restore') {
       const session = assertAuthenticated(req, true);
       if (session.role !== 'master_admin') throw Object.assign(new Error('Apenas o administrador principal pode restaurar backups.'), { statusCode: 403 });
-      const body = await readJson(req, 10_000_000);
-      const backup = body.backupData || body;
-
-      if (!backup || !backup.encryptedState) {
-        throw Object.assign(new Error('Formato de arquivo de backup inválido.'), { statusCode: 400 });
-      }
-
-      // Snapshot de segurança pré-restauração obrigatório
-      const currentEnv = await readAppStateEnvelope();
-      if (currentEnv.state) {
-        const backupDir = path.join(DATA_DIR, 'backups');
-        await mkdir(backupDir, { recursive: true });
-        const safetyFile = path.join(backupDir, `safety-snapshot-pre-restore-${Date.now()}.json`);
-        await writeFile(safetyFile, JSON.stringify(currentEnv, null, 2), 'utf8');
-      }
-
-      let restoredState;
+      let body;
       try {
-        restoredState = JSON.parse(security.decrypt(backup.encryptedState));
-      } catch (err) {
-        throw Object.assign(new Error('Falha ao descriptografar o backup. Verifique se a chave do escritório é a mesma.'), { statusCode: 400 });
+        body = await readJson(req, 10_000_000);
+      } catch (error) {
+        if (error instanceof SyntaxError) throw invalidBackup('JSON do arquivo de backup é inválido.');
+        throw error;
       }
+      const backup = body && Object.prototype.hasOwnProperty.call(body, 'backupData') ? body.backupData : body;
+      const restoredState = decryptAndValidateBackup(backup);
 
-      if (backup.checksum) {
-        const actualChecksum = createHash('sha256').update(JSON.stringify(restoredState)).digest('hex');
-        if (actualChecksum !== backup.checksum) {
-          throw Object.assign(new Error('Falha de integridade: o checksum do backup não confere.'), { statusCode: 400 });
-        }
-      }
-
-      await saveAppState(restoredState);
+      // A fase transacional só começa depois da validação integral do candidato.
+      const currentEnv = await readAppStateEnvelope();
+      const safetySnapshot = await createPreRestoreSafetySnapshot(currentEnv, session);
+      if (safetySnapshot) await waitForRestoreConcurrencyTestWindow();
+      await saveAppState(restoredState, currentEnv.revision);
       return json(res, 200, { ok: true, message: 'Dados restaurados com sucesso a partir do backup.' });
     }
 
