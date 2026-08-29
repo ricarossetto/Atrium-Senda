@@ -703,7 +703,7 @@ try {
   const canonicalTestPublication = {
     id: 'int-canon-777',
     title: 'Intimação para Manifestação sobre Laudo Pericial',
-    process: '5002086-73.2022.4.04.7133',
+    process: '0000001-11.2026.4.04.0001',
     client: 'Cliente Teste Canônico',
     court: 'TRF4 — 2ª Vara Federal de Novo Hamburgo',
     publishedAt: new Date().toISOString().slice(0, 10),
@@ -836,7 +836,7 @@ try {
   const emailAudit = auditList.find(a => a.action === 'Publicação enviada por e-mail');
   assert(emailAudit, 'Auditoria de envio de publicação não encontrada!');
   assert(emailAudit.detail.includes('cl***@example.test'), 'Destinatário no audit log não foi mascarado.');
-  assert(emailAudit.detail.includes('5002086-73.2022.4.04.7133') || emailAudit.detail.includes('int-canon-777'), 'Audit log não indicou a publicação.');
+  assert(emailAudit.detail.includes('0000001-11.2026.4.04.0001') || emailAudit.detail.includes('int-canon-777'), 'Audit log não indicou a publicação.');
   const batchAudit = auditList.find(a => a.action === 'Boletim de publicações enviado por e-mail');
   assert(batchAudit, 'Auditoria de envio batch não encontrada.');
   assert.equal(batchAudit.actor, 'Admin Titular', 'Auditoria batch não registrou o ator autenticado.');
@@ -1105,7 +1105,7 @@ try {
     assert(await persistedRow.isVisible(), 'Destinatário interno não persistiu após reload do navegador.');
 
     // Validação Visual Dark e Light Mode
-    const mediaDir = path.join(process.env.USERPROFILE || 'C:\\Users\\Ricardo PC', '.gemini', 'antigravity', 'brain', '15ef75e4-edfb-4180-8941-6c094f0ff30d', '.tempmediaStorage');
+    const mediaDir = path.join(ROOT, 'artifacts', 'email-service');
     await mkdir(mediaDir, { recursive: true }).catch(() => {});
 
     // Tema Dark

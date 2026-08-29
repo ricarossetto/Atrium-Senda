@@ -23,34 +23,49 @@ jobs:
       - name: Enable Corepack & Setup PNPM
         run: |
           corepack enable
-          corepack prepare pnpm@latest --activate
+          corepack prepare pnpm@11.19.0 --activate
 
       - name: Install Dependencies
-        run: |
-          npm ci || npm install --no-audit --no-fund
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers (Chromium)
         run: |
-          npx playwright install chromium --with-deps
+          pnpm exec playwright install chromium --with-deps
 
       - name: Run Integrity Syntax Checks
         run: |
-          npm run check
+          pnpm check
 
-      - name: Run Full Audit & Test Suite (12 Suites)
+      - name: Run Full Audit & Test Suite
         run: |
-          npm test
+          pnpm test
         env:
           CI: true
           NODE_ENV: test
 
+  visual-qa:
+    name: Multi-Viewport Visual QA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Enable Corepack & Setup PNPM
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.19.0 --activate
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Playwright Browsers (Chromium)
+        run: pnpm exec playwright install chromium --with-deps
       - name: Run Multi-Viewport Visual QA
-        run: |
-          node tests/visual-qa.mjs
+        run: node tests/visual-qa.mjs
         env:
           CI: true
           NODE_ENV: test
-
       - name: Upload Visual QA Artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -72,14 +87,19 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies
+      - name: Enable Corepack & Setup PNPM
         run: |
-          npm ci || npm install --no-audit --no-fund
+          corepack enable
+          corepack prepare pnpm@11.19.0 --activate
+        shell: bash
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
         shell: bash
 
       - name: Install Playwright Browsers (Chromium)
         run: |
-          npx playwright install chromium
+          pnpm exec playwright install chromium
         shell: bash
 
       - name: Run Full A1 Sandbox & Judicial Suite on Windows
@@ -89,4 +109,3 @@ jobs:
         env:
           CI: true
           NODE_ENV: test
-

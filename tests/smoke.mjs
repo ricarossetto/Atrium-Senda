@@ -192,12 +192,12 @@ try {
   assert(await page.locator('#primaryTermName').isVisible(), 'Termo principal ausente.');
   await page.locator('#primaryTermCard').click();
   await page.locator('#modalBackdrop:not(.hidden)').waitFor();
-  await page.locator('#modalForm [name="name"]').fill('André da Silva');
-  await page.locator('#modalForm [name="oabNumber"]').fill('135294');
+  await page.locator('#modalForm [name="name"]').fill('Advogada Monitorada Teste');
+  await page.locator('#modalForm [name="oabNumber"]').fill('000000');
   await page.locator('#modalForm [name="oabUf"]').selectOption('RS');
   await page.locator('#modalForm button[type="submit"]').click();
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
-  assert(await page.locator('#primaryTermName').textContent() === 'André da Silva', 'Edição de termo com OAB/UF falhou.');
+  assert(await page.locator('#primaryTermName').textContent() === 'Advogada Monitorada Teste', 'Edição de termo com OAB/UF falhou.');
 
   // Teste 1: Classificador de Intimações e Estimador de Prazos
   await page.locator('button[data-view="inbox"]').click();

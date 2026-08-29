@@ -17,8 +17,12 @@ const VIEWPORTS = [
   { width: 1366, height: 768,  name: '1366x768'  },
   { width: 1280, height: 720,  name: '1280x720'  },
   { width: 1024, height: 768,  name: '1024x768'  },
+  { width: 861,  height: 900,  name: '861x900'   },
   { width: 768,  height: 1024, name: '768x1024'  },
-  { width: 390,  height: 844,  name: '390x844'   }
+  { width: 430,  height: 932,  name: '430x932'   },
+  { width: 390,  height: 844,  name: '390x844'   },
+  { width: 360,  height: 800,  name: '360x800'   },
+  { width: 320,  height: 700,  name: '320x700'   }
 ];
 
 const VIEWS = [
@@ -339,11 +343,8 @@ try {
         // Validar overflow horizontal
         const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
         totalAssertions++;
-        if (scrollWidth <= vp.width + 2) {
-          passedAssertions++;
-        } else {
-          console.warn(`[AVISO] Overflow horizontal na view ${view.id} em ${vp.name}: scrollWidth=${scrollWidth}, viewport=${vp.width}`);
-        }
+        assert.ok(scrollWidth <= vp.width + 2, `Overflow horizontal na view ${view.id} em ${vp.name}: scrollWidth=${scrollWidth}, viewport=${vp.width}`);
+        passedAssertions++;
 
         const screenshotPath = path.join(outputDir, `${view.name}.png`);
         await page.screenshot({ path: screenshotPath, fullPage: false });
@@ -378,6 +379,17 @@ try {
         return (finBackdrop && !finBackdrop.classList.contains('hidden')) || (genBackdrop && !genBackdrop.classList.contains('hidden'));
       });
       assert.ok(modalVisible, 'Modal deve estar visível para captura do screenshot modal_financial_entry.png');
+      const modalBounds = await page.evaluate(() => {
+        const modal = [...document.querySelectorAll('.modal-backdrop:not(.hidden) .modal')].find(element => {
+          const style = getComputedStyle(element);
+          return style.display !== 'none' && style.visibility !== 'hidden';
+        });
+        if (!modal) return null;
+        const rect = modal.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, width: rect.width, viewport: innerWidth };
+      });
+      assert.ok(modalBounds && modalBounds.left >= -2 && modalBounds.right <= modalBounds.viewport + 2,
+        `Modal financeiro excede o viewport ${vp.name}: ${JSON.stringify(modalBounds)}`);
 
       const modalScreenshot = path.join(outputDir, 'modal_financial_entry.png');
       await page.screenshot({ path: modalScreenshot });

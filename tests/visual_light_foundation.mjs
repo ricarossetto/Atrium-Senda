@@ -9,14 +9,12 @@ import { isoDate } from '../js/core/store.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ARTIFACTS_DIR = path.join(ROOT, 'artifacts', 'light-foundation');
-const BRAIN_MEDIA_DIR = path.join(process.env.USERPROFILE || 'C:\\Users\\Ricardo PC', '.gemini', 'antigravity', 'brain', '15ef75e4-edfb-4180-8941-6c094f0ff30d', '.tempmediaStorage');
 
 console.log('\n===============================================================');
 console.log('  ATRIUM — TESTE VISUAL: FUNDAÇÃO LIGHT, ILHAS DARK E CONTRASTE');
 console.log('===============================================================\n');
 
 await mkdir(ARTIFACTS_DIR, { recursive: true });
-await mkdir(BRAIN_MEDIA_DIR, { recursive: true }).catch(() => {});
 
 const server = await startTestServer();
 
@@ -25,8 +23,8 @@ try {
   const adminPassword = 'Senha-Segura-Admin-12345!';
   let res = await postJson(`${server.baseUrl}/api/auth/setup`, {
     username: 'admin',
-    displayName: 'Dr. Ricardo Rossetto',
-    email: 'ricardo@escritorio.adv.br',
+    displayName: 'Advogada Visual Teste',
+    email: 'advogada.visual@example.test',
     password: adminPassword
   });
   const setupData = await res.json();
@@ -47,36 +45,36 @@ try {
   state.processes = [
     {
       id: 'proc-1',
-      number: '5002086-73.2022.4.04.7133',
-      client: 'Roberto Roque Junges',
+      number: '0000001-11.2026.4.04.0001',
+      client: 'Cliente Alfa Visual',
       court: 'TRF4',
       action: 'Ação Previdenciária',
       status: 'em_andamento',
       phase: 'Perícia Médica',
       value: 'R$ 84.500,00',
       distributionDate: '2022-04-10',
-      responsible: 'Dr. Ricardo Rossetto'
+      responsible: 'Advogada Visual Teste'
     },
     {
       id: 'proc-2',
       number: '5014890-12.2023.4.04.7100',
-      client: 'Maria Helena Silveira',
+      client: 'Cliente Beta Visual',
       court: 'JFRS',
       action: 'Revisão da Vida Toda',
       status: 'sentenca',
       phase: 'Julgamento',
       value: 'R$ 120.000,00',
       distributionDate: '2023-01-15',
-      responsible: 'Dr. Ricardo Rossetto'
+      responsible: 'Advogada Visual Teste'
     }
   ];
 
   state.contacts = [
     {
       id: 'cont-1',
-      name: 'Roberto Roque Junges',
+      name: 'Cliente Alfa Visual',
       type: 'cliente',
-      email: 'roberto.junges@gmail.com',
+      email: 'cliente.alfa@example.test',
       phone: '(51) 99887-6655',
       document: '123.456.789-00',
       city: 'Novo Hamburgo / RS',
@@ -84,9 +82,9 @@ try {
     },
     {
       id: 'cont-2',
-      name: 'Maria Helena Silveira',
+      name: 'Cliente Beta Visual',
       type: 'cliente',
-      email: 'maria.helena@outlook.com',
+      email: 'cliente.beta@example.test',
       phone: '(51) 98765-4321',
       document: '987.654.321-99',
       city: 'Porto Alegre / RS',
@@ -98,11 +96,11 @@ try {
     {
       id: 'ag-1',
       title: 'Audiência de Instrução e Julgamento',
-      process: '5002086-73.2022.4.04.7133',
+      process: '0000001-11.2026.4.04.0001',
       date: todayStr,
       time: '14:30',
       type: 'audiencia',
-      responsible: 'Dr. Ricardo Rossetto',
+      responsible: 'Advogada Visual Teste',
       location: 'Sala Virtual TRF4'
     },
     {
@@ -112,7 +110,7 @@ try {
       date: todayStr,
       time: '18:00',
       type: 'prazo',
-      responsible: 'Dr. Ricardo Rossetto',
+      responsible: 'Advogada Visual Teste',
       location: 'PJe / TRF4'
     }
   ];
@@ -121,8 +119,8 @@ try {
     {
       id: 'int-1',
       title: 'Intimação para Manifestação sobre Laudo',
-      process: '5002086-73.2022.4.04.7133',
-      client: 'Roberto Roque Junges',
+      process: '0000001-11.2026.4.04.0001',
+      client: 'Cliente Alfa Visual',
       court: 'TRF4',
       publishedAt: todayStr,
       source: 'DJEN Oficial',
@@ -280,7 +278,6 @@ try {
 
       const shotPath = path.join(ARTIFACTS_DIR, v.file);
       await page.screenshot({ path: shotPath, fullPage: false });
-      await page.screenshot({ path: path.join(BRAIN_MEDIA_DIR, v.file), fullPage: false }).catch(() => {});
     }
 
     // 5. Testar 1 MODAL & FORMULÁRIO
@@ -302,7 +299,6 @@ try {
 
       const shotPath = path.join(ARTIFACTS_DIR, 'modal.png');
       await page.screenshot({ path: shotPath, fullPage: false });
-      await page.screenshot({ path: path.join(BRAIN_MEDIA_DIR, 'modal.png'), fullPage: false }).catch(() => {});
 
       await page.locator('#modalClose').click();
       await modal.waitFor({ state: 'hidden' });
@@ -331,7 +327,6 @@ try {
 
     const mobileShotPath = path.join(ARTIFACTS_DIR, 'mobile-dashboard.png');
     await mobilePage.screenshot({ path: mobileShotPath, fullPage: false });
-    await mobilePage.screenshot({ path: path.join(BRAIN_MEDIA_DIR, 'mobile-dashboard.png'), fullPage: false }).catch(() => {});
     await mobileContext.close();
 
     // 7. Testar REGRESSÃO NO TEMA DARK

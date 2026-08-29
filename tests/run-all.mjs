@@ -15,7 +15,10 @@ const checkFiles = [
   'lib/judicial/auth-adapters.mjs',
   'lib/judicial/orchestrator.mjs',
   'scripts/import-spreadsheet.mjs',
+  'scripts/import-advbox.mjs',
   'scripts/migrate-judicial-secrets.mjs',
+  'scripts/reset-judicial-connections.mjs',
+  'scripts/setup-keys.mjs',
   'js/auth.js',
   'js/portal.js',
   'js/app/bootstrap.js',
@@ -27,10 +30,12 @@ const checkFiles = [
   'js/components/global-search.js',
   'js/components/onboarding.js',
   'js/features/agenda.js',
+  'js/features/publications.js',
   'js/features/tasks.js',
   'js/features/processes.js',
   'js/features/contacts.js',
   'js/features/leads.js',
+  'js/features/financial.js',
   'js/prompts-data.js',
   'js/office-data.js',
   'collector/agent.mjs',
@@ -74,7 +79,8 @@ const checkFiles = [
   'tests/frontend_module_boot.mjs',
   'tests/store_module.mjs',
   'tests/shared_components.mjs',
-  'tests/onboarding_component.mjs'
+  'tests/onboarding_component.mjs',
+  'tests/visual-qa.mjs'
 ];
 
 const testSuites = [

@@ -9,14 +9,12 @@ import { isoDate } from '../js/core/store.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ARTIFACTS_DIR = path.join(ROOT, 'artifacts', 'light-publications');
-const BRAIN_MEDIA_DIR = path.join(process.env.USERPROFILE || 'C:\\Users\\Ricardo PC', '.gemini', 'antigravity', 'brain', '15ef75e4-edfb-4180-8941-6c094f0ff30d', '.tempmediaStorage');
 
 console.log('\n===============================================================');
 console.log('  ATRIUM — TESTE VISUAL: MÓDULO PUBLICAÇÕES (LIGHT THEME)');
 console.log('===============================================================\n');
 
 await mkdir(ARTIFACTS_DIR, { recursive: true });
-await mkdir(BRAIN_MEDIA_DIR, { recursive: true }).catch(() => {});
 
 const server = await startTestServer();
 
@@ -25,8 +23,8 @@ try {
   const adminPassword = 'Senha-Segura-Admin-12345!';
   let res = await postJson(`${server.baseUrl}/api/auth/setup`, {
     username: 'admin',
-    displayName: 'Dr. Ricardo Rossetto',
-    email: 'ricardo@escritorio.adv.br',
+    displayName: 'Advogada Visual Teste',
+    email: 'advogada.visual@example.test',
     password: adminPassword
   });
   const setupData = await res.json();
@@ -47,8 +45,8 @@ try {
   state.processes = [
     {
       id: 'proc-1',
-      number: '5002086-73.2022.4.04.7133',
-      client: 'Roberto Roque Junges',
+      number: '0000001-11.2026.4.04.0001',
+      client: 'Cliente Alfa Visual',
       opposingParty: 'INSS - Instituto Nacional do Seguro Social',
       court: 'TRF4',
       action: 'Ação Previdenciária',
@@ -57,7 +55,7 @@ try {
     {
       id: 'proc-2',
       number: '5014890-12.2023.4.04.7100',
-      client: 'Maria Helena Silveira',
+      client: 'Cliente Beta Visual',
       opposingParty: 'União Federal',
       court: 'JFRS',
       action: 'Revisão da Vida Toda',
@@ -69,12 +67,12 @@ try {
     {
       id: 'pub-urgent-1',
       title: 'Intimação Urgente: Prazo Peremptório para Contrarrazões',
-      process: '5002086-73.2022.4.04.7133',
-      client: 'Roberto Roque Junges',
+      process: '0000001-11.2026.4.04.0001',
+      client: 'Cliente Alfa Visual',
       court: 'Tribunal Regional Federal da 4ª Região',
       publishedAt: todayStr,
       source: 'DJEN Oficial - Edição 1420',
-      text: 'PODER JUDICIÁRIO\nTRIBUNAL REGIONAL FEDERAL DA 4ª REGIÃO\n\nProcesso nº 5002086-73.2022.4.04.7133/RS\nAUTOR: ROBERTO ROQUE JUNGES\nRÉU: INSS - INSTITUTO NACIONAL DO SEGURO SOCIAL\n\nINTIMAÇÃO DE ACÓRDÃO E ABERTURA DE PRAZO RECURSAL\n\nFica a parte autora expressamente intimada para, querendo, apresentar contrarrazões ao recurso extraordinário interposto no prazo impreterível de 15 (quinze) dias úteis, sob as penas da lei.\n\nPorto Alegre/RS, 27 de agosto de 2026.\nSecretaria da 5ª Turma Recursal.',
+      text: 'FIXTURE JUDICIAL SINTÉTICA\nTRIBUNAL DE TESTE\n\nProcesso nº 0000001-11.2026.4.04.0001\nPARTE: CLIENTE ALFA VISUAL\n\nCOMUNICAÇÃO PROCESSUAL SINTÉTICA PARA TESTE DE LAYOUT.\n\nSem inferência automática de prazo.',
       status: 'nova',
       urgent: true,
       priority: 'urgente',
@@ -84,7 +82,7 @@ try {
       id: 'pub-important-2',
       title: 'Despacho Importante: Designação de Perícia Médica Presencial',
       process: '5014890-12.2023.4.04.7100',
-      client: 'Maria Helena Silveira',
+      client: 'Cliente Beta Visual',
       court: 'Justiça Federal de Primeiro Grau - RS',
       publishedAt: todayStr,
       source: 'DJEN Oficial - Edição 1420',
@@ -96,8 +94,8 @@ try {
     {
       id: 'pub-read-3',
       title: 'Nota de Expediente: Juntada de Laudo Pericial Conclusivo',
-      process: '5002086-73.2022.4.04.7133',
-      client: 'Roberto Roque Junges',
+      process: '0000001-11.2026.4.04.0001',
+      client: 'Cliente Alfa Visual',
       court: 'TRF4',
       publishedAt: '2026-08-25',
       source: 'DJEN Oficial',
@@ -238,13 +236,11 @@ try {
 
     let shotPath = path.join(ARTIFACTS_DIR, 'publications-list.png');
     await page.screenshot({ path: shotPath, fullPage: false });
-    await page.screenshot({ path: path.join(BRAIN_MEDIA_DIR, 'publications-list.png'), fullPage: false }).catch(() => {});
 
     // [2] Screenshot 2: Publicação Não Lida
     console.log('Validando Publicação Não Lida...');
     shotPath = path.join(ARTIFACTS_DIR, 'publication-unread.png');
     await page.screenshot({ path: shotPath, fullPage: false });
-    await page.screenshot({ path: path.join(BRAIN_MEDIA_DIR, 'publication-unread.png'), fullPage: false }).catch(() => {});
 
     // [3] Screenshot 3: Publicação Urgente Selecionada
     console.log('Selecionando publicação urgente...');
@@ -258,7 +254,6 @@ try {
 
     shotPath = path.join(ARTIFACTS_DIR, 'publication-urgent.png');
     await page.screenshot({ path: shotPath, fullPage: false });
-    await page.screenshot({ path: path.join(BRAIN_MEDIA_DIR, 'publication-urgent.png'), fullPage: false }).catch(() => {});
 
     // [4] Screenshot 4: Painel de Detalhe Completo (Publicação Importante)
     console.log('Validando Painel de Detalhe e Original Text (Publicação com Destaque)...');
@@ -272,7 +267,6 @@ try {
 
     shotPath = path.join(ARTIFACTS_DIR, 'publication-detail.png');
     await page.screenshot({ path: shotPath, fullPage: false });
-    await page.screenshot({ path: path.join(BRAIN_MEDIA_DIR, 'publication-detail.png'), fullPage: false }).catch(() => {});
 
     // [5] Screenshot 5: Modal de Enviar por E-mail
     console.log('Abrindo Modal de Enviar Publicação por E-mail...');
@@ -289,7 +283,6 @@ try {
 
       shotPath = path.join(ARTIFACTS_DIR, 'publication-email-modal.png');
       await page.screenshot({ path: shotPath, fullPage: false });
-      await page.screenshot({ path: path.join(BRAIN_MEDIA_DIR, 'publication-email-modal.png'), fullPage: false }).catch(() => {});
 
       await page.locator('#publicationEmailClose').click();
       await emailModal.waitFor({ state: 'hidden' });
@@ -319,7 +312,6 @@ try {
 
     shotPath = path.join(ARTIFACTS_DIR, 'publications-mobile.png');
     await mobilePage.screenshot({ path: shotPath, fullPage: false });
-    await mobilePage.screenshot({ path: path.join(BRAIN_MEDIA_DIR, 'publications-mobile.png'), fullPage: false }).catch(() => {});
     await mobileContext.close();
 
     // [7] Regressão Dark Theme

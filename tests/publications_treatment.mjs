@@ -129,7 +129,7 @@ test('Migration 7->8 e 8->9 não fabricam treatedAt/discardedAt e limpam legados
       {
         id: 'int-real-1',
         treatmentStatus: 'treated',
-        treatedBy: 'Dr. Ricardo Rossetto',
+        treatedBy: 'Administrador Tratamento Teste',
         treatedAt: '2026-08-20T14:30:00.000Z',
         publishedAt: '2026-08-20'
       },
@@ -192,8 +192,8 @@ try {
   const adminPassword = 'Admin-Password-Treatment-12345!';
   let res = await postJson(`${server.baseUrl}/api/auth/setup`, {
     username: 'admin_treatment',
-    displayName: 'Dr. Ricardo Rossetto',
-    email: 'ricardo@senda.adv.br',
+    displayName: 'Administrador Tratamento Teste',
+    email: 'admin.tratamento@example.test',
     password: adminPassword
   });
   const setupData = await res.json();
@@ -269,7 +269,7 @@ try {
       status: 'nova',
       treatmentStatus: 'in_review',
       treatmentStartedAt: new Date().toISOString(),
-      treatmentStartedBy: 'Dr. Ricardo Rossetto',
+      treatmentStartedBy: 'Administrador Tratamento Teste',
       unread: false,
       urgent: false
     }
@@ -354,7 +354,7 @@ try {
     const data = await res.json();
     assert.equal(data.ok, true);
     assert.equal(data.intimation.treatmentStatus, 'in_review');
-    assert.equal(data.intimation.treatmentStartedBy, 'Dr. Ricardo Rossetto', 'Actor deve ser derivado da sessão autenticada');
+    assert.equal(data.intimation.treatmentStartedBy, 'Administrador Tratamento Teste', 'Actor deve ser derivado da sessão autenticada');
     assert.ok(data.intimation.treatmentStartedAt);
     currentRev = data.revision;
   });
@@ -393,7 +393,7 @@ try {
     const data = await res.json();
     assert.equal(data.ok, true);
     assert.equal(data.intimation.treatmentStatus, 'treated');
-    assert.equal(data.intimation.treatedBy, 'Dr. Ricardo Rossetto');
+    assert.equal(data.intimation.treatedBy, 'Administrador Tratamento Teste');
     assert.equal(data.intimation.treatmentNote, 'Emenda elaborada e protocolada');
     assert.equal(data.intimation.discardedAt, null);
     assert.equal(data.intimation.discardedBy, null);
@@ -456,7 +456,7 @@ try {
     const data = await res.json();
     assert.equal(data.ok, true);
     assert.equal(data.intimation.treatmentStatus, 'discarded');
-    assert.equal(data.intimation.discardedBy, 'Dr. Ricardo Rossetto');
+    assert.equal(data.intimation.discardedBy, 'Administrador Tratamento Teste');
     assert.equal(data.intimation.treatmentNote, 'Publicação duplicada do DJEN');
     assert.equal(data.intimation.treatedAt, null);
     assert.equal(data.intimation.treatedBy, null);

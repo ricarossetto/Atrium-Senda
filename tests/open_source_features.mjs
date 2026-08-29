@@ -38,9 +38,9 @@ console.log('✓ Status de RPV e Alvarás validados.');
 
 // 3. Validar Auditoria de Privacidade Open Source (Sem dados hardcoded)
 console.log('\n3. Validando neutralidade e privacidade open-source...');
-const forbiddenTerms = ['ricardo.rossetto.adv@gmail.com', 'Ricardo De Luca Rossetto', '135294', 'Keller Advogados', 'contato@keller.adv.br'];
-forbiddenTerms.forEach(term => {
-  assert.ok(!publicSourceContent.includes(term), 'O código público não deve conter termo privado: ' + term);
+const forbiddenPatterns = [/@gmail\.com\b/i, /@outlook\.com\b/i, /OAB\/[A-Z]{2}\s+(?!000000\b)\d{5,6}\b/i];
+forbiddenPatterns.forEach(pattern => {
+  assert.ok(!pattern.test(publicSourceContent), 'O código público não deve conter identificador pessoal incompatível com fixtures sintéticas: ' + pattern);
 });
 console.log('✓ Código 100% livre de credenciais e dados pessoais.');
 
