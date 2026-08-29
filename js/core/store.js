@@ -193,7 +193,7 @@ export const Store = {
       this.recoveryDetails = serverPayload?.recoveryDetails || null;
       this.state = deepClone(sampleState);
       this.state.settings.demoMode = true;
-      this.ensureShape();
+      this.ensureShape({ seedConfigurationDefaults: true });
       return;
     }
 
@@ -229,22 +229,23 @@ export const Store = {
       }
     }
 
+    const seedConfigurationDefaults = !persisted;
     if (!persisted) {
       this.state = deepClone(sampleState);
     } else {
       this.state = persisted;
     }
-    this.ensureShape();
+    this.ensureShape({ seedConfigurationDefaults });
     this.save();
   },
-  ensureShape() {
+  ensureShape({ seedConfigurationDefaults = false } = {}) {
     ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'leads', 'customPrompts', 'customLinks'].forEach(key => {
       if (!Array.isArray(this.state[key])) this.state[key] = [];
     });
     this.state.configuration = { ...(this.state.configuration || {}) };
     const defaultOffice = globalThis.OFFICE_DEFAULT_DATA || {};
     for (const key of ['taskDefinitions', 'actionTypes', 'actionGroups', 'stages', 'origins', 'goals', 'users', 'inboxSections', 'notificationAssignments', 'integrations']) {
-      if (!Array.isArray(this.state.configuration[key]) || this.state.configuration[key].length === 0) {
+      if (!Array.isArray(this.state.configuration[key]) || (seedConfigurationDefaults && this.state.configuration[key].length === 0)) {
         if (Array.isArray(defaultOffice[key]) && defaultOffice[key].length > 0) {
           this.state.configuration[key] = deepClone(defaultOffice[key]);
         } else {
