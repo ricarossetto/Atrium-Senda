@@ -282,7 +282,7 @@ try {
   assert.equal(dashboardCompleted.status, 'concluida');
   assert.ok(Date.parse(dashboardCompleted.completedAt));
 
-  await page.evaluate(today => {
+  await page.evaluate(async today => {
     const store = window.Atrium.Store;
     store.state.intimations = [{
       id: 'publication-task-phase-8', title: 'Apelação publicada', text: 'Prazo de 15 dias para apelação',
@@ -293,6 +293,7 @@ try {
     app.inboxFilter = 'untreated';
     app.switchView('inbox');
     app.renderInbox();
+    await store.flush();
   }, fixture.today);
   await page.locator('.inbox-row[data-intimation-id="publication-task-phase-8"]').click();
   await page.locator('#btnCreateTask').click();

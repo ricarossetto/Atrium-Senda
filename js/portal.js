@@ -646,21 +646,6 @@ ${id.lawyerOab} - ${id.officeName}`;
     return publicationsFeature;
   }
 
-  function linkTaskToPublication({ record, currentActor }) {
-    if (!record.intimationId) return;
-    const intimation = Store.state.intimations.find(item => item.id === record.intimationId);
-    if (!intimation) return;
-    if (!Array.isArray(intimation.linkedTaskIds)) intimation.linkedTaskIds = [];
-    if (!intimation.linkedTaskIds.includes(record.id)) intimation.linkedTaskIds.push(record.id);
-    intimation.taskId = record.id;
-    if (!intimation.treatmentStatus || intimation.treatmentStatus === 'untreated') {
-      intimation.treatmentStatus = 'in_review';
-      intimation.treatmentStartedAt = intimation.treatmentStartedAt || new Date().toISOString();
-      intimation.treatmentStartedBy = intimation.treatmentStartedBy || currentActor;
-    }
-    Store.audit('Tarefa criada a partir de publicação', `${record.title} · ${intimation.process || intimation.id}`);
-  }
-
   function analyzeTaskWithAi(description) {
     App.switchView('assistant');
     const aiInput = document.getElementById('aiChatInput');
@@ -689,8 +674,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       closeModal: () => App.closeModal(),
       showToast: (message, type) => App.toast(message, type),
       onRenderAll: () => App.renderAll(),
-      onAnalyzeWithAi: analyzeTaskWithAi,
-      onTaskSaved: linkTaskToPublication
+      onAnalyzeWithAi: analyzeTaskWithAi
     });
     return tasksFeature;
   }
@@ -3700,6 +3684,18 @@ ${id.lawyerOab} - ${id.officeName}`;
       }
       const data = Object.fromEntries(new FormData(event.currentTarget).entries());
       if (this.modalMode.mode === 'task') {
+        const defaults = this.modalMode.defaults;
+        const publicationId = !defaults.id && (defaults.intimationId || defaults.sourceIntimationId);
+        if (publicationId) {
+          defaults._transactionTaskId ||= uid('task');
+          const task = getTasksFeature().buildTask(data, defaults);
+          const result = await getPublicationsFeature().createTaskFromPublication(publicationId, task);
+          if (!result) return;
+          this.closeModal();
+          this.renderAll();
+          this.toast(result.message || 'Tarefa criada e vinculada à publicação com sucesso.', 'success');
+          return;
+        }
         getTasksFeature().saveTask(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'intimation') {
         const editing = Boolean(this.modalMode.defaults.id);

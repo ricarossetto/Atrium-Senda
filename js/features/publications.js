@@ -498,6 +498,56 @@ export function createPublicationsFeature({
       if (action === 'restore') return this.applyTreatmentAction(item.id, 'restore');
     },
 
+    async createTaskFromPublication(publicationId, task) {
+      try {
+        const response = await windowRef.fetch(`/api/publications/${encodeURIComponent(publicationId)}/task`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': windowRef.KellerAuth?.csrfToken || ''
+          },
+          body: JSON.stringify({
+            publicationId,
+            revision: store.revision ?? store.state?.revision ?? undefined,
+            task
+          })
+        });
+        if (response.status === 409) {
+          const errorData = await response.json().catch(() => ({}));
+          toast(errorData.error || errorData.message || 'Esta publicação foi atualizada por outro usuário. Recarregue os dados.', 'warning');
+          await onSyncAppState?.();
+          return null;
+        }
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          toast(errorData.error || errorData.message || 'Não foi possível criar a tarefa vinculada à publicação.', 'error');
+          return null;
+        }
+
+        const data = await response.json();
+        const canonicalPublication = data.publication || data.intimation;
+        if (!data.task || !canonicalPublication || !data.revision) {
+          toast('O servidor não devolveu o estado canônico completo da tarefa.', 'error');
+          return null;
+        }
+        if (!Array.isArray(store.state.tasks)) store.state.tasks = [];
+        const taskIndex = store.state.tasks.findIndex(record => record.id === data.task.id);
+        if (taskIndex === -1) store.state.tasks.unshift(data.task);
+        else store.state.tasks[taskIndex] = data.task;
+        const publicationIndex = store.state.intimations.findIndex(record => record.id === canonicalPublication.id || record.externalId === canonicalPublication.id);
+        if (publicationIndex !== -1) store.state.intimations[publicationIndex] = canonicalPublication;
+        store.revision = data.revision;
+        this.renderInbox();
+        this.renderMetrics();
+        onRenderGlobalMetrics?.();
+        this.renderDetail();
+        return data;
+      } catch {
+        toast('Não foi possível criar a tarefa vinculada à publicação.', 'error');
+        return null;
+      }
+    },
+
     async applyTreatmentAction(intimationId, action, note = null) {
       const item = store.state.intimations.find(record => record.id === intimationId);
       if (!item) return;

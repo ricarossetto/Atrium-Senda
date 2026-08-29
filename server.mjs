@@ -1174,6 +1174,77 @@ function sanitizeArray(value, max = 10_000) {
     ? value.filter(item => item && typeof item === 'object' && !Array.isArray(item)).slice(0, max).map(item => sanitizeRecord(item))
     : [];
 }
+function publicationTaskText(value, maxLength, fieldLabel) {
+  const text = value === undefined || value === null ? '' : String(value);
+  if (text.length > maxLength) {
+    throw Object.assign(new Error(`${fieldLabel} excede o tamanho permitido.`), { statusCode: 400 });
+  }
+  return text;
+}
+function buildCanonicalPublicationTask(input, publicationId, actorName, nowIso) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw Object.assign(new Error('Dados da tarefa não informados.'), { statusCode: 400 });
+  }
+  const id = publicationTaskText(input.id, 160, 'ID da tarefa').trim() || `task-${Date.now()}-${randomBytes(4).toString('hex')}`;
+  if (!/^[A-Za-z0-9._:-]+$/.test(id)) {
+    throw Object.assign(new Error('ID da tarefa inválido.'), { statusCode: 400 });
+  }
+  const title = publicationTaskText(input.title, 500, 'Título da tarefa').trim();
+  if (!title) throw Object.assign(new Error('Título da tarefa obrigatório.'), { statusCode: 400 });
+
+  const responsible = publicationTaskText(input.responsible, 200, 'Responsável');
+  const rawResponsibles = Array.isArray(input.responsibles)
+    ? input.responsibles
+    : String(input.responsibles || '').split(/[,;]/);
+  const responsibles = [...new Set(rawResponsibles
+    .map(value => publicationTaskText(value, 200, 'Responsável adicional').trim())
+    .filter(Boolean))];
+  const rawPoints = Number(input.points);
+  const timeLogs = (Array.isArray(input.timeLogs) ? input.timeLogs : []).slice(0, 250).map(log => {
+    const minutes = Number(log?.minutes);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      throw Object.assign(new Error('Apontamento de tempo inválido.'), { statusCode: 400 });
+    }
+    return {
+      id: publicationTaskText(log?.id, 160, 'ID do apontamento').trim() || `time-${Date.now()}-${randomBytes(4).toString('hex')}`,
+      date: publicationTaskText(log?.date, 40, 'Data do apontamento'),
+      minutes,
+      description: publicationTaskText(log?.description, 2_000, 'Descrição do apontamento'),
+      actor: actorName
+    };
+  });
+  const history = [{ at: nowIso, action: 'Tarefa atribuída', actor: actorName }];
+  for (const log of timeLogs) {
+    history.push({ at: nowIso, action: `Apontamento de tempo: ${log.minutes} min`, actor: actorName });
+  }
+
+  return {
+    id,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    source: publicationTaskText(input.source, 200, 'Origem da tarefa'),
+    intimationId: publicationId,
+    sourceIntimationId: publicationId,
+    title,
+    taskDefinition: publicationTaskText(input.taskDefinition, 500, 'Definição da tarefa'),
+    description: publicationTaskText(input.description, 100_000, 'Descrição da tarefa'),
+    process: publicationTaskText(input.process, 200, 'Processo'),
+    client: publicationTaskText(input.client, 500, 'Cliente'),
+    fatalDeadline: publicationTaskText(input.fatalDeadline, 40, 'Prazo fatal'),
+    deadline: publicationTaskText(input.deadline, 40, 'Prazo interno'),
+    date: publicationTaskText(input.date, 40, 'Data da atividade'),
+    time: publicationTaskText(input.time, 40, 'Horário da atividade'),
+    responsible,
+    responsibles,
+    status: publicationTaskText(input.status, 100, 'Status da tarefa'),
+    priority: publicationTaskText(input.priority, 100, 'Prioridade da tarefa'),
+    points: Number.isFinite(rawPoints) ? rawPoints : 0,
+    timeLogs,
+    history,
+    actionType: publicationTaskText(input.actionType, 500, 'Tipo de ação'),
+    protocol: publicationTaskText(input.protocol, 1_000, 'Protocolo')
+  };
+}
 function collectorAuthorized(req) {
   const authorization = String(req.headers.authorization || '');
   const expected = `Bearer ${process.env.COLLECTOR_INGEST_TOKEN}`;
@@ -1900,6 +1971,100 @@ const server = http.createServer(async (req, res) => {
         );
         throw err;
       }
+    }
+
+    // Criação transacional de tarefa vinculada a uma publicação
+    if (req.method === 'POST' && url.pathname.startsWith('/api/publications/') && url.pathname.endsWith('/task')) {
+      const session = assertAuthenticated(req, true);
+      if (session.status === 'pending' || session.status === 'inactive') {
+        throw Object.assign(new Error('Usuário inativo ou com cadastro pendente.'), { statusCode: 403 });
+      }
+
+      const parts = url.pathname.split('/');
+      const publicationId = parts.length === 5 ? decodeURIComponent(parts[3] || '').trim() : '';
+      if (!publicationId) throw Object.assign(new Error('ID da publicação não informado.'), { statusCode: 400 });
+
+      const body = await readJson(req, 250_000);
+      if (body.publicationId && String(body.publicationId).trim() !== publicationId) {
+        throw Object.assign(new Error('ID da publicação divergente.'), { statusCode: 400 });
+      }
+
+      const envelope = await readAppStateEnvelope();
+      if (envelope.revision !== undefined && envelope.revision !== null) {
+        if (body.revision === undefined || body.revision === null || body.revision === '') {
+          throw Object.assign(new Error('Revisão de estado obrigatória.'), { statusCode: 409 });
+        }
+        if (body.revision !== envelope.revision) {
+          throw Object.assign(new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'), { statusCode: 409 });
+        }
+      }
+
+      const state = envelope.state || {};
+      if (!Array.isArray(state.intimations)) state.intimations = [];
+      if (!Array.isArray(state.tasks)) state.tasks = [];
+      const itemIndex = state.intimations.findIndex(item => item && (item.id === publicationId || item.externalId === publicationId));
+      if (itemIndex === -1) throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
+
+      const item = state.intimations[itemIndex];
+      const currentStatus = item.treatmentStatus || 'untreated';
+      if (currentStatus === 'discarded') {
+        throw Object.assign(new Error('Publicação descartada não pode originar nova tarefa.'), { statusCode: 409 });
+      }
+      if (!['untreated', 'in_review', 'treated'].includes(currentStatus)) {
+        throw Object.assign(new Error(`Status de tratamento inválido: "${currentStatus}".`), { statusCode: 409 });
+      }
+
+      const actorName = String(session.displayName || session.username || 'Advogado').slice(0, 100);
+      const nowIso = new Date().toISOString();
+      const task = buildCanonicalPublicationTask(body.task, item.id || publicationId, actorName, nowIso);
+      const existingTask = state.tasks.find(record => record?.id === task.id);
+      if (existingTask) {
+        const linkedIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : [];
+        const linkedToPublication = (existingTask.intimationId === item.id || existingTask.sourceIntimationId === item.id) && linkedIds.includes(existingTask.id);
+        if (!linkedToPublication) {
+          throw Object.assign(new Error('O ID da tarefa já está em uso.'), { statusCode: 409 });
+        }
+        return json(res, 200, {
+          ok: true,
+          idempotent: true,
+          task: existingTask,
+          publication: item,
+          intimation: item,
+          revision: envelope.revision,
+          message: 'Tarefa já vinculada a esta publicação.'
+        });
+      }
+
+      state.tasks.unshift(task);
+      if (!Array.isArray(item.linkedTaskIds)) item.linkedTaskIds = item.taskId ? [item.taskId] : [];
+      if (!item.linkedTaskIds.includes(task.id)) item.linkedTaskIds.push(task.id);
+      item.taskId = task.id;
+      if (currentStatus === 'untreated') {
+        item.treatmentStatus = 'in_review';
+        item.treatmentStartedAt = nowIso;
+        item.treatmentStartedBy = actorName;
+      }
+
+      if (!Array.isArray(state.audit)) state.audit = [];
+      state.audit.unshift({
+        id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
+        at: nowIso,
+        action: 'Tarefa criada a partir de publicação',
+        detail: `${task.title} · ${item.process || item.id || publicationId}`.slice(0, 500),
+        actor: actorName
+      });
+      state.audit = state.audit.slice(0, 1000);
+
+      const saved = await saveAppStateDirect(state, envelope.revision || null);
+      return json(res, 201, {
+        ok: true,
+        idempotent: false,
+        task,
+        publication: item,
+        intimation: item,
+        revision: saved.revision,
+        message: 'Tarefa criada e vinculada à publicação com sucesso.'
+      });
     }
 
     // Tratamento de Publicações / Intimações (Workflow de Triagem)

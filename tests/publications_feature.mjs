@@ -34,6 +34,8 @@ assert.doesNotMatch(featureSource, /window\.(?:Publications|Intimations)\s*=/, '
 assert.doesNotMatch(featureSource, /\/api\/email\/publications/, 'O endpoint legado removido não pode reaparecer.');
 assert.match(featureSource, /\/api\/intimations\/email/, 'O endpoint individual canônico deve permanecer.');
 assert.match(featureSource, /\/api\/publications\/email\/batch/, 'O endpoint batch canônico deve permanecer.');
+assert.match(featureSource, /\/api\/publications\/\$\{encodeURIComponent\(publicationId\)\}\/task/, 'A feature deve usar o endpoint transacional de tarefa.');
+assert.doesNotMatch(portalSource, /linkTaskToPublication|linkedTaskIds|treatmentStartedAt\s*=/, 'Portal não pode mutar vínculo ou tratamento da publicação diretamente.');
 
 const wrapperContracts = [
   ['filteredIntimations', 'filteredItems'],
@@ -209,6 +211,44 @@ const canonicalFeature = createPublicationsFeature({
 await canonicalFeature.applyTreatmentAction('canonical', 'mark_treated');
 assert.equal(canonicalStore.state.intimations[0], canonicalIntimation, 'Sucesso deve usar o objeto canônico devolvido pelo backend.');
 assert.equal(canonicalStore.revision, 'revision-server', 'Sucesso deve adotar a revision devolvida pelo backend.');
+
+const linkedTask = { id: 'task-canonical', intimationId: 'canonical-link', deadline: '' };
+const linkedPublication = { id: 'canonical-link', treatmentStatus: 'in_review', linkedTaskIds: ['task-canonical'] };
+const linkingRequests = [];
+const linkingStore = {
+  revision: 'revision-link-old',
+  state: { intimations: [{ id: 'canonical-link', treatmentStatus: 'untreated' }], processes: [], tasks: [] },
+  save() { throw new Error('Resposta transacional não pode disparar Store.save.'); }
+};
+const linkingFeature = createPublicationsFeature({
+  store: linkingStore,
+  documentRef: treatmentDocument,
+  windowRef: {
+    KellerAuth: { csrfToken: 'csrf-test' },
+    fetch: async (_url, options) => {
+      linkingRequests.push(JSON.parse(options.body));
+      return {
+        status: 201,
+        ok: true,
+        json: async () => ({ task: linkedTask, publication: linkedPublication, revision: 'revision-link-new' })
+      };
+    }
+  },
+  escapeHtml: String,
+  formatDate: String,
+  formatDateTime: String,
+  showToast() {}
+});
+const linkingResult = await linkingFeature.createTaskFromPublication('canonical-link', { id: 'task-canonical', title: 'Tarefa canônica' });
+assert.equal(linkingResult.task, linkedTask);
+assert.equal(linkingStore.state.tasks[0], linkedTask, 'Frontend deve adotar a tarefa canônica da resposta.');
+assert.equal(linkingStore.state.intimations[0], linkedPublication, 'Frontend deve adotar a publicação canônica da resposta.');
+assert.equal(linkingStore.revision, 'revision-link-new');
+assert.deepEqual(linkingRequests[0], {
+  publicationId: 'canonical-link',
+  revision: 'revision-link-old',
+  task: { id: 'task-canonical', title: 'Tarefa canônica' }
+});
 
 const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });

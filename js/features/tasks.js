@@ -28,7 +28,6 @@ export function createTasksFeature({
   showToast,
   onRenderAll,
   onAnalyzeWithAi,
-  onTaskSaved,
   now = () => Date.now()
 } = {}) {
   let initialized = false;
@@ -314,34 +313,39 @@ export function createTasksFeature({
       });
     },
 
-    saveTask(data, defaults = {}) {
+    buildTask(data, defaults = {}) {
+      const taskData = { ...data };
       const history = Array.isArray(defaults.history) ? [...defaults.history] : [];
       const currentActor = getCurrentUserName?.() || 'Advogado(a)';
       history.push({ at: new Date().toISOString(), action: defaults.id ? 'Tarefa atualizada' : 'Tarefa atribuída', actor: currentActor });
       const timeLogs = Array.isArray(defaults.timeLogs) ? [...defaults.timeLogs] : [];
-      const addMinutes = Number(data.addMinutes);
+      const addMinutes = Number(taskData.addMinutes);
       if (addMinutes > 0) {
-        timeLogs.push({ id: uid('time'), date: isoDate(), minutes: addMinutes, description: data.timeDescription || 'Trabalho realizado', actor: currentActor });
+        timeLogs.push({ id: uid('time'), date: isoDate(), minutes: addMinutes, description: taskData.timeDescription || 'Trabalho realizado', actor: currentActor });
         history.push({ at: new Date().toISOString(), action: `Apontamento de tempo: ${formatMinutes(addMinutes)}`, actor: currentActor });
       }
-      delete data.addMinutes;
-      delete data.timeDescription;
-      const responsibleList = [data.responsible, ...String(data.responsibles || '').split(/[,;]/)].map(item => item.trim()).filter(Boolean);
-      const record = {
-        id: defaults.id || uid('task'),
+      delete taskData.addMinutes;
+      delete taskData.timeDescription;
+      const responsibleList = [taskData.responsible, ...String(taskData.responsibles || '').split(/[,;]/)].map(item => item.trim()).filter(Boolean);
+      return {
+        id: defaults.id || defaults._transactionTaskId || uid('task'),
         createdAt: defaults.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         source: defaults.source || 'Interna',
         intimationId: defaults.intimationId || null,
         sourceIntimationId: defaults.intimationId || defaults.sourceIntimationId || null,
-        ...data,
-        points: Number(data.points) || 0,
+        ...taskData,
+        points: Number(taskData.points) || 0,
         responsibles: [...new Set(responsibleList)],
         history,
         timeLogs
       };
+    },
+
+    saveTask(data, defaults = {}) {
+      const addMinutes = Number(data.addMinutes);
+      const record = this.buildTask(data, defaults);
       store.upsert('tasks', record);
-      onTaskSaved?.({ record, currentActor, defaults, addMinutes });
       store.audit(defaults.id ? 'Tarefa atualizada' : 'Tarefa atribuída', `${record.title}${record.process ? ` · ${record.process}` : ''}${record.points ? ` · ${record.points} pontos` : ''}${addMinutes > 0 ? ` · ${formatMinutes(addMinutes)} apontados` : ''}`);
       return record;
     },
