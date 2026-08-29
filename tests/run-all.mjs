@@ -58,6 +58,7 @@ const checkFiles = [
   'collector/adapters/pje.mjs',
   'tests/helpers.mjs',
   'tests/security.mjs',
+  'tests/security_migrations.mjs',
   'tests/importer.mjs',
   'tests/rls.mjs',
   'tests/collector.mjs',
@@ -81,6 +82,7 @@ const checkFiles = [
   'tests/ai-context.mjs',
   'tests/deployment.mjs',
   'tests/system_diagnostic.mjs',
+  'tests/runtime_recovery.mjs',
   'tests/backup_restore.mjs',
   'tests/judicial_sandbox.mjs',
   'tests/smoke.mjs',
@@ -103,17 +105,21 @@ const checkFiles = [
   'tests/leads_feature.mjs',
   'tests/financial_feature.mjs',
   'tests/configuration_persistence.mjs',
+  'tests/configuration_empty_persistence.mjs',
   'tests/frontend_module_foundation.mjs',
   'tests/frontend_module_boot.mjs',
   'tests/store_module.mjs',
   'tests/shared_components.mjs',
   'tests/onboarding_component.mjs',
   'tests/brand_neutrality.mjs',
+  'tests/toolchain_contract.mjs',
+  'tests/beta_readiness_gate.mjs',
   'tests/visual-qa.mjs'
 ];
 
 const testSuites = [
   { name: 'Segurança e Criptografia (Auth, TOTP, CSRF, AES-256-GCM)', file: 'tests/security.mjs' },
+  { name: 'Migrações Seguras da Chave IA e Feedback Beta Local Cifrado', file: 'tests/security_migrations.mjs' },
   { name: 'Importador de Planilhas e Deduplicação (XLSX, PII protegido)', file: 'tests/importer.mjs' },
   { name: 'Políticas Supabase e Row Level Security (RLS AAL2)', file: 'tests/rls.mjs' },
   { name: 'Coletores Judiciais (DJEN, DataJud, PJe sem ciência auto)', file: 'tests/collector.mjs' },
@@ -138,6 +144,7 @@ const testSuites = [
   { name: 'Minimização de dados no contexto do assistente de IA', file: 'tests/ai-context.mjs' },
   { name: 'Deployment e Conformidade com Nuvem (Render / Cloud)', file: 'tests/deployment.mjs' },
   { name: 'Diagnóstico do Sistema, Backups Criptografados & Feedback Beta', file: 'tests/system_diagnostic.mjs' },
+  { name: 'Runtime Derivado: Estado, Quarentena e Rebuild Explícito', file: 'tests/runtime_recovery.mjs' },
   { name: 'Backup / Restore Atômico, Cifrado e Revision-Safe', file: 'tests/backup_restore.mjs' },
   { name: 'Arquitetura Judicial, A1 Sandbox (mTLS) & TOTP Sandbox', file: 'tests/judicial_sandbox.mjs' },
   { name: 'Higiene de Estado, Migrações Determinísticas & Recuperação', file: 'tests/state_migrations.mjs' },
@@ -154,11 +161,14 @@ const testSuites = [
   { name: 'Feature Modular de Leads e CRM', file: 'tests/leads_feature.mjs' },
   { name: 'Feature Modular Financeiro, RPV e Honorários', file: 'tests/financial_feature.mjs' },
   { name: 'Persistência de Configurações, Coalescing e Reload', file: 'tests/configuration_persistence.mjs' },
+  { name: 'Persistência Deliberada de Coleções de Configuração Vazias', file: 'tests/configuration_empty_persistence.mjs' },
   { name: 'Fundação de ES Modules e Segurança de Arquivos Estáticos', file: 'tests/frontend_module_foundation.mjs' },
   { name: 'Boot Nativo do Portal e Compatibilidade Legada', file: 'tests/frontend_module_boot.mjs' },
   { name: 'Store Modular, Persistência, Concorrência e Recovery', file: 'tests/store_module.mjs' },
   { name: 'Componentes Globais Compartilhados, Foco e Navegação', file: 'tests/shared_components.mjs' },
   { name: 'Onboarding Modular, Primeiro Acesso e Persistência', file: 'tests/onboarding_component.mjs' },
+  { name: 'Contrato Canônico Node 24, pnpm e Frozen Lockfile', file: 'tests/toolchain_contract.mjs' },
+  { name: 'Gate Documental de Readiness Técnico Pré-UI-V2', file: 'tests/beta_readiness_gate.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 

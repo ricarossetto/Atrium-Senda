@@ -1,37 +1,41 @@
-# ATRIUM — CHECKLIST BETA READY (BETA_READINESS.md)
+# ATRIUM — Checklist técnico do Beta pré-UI-V2
 
-Este documento define os critérios de conformidade técnica para a liberação do Atrium para testes reais por advogados (Beta Ready).
+## Gate de integridade e segurança
 
-## Checklist de Conformidade Técnica & Segurança
+- [x] App-state em JSON cifrado AES-256-GCM, revision-safe e com gravação atômica.
+- [x] Backup cifrado com checksum SHA-256, validação integral e snapshot pré-restauração.
+- [x] Runtime derivado distingue `EMPTY`, `READY` e `QUARANTINED`; corrupção é preservada em recovery e o rebuild é explícito.
+- [x] Configurações deliberadamente vazias permanecem vazias após save/reload; chaves legadas ausentes recebem defaults.
+- [x] Chave Gemini legada migra no startup para o secret store cifrado e nunca é retornada pelo endpoint de estado.
+- [x] Feedback Beta é local, cifrado, atômico, limitado aos 100 registros mais recentes e não possui transporte externo.
+- [x] Sessões HttpOnly/SameSite, CSRF, RBAC e TOTP opcional por usuário permanecem cobertos.
+- [x] Segredos, TOTP, certificados, tokens e dados reais não aparecem em fixtures ou logs.
 
-- [x] **Instalação limpa e bootstrap automatizado**: `iniciar-atrium.bat` detecta ausência de `node_modules` e instala automaticamente dependências em 1 clique.
-- [x] **Aplicação inicia automaticamente**: `npm start` inicializa na porta padrão e abre o navegador automaticamente.
-- [x] **Setup inicial funciona**: Configuração do primeiro admin com nome, usuário e senha forte.
-- [x] **Autenticação robusta**: Sessão HttpOnly SameSite=Strict com Zero Trust e CSRF tokens.
-- [x] **MFA / 2FA opcional por usuário**: Segundo fator TOTP (RFC 6238) opcional com ativação posterior soberana por usuário.
-- [x] **Recuperação de acesso individualizada**: 8 códigos de emergência de uso único por usuário gerados na ativação do 2FA.
-- [x] **Criptografia em repouso**: AES-256-GCM com chave derivada via Scrypt e segredos judiciais cifrados em disco.
-- [x] **A1 Sandbox & Validação mTLS**: Validação de certificados PFX em memória sem persistência de segredos, assinando nonce SHA-256 (Windows .NET + Linux OpenSSL para CI).
-- [x] **Gestão Segura de Credenciais**: `JudicialCredentialManager` realiza exclusão física imediata (`unlink`) de certificados substituídos ou revogados.
-- [x] **Arquitetura de Adaptadores Judiciais**: `AuthAdapter` desacoplado por estratégia (`credentials-totp` para eproc, `pjeoffice-local` para PJe, `client-cert-mtls` para mTLS, `manual-persistent-session` para e-SAJ).
-- [x] **Contatos funcionam**: Cadastro, importação XLSX e deduplicação inteligente.
-- [x] **Processos funcionam**: Cadastro, busca e consulta processual unificada.
-- [x] **Tarefas & Kanban funcionam**: Atribuição, prioridades, pontuação de tarefas e movimentação de cards.
-- [x] **Agenda jurídica funciona**: Compromissos e audiências integradas com cálculo CPC/2015 (dias úteis e recesso forense).
-- [x] **Financeiro funciona**: TimeSheet, apontamento de horas e cálculo de honorários/RPV.
-- [x] **Triagem de intimações funciona**: Classificação autônoma por tipo de ato e sugestão de prazo via DJEN / DataJud.
-- [x] **Catálogos de configuração**: 86 tipos de ação e 140 definições de tarefas com pontos.
-- [x] **Identidade visual oficial**: Logotipos vetoriais SVG, tipografia Playfair Display e alto contraste.
-- [x] **Diagnóstico de primeira classe**: Painel de verificação de integridade e exportação segura.
-- [x] **Backup e restauração integrados**: Exportação cifrada `.atrium-backup` com snapshot de segurança pré-restauração.
-- [x] **Feedback Beta integrado**: Canal nativo de comunicação de bugs e sugestões.
-- [x] **Ausência de Gemini não quebra aplicativo**: Fallbacks graciosos para operação offline.
-- [x] **Logs não contêm segredos**: Sanitização de credenciais, senhas de PFX via stdin e chaves criptográficas.
-- [x] **Busca global funciona**: Atalho `/` para busca em contatos, processos e tarefas.
-- [x] **Todas as 11 suítes de teste passam**: 11/11 suítes 100% aprovadas (`npm test` e `npm run check`).
-- [x] **CI automatizado**: GitHub Actions configurado com matrix de integridade de sintaxe e testes completos.
+## Gate funcional e jurídico
 
-## Status Atual
-- **Modo**: `BETA READY / HARDENED`
-- **Versão**: `v2.0 Beta` (Branch `beta-hardening`)
-- **Estabilidade do Main**: `main` intacta e congelada no commit estável `e545e57`.
+- [x] Backend é a autoridade para identidade, permissões, revision e conteúdo de publicação usado em e-mail.
+- [x] E-mail usa SMTP configurável, teste manual, envio individual manual e boletim em lote manual; não há auto-send.
+- [x] Tarefa originada de publicação começa sem deadline; prazo fatal exige conferência e confirmação humana.
+- [x] Discovery DJEN → CNJ → DataJud → processo/contatos é somente leitura e não produz ciência judicial.
+- [x] Tratamento de publicação permanece separado de read/unread e de ciência oficial.
+- [x] Frontend modular concluído; `js/portal.js` é composition shell sobre o Store e o backend existentes.
+- [x] Neutralidade de marca protegida pela suíte dedicada.
+
+## Gate de instalação e validação
+
+- [x] Runtime canônico Node 24.x.
+- [x] `pnpm@11.19.0` em package, CI e starter Windows.
+- [x] Instalação canônica por `pnpm install --frozen-lockfile`.
+- [x] 52 suítes canônicas registradas, além de syntax check, E2E, job A1 Windows e Visual QA.
+- [x] UI V2 não faz parte deste gate.
+
+## Status atual
+
+- **Status técnico**: `TECHNICAL BETA READY — PRE-UI-V2`, condicionado ao GitHub Actions canônico verde do HEAD publicado.
+- **Branch**: `beta-hardening`.
+- **Não significa**: release final, ambiente de produção certificado, auditoria jurídica ou disponibilidade contínua de serviços externos.
+
+## Dívida externa conhecida
+
+- Actions oficiais v4 ainda podem emitir aviso sobre o runtime Node interno mantido pelo GitHub. As versões não serão alteradas sem confirmação objetiva de release oficial compatível.
+- SQLite é possibilidade futura e exige migração deliberada com backup/restore; o armazenamento Beta atual continua sendo JSON cifrado.

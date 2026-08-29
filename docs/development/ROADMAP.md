@@ -1,25 +1,34 @@
-# ATRIUM — ROADMAP DE DESENVOLVIMENTO (BETA HARDENING)
+# ATRIUM — Roadmap pós-hardening técnico
 
-## NOW (Ciclo Atual em Execução)
-- **[P1] Coletor Judicial Nativo & Monitoramento Contínuo**:
-  - Refinar o feedback visual de sincronização judicial no portal quando o coletor estiver inativo ou em modo nuvem.
-  - Testar importação autônoma de intimações e prazos em segundo plano.
+## NOW — Gate Beta Final pré-UI-V2
 
-## NEXT
-- **[P2] Migração de Armazenamento para SQLite Estruturado com Migrations**:
-  - Mapear schema SQLite relacional, migrations automáticas e importer seguro com verificação de integridade.
-- **[P3] Assistente Jurídico Contextual & IA com Filtro de Privacidade**:
-  - Refinar o assistente com resumos automáticos e análise preditiva de prazos fatais.
+- Fechar recuperação do runtime derivado, persistência de configuração vazia, migrações de segredo, feedback cifrado, toolchain Node 24 e documentação verificável.
+- Exigir suíte local e workflow canônico integralmente verdes antes de avançar.
+- Preservar a UI atual, o único Store, o backend e todos os contratos jurídicos existentes.
 
-## LATER
-- **[P3] Aplicativo Desktop Empacotado (Electron / PWA)**:
-  - Instalador `.exe` de clique único para Windows sem necessidade de terminal ou Node.js pré-instalado.
+## NEXT — UI V2 dual-mode
 
-## DONE
-- [P0] Suíte de Testes Automatizada com 10 suítes (100% de aprovação).
-- [P0] Deploy Render Nuvem com `JURISFLOW_CLOUD_MODE=true` e proteção de bootstrap.
-- [P0] Diagnóstico do Sistema como Feature de Primeira Classe com status visual e exportação `.json`.
-- [P0] Cópias de Segurança Criptografadas (`.atrium-backup`) e Restauração com Integridade HMAC-SHA256.
-- [P1] Canal de Feedback Beta Integrado diretamente na interface.
-- [P1] Aplicação da Identidade Visual Atrium (vetores oficiais SVG e Brand Book).
-- [P1] Correções de Contraste, Botão de Tema e Sidebar Collapsible.
+- Nova UI como modo visual padrão.
+- UI Clássica preservada como rollback visual imediato.
+- Toggle **Nova/Clássica** ao lado do controle **Claro/Escuro**.
+- Mesmo Store, backend, schemas, rotas e regras de negócio nos dois modos.
+- Sem duplicar estado ou implementar feature paralela.
+
+Esta etapa só começa em missão própria depois do Gate Beta verde.
+
+## DEPOIS
+
+- Teste humano guiado com advogados Beta, registro local de feedback e correções finitas.
+- Empacotamento Windows somente após validar instalação, atualização, backup e restauração no ambiente alvo.
+- SQLite pode ser estudado como migração futura. Qualquer adoção exige schema, backup prévio, migração forward, verificação e teste de restauração; não é o armazenamento padrão atual.
+
+## CONCLUÍDO
+
+- Frontend modular com `js/portal.js` como composition shell.
+- Features de dashboard, publicações, agenda, tarefas, processos, contatos, leads, financeiro, documentos, assistente, monitoramento, configurações e integrações isoladas por responsabilidade.
+- Store único revision-safe e backend canônico.
+- E-mail exclusivamente manual e conteúdo judicial resolvido no backend.
+- Deadlines jurídicos sujeitos a confirmação humana, sem inferência automática.
+- Discovery DJEN → DataJud somente leitura, sem ciência judicial.
+- Backup/restore cifrado e atômico, runtime recuperável e feedback local cifrado.
+- Neutralidade de marca e compatibilidade legada restrita à camada necessária.

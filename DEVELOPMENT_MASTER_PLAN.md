@@ -1,85 +1,51 @@
-# ATRIUM — PLANO-MESTRE DE DESENVOLVIMENTO AUTÔNOMO
-## MODO BETA HARDENING
+# ATRIUM — Plano-mestre de desenvolvimento
 
-O objetivo desta execução é transformar a versão atual do ATRIUM — Escritório Integrado em uma versão **BETA READY**, adequada para testes reais por um pequeno grupo de advogados não técnicos.
+## Modo atual: AUDIT / TECHNICAL BETA PRE-UI-V2
 
-==================================================
-REGRA ZERO — PROTEGER A VERSÃO ESTÁVEL
-==================================================
+A arquitetura frontend foi modularizada. O foco atual é integridade, segurança, recuperação, instalação reproduzível e correspondência entre documentação e comportamento real. Não há nova fase arquitetural neste gate.
 
-A branch `main` representa a versão estável de referência. ELA NÃO PODE SER USADA PARA DESENVOLVIMENTO AUTÔNOMO.
+## Proteção das referências Git
 
-1. Confirmar que o working tree está limpo;
-2. Confirmar que estamos partindo do `main` atualizado;
-3. Criar e preservar a tag de segurança: `stable-pre-beta`;
-4. Criar ou utilizar exclusivamente a branch: `beta-hardening`.
+- Desenvolvimento exclusivamente em `beta-hardening`.
+- `main`, `checkpoint-pre-modularization` e `pre-modularization-beta-1` permanecem imutáveis sem autorização explícita.
+- Sem reset destrutivo, rebase de histórico ou force push.
+- Cada ciclo termina com regressões dirigidas, `pnpm check`, `pnpm test`, revisão do diff, commit, push e GitHub Actions completo.
 
-Todo desenvolvimento deve ocorrer em `beta-hardening`.
-- Nunca desenvolver diretamente em `main`.
-- Nunca fazer merge automático para `main`.
-- Nunca executar comandos destrutivos de git (`push --force`, `reset --hard`, reescrita de histórico) sem autorização humana explícita.
+## Arquitetura atual
 
-==================================================
-PONTO DE RESTAURAÇÃO
-==================================================
+- Frontend Vanilla JavaScript modular em `js/app`, `js/core`, `js/components`, `js/views` e `js/features`.
+- `js/portal.js` é o composition shell e camada fina de compatibilidade; não deve voltar a concentrar features.
+- Um único Store frontend, com persistência revision-safe e conflitos 409 explícitos.
+- Backend em `server.mjs` como autoridade para sessão, permissões, revision, conteúdo de publicação e segredos.
+- Armazenamento Beta em JSON cifrado AES-256-GCM, com atomic save, migrations, recovery e backups.
+- Runtime derivado cifrado e reconstruível, com estados `EMPTY`, `READY` e `QUARANTINED`.
+- SQLite é possibilidade futura, não implementação ou padrão atual.
 
-A tag `stable-pre-beta` é a fotografia oficial da versão estável anterior ao programa Beta. Ela não deve ser movida, recriada ou apagada.
+## Guardrails funcionais
 
-==================================================
-CHECKPOINTS DE DESENVOLVIMENTO
-==================================================
+- Discovery judicial é somente leitura e não produz ciência.
+- E-mail de publicação e boletim são exclusivamente manuais; o backend resolve os registros canônicos.
+- Tarefas originadas de publicação começam sem deadline. Prazo jurídico depende de conferência e confirmação humana.
+- IA é assistencial, usa contexto minimizado e só chama o provedor quando uma chave foi configurada.
+- Feedback Beta é local, cifrado e sem transporte externo.
+- Não expor segredos, caminhos absolutos sensíveis, dados reais ou claims de saúde não medidos.
 
-Após concluir fases importantes e confirmar que todos os testes estão verdes, criar checkpoints Git (ex: `beta-phase-a-complete`, `beta-sqlite-working`, `beta-backup-working`, `beta-installer-working`, `beta-rc1`).
+## Prioridades
 
-Critérios obrigatórios para checkpoint:
-- Aplicação inicia;
-- `pnpm test` (9/9 suítes) passa 100%;
-- Não existe regressão crítica conhecida.
+1. **P0 — Integridade**: perda/corrupção de dados, recovery, concorrência, backup/restore, autenticação.
+2. **P1 — Confiabilidade**: instalação Node 24/pnpm, migrations, imports, coletores e falhas explícitas.
+3. **P2 — Beta usability**: diagnóstico verdadeiro, onboarding, mensagens acionáveis e feedback local.
+4. **P3 — UI V2**: somente após gate verde, em dual-mode Nova/Clássica sobre o mesmo Store/backend.
+5. **P4 — Empacotamento**: depois de teste humano e validação de atualização/recuperação no Windows alvo.
 
-==================================================
-NÃO CRIAR OUTRO ATRIUM
-==================================================
+## Critério de saída do gate
 
-Não iniciar reescrita paralela (ex: Atrium-v2, Atrium-next). Preservar a continuidade do produto atual. Decisões arquiteturais futuras devem ser registradas em `docs/development/DECISIONS.md`.
+- Testes novos de runtime recovery, configuração vazia, migrações de segurança, toolchain e readiness aprovados.
+- 52 suítes canônicas locais aprovadas.
+- Lint/Test/E2E, job A1 Windows e Visual QA aprovados no mesmo HEAD, preferencialmente no attempt 1.
+- Working tree limpo e `beta-hardening` sincronizada com o remoto.
+- Status permitido: **TECHNICAL BETA READY — PRE-UI-V2**. Isso não equivale a release final, certificação jurídica ou produção final.
 
-==================================================
-MODELO DE EXECUÇÃO EM CICLOS FINITOS
-==================================================
+## Próximo ciclo autorizado após o gate
 
-AUDITAR → IDENTIFICAR O MAIOR GARGALO → PLANEJAR UMA ALTERAÇÃO COERENTE → IMPLEMENTAR → TESTAR → CORRIGIR → REVISAR DIFF → DOCUMENTAR → COMMITAR → REAVALIAR BETA_READINESS → ESCOLHER PRÓXIMO GARGALO.
-
-==================================================
-UMA COISA POR VEZ & ANTI-OVERENGINEERING
-==================================================
-
-Cada ciclo possui um objetivo claro e autocontido. Não introduzir dependências ou serviços pesados desnecessários sem ganho concreto para o usuário final (advogado).
-
-==================================================
-ORDEM DE PRIORIDADE
-==================================================
-
-- **P0 — Integridade**: Perda de dados, corrupção, vulnerabilidades, falhas de autenticação, app não inicia, backup não restaura.
-- **P1 — Confiabilidade**: Bugs funcionais, importação, migrations, instalação, sincronização, crashes.
-- **P2 — Beta Usability**: Diagnóstico do sistema, onboarding, busca, tratamento de erros, facilidade de uso, feedback.
-- **P3 — Melhoria Funcional**: Timeline, IA contextual, novos modelos/workflows.
-- **P4 — Cosmética**: Microefeitos e ajustes visuais sem impacto funcional.
-
-==================================================
-BANCO & MIGRATIONS (SQLITE LOCAL)
-==================================================
-
-SQLite é o armazenamento estruturado padrão para o ambiente desktop/local. Toda migração de dados deve incluir schema, migration forward, verificação, backup prévio e teste de restauração.
-
-==================================================
-DIAGNÓSTICO & BETA FEEDBACK
-==================================================
-
-- **Diagnóstico de Primeira Classe**: Aba em Configurações com status de banco, criptografia, Node, Windows/PJeOffice, A1, DJEN, DataJud, IA, coletor e backups, com opção "Exportar diagnóstico" anonimizado.
-- **Beta Feedback**: Fluxo nativo (Bug, Dificuldade, Sugestão, Performance) sem envio de dados pessoais ou processos.
-
-==================================================
-TRANSIÇÃO DE MODOS: BUILD MODE → AUDIT MODE
-==================================================
-
-- **BUILD MODE**: Ativo enquanto houver pendências em `BETA_READINESS.md`.
-- **AUDIT MODE**: Ativo após todos os itens de readiness estarem concluídos. Realiza auditoria rigorosa de segurança, instalação, restore e cria o candidato `beta-rc1`.
+UI V2 dual-mode: Nova UI padrão, UI Clássica preservada, toggle próximo a Claro/Escuro, mesmo Store/backend e rollback visual imediato. O ciclo atual não implementa qualquer parte dessa interface.

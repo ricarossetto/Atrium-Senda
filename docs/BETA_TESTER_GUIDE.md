@@ -1,81 +1,57 @@
-﻿# ATRIUM — GUIA DE USO DO TESTADOR BETA (BETA TESTER GUIDE)
-## Instruções simples e práticas para advogados e operadores jurídicos
+# ATRIUM — Guia do Testador Beta
 
-Bem-vindo ao programa de testes da versão **ATRIUM Escritório Integrado v2.0 (Beta)**.
+Este guia descreve o Beta técnico pré-UI-V2. Ele não substitui conferência jurídica, política de segurança do escritório nem validação dos atos oficiais.
 
-Este guia foi elaborado para que você utilize todos os recursos essenciais do sistema com total segurança e sem necessidade de conhecimentos técnicos avançados.
+## 1. Iniciar no Windows
 
----
+1. Instale Node.js 24.
+2. Dê duplo clique em `iniciar-atrium.bat`.
+3. O starter valida a versão do Node.js, prepara `pnpm@11.19.0`, instala as dependências pelo lockfile congelado se necessário e abre `http://127.0.0.1:4173`.
+4. Mantenha a janela do servidor aberta durante o uso.
 
-## 🚀 1. Como Iniciar o Sistema no Windows
+## 2. Primeiro acesso
 
-1. Dê um **duplo clique** no arquivo `iniciar-atrium.bat` na pasta do projeto.
-2. Uma janela do console abrirá e, automaticamente, seu navegador padrão abrirá no endereço:
-   `http://localhost:4173`
-3. Mantenha a janelinha minimizada enquanto estiver usando o ATRIUM. Ao terminar, basta fechar o navegador e a janela.
+1. Cadastre o administrador com nome, usuário e senha forte.
+2. O TOTP RFC 6238 é configurável por usuário. Se ativá-lo, confirme o código no aplicativo autenticador e guarde os códigos de recuperação em local seguro.
+3. Nunca compartilhe senha, chave TOTP, código de recuperação ou certificado A1 em feedback ou diagnóstico.
 
----
+## 3. Importar dados
 
-## 🔐 2. Primeiro Acesso e Cadastro de Administrador
+O importador aceita planilhas `.xlsx` e `.csv`. Confira a prévia, o mapeamento de colunas e a deduplicação antes de confirmar. Use somente arquivos autorizados pelo escritório.
 
-1. Ao abrir o sistema pela primeira vez, você verá a tela de **Setup do Administrador**.
-2. Preencha seu **Nome Completo**, **Nome de Usuário** e crie uma **Senha Segura**.
-3. **Autenticação em Dois Fatores (2FA/TOTP)**:
-   - Se desejar ativar imediatamente: abra o aplicativo *Google Authenticator*, *Microsoft Authenticator* ou *1Password* no seu celular e leia o QR Code ou digite a chave manual. Digite o código de 6 dígitos para validar.
-   - Guarde os **códigos de recuperação** exibidos em local seguro.
-   - Caso prefira configurar depois, clique em "Configurar mais tarde".
+## 4. Publicações, tarefas e prazos
 
----
+- O discovery consulta DJEN e DataJud em modo de leitura; tratamento no ATRIUM não equivale a ciência judicial.
+- Uma publicação pode gerar uma tarefa, mas essa tarefa começa sem deadline.
+- A data fatal deve ser conferida e informada pelo advogado. A IA pode apresentar estimativa preliminar, que não substitui a confirmação humana.
+- O sistema não infere automaticamente deadline jurídico a partir do texto da publicação.
 
-## 📂 3. Importação de Acervo e Planilhas
+## 5. E-mail
 
-O ATRIUM possui importador universal compatível com planilhas `.xlsx` / `.csv` exportadas por sistemas de gestão jurídica e relatórios processuais compatíveis.
+- O SMTP é configurável e possui teste manual.
+- O envio de uma publicação e o boletim em lote são ações manuais.
+- O backend busca a publicação canônica pelo identificador antes de montar o e-mail.
+- Não existe envio automático após importação, sincronização ou tratamento.
 
-1. Acesse o menu **Processos e casos** na barra lateral.
-2. Clique no botão **[ 📥 Importar Planilha ]**.
-3. Arraste ou selecione seu arquivo `.xlsx` ou `.csv`.
-4. O sistema identificará automaticamente as colunas (Número do Processo CNJ, Cliente, CPF/CNPJ, Tribunal, Fase e Valor da Causa) e apresentará uma pré-visualização.
-5. Clique em **[ Confirmar Importação ]**. Seus processos e contatos serão cadastrados e deduplicados automaticamente.
+## 6. Certificado A1 e integrações judiciais
 
----
+Cadastre o certificado somente na área administrativa e use o sandbox para validar o ambiente. O job Windows do CI é a autoridade para a suíte A1 completa; um indicador local não garante disponibilidade do tribunal.
 
-## 🧪 4. Configuração do Certificado Digital A1 e Teste Sandbox
+## 7. Backup e recuperação
 
-O ATRIUM possui uma tecnologia exclusiva de **Sandbox Local** que valida seu certificado digital A1 ICP-Brasil sem enviar sua chave privada para a internet:
+Gere o arquivo `.atrium-backup` pela tela de Administração do Sistema e armazene-o em local protegido. O backup contém estado cifrado, checksum SHA-256 e metadados mínimos. A restauração cria snapshot de segurança antes de gravar o estado validado.
 
-1. Acesse o menu **Ajustes & Sistema -> Integrações Judiciais**.
-2. Na seção **Certificado Digital A1 ICP-Brasil**, clique em **[ Cadastrar / Atualizar Certificado ]**.
-3. Selecione seu arquivo `.pfx` ou `.p12` e digite a senha.
-4. Clique no botão **[ 🧪 Testar Certificado no Sandbox ]**.
-5. O sistema executará um teste em 8 etapas em tempo real (validação do contêiner PKCS#12, período de vigência, assinatura criptográfica de desafio SHA-256 e conexão mTLS local).
-6. Quando todas as etapas ficarem verdes com o status **`A1 OPERACIONAL`**, seu certificado estará 100% pronto para sincronização com os tribunais.
+Se o runtime derivado estiver quarentenado, o app-state principal continua disponível. Use **Recriar dados derivados** apenas de forma explícita após revisar o diagnóstico.
 
----
+## 8. Feedback Beta local
 
-## 📋 5. Gestão de Tarefas, Prazos e Kanban
+O botão **Registrar Feedback Beta** grava a mensagem cifrada apenas no ambiente local do ATRIUM. Nada é enviado automaticamente ao mantenedor ou a terceiros.
 
-1. Acesse o menu **Quadro Kanban & Prazos**.
-2. Suas tarefas estão organizadas em colunas visuais: **Triagem**, **Em Andamento**, **Revisão** e **Concluído**.
-3. Cada cartão exibe claramente o **Nome do Cliente**, **Número do Processo**, **Tribunal** e **Data Fatal**.
-4. **Estimador de Prazos Inteligente**: Ao clicar em uma intimação na caixa de entrada, o sistema calcula automaticamente o prazo em dias úteis conforme o CPC/2015 e preenche a data sugerida.
-5. **Apontamento de Horas (TimeSheet)**: Você pode registrar o tempo investido em cada atividade diretamente no cartão da tarefa.
+Descreva o comportamento observado sem inserir nomes de clientes, números de processo, documentos, credenciais, tokens, diagnóstico completo ou qualquer conteúdo confidencial. Para compartilhar o relato com suporte, faça isso deliberadamente por um canal autorizado pelo escritório.
 
----
+## 9. Limitações conhecidas
 
-## 💾 6. Como Fazer Backup dos seus Dados
-
-Todos os seus dados no ATRIUM são salvos localmente e protegidos por criptografia **AES-256-GCM**.
-
-Para gerar uma cópia de segurança:
-1. Acesse o menu **Ajustes & Sistema -> Diagnóstico & Backup**.
-2. Clique no botão **[ 💾 Gerar Backup Criptografado (.atrium-backup) ]**.
-3. O download do arquivo `.atrium-backup` começará imediatamente. Guarde este arquivo em um pen drive ou nuvem segura.
-4. Para restaurar seus dados em outro computador, basta utilizar o botão **[ Restaurar Cópia de Segurança ]** na mesma tela.
-
----
-
-## 💬 7. Canal de Feedback do Beta
-
-Encontrou alguma inconsistência ou tem uma sugestão de melhoria?
-1. Clique no botão **[ 💬 Enviar Feedback do Beta ]** no canto inferior da barra lateral ou na tela de configurações.
-2. Descreva sua experiência. Nenhum dado pessoal ou confidencial é enviado.
+- Integrações externas dependem de rede, configuração e disponibilidade dos serviços.
+- A confirmação de ciência, prazo e envio permanece humana.
+- O feedback não possui transporte externo neste Beta.
+- A UI V2 dual-mode é futura; este ciclo preserva a UI Clássica atual.
