@@ -982,10 +982,10 @@ function parseCalendar(source) {
 function calendarPayload(records) {
   const now = new Date().toISOString();
   const events = records.map((record, index) => {
-    const start = parseIcsDate(record.DTSTART, record.DTSTARTParams?.TZID || ''); const summary = record.SUMMARY || 'Compromisso ADVBOX'; const description = record.DESCRIPTION || '';
+    const start = parseIcsDate(record.DTSTART, record.DTSTARTParams?.TZID || ''); const summary = record.SUMMARY || 'Compromisso externo'; const description = record.DESCRIPTION || '';
     const process = `${summary} ${description}`.match(PROCESS_RE)?.[0] || '';
-    const externalId = `advbox-calendar:${record.UID || `${start.date}:${summary}:${index}`}`;
-    return { id: externalId, externalId, title: summary, date: start.date, time: start.time, source: 'Agenda ADVBOX', client: record.LOCATION || '', process, description, importedAt: now };
+    const externalId = `external-calendar:${record.UID || `${start.date}:${summary}:${index}`}`;
+    return { id: externalId, externalId, title: summary, date: start.date, time: start.time, source: 'Agenda externa', client: record.LOCATION || '', process, description, importedAt: now };
   }).filter(event => event.date);
   const tasks = [];
   return { events, tasks };
@@ -1682,7 +1682,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/status') {
       assertAuthenticated(req); const runtime = await readRuntime();
-      let hasCalendar = Boolean(process.env.EXTERNAL_CALENDAR_URL || process.env.ADVBOX_WEBCAL_URL);
+      let hasCalendar = Boolean(process.env.EXTERNAL_CALENDAR_URL);
       try {
         const env = await readAppStateEnvelope();
         if (env?.state?.settings?.calendarUrl) hasCalendar = true;
@@ -2859,7 +2859,7 @@ Diretrizes essenciais:
       }
 
       // 2. Sincronização com Agenda Externa (Webcal / iCalendar)
-      const calUrl = appState?.settings?.calendarUrl || process.env.EXTERNAL_CALENDAR_URL || process.env.ADVBOX_WEBCAL_URL;
+      const calUrl = appState?.settings?.calendarUrl || process.env.EXTERNAL_CALENDAR_URL;
       if (calUrl) {
         try {
           const parsed = calendarPayload(parseCalendar(await fetchCalendarSource(calUrl)));

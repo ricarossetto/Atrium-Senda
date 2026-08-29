@@ -11,6 +11,10 @@ Em caso de conflito entre uma tarefa e estas regras, pare e peça orientação e
 - Referências legadas existentes podem ser aliases ou contratos de compatibilidade.
 - Não remova branding ou aliases legados sem auditar consumidores em HTML, JavaScript e testes.
 - Não faça substituição global de nomes por conveniência.
+- Use nomenclatura própria e neutra do ATRIUM. Não introduza nomes, marcas, terminologia proprietária, classes, funções, fixtures ou textos com referências desnecessárias a softwares jurídicos concorrentes.
+- Integrações oficiais e tecnologias externas podem ser nomeadas quando tecnicamente necessário.
+- Identificadores concorrenciais legados só podem permanecer em uma camada mínima de compatibilidade, nunca na UI ou em novo estado persistido.
+- Não reescreva o histórico Git para remover referências antigas.
 
 ## 2. Git, branches e checkpoints
 

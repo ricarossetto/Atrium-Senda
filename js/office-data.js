@@ -1,4 +1,4 @@
-// Atrium Senda — Dataset Padrão de Configurações do Escritório (ADVBOX)
+// Dataset padrão de configurações do escritório no ATRIUM
 (function (root, factory) {
   const data = factory();
   if (typeof module === 'object' && module.exports) {

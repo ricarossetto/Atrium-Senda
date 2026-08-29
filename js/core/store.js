@@ -2,6 +2,19 @@ import { fetchState, importLegacyState, persistState } from './api.js';
 
 const STORAGE_KEY = 'jurisflow_storage_v1';
 
+export const EXTERNAL_CALENDAR_SOURCE_ID = 'external-calendar';
+export const LEGACY_EXTERNAL_CALENDAR_SOURCE_ID = 'advbox-calendar';
+
+const EXTERNAL_CALENDAR_DEFAULT_SOURCE = Object.freeze({
+  id: EXTERNAL_CALENDAR_SOURCE_ID,
+  name: 'Agenda Externa (Webcal)',
+  short: 'CAL',
+  method: 'Webcal/iCal',
+  status: 'planned',
+  lastCheck: null,
+  detail: 'Sincronize com Google Agenda, Outlook ou Apple'
+});
+
 export const STORE_PERSISTENCE_CONFLICT_EVENT = 'atrium:store-persistence-conflict';
 export const ATRIUM_STORE_PERSISTENCE_ERROR_EVENT = 'atrium:store-persistence-error';
 export const STORE_PERSISTENCE_ERROR_MESSAGE = 'Não foi possível salvar as alterações. Verifique a conexão e tente novamente.';
@@ -29,7 +42,7 @@ const sampleState = {
     primary: true
   }],
   sources: [
-    { id: 'external-calendar', name: 'Agenda Externa (Webcal)', short: 'CAL', method: 'Webcal/iCal', status: 'planned', lastCheck: null, detail: 'Sincronize com Google Agenda, Outlook ou Apple' },
+    { ...EXTERNAL_CALENDAR_DEFAULT_SOURCE },
     { id: 'djen-cnj', name: 'DJEN / CNJ Oficial', short: 'CNJ', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Conector de diários e publicações' },
     { id: 'datajud-cnj', name: 'DataJud / CNJ', short: 'DJD', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Enriquecimento de andamentos processuais' },
     { id: 'a1', name: 'Portais com certificado A1 / PJe', short: 'A1', method: 'Agente local seguro', status: 'off', lastCheck: null, detail: 'Integração direta com tribunais' }
@@ -90,6 +103,69 @@ const sampleState = {
 };
 
 const deepClone = value => JSON.parse(JSON.stringify(value));
+
+const hasOperationalValue = value => value !== undefined && value !== null && value !== '';
+
+const calendarRecordTime = record => Date.parse(record?.lastCheck || record?.updatedAt || '') || 0;
+
+const latestCalendarRecord = (legacy, canonical) => {
+  const legacyTime = calendarRecordTime(legacy);
+  const canonicalTime = calendarRecordTime(canonical);
+  return legacyTime > canonicalTime ? legacy : canonical;
+};
+
+const preferredCalendarStatus = (legacy, canonical) => {
+  const legacyTime = calendarRecordTime(legacy);
+  const canonicalTime = calendarRecordTime(canonical);
+  if (legacyTime !== canonicalTime) {
+    const latest = legacyTime > canonicalTime ? legacy : canonical;
+    if (hasOperationalValue(latest?.status)) return latest.status;
+  }
+  if (hasOperationalValue(canonical?.status) && canonical.status !== EXTERNAL_CALENDAR_DEFAULT_SOURCE.status) return canonical.status;
+  if (hasOperationalValue(legacy?.status) && legacy.status !== EXTERNAL_CALENDAR_DEFAULT_SOURCE.status) return legacy.status;
+  return canonical?.status || legacy?.status || EXTERNAL_CALENDAR_DEFAULT_SOURCE.status;
+};
+
+const preferredCalendarText = (legacy, canonical, field) => {
+  const canonicalValue = canonical?.[field];
+  const legacyValue = legacy?.[field];
+  const defaultValue = EXTERNAL_CALENDAR_DEFAULT_SOURCE[field];
+  if (hasOperationalValue(canonicalValue) && canonicalValue !== defaultValue) return canonicalValue;
+  if (hasOperationalValue(legacyValue)) return legacyValue;
+  if (hasOperationalValue(canonicalValue)) return canonicalValue;
+  return defaultValue;
+};
+
+export const normalizeExternalCalendarSources = sources => {
+  if (!Array.isArray(sources)) return [];
+  const legacyRecords = sources.filter(source => source?.id === LEGACY_EXTERNAL_CALENDAR_SOURCE_ID);
+  if (!legacyRecords.length) return sources;
+
+  const canonicalRecords = sources.filter(source => source?.id === EXTERNAL_CALENDAR_SOURCE_ID);
+  const legacy = legacyRecords.reduce((merged, source) => ({ ...merged, ...source }), {});
+  const canonical = canonicalRecords.reduce((merged, source) => ({ ...merged, ...source }), {});
+  const latest = latestCalendarRecord(legacy, canonical);
+  const merged = {
+    ...legacy,
+    ...canonical,
+    id: EXTERNAL_CALENDAR_SOURCE_ID,
+    name: preferredCalendarText(legacy, canonical, 'name'),
+    short: preferredCalendarText(legacy, canonical, 'short'),
+    method: preferredCalendarText(legacy, canonical, 'method'),
+    detail: preferredCalendarText(legacy, canonical, 'detail'),
+    status: preferredCalendarStatus(legacy, canonical),
+    lastCheck: latest?.lastCheck || canonical.lastCheck || legacy.lastCheck || null
+  };
+
+  const firstIndex = sources.findIndex(source =>
+    source?.id === LEGACY_EXTERNAL_CALENDAR_SOURCE_ID || source?.id === EXTERNAL_CALENDAR_SOURCE_ID
+  );
+  const normalized = sources.filter(source =>
+    source?.id !== LEGACY_EXTERNAL_CALENDAR_SOURCE_ID && source?.id !== EXTERNAL_CALENDAR_SOURCE_ID
+  );
+  normalized.splice(Math.max(0, firstIndex), 0, merged);
+  return normalized;
+};
 
 export const Store = {
   state: null,
@@ -178,12 +254,13 @@ export const Store = {
     }
     this.state.settings = { ...sampleState.settings, ...(this.state.settings || {}) };
     if (Array.isArray(this.state.sources)) {
+      this.state.sources = normalizeExternalCalendarSources(this.state.sources);
       this.state.sources.forEach(s => {
         if (s.id === 'djen') s.id = 'djen-cnj';
         if (s.id === 'datajud') s.id = 'datajud-cnj';
       });
       const defaultSources = [
-        { id: 'external-calendar', name: 'Agenda Externa (Webcal)', short: 'CAL', method: 'Webcal/iCal', status: 'planned', lastCheck: null, detail: 'Sincronize com Google Agenda, Outlook ou Apple' },
+        { ...EXTERNAL_CALENDAR_DEFAULT_SOURCE },
         { id: 'djen-cnj', name: 'DJEN / CNJ Oficial', short: 'CNJ', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Conector de diários e publicações' },
         { id: 'datajud-cnj', name: 'DataJud / CNJ', short: 'DJD', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Enriquecimento de andamentos processuais' },
         { id: 'a1', name: 'Portais com certificado A1 / PJe', short: 'A1', method: 'Agente local seguro', status: 'off', lastCheck: null, detail: 'Integração direta com tribunais' }

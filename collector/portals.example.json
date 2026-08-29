@@ -139,15 +139,6 @@
       "id": "eproc-trf6-2g", "name": "TRF6 · eproc 2º grau", "short": "F62", "group": "Justiça Federal", "system": "eproc",
       "court": "TRF6 2º grau", "enabled": false, "accountScoped": true, "url": "https://eproc2g.trf6.jus.br/eproc/", "strategy": "eproc",
       "authStrategy": "credentials-totp", "automationLevel": "supported"
-    },
-    {
-      "id": "advbox", "name": "ADVBOX", "group": "Sistemas do escritório", "enabled": false, "accountScoped": true,
-      "url": "https://app.advbox.com.br/", "strategy": "tasks", "authStrategy": "manual-persistent-session", "itemSelector": "a[href*='/tasks/'], a[href*='/activities/']"
-    },
-    {
-      "id": "legalone", "name": "Legal One", "group": "Sistemas do escritório", "enabled": false, "accountScoped": true,
-      "url": "https://kelleradv.novajus.com.br/", "dataUrl": "https://kelleradv.novajus.com.br/processos/processos/search",
-      "strategy": "processes", "authStrategy": "manual-persistent-session", "itemSelector": "table tbody tr"
     }
   ]
 }

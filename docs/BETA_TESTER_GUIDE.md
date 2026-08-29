@@ -29,7 +29,7 @@ Este guia foi elaborado para que você utilize todos os recursos essenciais do s
 
 ## 📂 3. Importação de Acervo e Planilhas
 
-O ATRIUM possui importador universal compatível com planilhas do **ADVBOX**, **Legal One (Thomson Reuters)**, **Astrea** ou planilhas padrão `.xlsx` / `.csv`.
+O ATRIUM possui importador universal compatível com planilhas `.xlsx` / `.csv` exportadas por sistemas de gestão jurídica e relatórios processuais compatíveis.
 
 1. Acesse o menu **Processos e casos** na barra lateral.
 2. Clique no botão **[ 📥 Importar Planilha ]**.
@@ -52,7 +52,7 @@ O ATRIUM possui uma tecnologia exclusiva de **Sandbox Local** que valida seu cer
 
 ---
 
-## 📋 5. Gestão de Tarefas, Prazos e Kanban (TaskScore)
+## 📋 5. Gestão de Tarefas, Prazos e Kanban
 
 1. Acesse o menu **Quadro Kanban & Prazos**.
 2. Suas tarefas estão organizadas em colunas visuais: **Triagem**, **Em Andamento**, **Revisão** e **Concluído**.

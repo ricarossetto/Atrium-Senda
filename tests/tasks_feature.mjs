@@ -168,7 +168,7 @@ try {
     store.state.tasks = [
       {
         id: 'task-characterization', externalId: 'task-ext-1', title: 'Tarefa Caracterização Kanban',
-        description: 'Descrição sintética preservada', source: 'ADVBOX', points: 42, priority: 'urgente',
+        description: 'Descrição sintética preservada', source: 'Sistema jurídico', points: 42, priority: 'urgente',
         client: 'Cliente Teste', process: '5000000-00.2026.8.21.0001', deadline: today,
         fatalDeadline: tomorrow, responsible: 'Advogada Teste', status: 'triagem',
         timeLogs: [{ id: 'log-existing', date: today, minutes: 30, description: 'Apontamento existente', actor: 'Advogada Teste' }],
@@ -195,7 +195,7 @@ try {
   let card = page.locator('#kanbanBoard [data-task-id="task-characterization"]');
   await card.waitFor();
   const cardText = await card.textContent();
-  for (const expected of ['ADVBOX', '42 pts', 'Tarefa Caracterização Kanban', 'Descrição sintética preservada', 'Cliente Teste', '5000000-00.2026.8.21.0001', 'Prazo fatal', '30m']) {
+  for (const expected of ['SISTEMA JURÍDICO', '42 pts', 'Tarefa Caracterização Kanban', 'Descrição sintética preservada', 'Cliente Teste', '5000000-00.2026.8.21.0001', 'Prazo fatal', '30m']) {
     assert.ok(cardText.includes(expected), `Card deve preservar: ${expected}`);
   }
 

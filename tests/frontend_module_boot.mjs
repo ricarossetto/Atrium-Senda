@@ -170,7 +170,7 @@ async function assertSingleScriptGraph() {
 async function assertApplicationReady() {
   await page.locator('#appShell:not(.hidden)').waitFor();
   await page.locator('#view-dashboard.active').waitFor();
-  await page.locator('#view-dashboard .metric-grid, #view-dashboard .astrea-dashboard-wrap').first().waitFor();
+  await page.locator('#view-dashboard .metric-grid, #view-dashboard .dashboard-workspace-wrap').first().waitFor();
   const contracts = await page.evaluate(() => ({
     store: Boolean(window.Atrium?.Store?.state),
     app: Boolean(window.Atrium?.App),

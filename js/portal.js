@@ -403,7 +403,7 @@ import { createTasksFeature } from './features/tasks.js';
       escapeHtml,
       formatCurrency,
       showToast: (message, type) => App.toast(message, type),
-      renderDashboardFinancialWidgets: () => App.renderAstreaWidgets()
+      renderDashboardFinancialWidgets: () => App.renderDashboardWidgets()
     });
     return financialFeature;
   }
@@ -674,17 +674,17 @@ import { createTasksFeature } from './features/tasks.js';
       getGlobalSearchComponent().init();
       byId('exportAuditButton')?.addEventListener('click', () => this.exportJson(Store.state.audit, `atrium-auditoria-${isoDate()}.json`));
 
-      // Área de Trabalho (Astrea)
+      // Área de Trabalho
       byId('btnDashboardNewTask')?.addEventListener('click', () => this.openTaskModal());
-      byId('astreaTaskSortSelect')?.addEventListener('change', event => {
-        this.astreaTaskSort = event.target.value;
-        this.renderAstreaTasks();
+      byId('dashboardTaskSortSelect')?.addEventListener('change', event => {
+        this.dashboardTaskSort = event.target.value;
+        this.renderDashboardTasks();
       });
-      byId('astreaTaskFilters')?.addEventListener('click', event => {
-        const button = event.target.closest('button[data-astrea-filter]'); if (!button) return;
-        this.astreaTaskFilter = button.dataset.astreaFilter;
-        byId('astreaTaskFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
-        this.renderAstreaTasks();
+      byId('dashboardTaskFilters')?.addEventListener('click', event => {
+        const button = event.target.closest('button[data-dashboard-task-filter]'); if (!button) return;
+        this.dashboardTaskFilter = button.dataset.dashboardTaskFilter;
+        byId('dashboardTaskFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
+        this.renderDashboardTasks();
       });
 
       // Agenda Externa
@@ -927,8 +927,8 @@ import { createTasksFeature } from './features/tasks.js';
     renderDashboard() {
       this.renderOfficeIdentity();
       this.renderMetrics();
-      this.renderAstreaTasks();
-      this.renderAstreaWidgets();
+      this.renderDashboardTasks();
+      this.renderDashboardWidgets();
     },
     renderMetrics() {
       const untreatedIntimations = getPublicationsFeature().getUntreatedCount();
@@ -955,11 +955,11 @@ import { createTasksFeature } from './features/tasks.js';
     renderPublicationsMetrics() {
       return getPublicationsFeature().renderMetrics();
     },
-    renderAstreaTasks() {
-      const listEl = document.getElementById('astreaTaskList');
+    renderDashboardTasks() {
+      const listEl = document.getElementById('dashboardTaskList');
       if (!listEl) return;
-      const filter = this.astreaTaskFilter || 'all';
-      const sort = this.astreaTaskSort || 'date-asc';
+      const filter = this.dashboardTaskFilter || 'all';
+      const sort = this.dashboardTaskSort || 'date-asc';
       const tasks = Store.state.tasks || [];
       const processes = Store.state.processes || [];
 
@@ -1003,7 +1003,7 @@ import { createTasksFeature } from './features/tasks.js';
         return (daysUntil(a.deadline) - daysUntil(b.deadline));
       });
 
-      const countEl = document.getElementById('astreaTaskCount');
+      const countEl = document.getElementById('dashboardTaskCount');
       if (countEl) countEl.textContent = `${filtered.length} tarefas`;
 
       if (!filtered.length) {
@@ -1039,31 +1039,31 @@ import { createTasksFeature } from './features/tasks.js';
         const difficultyText = points >= 50 ? 'Alta Complexidade' : points >= 20 ? 'Média' : points > 0 ? 'Básica' : '';
 
         return `
-          <div class="astrea-task-item" data-astrea-task-id="${escapeHtml(task.id)}">
-            <input type="checkbox" class="astrea-task-check" data-complete-task-id="${escapeHtml(task.id)}" title="Concluir tarefa">
-            <div class="astrea-task-body">
-              <div class="astrea-task-title">${escapeHtml(task.title)}</div>
-              <div class="astrea-task-process" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0 6px 0;font-size:12px;">
+          <div class="dashboard-task-item" data-dashboard-task-id="${escapeHtml(task.id)}">
+            <input type="checkbox" class="dashboard-task-check" data-complete-task-id="${escapeHtml(task.id)}" title="Concluir tarefa">
+            <div class="dashboard-task-body">
+              <div class="dashboard-task-title">${escapeHtml(task.title)}</div>
+              <div class="dashboard-task-process" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0 6px 0;font-size:12px;">
                 <strong>👤 ${escapeHtml(clientName)}</strong>
                 ${processNum ? `<span style="color:var(--muted)">· 📁 <b>${escapeHtml(processNum)}</b></span>` : ''}
                 ${courtName ? `<span style="color:var(--muted)">· ⚖️ <em>${escapeHtml(courtName)}</em></span>` : ''}
               </div>
-              <div class="astrea-task-tags">
+              <div class="dashboard-task-tags">
                 <span class="task-tag ${typeBadge}">${typeLabel}</span>
                 ${task.responsible ? `<span class="task-tag user">👤 ${escapeHtml(task.responsible)}</span>` : ''}
                 ${points ? `<span class="task-tag points" style="background:rgba(212,175,55,0.15);color:var(--gold);font-weight:600;">⚡ ${points} pts${difficultyText ? ` (${difficultyText})` : ''}</span>` : ''}
                 ${task.priority === 'urgente' ? `<span class="task-tag" style="background:rgba(239,68,68,0.15);color:var(--danger);font-weight:700;">URGENTE</span>` : ''}
               </div>
             </div>
-            <div class="astrea-task-date" ${dateClass}>${dateFormatted}</div>
+            <div class="dashboard-task-date" ${dateClass}>${dateFormatted}</div>
           </div>
         `;
       }).join('');
 
-      listEl.querySelectorAll('[data-astrea-task-id]').forEach(item => {
+      listEl.querySelectorAll('[data-dashboard-task-id]').forEach(item => {
         item.addEventListener('click', (e) => {
           if (e.target.closest('[data-complete-task-id]')) return;
-          const task = Store.state.tasks.find(t => t.id === item.dataset.astreaTaskId);
+          const task = Store.state.tasks.find(t => t.id === item.dataset.dashboardTaskId);
           if (task) this.openTaskModal(task);
         });
       });
@@ -1079,7 +1079,7 @@ import { createTasksFeature } from './features/tasks.js';
         });
       });
     },
-    renderAstreaWidgets() {
+    renderDashboardWidgets() {
       const tasks = Store.state.tasks || [];
       const completed = tasks.filter(t => TERMINAL_STATUSES.includes(t.status)).length;
       const late = tasks.filter(t => !TERMINAL_STATUSES.includes(t.status) && daysUntil(t.deadline) < 0).length;
@@ -1149,7 +1149,7 @@ import { createTasksFeature } from './features/tasks.js';
       const docCountEl = document.getElementById('widgetDocsCount');
       if (docCountEl) docCountEl.textContent = Store.state.customDocs?.length || 5;
 
-      const remindersEl = document.getElementById('astreaRemindersList');
+      const remindersEl = document.getElementById('dashboardRemindersList');
       if (remindersEl) {
         const agenda = Store.state.agenda || [];
         const upcomingAgenda = agenda.slice(0, 4);
@@ -1157,8 +1157,8 @@ import { createTasksFeature } from './features/tasks.js';
           remindersEl.innerHTML = '<div class="empty-column" style="padding:8px;"><small style="color:var(--muted);">Nenhum lembrete imediato.</small></div>';
         } else {
           remindersEl.innerHTML = upcomingAgenda.map(item => `
-            <div class="astrea-reminder-item" data-agenda-id="${escapeHtml(item.id)}" style="cursor:pointer;">
-              <span class="astrea-reminder-date">${formatDate(item.date)}</span>
+            <div class="dashboard-reminder-item" data-agenda-id="${escapeHtml(item.id)}" style="cursor:pointer;">
+              <span class="dashboard-reminder-date">${formatDate(item.date)}</span>
               <div><strong>${escapeHtml(item.title)}</strong><small style="display:block;color:var(--muted);">${escapeHtml(item.client || item.process || 'Compromisso')}</small></div>
             </div>
           `).join('');
@@ -1401,7 +1401,7 @@ import { createTasksFeature } from './features/tasks.js';
       this.openModal('intimation', defaults.id ? 'Editar intimação' : 'Nova intimação', 'Registro judicial', [
         { name: 'title', label: 'Título / ato', required: true, full: true }, { name: 'process', label: 'Número do processo' }, { name: 'client', label: 'Cliente' },
         { name: 'court', label: 'Tribunal / órgão' }, { name: 'publishedAt', label: 'Data da publicação', type: 'date' },
-        { name: 'source', label: 'Origem', type: 'select', options: [{value:'Manual',label:'Manual'},{value:'ADVBOX',label:'ADVBOX'},{value:'Legal One',label:'Legal One'},{value:'DJEN',label:'DJEN'}] },
+        { name: 'source', label: 'Origem', type: 'select', options: [{value:'Manual',label:'Manual'},{value:'Sistema jurídico',label:'Sistema jurídico'},{value:'DJEN',label:'DJEN'}] },
         { name: 'text', label: 'Texto original', type: 'textarea', full: true, required: true }
       ], { publishedAt: isoDate(), source: 'Manual', ...defaults });
     },
@@ -2236,7 +2236,7 @@ import { createTasksFeature } from './features/tasks.js';
         const data = await response.json();
         Store.state.settings.calendarConfigured = Boolean(data.calendarConfigured);
         Store.state.settings.collectorConfigured = Boolean(data.collectorConfigured);
-        const calendar = Store.state.sources.find(item => item.id === 'advbox-calendar');
+        const calendar = Store.state.sources.find(item => item.id === 'external-calendar');
         if (calendar) { calendar.status = data.calendarConfigured ? 'ok' : 'attention'; calendar.detail = data.calendarConfigured ? 'Webcal protegido no servidor' : calendar.detail; }
         Store.save(); this.renderSources(); this.renderMonitoring(); this.renderMetrics();
         document.getElementById('forgetTrustedDeviceButton').classList.toggle('hidden', !window.KellerAuth.trustedDevice);

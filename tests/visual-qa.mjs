@@ -26,7 +26,7 @@ const VIEWPORTS = [
 ];
 
 const VIEWS = [
-  { id: 'dashboard', name: 'dashboard', selector: '#view-dashboard.active', uniqueSelector: '.astrea-dashboard-wrap, #astreaTaskList, .metric-grid' },
+  { id: 'dashboard', name: 'dashboard', selector: '#view-dashboard.active', uniqueSelector: '.dashboard-workspace-wrap, #dashboardTaskList, .metric-grid' },
   { id: 'inbox', name: 'inbox', selector: '#view-inbox.active', uniqueSelector: '#publicationsMetrics, #inboxFilters, #inboxList' },
   { id: 'kanban', name: 'kanban', selector: '#view-kanban.active', uniqueSelector: '#kanbanBoard, #newTaskButton' },
   { id: 'processes', name: 'processes', selector: '#view-processes.active', uniqueSelector: '#processSearch, #processTable' },

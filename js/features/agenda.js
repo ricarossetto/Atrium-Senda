@@ -140,7 +140,7 @@ export function createAgendaFeature({
       openModal?.('agenda', defaults.id ? 'Detalhes do compromisso' : 'Novo compromisso', 'Agenda jurídica', [
         { name: 'title', label: 'Compromisso', required: true, full: true }, { name: 'date', label: 'Data', type: 'date', required: true }, { name: 'time', label: 'Horário', type: 'time' },
         { name: 'client', label: 'Cliente / partes' }, { name: 'process', label: 'Processo' }, { name: 'location', label: 'Local' },
-        { name: 'source', label: 'Origem', type: 'select', options: [{value:'Interna',label:'Interna'},{value:'ADVBOX',label:'ADVBOX'},{value:'Agenda ADVBOX',label:'Agenda ADVBOX'}] },
+        { name: 'source', label: 'Origem', type: 'select', options: [{value:'Interna',label:'Interna'},{value:'Agenda externa',label:'Agenda externa'},{value:'Importação',label:'Importação'}] },
         { name: 'description', label: 'Observações', type: 'textarea', full: true }
       ], { date: isoDate(), source: 'Interna', ...defaults });
     },
@@ -204,7 +204,8 @@ export function createAgendaFeature({
           let typeClass = '';
           let chipHtml = '';
           if (item.type === 'event') {
-            chipHtml = `<span class="status-chip ${item.source === 'ADVBOX' ? 'planned' : 'muted'}">${escapeHtml(item.source)}</span>`;
+            const internalSource = String(item.source || '').trim().toLocaleLowerCase('pt-BR') === 'interna';
+            chipHtml = `<span class="status-chip ${internalSource ? 'muted' : 'planned'}">${internalSource ? 'Interna' : 'Agenda externa'}</span>`;
           } else if (item.type === 'task') {
             typeClass = item.isFatal ? 'fatal-type' : 'task-type';
             const timeBadge = item.timeMins > 0 ? `<span class="task-timelog">⏱ ${formatMinutes(item.timeMins)}</span>` : '';

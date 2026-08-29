@@ -15,7 +15,7 @@ const checkFiles = [
   'lib/judicial/auth-adapters.mjs',
   'lib/judicial/orchestrator.mjs',
   'scripts/import-spreadsheet.mjs',
-  'scripts/import-advbox.mjs',
+  'scripts/import-legal-data.mjs',
   'scripts/migrate-judicial-secrets.mjs',
   'scripts/reset-judicial-connections.mjs',
   'scripts/setup-keys.mjs',
@@ -94,6 +94,7 @@ const checkFiles = [
   'tests/store_module.mjs',
   'tests/shared_components.mjs',
   'tests/onboarding_component.mjs',
+  'tests/brand_neutrality.mjs',
   'tests/visual-qa.mjs'
 ];
 
@@ -111,9 +112,10 @@ const testSuites = [
   { name: 'Feature Modular da Biblioteca de Prompts', file: 'tests/prompts_feature.mjs' },
   { name: 'Feature Modular de Configurações e Usuários', file: 'tests/configuration_feature.mjs' },
   { name: 'Feature Modular de Administração do Sistema', file: 'tests/system_admin_feature.mjs' },
+  { name: 'Neutralidade de Marca e Compatibilidade do Calendário Legado', file: 'tests/brand_neutrality.mjs' },
   { name: 'Feature Modular de Monitoramento', file: 'tests/monitoring_feature.mjs' },
   { name: 'Feature Modular de Integrações Judiciais', file: 'tests/judicial_integrations_feature.mjs' },
-  { name: 'Catálogos ADVBOX/Legal One e regras de negócio', file: 'tests/features_validation.mjs' },
+  { name: 'Catálogos jurídicos e regras de negócio', file: 'tests/features_validation.mjs' },
   { name: 'Recursos jurídicos, privacidade e cálculos auxiliares', file: 'tests/open_source_features.mjs' },
   { name: 'Minimização de dados no contexto do assistente de IA', file: 'tests/ai-context.mjs' },
   { name: 'Deployment e Conformidade com Nuvem (Render / Cloud)', file: 'tests/deployment.mjs' },

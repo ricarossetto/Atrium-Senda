@@ -9,6 +9,23 @@ export const TASK_COLUMNS = Object.freeze([
   { id: 'concluida', title: 'Concluída', color: '#40b879' }
 ]);
 
+const NEUTRAL_TASK_SOURCE_LABELS = new Map([
+  ['interna', 'INTERNA'],
+  ['manual', 'MANUAL'],
+  ['demonstração', 'DEMONSTRAÇÃO'],
+  ['demonstracao', 'DEMONSTRAÇÃO'],
+  ['djen', 'DJEN'],
+  ['datajud', 'DATAJUD'],
+  ['publicação', 'PUBLICAÇÃO'],
+  ['publicacao', 'PUBLICAÇÃO'],
+  ['sistema jurídico', 'SISTEMA JURÍDICO']
+]);
+
+const taskSourceLabel = source => {
+  const normalized = String(source || 'Interna').trim().toLocaleLowerCase('pt-BR');
+  return NEUTRAL_TASK_SOURCE_LABELS.get(normalized) || 'SISTEMA JURÍDICO';
+};
+
 export function createTasksFeature({
   store = Store,
   documentRef = globalThis.document,
@@ -101,9 +118,9 @@ export function createTasksFeature({
       const points = Number(task.points) || (task.priority === 'urgente' ? 25 : 10);
       return `<article class="task-card ${isTimerRunning ? 'timer-active' : ''}" draggable="true" data-task-id="${escapeHtml(task.id)}">
         <div class="task-top">
-          <span class="task-source">${escapeHtml(task.source || 'INTERNA')}</span>
+          <span class="task-source">${escapeHtml(taskSourceLabel(task.source))}</span>
           <span class="task-badges">
-            <b class="task-points" title="Pontuação TaskScore ADVBOX">✦ ${points} pts</b>
+            <b class="task-points" title="Pontuação da tarefa">✦ ${points} pts</b>
             ${timeBadge}
             ${task.priority === 'urgente' ? '<span class="task-priority" title="Urgente">!</span>' : ''}
           </span>

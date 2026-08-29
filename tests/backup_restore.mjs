@@ -479,7 +479,7 @@ async function startBackupRestoreServer() {
       AUTH_ENCRYPTION_KEY: encryptionKey,
       COLLECTOR_INGEST_TOKEN: randomBytes(32).toString('base64url'),
       COOKIE_SECURE: 'false',
-      ADVBOX_WEBCAL_URL: '',
+      EXTERNAL_CALENDAR_URL: '',
       ATRIUM_TEST_RESTORE_BEFORE_SAVE_DELAY_MS: '1200'
     },
     stdio: ['ignore', 'pipe', 'pipe']

@@ -405,18 +405,18 @@
           </article>
         </div>
 
-        <!-- Layout Estilo Astrea: 2 Colunas (Tarefas e Prazos à Esquerda / Widgets à Direita) -->
-        <div class="astrea-dashboard-wrap">
-          <div class="astrea-tasks-column">
-            <div class="astrea-tasks-header">
-              <div class="astrea-tasks-title">
+        <!-- Layout da Área de Trabalho: 2 Colunas (Tarefas e Prazos à Esquerda / Widgets à Direita) -->
+        <div class="dashboard-workspace-wrap">
+          <div class="dashboard-tasks-column">
+            <div class="dashboard-tasks-header">
+              <div class="dashboard-tasks-title">
                 <span>Lista de Tarefas &amp; Prazos</span>
-                <span class="status-chip connected" id="astreaTaskCount">0 tarefas</span>
+                <span class="status-chip connected" id="dashboardTaskCount">0 tarefas</span>
               </div>
               <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <div class="inbox-sort-control" style="margin:0; padding:2px 6px; display:inline-flex; align-items:center; gap:5px; background:var(--panel-soft); border:1px solid var(--line); border-radius:6px;">
                   <span style="font-size:11px; color:var(--muted);">Ordenar:</span>
-                  <select id="astreaTaskSortSelect" style="background:transparent; border:none; color:var(--text); font-size:11.5px; font-weight:600; padding:2px 4px; outline:none; cursor:pointer;">
+                  <select id="dashboardTaskSortSelect" style="background:transparent; border:none; color:var(--text); font-size:11.5px; font-weight:600; padding:2px 4px; outline:none; cursor:pointer;">
                     <option value="date-asc" selected>Data (menor prazo)</option>
                     <option value="date-desc">Data (maior prazo)</option>
                     <option value="name-asc">Nome / Cliente (A-Z)</option>
@@ -425,36 +425,36 @@
                     <option value="priority">Prioridade (Urgentes)</option>
                   </select>
                 </div>
-                <div class="filter-tabs" id="astreaTaskFilters">
-                  <button class="active" data-astrea-filter="all">Todas</button>
-                  <button data-astrea-filter="prazo">Prazos</button>
-                  <button data-astrea-filter="audiencia">Audiências</button>
-                  <button data-astrea-filter="tarefa">Tarefas</button>
+                <div class="filter-tabs" id="dashboardTaskFilters">
+                  <button class="active" data-dashboard-task-filter="all">Todas</button>
+                  <button data-dashboard-task-filter="prazo">Prazos</button>
+                  <button data-dashboard-task-filter="audiencia">Audiências</button>
+                  <button data-dashboard-task-filter="tarefa">Tarefas</button>
                 </div>
               </div>
             </div>
-            <div id="astreaTaskList" class="astrea-tasks-list">
+            <div id="dashboardTaskList" class="dashboard-tasks-list">
               <!-- Renderizado dinamicamente pelo portal.js -->
             </div>
           </div>
 
-          <aside class="astrea-widgets-column">
+          <aside class="dashboard-widgets-column">
             <!-- Widget 1: Minhas Atividades -->
-            <div class="astrea-widget">
-              <div class="astrea-widget-header">
+            <div class="dashboard-widget">
+              <div class="dashboard-widget-header">
                 <h4>Minhas atividades</h4>
                 <small style="color:var(--muted)">Esta semana</small>
               </div>
-              <div class="astrea-activity-counters">
-                <div class="astrea-counter-box">
+              <div class="dashboard-activity-counters">
+                <div class="dashboard-counter-box">
                   <strong id="widgetCompletedTasks" style="color:var(--success)">0</strong>
                   <small>Concluídas</small>
                 </div>
-                <div class="astrea-counter-box">
+                <div class="dashboard-counter-box">
                   <strong id="widgetLateTasks" style="color:var(--danger)">0</strong>
                   <small>Atrasadas</small>
                 </div>
-                <div class="astrea-counter-box">
+                <div class="dashboard-counter-box">
                   <strong id="widgetPendingTasks" style="color:var(--warning)">0</strong>
                   <small>A concluir</small>
                 </div>
@@ -462,52 +462,52 @@
             </div>
 
             <!-- Widget 2: Processos e Casos -->
-            <div class="astrea-widget">
-              <div class="astrea-widget-header">
+            <div class="dashboard-widget">
+              <div class="dashboard-widget-header">
                 <h4>Processos e casos</h4>
                 <small style="color:var(--muted)">Últimos 30 dias</small>
               </div>
-              <div class="astrea-stat-row">
+              <div class="dashboard-stat-row">
                 <span>Com movimentação recente:</span>
                 <strong id="widgetProcActive" style="color:var(--success)">0</strong>
               </div>
-              <div class="astrea-stat-row">
+              <div class="dashboard-stat-row">
                 <span>Sem movimentação no período:</span>
                 <strong id="widgetProcInactive" style="color:var(--muted)">0</strong>
               </div>
             </div>
 
             <!-- Widget 3: Estatísticas Gerais -->
-            <div class="astrea-widget">
-              <div class="astrea-widget-header">
+            <div class="dashboard-widget">
+              <div class="dashboard-widget-header">
                 <h4>Estatísticas</h4>
                 <small style="color:var(--muted)">Geral</small>
               </div>
-              <div class="astrea-stat-row">
+              <div class="dashboard-stat-row">
                 <span>Atendimentos ativos:</span>
                 <strong id="widgetActiveLeads">0</strong>
               </div>
-              <div class="astrea-stat-row">
+              <div class="dashboard-stat-row">
                 <span>Honorários a faturar:</span>
                 <strong id="widgetHonorariosPending" style="color:var(--gold)">R$ 0,00</strong>
               </div>
-              <div class="astrea-stat-row">
+              <div class="dashboard-stat-row">
                 <span>Timesheets (30 dias):</span>
                 <strong id="widgetTimesheetHours">0h 0m</strong>
               </div>
-              <div class="astrea-stat-row">
+              <div class="dashboard-stat-row">
                 <span>Documentos gerados:</span>
                 <strong id="widgetDocsCount">0</strong>
               </div>
             </div>
 
             <!-- Widget 4: Próximos Lembretes & Compromissos -->
-            <div class="astrea-widget">
-              <div class="astrea-widget-header">
+            <div class="dashboard-widget">
+              <div class="dashboard-widget-header">
                 <h4>Lembretes</h4>
                 <button class="text-button" data-view-link="agenda">Agenda →</button>
               </div>
-              <div id="astreaRemindersList" class="astrea-reminders-list">
+              <div id="dashboardRemindersList" class="dashboard-reminders-list">
                 <!-- Renderizado dinamicamente -->
               </div>
             </div>
@@ -753,7 +753,7 @@
 
       <section class="view" id="view-contacts" data-title="Contatos" data-eyebrow="Pessoas e relacionamentos">
         <div class="section-toolbar">
-          <div class="toolbar-copy"><p>Contatos importados dos relatórios ADVBOX e preservados no armazenamento criptografado.</p></div>
+          <div class="toolbar-copy"><p>Contatos importados de sistemas jurídicos e preservados no armazenamento criptografado.</p></div>
           <div class="toolbar-actions">
             <button class="button ghost" data-view-link="importer">
               <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -865,7 +865,7 @@
       <section class="view" id="view-integrations" data-title="Integrações" data-eyebrow="Fontes e conexões">
         <div class="integration-grid">
           <article class="integration-card card">
-            <div class="integration-logo advbox-logo">
+            <div class="integration-logo external-calendar-logo">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="5" width="18" height="16" rx="2"/>
                 <path d="M8 2v4M16 2v4M3 10h18"/>
@@ -1896,13 +1896,13 @@
     </section>
   </div>
 
-  <!-- Modal de Envio de Publicações por E-mail (Estilo Astrea) -->
+  <!-- Modal de envio de publicações por e-mail -->
   <div class="modal-backdrop hidden" id="publicationsEmailModalBackdrop">
     <section class="modal publications-email-modal" role="dialog" aria-modal="true" aria-labelledby="emailModalTitle" style="max-width:760px; width:92%;">
       <header>
         <div>
           <p class="eyebrow" id="emailModalEyebrow">Comunicação e Notificações</p>
-          <h2 id="emailModalTitle">Boletim de Publicações por E-mail (Estilo Astrea)</h2>
+          <h2 id="emailModalTitle">Boletim de Publicações por E-mail</h2>
         </div>
         <button type="button" class="icon-button" id="publicationsEmailClose" aria-label="Fechar modal">×</button>
       </header>

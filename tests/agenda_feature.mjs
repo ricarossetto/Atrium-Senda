@@ -55,7 +55,7 @@ const legalTextTask = { id: 'legal-text', title: 'Apelação — prazo fatal em 
 const synthetic = {
   agenda: [
     { id: 'past-event', title: 'Passado', date: '2026-08-27' },
-    { id: 'event', title: 'Audiência', date: referenceToday, time: '09:30', client: 'Cliente Evento', source: 'ADVBOX' }
+    { id: 'event', title: 'Audiência', date: referenceToday, time: '09:30', client: 'Cliente Evento', source: 'Agenda externa' }
   ],
   tasks: [
     { id: 'task', title: 'Tarefa', deadline: referenceToday, time: '10:00', points: 5, timeLogs: [{ minutes: 35 }] },
@@ -131,7 +131,7 @@ assert.equal(modalContract[0], 'agenda');
 assert.equal(modalContract[1], 'Detalhes do compromisso');
 assert.equal(modalContract[2], 'Agenda jurídica');
 assert.deepEqual(modalContract[3].map(field => field.name), ['title', 'date', 'time', 'client', 'process', 'location', 'source', 'description']);
-assert.deepEqual(modalContract[3].find(field => field.name === 'source').options.map(option => option.value), ['Interna', 'ADVBOX', 'Agenda ADVBOX']);
+assert.deepEqual(modalContract[3].find(field => field.name === 'source').options.map(option => option.value), ['Interna', 'Agenda externa', 'Importação']);
 
 const created = isolatedFeature.saveRecord({ title: 'Novo compromisso', date: referenceToday }, {});
 assert.match(created.id, /^agenda-/);
@@ -197,7 +197,7 @@ try {
     store.state.agenda = [{
       id: 'agenda-seed', externalId: 'agenda-ext-1', title: 'Audiência Agenda Modular', date: today,
       time: '09:30', client: 'Cliente Agenda', process: '5000000-00.2026.8.21.0001', location: 'Sala 1',
-      source: 'ADVBOX', description: 'Fixture Agenda', updatedAt: new Date().toISOString()
+      source: 'Agenda externa', description: 'Fixture Agenda', updatedAt: new Date().toISOString()
     }];
     store.state.tasks = [
       { id: 'task-explicit', title: 'Tarefa com deadline explícito', deadline: today, time: '10:00', client: 'Cliente Tarefa', points: 8, timeLogs: [{ minutes: 45 }] },
@@ -291,7 +291,7 @@ try {
   await page.locator('#agendaList [data-agenda-activity-id="agenda-seed"]').click();
   await page.locator('#modalTitle', { hasText: 'Detalhes do compromisso' }).waitFor();
   assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)), ['title', 'date', 'time', 'client', 'process', 'location', 'source', 'description']);
-  assert.equal(await page.locator('#modalForm [name="source"]').inputValue(), 'ADVBOX');
+  assert.equal(await page.locator('#modalForm [name="source"]').inputValue(), 'Agenda externa');
   await page.locator('#modalForm [name="title"]').fill('Audiência Agenda Modular Editada');
   await page.click('#modalForm button[type="submit"]');
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });

@@ -11,7 +11,7 @@ const fn = new Function('module', 'exports', 'globalThis', 'self', officeDataCon
 fn(mod, mod.exports, globalThis, globalThis);
 const officeData = mod.exports;
 
-console.log('--- Iniciando Testes de Validação das Funcionalidades ADVBOX + Legal One ---');
+console.log('--- Iniciando testes de validação dos catálogos jurídicos ---');
 
 // 1. Validar 33+ Tipos de Ações e Matérias
 console.log('1. Validando catálogo de tipos de ação...');
@@ -40,8 +40,8 @@ expectedActions.forEach(expected => {
 });
 console.log('✓ Catálogo validado com ' + actionTypes.length + ' tipos de ação.');
 
-// 2. Validar Definições de Tarefas e Pontuações TaskScore (ADVBOX)
-console.log('\n2. Validando catálogo de tarefas e pontuações TaskScore...');
+// 2. Validar definições e pontuações de tarefas
+console.log('\n2. Validando catálogo e pontuações de tarefas...');
 const taskDefs = officeData.taskDefinitions;
 assert.ok(Array.isArray(taskDefs), 'taskDefinitions deve ser um array');
 assert.ok(taskDefs.length >= 40, 'Deveria ter pelo menos 40 definições de tarefas, encontrado: ' + taskDefs.length);
@@ -49,7 +49,7 @@ assert.ok(taskDefs.length >= 40, 'Deveria ter pelo menos 40 definições de tare
 const highPointTask = taskDefs.find(t => t.name.includes('AGRAVO EM RECURSO ESPECIAL') || t.name.includes('PETIÇÃO COMPLEXA'));
 assert.ok(highPointTask, 'Deveria conter tarefas de alta complexidade');
 assert.ok(highPointTask.points >= 90, 'Tarefas complexas devem ter pontuação proporcional');
-console.log('✓ Catálogo de ' + taskDefs.length + ' tarefas com pontuação TaskScore validado.');
+console.log('✓ Catálogo de ' + taskDefs.length + ' tarefas com pontuação validado.');
 
 // 3. Validar Geração de Documentos e Substituição de Tags
 console.log('\n3. Validando gerador de minutas e modelos de documentos...');

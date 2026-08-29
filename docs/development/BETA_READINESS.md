@@ -16,11 +16,11 @@ Este documento define os critérios de conformidade técnica para a liberação 
 - [x] **Arquitetura de Adaptadores Judiciais**: `AuthAdapter` desacoplado por estratégia (`credentials-totp` para eproc, `pjeoffice-local` para PJe, `client-cert-mtls` para mTLS, `manual-persistent-session` para e-SAJ).
 - [x] **Contatos funcionam**: Cadastro, importação XLSX e deduplicação inteligente.
 - [x] **Processos funcionam**: Cadastro, busca e consulta processual unificada.
-- [x] **Tarefas & Kanban funcionam**: Atribuição, prioridades, TaskScore e movimentação de cards.
+- [x] **Tarefas & Kanban funcionam**: Atribuição, prioridades, pontuação de tarefas e movimentação de cards.
 - [x] **Agenda jurídica funciona**: Compromissos e audiências integradas com cálculo CPC/2015 (dias úteis e recesso forense).
 - [x] **Financeiro funciona**: TimeSheet, apontamento de horas e cálculo de honorários/RPV.
 - [x] **Triagem de intimações funciona**: Classificação autônoma por tipo de ato e sugestão de prazo via DJEN / DataJud.
-- [x] **Catálogos ADVBOX/Legal One**: 86 tipos de ação e 140 definições de tarefas com pontos.
+- [x] **Catálogos de configuração**: 86 tipos de ação e 140 definições de tarefas com pontos.
 - [x] **Identidade visual oficial**: Logotipos vetoriais SVG, tipografia Playfair Display e alto contraste.
 - [x] **Diagnóstico de primeira classe**: Painel de verificação de integridade e exportação segura.
 - [x] **Backup e restauração integrados**: Exportação cifrada `.atrium-backup` com snapshot de segurança pré-restauração.

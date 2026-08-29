@@ -318,10 +318,10 @@ try {
   await page.locator('button[data-view="documents"]').click();
   await page.locator('#view-documents.active').waitFor();
 
-  // Testar Área de Trabalho (Dashboard Estilo Astrea)
+  // Testar Área de Trabalho
   await page.locator('button[data-view="dashboard"]').click();
   await page.locator('#view-dashboard.active').waitFor();
-  const focusTask = page.locator('#astreaTaskList [data-astrea-task-id]').first();
+  const focusTask = page.locator('#dashboardTaskList [data-dashboard-task-id]').first();
   await focusTask.waitFor();
   await focusTask.click();
   await page.locator('#modalTitle', { hasText: 'Editar tarefa' }).waitFor();

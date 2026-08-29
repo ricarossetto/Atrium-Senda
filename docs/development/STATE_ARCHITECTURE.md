@@ -14,12 +14,12 @@ O ATRIUM organiza o armazenamento de dados em camadas estritamente isoladas para
 - **Conteúdo:**
   - processes: Processos monitorados, partes, varas, histórico de movimentações, honorários.
   - contacts: Clientes, partes contrárias, testemunhas, correspondentes, parceiros.
-  - tasks: Tarefas operacionais, prazos fatais, pontuações TaskScore, vínculos processuais.
+  - tasks: Tarefas operacionais, prazos fatais, pontuações de tarefas, vínculos processuais.
   - agenda: Compromissos, audiências, perícias e prazos integrados.
   - financial: Lançamentos, requisições de pagamento (RPV/Precatórios/Alvarás), retenções contratuais (30%).
   - terms: Termos monitorados e inscrições na OAB.
   - sources: Fontes de monitoramento ativas (djen-cnj, datajud-cnj, a1, external-calendar).
-  - configuration: Catálogos ADVBOX/Legal One (tipos de ação, fases, grupos de ação, tarefas padrão).
+  - configuration: Catálogos do escritório (tipos de ação, fases, grupos de ação, tarefas padrão).
   - audit: Trilha de auditoria append-only imutável (limite de 1.000 registros).
   - settings: Identidade visual do escritório, dados do titular e preferências globais.
   - customPrompts & customLinks: Prompts jurídicos e atalhos customizados.
@@ -109,7 +109,7 @@ O ATRIUM desacopla formalmente a versão da aplicação (appVersion) da versão 
 - **migrate3To4**: Migra modelo financeiro de RPVs/alvarás (rpvAmount -> requisitionAmount), mantendo retrocompatibilidade e mapeando status de quitação para repassado.
 - **migrate4To5**: Padroniza categorias de tarefas e prazos conforme o CPC/2015.
 - **migrate5To6**: Remove chaves de IA legadas (settings.geminiApiKey) do estado geral, isolando-as no cofre ai-secrets.json.
-- **migrate6To7**: Normaliza os catálogos de configuração do escritório (ADVBOX / Legal One) e inicializa a estrutura de metadados migrationHistory.
+- **migrate6To7**: Normaliza os catálogos de configuração do escritório e inicializa a estrutura de metadados migrationHistory.
 
 ---
 

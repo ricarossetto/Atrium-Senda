@@ -709,7 +709,7 @@ td small { color: var(--text-secondary); }
 .integration-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 .integration-card { min-height: 190px; display: flex; gap: 17px; padding: 23px; }
 .integration-logo { width: 51px; height: 51px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 14px; font: 800 14px/1 var(--font-sans); }
-.advbox-logo { color: #fff; background: #355abe; }
+.external-calendar-logo { color: #fff; background: #355abe; }
 .legal-logo { color: #fff; background: #db3b31; }
 .certificate-logo { color: #111; background: linear-gradient(145deg,var(--gold-soft),var(--gold)); }
 .cnj-logo { color: #fff; background: #286b52; }
@@ -1078,7 +1078,7 @@ td small { color: var(--text-secondary); }
   flex-wrap: wrap;
 }
 
-/* Chips Processuais: NB e Risco (Legal One & ADVBOX) */
+/* Chips processuais: NB e risco */
 .nb-chip {
   display: inline-flex;
   align-items: center;
@@ -3957,64 +3957,64 @@ td small { color: var(--text-secondary); }
   color: var(--text-secondary);
 }
 
-[data-theme="light"] .astrea-task-item {
+[data-theme="light"] .dashboard-task-item {
   background: #ffffff;
   border: 1px solid var(--border);
 }
 
-[data-theme="light"] .astrea-task-item:hover {
+[data-theme="light"] .dashboard-task-item:hover {
   background: var(--surface-raised);
   border-color: var(--border-strong);
 }
 
-[data-theme="light"] .astrea-task-title {
+[data-theme="light"] .dashboard-task-title {
   color: var(--text-primary);
 }
 
-[data-theme="light"] .astrea-task-process strong {
+[data-theme="light"] .dashboard-task-process strong {
   color: var(--text-primary);
 }
 
-[data-theme="light"] .astrea-task-process span,
-[data-theme="light"] .astrea-task-process small {
+[data-theme="light"] .dashboard-task-process span,
+[data-theme="light"] .dashboard-task-process small {
   color: var(--text-secondary);
 }
 
-[data-theme="light"] .astrea-widget {
+[data-theme="light"] .dashboard-widget {
   background: #ffffff;
   border: 1px solid var(--border);
 }
 
-[data-theme="light"] .astrea-widget-header h4 {
+[data-theme="light"] .dashboard-widget-header h4 {
   color: var(--text-primary);
 }
 
-[data-theme="light"] .astrea-counter-box {
+[data-theme="light"] .dashboard-counter-box {
   background: var(--surface-raised);
   border: 1px solid var(--border);
 }
 
-[data-theme="light"] .astrea-counter-box strong {
+[data-theme="light"] .dashboard-counter-box strong {
   color: var(--text-primary);
 }
 
-[data-theme="light"] .astrea-counter-box small {
+[data-theme="light"] .dashboard-counter-box small {
   color: var(--text-secondary);
 }
 
-[data-theme="light"] .astrea-stat-row strong {
+[data-theme="light"] .dashboard-stat-row strong {
   color: var(--text-primary);
 }
 
-[data-theme="light"] .astrea-stat-row span {
+[data-theme="light"] .dashboard-stat-row span {
   color: var(--text-secondary);
 }
 
-[data-theme="light"] .astrea-reminder-item {
+[data-theme="light"] .dashboard-reminder-item {
   background: var(--surface-raised);
 }
 
-[data-theme="light"] .astrea-reminder-item:hover {
+[data-theme="light"] .dashboard-reminder-item:hover {
   background: var(--surface-hover);
 }
 
@@ -4052,8 +4052,8 @@ td small { color: var(--text-secondary); }
   transform: translateY(-1px);
 }
 
-/* Layout Astrea: Dashboard com 2 Colunas */
-.astrea-dashboard-wrap {
+/* Layout da área de trabalho com duas colunas */
+.dashboard-workspace-wrap {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 20px;
@@ -4061,18 +4061,18 @@ td small { color: var(--text-secondary); }
 }
 
 @media (max-width: 1100px) {
-  .astrea-dashboard-wrap {
+  .dashboard-workspace-wrap {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-.astrea-tasks-column {
+.dashboard-tasks-column {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.astrea-tasks-header {
+.dashboard-tasks-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4080,7 +4080,7 @@ td small { color: var(--text-secondary); }
   border-bottom: 1px solid var(--line);
 }
 
-.astrea-tasks-title {
+.dashboard-tasks-title {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--ivory);
@@ -4089,7 +4089,7 @@ td small { color: var(--text-secondary); }
   gap: 8px;
 }
 
-.astrea-task-item {
+.dashboard-task-item {
   display: flex;
   align-items: flex-start;
   gap: 14px;
@@ -4101,31 +4101,31 @@ td small { color: var(--text-secondary); }
   cursor: pointer;
 }
 
-.astrea-task-item:hover {
+.dashboard-task-item:hover {
   border-color: var(--gold);
   background: var(--panel-soft);
   transform: translateY(-1px);
   box-shadow: var(--shadow);
 }
 
-.astrea-task-check {
+.dashboard-task-check {
   margin-top: 2px;
   cursor: pointer;
 }
 
-.astrea-task-body {
+.dashboard-task-body {
   flex: 1;
   display: grid;
   gap: 4px;
 }
 
-.astrea-task-title {
+.dashboard-task-title {
   font-weight: 600;
   font-size: 0.95rem;
   color: var(--ivory);
 }
 
-.astrea-task-process {
+.dashboard-task-process {
   font-size: 0.82rem;
   color: var(--muted);
   display: flex;
@@ -4133,7 +4133,7 @@ td small { color: var(--text-secondary); }
   gap: 6px;
 }
 
-.astrea-task-tags {
+.dashboard-task-tags {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -4180,21 +4180,21 @@ td small { color: var(--text-secondary); }
   border: 1px solid var(--line);
 }
 
-.astrea-task-date {
+.dashboard-task-date {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--gold);
   white-space: nowrap;
 }
 
-/* Coluna Lateral de Widgets (Astrea) */
-.astrea-widgets-column {
+/* Coluna lateral de widgets */
+.dashboard-widgets-column {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.astrea-widget {
+.dashboard-widget {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -4203,46 +4203,46 @@ td small { color: var(--text-secondary); }
   gap: 12px;
 }
 
-.astrea-widget-header {
+.dashboard-widget-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.astrea-widget-header h4 {
+.dashboard-widget-header h4 {
   margin: 0;
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--ivory);
 }
 
-.astrea-activity-counters {
+.dashboard-activity-counters {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   text-align: center;
 }
 
-.astrea-counter-box {
+.dashboard-counter-box {
   padding: 10px 4px;
   background: var(--panel-soft);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
 
-.astrea-counter-box strong {
+.dashboard-counter-box strong {
   display: block;
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--ivory);
 }
 
-.astrea-counter-box small {
+.dashboard-counter-box small {
   font-size: 0.72rem;
   color: var(--muted);
 }
 
-.astrea-stat-row {
+.dashboard-stat-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4251,24 +4251,24 @@ td small { color: var(--text-secondary); }
   border-bottom: 1px solid var(--line);
 }
 
-.astrea-stat-row:last-child {
+.dashboard-stat-row:last-child {
   border-bottom: none;
 }
 
-.astrea-stat-row span {
+.dashboard-stat-row span {
   color: var(--muted);
 }
 
-.astrea-stat-row strong {
+.dashboard-stat-row strong {
   color: var(--ivory);
 }
 
-.astrea-reminders-list {
+.dashboard-reminders-list {
   display: grid;
   gap: 8px;
 }
 
-.astrea-reminder-item {
+.dashboard-reminder-item {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -4279,11 +4279,11 @@ td small { color: var(--text-secondary); }
   cursor: pointer;
 }
 
-.astrea-reminder-item:hover {
+.dashboard-reminder-item:hover {
   background: var(--panel-hover);
 }
 
-.astrea-reminder-date {
+.dashboard-reminder-date {
   color: var(--gold);
   font-weight: 600;
   white-space: nowrap;

@@ -16,7 +16,7 @@
 
 *A mais completa alternativa soberana, moderna e segura para advogados autônomos, bancas boutique e departamentos jurídicos no Brasil.*
 
-[Funcionalidades](#-funcionalidades-principais) • [Sandbox A1](#-sandbox-local-de-certificado-a1-mtls) • [Boletim por E-mail](#-boletim-de-publicações-por-e-mail-estilo-astrea) • [Design System](#-design-system--filosofia-visual) • [Instalação Rápida](#-instalação-e-execução-local) • [Guia do Testador](#-guia-do-testador-beta)
+[Funcionalidades](#-funcionalidades-principais) • [Sandbox A1](#-sandbox-local-de-certificado-a1-mtls) • [Boletim por E-mail](#-boletim-de-publicações-por-e-mail) • [Design System](#-design-system--filosofia-visual) • [Instalação Rápida](#-instalação-e-execução-local) • [Guia do Testador](#-guia-do-testador-beta)
 
 ---
 
@@ -26,7 +26,7 @@
 
 O **Atrium** (do latim *atrium*, o pátio central da arquitetura clássica onde as grandes decisões convergiam e se organizavam) é uma plataforma open-source desenvolvida para entregar **soberania de dados, automação processual e controle total da banca jurídica**, sem mensalidades abusivas nem dependência de nuvens fechadas.
 
-Na versão **2.0**, o sistema consolida o melhor das principais plataformas do mercado (Astrea, Projuris, ADVBOX e Legal One) em uma arquitetura de **Ambiente Local Seguro (Zero Trust)** com suporte completo ao Windows e à nuvem soberana.
+Na versão **2.0**, o sistema reúne recursos de gestão jurídica, automação processual e organização do escritório em uma arquitetura de **Ambiente Local Seguro (Zero Trust)** com suporte completo ao Windows e à nuvem soberana.
 
 ---
 
@@ -42,7 +42,7 @@ Na versão **2.0**, o sistema consolida o melhor das principais plataformas do m
 - Descarte imediato da imagem do QR code após leitura em memória.
 - Verificação automática de desvio de relógio do sistema.
 
-### 3. 📧 Boletim de Publicações por E-mail (Estilo Astrea)
+### 3. 📧 Boletim de Publicações por E-mail
 - Consolidação diária automática das intimações do DJEN e tribunais.
 - Disparo direto via SMTP ou abertura em 1-clique no Gmail Web / Thunderbird.
 
@@ -51,7 +51,7 @@ Na versão **2.0**, o sistema consolida o melhor das principais plataformas do m
 - Minimização de dados estrita: exclusão automática de dados sensíveis de clientes antes do envio para a IA.
 
 ### 5. 🗂️ Kanban Jurídico & Controle de Prazos Fatais (CPC/2015)
-- Fluxo de trabalho ágil com pontuação **TaskScore (ADVBOX)** e apontamento de horas (**TimeSheet**).
+- Fluxo de trabalho ágil com **pontuação de tarefas** e apontamento de horas (**TimeSheet**).
 - Contagem em dias úteis (Art. 219 do CPC) e suspensão no Recesso Forense (Art. 220 do CPC).
 
 ### 6. 💰 Gestão Financeira, Requisições Judiciais & CRM
@@ -62,7 +62,7 @@ Na versão **2.0**, o sistema consolida o melhor das principais plataformas do m
 - Procurações *Ad Judicia*, Contratos de Honorários, Declarações de Hipossuficiência e Prestações de Contas geradas em segundos.
 
 ### 8. 📁 Importador Universal de Planilhas
-- Importe relatórios do **ADVBOX, Legal One, Astrea, eproc** ou planilhas `.xlsx`/`.csv` com deduplicação inteligente.
+- Importe planilhas `.xlsx`/`.csv` exportadas por sistemas de gestão jurídica e relatórios processuais compatíveis, com deduplicação inteligente.
 
 ---
 
@@ -129,7 +129,7 @@ npm test
 - ✓ **Importador de Planilhas**: XLSX/CSV e relatórios de processo.
 - ✓ **Políticas Supabase & RLS**: Isolamento estrito AAL2.
 - ✓ **Coletores Judiciais**: DJEN, DataJud e PJe sem ciência automática.
-- ✓ **Regras de Negócio & Catálogos**: 86 tipos de ação, 140 tarefas TaskScore e TimeSheet.
+- ✓ **Regras de Negócio & Catálogos**: 86 tipos de ação, 140 definições de tarefas com pontuação e TimeSheet.
 - ✓ **Recursos Open-Source**: Cálculos de RPV/Alvará e CPC Art. 220.
 - ✓ **Minimização de Dados na IA**: Proteção de PII no contexto Gemini.
 - ✓ **Deployment e Nuvem**: Compatibilidade Render Cloud e guards de produção.

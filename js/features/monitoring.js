@@ -60,7 +60,7 @@ export function createMonitoringFeature({
     routeSource(sourceId) {
       if (sourceId === 'a1' || sourceId === 'pje') {
         onOpenJudicialSetup();
-      } else if (sourceId === 'external-calendar' || sourceId === 'advbox-calendar') {
+      } else if (sourceId === 'external-calendar') {
         onOpenCalendarConfig();
       } else if (sourceId === 'djen-cnj' || sourceId === 'djen') {
         feature.openTermModal(store.state.terms[0] || {});
