@@ -107,6 +107,20 @@ const privateStaticFiles = new Set(['.env', 'package.json', 'pnpm-lock.yaml', 'p
 const privateStaticExtensions = new Set(['.key', '.pem', '.pfx', '.p12', '.crt']);
 const emptyRuntime = () => ({ events: [], tasks: [], intimations: [], processes: [], contacts: [], sources: [], updatedAt: null });
 let interactiveCollector = null;
+let appStateMutationTail = Promise.resolve();
+let runtimeMutationTail = Promise.resolve();
+
+function enqueueAppStateMutation(operation) {
+  const queued = appStateMutationTail.then(operation, operation);
+  appStateMutationTail = queued.catch(() => {});
+  return queued;
+}
+
+function enqueueRuntimeMutation(operation) {
+  const queued = runtimeMutationTail.then(operation, operation);
+  runtimeMutationTail = queued.catch(() => {});
+  return queued;
+}
 
 async function loadEnv(file) {
   if (!existsSync(file)) return;
@@ -143,16 +157,18 @@ async function ensureLocalSecrets(file) {
   await appendFile(file, `${preamble}${generated.join('\n')}\n`, { encoding: 'utf8', mode: 0o600 });
 }
 
-async function readRuntime() {
+async function readRuntimeUnlocked() {
   try {
     const stored = JSON.parse(await readFile(RUNTIME_FILE, 'utf8'));
     if (stored?.encrypted) return { ...emptyRuntime(), ...JSON.parse(security.decrypt(stored.encrypted)) };
     const legacy = { ...emptyRuntime(), ...stored };
-    await saveRuntime(legacy);
+    await saveRuntimeUnlocked(legacy);
     return legacy;
   } catch { return emptyRuntime(); }
 }
-async function saveRuntime(payload) {
+async function readRuntime() { return readRuntimeUnlocked(); }
+
+async function saveRuntimeUnlocked(payload) {
   await mkdir(DATA_DIR, { recursive: true });
   const envelope = {
     version: 1,
@@ -160,7 +176,20 @@ async function saveRuntime(payload) {
     updatedAt: payload?.updatedAt || new Date().toISOString(),
     encrypted: security.encrypt(JSON.stringify({ ...emptyRuntime(), ...payload }))
   };
-  await writeFile(RUNTIME_FILE, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
+  await writePrivateJsonAtomically(RUNTIME_FILE, envelope);
+}
+
+async function saveRuntime(payload) {
+  return enqueueRuntimeMutation(() => saveRuntimeUnlocked(payload));
+}
+
+async function mutateRuntime(mutator) {
+  return enqueueRuntimeMutation(async () => {
+    const current = await readRuntimeUnlocked();
+    const next = await mutator(current);
+    await saveRuntimeUnlocked(next);
+    return next;
+  });
 }
 let serverStateStatus = 'INITIALIZING';
 let stateRecoveryDetails = null;
@@ -283,7 +312,7 @@ async function readAppStateEnvelope() {
 
 async function readAppState() { return (await readAppStateEnvelope()).state; }
 
-async function saveAppStateDirect(value, expectedRevision = null) {
+async function saveAppStateDirectUnlocked(value, expectedRevision = null) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
   }
@@ -322,11 +351,20 @@ async function saveAppStateDirect(value, expectedRevision = null) {
   };
 
   const tmpFile = `${APP_STATE_FILE}.tmp-${randomBytes(6).toString('hex')}`;
-  await writeFile(tmpFile, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
-  await rename(tmpFile, APP_STATE_FILE);
+  try {
+    await writeFile(tmpFile, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
+    await rename(tmpFile, APP_STATE_FILE);
+  } catch (error) {
+    await unlink(tmpFile).catch(() => {});
+    throw error;
+  }
 
   serverStateStatus = 'READY';
   return { updatedAt: envelope.updatedAt, revision: envelope.revision, schemaVersion: CURRENT_SCHEMA_VERSION };
+}
+
+async function saveAppStateDirect(value, expectedRevision = null) {
+  return enqueueAppStateMutation(() => saveAppStateDirectUnlocked(value, expectedRevision));
 }
 
 async function saveAppState(value, expectedRevision = null) {
@@ -334,6 +372,33 @@ async function saveAppState(value, expectedRevision = null) {
     throw Object.assign(new Error('O sistema está em Modo de Recuperação. Não é permitido sobrescrever dados corrompidos sem restauração prévia.'), { statusCode: 423 });
   }
   return saveAppStateDirect(value, expectedRevision);
+}
+
+async function saveClientAppState(value, expectedRevision, session) {
+  return enqueueAppStateMutation(async () => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
+    }
+    const current = await readAppStateEnvelope();
+    const previousAudit = Array.isArray(current.state?.audit) ? current.state.audit : [];
+    const previousKeys = new Set(previousAudit.map(entry => entry?.id || `${entry?.at || ''}|${entry?.action || ''}`));
+    const submittedAudit = Array.isArray(value?.audit) ? value.audit : [];
+    const actor = String(session?.displayName || session?.username || 'Usuário autenticado').slice(0, 100);
+    const newEntries = submittedAudit
+      .filter(entry => entry && !previousKeys.has(entry.id || `${entry.at || ''}|${entry.action || ''}`))
+      .slice(0, 100)
+      .map(entry => ({
+        id: typeof entry.id === 'string' && entry.id.length <= 100
+          ? entry.id
+          : `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
+        at: new Date().toISOString(),
+        action: String(entry.action || 'Alteração de dados').slice(0, 160),
+        detail: String(entry.detail || '').slice(0, 500),
+        actor
+      }));
+    value.audit = [...newEntries, ...previousAudit].slice(0, 1000);
+    return saveAppStateDirectUnlocked(value, expectedRevision);
+  });
 }
 
 async function readAiApiKey() {
@@ -360,19 +425,21 @@ async function saveAiApiKey(apiKey) {
 
 async function appendServerAudit(action, detail, actor = 'Administrador') {
   try {
-    const envelope = await readAppStateEnvelope();
-    if (!envelope?.state) return;
-    const state = envelope.state;
-    if (!Array.isArray(state.audit)) state.audit = [];
-    state.audit.unshift({
-      id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
-      at: new Date().toISOString(),
-      action,
-      detail: String(detail || '').slice(0, 500),
-      actor: String(actor || 'Sistema').slice(0, 100)
+    await enqueueAppStateMutation(async () => {
+      const envelope = await readAppStateEnvelope();
+      if (!envelope?.state) return;
+      const state = envelope.state;
+      if (!Array.isArray(state.audit)) state.audit = [];
+      state.audit.unshift({
+        id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
+        at: new Date().toISOString(),
+        action,
+        detail: String(detail || '').slice(0, 500),
+        actor: String(actor || 'Sistema').slice(0, 100)
+      });
+      state.audit = state.audit.slice(0, 1000);
+      await saveAppStateDirectUnlocked(state, envelope.revision || null);
     });
-    state.audit = state.audit.slice(0, 1000);
-    await saveAppStateDirect(state, envelope.revision || null);
   } catch {}
 }
 
@@ -855,11 +922,43 @@ async function fetchCalendarSource(value) {
 
 function unfoldIcs(source) { return source.replace(/\r?\n[ \t]/g, '').split(/\r?\n/); }
 function unescapeIcs(value = '') { return value.replace(/\\n/gi, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\').trim(); }
-function parseIcsDate(raw = '') {
+function datePartsInTimeZone(date, timeZone) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(date);
+  return Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+}
+
+function zonedLocalToUtc({ year, month, day, hour, minute, second = 0 }, timeZone) {
+  const targetUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+  let candidate = targetUtc;
+  for (let iteration = 0; iteration < 3; iteration += 1) {
+    const observed = datePartsInTimeZone(new Date(candidate), timeZone);
+    const observedUtc = Date.UTC(Number(observed.year), Number(observed.month) - 1, Number(observed.day), Number(observed.hour), Number(observed.minute), Number(observed.second));
+    candidate += targetUtc - observedUtc;
+  }
+  return new Date(candidate);
+}
+
+function parseIcsDate(raw = '', timeZone = '') {
   const value = raw.trim();
   if (/^\d{8}$/.test(value)) return { date: `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`, time: '' };
-  const match = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/);
-  return match ? { date: `${match[1]}-${match[2]}-${match[3]}`, time: `${match[4]}:${match[5]}` } : { date: '', time: '' };
+  const match = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z)?$/i);
+  if (!match) return { date: '', time: '' };
+  if (!match[7] && !timeZone) return { date: `${match[1]}-${match[2]}-${match[3]}`, time: `${match[4]}:${match[5]}` };
+  let instant;
+  try {
+    instant = match[7]
+      ? new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6] || 0)))
+      : zonedLocalToUtc({ year: Number(match[1]), month: Number(match[2]), day: Number(match[3]), hour: Number(match[4]), minute: Number(match[5]), second: Number(match[6] || 0) }, timeZone);
+    const brazil = datePartsInTimeZone(instant, 'America/Sao_Paulo');
+    return { date: `${brazil.year}-${brazil.month}-${brazil.day}`, time: `${brazil.hour}:${brazil.minute}` };
+  } catch {
+    return { date: '', time: '' };
+  }
 }
 function parseCalendar(source) {
   const records = []; let current = null;
@@ -868,19 +967,27 @@ function parseCalendar(source) {
     if (line === 'END:VEVENT') { if (current) records.push(current); current = null; continue; }
     if (!current) continue;
     const separator = line.indexOf(':'); if (separator < 0) continue;
-    current[line.slice(0, separator).split(';')[0].toUpperCase()] = unescapeIcs(line.slice(separator + 1));
+    const [rawName, ...rawParams] = line.slice(0, separator).split(';');
+    const name = rawName.toUpperCase();
+    current[name] = unescapeIcs(line.slice(separator + 1));
+    if (rawParams.length) {
+      current[`${name}Params`] = Object.fromEntries(rawParams.map(param => {
+        const [key, ...value] = param.split('=');
+        return [String(key || '').toUpperCase(), value.join('=')];
+      }));
+    }
   }
   return records;
 }
 function calendarPayload(records) {
   const now = new Date().toISOString();
   const events = records.map((record, index) => {
-    const start = parseIcsDate(record.DTSTART); const summary = record.SUMMARY || 'Compromisso ADVBOX'; const description = record.DESCRIPTION || '';
+    const start = parseIcsDate(record.DTSTART, record.DTSTARTParams?.TZID || ''); const summary = record.SUMMARY || 'Compromisso ADVBOX'; const description = record.DESCRIPTION || '';
     const process = `${summary} ${description}`.match(PROCESS_RE)?.[0] || '';
     const externalId = `advbox-calendar:${record.UID || `${start.date}:${summary}:${index}`}`;
     return { id: externalId, externalId, title: summary, date: start.date, time: start.time, source: 'Agenda ADVBOX', client: record.LOCATION || '', process, description, importedAt: now };
   }).filter(event => event.date);
-  const tasks = events.map(event => ({ id: `task:${event.externalId}`, externalId: `task:${event.externalId}`, title: event.title, description: event.description || 'Importado automaticamente da agenda externa.', status: 'triagem', source: 'Agenda Externa', client: event.client, process: event.process, deadline: event.date, priority: 'normal', responsible: 'Advogado(a)', createdAt: event.importedAt }));
+  const tasks = [];
   return { events, tasks };
 }
 
@@ -894,6 +1001,32 @@ function excelSerialToIsoDate(serial) {
     if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
     if (serial.match(/^\d{4}-\d{2}-\d{2}/)) return serial.slice(0, 10);
   }
+  return '';
+}
+
+function normalizeSpreadsheetKey(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function parseSpreadsheetNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const clean = String(value || '').trim().replace(/[^\d,.-]/g, '');
+  if (!clean) return null;
+  const normalized = clean.includes(',')
+    ? clean.replace(/\./g, '').replace(',', '.')
+    : clean;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeSpreadsheetFeeType(value) {
+  const clean = normalizeSpreadsheetKey(value);
+  if (!clean) return '';
+  if (clean.includes('exito') || clean.includes('quotalitis')) return 'exito';
+  if (clean.includes('misto')) return 'misto';
+  if (clean.includes('mensal')) return 'mensal';
+  if (clean.includes('hora')) return 'horas';
+  if (clean.includes('fix')) return 'fixo';
   return '';
 }
 
@@ -961,8 +1094,8 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
     const getVal = (...keys) => {
       for (const k of keys) {
         const foundKey = rowKeys.find(rk => {
-          const cleanRk = rk.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const cleanRk = normalizeSpreadsheetKey(rk);
+          const cleanK = normalizeSpreadsheetKey(k);
           return cleanRk === cleanK || (cleanK.length > 4 && cleanRk.includes(cleanK));
         });
         if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && String(row[foundKey]).trim() !== '') {
@@ -986,12 +1119,13 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
     const lastEventDate = excelSerialToIsoDate(getVal('datahora', 'dataultimoevento', 'dataandamento') || '');
     const distribDate = excelSerialToIsoDate(getVal('datadistribuicaodoprocesso', 'datadistribuicao', 'datadecadastro', 'cadastro') || '');
     const causeValRaw = getVal('valordacausa', 'valor', 'honorariosvalor');
-    const causeValue = typeof causeValRaw === 'number' ? causeValRaw : Number(String(causeValRaw).replace(/[^\d.,]/g, '').replace(',', '.')) || '';
+    const causeValue = parseSpreadsheetNumber(causeValRaw);
     const doc = String(getVal('cpfcnpj', 'cpf', 'cnpj', 'documento') || '').trim();
     const mobile = String(getVal('celular', 'telefone', 'whatsapp', 'fone') || '').trim();
     const email = String(getVal('email', 'correioeletronico') || '').trim();
     const feeType = String(getVal('honorarios', 'tipodehonorarios', 'contrato') || '').trim();
-    const feePct = String(getVal('percentual', 'porcentagem', 'exito') || '').trim();
+    const feePctRaw = getVal('percentual', 'porcentagem', 'exito');
+    const feePct = parseSpreadsheetNumber(feePctRaw);
     const taskTitle = String(getVal('tarefa', 'compromisso', 'titulo', 'prazo', 'atividade') || '').trim();
     const deadline = excelSerialToIsoDate(getVal('datalimite', 'vencimento', 'prazo', 'data') || '');
     const responsible = String(getVal('responsavel', 'destinatario', 'advogado') || '').trim();
@@ -1006,10 +1140,10 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
         caseFolder: unitCode,
         actionType: [classe, subject].filter(Boolean).join(' · ') || 'Processo Judicial',
         stage: 'Em andamento',
-        feeType: feeType ? feeType.toLowerCase() : feePct ? 'exito' : '',
-        feePercentage: feePct ? feePct.replace(/\D/g, '') : '',
-        feeAmount: causeValue ? String(causeValue) : '',
-        feeStatus: (feeType || feePct) ? 'pendente' : '',
+        feeType: feeType ? normalizeSpreadsheetFeeType(feeType) : feePct !== null ? 'exito' : '',
+        feePercentage: feePct === null ? '' : feePct,
+        economicValue: causeValue === null ? '' : causeValue,
+        feeStatus: (feeType || feePct !== null) ? 'pendente' : '',
         registeredAt: distribDate || new Date().toISOString().slice(0, 10),
         lastMovement: lastEvent || 'Importado do eproc',
         lastMovementAt: lastEventDate || new Date().toISOString().slice(0, 10),
@@ -1033,12 +1167,13 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
 
     if (taskTitle) {
       tasks.push({
-        id: `task-${randomBytes(6).toString('hex')}`,
+        id: `task-import-${createHash('sha256').update(`${filename}|${procNumber}|${taskTitle}|${deadline}`).digest('hex').slice(0, 16)}`,
+        externalId: `task-import-${createHash('sha256').update(`${filename}|${procNumber}|${taskTitle}|${deadline}`).digest('hex').slice(0, 16)}`,
         title: taskTitle,
         description: `Importado de planilha: ${filename || 'lote'}`,
         client: author || '',
         process: procNumber || '',
-        deadline: deadline || new Date().toISOString().slice(0, 10),
+        deadline,
         priority: 'normal',
         status: 'triagem',
         responsible: responsible || 'Advogado',
@@ -1155,6 +1290,29 @@ function mergeBy(left = [], right = [], key = 'externalId') {
   for (const record of right) {
     const value = record?.[key] ?? record?.id; const index = result.findIndex(item => (item?.[key] ?? item?.id) === value);
     if (index >= 0) result[index] = { ...result[index], ...record }; else result.unshift(record);
+  }
+  return result;
+}
+function mergeExternalIntimations(left = [], right = []) {
+  const protectedFields = [
+    'status', 'unread', 'treatmentStatus', 'treatmentStartedAt', 'treatmentStartedBy',
+    'treatedAt', 'treatedBy', 'discardedAt', 'discardedBy', 'treatmentNote',
+    'linkedTaskIds', 'taskId', 'deadline', 'fatalDeadline', 'responsible', 'completedAt'
+  ];
+  const result = [...left];
+  for (const incoming of right) {
+    const identity = incoming?.externalId ?? incoming?.id;
+    const index = result.findIndex(item => (item?.externalId ?? item?.id) === identity);
+    if (index < 0) {
+      result.unshift(incoming);
+      continue;
+    }
+    const current = result[index];
+    const merged = { ...current, ...incoming };
+    for (const field of protectedFields) {
+      if (Object.prototype.hasOwnProperty.call(current, field)) merged[field] = current[field];
+    }
+    result[index] = merged;
   }
   return result;
 }
@@ -1325,6 +1483,15 @@ function decryptAndValidateBackup(backup) {
     const actualChecksum = createHash('sha256').update(JSON.stringify(restoredState)).digest('hex');
     if (actualChecksum !== backup.checksum) {
       throw invalidBackup('Falha de integridade: o checksum do backup não confere.');
+    }
+  }
+
+  const foundVersion = Number(restoredState.schemaVersion ?? restoredState.version ?? 1);
+  if (foundVersion < CURRENT_SCHEMA_VERSION) {
+    try {
+      restoredState = runStateMigrations(restoredState, APP_VERSION).state;
+    } catch (error) {
+      throw invalidBackup(`O estado contido no backup não pôde ser migrado: ${error.message}`);
     }
   }
 
@@ -1675,7 +1842,7 @@ const server = http.createServer(async (req, res) => {
       const currentEnv = await readAppStateEnvelope();
       const safetySnapshot = await createPreRestoreSafetySnapshot(currentEnv, session);
       if (safetySnapshot) await waitForRestoreConcurrencyTestWindow();
-      await saveAppState(restoredState, currentEnv.revision);
+      await saveAppStateDirect(restoredState, currentEnv.revision);
       return json(res, 200, { ok: true, message: 'Dados restaurados com sucesso a partir do backup.' });
     }
 
@@ -1683,7 +1850,7 @@ const server = http.createServer(async (req, res) => {
     // CANAL DE FEEDBACK BETA
     // ==========================================
     if (req.method === 'POST' && url.pathname === '/api/system/feedback') {
-      const session = assertAuthenticated(req);
+      const session = assertAuthenticated(req, true);
       const body = await readJson(req);
       const feedbackType = body.type || 'sugestao';
       const message = String(body.message || '').trim();
@@ -1719,7 +1886,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/events') { assertAuthenticated(req); return json(res, 200, await readRuntime()); }
     if (req.method === 'GET' && url.pathname === '/api/state') { assertAuthenticated(req); return json(res, 200, await readPublicAppStateEnvelope()); }
     if (req.method === 'POST' && url.pathname === '/api/state') {
-      assertAuthenticated(req, true); const body = await readJson(req, 3_000_000); const saved = await saveAppState(body.state, body.revision ?? null);
+      const session = assertAuthenticated(req, true); const body = await readJson(req, 3_000_000); const saved = await saveClientAppState(body.state, body.revision ?? null, session);
       return json(res, 200, { ok: true, ...saved });
     }
 
@@ -1767,13 +1934,15 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/state/import-legacy') {
-      assertAuthenticated(req, true);
+      assertAdmin(req, true, 'Apenas o administrador principal pode importar dados legados.');
+      if (serverStateStatus !== 'NEW_INSTALL' || existsSync(APP_STATE_FILE)) {
+        throw Object.assign(new Error('A importação legada só é permitida em uma instalação nova, antes da criação do estado principal.'), { statusCode: 409 });
+      }
       const body = await readJson(req, 4_000_000);
       const legacy = body.legacyState;
       if (!legacy || typeof legacy !== 'object') throw Object.assign(new Error('Estado legado inválido.'), { statusCode: 400 });
       const migrationResult = runStateMigrations(legacy, APP_VERSION);
-      const currentEnv = await readAppStateEnvelope();
-      const saved = await saveAppStateDirect(migrationResult.state, currentEnv.revision || null);
+      const saved = await saveAppStateDirect(migrationResult.state, null);
       return json(res, 200, { ok: true, message: 'Estado legado importado e migrado com sucesso!', ...saved });
     }
 
@@ -1797,10 +1966,10 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req, 100_000);
       try {
         const result = await emailService.sendTestEmail(body);
-        await appendServerAudit('Teste de e-mail enviado', `Destinatário: ${result.recipient}`, session.displayName || session.username);
+        await appendServerAudit('Teste de e-mail enviado', `Destinatário: ${maskEmail(result.recipient)}`, session.displayName || session.username);
         return json(res, 200, result);
       } catch (testErr) {
-        await appendServerAudit('Teste de e-mail falhou', `Destinatário: ${body?.recipient || 'não informado'} — ${testErr.message}`, session.displayName || session.username);
+        await appendServerAudit('Teste de e-mail falhou', `Destinatário: ${body?.recipient ? maskEmail(body.recipient) : 'não informado'} — ${testErr.message}`, session.displayName || session.username);
         throw testErr;
       }
     }
@@ -2346,20 +2515,22 @@ Diretrizes essenciais:
       if (calendarUrl) {
         try {
           const parsed = calendarPayload(parseCalendar(await fetchCalendarSource(calendarUrl)));
-          const runtime = await readRuntime();
-          runtime.events = mergeBy(runtime.events, parsed.events);
-          runtime.tasks = mergeBy(runtime.tasks, parsed.tasks);
           importedCount = parsed.events.length;
-          runtime.sources = mergeBy(runtime.sources, [{
-            id: 'external-calendar',
-            name: 'Agenda Externa',
-            short: 'CAL',
-            method: 'Webcal/iCal',
-            status: 'ok',
-            lastCheck: new Date().toISOString(),
-            detail: `${parsed.events.length} compromisso(s) sincronizado(s)`
-          }], 'id');
-          await saveRuntime(runtime);
+          await mutateRuntime(runtime => ({
+            ...runtime,
+            events: mergeBy(runtime.events, parsed.events),
+            tasks: mergeBy(runtime.tasks, parsed.tasks),
+            sources: mergeBy(runtime.sources, [{
+              id: 'external-calendar',
+              name: 'Agenda Externa',
+              short: 'CAL',
+              method: 'Webcal/iCal',
+              status: 'ok',
+              lastCheck: new Date().toISOString(),
+              detail: `${parsed.events.length} compromisso(s) sincronizado(s)`
+            }], 'id'),
+            updatedAt: new Date().toISOString()
+          }));
         } catch (err) {
           errorDetail = err.message;
         }
@@ -2501,7 +2672,7 @@ Diretrizes essenciais:
     }
     if (req.method === 'POST' && url.pathname === '/api/ingest') {
       if (!collectorAuthorized(req)) return json(res, 401, { message: 'Coletor não autorizado.' });
-      const incoming = await readJson(req, 5_000_000); const runtime = await readRuntime();
+      const incoming = await readJson(req, 5_000_000);
       const collections = {
         events: sanitizeArray(incoming.events),
         tasks: sanitizeArray(incoming.tasks),
@@ -2510,16 +2681,15 @@ Diretrizes essenciais:
         contacts: sanitizeArray(incoming.contacts),
         sources: sanitizeArray(incoming.sources)
       };
-      const next = {
+      const next = await mutateRuntime(runtime => ({
         events: mergeBy(runtime.events, collections.events),
         tasks: mergeBy(runtime.tasks, collections.tasks),
-        intimations: mergeBy(runtime.intimations, collections.intimations),
+        intimations: mergeExternalIntimations(runtime.intimations, collections.intimations),
         processes: mergeExternalProcesses(runtime.processes, collections.processes),
         contacts: mergeExternalContacts(runtime.contacts, collections.contacts),
         sources: mergeBy(runtime.sources, collections.sources, 'id'),
         updatedAt: new Date().toISOString()
-      };
-      await saveRuntime(next);
+      }));
       const imported = ['events', 'tasks', 'intimations', 'processes', 'contacts'].reduce((sum, key) => sum + collections[key].length, 0);
       return json(res, 200, { ok: true, imported, updatedAt: next.updatedAt });
     }
@@ -2711,7 +2881,16 @@ Diretrizes essenciais:
         sources: mergeBy([], sources, 'id'),
         updatedAt: new Date().toISOString()
       };
-      await saveRuntime(updatedRuntime);
+      await mutateRuntime(current => ({
+        ...current,
+        events: mergeBy(current.events, updatedRuntime.events),
+        tasks: mergeBy(current.tasks, updatedRuntime.tasks),
+        intimations: mergeExternalIntimations(current.intimations, updatedRuntime.intimations),
+        processes: mergeExternalProcesses(current.processes, updatedRuntime.processes),
+        contacts: mergeExternalContacts(current.contacts, updatedRuntime.contacts),
+        sources: mergeBy(current.sources, updatedRuntime.sources, 'id'),
+        updatedAt: updatedRuntime.updatedAt
+      }));
 
       return json(res, 200, {
         ...updatedRuntime,

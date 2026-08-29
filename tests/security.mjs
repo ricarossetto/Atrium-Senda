@@ -60,6 +60,12 @@ try {
   assert(response.ok && collaboratorTrustedStatus.user.username === 'colaborador' && collaboratorTrustedStatus.user.role === 'collaborator', 'Navegador confiável trocou a identidade ou a função do colaborador.');
   response = await postJson(`${server.baseUrl}/api/auth/trusted-device/revoke`, {}, { Cookie: collaboratorTrustedCookie, 'X-CSRF-Token': collaboratorTrustedStatus.csrfToken });
   assert(response.ok, 'Colaborador não conseguiu revogar seu navegador confiável.');
+  response = await postJson(`${server.baseUrl}/api/auth/users/manage`, { userId: collaborator.id, role: 'master_admin' }, { Cookie: cookie, 'X-CSRF-Token': csrf });
+  assert(response.status === 400, 'Administrador conseguiu criar outro master_admin por payload arbitrário.');
+  response = await postJson(`${server.baseUrl}/api/auth/users/manage`, { userId: collaborator.id, status: 'inactive' }, { Cookie: cookie, 'X-CSRF-Token': csrf });
+  assert(response.ok, 'Administrador não conseguiu desativar o colaborador.');
+  response = await fetch(`${server.baseUrl}/api/auth/status`, { headers: { Cookie: collaboratorSessionCookie } });
+  assert(!(await response.json()).authenticated, 'Sessão privilegiada obsoleta permaneceu válida após desativação do usuário.');
 
   response = await fetch(`${server.baseUrl}/api/status`, { headers: { Cookie: cookie } }); assert(response.ok, 'Sessão autenticada não acessou a API.');
   response = await postJson(`${server.baseUrl}/api/calendar/configure`, { calendarUrl: 'http://127.0.0.1:8080/private.ics' }, { Cookie: cookie, 'X-CSRF-Token': csrf });
@@ -84,11 +90,36 @@ try {
   response = await postJson(`${server.baseUrl}/api/state`, { state: protectedState, revision: recoveredState.revision }, { Cookie: cookie, 'X-CSRF-Token': csrf });
   assert(response.ok, 'A versão atual do estado não pôde ser salva.');
 
-  response = await postJson(`${server.baseUrl}/api/ingest`, {
-    events: [], tasks: [], intimations: [], sources: [],
-    processes: [{ id: 'collector-secret', number: '5000000-00.2026.8.21.0001', client: 'Cliente sigiloso do coletor' }]
-  }, { Authorization: `Bearer ${server.collectorToken}` });
-  assert(response.ok, 'O coletor autorizado não conseguiu gravar o estado intermediário.');
+  const raceBase = await (await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: cookie } })).json();
+  const raceStates = ['A', 'B'].map(label => ({
+    ...structuredClone(raceBase.state),
+    settings: { ...raceBase.state.settings, officeName: `Escritório corrida ${label}` },
+    audit: [{ id: `audit-race-${label}`, at: '2000-01-01T00:00:00.000Z', action: `Corrida ${label}`, detail: 'Fixture concorrente', actor: 'Ator forjado' }, ...(raceBase.state.audit || [])]
+  }));
+  const raceResponses = await Promise.all(raceStates.map(state => postJson(`${server.baseUrl}/api/state`, {
+    state,
+    revision: raceBase.revision
+  }, { Cookie: cookie, 'X-CSRF-Token': csrf })));
+  assert(JSON.stringify(raceResponses.map(item => item.status).sort()) === JSON.stringify([200, 409]), 'Duas gravações com a mesma revision não foram serializadas em 200/409.');
+  const raceWinner = await (await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: cookie } })).json();
+  const canonicalAudit = raceWinner.state.audit.find(item => /^audit-race-/.test(item.id));
+  assert(canonicalAudit && canonicalAudit.actor === 'Advogado Administrador' && canonicalAudit.at !== '2000-01-01T00:00:00.000Z', 'Audit novo não foi canonizado no servidor.');
+  const preservedAuditId = canonicalAudit.id;
+  const auditDeletionAttempt = structuredClone(raceWinner.state);
+  auditDeletionAttempt.audit = [];
+  response = await postJson(`${server.baseUrl}/api/state`, { state: auditDeletionAttempt, revision: raceWinner.revision }, { Cookie: cookie, 'X-CSRF-Token': csrf });
+  assert(response.ok, 'Gravação válida após corrida foi recusada.');
+  const auditPreserved = await (await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: cookie } })).json();
+  assert(auditPreserved.state.audit.some(item => item.id === preservedAuditId), 'Cliente conseguiu apagar audit persistido.');
+
+  const ingestResponses = await Promise.all(['A', 'B'].map(label => postJson(`${server.baseUrl}/api/ingest`, {
+    events: [{ id: `collector-event-${label}`, title: `Evento sintético ${label}` }], tasks: [], intimations: [], sources: [],
+    processes: label === 'A' ? [{ id: 'collector-secret', number: '0000001-11.2026.8.21.0001', client: 'Cliente sigiloso do coletor' }] : []
+  }, { Authorization: `Bearer ${server.collectorToken}` })));
+  assert(ingestResponses.every(item => item.ok), 'O coletor autorizado não conseguiu gravar as ingestões concorrentes.');
+  response = await fetch(`${server.baseUrl}/api/events`, { headers: { Cookie: cookie } });
+  const concurrentRuntime = await response.json();
+  assert(['collector-event-A', 'collector-event-B'].every(id => concurrentRuntime.events.some(item => item.id === id)), 'Ingestões concorrentes perderam eventos no runtime.');
   const encryptedRuntime = await readFile(path.join(server.dataDirectory, 'runtime.json'), 'utf8');
   assert(encryptedRuntime.includes('aes-256-gcm') && !encryptedRuntime.includes('Cliente sigiloso do coletor') && !encryptedRuntime.includes('5000000-00.2026.8.21.0001'), 'O estado intermediário do coletor não ficou criptografado em repouso.');
 

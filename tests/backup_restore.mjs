@@ -157,6 +157,18 @@ try {
     headers: master.headers,
     request: () => restore(server.baseUrl, encryptedBackup(cryptoManager, futureSchemaState), master.headers)
   });
+
+  const legacySchemaState = makeState('SCHEMA-LEGADO');
+  legacySchemaState.schemaVersion = CURRENT_SCHEMA_VERSION - 1;
+  legacySchemaState.dataVersion = CURRENT_DATA_VERSION - 1;
+  delete legacySchemaState.migratedAt;
+  response = await restore(server.baseUrl, encryptedBackup(cryptoManager, legacySchemaState), master.headers);
+  assert.equal(response.status, 200, 'Backup de schema anterior suportado deve ser migrado antes do restore.');
+  const migratedLegacy = await readState(server.baseUrl, master.headers);
+  assert.equal(migratedLegacy.state.schemaVersion, CURRENT_SCHEMA_VERSION);
+  assert.equal(migratedLegacy.state.dataVersion, CURRENT_DATA_VERSION);
+  assert.equal(migratedLegacy.state.settings.officeName, 'Escritório SCHEMA-LEGADO');
+  await saveState(server.baseUrl, master.headers, stateA, migratedLegacy.revision);
   console.log('✓ Backups inválidos não alteram bytes, semântica, revision ou snapshots.');
 
   console.log('\n3. Validando snapshot cifrado, atomicidade e concorrência revision-aware...');
@@ -221,7 +233,7 @@ try {
   const atomicHelper = sourceBlock(serverSource, 'async function writePrivateJsonAtomically', 'async function createPreRestoreSafetySnapshot');
   assert.match(atomicHelper, /writeFile\(tmpFile,[\s\S]*mode:\s*0o600/, 'Snapshot deve ser escrito primeiro em temporário privado.');
   assert.match(atomicHelper, /rename\(tmpFile,\s*targetPath\)/, 'Snapshot deve ser publicado por rename atômico.');
-  assert.match(serverSource, /saveAppState\(restoredState,\s*currentEnv\.revision\)/, 'Restore deve passar a revision capturada ao save.');
+  assert.match(serverSource, /saveAppStateDirect\(restoredState,\s*currentEnv\.revision\)/, 'Restore deve passar a revision capturada ao save direto validado, inclusive em recovery mode.');
   assert.doesNotMatch(serverSource, /JSON\.stringify\(currentEnv\s*,/, 'Restore não pode serializar currentEnv descriptografado em snapshot.');
   console.log('✓ Estado populado, expectedRevision, temp+rename e ausência de app-state parcial validados.');
 
