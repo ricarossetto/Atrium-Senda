@@ -13,6 +13,7 @@ import { createTheme } from './components/theme.js';
 import { Toast } from './components/toast.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
+import { createConfigurationFeature } from './features/configuration.js';
 import { createContactsFeature } from './features/contacts.js';
 import { createDocumentsFeature } from './features/documents.js';
 import { createFinancialFeature } from './features/financial.js';
@@ -22,6 +23,7 @@ import { createMonitoringFeature } from './features/monitoring.js';
 import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js';
 import { createProcessesFeature } from './features/processes.js';
 import { createPromptsFeature } from './features/prompts.js';
+import { createSystemAdminFeature } from './features/system-admin.js';
 import { createTasksFeature } from './features/tasks.js';
 
 (() => {
@@ -224,6 +226,7 @@ import { createTasksFeature } from './features/tasks.js';
   let themeComponent;
   let agendaFeature;
   let assistantFeature;
+  let configurationFeature;
   let contactsFeature;
   let documentsFeature;
   let financialFeature;
@@ -233,6 +236,7 @@ import { createTasksFeature } from './features/tasks.js';
   let publicationsFeature;
   let processesFeature;
   let promptsFeature;
+  let systemAdminFeature;
   let tasksFeature;
 
   function getGlobalSearchComponent() {
@@ -487,6 +491,38 @@ import { createTasksFeature } from './features/tasks.js';
     return monitoringFeature;
   }
 
+  function getSystemAdminFeature() {
+    if (!systemAdminFeature) systemAdminFeature = createSystemAdminFeature({
+      store: Store,
+      documentRef: document,
+      windowRef: window,
+      secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
+      fetchFn: (...args) => window.fetch(...args),
+      escapeHtml,
+      showToast: (message, type) => App.toast(message, type),
+      openModal: (...args) => App.openModal(...args),
+      closeModal: () => App.closeModal(),
+      setTheme: theme => App.setTheme(theme),
+      switchView: view => App.switchView(view)
+    });
+    return systemAdminFeature;
+  }
+
+  function getConfigurationFeature() {
+    if (!configurationFeature) configurationFeature = createConfigurationFeature({
+      store: Store,
+      documentRef: document,
+      secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
+      escapeHtml,
+      normalizeText,
+      openModal: (...args) => App.openModal(...args),
+      showToast: (message, type) => App.toast(message, type),
+      onRenderDiagnostic: () => getSystemAdminFeature().renderDiagnostic(),
+      onRenderBackups: () => getSystemAdminFeature().renderBackups()
+    });
+    return configurationFeature;
+  }
+
   const App = {
     currentView: 'dashboard',
     get inboxFilter() { return getPublicationsFeature().inboxFilter; },
@@ -499,7 +535,8 @@ import { createTasksFeature } from './features/tasks.js';
     tempOfficeLogo: null,
     get selectedIntimation() { return getPublicationsFeature().selectedIntimation; },
     set selectedIntimation(value) { getPublicationsFeature().selectedIntimation = value; },
-    configurationSection: 'taskDefinitions',
+    get configurationSection() { return getConfigurationFeature().section; },
+    set configurationSection(value) { getConfigurationFeature().section = value; },
     modalMode: null,
     get judicialStatus() { return getJudicialIntegrationsFeature().status; },
     set judicialStatus(value) { getJudicialIntegrationsFeature().status = value; },
@@ -518,8 +555,10 @@ import { createTasksFeature } from './features/tasks.js';
     set aiConfigured(value) { getAssistantFeature().configured = value; },
     get isAiTyping() { return getAssistantFeature().isTyping; },
     set isAiTyping(value) { getAssistantFeature().isTyping = value; },
-    authUsers: [],
-    currentAuthRole: 'collaborator',
+    get authUsers() { return getConfigurationFeature().users; },
+    set authUsers(value) { getConfigurationFeature().users = value; },
+    get currentAuthRole() { return getConfigurationFeature().role; },
+    set currentAuthRole(value) { getConfigurationFeature().role = value; },
     get promptsFilter() { return getPromptsFeature().filter; },
     set promptsFilter(value) { getPromptsFeature().filter = value; },
     async init() {
@@ -589,7 +628,6 @@ import { createTasksFeature } from './features/tasks.js';
       byId('syncButton')?.addEventListener('click', () => this.syncAll());
       byId('agendaSyncButton')?.addEventListener('click', () => this.syncAll());
       getOnboardingComponent().init();
-      byId('newConfigurationButton')?.addEventListener('click', () => this.openConfigurationModal());
       // Personalização do Escritório
       document.querySelector('.sidebar-office')?.addEventListener('click', () => this.openOfficeSetup());
       byId('officeSetupClose')?.addEventListener('click', () => this.closeOfficeSetup());
@@ -614,14 +652,7 @@ import { createTasksFeature } from './features/tasks.js';
       getPromptsFeature().init();
       getMonitoringFeature().init();
       getJudicialIntegrationsFeature().init();
-      byId('configurationSearch')?.addEventListener('input', () => this.renderConfiguration(byId('configurationSearch').value));
-      byId('configurationTabs')?.addEventListener('click', event => {
-        const button = event.target.closest('button[data-config-section]'); if (!button) return;
-        this.configurationSection = button.dataset.configSection;
-        if (byId('configurationSearch')) byId('configurationSearch').value = '';
-        if (this.configurationSection === 'users') this.loadAuthUsers().then(() => this.renderConfiguration());
-        else this.renderConfiguration();
-      });
+      getConfigurationFeature().init();
 
       // Alertas & Auditoria
       byId('auditFilters')?.addEventListener('click', event => {
@@ -755,38 +786,6 @@ import { createTasksFeature } from './features/tasks.js';
             this.toast('Link útil excluído com sucesso.', 'success');
           }
           return;
-        }
-      });
-      byId('configurationList')?.addEventListener('click', (e) => {
-        const deleteBtn = e.target.closest('[data-delete-config]');
-        if (deleteBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          const index = Number(deleteBtn.dataset.deleteConfig);
-          const list = Store.state.configuration[this.configurationSection];
-          if (Array.isArray(list) && index >= 0 && index < list.length) {
-            const removed = list.splice(index, 1)[0];
-            Store.audit('Configuração removida', `${this.configurationSection} · ${typeof removed === 'string' ? removed : (removed?.name || 'item')}`);
-            Store.save();
-            this.renderConfiguration();
-            this.toast('Item removido com sucesso.', 'success');
-          }
-          return;
-        }
-        const authStatusBtn = e.target.closest('[data-auth-user-status]');
-        if (authStatusBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          const row = authStatusBtn.closest('[data-auth-user-id]');
-          if (row) this.manageAuthUser(row.dataset.authUserId, authStatusBtn.dataset.authUserStatus);
-          return;
-        }
-        const row = e.target.closest('[data-config-index]');
-        if (row) {
-          const index = Number(row.dataset.configIndex);
-          const raw = Array.isArray(Store.state.configuration[this.configurationSection]) ? Store.state.configuration[this.configurationSection] : [];
-          const item = raw[index];
-          if (item !== undefined) this.openConfigurationModal(item, index);
         }
       });
     },
@@ -1261,339 +1260,14 @@ import { createTasksFeature } from './features/tasks.js';
     renderContacts(query = '') {
       return getContactsFeature().render(query);
     },
-    async loadAuthUsers() {
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/auth/users', { headers: { Accept: 'application/json' } });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.message || 'Não foi possível carregar os usuários de acesso.');
-        this.authUsers = Array.isArray(payload.users) ? payload.users : [];
-        this.currentAuthRole = payload.currentRole || 'collaborator';
-      } catch (error) {
-        this.authUsers = [];
-        console.warn('Falha ao carregar usuários de autenticação:', error.message);
-      }
-    },
-    async manageAuthUser(userId, status) {
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/auth/users/manage', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ userId, status })
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.message || 'Não foi possível atualizar o usuário.');
-        await this.loadAuthUsers(); this.renderConfiguration(); this.toast('Acesso do usuário atualizado.', 'success');
-      } catch (error) { this.toast(error.message, 'error'); }
-    },
-    authUserRow(user) {
-      const labels = { active: 'Ativo', inactive: 'Suspenso', pending_approval: 'Aguardando aprovação' };
-      const canManage = this.currentAuthRole === 'master_admin' && user.role !== 'master_admin';
-      const nextStatus = user.status === 'active' ? 'inactive' : 'active';
-      const actionLabel = user.status === 'pending_approval' ? 'Aprovar' : user.status === 'active' ? 'Suspender' : 'Reativar';
-      return `<div class="configuration-row" data-auth-user-id="${escapeHtml(user.id)}">
-        <div class="config-row-info"><strong>${escapeHtml(user.displayName || user.username)}</strong><span>${escapeHtml(user.email || user.username)} · ${user.role === 'master_admin' ? 'Administrador' : 'Colaborador'}</span><small>${escapeHtml(labels[user.status] || user.status || 'Ativo')}</small></div>
-        ${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}">${actionLabel}</button>` : ''}
-      </div>`;
-    },
-    renderConfiguration(query = '') {
-      const config = Store.state.configuration || {};
-      const sections = [
-        ['taskDefinitions', 'Tarefas'],
-        ['users', 'Usuários'],
-        ['actionGroups', 'Grupos'],
-        ['actionTypes', 'Tipos de ação'],
-        ['stages', 'Etapas'],
-        ['origins', 'Origens'],
-        ['goals', 'Metas'],
-        ['inboxSections', 'Caixa de entrada'],
-        ['notificationAssignments', 'Notificações'],
-        ['integrations', 'Integrações'],
-        ['diagnostic', 'Diagnóstico & Saúde'],
-        ['backups', 'Backups & Restauração']
-      ];
-      document.getElementById('configurationTabs').innerHTML = sections.map(([key, label]) => `<button class="${this.configurationSection === key ? 'active' : ''}" data-config-section="${key}">${label}</button>`).join('');
-      document.getElementById('configurationMetrics').innerHTML = [
-        ['Definições de tarefa', config.taskDefinitions?.length || 0], ['Tipos de ação', config.actionTypes?.length || 0], ['Etapas', config.stages?.length || 0], ['Usuários de acesso', this.authUsers.length], ['Contatos importados', Store.state.contacts.length]
-      ].map(([label, count]) => `<div class="configuration-metric"><strong>${count}</strong><span>${label}</span></div>`).join('');
-      const label = sections.find(([key]) => key === this.configurationSection)?.[1] || 'Configuração';
-      const isAuthUsers = this.configurationSection === 'users';
-      const isSpecialSection = this.configurationSection === 'diagnostic' || this.configurationSection === 'backups';
-      document.getElementById('newConfigurationButton')?.classList.toggle('hidden', isAuthUsers || isSpecialSection);
-      document.getElementById('configurationSearch')?.closest('.table-search')?.classList.toggle('hidden', isSpecialSection);
-
-      if (this.configurationSection === 'diagnostic') {
-        document.getElementById('configurationHeading').textContent = 'Diagnóstico & Saúde do Sistema';
-        document.getElementById('configurationCount').textContent = 'Atrium v2.0';
-        this.renderDiagnostic();
-        return;
-      }
-
-      if (this.configurationSection === 'backups') {
-        document.getElementById('configurationHeading').textContent = 'Cópias de Segurança & Restauração';
-        document.getElementById('configurationCount').textContent = 'Zero Trust';
-        this.renderBackups();
-        return;
-      }
-
-      const raw = isAuthUsers ? this.authUsers : (Array.isArray(config[this.configurationSection]) ? config[this.configurationSection] : []);
-      const needle = normalizeText(query); const records = raw.map((item, index) => ({ item, index })).filter(({ item }) => !needle || normalizeText(typeof item === 'string' ? item : Object.values(item || {}).flat().join(' ')).includes(needle));
-      document.getElementById('configurationHeading').textContent = label;
-      document.getElementById('configurationCount').textContent = `${records.length} itens`;
-      document.getElementById('configurationList').innerHTML = records.length ? records.map(({ item, index }) => isAuthUsers ? this.authUserRow(item) : this.configurationRow(item, index)).join('') : '<div class="empty-detail"><span>✓</span><h3>Nenhum item</h3><p>Não há registros nesta seção ou neste filtro.</p></div>';
-    },
-    configurationRow(item, index) {
-      if (typeof item === 'string') {
-        return `
-          <div class="configuration-row" data-config-index="${index}">
-            <div class="config-row-info">
-              <strong>${escapeHtml(item)}</strong>
-              <span>Seção da caixa de entrada</span>
-              <small>Ativa · clique para editar</small>
-            </div>
-            <button type="button" class="btn-delete-config-row" data-delete-config="${index}" title="Excluir este item">×</button>
-          </div>`;
-      }
-      if (!item || typeof item !== 'object') return '';
-      const primary = item.name || item.event || item.group || 'Configuração';
-      const secondary = item.role || item.phase || item.group || item.publicationResponsible || item.method || (item.responsibles || []).join(', ') || item.status || '—';
-      const meta = Number.isFinite(item.points) ? `<span class="config-points">${item.points} pontos</span>` : item.monthlyClosings == null && 'monthlyClosings' in item ? '<small>Meta não definida</small>' : `<small>${escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
-      return `
-        <div class="configuration-row" data-config-index="${index}">
-          <div class="config-row-info">
-            <strong>${escapeHtml(primary)}</strong>
-            <span>${escapeHtml(secondary)}</span>
-            ${meta}
-          </div>
-          <button type="button" class="btn-delete-config-row" data-delete-config="${index}" title="Excluir este item">×</button>
-        </div>`;
-    },
-    async renderDiagnostic() {
-      const container = document.getElementById('configurationList');
-      container.innerHTML = '<div class="empty-detail"><span class="auth-spinner" style="margin:0 auto 16px;"></span><h3>Consultando diagnóstico…</h3><p>Verificando a integridade dos subsistemas.</p></div>';
-      try {
-        const resp = await fetch('/api/system/diagnostic', { credentials: 'same-origin' });
-        const data = await resp.json();
-        if (!data.ok || !data.diagnostic) throw new Error(data.message || 'Falha ao obter diagnóstico.');
-        const d = data.diagnostic;
-
-        container.innerHTML = `
-          <div class="diagnostic-panel" style="padding: 16px; display: flex; flex-direction: column; gap: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line);">
-              <div>
-                <h4 style="margin: 0; font-size: 1.1rem; color: var(--ivory);">${escapeHtml(d.app.name)} v${escapeHtml(d.app.version)}</h4>
-                <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted);">Uptime: ${Math.floor(d.app.uptimeSeconds / 60)} min · Node ${escapeHtml(d.app.nodeVersion)} · ${escapeHtml(d.app.platform)} (${escapeHtml(d.app.arch)})</p>
-              </div>
-              <div style="display: flex; gap: 8px;">
-                <button type="button" class="button ghost" id="btnExportDiagnosticJson">📥 Exportar Relatório Anonimizado (.json)</button>
-                <button type="button" class="button gold" id="btnOpenFeedbackModal">💬 Enviar Feedback Beta</button>
-              </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
-              <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                  <strong style="font-size: 13px; color: var(--ivory);">Banco de Dados & Estado</strong>
-                  <span class="status-chip connected" style="font-size: 10px;">Ativo</span>
-                </div>
-                <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.storage.type)}</p>
-                <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.6;">
-                  <li>Contatos: <strong>${d.storage.records.contacts}</strong></li>
-                  <li>Processos: <strong>${d.storage.records.processes}</strong></li>
-                  <li>Tarefas: <strong>${d.storage.records.tasks}</strong></li>
-                  <li>Intimações: <strong>${d.storage.records.intimations}</strong></li>
-                  <li>Tamanho do arquivo: <strong>${(d.storage.sizeBytes / 1024).toFixed(1)} KB</strong></li>
-                </ul>
-              </div>
-
-              <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                  <strong style="font-size: 13px; color: var(--ivory);">Criptografia & Sessão</strong>
-                  <span class="status-chip connected" style="font-size: 10px;">Protegido</span>
-                </div>
-                <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.security.encryption)}</p>
-                <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.6;">
-                  <li>Segundo Fator: <strong>${escapeHtml(d.security.twoFactor)}</strong></li>
-                  <li>Sessão HttpOnly / Zero Trust: <strong>Ativa</strong></li>
-                  <li>Usuários Registrados: <strong>${d.security.totalUsers}</strong></li>
-                  <li>Modo: <strong>${d.app.cloudMode ? 'Nuvem / Cloud' : 'Local Seguro'}</strong></li>
-                </ul>
-              </div>
-
-              <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                  <strong style="font-size: 13px; color: var(--ivory);">Tribunais & Coleta</strong>
-                  <span class="status-chip ${d.integrations.djen.status === 'conectado' ? 'connected' : 'warning'}" style="font-size: 10px;">${d.integrations.djen.status}</span>
-                </div>
-                <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.integrations.djen.description)}</p>
-                <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.6;">
-                  <li>DataJud CNJ: <strong>${d.integrations.datajud.status === 'configurado' ? 'Chave Ativa' : 'Consulta Pública'}</strong></li>
-                  <li>IA Gemini: <strong>${d.integrations.gemini.status === 'configurado' ? 'Online' : 'Modelos Locais'}</strong></li>
-                  <li>Última Coleta: <strong>${d.integrations.collector.lastRun ? new Date(d.integrations.collector.lastRun).toLocaleString('pt-BR') : 'Nenhuma'}</strong></li>
-                </ul>
-              </div>
-            </div>
-
-            <div style="border-top: 1px solid var(--line); padding-top: 20px; margin-top: 8px;">
-              <h4 style="margin: 0 0 12px; font-size: 1rem; color: var(--ivory);">🧹 Higiene de Dados</h4>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
-                  <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">App Version</p>
-                  <p style="margin: 0; font-size: 14px; color: var(--ivory); font-weight: 600;">${escapeHtml(Store.serverMeta?.appVersion || d.app.version || '—')}</p>
-                </div>
-                <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
-                  <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">Build ID</p>
-                  <p style="margin: 0; font-size: 14px; color: var(--ivory); font-family: monospace;">${escapeHtml(Store.serverMeta?.buildId || '—')}</p>
-                </div>
-                <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
-                  <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">Schema Version</p>
-                  <p style="margin: 0; font-size: 14px; color: var(--ivory); font-weight: 600;">v${escapeHtml(String(Store.serverMeta?.schemaVersion || '?'))}</p>
-                </div>
-                <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
-                  <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">Estado</p>
-                  <p style="margin: 0; font-size: 14px; color: ${Store.stateStatus === 'READY' ? 'var(--emerald)' : 'var(--danger)'}; font-weight: 600;">${escapeHtml(Store.stateStatus || 'READY')}</p>
-                </div>
-              </div>
-              <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                <button type="button" class="button ghost" id="btnClearUiCache" title="Remove apenas caches transitórios do navegador. Seus processos, tarefas e dados jurídicos permanecem intactos.">🧹 Limpar cache da interface</button>
-                <button type="button" class="button ghost" id="btnResetVisualPrefs" title="Reseta tema e layout para o padrão. Nenhum dado jurídico é afetado.">🎨 Resetar preferências visuais</button>
-                <button type="button" class="button ghost" id="btnRebuildRuntime" title="Reconstrói dados derivados e runtime no servidor sem afetar processos ou tarefas.">🔄 Recriar dados derivados</button>
-                <button type="button" class="button ghost" id="btnManagePortalSessions" title="Gerencie sessões de login dos portais judiciais. A1, TOTP e processos são preservados.">🏛️ Gerenciar sessões do tribunal</button>
-              </div>
-            </div>
-          </div>
-        `;
-
-        document.getElementById('btnExportDiagnosticJson')?.addEventListener('click', () => {
-          window.location.href = '/api/system/diagnostic/export';
-        });
-        document.getElementById('btnOpenFeedbackModal')?.addEventListener('click', () => {
-          this.openFeedbackModal();
-        });
-        document.getElementById('btnClearUiCache')?.addEventListener('click', () => {
-          const uiKeys = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('atrium:cache:')) uiKeys.push(key);
-          }
-          uiKeys.forEach(k => localStorage.removeItem(k));
-          this.toast('Cache da interface limpo com sucesso. Dados jurídicos preservados.', 'success');
-        });
-        document.getElementById('btnResetVisualPrefs')?.addEventListener('click', () => {
-          localStorage.removeItem('atrium_theme');
-          localStorage.removeItem('jurisflow_theme');
-          localStorage.removeItem('atrium_sidebar_collapsed');
-          localStorage.removeItem('atrium_tour_seen');
-          localStorage.removeItem('jurisflow_tour_seen');
-          this.setTheme('dark');
-          this.toast('Preferências visuais resetadas para o padrão. Dados jurídicos preservados.', 'success');
-        });
-        document.getElementById('btnRebuildRuntime')?.addEventListener('click', async () => {
-          try {
-            const resp = await window.KellerAuth.secureFetch('/api/system/rebuild-runtime', { method: 'POST' });
-            const data = await resp.json();
-            this.toast(data.message || 'Runtime reconstruído com sucesso.', 'success');
-          } catch { this.toast('Falha ao reconstruir dados derivados.', 'error'); }
-        });
-        document.getElementById('btnManagePortalSessions')?.addEventListener('click', () => {
-          this.switchView('integrations');
-          this.toast('Abra um portal judicial e use "Limpar sessão local" para resetar a conexão desse tribunal.', 'info');
-        });
-      } catch (err) {
-        container.innerHTML = `<div class="empty-detail"><span style="color:var(--danger)">⚠️</span><h3>Erro ao gerar diagnóstico</h3><p>${escapeHtml(err.message)}</p></div>`;
-      }
-    },
-    async renderBackups() {
-      const container = document.getElementById('configurationList');
-      container.innerHTML = `
-        <div style="padding: 16px; display: flex; flex-direction: column; gap: 20px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line);">
-            <div>
-              <h4 style="margin: 0; font-size: 1.1rem; color: var(--ivory);">Cópia de Segurança & Restauração (Zero Trust)</h4>
-              <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted);">Gere snapshots cifrados dos dados processuais, tarefas e contatos ou restaure de um arquivo.</p>
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button type="button" class="button gold" id="btnCreateBackupNow">🔒 Gerar Backup Criptografado (.atrium-backup)</button>
-              <label class="button ghost" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center;">
-                📥 Restaurar do Arquivo
-                <input type="file" id="inputRestoreBackup" accept=".atrium-backup,.json" style="display: none;">
-              </label>
-            </div>
-          </div>
-
-          <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
-            <h5 style="margin: 0 0 8px; font-size: 13px; color: var(--ivory);">Regras de Proteção de Dados:</h5>
-            <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--muted); line-height: 1.6;">
-              <li>Cada backup é assinado com <strong>HMAC-SHA256</strong> e protegido com <strong>criptografia AES-256-GCM</strong>.</li>
-              <li>Antes de qualquer restauração, o sistema cria automaticamente um snapshot de emergência pré-restauração.</li>
-              <li>A restauração preserva a integridade de todas as chaves e usuários cadastrados.</li>
-            </ul>
-          </div>
-        </div>
-      `;
-
-      document.getElementById('btnCreateBackupNow')?.addEventListener('click', async () => {
-        try {
-          this.toast('Gerando cópia de segurança cifrada…', 'info');
-          const resp = await window.KellerAuth.secureFetch('/api/system/backup/create', { method: 'POST', headers: { Accept: 'application/json' } });
-          const data = await resp.json();
-          if (!data.ok || !data.backupData) throw new Error(data.message || 'Falha ao criar backup.');
-          const blob = new Blob([JSON.stringify(data.backupData, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = data.fileName || `atrium-backup-${new Date().toISOString().slice(0, 10)}.atrium-backup`;
-          a.click();
-          URL.revokeObjectURL(url);
-          this.toast('Backup criptografado gerado e baixado com sucesso!', 'success');
-        } catch (err) {
-          this.toast(`Erro no backup: ${err.message}`, 'error');
-        }
-      });
-
-      document.getElementById('inputRestoreBackup')?.addEventListener('change', async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (!confirm(`Confirma a restauração do backup "${file.name}"? O sistema criará uma cópia de segurança antes de aplicar os dados.`)) {
-          e.target.value = '';
-          return;
-        }
-        try {
-          const text = await file.text();
-          const backupData = JSON.parse(text);
-          this.toast('Validando integridade e restaurando dados…', 'info');
-          const resp = await window.KellerAuth.secureFetch('/api/system/backup/restore', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ backupData })
-          });
-          const data = await resp.json();
-          if (!data.ok) throw new Error(data.message || 'Falha ao restaurar dados.');
-          this.toast('Backup restaurado com sucesso! Atualizando o sistema…', 'success');
-          setTimeout(() => window.location.reload(), 1200);
-        } catch (err) {
-          this.toast(`Erro na restauração: ${err.message}`, 'error');
-        }
-      });
-    },
-    openFeedbackModal() {
-      this.openModal('feedback', 'Enviar Feedback do Beta', 'Canal de Comunicação Direto', [
-        { name: 'type', label: 'Tipo de Feedback', type: 'select', options: [
-          { value: 'sugestao', label: '💡 Sugestão de Melhoria' },
-          { value: 'bug', label: '🐛 Relato de Problema / Bug' },
-          { value: 'dificuldade', label: '❓ Dificuldade de Uso' },
-          { value: 'performance', label: '⚡ Desempenho / Lentidão' }
-        ], required: true },
-        { name: 'component', label: 'Módulo / Tela Afetada', type: 'select', options: [
-          { value: 'Geral', label: 'Geral / Outros' },
-          { value: 'Área de Trabalho', label: 'Área de Trabalho' },
-          { value: 'Kanban', label: 'Kanban & Tarefas' },
-          { value: 'Intimações', label: 'Caixa de Intimações' },
-          { value: 'Processos', label: 'Processos' },
-          { value: 'Financeiro', label: 'Financeiro & RPVs' },
-          { value: 'Documentos', label: 'Minutas & Modelos' },
-          { value: 'Configurações', label: 'Configurações' }
-        ], required: true },
-        { name: 'message', label: 'Descrição Detalhada', type: 'textarea', full: true, required: true, placeholder: 'Descreva detalhadamente o que ocorreu ou sua sugestão (dados pessoais e processos não são enviados).' }
-      ], {});
-    },
+    loadAuthUsers() { return getConfigurationFeature().loadAuthUsers(); },
+    manageAuthUser(userId, status) { return getConfigurationFeature().manageAuthUser(userId, status); },
+    authUserRow(user) { return getConfigurationFeature().authUserRow(user); },
+    renderConfiguration(query = '') { return getConfigurationFeature().render(query); },
+    configurationRow(item, index) { return getConfigurationFeature().row(item, index); },
+    renderDiagnostic() { return getSystemAdminFeature().renderDiagnostic(); },
+    renderBackups() { return getSystemAdminFeature().renderBackups(); },
+    openFeedbackModal() { return getSystemAdminFeature().openFeedbackModal(); },
     openIntimationDetailModal(item) {
       if (!item) return;
       const act = classifyIntimationAct(item.text, item.title, item.type);
@@ -1740,25 +1414,7 @@ import { createTasksFeature } from './features/tasks.js';
     openAgendaModal(defaults = {}) {
       return getAgendaFeature().openModal(defaults);
     },
-    openConfigurationModal(defaults = {}, index = null) {
-      const section = this.configurationSection;
-      const fieldsBySection = {
-        taskDefinitions: [{name:'name',label:'Nome da tarefa',required:true,full:true},{name:'points',label:'Pontuação',type:'number'},{name:'phase',label:'Fase'}],
-        users: [{name:'name',label:'Nome do usuário',required:true,full:true},{name:'role',label:'Função'},{name:'pointsGoal',label:'Meta de pontos'}],
-        actionGroups: [{name:'name',label:'Grupo de ação',required:true,full:true},{name:'publicationResponsible',label:'Responsável pelas publicações',full:true}],
-        actionTypes: [{name:'name',label:'Tipo de ação',required:true,full:true},{name:'group',label:'Grupo'}],
-        stages: [{name:'name',label:'Etapa',required:true,full:true},{name:'classification',label:'Classificação'},{name:'phase',label:'Fase'}],
-        origins: [{name:'name',label:'Origem',required:true,full:true}],
-        goals: [{name:'group',label:'Grupo',required:true,full:true},{name:'monthlyClosings',label:'Meta mensal de fechamentos',type:'number'}],
-        inboxSections: [{name:'value',label:'Nome da seção',required:true,full:true}],
-        notificationAssignments: [{name:'event',label:'Evento',required:true,full:true},{name:'responsibles',label:'Responsáveis',full:true,placeholder:'Separe os nomes por vírgula'}],
-        integrations: [{name:'name',label:'Integração',required:true,full:true},{name:'status',label:'Status'},{name:'method',label:'Método'}]
-      };
-      const fields = fieldsBySection[section] || [{ name: 'name', label: 'Nome', required: true, full: true }];
-      const values = typeof defaults === 'string' ? { value: defaults } : { ...defaults };
-      if (Array.isArray(values.responsibles)) values.responsibles = values.responsibles.join(', ');
-      this.openModal('configuration', index === null ? 'Novo item de configuração' : 'Editar configuração', 'Estrutura do escritório', fields, { ...values, _section: section, _index: index });
-    },
+    openConfigurationModal(defaults = {}, index = null) { return getConfigurationFeature().openModal(defaults, index); },
     openTermModal(defaults = {}) { return getMonitoringFeature().openTermModal(defaults); },
     openSourceModal(defaults = {}) { return getMonitoringFeature().openSourceModal(defaults); },
     openJudicialSetup() { return getJudicialIntegrationsFeature().open(); },
@@ -2415,16 +2071,7 @@ import { createTasksFeature } from './features/tasks.js';
       } else if (this.modalMode.mode === 'agenda') {
         getAgendaFeature().saveRecord(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'configuration') {
-        const section = this.modalMode.defaults._section; const index = this.modalMode.defaults._index;
-        const list = Store.state.configuration[section];
-        let record = { ...this.modalMode.defaults, ...data }; delete record._section; delete record._index;
-        if (section === 'inboxSections') record = data.value;
-        if (section === 'notificationAssignments') record.responsibles = String(data.responsibles || '').split(/[,;]/).map(item => item.trim()).filter(Boolean);
-        if (section === 'taskDefinitions') record.points = Number(data.points) || 0;
-        if (section === 'goals') record.monthlyClosings = data.monthlyClosings === '' ? null : Number(data.monthlyClosings);
-        if (index === null || index === undefined || index === '') list.push(record); else list[Number(index)] = record;
-        Store.save();
-        Store.audit(index === null || index === undefined || index === '' ? 'Configuração adicionada' : 'Configuração atualizada', `${section} · ${typeof record === 'string' ? record : record.name || record.event || record.group || 'item'}`);
+        getConfigurationFeature().saveRecord(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'term') {
         getMonitoringFeature().saveTerm(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'lead') {
@@ -2455,15 +2102,7 @@ import { createTasksFeature } from './features/tasks.js';
         else Store.state.customLinks.unshift(record);
         Store.audit(isEditing ? 'Link útil atualizado' : 'Link útil adicionado', record.title);
       } else if (this.modalMode.mode === 'feedback') {
-        const feedbackResponse = await window.KellerAuth.secureFetch('/api/system/feedback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify(data)
-        });
-        const feedbackPayload = await feedbackResponse.json().catch(() => ({}));
-        if (!feedbackResponse.ok) throw new Error(feedbackPayload.message || 'Falha ao enviar feedback.');
-        this.toast('Feedback do Beta enviado com sucesso. Muito obrigado!', 'success');
-        this.closeModal();
+        await getSystemAdminFeature().submitFeedback(data);
         return;
       }
       Store.save();

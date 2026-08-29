@@ -5,18 +5,18 @@ import { startTestServer } from './helpers.mjs';
 
 console.log('\n=== TESTES DE DIAGNÓSTICO DO SISTEMA, BACKUPS & FEEDBACK BETA ===\n');
 
-const portalSource = await readFile(new URL('../js/portal.js', import.meta.url), 'utf8');
+const systemAdminSource = await readFile(new URL('../js/features/system-admin.js', import.meta.url), 'utf8');
 assert.match(
-  portalSource,
-  /KellerAuth\.secureFetch\(['"]\/api\/system\/backup\/create['"]\s*,/,
+  systemAdminSource,
+  /secureFetch\(['"]\/api\/system\/backup\/create['"]\s*,/,
   'A geração de backup na UI deve atravessar secureFetch para enviar o CSRF da sessão.'
 );
-const backupUiSource = portalSource.slice(
-  portalSource.indexOf('async renderBackups()'),
-  portalSource.indexOf('openFeedbackModal()', portalSource.indexOf('async renderBackups()'))
+const backupUiSource = systemAdminSource.slice(
+  systemAdminSource.indexOf('renderBackups()'),
+  systemAdminSource.indexOf('openFeedbackModal()', systemAdminSource.indexOf('renderBackups()'))
 );
 assert.equal(
-  (backupUiSource.match(/KellerAuth\.secureFetch\(['"]\/api\/system\/backup\/restore['"]\s*,/g) || []).length,
+  (backupUiSource.match(/secureFetch\(['"]\/api\/system\/backup\/restore['"]\s*,/g) || []).length,
   1,
   'A restauração na UI deve executar exatamente uma request via secureFetch por evento.'
 );
@@ -26,12 +26,12 @@ assert.doesNotMatch(
   'A restauração não pode usar fetch cru.'
 );
 assert.equal(
-  (backupUiSource.match(/inputRestoreBackup['"]\)\?\.addEventListener\(['"]change['"]/g) || []).length,
+  (backupUiSource.match(/byId\(['"]inputRestoreBackup['"]\)\?\.addEventListener\(['"]change['"]/g) || []).length,
   1,
   'renderBackups deve registrar um único listener de restore no DOM recém-renderizado.'
 );
 assert.ok(
-  backupUiSource.indexOf('container.innerHTML =') < backupUiSource.indexOf("inputRestoreBackup')?.addEventListener"),
+  backupUiSource.indexOf('container.innerHTML =') < backupUiSource.indexOf("byId('inputRestoreBackup')?.addEventListener"),
   'renderBackups deve substituir o DOM antes de registrar o listener, evitando duplicação após novo init/render.'
 );
 
