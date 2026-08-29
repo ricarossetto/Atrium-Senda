@@ -300,10 +300,33 @@ try {
   assert.equal(batchRequests.length, 1, 'Clique explícito deve enviar uma requisição batch.');
   assert.deepEqual(Object.keys(batchRequests[0]).sort(), ['publicationIds', 'recipient']);
   assert.ok(batchRequests[0].publicationIds.every(value => typeof value === 'string'), 'Batch deve enviar apenas identificadores.');
+  await page.click('#publicationsEmailClose');
+  await page.locator('#publicationsEmailModalBackdrop.hidden').waitFor({ state: 'attached' });
 
-  await page.fill('#globalSearch', 'Publicação identificada');
+  await page.evaluate(() => {
+    window.portalApp.selectIntimation('int-demo-1');
+    const target = window.Atrium.Store.state.intimations.find(item => item.id === 'int-demo-2');
+    if (target) target.unread = true;
+  });
+  await page.fill('#globalSearch', 'Movimentação processual aguardando análise');
   await page.locator('#globalSearchPalette:not(.hidden)').waitFor();
-  assert.match(await page.locator('#globalSearchPalette').textContent(), /Publicação identificada/i, 'Global Search deve continuar localizando publicações.');
+  const searchResult = page.locator('[data-search-target="intimation"][data-search-id="int-demo-2"]');
+  await searchResult.waitFor();
+  await searchResult.click();
+  await page.locator('#view-inbox.active').waitFor();
+  const globalSelection = await page.evaluate(() => {
+    const item = window.Atrium.Store.state.intimations.find(record => record.id === 'int-demo-2');
+    return {
+      selected: window.portalApp.selectedIntimation,
+      activeId: document.querySelector('#inboxList .inbox-row.active')?.dataset.intimationId || null,
+      unread: item?.unread,
+      detail: document.querySelector('#intimationDetail')?.textContent || ''
+    };
+  });
+  assert.equal(globalSelection.selected, 'int-demo-2', 'Global Search deve selecionar a publicação pelo estado canônico da feature.');
+  assert.equal(globalSelection.activeId, 'int-demo-2', 'A linha ativa deve acompanhar a seleção feita pela Global Search.');
+  assert.equal(globalSelection.unread, false, 'Selecionar pela Global Search deve preservar a política canônica de leitura.');
+  assert.match(globalSelection.detail, /Movimentação processual aguardando análise/i, 'O detalhe deve corresponder à publicação selecionada na busca.');
   assert.deepEqual(pageErrors, [], `A feature gerou pageerror: ${pageErrors.join(' | ')}`);
   await context.close();
 } finally {

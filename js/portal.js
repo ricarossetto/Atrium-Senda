@@ -2243,8 +2243,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (task) this.openTaskModal(task);
       } else if (target === 'intimation') {
         this.switchView('inbox');
-        this.inboxSelectedId = id;
-        this.renderInbox();
+        this.selectIntimation(id);
       }
     },
     openModal(mode, title, eyebrow, fields, defaults = {}, topHtml = '') {
