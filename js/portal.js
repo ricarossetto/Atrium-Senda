@@ -12,12 +12,14 @@ import { createOnboarding } from './components/onboarding.js';
 import { createTheme } from './components/theme.js';
 import { Toast } from './components/toast.js';
 import { createAgendaFeature } from './features/agenda.js';
+import { createAssistantFeature } from './features/assistant.js';
 import { createContactsFeature } from './features/contacts.js';
 import { createDocumentsFeature } from './features/documents.js';
 import { createFinancialFeature } from './features/financial.js';
 import { createLeadsFeature } from './features/leads.js';
 import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js';
 import { createProcessesFeature } from './features/processes.js';
+import { createPromptsFeature } from './features/prompts.js';
 import { createTasksFeature } from './features/tasks.js';
 
 (() => {
@@ -57,41 +59,6 @@ import { createTasksFeature } from './features/tasks.js';
       try { return String.fromCodePoint(parseInt(hex, 16)); } catch { return _; }
     });
     return text;
-  }
-  function formatMarkdown(text) {
-    if (!text) return '';
-    let html = escapeHtml(text);
-    // Code blocks
-    html = html.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => `<pre><code class="lang-${lang}">${code.trim()}</code></pre>`);
-    html = html.replace(/```([\s\S]*?)```/g, (match, code) => `<pre><code>${code.trim()}</code></pre>`);
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // Headings
-    html = html.replace(/^### (.*$)/gim, '<h4 class="md-h4">$1</h4>');
-    html = html.replace(/^## (.*$)/gim, '<h3 class="md-h3">$1</h3>');
-    html = html.replace(/^# (.*$)/gim, '<h2 class="md-h2">$1</h2>');
-    // Blockquotes
-    html = html.replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>');
-    // Bold & Italic
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
-    // Unordered lists
-    html = html.replace(/^\s*[-•*]\s+(.*)$/gim, '<ul><li>$1</li></ul>');
-    html = html.replace(/<\/ul>\s*<ul>/g, '');
-    // Ordered lists
-    html = html.replace(/^\s*\d+\.\s+(.*)$/gim, '<ol><li>$1</li></ol>');
-    html = html.replace(/<\/ol>\s*<ol>/g, '');
-    // Paragraphs
-    const blocks = html.split(/\n{2,}/);
-    html = blocks.map(block => {
-      const trimmed = block.trim();
-      if (!trimmed) return '';
-      if (/^<(h[2-4]|ul|ol|pre|blockquote)/i.test(trimmed)) return trimmed;
-      return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`;
-    }).join('');
-    return html;
   }
   const normalizeText = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const formatDate = value => {
@@ -254,12 +221,14 @@ import { createTasksFeature } from './features/tasks.js';
   let onboardingComponent;
   let themeComponent;
   let agendaFeature;
+  let assistantFeature;
   let contactsFeature;
   let documentsFeature;
   let financialFeature;
   let leadsFeature;
   let publicationsFeature;
   let processesFeature;
+  let promptsFeature;
   let tasksFeature;
 
   function getGlobalSearchComponent() {
@@ -448,6 +417,41 @@ import { createTasksFeature } from './features/tasks.js';
     return agendaFeature;
   }
 
+  function getAssistantFeature() {
+    if (!assistantFeature) assistantFeature = createAssistantFeature({
+      documentRef: document,
+      windowRef: window,
+      secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
+      escapeHtml,
+      showToast: (message, type) => App.toast(message, type),
+      audit: (action, detail) => Store.audit(action, detail),
+      getSelectedIntimation: () => {
+        const selectedId = getPublicationsFeature().selectedIntimation;
+        return Store.state.intimations.find(item => item.id === selectedId) || null;
+      },
+      getLegalSkills: () => window.CODEX_LEGAL_SKILLS || []
+    });
+    return assistantFeature;
+  }
+
+  function getPromptsFeature() {
+    if (!promptsFeature) promptsFeature = createPromptsFeature({
+      store: Store,
+      documentRef: document,
+      windowRef: window,
+      navigatorRef: navigator,
+      escapeHtml,
+      normalizeText,
+      showToast: (message, type) => App.toast(message, type),
+      getDefaultPrompts: () => window.PROMPTS_DATA || [],
+      uid,
+      openModal: (...args) => App.openModal(...args),
+      switchView: view => App.switchView(view),
+      onUsePrompt: promptText => getAssistantFeature().loadPrompt(promptText)
+    });
+    return promptsFeature;
+  }
+
   const App = {
     currentView: 'dashboard',
     get inboxFilter() { return getPublicationsFeature().inboxFilter; },
@@ -472,12 +476,16 @@ import { createTasksFeature } from './features/tasks.js';
     get activeTimeSheetTaskId() { return getTasksFeature().activeTimeSheetTaskId; },
     get timeSheetStartedAt() { return getTasksFeature().timeSheetStartedAt; },
     get timeSheetInterval() { return getTasksFeature().timeSheetInterval; },
-    aiChatHistory: [],
-    aiConfigured: false,
-    isAiTyping: false,
+    get aiChatHistory() { return getAssistantFeature().chatHistory; },
+    set aiChatHistory(value) { getAssistantFeature().chatHistory = value; },
+    get aiConfigured() { return getAssistantFeature().configured; },
+    set aiConfigured(value) { getAssistantFeature().configured = value; },
+    get isAiTyping() { return getAssistantFeature().isTyping; },
+    set isAiTyping(value) { getAssistantFeature().isTyping = value; },
     authUsers: [],
     currentAuthRole: 'collaborator',
-    promptsFilter: { search: '', category: 'all', type: 'all' },
+    get promptsFilter() { return getPromptsFeature().filter; },
+    set promptsFilter(value) { getPromptsFeature().filter = value; },
     async init() {
       await Store.load();
       await this.loadAuthUsers();
@@ -572,6 +580,8 @@ import { createTasksFeature } from './features/tasks.js';
       getFinancialFeature().init();
       getAgendaFeature().init();
       getPublicationsFeature().init();
+      getAssistantFeature().init();
+      getPromptsFeature().init();
       byId('configurationSearch')?.addEventListener('input', () => this.renderConfiguration(byId('configurationSearch').value));
       byId('configurationTabs')?.addEventListener('click', event => {
         const button = event.target.closest('button[data-config-section]'); if (!button) return;
@@ -621,52 +631,6 @@ import { createTasksFeature } from './features/tasks.js';
       byId('calendarConfigBackdrop')?.addEventListener('click', event => { if (event.target === byId('calendarConfigBackdrop')) this.closeCalendarConfigModal(); });
       byId('calendarConfigForm')?.addEventListener('submit', event => this.handleCalendarConfigSubmit(event));
 
-      // Assistente IA (Google Gemini) & Codex Legal Skills
-      byId('btnOpenGeminiKeyModal')?.addEventListener('click', () => this.openGeminiKeyModal());
-      byId('geminiKeyClose')?.addEventListener('click', () => this.closeGeminiKeyModal());
-      byId('geminiKeyCancel')?.addEventListener('click', () => this.closeGeminiKeyModal());
-      byId('geminiKeyBackdrop')?.addEventListener('click', event => { if (event.target === byId('geminiKeyBackdrop')) this.closeGeminiKeyModal(); });
-      byId('geminiKeyForm')?.addEventListener('submit', event => this.handleGeminiKeySubmit(event));
-      byId('btnSaveQuickAiKey')?.addEventListener('click', () => this.handleQuickAiKeySubmit());
-      byId('btnClearAiConversation')?.addEventListener('click', () => this.clearAiConversation());
-      document.querySelectorAll('.quick-prompt-btn').forEach(btn => btn.addEventListener('click', () => this.sendQuickPrompt(btn.dataset.prompt)));
-      byId('aiChatForm')?.addEventListener('submit', event => this.handleAiChatSubmit(event));
-      byId('aiChatInput')?.addEventListener('keydown', event => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-          event.preventDefault();
-          byId('aiChatForm').requestSubmit();
-        }
-      });
-
-      // Codex Legal Skills Selector
-      const skillSelect = byId('codexSkillSelect');
-      const skillDesc = byId('codexSkillDescription');
-      const updateSkillDesc = () => {
-        const skills = window.CODEX_LEGAL_SKILLS || [];
-        const sel = skillSelect?.value;
-        const current = skills.find(s => s.id === sel);
-        if (skillDesc && current) {
-          skillDesc.textContent = `${current.title}: ${current.description}`;
-        }
-      };
-      if (skillSelect) {
-        skillSelect.addEventListener('change', updateSkillDesc);
-        updateSkillDesc();
-      }
-      byId('btnApplyCodexSkill')?.addEventListener('click', () => {
-        const skills = window.CODEX_LEGAL_SKILLS || [];
-        const sel = skillSelect?.value;
-        const current = skills.find(s => s.id === sel);
-        if (current) {
-          const input = byId('aiChatInput');
-          if (input) {
-            input.value = `[$${current.id}]\n${current.instructions.slice(0, 450)}...\n\n[INSTRUÇÃO DO USUÁRIO]: `;
-            input.focus();
-          }
-          this.toast(`Skill "${current.name}" carregada no prompt.`, 'success');
-        }
-      });
-
       byId('certificateGuideButton').addEventListener('click', () => this.openJudicialSetup());
       byId('judicialSetupClose').addEventListener('click', () => this.closeJudicialSetup());
       byId('judicialSetupBackdrop').addEventListener('click', event => { if (event.target === byId('judicialSetupBackdrop')) this.closeJudicialSetup(); });
@@ -714,45 +678,6 @@ import { createTasksFeature } from './features/tasks.js';
           }
         });
       });
-      // Biblioteca de Prompts Jurídicos
-      byId('promptsSearchInput')?.addEventListener('input', (e) => {
-        this.promptsFilter.search = e.target.value;
-        const btnClear = byId('btnClearPromptsSearch');
-        if (btnClear) btnClear.classList.toggle('hidden', !e.target.value);
-        this.renderPrompts();
-      });
-      byId('btnClearPromptsSearch')?.addEventListener('click', () => {
-        const input = byId('promptsSearchInput');
-        if (input) input.value = '';
-        this.promptsFilter.search = '';
-        byId('btnClearPromptsSearch')?.classList.add('hidden');
-        this.renderPrompts();
-        input?.focus();
-      });
-      byId('promptCategorySelect')?.addEventListener('change', (e) => {
-        this.promptsFilter.category = e.target.value;
-        const chipsContainer = byId('promptsCategoryChips');
-        if (chipsContainer) {
-          chipsContainer.querySelectorAll('.prompt-chip').forEach(chip => {
-            chip.classList.toggle('active', chip.dataset.category === this.promptsFilter.category);
-          });
-        }
-        this.renderPrompts();
-      });
-      byId('promptTypeSelect')?.addEventListener('change', (e) => {
-        this.promptsFilter.type = e.target.value;
-        this.renderPrompts();
-      });
-      byId('promptsCategoryChips')?.addEventListener('click', (e) => {
-        const chip = e.target.closest('.prompt-chip');
-        if (!chip) return;
-        const cat = chip.dataset.category || 'all';
-        this.promptsFilter.category = cat;
-        const select = byId('promptCategorySelect');
-        if (select) select.value = cat;
-        this.renderPrompts();
-      });
-      byId('btnNewPrompt')?.addEventListener('click', () => this.openNewPromptModal());
       byId('btnNewLink')?.addEventListener('click', () => this.openNewLinkModal());
       byId('btnConfigureEmail')?.addEventListener('click', () => this.openEmailConfigModal());
       byId('emailConfigClose')?.addEventListener('click', () => this.closeEmailConfigModal());
@@ -796,44 +721,6 @@ import { createTasksFeature } from './features/tasks.js';
         if (delBtn) {
           const id = delBtn.dataset.receiverId;
           this.deleteEmailReceiver(id);
-          return;
-        }
-      });
-      byId('promptsGrid')?.addEventListener('click', (e) => {
-        const copyBtn = e.target.closest('[data-copy-prompt]');
-        if (copyBtn) {
-          const promptId = copyBtn.dataset.copyPrompt;
-          const all = [...(Store.state.customPrompts || []), ...(window.PROMPTS_DATA || [])];
-          const p = all.find(item => item.id === promptId);
-          if (p) this.copyPrompt(p.prompt, copyBtn);
-          return;
-        }
-        const useBtn = e.target.closest('[data-use-prompt]');
-        if (useBtn) {
-          const promptId = useBtn.dataset.usePrompt;
-          const all = [...(Store.state.customPrompts || []), ...(window.PROMPTS_DATA || [])];
-          const p = all.find(item => item.id === promptId);
-          if (p) this.usePromptInAi(p.prompt);
-          return;
-        }
-        const editBtn = e.target.closest('[data-edit-prompt]');
-        if (editBtn) {
-          const promptId = editBtn.dataset.editPrompt;
-          const p = (Store.state.customPrompts || []).find(item => item.id === promptId);
-          if (p) this.openNewPromptModal(p);
-          return;
-        }
-        const deleteBtn = e.target.closest('[data-delete-prompt]');
-        if (deleteBtn) {
-          const promptId = deleteBtn.dataset.deletePrompt;
-          const idx = (Store.state.customPrompts || []).findIndex(p => p.id === promptId);
-          if (idx >= 0) {
-            const removed = Store.state.customPrompts.splice(idx, 1)[0];
-            Store.audit('Prompt personalizado excluído', removed?.title || promptId);
-            Store.save();
-            this.renderPrompts();
-            this.toast('Prompt excluído com sucesso.', 'success');
-          }
           return;
         }
       });
@@ -2837,385 +2724,19 @@ import { createTasksFeature } from './features/tasks.js';
         }
       }
     },
-    async checkAiStatus() {
-      const chip = document.getElementById('aiKeyStatusChip');
-      const banner = document.getElementById('aiOnboardingBanner');
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/ai/status', { headers: { Accept: 'application/json' } });
-        const data = await response.json().catch(() => ({}));
-        this.aiConfigured = Boolean(data.configured);
-        if (chip) {
-          chip.textContent = this.aiConfigured ? 'Chave Ativa' : 'Chave não configurada';
-          chip.className = this.aiConfigured ? 'status-chip connected' : 'status-chip warning';
-        }
-        if (banner) {
-          banner.style.display = this.aiConfigured ? 'none' : 'block';
-        }
-      } catch {
-        this.aiConfigured = false;
-        if (chip) {
-          chip.textContent = this.aiConfigured ? 'Chave Ativa' : 'Chave não configurada';
-          chip.className = this.aiConfigured ? 'status-chip connected' : 'status-chip warning';
-        }
-      }
-    },
-    openGeminiKeyModal() {
-      const input = document.getElementById('geminiApiKeyInput');
-      if (input) input.value = '';
-      const feedback = document.getElementById('geminiKeyFeedback');
-      if (feedback) { feedback.className = 'gemini-key-feedback hidden'; feedback.textContent = ''; }
-      document.getElementById('geminiKeyBackdrop')?.classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-      setTimeout(() => input?.focus(), 50);
-    },
-    closeGeminiKeyModal() {
-      const backdrop = document.getElementById('geminiKeyBackdrop');
-      if (!backdrop || backdrop.classList.contains('hidden')) return;
-      backdrop.classList.add('hidden');
-      if (document.getElementById('modalBackdrop')?.classList.contains('hidden')) document.body.style.overflow = '';
-    },
-    async saveGeminiKey(apiKey) {
-      apiKey = String(apiKey || '').trim();
-      if (!apiKey || apiKey.length < 20) {
-        throw new Error('Chave inválida. Copie a chave completa gerada no Google AI Studio.');
-      }
-      const response = await window.KellerAuth.secureFetch('/api/ai/configure', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ apiKey })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || 'Falha ao validar chave com o Google Gemini.');
-
-      Store.audit('Chave Gemini configurada', `Assistente IA ativado com modelo ${data.model || 'gemini-3.5-flash-lite'}.`);
-      await this.checkAiStatus();
-      return data;
-    },
-    async handleGeminiKeySubmit(event) {
-      event.preventDefault();
-      const key = document.getElementById('geminiApiKeyInput')?.value?.trim() || '';
-      const feedback = document.getElementById('geminiKeyFeedback');
-      const submitBtn = document.getElementById('geminiKeySubmit');
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Validando chave com Google…';
-      }
-      try {
-        const result = await this.saveGeminiKey(key);
-        if (feedback) {
-          feedback.className = 'gemini-key-feedback success';
-          feedback.textContent = result.message || 'Chave validada com sucesso!';
-          feedback.classList.remove('hidden');
-        }
-        this.toast('Assistente IA ativado com sucesso!', 'success');
-        setTimeout(() => this.closeGeminiKeyModal(), 1000);
-      } catch (error) {
-        if (feedback) {
-          feedback.className = 'gemini-key-feedback error';
-          feedback.textContent = error.message;
-          feedback.classList.remove('hidden');
-        }
-        this.toast(error.message, 'error');
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Validar e Salvar Chave';
-        }
-      }
-    },
-    async handleQuickAiKeySubmit() {
-      const input = document.getElementById('aiQuickKeyInput');
-      const btn = document.getElementById('btnSaveQuickAiKey');
-      const key = input?.value?.trim() || '';
-      if (!key) return this.toast('Cole sua Gemini API Key antes de continuar.', 'error');
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Validando…';
-      }
-      try {
-        await this.saveGeminiKey(key);
-        if (input) input.value = '';
-        this.toast('Assistente Google Gemini ativado!', 'success');
-      } catch (error) {
-        this.toast(error.message, 'error');
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Ativar Assistente Gratuito';
-        }
-      }
-    },
-    clearAiConversation() {
-      this.aiChatHistory = [];
-      const container = document.getElementById('aiChatMessages');
-      if (container) {
-        container.innerHTML = `
-          <div class="ai-message assistant-message">
-            <div class="message-avatar">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-              </svg>
-            </div>
-            <div class="message-body">
-              <div class="message-text">
-                <p>Conversa reiniciada. Em que posso auxiliá-lo(a) agora com suas intimações, prazos ou minutas?</p>
-              </div>
-              <div class="message-meta">Assistente Atrium Senda</div>
-            </div>
-          </div>`;
-      }
-      this.toast('Conversa reiniciada.', 'success');
-    },
-    sendQuickPrompt(promptText) {
-      const input = document.getElementById('aiChatInput');
-      if (input) input.value = promptText;
-      this.sendAiMessage(promptText);
-    },
-    handleAiChatSubmit(event) {
-      event.preventDefault();
-      const input = document.getElementById('aiChatInput');
-      const message = input.value.trim();
-      if (!message) return;
-      input.value = '';
-      this.sendAiMessage(message);
-    },
-    async sendAiMessage(messageText) {
-      if (!messageText.trim()) return;
-      if (this.isAiTyping) return;
-
-      const container = document.getElementById('aiChatMessages');
-      if (!container) return;
-
-      if (!this.aiConfigured) {
-        this.openGeminiKeyModal();
-        this.toast('Por favor, configure sua chave gratuita do Gemini para usar o assistente.', 'warning');
-        return;
-      }
-
-      const userDiv = document.createElement('div');
-      userDiv.className = 'ai-message user-message';
-      userDiv.innerHTML = `
-        <div class="message-avatar">EU</div>
-        <div class="message-body">
-          <div class="message-text">${escapeHtml(messageText).replace(/\n/g, '<br>')}</div>
-          <div class="message-meta">Você · ${new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date())}</div>
-        </div>`;
-      container.appendChild(userDiv);
-
-      this.isAiTyping = true;
-      const typingDiv = document.createElement('div');
-      typingDiv.className = 'ai-message assistant-message ai-typing-row';
-      typingDiv.innerHTML = `
-        <div class="message-avatar">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-          </svg>
-        </div>
-        <div class="message-body">
-          <div class="ai-typing-indicator">
-            <span>Assistente formulando resposta…</span>
-            <div class="ai-typing-dots"><span></span><span></span><span></span></div>
-          </div>
-        </div>`;
-      container.appendChild(typingDiv);
-      container.scrollTop = container.scrollHeight;
-
-      let context = {};
-      if (this.selectedIntimation) {
-        const item = Store.state.intimations.find(r => r.id === this.selectedIntimation);
-        if (item) context.intimation = item;
-      }
-
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/ai/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({
-            message: messageText,
-            context,
-            history: this.aiChatHistory.slice(-12)
-          })
-        });
-
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'Falha ao consultar a API do Google Gemini.');
-
-        typingDiv.remove();
-
-        const replyHtml = formatMarkdown(data.reply);
-        const assistantDiv = document.createElement('div');
-        assistantDiv.className = 'ai-message assistant-message';
-        assistantDiv.innerHTML = `
-          <div class="message-avatar">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-            </svg>
-          </div>
-          <div class="message-body">
-            <div class="message-text">${replyHtml}</div>
-            <div class="message-meta">${data.model || 'Google Gemini Flash'} · ${new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date())}</div>
-          </div>`;
-        container.appendChild(assistantDiv);
-
-        this.aiChatHistory.push({ role: 'user', text: messageText });
-        this.aiChatHistory.push({ role: 'assistant', text: data.reply });
-      } catch (error) {
-        typingDiv.remove();
-        const errDiv = document.createElement('div');
-        errDiv.className = 'ai-message assistant-message';
-        errDiv.innerHTML = `
-          <div class="message-avatar" style="background:rgba(255,77,79,0.2);color:#ff4d4f;border-color:rgba(255,77,79,0.4);">!</div>
-          <div class="message-body">
-            <div class="message-text" style="background:#201111;border-color:#4a1c1c;color:#ff8585;">
-              <p><strong>Erro na consulta ao Assistente IA:</strong> ${escapeHtml(error.message)}</p>
-              <p style="font-size:12px;margin-top:6px;color:#c59999;">Verifique se a sua chave do Google Gemini foi inserida corretamente ou acesse <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--gold);text-decoration:underline;">Google AI Studio</a> para gerar uma nova chave gratuita.</p>
-            </div>
-          </div>`;
-        container.appendChild(errDiv);
-      } finally {
-        this.isAiTyping = false;
-        container.scrollTop = container.scrollHeight;
-      }
-    },
-    copyPrompt(promptText, buttonElement) {
-      if (!navigator.clipboard) {
-        this.toast('Área de transferência indisponível neste navegador.', 'error');
-        return;
-      }
-      navigator.clipboard.writeText(promptText).then(() => {
-        if (buttonElement) {
-          const originalText = buttonElement.innerHTML;
-          buttonElement.innerHTML = `
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            <span>Copiado!</span>`;
-          buttonElement.classList.add('copied');
-          setTimeout(() => {
-            buttonElement.innerHTML = originalText;
-            buttonElement.classList.remove('copied');
-          }, 2000);
-        }
-        this.toast('Prompt copiado para a área de transferência!', 'success');
-      }).catch(() => {
-        this.toast('Não foi possível copiar o texto do prompt.', 'error');
-      });
-    },
-    usePromptInAi(promptText) {
-      this.switchView('assistant');
-      const input = document.getElementById('aiChatInput');
-      if (input) {
-        input.value = promptText;
-        input.style.height = 'auto';
-        input.style.height = Math.min(Math.max(input.scrollHeight, 60), 200) + 'px';
-        input.focus();
-        setTimeout(() => {
-          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-      }
-      this.toast('Prompt carregado no Assistente IA! Complete com os fatos e envie.', 'success');
-    },
-    renderPrompts() {
-      const defaultPrompts = window.PROMPTS_DATA || [];
-      const customPrompts = Store.state.customPrompts || [];
-      const allPrompts = [...customPrompts, ...defaultPrompts];
-      const grid = document.getElementById('promptsGrid');
-      const chipsContainer = document.getElementById('promptsCategoryChips');
-      const categorySelect = document.getElementById('promptCategorySelect');
-      const countDisplay = document.getElementById('promptsCountDisplay');
-
-      // Monta as opções de categoria no select
-      const categories = ['all', ...new Set(allPrompts.map(p => p.category))];
-      if (categorySelect && (categorySelect.options.length <= 1 || categorySelect.options.length !== categories.length)) {
-        const curVal = categorySelect.value || 'all';
-        categorySelect.innerHTML = categories.map(cat => {
-          const label = cat === 'all' ? `Todas as Áreas (${allPrompts.length} prompts)` : cat;
-          return `<option value="${escapeHtml(cat)}">${escapeHtml(label)}</option>`;
-        }).join('');
-        if (categories.includes(curVal)) categorySelect.value = curVal;
-      }
-
-      // Monta os chips de categoria com as mais frequentes
-      const topCategories = ['all', ...[...new Set(allPrompts.map(p => p.category))].slice(0, 12)];
-      if (chipsContainer) {
-        chipsContainer.innerHTML = topCategories.map(cat => {
-          const isSelected = this.promptsFilter.category === cat;
-          const label = cat === 'all' ? 'Todas as Áreas' : cat;
-          return `<button type="button" class="prompt-chip ${isSelected ? 'active' : ''}" data-category="${escapeHtml(cat)}">${escapeHtml(label)}</button>`;
-        }).join('');
-      }
-
-      // Filtragem dinâmica
-      const searchNeedle = normalizeText(this.promptsFilter.search || '');
-      const filtered = allPrompts.filter(p => {
-        if (this.promptsFilter.category !== 'all' && p.category !== this.promptsFilter.category) return false;
-        if (this.promptsFilter.type !== 'all' && normalizeText(p.type) !== normalizeText(this.promptsFilter.type)) return false;
-        if (searchNeedle) {
-          const haystack = normalizeText(`${p.title} ${p.description} ${(p.tags || []).join(' ')} ${p.prompt}`);
-          if (!haystack.includes(searchNeedle)) return false;
-        }
-        return true;
-      });
-
-      if (countDisplay) {
-        countDisplay.textContent = `Mostrando ${filtered.length} de ${allPrompts.length} prompts`;
-      }
-
-      if (!grid) return;
-
-      if (!filtered.length) {
-        grid.innerHTML = `
-          <div class="prompts-empty card">
-            <div class="empty-icon">⌕</div>
-            <h3>Nenhum prompt encontrado</h3>
-            <p>Tente ajustar os termos da pesquisa ou selecione outra área do direito.</p>
-          </div>`;
-        return;
-      }
-
-      grid.innerHTML = filtered.map(p => {
-        const typeClass = p.type ? `type-${normalizeText(p.type).replace(/\s+/g, '-')}` : 'type-geral';
-        const tagsHtml = (p.tags || []).slice(0, 5).map(t => `<span class="prompt-tag">${escapeHtml(t)}</span>`).join('');
-        const customBadge = p.isCustom ? `<span class="prompt-cat-badge custom-prompt-badge">Personalizado</span>` : '';
-        const customActions = p.isCustom ? `
-          <button type="button" class="button ghost btn-edit-prompt" data-edit-prompt="${escapeHtml(p.id)}" title="Editar prompt">Editar</button>
-          <button type="button" class="button danger-ghost btn-delete-prompt" data-delete-prompt="${escapeHtml(p.id)}" title="Excluir prompt">Excluir</button>
-        ` : '';
-        return `
-          <article class="card prompt-card ${p.isCustom ? 'custom-card' : ''}" data-prompt-id="${escapeHtml(p.id)}">
-            <div class="prompt-card-top">
-              <div class="prompt-badges">
-                ${customBadge}
-                <span class="prompt-cat-badge">${escapeHtml(p.category)}</span>
-                <span class="prompt-type-badge ${typeClass}">${escapeHtml(p.type || 'Geral')}</span>
-              </div>
-            </div>
-            <h4 class="prompt-title">${escapeHtml(p.title)}</h4>
-            <p class="prompt-desc">${escapeHtml(p.description || 'Modelo especializado para aplicação prática jurídica.')}</p>
-            ${tagsHtml ? `<div class="prompt-tags-list">${tagsHtml}</div>` : ''}
-            <div class="prompt-box">
-              <pre class="prompt-text">${escapeHtml(p.prompt)}</pre>
-            </div>
-            <div class="prompt-card-actions">
-              <button type="button" class="button ghost btn-copy-prompt" data-copy-prompt="${escapeHtml(p.id)}" title="Copiar texto do prompt">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-                <span>Copiar</span>
-              </button>
-              <button type="button" class="button gold btn-use-prompt" data-use-prompt="${escapeHtml(p.id)}" title="Carregar no chat do Assistente IA">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-                </svg>
-                <span>Usar na IA</span>
-              </button>
-              ${customActions}
-            </div>
-          </article>
-        `;
-      }).join('');
-    },
+    checkAiStatus() { return getAssistantFeature().checkStatus(); },
+    openGeminiKeyModal() { return getAssistantFeature().openKeyModal(); },
+    closeGeminiKeyModal() { return getAssistantFeature().closeKeyModal(); },
+    saveGeminiKey(apiKey) { return getAssistantFeature().saveKey(apiKey); },
+    handleGeminiKeySubmit(event) { return getAssistantFeature().handleKeySubmit(event); },
+    handleQuickAiKeySubmit() { return getAssistantFeature().handleQuickKeySubmit(); },
+    clearAiConversation() { return getAssistantFeature().clearConversation(); },
+    sendQuickPrompt(promptText) { return getAssistantFeature().sendQuickPrompt(promptText); },
+    handleAiChatSubmit(event) { return getAssistantFeature().handleChatSubmit(event); },
+    sendAiMessage(messageText) { return getAssistantFeature().sendMessage(messageText); },
+    copyPrompt(promptText, buttonElement) { return getPromptsFeature().copy(promptText, buttonElement); },
+    usePromptInAi(promptText) { return getPromptsFeature().useInAssistant(promptText); },
+    renderPrompts() { return getPromptsFeature().render(); },
     renderLinks() {
       const customLinks = Store.state.customLinks || [];
       const section = document.getElementById('customLinksSection');
@@ -3252,17 +2773,7 @@ import { createTasksFeature } from './features/tasks.js';
         `;
       }).join('');
     },
-    openNewPromptModal(defaults = {}) {
-      const categories = ['all', ...new Set((window.PROMPTS_DATA || []).map(p => p.category))].filter(c => c !== 'all');
-      this.openModal('prompt', defaults.id ? 'Editar prompt personalizado' : 'Novo prompt jurídico', 'Inteligência Artificial', [
-        { name: 'title', label: 'Título do prompt', required: true, full: true, placeholder: 'Ex: Recurso Especial — Violação ao CPC', value: defaults.title || '' },
-        { name: 'category', label: 'Área do Direito', required: true, placeholder: 'Ex: Cível, Previdenciário, Trabalhista...', value: defaults.category || 'Cível' },
-        { name: 'type', label: 'Tipo de Ação / Finalidade', type: 'select', options: [{value:'Redação',label:'Redação de Peça'},{value:'Análise',label:'Análise de Riscos / Fatos'},{value:'Pesquisa',label:'Pesquisa Jurisprudencial'},{value:'Assistente',label:'Assistente Estratégico'},{value:'Geral',label:'Geral'}], value: defaults.type || 'Redação' },
-        { name: 'tags', label: 'Palavras-chave / Tags', full: true, placeholder: 'Ex: apelação, cpc, tempestividade, omissão (separados por vírgula)', value: Array.isArray(defaults.tags) ? defaults.tags.join(', ') : (defaults.tags || '') },
-        { name: 'description', label: 'Resumo / Instruções de uso', full: true, placeholder: 'Ex: Estrutura especializada para demonstrar negativa de prestação jurisdicional.', value: defaults.description || '' },
-        { name: 'prompt', label: 'Texto completo do Prompt (com variáveis [CLIENTE], [FATO], etc.)', type: 'textarea', full: true, required: true, value: defaults.prompt || '', note: 'Você pode usar marcações entre colchetes como [PROCESSO], [FATOS] para orientar o preenchimento.' }
-      ], defaults);
-    },
+    openNewPromptModal(defaults = {}) { return getPromptsFeature().openNewPromptModal(defaults); },
     openNewLinkModal(defaults = {}) {
       this.openModal('link', defaults.id ? 'Editar link útil' : 'Adicionar novo link útil', 'Acesso rápido oficial', [
         { name: 'title', label: 'Nome / Título da referência', required: true, full: true, placeholder: 'Ex: Código de Trânsito Brasileiro (CTB)', value: defaults.title || '' },
@@ -3383,24 +2894,7 @@ import { createTasksFeature } from './features/tasks.js';
         this.closeModal();
         return;
       } else if (this.modalMode.mode === 'prompt') {
-        const isEditing = Boolean(this.modalMode.defaults.id);
-        const record = {
-          id: this.modalMode.defaults.id || uid('prompt'),
-          isCustom: true,
-          title: data.title || 'Prompt sem título',
-          category: data.category || 'Geral',
-          type: data.type || 'Geral',
-          description: data.description || '',
-          tags: String(data.tags || '').split(/[,;]/).map(t => t.trim()).filter(Boolean),
-          prompt: data.prompt || '',
-          createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        Store.state.customPrompts = Store.state.customPrompts || [];
-        const idx = Store.state.customPrompts.findIndex(p => p.id === record.id);
-        if (idx >= 0) Store.state.customPrompts[idx] = record;
-        else Store.state.customPrompts.unshift(record);
-        Store.audit(isEditing ? 'Prompt personalizado atualizado' : 'Prompt personalizado criado', record.title);
+        getPromptsFeature().savePrompt(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'link') {
         const isEditing = Boolean(this.modalMode.defaults.id);
         const normalizedUrl = normalizeExternalUrl(data.url);
