@@ -157,7 +157,7 @@ export function createFinancialFeature({
       if (sumNet) sumNet.textContent = formatCurrency(net);
     },
 
-    handleEntrySubmit(event) {
+    async handleEntrySubmit(event) {
       event.preventDefault();
       const form = event.currentTarget;
       const data = new FormData(form);
@@ -185,6 +185,7 @@ export function createFinancialFeature({
       store.audit('Lançamento financeiro registrado', `${process.number || process.client}: ${formatCurrency(grossAmount)} (${status})`);
       store.save();
 
+      if (!await store.flush()) return;
       this.closeEntryModal();
       this.render();
       renderDashboardFinancialWidgets?.();

@@ -3,6 +3,8 @@ import { fetchState, importLegacyState, persistState } from './api.js';
 const STORAGE_KEY = 'jurisflow_storage_v1';
 
 export const STORE_PERSISTENCE_CONFLICT_EVENT = 'atrium:store-persistence-conflict';
+export const ATRIUM_STORE_PERSISTENCE_ERROR_EVENT = 'atrium:store-persistence-error';
+export const STORE_PERSISTENCE_ERROR_MESSAGE = 'Não foi possível salvar as alterações. Verifique a conexão e tente novamente.';
 
 export const isoDate = (offset = 0, baseDate = new Date()) => {
   const date = new Date(baseDate);
@@ -232,13 +234,18 @@ export const Store = {
         setTimeout(() => globalThis.location.reload(), 700);
         return false;
       }
-      if (!response.ok && response.status !== 401) throw new Error('Estado não persistido.');
-      if (response.ok) {
-        this.revision = (await response.json()).revision || this.revision;
-        localStorage.removeItem(STORAGE_KEY);
+      if (!response.ok) throw new Error('Estado não persistido.');
+      this.revision = (await response.json()).revision || this.revision;
+      localStorage.removeItem(STORAGE_KEY);
+      return true;
+    } catch {
+      if (typeof globalThis.dispatchEvent === 'function' && typeof globalThis.CustomEvent === 'function') {
+        globalThis.dispatchEvent(new CustomEvent(ATRIUM_STORE_PERSISTENCE_ERROR_EVENT, {
+          detail: Object.freeze({ message: STORE_PERSISTENCE_ERROR_MESSAGE })
+        }));
       }
-      return response.ok;
-    } catch { return false; }
+      return false;
+    }
   },
   audit(action, detail, actor = 'Advogado') {
     const author = globalThis.KellerAuth?.currentUser?.displayName || actor;

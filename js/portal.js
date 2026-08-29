@@ -1,4 +1,11 @@
-import { Store, STORE_PERSISTENCE_CONFLICT_EVENT, isoDate, uid } from './core/store.js';
+import {
+  ATRIUM_STORE_PERSISTENCE_ERROR_EVENT,
+  STORE_PERSISTENCE_CONFLICT_EVENT,
+  STORE_PERSISTENCE_ERROR_MESSAGE,
+  Store,
+  isoDate,
+  uid
+} from './core/store.js';
 import { createGlobalSearch } from './components/global-search.js';
 import { createModal } from './components/modal.js';
 import { createOnboarding } from './components/onboarding.js';
@@ -1325,7 +1332,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       };
       reader.readAsDataURL(file);
     },
-    handleOfficeSetupSubmit(event) {
+    async handleOfficeSetupSubmit(event) {
       event.preventDefault();
       Store.state.settings.officeName = document.getElementById('officeInputName').value.trim();
       Store.state.settings.officeSlogan = document.getElementById('officeInputSlogan').value.trim();
@@ -1344,6 +1351,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       Store.save();
       this.renderOfficeIdentity();
       this.renderMonitoring();
+      if (!await Store.flush()) return;
       this.closeOfficeSetup();
       this.toast('Identidade do escritório salva com sucesso!', 'success');
     },
@@ -1504,12 +1512,12 @@ ${id.lawyerOab} - ${id.officeName}`;
       });
 
       listEl.querySelectorAll('[data-complete-task-id]').forEach(chk => {
-        chk.addEventListener('change', (e) => {
+        chk.addEventListener('change', async (e) => {
           e.stopPropagation();
           const task = getTasksFeature().completeTask(chk.dataset.completeTaskId);
           if (task) {
             this.renderAll();
-            this.toast('Tarefa concluída com sucesso!', 'success');
+            if (await Store.flush()) this.toast('Tarefa concluída com sucesso!', 'success');
           }
         });
       });
@@ -3669,7 +3677,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       ], {});
       document.querySelector('#modalForm footer .button.gold').textContent = 'Entendi';
     },
-    handleModalSubmit(event) {
+    async handleModalSubmit(event) {
       event.preventDefault(); if (!this.modalMode) return;
       if (this.modalMode.mode === 'guide') { this.closeModal(); return; }
       if (this.modalMode.mode === 'intimationDetail') {
@@ -3751,6 +3759,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         Store.audit('Configuração DataJud atualizada', `Chave configurada (${(data.apiKey || '').slice(0, 10)}…)`);
         Store.save();
         this.renderMonitoring();
+        if (!await Store.flush()) return;
         this.toast('Configurações do DataJud salvas com sucesso!', 'success');
         this.closeModal();
         return;
@@ -3806,7 +3815,11 @@ ${id.lawyerOab} - ${id.officeName}`;
         this.closeModal();
         return;
       }
-      Store.save(); this.closeModal(); this.renderAll(); this.toast('Registro salvo com sucesso.', 'success');
+      Store.save();
+      this.renderAll();
+      if (!await Store.flush()) return;
+      this.closeModal();
+      this.toast('Registro salvo com sucesso.', 'success');
     },
     openDocumentGenerator({ contactId = null, processId = null, type = 'procuracao' } = {}) {
       const contacts = Store.state.contacts || [];
@@ -3947,7 +3960,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (input) input.value = '';
       this.toast('Importação descartada.');
     },
-    commitSpreadsheetImport() {
+    async commitSpreadsheetImport() {
       const data = this.importedSpreadsheetData;
       if (!data) return;
       let countProc = 0;
@@ -3969,6 +3982,7 @@ ${id.lawyerOab} - ${id.officeName}`;
 
       Store.audit('Importação de planilha concluída', `${countProc} processos, ${countCont} contatos e ${countTasks} tarefas consolidados.`);
       Store.save();
+      if (!await Store.flush()) return;
       this.renderAll();
       this.cancelSpreadsheetImport();
       this.toast(`Importação concluída: ${countProc} processos, ${countCont} contatos e ${countTasks} tarefas importados!`, 'success');
@@ -4091,6 +4105,9 @@ ${id.lawyerOab} - ${id.officeName}`;
   let initialized = false;
   window.addEventListener(STORE_PERSISTENCE_CONFLICT_EVENT, event => {
     App.toast(event.detail?.message || 'Os dados foram atualizados em outra aba. Recarregando a versão mais recente…', 'error');
+  });
+  window.addEventListener(ATRIUM_STORE_PERSISTENCE_ERROR_EVENT, event => {
+    App.toast(event.detail?.message || STORE_PERSISTENCE_ERROR_MESSAGE, 'error');
   });
   const boot = () => {
     if (initialized) return;

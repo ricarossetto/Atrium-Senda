@@ -143,6 +143,50 @@ try {
   assert.equal(reloadProbe.kellerIdentity, true, 'Alias KellerCentral deve preservar identidade do Store.');
 
   await page.evaluate(() => window.Atrium.Store.flush());
+  let failNextPersistence = true;
+  await page.route('**/api/state', async route => {
+    if (route.request().method() === 'POST' && failNextPersistence) {
+      failNextPersistence = false;
+      await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'falha sintética' }) });
+      return;
+    }
+    await route.continue();
+  });
+  const visibleFailure = await page.evaluate(async () => {
+    const eventDetails = [];
+    window.addEventListener('atrium:store-persistence-error', event => eventDetails.push(event.detail));
+    localStorage.setItem('jurisflow_storage_v1', JSON.stringify({ marker: 'legado-pendente' }));
+    window.Atrium.Store.state.settings.persistenceFailureProbe = 'Cliente Teste CPF 000.000.000-00';
+    const reloadsBefore = globalThis.__storeCharacterization.conflictReloads;
+    const failed = await window.Atrium.Store.flush();
+    const afterFailure = {
+      eventCount: eventDetails.length,
+      eventDetail: JSON.stringify(eventDetails[0] || {}),
+      legacyPresent: localStorage.getItem('jurisflow_storage_v1') !== null,
+      reloads: globalThis.__storeCharacterization.conflictReloads,
+      toast: [...document.querySelectorAll('#toastRegion .toast')].map(item => item.textContent).find(text => text.includes('Não foi possível salvar as alterações')) || ''
+    };
+    const recovered = await window.Atrium.Store.flush();
+    return {
+      failed,
+      recovered,
+      reloadsBefore,
+      afterFailure,
+      finalEventCount: eventDetails.length,
+      legacyRemovedAfterSuccess: localStorage.getItem('jurisflow_storage_v1') === null
+    };
+  });
+  await page.unroute('**/api/state');
+  assert.equal(visibleFailure.failed, false, 'HTTP 500 deve retornar false ao chamador.');
+  assert.equal(visibleFailure.afterFailure.eventCount, 1, 'Uma requisição de persistência falha deve emitir exatamente um evento.');
+  assert.match(visibleFailure.afterFailure.toast, /Não foi possível salvar as alterações\. Verifique a conexão e tente novamente\./, 'Falha genérica deve ficar visível na UI.');
+  assert.doesNotMatch(visibleFailure.afterFailure.eventDetail, /Cliente Teste|000\.000\.000-00|persistenceFailureProbe/, 'Detail do evento não pode incluir state ou PII.');
+  assert.equal(visibleFailure.afterFailure.legacyPresent, true, 'localStorage legado não pode ser removido após falha.');
+  assert.equal(visibleFailure.afterFailure.reloads, visibleFailure.reloadsBefore, 'Falha genérica não pode agendar reload.');
+  assert.equal(visibleFailure.recovered, true, 'Novo flush posterior deve recuperar após a falha.');
+  assert.equal(visibleFailure.finalEventCount, 1, 'Recuperação bem-sucedida não deve emitir novo evento de falha.');
+  assert.equal(visibleFailure.legacyRemovedAfterSuccess, true, 'localStorage legado deve ser removido somente após sucesso.');
+
   const beforeConflict = await page.evaluate(() => ({
     revision: window.Atrium.Store.revision,
     slogan: window.Atrium.Store.state.settings.officeSlogan
@@ -291,13 +335,27 @@ async function assertControlledFailures() {
         currentUser: { displayName: 'Advogada Teste' },
         secureFetch: async () => { throw new TypeError('Falha de rede simulada'); }
       };
+      const events = [];
+      let reloads = 0;
+      const nativeSetTimeout = globalThis.setTimeout;
+      globalThis.setTimeout = (handler, timeout, ...args) => {
+        if (timeout === 700) reloads += 1;
+        return nativeSetTimeout(handler, timeout, ...args);
+      };
+      window.addEventListener('atrium:store-persistence-error', event => events.push(event.detail));
       const { Store } = await import('/js/core/store.js?case=network');
       await Store.load();
       clearTimeout(Store.saveTimer);
       Store.saveTimer = null;
-      return { loadedFallback: Boolean(Store.state?.settings), saved: await Store.flush() };
+      Store.state.settings.clientMarker = 'Cliente Teste Sigiloso';
+      const saved = await Store.flush();
+      return { loadedFallback: Boolean(Store.state?.settings), saved, events, reloads };
     });
-    assert.deepEqual(networkResult, { loadedFallback: true, saved: false }, 'Falha de rede deve manter fallback e retornar false sem timeout.');
+    assert.equal(networkResult.loadedFallback, true, 'Falha de rede deve manter fallback utilizável.');
+    assert.equal(networkResult.saved, false, 'Falha de rede deve retornar false sem timeout.');
+    assert.equal(networkResult.events.length, 1, 'Falha de rede deve emitir um único evento.');
+    assert.equal(networkResult.reloads, 0, 'Falha de rede não deve reutilizar o reload do conflito 409.');
+    assert.doesNotMatch(JSON.stringify(networkResult.events[0]), /Cliente Teste Sigiloso|clientMarker/, 'Evento de rede não pode vazar state ou PII.');
   } finally {
     await networkPage.close();
   }
@@ -305,13 +363,29 @@ async function assertControlledFailures() {
   const httpPage = await isolatedPage();
   try {
     const httpResult = await httpPage.evaluate(async () => {
-      window.KellerAuth = { secureFetch: async () => new Response('indisponível', { status: 503 }) };
+      let attempts = 0;
+      const events = [];
+      window.KellerAuth = {
+        secureFetch: async () => {
+          attempts += 1;
+          if (attempts === 1) return new Response('indisponível', { status: 500 });
+          return new Response(JSON.stringify({ revision: 'http-r1' }), { status: 200 });
+        }
+      };
+      window.addEventListener('atrium:store-persistence-error', event => events.push(event.detail));
       const { Store } = await import('/js/core/store.js?case=http-error');
-      Store.state = { audit: [] };
+      Store.state = { audit: [], client: 'Cliente Teste Protegido' };
       Store.revision = 'http-r0';
-      return Store.flush();
+      const failed = await Store.flush();
+      const recovered = await Store.flush();
+      return { failed, recovered, attempts, events, revision: Store.revision };
     });
-    assert.equal(httpResult, false, 'Erro HTTP deve retornar false sem fingir persistência.');
+    assert.equal(httpResult.failed, false, 'Erro HTTP 500 deve retornar false sem fingir persistência.');
+    assert.equal(httpResult.recovered, true, 'Fila deve aceitar novo save bem-sucedido após HTTP 500.');
+    assert.equal(httpResult.attempts, 2, 'Retry posterior deve executar uma nova requisição.');
+    assert.equal(httpResult.events.length, 1, 'HTTP 500 deve emitir exatamente um evento de falha.');
+    assert.equal(httpResult.revision, 'http-r1', 'Retry deve atualizar revision normalmente.');
+    assert.doesNotMatch(JSON.stringify(httpResult.events[0]), /Cliente Teste Protegido/, 'Evento HTTP não pode incluir conteúdo do estado.');
   } finally {
     await httpPage.close();
   }
