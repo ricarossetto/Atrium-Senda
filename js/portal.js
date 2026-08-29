@@ -16,7 +16,10 @@ import { createAssistantFeature } from './features/assistant.js';
 import { createConfigurationFeature } from './features/configuration.js';
 import { createContactsFeature } from './features/contacts.js';
 import { createDocumentsFeature } from './features/documents.js';
+import { createEmailIntegrationFeature } from './features/email-integration.js';
+import { createExternalCalendarFeature } from './features/external-calendar.js';
 import { createFinancialFeature } from './features/financial.js';
+import { createImporterFeature } from './features/importer.js';
 import { createJudicialIntegrationsFeature } from './features/judicial-integrations.js';
 import { createLeadsFeature } from './features/leads.js';
 import { createMonitoringFeature } from './features/monitoring.js';
@@ -229,7 +232,10 @@ import { createTasksFeature } from './features/tasks.js';
   let configurationFeature;
   let contactsFeature;
   let documentsFeature;
+  let emailIntegrationFeature;
+  let externalCalendarFeature;
   let financialFeature;
+  let importerFeature;
   let judicialIntegrationsFeature;
   let leadsFeature;
   let monitoringFeature;
@@ -473,6 +479,49 @@ import { createTasksFeature } from './features/tasks.js';
     return judicialIntegrationsFeature;
   }
 
+  function getEmailIntegrationFeature() {
+    if (!emailIntegrationFeature) emailIntegrationFeature = createEmailIntegrationFeature({
+      documentRef: document,
+      windowRef: window,
+      secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
+      escapeHtml,
+      showToast: (message, type) => App.toast(message, type),
+      getCurrentUser: () => window.KellerAuth?.currentUser,
+      getOfficeName: () => Store.state.settings?.officeName || '',
+      confirmFn: message => window.confirm(message)
+    });
+    return emailIntegrationFeature;
+  }
+
+  function getExternalCalendarFeature() {
+    if (!externalCalendarFeature) externalCalendarFeature = createExternalCalendarFeature({
+      store: Store,
+      documentRef: document,
+      windowRef: window,
+      secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
+      showToast: (message, type) => App.toast(message, type),
+      onSyncAll: () => App.syncAll()
+    });
+    return externalCalendarFeature;
+  }
+
+  function getImporterFeature() {
+    if (!importerFeature) importerFeature = createImporterFeature({
+      store: Store,
+      documentRef: document,
+      windowRef: window,
+      secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
+      escapeHtml,
+      showToast: (message, type) => App.toast(message, type),
+      upsertProcess: record => getProcessesFeature().upsertExternalProcess(record),
+      upsertContact: record => getContactsFeature().upsertExternalContact(record),
+      upsertTask: record => getTasksFeature().upsertExternalTask(record),
+      onRenderAll: () => App.renderAll(),
+      onSwitchView: view => App.switchView(view)
+    });
+    return importerFeature;
+  }
+
   function getMonitoringFeature() {
     if (!monitoringFeature) monitoringFeature = createMonitoringFeature({
       store: Store,
@@ -486,7 +535,7 @@ import { createTasksFeature } from './features/tasks.js';
       closeModal: () => App.closeModal(),
       getFilteredIntimations: () => App.filteredIntimations(),
       onOpenJudicialSetup: () => getJudicialIntegrationsFeature().open(),
-      onOpenCalendarConfig: () => App.openCalendarConfigModal()
+      onOpenCalendarConfig: () => getExternalCalendarFeature().open()
     });
     return monitoringFeature;
   }
@@ -559,6 +608,10 @@ import { createTasksFeature } from './features/tasks.js';
     set authUsers(value) { getConfigurationFeature().users = value; },
     get currentAuthRole() { return getConfigurationFeature().role; },
     set currentAuthRole(value) { getConfigurationFeature().role = value; },
+    get emailReceivers() { return getEmailIntegrationFeature().receivers; },
+    set emailReceivers(value) { getEmailIntegrationFeature().receivers = value; },
+    get importedSpreadsheetData() { return getImporterFeature().data; },
+    set importedSpreadsheetData(value) { getImporterFeature().data = value; },
     get promptsFilter() { return getPromptsFeature().filter; },
     set promptsFilter(value) { getPromptsFeature().filter = value; },
     async init() {
@@ -653,6 +706,9 @@ import { createTasksFeature } from './features/tasks.js';
       getMonitoringFeature().init();
       getJudicialIntegrationsFeature().init();
       getConfigurationFeature().init();
+      getEmailIntegrationFeature().init();
+      getExternalCalendarFeature().init();
+      getImporterFeature().init();
 
       // Alertas & Auditoria
       byId('auditFilters')?.addEventListener('click', event => {
@@ -687,33 +743,7 @@ import { createTasksFeature } from './features/tasks.js';
         this.renderDashboardTasks();
       });
 
-      // Agenda Externa
-      byId('configureCalendarButton')?.addEventListener('click', () => this.openCalendarConfigModal());
-      byId('calendarConfigClose')?.addEventListener('click', () => this.closeCalendarConfigModal());
-      byId('calendarConfigCancel')?.addEventListener('click', () => this.closeCalendarConfigModal());
-      byId('calendarConfigBackdrop')?.addEventListener('click', event => { if (event.target === byId('calendarConfigBackdrop')) this.closeCalendarConfigModal(); });
-      byId('calendarConfigForm')?.addEventListener('submit', event => this.handleCalendarConfigSubmit(event));
-
       byId('kanbanFilterButton').addEventListener('click', event => { event.currentTarget.classList.toggle('active'); this.toast('Filtro pessoal aplicado ao quadro.', 'success'); });
-      // Importador de planilhas
-      const dropzone = byId('importerDropzone');
-      const fileInput = byId('importerFileInput');
-      if (dropzone && fileInput) {
-        byId('btnSelectSpreadsheet')?.addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
-        dropzone.addEventListener('click', () => fileInput.click());
-        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
-        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
-        dropzone.addEventListener('drop', (e) => {
-          e.preventDefault();
-          dropzone.classList.remove('drag-over');
-          if (e.dataTransfer.files?.[0]) this.handleSpreadsheetUpload(e.dataTransfer.files[0]);
-        });
-        fileInput.addEventListener('change', (e) => {
-          if (e.target.files?.[0]) this.handleSpreadsheetUpload(e.target.files[0]);
-        });
-        byId('importerCancelButton')?.addEventListener('click', () => this.cancelSpreadsheetImport());
-        byId('importerCommitButton')?.addEventListener('click', () => this.commitSpreadsheetImport());
-      }
       document.querySelectorAll('th[data-sort-table]').forEach(th => {
         th.addEventListener('click', () => {
           const table = th.dataset.sortTable;
@@ -726,51 +756,6 @@ import { createTasksFeature } from './features/tasks.js';
         });
       });
       byId('btnNewLink')?.addEventListener('click', () => this.openNewLinkModal());
-      byId('btnConfigureEmail')?.addEventListener('click', () => this.openEmailConfigModal());
-      byId('emailConfigClose')?.addEventListener('click', () => this.closeEmailConfigModal());
-      byId('emailConfigCancel')?.addEventListener('click', () => this.closeEmailConfigModal());
-      byId('emailConfigForm')?.addEventListener('submit', (e) => this.submitEmailConfig(e));
-      byId('btnTestEmail')?.addEventListener('click', () => this.openEmailTestModal());
-      byId('emailTestClose')?.addEventListener('click', () => this.closeEmailTestModal());
-      byId('emailTestCancel')?.addEventListener('click', () => this.closeEmailTestModal());
-      byId('emailTestForm')?.addEventListener('submit', (e) => this.submitEmailTest(e));
-      byId('btnAddEmailReceiver')?.addEventListener('click', () => this.openEmailReceiverModal());
-      byId('emailReceiverModalClose')?.addEventListener('click', () => this.closeEmailReceiverModal());
-      byId('receiverCancelBtn')?.addEventListener('click', () => this.closeEmailReceiverModal());
-      byId('emailReceiverModalBackdrop')?.addEventListener('click', (e) => {
-        if (e.target === byId('emailReceiverModalBackdrop')) this.closeEmailReceiverModal();
-      });
-      byId('receiverTypeInternal')?.addEventListener('change', () => {
-        byId('receiverInternalFields')?.classList.remove('hidden');
-        byId('receiverExternalFields')?.classList.add('hidden');
-      });
-      byId('receiverTypeExternal')?.addEventListener('change', () => {
-        byId('receiverInternalFields')?.classList.add('hidden');
-        byId('receiverExternalFields')?.classList.remove('hidden');
-      });
-      byId('emailReceiverForm')?.addEventListener('submit', (e) => this.submitEmailReceiver(e));
-      byId('emailReceiversList')?.addEventListener('click', (e) => {
-        const toggleBtn = e.target.closest('[data-receiver-action="toggle"]');
-        if (toggleBtn) {
-          const id = toggleBtn.dataset.receiverId;
-          const currentEnabled = toggleBtn.dataset.receiverEnabled === 'true';
-          this.toggleEmailReceiver(id, currentEnabled);
-          return;
-        }
-        const editBtn = e.target.closest('[data-receiver-action="edit"]');
-        if (editBtn) {
-          const id = editBtn.dataset.receiverId;
-          const receiver = (this.emailReceivers || []).find(r => r.id === id);
-          if (receiver) this.openEmailReceiverModal(receiver);
-          return;
-        }
-        const delBtn = e.target.closest('[data-receiver-action="delete"]');
-        if (delBtn) {
-          const id = delBtn.dataset.receiverId;
-          this.deleteEmailReceiver(id);
-          return;
-        }
-      });
       byId('customLinksGrid')?.addEventListener('click', (e) => {
         const deleteBtn = e.target.closest('[data-delete-link]');
         if (deleteBtn) {
@@ -1421,171 +1406,13 @@ import { createTasksFeature } from './features/tasks.js';
     closeJudicialSetup() { return getJudicialIntegrationsFeature().close(); },
     refreshJudicialStatus(showError = false) { return getJudicialIntegrationsFeature().refreshStatus(showError); },
     renderJudicialSetup() { return getJudicialIntegrationsFeature().renderStatus(); },
-    async loadEmailStatus() {
-      const chip = document.getElementById('emailIntegrationStatus');
-      const detail = document.getElementById('emailIntegrationDetail');
-      const btnConfig = document.getElementById('btnConfigureEmail');
-      const btnTest = document.getElementById('btnTestEmail');
-
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/integrations/email/status');
-        const data = await response.json().catch(() => ({}));
-        const status = data?.status || {};
-
-        if (status.configured) {
-          if (chip) {
-            chip.textContent = 'SMTP conectado';
-            chip.className = 'status-chip connected';
-          }
-          if (detail) {
-            const lastTestInfo = status.lastTestAt
-              ? ` · Último teste: ${new Date(status.lastTestAt).toLocaleDateString('pt-BR')} (${status.lastTestStatus === 'success' ? 'Sucesso' : 'Falhou'})`
-              : '';
-            detail.textContent = `Host: ${status.host}:${status.port} · Remetente: ${status.fromAddress}${lastTestInfo}`;
-          }
-          if (btnConfig) btnConfig.textContent = 'Reconfigurar SMTP';
-          if (btnTest) btnTest.classList.remove('hidden');
-        } else {
-          if (chip) {
-            chip.textContent = 'Não configurado';
-            chip.className = 'status-chip muted';
-          }
-          if (detail) {
-            detail.textContent = 'Configure o transporte SMTP seguro para envio de comunicações e boletins do escritório.';
-          }
-          if (btnConfig) btnConfig.textContent = 'Configurar SMTP';
-          if (btnTest) btnTest.classList.add('hidden');
-        }
-        await this.loadEmailReceivers();
-        return status;
-      } catch (err) {
-        if (chip) {
-          chip.textContent = 'Erro ao verificar';
-          chip.className = 'status-chip danger';
-        }
-      }
-    },
-    async openEmailConfigModal() {
-      const backdrop = document.getElementById('emailConfigBackdrop');
-      if (!backdrop) return;
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/integrations/email/status');
-        const data = await response.json().catch(() => ({}));
-        const status = data?.status || {};
-
-        const hostInput = document.getElementById('emailHostInput');
-        const portInput = document.getElementById('emailPortInput');
-        const secureInput = document.getElementById('emailSecureInput');
-        const userInput = document.getElementById('emailUserInput');
-        const passwordInput = document.getElementById('emailPasswordInput');
-        const fromNameInput = document.getElementById('emailFromNameInput');
-        const fromAddressInput = document.getElementById('emailFromAddressInput');
-
-        if (hostInput) hostInput.value = status.host || '';
-        if (portInput) portInput.value = status.port || 465;
-        if (secureInput) secureInput.checked = status.secure !== false;
-        if (userInput) userInput.value = status.userMasked || '';
-        if (passwordInput) {
-          passwordInput.value = '';
-          passwordInput.placeholder = status.configured ? 'Deixe em branco para manter a senha atual' : 'Digite a senha SMTP ou senha de app';
-          passwordInput.required = !status.configured;
-        }
-        if (fromNameInput) fromNameInput.value = status.fromName || Store.state.settings?.officeName || '';
-        if (fromAddressInput) fromAddressInput.value = status.fromAddress || '';
-
-        backdrop.classList.remove('hidden');
-      } catch (err) {
-        this.toast('Não foi possível carregar a configuração SMTP.', 'error');
-      }
-    },
-    closeEmailConfigModal() {
-      document.getElementById('emailConfigBackdrop')?.classList.add('hidden');
-    },
-    async submitEmailConfig(event) {
-      if (event) event.preventDefault();
-      const submitBtn = document.getElementById('emailConfigSubmitBtn');
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = '⏳ Validando conexão SMTP...';
-      }
-
-      const host = document.getElementById('emailHostInput')?.value?.trim();
-      const port = Number(document.getElementById('emailPortInput')?.value);
-      const secure = document.getElementById('emailSecureInput')?.checked;
-      const user = document.getElementById('emailUserInput')?.value?.trim();
-      const password = document.getElementById('emailPasswordInput')?.value;
-      const fromName = document.getElementById('emailFromNameInput')?.value?.trim();
-      const fromAddress = document.getElementById('emailFromAddressInput')?.value?.trim();
-
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/integrations/email/configure', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ host, port, secure, user, password, fromName, fromAddress })
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.message || 'Falha ao salvar configuração SMTP.');
-
-        this.closeEmailConfigModal();
-        this.toast('Configuração SMTP validada e salva com sucesso!', 'success');
-        await this.loadEmailStatus();
-      } catch (err) {
-        this.toast(err.message || 'Erro ao conectar ao servidor SMTP.', 'error');
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Salvar e Validar Conexão';
-        }
-      }
-    },
-    openEmailTestModal() {
-      const backdrop = document.getElementById('emailTestBackdrop');
-      if (!backdrop) return;
-      const recipientInput = document.getElementById('emailTestRecipientInput');
-      if (recipientInput && !recipientInput.value) {
-        recipientInput.value = window.KellerAuth?.currentUser?.email || document.getElementById('emailFromAddressInput')?.value || '';
-      }
-      backdrop.classList.remove('hidden');
-    },
-    closeEmailTestModal() {
-      document.getElementById('emailTestBackdrop')?.classList.add('hidden');
-    },
-    async submitEmailTest(event) {
-      if (event) event.preventDefault();
-      const submitBtn = document.getElementById('emailTestSubmitBtn');
-      const recipient = document.getElementById('emailTestRecipientInput')?.value?.trim();
-
-      if (!recipient) {
-        this.toast('Informe o e-mail de destino do teste.', 'warning');
-        return;
-      }
-
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = '⏳ Enviando e-mail de teste...';
-      }
-
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/integrations/email/test', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ recipient })
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.message || 'Falha no envio de teste.');
-
-        this.closeEmailTestModal();
-        this.toast(payload.message || `E-mail de teste enviado para ${recipient}!`, 'success');
-        await this.loadEmailStatus();
-      } catch (err) {
-        this.toast(err.message || 'Erro ao enviar e-mail de teste.', 'error');
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = '🚀 Enviar Teste Agora';
-        }
-      }
-    },
+    loadEmailStatus() { return getEmailIntegrationFeature().loadStatus(); },
+    openEmailConfigModal() { return getEmailIntegrationFeature().openConfigModal(); },
+    closeEmailConfigModal() { return getEmailIntegrationFeature().closeConfigModal(); },
+    submitEmailConfig(event) { return getEmailIntegrationFeature().submitConfig(event); },
+    openEmailTestModal() { return getEmailIntegrationFeature().openTestModal(); },
+    closeEmailTestModal() { return getEmailIntegrationFeature().closeTestModal(); },
+    submitEmailTest(event) { return getEmailIntegrationFeature().submitTest(event); },
     openPublicationEmailModal(item) {
       return getPublicationsFeature().openPublicationEmailModal(item);
     },
@@ -1595,274 +1422,13 @@ import { createTasksFeature } from './features/tasks.js';
     async submitPublicationEmail(event) {
       return getPublicationsFeature().submitPublicationEmail(event);
     },
-    async loadEmailReceivers() {
-      const currentUser = window.KellerAuth?.currentUser;
-      const isAdmin = currentUser?.role === 'master_admin' || currentUser?.role === 'admin';
-      const section = document.getElementById('emailReceiversSection');
-      const addBtn = document.getElementById('btnAddEmailReceiver');
-
-      if (!isAdmin) {
-        if (section) section.classList.add('hidden');
-        if (addBtn) addBtn.classList.add('hidden');
-        return;
-      }
-      if (section) section.classList.remove('hidden');
-      if (addBtn) addBtn.classList.remove('hidden');
-
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/integrations/email/receivers', {
-          headers: { Accept: 'application/json' }
-        });
-        if (!response.ok) return;
-        const data = await response.json().catch(() => ({}));
-        this.emailReceivers = Array.isArray(data.receivers) ? data.receivers : [];
-        this.renderEmailReceivers(this.emailReceivers);
-      } catch (err) {
-        console.error('Erro ao carregar destinatários de e-mail:', err);
-      }
-    },
-    renderEmailReceivers(receivers = []) {
-      const countEl = document.getElementById('emailReceiversCount');
-      const listEl = document.getElementById('emailReceiversList');
-      if (countEl) {
-        countEl.textContent = `${receivers.length} cadastrado${receivers.length === 1 ? '' : 's'}`;
-      }
-      if (!listEl) return;
-
-      if (!receivers.length) {
-        listEl.innerHTML = `
-          <div style="padding:14px; background:var(--panel-soft); border-radius:8px; border:1px solid var(--line); text-align:center;">
-            <p style="margin:0; font-size:12.5px; color:var(--muted); font-style:italic;">Nenhum destinatário cadastrado para receber publicações.</p>
-          </div>
-        `;
-        return;
-      }
-
-      listEl.innerHTML = receivers.map(r => {
-        const isInternal = r.type === 'internal';
-        const isUserInactive = isInternal && r.userStatus && r.userStatus !== 'active';
-        let statusBadge = '';
-
-        if (isUserInactive) {
-          statusBadge = `<span class="badge-chip" style="font-size:11px; padding:2px 8px; border-radius:10px; background:rgba(204,51,51,0.15); color:var(--danger); border:1px solid var(--danger); font-weight:600;">Usuário Inativo</span>`;
-        } else if (r.enabled) {
-          statusBadge = `<span class="badge-chip" style="font-size:11px; padding:2px 8px; border-radius:10px; background:rgba(56,161,105,0.15); color:var(--success); border:1px solid var(--success); font-weight:600;">Ativo</span>`;
-        } else {
-          statusBadge = `<span class="badge-chip" style="font-size:11px; padding:2px 8px; border-radius:10px; background:var(--panel); color:var(--muted); border:1px solid var(--line); font-weight:600;">Inativo</span>`;
-        }
-
-        const typeBadge = isInternal
-          ? `<span class="badge-chip" style="font-size:11px; padding:2px 6px; border-radius:4px; background:var(--panel); border:1px solid var(--line); color:var(--muted);">Usuário interno</span>`
-          : `<span class="badge-chip" style="font-size:11px; padding:2px 6px; border-radius:4px; background:var(--panel); border:1px solid var(--line); color:var(--muted);">Externo</span>`;
-
-        return `
-          <div class="email-receiver-item" data-receiver-id="${escapeHtml(r.id)}" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:10px 14px; background:var(--panel-soft); border-radius:8px; border:1px solid var(--line);">
-            <div style="display:flex; flex-direction:column; gap:2px; min-width:200px;">
-              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <strong style="font-size:13.5px; color:var(--ivory);">${escapeHtml(r.name || 'Sem nome')}</strong>
-                ${typeBadge}
-                ${statusBadge}
-              </div>
-              <span style="font-size:12.5px; color:var(--muted); font-family:monospace;">${escapeHtml(r.email || 'Sem e-mail')}</span>
-            </div>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <button class="button ghost" data-receiver-action="toggle" data-receiver-id="${escapeHtml(r.id)}" data-receiver-enabled="${r.enabled ? 'true' : 'false'}" style="padding:4px 10px; font-size:12px;" title="${r.enabled ? 'Desativar recebimento' : 'Ativar recebimento'}">
-                ${r.enabled ? 'Desativar' : 'Ativar'}
-              </button>
-              <button class="button ghost" data-receiver-action="edit" data-receiver-id="${escapeHtml(r.id)}" style="padding:4px 10px; font-size:12px;" title="Editar destinatário">
-                Editar
-              </button>
-              <button class="button ghost" data-receiver-action="delete" data-receiver-id="${escapeHtml(r.id)}" style="padding:4px 8px; font-size:12px; color:var(--danger);" title="Remover destinatário">
-                ✕
-              </button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    },
-    async openEmailReceiverModal(receiverToEdit = null) {
-      const backdrop = document.getElementById('emailReceiverModalBackdrop');
-      if (!backdrop) return;
-
-      const titleEl = document.getElementById('emailReceiverModalTitle');
-      const idInput = document.getElementById('receiverIdInput');
-      const editTypeInput = document.getElementById('receiverEditTypeInput');
-      const typeContainer = document.getElementById('receiverTypeSelectorContainer');
-      const typeInternalRadio = document.getElementById('receiverTypeInternal');
-      const typeExternalRadio = document.getElementById('receiverTypeExternal');
-      const internalFields = document.getElementById('receiverInternalFields');
-      const externalFields = document.getElementById('receiverExternalFields');
-      const userSelect = document.getElementById('receiverUserSelect');
-      const nameInput = document.getElementById('receiverNameInput');
-      const emailInput = document.getElementById('receiverEmailInput');
-      const enabledInput = document.getElementById('receiverEnabledInput');
-
-      // Buscar lista de usuários internos do sistema
-      let activeUsers = [];
-      try {
-        const usersResp = await window.KellerAuth.secureFetch('/api/auth/users', { headers: { Accept: 'application/json' } });
-        if (usersResp.ok) {
-          const usersData = await usersResp.json().catch(() => ({}));
-          activeUsers = (usersData.users || []).filter(u => u.status === 'active' && u.email && u.email.trim());
-        }
-      } catch (err) {
-        console.error('Falha ao obter lista de usuários:', err);
-      }
-
-      if (userSelect) {
-        if (activeUsers.length) {
-          userSelect.innerHTML = activeUsers.map(u => `
-            <option value="${escapeHtml(u.id)}">${escapeHtml(u.displayName || u.username)} (${escapeHtml(u.email)})</option>
-          `).join('');
-        } else {
-          userSelect.innerHTML = `<option value="">Nenhum usuário ativo com e-mail cadastrado</option>`;
-        }
-      }
-
-      if (receiverToEdit) {
-        if (titleEl) titleEl.textContent = 'Editar destinatário de publicações';
-        if (idInput) idInput.value = receiverToEdit.id;
-        if (editTypeInput) editTypeInput.value = receiverToEdit.type;
-        if (typeContainer) typeContainer.classList.add('hidden');
-
-        if (receiverToEdit.type === 'internal') {
-          if (internalFields) internalFields.classList.remove('hidden');
-          if (externalFields) externalFields.classList.add('hidden');
-          if (userSelect) {
-            userSelect.value = receiverToEdit.userId;
-            userSelect.disabled = true;
-          }
-        } else {
-          if (internalFields) internalFields.classList.add('hidden');
-          if (externalFields) externalFields.classList.remove('hidden');
-          if (nameInput) nameInput.value = receiverToEdit.name || '';
-          if (emailInput) emailInput.value = receiverToEdit.email || '';
-        }
-        if (enabledInput) enabledInput.checked = Boolean(receiverToEdit.enabled);
-      } else {
-        if (titleEl) titleEl.textContent = 'Adicionar destinatário de publicações';
-        if (idInput) idInput.value = '';
-        if (editTypeInput) editTypeInput.value = '';
-        if (typeContainer) typeContainer.classList.remove('hidden');
-        if (typeInternalRadio) typeInternalRadio.checked = true;
-        if (typeExternalRadio) typeExternalRadio.checked = false;
-        if (internalFields) internalFields.classList.remove('hidden');
-        if (externalFields) externalFields.classList.add('hidden');
-        if (userSelect) {
-          userSelect.disabled = false;
-          if (activeUsers.length) userSelect.selectedIndex = 0;
-        }
-        if (nameInput) nameInput.value = '';
-        if (emailInput) emailInput.value = '';
-        if (enabledInput) enabledInput.checked = true;
-      }
-
-      backdrop.classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-    },
-    closeEmailReceiverModal() {
-      const backdrop = document.getElementById('emailReceiverModalBackdrop');
-      if (backdrop) backdrop.classList.add('hidden');
-      if (document.getElementById('modalBackdrop')?.classList.contains('hidden')) {
-        document.body.style.overflow = '';
-      }
-    },
-    async submitEmailReceiver(event) {
-      if (event) event.preventDefault();
-      const submitBtn = document.getElementById('receiverSubmitBtn');
-      const id = document.getElementById('receiverIdInput')?.value;
-      const editType = document.getElementById('receiverEditTypeInput')?.value;
-      const isEditing = Boolean(id);
-      const isInternal = isEditing ? (editType === 'internal') : document.getElementById('receiverTypeInternal')?.checked;
-      const enabled = Boolean(document.getElementById('receiverEnabledInput')?.checked);
-
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = '⏳ Salvando...';
-      }
-
-      try {
-        if (isEditing) {
-          const payload = { enabled };
-          if (!isInternal) {
-            payload.name = document.getElementById('receiverNameInput')?.value?.trim();
-            payload.email = document.getElementById('receiverEmailInput')?.value?.trim();
-          }
-          const response = await window.KellerAuth.secureFetch(`/api/integrations/email/receivers/${encodeURIComponent(id)}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const resData = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(resData.message || 'Falha ao atualizar destinatário.');
-
-          this.toast('Destinatário atualizado com sucesso!', 'success');
-        } else {
-          let payload = { type: isInternal ? 'internal' : 'external', enabled };
-          if (isInternal) {
-            payload.userId = document.getElementById('receiverUserSelect')?.value;
-            if (!payload.userId) throw new Error('Selecione um usuário ativo.');
-          } else {
-            payload.name = document.getElementById('receiverNameInput')?.value?.trim();
-            payload.email = document.getElementById('receiverEmailInput')?.value?.trim();
-            if (!payload.name) throw new Error('Informe o nome do destinatário.');
-            if (!payload.email) throw new Error('Informe o e-mail do destinatário.');
-          }
-
-          const response = await window.KellerAuth.secureFetch('/api/integrations/email/receivers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const resData = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(resData.message || 'Falha ao cadastrar destinatário.');
-
-          this.toast('Destinatário cadastrado com sucesso!', 'success');
-        }
-
-        this.closeEmailReceiverModal();
-        await this.loadEmailReceivers();
-      } catch (err) {
-        this.toast(err.message || 'Erro ao processar destinatário.', 'error');
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Salvar Destinatário';
-        }
-      }
-    },
-    async toggleEmailReceiver(id, currentEnabled) {
-      if (!id) return;
-      try {
-        const response = await window.KellerAuth.secureFetch(`/api/integrations/email/receivers/${encodeURIComponent(id)}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ enabled: !currentEnabled })
-        });
-        const resData = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(resData.message || 'Falha ao alterar status.');
-        this.toast(`Destinatário ${!currentEnabled ? 'ativado' : 'desativado'}.`, 'success');
-        await this.loadEmailReceivers();
-      } catch (err) {
-        this.toast(err.message || 'Erro ao alterar status.', 'error');
-      }
-    },
-    async deleteEmailReceiver(id) {
-      if (!id) return;
-      if (!confirm('Remover este destinatário das notificações de publicações?')) return;
-      try {
-        const response = await window.KellerAuth.secureFetch(`/api/integrations/email/receivers/${encodeURIComponent(id)}`, {
-          method: 'DELETE',
-          headers: { Accept: 'application/json' }
-        });
-        const resData = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(resData.message || 'Falha ao remover destinatário.');
-        this.toast('Destinatário removido.', 'success');
-        await this.loadEmailReceivers();
-      } catch (err) {
-        this.toast(err.message || 'Erro ao remover destinatário.', 'error');
-      }
-    },
+    loadEmailReceivers() { return getEmailIntegrationFeature().loadReceivers(); },
+    renderEmailReceivers(receivers = []) { return getEmailIntegrationFeature().renderReceivers(receivers); },
+    openEmailReceiverModal(receiverToEdit = null) { return getEmailIntegrationFeature().openReceiverModal(receiverToEdit); },
+    closeEmailReceiverModal() { return getEmailIntegrationFeature().closeReceiverModal(); },
+    submitEmailReceiver(event) { return getEmailIntegrationFeature().submitReceiver(event); },
+    toggleEmailReceiver(id, currentEnabled) { return getEmailIntegrationFeature().toggleReceiver(id, currentEnabled); },
+    deleteEmailReceiver(id) { return getEmailIntegrationFeature().deleteReceiver(id); },
     testA1Sandbox() { return getJudicialIntegrationsFeature().testA1Sandbox(); },
     saveCertificate(event) { return getJudicialIntegrationsFeature().saveCertificate(event); },
     readPortalQr(file) { return getJudicialIntegrationsFeature().readPortalQr(file); },
@@ -1883,75 +1449,9 @@ import { createTasksFeature } from './features/tasks.js';
     },
     setFormBusy(form, busy) { return getJudicialIntegrationsFeature().setFormBusy(form, busy); },
     fileToBase64(file) { return getJudicialIntegrationsFeature().fileToBase64(file); },
-    openCalendarConfigModal() {
-      const url = Store.state.settings.calendarUrl || Store.state.settings.externalCalendarUrl || '';
-      const input = document.getElementById('calendarInputUrl');
-      if (input) input.value = url;
-      const statusBox = document.getElementById('calendarConfigStatus');
-      if (statusBox) { statusBox.className = 'calendar-sync-status hidden'; statusBox.textContent = ''; }
-      document.getElementById('calendarConfigBackdrop').classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-      setTimeout(() => input?.focus(), 50);
-    },
-    closeCalendarConfigModal() {
-      const backdrop = document.getElementById('calendarConfigBackdrop');
-      if (!backdrop || backdrop.classList.contains('hidden')) return;
-      backdrop.classList.add('hidden');
-      if (document.getElementById('modalBackdrop').classList.contains('hidden')) document.body.style.overflow = '';
-    },
-    async handleCalendarConfigSubmit(event) {
-      event.preventDefault();
-      const calendarUrl = document.getElementById('calendarInputUrl').value.trim();
-      const statusBox = document.getElementById('calendarConfigStatus');
-      const submitBtn = document.getElementById('calendarConfigSubmit');
-      if (!calendarUrl) return this.toast('Informe a URL da agenda em formato Webcal ou iCal.', 'error');
-
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Sincronizando…';
-      }
-      if (statusBox) {
-        statusBox.className = 'calendar-sync-status warning';
-        statusBox.textContent = 'Conectando e importando eventos da agenda externa…';
-        statusBox.classList.remove('hidden');
-      }
-
-      try {
-        const response = await window.KellerAuth.secureFetch('/api/calendar/configure', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ calendarUrl })
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'Falha ao salvar configuração da agenda.');
-
-        Store.state.settings.calendarUrl = calendarUrl;
-        Store.state.settings.externalCalendarUrl = calendarUrl;
-        Store.state.settings.calendarConfigured = true;
-        Store.audit('Agenda externa configurada', `${data.imported || 0} compromissos sincronizados.`);
-        Store.save();
-
-        if (statusBox) {
-          statusBox.className = data.error ? 'calendar-sync-status error' : 'calendar-sync-status success';
-          statusBox.textContent = data.message || 'Agenda sincronizada com sucesso!';
-        }
-        this.toast(data.message || 'Agenda configurada com sucesso!', data.error ? 'error' : 'success');
-
-        await this.syncAll();
-        setTimeout(() => this.closeCalendarConfigModal(), 1200);
-      } catch (error) {
-        if (statusBox) {
-          statusBox.className = 'calendar-sync-status error';
-          statusBox.textContent = error.message;
-        }
-        this.toast(error.message, 'error');
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Salvar e Sincronizar Agora';
-        }
-      }
-    },
+    openCalendarConfigModal() { return getExternalCalendarFeature().open(); },
+    closeCalendarConfigModal() { return getExternalCalendarFeature().close(); },
+    handleCalendarConfigSubmit(event) { return getExternalCalendarFeature().submit(event); },
     checkAiStatus() { return getAssistantFeature().checkStatus(); },
     openGeminiKeyModal() { return getAssistantFeature().openKeyModal(); },
     closeGeminiKeyModal() { return getAssistantFeature().closeKeyModal(); },
@@ -2133,102 +1633,10 @@ import { createTasksFeature } from './features/tasks.js';
     downloadDoc() {
       return getDocumentsFeature().download();
     },
-    async handleSpreadsheetUpload(file) {
-      if (!file) return;
-      this.toast('Analisando estrutura da planilha…');
-      try {
-        const isCsv = file.name.toLowerCase().endsWith('.csv');
-        let payload = {};
-        if (isCsv) {
-          const content = await file.text();
-          payload = { filename: file.name, content };
-        } else {
-          const buffer = await file.arrayBuffer();
-          let binary = '';
-          const bytes = new Uint8Array(buffer);
-          const len = bytes.byteLength;
-          for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
-          const base64 = btoa(binary);
-          payload = { filename: file.name, base64 };
-        }
-
-        const response = await window.KellerAuth.secureFetch('/api/import/spreadsheet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-          const err = await response.json().catch(() => ({}));
-          throw new Error(err.message || 'Não foi possível ler a planilha.');
-        }
-
-        const result = await response.json();
-        this.importedSpreadsheetData = result;
-        this.renderSpreadsheetPreview(result);
-        this.toast(`Planilha lida: ${result.totalRows} linha(s) encontrada(s).`, 'success');
-      } catch (error) {
-        this.toast(error.message || 'Falha ao processar arquivo.', 'error');
-      }
-    },
-    renderSpreadsheetPreview(data) {
-      const card = document.getElementById('importerPreviewCard');
-      if (!card) return;
-      card.classList.remove('hidden');
-      document.getElementById('importerFileLabel').textContent = `Arquivo: ${data.filename || 'Planilha'}`;
-      document.getElementById('importerSummaryTitle').textContent = `${data.totalRows} linha(s) identificada(s)`;
-
-      const badges = [];
-      if (data.processes?.length) badges.push(`<span class="status-chip connected">⚖️ ${data.processes.length} Processo(s)</span>`);
-      if (data.contacts?.length) badges.push(`<span class="status-chip planned">👥 ${data.contacts.length} Contato(s)</span>`);
-      if (data.tasks?.length) badges.push(`<span class="status-chip warning">📅 ${data.tasks.length} Tarefa(s) / Prazo(s)</span>`);
-      document.getElementById('importerBadges').innerHTML = badges.join('');
-
-      const previewRows = data.preview || [];
-      if (!previewRows.length) return;
-      const headers = Object.keys(previewRows[0]);
-      document.getElementById('importerPreviewHead').innerHTML = `<tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>`;
-      document.getElementById('importerPreviewBody').innerHTML = previewRows.map(row => `
-        <tr>${headers.map(h => `<td>${escapeHtml(String(row[h] || '—'))}</td>`).join('')}</tr>
-      `).join('');
-
-      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    },
-    cancelSpreadsheetImport() {
-      this.importedSpreadsheetData = null;
-      document.getElementById('importerPreviewCard')?.classList.add('hidden');
-      const input = document.getElementById('importerFileInput');
-      if (input) input.value = '';
-      this.toast('Importação descartada.');
-    },
-    async commitSpreadsheetImport() {
-      const data = this.importedSpreadsheetData;
-      if (!data) return;
-      let countProc = 0;
-      let countCont = 0;
-      let countTasks = 0;
-
-      (data.processes || []).forEach(proc => {
-        getProcessesFeature().upsertExternalProcess(proc);
-        countProc++;
-      });
-      (data.contacts || []).forEach(cont => {
-        getContactsFeature().upsertExternalContact(cont);
-        countCont++;
-      });
-      (data.tasks || []).forEach(task => {
-        getTasksFeature().upsertExternalTask(task);
-        countTasks++;
-      });
-
-      Store.audit('Importação de planilha concluída', `${countProc} processos, ${countCont} contatos e ${countTasks} tarefas consolidados.`);
-      Store.save();
-      if (!await Store.flush()) return;
-      this.renderAll();
-      this.cancelSpreadsheetImport();
-      this.toast(`Importação concluída: ${countProc} processos, ${countCont} contatos e ${countTasks} tarefas importados!`, 'success');
-      if (countProc > 0) this.switchView('processes');
-      else if (countCont > 0) this.switchView('contacts');
-    },
+    handleSpreadsheetUpload(file) { return getImporterFeature().handleUpload(file); },
+    renderSpreadsheetPreview(data) { return getImporterFeature().renderPreview(data); },
+    cancelSpreadsheetImport() { return getImporterFeature().cancel(); },
+    commitSpreadsheetImport() { return getImporterFeature().commit(); },
     async checkServerStatus() {
       try {
         const response = await window.KellerAuth.secureFetch('/api/status', { headers: { Accept: 'application/json' } });
