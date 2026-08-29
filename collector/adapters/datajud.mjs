@@ -14,7 +14,7 @@ export async function collectDatajud(portal, config, target, options = {}) {
   const sleep = options.sleep || (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)));
   const candidates = Array.isArray(options.processNumbers)
     ? options.processNumbers
-    : [...processNumbersFrom(target), ...(options.seedProcessNumbers || [])];
+    : [...(options.seedProcessNumbers || []), ...processNumbersFrom(target)];
   const numbers = [...new Map(candidates.map(formatProcessNumber).filter(Boolean).map(value => [digits(value), value])).values()]
     .slice(0, Math.min(500, Math.max(1, Number(portal.maxProcessesPerRun || 250))));
   let apiKey = normalizeApiKey(options.apiKey || process.env.DATAJUD_API_KEY) || OFFICIAL_DEFAULT_KEY;
@@ -231,6 +231,9 @@ export function mergeExternalProcessRecord(existing, incoming) {
   const external = safeRecord(incoming || {});
   const merged = { ...current };
   const officialFields = new Set(['court', 'actionType', 'subject', 'datajudAlias', 'collectedAt']);
+  const currentExternalAt = timestamp(current.datajudUpdatedAt || current.collectedAt);
+  const incomingExternalAt = timestamp(external.datajudUpdatedAt || external.collectedAt);
+  const currentIsDatajud = /DataJud|CNJ/i.test(String(current.source || '')) || Boolean(current.datajudAlias);
 
   for (const [field, value] of Object.entries(external)) {
     if (!meaningful(value) || ['lastMovement', 'lastMovementAt', 'movements', 'monitoredTermIds', 'source'].includes(field)) continue;
@@ -239,7 +242,7 @@ export function mergeExternalProcessRecord(existing, incoming) {
     } else if (field === 'datajudUpdatedAt') {
       if (!timestamp(merged[field]) || timestamp(value) >= timestamp(merged[field])) merged[field] = value;
     } else if (officialFields.has(field)) {
-      merged[field] = value;
+      if (!meaningful(merged[field]) || (currentIsDatajud && incomingExternalAt && incomingExternalAt >= currentExternalAt)) merged[field] = value;
     } else if (!meaningful(merged[field])) {
       merged[field] = value;
     }
@@ -340,7 +343,12 @@ function partyMatchesTerm(party, term) {
     const lawyerName = normalizeIdentity(lawyer?.nome);
     const exactName = termName && lawyerName && termName === lawyerName;
     const exactRegistration = termOab && lawyerOab && termOab === lawyerOab && termUf && lawyerUf && termUf === lawyerUf;
-    return Boolean(exactName || exactRegistration);
+    if (termOab && lawyerOab) {
+      if (termOab !== lawyerOab) return false;
+      if (termUf && lawyerUf) return termUf === lawyerUf;
+      return Boolean(exactName);
+    }
+    return Boolean(exactName);
   });
 }
 

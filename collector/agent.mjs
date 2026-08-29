@@ -323,7 +323,7 @@ async function readEprocDeadlineRows(page) {
 
 function appendEprocNotifications(rows, portal, target, pending) {
   const now = new Date().toISOString();
-  const term = `${config.monitoredTerm?.name || 'Advogado(a) Monitorado(a)'} · ${config.monitoredTerm?.registration || 'OAB/UF 000000'}`;
+  const term = configuredTermLabel();
   for (const row of rows) {
     const publishedAt = parseBrazilianDate(row.sentAt) || now.slice(0, 10);
     const startsAt = parseBrazilianDate(row.startsAt);
@@ -334,14 +334,14 @@ function appendEprocNotifications(rows, portal, target, pending) {
     target.intimations.push({
       id: `int:${externalId}`, externalId: `int:${externalId}`, source: portal.name, status: 'nova', unread: true,
       title: row.event, process: row.process, client: parties, court: portal.court || portal.name,
-      publishedAt, text: description, term, createdAt: now, deadline, publicationStatus: pending ? row.startsAt : ''
+      publishedAt, text: description, term, createdAt: now, sourceDeadline: deadline || '', publicationStatus: pending ? row.startsAt : ''
     });
     target.tasks.push({
       id: `task:${externalId}`, externalId: `task:${externalId}`,
       title: pending ? 'Acompanhar publicação no DJEN' : row.event, description,
       status: pending ? 'aguardando' : 'triagem', source: portal.name, client: parties, process: row.process,
-      deadline, priority: deadline && daysUntil(deadline) <= 2 ? 'urgente' : deadline && daysUntil(deadline) <= 7 ? 'importante' : 'normal',
-      responsible: config.monitoredTerm?.shortName || config.monitoredTerm?.name || 'Advogado(a)', createdAt: now
+      deadline: '', sourceDeadline: deadline || '', priority: 'normal',
+      responsible: configuredResponsible(), createdAt: now
     });
   }
 }
@@ -369,11 +369,6 @@ function uniqueBy(records, key) {
   return [...new Map(records.map(record => [record[key] || record.id, record])).values()];
 }
 
-function daysUntil(date) {
-  if (!date) return 999;
-  return Math.ceil((new Date(`${date}T23:59:59`).getTime() - Date.now()) / 86_400_000);
-}
-
 function cssEscape(value) {
   return String(value).replace(/(["\\])/g, '\\$1');
 }
@@ -387,7 +382,7 @@ function collectTasks(lines, portal, target) {
     target.tasks.push({
       id: externalId, externalId, title: text.slice(0, 180), description: text,
       status: 'triagem', source: portal.name, client: '', process,
-      deadline: date, priority: 'normal', responsible: config.monitoredTerm?.shortName || config.monitoredTerm?.name || 'Advogado(a)', createdAt: now
+      deadline: '', sourceDate: date || '', priority: 'normal', responsible: configuredResponsible(), createdAt: now
     });
   }
 }
@@ -407,7 +402,7 @@ function collectProcesses(lines, portal, target) {
 
 function collectIntimations(lines, portal, target) {
   const now = new Date().toISOString();
-  const term = `${config.monitoredTerm?.name || 'Advogado(a) Monitorado(a)'} · ${config.monitoredTerm?.registration || 'OAB/UF 000000'}`;
+  const term = configuredTermLabel();
   for (const [index, text] of lines.entries()) {
     if (!portal.accountScoped && !matchesMonitoredTerm(text)) continue;
     const process = text.match(PROCESS_RE)?.[0] || '';
@@ -441,8 +436,27 @@ async function waitForHumanAuthentication(page, portal, timeout) {
 
 function matchesMonitoredTerm(text) {
   const compact = normalizeSearch(text);
-  const name = normalizeSearch(config.monitoredTerm?.name || '');
-  return Boolean(name && compact.includes(name));
+  return configuredMonitoredTerms().some(term => {
+    const name = normalizeSearch(term?.name || '');
+    const registration = normalizeSearch(term?.registration || '');
+    return Boolean((name && compact.includes(name)) || (registration && compact.includes(registration)));
+  });
+}
+
+function configuredMonitoredTerms() {
+  const terms = Array.isArray(config.monitoredTerms) ? config.monitoredTerms : [];
+  return [...terms, config.monitoredTerm].filter(term => term && typeof term === 'object');
+}
+
+function configuredTermLabel() {
+  const terms = configuredMonitoredTerms();
+  if (!terms.length) return 'Advogado(a) Monitorado(a) · OAB/UF 000000';
+  return terms.map(term => `${term.name || 'Advogado(a) Monitorado(a)'} · ${term.registration || 'OAB/UF 000000'}`).join(' | ');
+}
+
+function configuredResponsible() {
+  const terms = configuredMonitoredTerms();
+  return terms.length === 1 ? (terms[0].shortName || terms[0].name || 'Advogado(a)') : 'Equipe jurídica';
 }
 
 function source(portal, status, lastCheck, detail) {
@@ -518,7 +532,7 @@ async function tryAutomatedTotp(page, portal) {
   if (!input) return false;
 
   const currentCode = generateTotp(secret);
-  console.log(`[2FA Robô]: Injetando código TOTP gerado automaticamente (${currentCode}) em ${portal.name}…`);
+  console.log(`[2FA Robô]: Código TOTP gerado e injetado automaticamente em ${portal.name}.`);
   await input.fill(currentCode).catch(() => {});
   await page.waitForTimeout(300);
 

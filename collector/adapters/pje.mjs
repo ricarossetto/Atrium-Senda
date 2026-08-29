@@ -69,7 +69,7 @@ export async function collectPje(page, portal, config, target) {
       client: inferParties(line, process),
       process,
       deadline: '',
-      priority: pendingScience ? 'urgente' : 'importante',
+      priority: 'normal',
       responsible: config.monitoredTerm?.shortName || config.monitoredTerm?.name || 'Advogado(a)',
       createdAt: now
     });
