@@ -22,7 +22,7 @@ export function collectAgendaActivities({
     raw: event
   }));
 
-  let taskActivities = tasks.map(task => {
+  let taskActivities = tasks.filter(task => task.fatalDeadline || task.deadline).map(task => {
     const isFatal = Boolean(task.fatalDeadline);
     const targetDate = task.fatalDeadline || task.deadline;
     const timeMins = totalTimeMinutes(task.timeLogs);

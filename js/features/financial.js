@@ -11,6 +11,7 @@ export function createFinancialFeature({
 } = {}) {
   let initialized = false;
   let financialFilter = 'all';
+  let submittingEntry = false;
   const byId = id => documentRef?.getElementById(id);
 
   const feature = {
@@ -61,14 +62,15 @@ export function createFinancialFeature({
 
       const rows = [];
       processes.forEach(proc => {
-        const isPaid = proc.feeStatus === 'pago' || proc.feeStatus === 'quitado' || proc.requisitionStatus === 'repassado' || proc.requisitionStatus === 'pago';
+        const isPaid = proc.feeStatus === 'pago' || proc.feeStatus === 'quitado' || proc.feeStatus === 'repassado' || proc.requisitionStatus === 'repassado' || proc.requisitionStatus === 'pago';
 
         // Cálculo canônico do RPV / Precatório (BUG-003)
         if (proc.requisitionStatus || proc.requisitionAmount || proc.rpvAmount) {
           rpvCount++;
           const gross = Number(proc.requisitionAmount ?? proc.rpvAmount ?? proc.economicValue ?? 0);
           const feePct = Number(proc.feePercentage ?? 30);
-          const feeAmount = proc.feeAmount ? Number(proc.feeAmount) : (gross * feePct / 100);
+          const hasFeeAmount = proc.feeAmount !== '' && proc.feeAmount !== null && proc.feeAmount !== undefined;
+          const feeAmount = hasFeeAmount ? Number(proc.feeAmount) : (gross * feePct / 100);
           const netClient = Math.max(0, gross - feeAmount);
           const statusInfo = FINANCIAL_STATUS_MAP[proc.requisitionStatus] || { label: proc.requisitionStatus || 'Requisitado', chipClass: 'warning', isFinal: false };
 
@@ -159,14 +161,29 @@ export function createFinancialFeature({
 
     async handleEntrySubmit(event) {
       event.preventDefault();
+      if (submittingEntry) return;
+      submittingEntry = true;
       const form = event.currentTarget;
+      const submitButton = form.querySelector?.('button[type="submit"]');
+      if (submitButton) submitButton.disabled = true;
+      const stateBeforeSubmit = JSON.parse(JSON.stringify(store.state));
+      try {
       const data = new FormData(form);
       const processId = data.get('processId');
       const entryType = data.get('entryType');
       const status = data.get('status');
-      const grossAmount = parseFloat(data.get('grossAmount')) || 0;
-      const feePercentage = parseFloat(data.get('feePercentage')) || 30;
-      const feeAmount = (grossAmount * feePercentage) / 100;
+      const grossAmount = Number(data.get('grossAmount'));
+      const rawFeePercentage = String(data.get('feePercentage') ?? '').trim();
+      const feePercentage = rawFeePercentage === '' ? null : Number(rawFeePercentage);
+
+      if (!Number.isFinite(grossAmount) || grossAmount < 0) {
+        showToast?.('Informe um valor financeiro válido e não negativo.', 'error');
+        return;
+      }
+      if (feePercentage !== null && (!Number.isFinite(feePercentage) || feePercentage < 0 || feePercentage > 100)) {
+        showToast?.('O percentual de honorários deve estar entre 0 e 100.', 'error');
+        return;
+      }
 
       const process = store.state.processes.find(item => item.id === processId);
       if (!process) {
@@ -174,22 +191,45 @@ export function createFinancialFeature({
         return;
       }
 
-      process.requisitionAmount = grossAmount;
-      process.feePercentage = feePercentage;
-      process.feeAmount = feeAmount;
-      process.requisitionStatus = status;
-      process.feeType = entryType === 'rpv' ? 'RPV / Precatório' : (entryType === 'exito' ? 'Quota Litis' : 'Honorários');
+      if (entryType === 'rpv') {
+        process.requisitionAmount = grossAmount;
+        process.requisitionStatus = status;
+      } else if (entryType === 'exito') {
+        if (feePercentage === null) {
+          showToast?.('Informe o percentual explícito dos honorários de êxito.', 'error');
+          return;
+        }
+        process.feeType = 'exito';
+        process.feePercentage = feePercentage;
+        process.feeAmount = grossAmount * feePercentage / 100;
+      } else if (entryType === 'fixo') {
+        process.feeType = 'fixo';
+        process.feeAmount = grossAmount;
+      } else if (entryType === 'mensal') {
+        process.feeType = 'mensal';
+        process.feeMonthly = grossAmount;
+      } else {
+        showToast?.('Custas e reembolsos não possuem campo contábil próprio neste modelo. Nenhum dado foi alterado.', 'error');
+        return;
+      }
       process.updatedAt = new Date().toISOString();
 
       store.upsert('processes', process);
       store.audit('Lançamento financeiro registrado', `${process.number || process.client}: ${formatCurrency(grossAmount)} (${status})`);
       store.save();
 
-      if (!await store.flush()) return;
+      if (!await store.flush()) {
+        store.state = stateBeforeSubmit;
+        return;
+      }
       this.closeEntryModal();
       this.render();
       renderDashboardFinancialWidgets?.();
       showToast?.('Lançamento financeiro salvo com sucesso!', 'success');
+      } finally {
+        submittingEntry = false;
+        if (submitButton?.isConnected) submitButton.disabled = false;
+      }
     }
   };
 

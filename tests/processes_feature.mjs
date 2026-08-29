@@ -25,7 +25,7 @@ assert.equal(portalSource.includes("secureFetch('/api/tjrs/consult'"), false, 'T
 assert.equal(portalSource.includes('data-tjrs-consult'), false, 'Markup e listener TJRS concretos não podem permanecer no portal.');
 assert.match(portalSource, /renderProcesses\(query = ''\) \{\s*return getProcessesFeature\(\)\.render\(query\);\s*\}/);
 assert.match(portalSource, /openProcessModal\(defaults = \{\}\) \{\s*return getProcessesFeature\(\)\.openProcessModal\(defaults\);\s*\}/);
-assert.match(portalSource, /modalMode\.mode === 'process'\) \{\s*getProcessesFeature\(\)\.saveProcess\(data, this\.modalMode\.defaults\);/);
+assert.match(portalSource, /modalMode\.mode === 'process'\) \{\s*if \(!getProcessesFeature\(\)\.saveProcess\(data, this\.modalMode\.defaults\)\) return;/);
 assert.match(portalSource, /secureFetch: \(\.\.\.args\) => window\.KellerAuth\.secureFetch\(\.\.\.args\)/, 'Wiring deve preservar KellerAuth.secureFetch com contexto seguro.');
 
 const listenerMap = { newProcessButton: [], processSearch: [] };
@@ -468,13 +468,13 @@ try {
   await page.locator('#financialEntryBackdrop').waitFor({ state: 'hidden' });
   const financeMutation = await page.evaluate(id => window.Atrium.Store.state.processes.find(item => item.id === id), created.id);
   assert.equal(financeMutation.requisitionAmount, 50000);
-  assert.equal(financeMutation.feePercentage, 20);
-  assert.equal(financeMutation.feeAmount, 10000);
+  assert.equal(financeMutation.feePercentage, 35, 'Lançamento RPV deve preservar percentual contratual manual.');
+  assert.equal(financeMutation.feeAmount, null, 'Lançamento RPV não pode fabricar honorário fixo.');
   assert.equal(financeMutation.requisitionStatus, 'aguardando_deposito');
-  assert.equal(financeMutation.feeType, 'RPV / Precatório');
+  assert.equal(financeMutation.feeType, 'misto', 'Lançamento RPV deve preservar enum canônico do contrato.');
   await page.click('button[data-view="processes"]');
   await page.locator('#processSearch').fill('5007777-00.2026.4.04.0001');
-  await page.locator(`#processTableBody [data-process-id="${created.id}"] .fee-chip`, { hasText: 'Valor: R$ 10.000' }).waitFor();
+  await page.locator(`#processTableBody [data-process-id="${created.id}"] .fee-chip`, { hasText: '35% êxito' }).waitFor();
 
   await page.evaluate(() => window.Atrium.Store.flush());
   await page.reload({ waitUntil: 'networkidle' });
@@ -483,7 +483,9 @@ try {
   const persisted = await page.evaluate(id => window.Atrium.Store.state.processes.find(item => item.id === id), created.id);
   assert.equal(persisted.stage, 'Etapa editada Fase 9');
   assert.equal(persisted.requisitionAmount, 50000);
-  assert.equal(persisted.feeAmount, 10000);
+  assert.equal(persisted.feeAmount, null);
+  assert.equal(persisted.feePercentage, 35);
+  assert.equal(persisted.feeType, 'misto');
   assert.equal(persisted.secrecy, true);
   assert.deepEqual(pageErrors, [], `Erros de página detectados: ${pageErrors.join(' | ')}`);
 

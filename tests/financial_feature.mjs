@@ -359,11 +359,10 @@ try {
     return [id, JSON.parse(JSON.stringify(process))];
   })), processIds);
   const submitCases = [
-    { id: 'target-rpv', type: 'rpv', gross: '1000', percentage: '10', status: 'requisitado', expectedType: 'RPV / Precatório', expectedPct: 10, expectedFee: 100 },
-    { id: 'target-exito', type: 'exito', gross: '2000', percentage: '20', status: 'aguardando_deposito', expectedType: 'Quota Litis', expectedPct: 20, expectedFee: 400 },
-    { id: 'target-fixo', type: 'fixo', gross: '3000', percentage: '0', status: 'disponivel_saque', expectedType: 'Honorários', expectedPct: 30, expectedFee: 900 },
-    { id: 'target-mensal', type: 'mensal', gross: '4000', percentage: '25', status: 'requisitado', expectedType: 'Honorários', expectedPct: 25, expectedFee: 1000 },
-    { id: 'target-custas', type: 'custas', gross: '5000', percentage: '15', status: 'requisitado', expectedType: 'Honorários', expectedPct: 15, expectedFee: 750 }
+    { id: 'target-rpv', type: 'rpv', gross: '1000', percentage: '10', status: 'requisitado' },
+    { id: 'target-exito', type: 'exito', gross: '2000', percentage: '20', status: 'aguardando_deposito' },
+    { id: 'target-fixo', type: 'fixo', gross: '3000', percentage: '0', status: 'disponivel_saque' },
+    { id: 'target-mensal', type: 'mensal', gross: '4000', percentage: '25', status: 'requisitado' }
   ];
   const requestsBeforeSaves = observedRequests.length;
   for (const item of submitCases) {
@@ -376,6 +375,15 @@ try {
     await page.click('#financialEntryForm button[type="submit"]');
     await page.locator('#financialEntryBackdrop').waitFor({ state: 'hidden' });
   }
+  await page.click('#newFinancialEntryButton');
+  await page.selectOption('#finProcessSelect', 'target-custas');
+  await page.selectOption('#finTypeSelect', 'custas');
+  await page.fill('#finGrossInput', '5000');
+  await page.fill('#finFeePctInput', '15');
+  await page.click('#financialEntryForm button[type="submit"]');
+  assert.equal(await page.locator('#financialEntryBackdrop').evaluate(element => element.classList.contains('hidden')), false, 'Custas sem campo canônico não podem confirmar mutação destrutiva.');
+  assert.equal(await page.locator('#toastRegion .toast.error').last().textContent(), 'Custas e reembolsos não possuem campo contábil próprio neste modelo. Nenhum dado foi alterado.');
+  await page.click('#financialEntryCancel');
   await page.evaluate(() => window.Atrium.Store.flush());
 
   const submittedState = await page.evaluate(ids => ({
@@ -385,15 +393,10 @@ try {
     })),
     audits: window.Atrium.Store.state.audit.filter(item => item.action === 'Lançamento financeiro registrado')
   }), processIds);
-  assert.equal(submittedState.audits.length, 5, 'Cinco submits devem produzir cinco audits.');
+  assert.equal(submittedState.audits.length, 4, 'Quatro lançamentos canônicos devem produzir quatro audits; custas rejeitadas não auditam mutação inexistente.');
   for (const item of submitCases) {
     const before = initialTargets[item.id];
     const after = submittedState.processes[item.id];
-    assert.equal(after.requisitionAmount, Number(item.gross));
-    assert.equal(after.feePercentage, item.expectedPct);
-    assert.equal(after.feeAmount, item.expectedFee);
-    assert.equal(after.requisitionStatus, item.status);
-    assert.equal(after.feeType, item.expectedType);
     assert.ok(Date.parse(after.updatedAt));
     assert.equal(after.number, before.number);
     assert.equal(after.client, before.client);
@@ -401,8 +404,19 @@ try {
     assert.equal(after.customField, before.customField);
     assert.equal(after.monitoring, before.monitoring);
   }
+  assert.equal(submittedState.processes['target-rpv'].requisitionAmount, 1000);
+  assert.equal(submittedState.processes['target-rpv'].requisitionStatus, 'requisitado');
+  assert.equal(submittedState.processes['target-rpv'].feeType, undefined, 'RPV não pode sobrescrever contrato de honorários.');
+  assert.equal(submittedState.processes['target-exito'].feeType, 'exito');
+  assert.equal(submittedState.processes['target-exito'].feePercentage, 20);
+  assert.equal(submittedState.processes['target-exito'].feeAmount, 400);
+  assert.equal(submittedState.processes['target-fixo'].feeType, 'fixo');
+  assert.equal(submittedState.processes['target-fixo'].feePercentage, undefined, 'Honorário fixo não pode fabricar percentual padrão.');
+  assert.equal(submittedState.processes['target-fixo'].feeAmount, 3000);
+  assert.equal(submittedState.processes['target-mensal'].feeType, 'mensal');
+  assert.equal(submittedState.processes['target-mensal'].feeMonthly, 4000);
+  assert.deepEqual(submittedState.processes['target-custas'], initialTargets['target-custas']);
   assert.deepEqual(submittedState.audits.map(item => item.detail), [
-    'PROC-FIN-5: R$\u00a05.000,00 (requisitado)',
     'PROC-FIN-4: R$\u00a04.000,00 (requisitado)',
     'PROC-FIN-3: R$\u00a03.000,00 (disponivel_saque)',
     'PROC-FIN-2: R$\u00a02.000,00 (aguardando_deposito)',
@@ -412,16 +426,16 @@ try {
   const saveRequests = observedRequests.slice(requestsBeforeSaves);
   assert.ok(saveRequests.length >= 1, 'Save deve usar a persistência normal do Store.');
   assert.equal(saveRequests.every(request => new URL(request.url).pathname === '/api/state'), true, 'Save financeiro só pode usar /api/state.');
-  assert.equal(await page.locator('#finMetricHonorarios').textContent(), 'R$\u00a06.050,00');
-  assert.equal(await page.locator('#finMetricRpvCount').textContent(), '6 requisições');
-  assert.equal(await page.locator('#widgetHonorariosPending').textContent(), 'R$\u00a06.550,00', 'Callback deve atualizar o widget sem alterar sua regra histórica.');
+  assert.equal(await page.locator('#finMetricHonorarios').textContent(), 'R$\u00a010.600,00');
+  assert.equal(await page.locator('#finMetricRpvCount').textContent(), '2 requisições');
+  assert.equal(await page.locator('#widgetHonorariosPending').textContent(), 'R$\u00a010.800,00', 'Dashboard deve ler os campos canônicos sem rótulos de UI persistidos.');
   assert.equal(await page.locator('#toastRegion .toast.success').last().textContent(), 'Lançamento financeiro salvo com sucesso!');
 
   await page.click('button[data-view="processes"]');
   await page.locator('#view-processes.active').waitFor();
   const processRowText = await page.locator('#processTableBody [data-process-id="target-fixo"]').textContent();
   assert.ok(processRowText.includes('PROC-FIN-3'));
-  assert.ok(processRowText.includes('900'));
+  assert.ok(processRowText.includes('3.000'));
 
   await page.click('button[data-view="financial"]');
   const documentBridge = await page.evaluate(() => {
@@ -444,7 +458,7 @@ try {
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('keller:authenticated')));
   await page.click('#newFinancialEntryButton');
   await page.selectOption('#finProcessSelect', 'target-custas');
-  await page.selectOption('#finTypeSelect', 'custas');
+  await page.selectOption('#finTypeSelect', 'fixo');
   await page.selectOption('#finStatusSelect', 'requisitado');
   await page.fill('#finGrossInput', '5000');
   await page.fill('#finFeePctInput', '15');
@@ -467,11 +481,11 @@ try {
     };
   });
   assert.deepEqual(persisted, {
-    requisitionAmount: 3000,
-    feePercentage: 30,
-    feeAmount: 900,
-    requisitionStatus: 'disponivel_saque',
-    feeType: 'Honorários',
+    requisitionAmount: undefined,
+    feePercentage: undefined,
+    feeAmount: 3000,
+    requisitionStatus: undefined,
+    feeType: 'fixo',
     customField: 'campo-intacto-3'
   });
   assert.deepEqual(pageErrors, [], 'Erros de página: ' + pageErrors.join(' | '));

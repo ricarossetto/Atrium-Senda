@@ -84,7 +84,7 @@ export function createTasksFeature({
           event.preventDefault();
           column.classList.remove('drag-over');
           const dragged = board.querySelector('.task-card[data-dragging="true"]');
-          if (dragged) this.moveTask(dragged.dataset.taskId, column.dataset.column);
+          if (dragged) void this.moveTask(dragged.dataset.taskId, column.dataset.column);
         });
       });
     },
@@ -174,35 +174,62 @@ export function createTasksFeature({
       return `${hours}:${minutes}:${remainingSeconds}`;
     },
 
-    moveTask(taskId, status) {
+    async moveTask(taskId, status) {
       const task = store.state.tasks.find(item => item.id === taskId);
       if (!task || task.status === status) return null;
       const previous = task.status;
+      const previousCompletedAt = task.completedAt;
       task.status = status;
+      if (status === 'concluida') task.completedAt = new Date().toISOString();
+      else delete task.completedAt;
       task.updatedAt = new Date().toISOString();
-      store.audit('Tarefa movimentada', `${task.title}: ${previous} → ${status}`);
+      const audit = store.audit('Tarefa movimentada', `${task.title}: ${previous} → ${status}`);
+      if (!await store.flush()) {
+        task.status = previous;
+        if (previousCompletedAt) task.completedAt = previousCompletedAt; else delete task.completedAt;
+        store.state.audit = store.state.audit.filter(entry => entry.id !== audit?.id);
+        onRenderAll?.();
+        showToast?.('Não foi possível salvar a movimentação. Tente novamente.', 'error');
+        return null;
+      }
       onRenderAll?.();
       showToast?.('Tarefa movimentada com sucesso.', 'success');
       return task;
     },
 
-    completeTask(taskId) {
+    async completeTask(taskId) {
       const task = store.state.tasks.find(item => item.id === taskId);
       if (!task) return null;
+      const previousStatus = task.status;
+      const previousCompletedAt = task.completedAt;
       task.status = 'concluida';
       task.completedAt = new Date().toISOString();
-      store.audit('Tarefa concluída', task.title);
-      store.save();
+      const audit = store.audit('Tarefa concluída', task.title);
+      if (!await store.flush()) {
+        task.status = previousStatus;
+        if (previousCompletedAt) task.completedAt = previousCompletedAt; else delete task.completedAt;
+        store.state.audit = store.state.audit.filter(entry => entry.id !== audit?.id);
+        showToast?.('Não foi possível concluir a tarefa. Tente novamente.', 'error');
+        return null;
+      }
       return task;
     },
 
-    reopenTask(taskId) {
+    async reopenTask(taskId) {
       const task = store.state.tasks.find(item => item.id === taskId);
       if (!task) return null;
+      const previousStatus = task.status;
+      const previousCompletedAt = task.completedAt;
       task.status = 'triagem';
       delete task.completedAt;
-      store.audit('Tarefa reaberta', task.title);
-      store.save();
+      const audit = store.audit('Tarefa reaberta', task.title);
+      if (!await store.flush()) {
+        task.status = previousStatus;
+        if (previousCompletedAt) task.completedAt = previousCompletedAt;
+        store.state.audit = store.state.audit.filter(entry => entry.id !== audit?.id);
+        showToast?.('Não foi possível reabrir a tarefa. Tente novamente.', 'error');
+        return null;
+      }
       return task;
     },
 
@@ -274,16 +301,16 @@ export function createTasksFeature({
         responsibles: Array.isArray(defaults.responsibles) ? defaults.responsibles.join(', ') : (defaults.responsibles || '')
       }, topHtml);
 
-      byId('btnDirectCompleteTask')?.addEventListener('click', () => {
-        const task = this.completeTask(defaults.id);
+      byId('btnDirectCompleteTask')?.addEventListener('click', async () => {
+        const task = await this.completeTask(defaults.id);
         if (!task) return;
         closeModal?.();
         onRenderAll?.();
         showToast?.('Tarefa concluída e removida do painel ativo!', 'success');
       });
 
-      byId('btnDirectReopenTask')?.addEventListener('click', () => {
-        const task = this.reopenTask(defaults.id);
+      byId('btnDirectReopenTask')?.addEventListener('click', async () => {
+        const task = await this.reopenTask(defaults.id);
         if (!task) return;
         closeModal?.();
         onRenderAll?.();
@@ -336,6 +363,7 @@ export function createTasksFeature({
         sourceIntimationId: defaults.intimationId || defaults.sourceIntimationId || null,
         ...taskData,
         points: Number(taskData.points) || 0,
+        completedAt: taskData.status === 'concluida' ? (defaults.completedAt || new Date().toISOString()) : undefined,
         responsibles: [...new Set(responsibleList)],
         history,
         timeLogs
@@ -351,7 +379,17 @@ export function createTasksFeature({
     },
 
     upsertExternalTask(record, externalKey = 'id') {
-      return store.upsert('tasks', record, externalKey);
+      const identity = record?.externalId || record?.[externalKey] || record?.id;
+      const existing = store.state.tasks.find(item => (item.externalId || item[externalKey] || item.id) === identity);
+      if (!existing) return store.upsert('tasks', record, externalKey);
+      const protectedFields = new Set(['id', 'status', 'deadline', 'fatalDeadline', 'priority', 'responsible', 'responsibles', 'completedAt', 'timeLogs', 'timeSpentMinutes', 'history', 'notes']);
+      const merged = { ...existing };
+      for (const [field, value] of Object.entries(record || {})) {
+        if (protectedFields.has(field)) continue;
+        if (value !== '' && value !== null && value !== undefined) merged[field] = value;
+      }
+      store.upsert('tasks', merged, 'id');
+      return merged;
     },
 
     removeTasksWhere(predicate) {

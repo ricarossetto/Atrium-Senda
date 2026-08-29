@@ -75,10 +75,10 @@ const collectOptions = {
 };
 
 const allActivities = collectAgendaActivities(collectOptions);
-assert.deepEqual(new Set(allActivities.activities.map(item => item.id)), new Set(['event', 'task', 'fatal', 'legal-text', 'intimation']), 'Todas as próximas deve preservar registros sem data e excluir passado.');
+assert.deepEqual(new Set(allActivities.activities.map(item => item.id)), new Set(['event', 'task', 'fatal', 'intimation']), 'Agenda deve excluir passado e não representar tarefa sem data como compromisso de hoje.');
 assert.equal(allActivities.tasks.find(item => item.id === 'task').timeMins, 35, 'Time logs devem permanecer visíveis.');
 assert.equal(allActivities.tasks.find(item => item.id === 'fatal').date, '2026-08-29', 'Prazo fatal deve usar apenas fatalDeadline explícito.');
-assert.equal(allActivities.tasks.find(item => item.id === 'legal-text').date, undefined, 'Texto jurídico não pode criar deadline.');
+assert.equal(allActivities.tasks.some(item => item.id === 'legal-text'), false, 'Tarefa sem data explícita não deve ser projetada visualmente na Agenda.');
 assert.equal(Object.hasOwn(legalTextTask, 'deadline'), false);
 assert.equal(Object.hasOwn(legalTextTask, 'fatalDeadline'), false);
 assert.deepEqual(collectAgendaActivities({ ...collectOptions, typeFilter: 'event' }).activities.map(item => item.type), ['event']);
@@ -230,13 +230,13 @@ try {
   await page.click('#agendaFilterTabs button[data-agenda-filter="event"]');
   assert.equal(await activityCounts(), 1, 'Filtro event deve mostrar apenas compromissos.');
   await page.click('#agendaFilterTabs button[data-agenda-filter="task"]');
-  assert.equal(await activityCounts(), 3, 'Filtro task deve preservar tarefas com e sem deadline conforme regra atual.');
+  assert.equal(await activityCounts(), 2, 'Filtro task deve mostrar apenas tarefas com data explicitamente confirmada.');
   await page.click('#agendaFilterTabs button[data-agenda-filter="intimation"]');
   assert.equal(await activityCounts(), 1, 'Filtro intimation deve mostrar apenas publicação.');
   assert.match(await page.locator('#agendaList [data-agenda-activity-id="intimation-agenda"]').textContent(), /Parte Publicação/);
   assert.match(await page.locator('#agendaList [data-agenda-activity-id="intimation-agenda"] .act-chip').textContent(), /Contestação/);
   await page.click('#agendaFilterTabs button[data-agenda-filter="all"]');
-  assert.equal(await activityCounts(), 5, 'Filtro all deve integrar evento, tarefas e publicação.');
+  assert.equal(await activityCounts(), 4, 'Filtro all deve integrar evento, tarefas datadas e publicação sem inventar data para texto jurídico.');
 
   const todayButton = page.locator(`#miniCalendar .calendar-day[data-cal-date="${fixture.today}"]`);
   const tomorrowButton = page.locator(`#miniCalendar .calendar-day[data-cal-date="${fixture.tomorrow}"]`);

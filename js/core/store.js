@@ -130,16 +130,26 @@ export const Store = {
           if (importResp.ok) {
             const importResult = await importResp.json();
             this.revision = importResult.revision || null;
-            localStorage.removeItem(STORAGE_KEY);
             const freshResp = await fetchState();
             if (freshResp.ok) {
               const fresh = await freshResp.json();
               persisted = fresh.state;
               this.revision = fresh.revision || null;
               this.stateStatus = 'READY';
+              localStorage.removeItem(STORAGE_KEY);
+            } else {
+              this.state = deepClone(legacyData);
+              this.stateStatus = 'IMPORT_CONFIRMATION_PENDING';
+              this.ensureShape();
+              return;
             }
           }
-        } catch { /* importação falhou — continuar com sampleState */ }
+        } catch {
+          this.state = deepClone(legacyData);
+          this.stateStatus = 'IMPORT_CONFIRMATION_PENDING';
+          this.ensureShape();
+          return;
+        }
       }
     }
 
@@ -190,19 +200,9 @@ export const Store = {
         return true;
       });
     }
-    if (Array.isArray(this.state.processes)) {
-      this.state.processes.forEach(p => {
-        if (p.feeType === 'exito' && (p.feePercentage === '30' || !p.feePercentage) && (!p.feeAmount || p.feeAmount === '')) {
-          p.feeType = '';
-          p.feePercentage = '';
-          p.feeStatus = '';
-        }
-      });
-    }
     if (!this.state.terms.length) this.state.terms.unshift(deepClone(sampleState.terms[0]));
     const authUser = globalThis.KellerAuth?.currentUser;
-    if (authUser?.displayName && this.state.terms[0]) {
-      this.state.terms[0].name = authUser.displayName;
+    if (authUser?.displayName) {
       if (!this.state.settings.lawyerName || this.state.settings.lawyerName === 'Dr(a). Advogado(a) Titular') {
         this.state.settings.lawyerName = authUser.displayName;
       }
@@ -249,9 +249,11 @@ export const Store = {
   },
   audit(action, detail, actor = 'Advogado') {
     const author = globalThis.KellerAuth?.currentUser?.displayName || actor;
-    this.state.audit.unshift({ id: uid('audit'), at: new Date().toISOString(), action, detail, actor: author });
+    const entry = { id: uid('audit'), at: new Date().toISOString(), action, detail, actor: author };
+    this.state.audit.unshift(entry);
     this.state.audit = this.state.audit.slice(0, 250);
     this.save();
+    return entry;
   },
   upsert(collection, record, externalKey = 'id') {
     const index = this.state[collection].findIndex(item => item[externalKey] === record[externalKey]);

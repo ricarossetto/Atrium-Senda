@@ -147,6 +147,29 @@ export function createPublicationsFeature({
     get currentEmailBulletin() { return currentEmailBulletin; },
     get initialized() { return initialized; },
 
+    upsertExternalIntimation(record) {
+      if (!record || typeof record !== 'object') return null;
+      store.state.intimations = Array.isArray(store.state.intimations) ? store.state.intimations : [];
+      const identity = record.externalId ?? record.id;
+      const index = store.state.intimations.findIndex(item => (item.externalId ?? item.id) === identity);
+      if (index < 0) {
+        store.state.intimations.unshift({ ...record });
+        return store.state.intimations[0];
+      }
+      const current = store.state.intimations[index];
+      const merged = { ...current, ...record };
+      const protectedFields = [
+        'status', 'unread', 'treatmentStatus', 'treatmentStartedAt', 'treatmentStartedBy',
+        'treatedAt', 'treatedBy', 'discardedAt', 'discardedBy', 'treatmentNote',
+        'linkedTaskIds', 'taskId', 'deadline', 'fatalDeadline', 'responsible', 'completedAt'
+      ];
+      for (const field of protectedFields) {
+        if (Object.prototype.hasOwnProperty.call(current, field)) merged[field] = current[field];
+      }
+      store.state.intimations[index] = merged;
+      return merged;
+    },
+
     init() {
       if (initialized) return false;
       initialized = true;

@@ -182,9 +182,12 @@ CPF: ${doc}`;
     const name = contact?.name || '[NOME DO CLIENTE/CONTRATANTE]';
     const doc = contact?.document || '[CPF/CNPJ]';
     const address = [contact?.address, contact?.district, contact?.city, contact?.state].filter(Boolean).join(', ') || '[ENDEREÇO DO CONTRATANTE]';
-    const feeType = process?.feeType || 'exito';
-    const feePct = process?.feePercentage || '30';
-    const feeFixed = process?.feeAmount ? `R$ ${process.feeAmount}` : 'a combinar';
+    const feeAliases = { 'quota litis': 'exito', êxito: 'exito', exito: 'exito', fixo: 'fixo', misto: 'misto' };
+    const rawFeeType = String(process?.feeType || 'exito').trim().toLowerCase();
+    const feeType = feeAliases[rawFeeType] || rawFeeType;
+    const feePct = process?.feePercentage ?? '30';
+    const hasFeeFixed = process?.feeAmount !== '' && process?.feeAmount !== null && process?.feeAmount !== undefined;
+    const feeFixed = hasFeeFixed ? `R$ ${process.feeAmount}` : 'a combinar';
     const feeDetails = feeType === 'exito'
       ? `Honorários contratuais de ${feePct}% (quota litis) incidentes sobre o proveito econômico auferido pelo CONTRATANTE ao final da demanda.`
       : feeType === 'fixo'
@@ -380,8 +383,8 @@ ${id.lawyerOab} - ${id.officeName}`;
     const procNumber = process?.number || '[NÚMERO DO PROCESSO]';
     const nb = process?.nb ? ` (NB nº ${process.nb})` : '';
 
-    const grossAmount = Number(process?.requisitionAmount || process?.feeAmount || 0);
-    const feePct = Number(process?.feePercentage || 30);
+    const grossAmount = Number(process?.requisitionAmount ?? 0);
+    const feePct = Number(process?.feePercentage ?? 30);
     const contractualFee = grossAmount > 0 ? (grossAmount * (feePct / 100)) : 0;
     const netAmount = grossAmount > 0 ? (grossAmount - contractualFee) : 0;
 
@@ -1524,10 +1527,10 @@ ${id.lawyerOab} - ${id.officeName}`;
       listEl.querySelectorAll('[data-complete-task-id]').forEach(chk => {
         chk.addEventListener('change', async (e) => {
           e.stopPropagation();
-          const task = getTasksFeature().completeTask(chk.dataset.completeTaskId);
+          const task = await getTasksFeature().completeTask(chk.dataset.completeTaskId);
           if (task) {
             this.renderAll();
-            if (await Store.flush()) this.toast('Tarefa concluída com sucesso!', 'success');
+            this.toast('Tarefa concluída com sucesso!', 'success');
           }
         });
       });
@@ -1559,7 +1562,7 @@ ${id.lawyerOab} - ${id.officeName}`;
 
       let totalHonorariosAFaturar = 0;
       processes.forEach(p => {
-        const isPaid = p.feeStatus === 'pago' || p.feeStatus === 'quitado' || p.requisitionStatus === 'repassado' || p.requisitionStatus === 'pago';
+        const isPaid = p.feeStatus === 'pago' || p.feeStatus === 'quitado' || p.feeStatus === 'repassado' || p.requisitionStatus === 'repassado' || p.requisitionStatus === 'pago';
         if (isPaid) return;
 
         if (p.feeType === 'fixo' && p.feeAmount) {
@@ -3690,6 +3693,13 @@ ${id.lawyerOab} - ${id.officeName}`;
     async handleModalSubmit(event) {
       event.preventDefault(); if (!this.modalMode) return;
       if (this.modalMode.mode === 'guide') { this.closeModal(); return; }
+      if (this.modalSubmitInFlight) return;
+      this.modalSubmitInFlight = true;
+      const modalSubmitButton = event.currentTarget.querySelector('button[type="submit"]');
+      if (modalSubmitButton) modalSubmitButton.disabled = true;
+      const submittedMode = this.modalMode.mode;
+      const modalStateBeforeSubmit = JSON.parse(JSON.stringify(Store.state));
+      try {
       if (this.modalMode.mode === 'intimationDetail') {
         const item = this.modalMode.defaults;
         const act = item._act || classifyIntimationAct(item.text, item.title, item.type);
@@ -3729,7 +3739,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         const record = { id: this.modalMode.defaults.id || uid('int'), status: this.modalMode.defaults.status || 'nova', unread: this.modalMode.defaults.unread ?? true, term: this.modalMode.defaults.term || `${primaryTerm?.name || 'Advogado(a) Monitorado(a)'} · ${primaryTerm?.registration || 'OAB/UF 000000'}`, createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(), ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() };
         Store.upsert('intimations', record); Store.audit(editing ? 'Intimação atualizada' : 'Intimação registrada', `${record.title}${record.process ? ` · ${record.process}` : ''}`);
       } else if (this.modalMode.mode === 'process') {
-        getProcessesFeature().saveProcess(data, this.modalMode.defaults);
+        if (!getProcessesFeature().saveProcess(data, this.modalMode.defaults)) return;
       } else if (this.modalMode.mode === 'contact') {
         getContactsFeature().saveContact(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'agenda') {
@@ -3781,7 +3791,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         Store.audit('Configuração DataJud atualizada', `Chave configurada (${(data.apiKey || '').slice(0, 10)}…)`);
         Store.save();
         this.renderMonitoring();
-        if (!await Store.flush()) return;
+        if (!await Store.flush()) throw new Error('Não foi possível persistir a configuração. Tente novamente.');
         this.toast('Configurações do DataJud salvas com sucesso!', 'success');
         this.closeModal();
         return;
@@ -3823,25 +3833,29 @@ ${id.lawyerOab} - ${id.officeName}`;
         else Store.state.customLinks.unshift(record);
         Store.audit(isEditing ? 'Link útil atualizado' : 'Link útil adicionado', record.title);
       } else if (this.modalMode.mode === 'feedback') {
-        fetch('/api/system/feedback', {
+        const feedbackResponse = await window.KellerAuth.secureFetch('/api/system/feedback', {
           method: 'POST',
-          credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify(data)
-        }).then(r => r.json()).then(res => {
-          if (!res.ok) throw new Error(res.message || 'Falha ao enviar feedback.');
-          this.toast('Feedback do Beta enviado com sucesso. Muito obrigado!', 'success');
-        }).catch(err => {
-          this.toast(`Erro ao enviar feedback: ${err.message}`, 'error');
         });
+        const feedbackPayload = await feedbackResponse.json().catch(() => ({}));
+        if (!feedbackResponse.ok) throw new Error(feedbackPayload.message || 'Falha ao enviar feedback.');
+        this.toast('Feedback do Beta enviado com sucesso. Muito obrigado!', 'success');
         this.closeModal();
         return;
       }
       Store.save();
       this.renderAll();
-      if (!await Store.flush()) return;
+      if (!await Store.flush()) throw new Error('Não foi possível persistir o registro. Tente novamente.');
       this.closeModal();
       this.toast('Registro salvo com sucesso.', 'success');
+      } catch (error) {
+        if (submittedMode !== 'feedback') Store.state = modalStateBeforeSubmit;
+        this.toast(error.message || 'Não foi possível salvar o registro.', 'error');
+      } finally {
+        this.modalSubmitInFlight = false;
+        if (modalSubmitButton?.isConnected) modalSubmitButton.disabled = false;
+      }
     },
     openDocumentGenerator(options = {}) {
       const { contactId = null, processId = null } = options || {};
@@ -3862,7 +3876,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (contactSelect) {
         contactSelect.innerHTML = `<option value="">Selecione o contato</option>${contacts.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)} (${escapeHtml(c.document || 'sem doc')})</option>`).join('')}`;
         if (contactId && contacts.some(c => c.id === contactId)) contactSelect.value = contactId;
-        else if (contacts.length) contactSelect.value = contacts[0].id;
+        else contactSelect.value = '';
       }
 
       if (processSelect) {
@@ -3897,6 +3911,17 @@ ${id.lawyerOab} - ${id.officeName}`;
       const processId = document.getElementById('docGenProcessSelect')?.value;
       const contact = Store.state.contacts.find(c => c.id === contactId);
       const process = Store.state.processes.find(p => p.id === processId);
+
+      if (type === 'contrato_honorarios' && process?.feeType) {
+        const normalizedFeeType = normalizeText(String(process.feeType)).replace(/\s+/g, ' ');
+        const knownFeeTypes = new Set(['exito', 'êxito', 'quota litis', 'fixo', 'misto']);
+        if (!knownFeeTypes.has(normalizedFeeType)) {
+          const previewArea = document.getElementById('docGenPreviewText');
+          if (previewArea) previewArea.value = '';
+          this.toast('O tipo de honorários do processo não é canônico. Revise os dados antes de gerar o contrato.', 'error');
+          return false;
+        }
+      }
 
       const text = DOCUMENT_GENERATORS[type](contact, process);
 
@@ -4004,15 +4029,15 @@ ${id.lawyerOab} - ${id.officeName}`;
       let countTasks = 0;
 
       (data.processes || []).forEach(proc => {
-        Store.upsert('processes', proc, 'number');
+        getProcessesFeature().upsertExternalProcess(proc);
         countProc++;
       });
       (data.contacts || []).forEach(cont => {
-        Store.upsert('contacts', cont, 'name');
+        getContactsFeature().upsertExternalContact(cont);
         countCont++;
       });
       (data.tasks || []).forEach(task => {
-        getTasksFeature().upsertExternalTask(task, 'title');
+        getTasksFeature().upsertExternalTask(task);
         countTasks++;
       });
 
@@ -4055,7 +4080,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       buttons.forEach(button => { if (button) button.disabled = true; });
       if (!silent) this.toast('Iniciando sincronização protegida…');
       try {
-        await Store.flush();
+        if (!await Store.flush()) throw new Error('As alterações locais ainda não foram salvas. Sincronização cancelada para evitar perda de dados.');
         const response = await window.KellerAuth.secureFetch('/api/sync', { method: 'POST', headers: { Accept: 'application/json' } });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || 'Servidor de integração indisponível.');
@@ -4067,13 +4092,14 @@ ${id.lawyerOab} - ${id.officeName}`;
         }
         (data.events || []).forEach(event => Store.upsert('agenda', event, 'externalId'));
         (data.tasks || []).forEach(task => getTasksFeature().upsertExternalTask(task, 'externalId'));
-        (data.intimations || []).forEach(item => Store.upsert('intimations', item, 'externalId'));
+        (data.intimations || []).forEach(item => getPublicationsFeature().upsertExternalIntimation(item));
         (data.processes || []).forEach(item => getProcessesFeature().upsertExternalProcess(item));
         (data.contacts || []).forEach(item => getContactsFeature().upsertExternalContact(item));
         (data.sources || []).forEach(source => Store.upsert('sources', source, 'id'));
         if (Number(data.imported) > 0 || (data.intimations && data.intimations.length > 0)) Store.state.settings.demoMode = false;
         Store.audit('Sincronização concluída', `${data.imported || (data.intimations?.length || 0)} registro(s) processado(s).`, 'Sistema');
         Store.save();
+        if (!await Store.flush()) throw new Error('A sincronização foi recebida, mas não pôde ser persistida localmente. Tente novamente.');
         this.renderAll();
         if (!silent) this.toast('Sincronização concluída com sucesso.', 'success');
       } catch (error) {
@@ -4125,7 +4151,9 @@ ${id.lawyerOab} - ${id.officeName}`;
             imported++;
           }
         }
-        Store.audit('Arquivo importado', `${imported} registro(s) adicionado(s).`); this.renderAll(); this.toast(`${imported} registro(s) importado(s).`, 'success');
+        Store.audit('Arquivo importado', `${imported} registro(s) adicionado(s).`);
+        if (!await Store.flush()) throw new Error('Os registros foram lidos, mas não puderam ser persistidos. Tente novamente.');
+        this.renderAll(); this.toast(`${imported} registro(s) importado(s).`, 'success');
       } catch { this.toast('O arquivo não contém um JSON válido.', 'error'); }
       document.getElementById('jsonImportInput').value = '';
     },

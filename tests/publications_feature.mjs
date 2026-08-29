@@ -132,6 +132,20 @@ const isolatedFeature = createPublicationsFeature({
   formatDateTime: String,
   showToast() {}
 });
+
+fakeStore.state.intimations = [{
+  id: 'external-preserve', externalId: 'djen:preserve', title: 'Título anterior', unread: false,
+  treatmentStatus: 'treated', treatedBy: 'Advogada Teste', deadline: '2026-09-20', linkedTaskIds: ['task-manual']
+}];
+const mergedExternal = isolatedFeature.upsertExternalIntimation({
+  id: 'external-preserve-new-id', externalId: 'djen:preserve', title: 'Título oficial atualizado', unread: true,
+  treatmentStatus: 'untreated', treatedBy: '', deadline: '2026-08-30', linkedTaskIds: []
+});
+assert.equal(mergedExternal.title, 'Título oficial atualizado', 'Conteúdo oficial mais novo deve atualizar a publicação.');
+assert.equal(mergedExternal.unread, false, 'Sincronização não pode remarcar publicação lida como não lida.');
+assert.equal(mergedExternal.treatmentStatus, 'treated', 'Sincronização não pode reabrir tratamento humano concluído.');
+assert.equal(mergedExternal.deadline, '2026-09-20', 'Sincronização não pode sobrescrever prazo humano explícito.');
+assert.deepEqual(mergedExternal.linkedTaskIds, ['task-manual'], 'Sincronização não pode apagar vínculos manuais.');
 assert.equal(isolatedFeature.init(), true, 'Primeiro init deve registrar a feature.');
 assert.equal(isolatedFeature.init(), false, 'Segundo init deve ser ignorado.');
 assert.equal(listenerRegistrations, 1, 'init idempotente deve registrar cada listener uma única vez.');

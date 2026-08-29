@@ -802,7 +802,15 @@ td small { color: var(--text-secondary); }
 
 @media (max-width: 1450px) {
   .profile-copy { display: none; }
-  .global-search { width: min(260px, 24vw); }
+  .topbar { height: auto; min-height: 84px; flex-wrap: wrap; gap: 10px 16px; padding-block: 14px; }
+  .topbar-left { min-width: 0; flex: 1 1 220px; }
+  .topbar-left > div { min-width: 0; }
+  .topbar h1 { overflow-wrap: anywhere; }
+  .topbar-actions { min-width: 0; flex: 1 1 360px; justify-content: flex-end; flex-wrap: wrap; }
+  .global-search-container { min-width: 180px; flex: 1 1 220px; }
+  .global-search { width: 100%; }
+  .section-toolbar { flex-wrap: wrap; }
+  .toolbar-actions { min-width: 0; flex-wrap: wrap; }
 }
 
 @media (max-width: 1180px) {
@@ -826,7 +834,7 @@ td small { color: var(--text-secondary); }
   .sidebar { transform: translateX(-101%); transition: .22s ease; box-shadow: 20px 0 60px #000; }
   .sidebar.open { transform: none; }
   .main-content { margin-left: 0 !important; width: 100% !important; max-width: 100% !important; }
-  .topbar { height: 74px; padding: 0 18px; }
+  .topbar { height: auto; min-height: 74px; padding: 12px 18px; }
   .topbar h1 { font-size: 19px; }
   .global-search { display: none; }
   .environment-banner { margin: 14px 18px 0; }
@@ -2455,8 +2463,43 @@ td small { color: var(--text-secondary); }
 /* Prompts Grid */
 .prompts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
   gap: 18px;
+}
+
+.financial-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px;
+}
+
+.financial-entry-grid > * { min-width: 0; }
+
+.financial-entry-summary {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  text-align: center;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.ai-assistant-container,
+.ai-assistant-header,
+.ai-message,
+.message-text,
+.prompt-card,
+.publications-metrics-grid,
+.pub-metric-card { min-width: 0; max-width: 100%; }
+
+@media (max-width: 620px) {
+  .financial-entry-grid { grid-template-columns: 1fr; padding: 16px; }
+  .financial-entry-summary { grid-template-columns: 1fr; }
 }
 
 .prompt-card {
@@ -4647,4 +4690,8 @@ html:not([data-theme="light"]) .btn-danger-action:hover {
     width: 100%;
     justify-content: center;
   }
+}
+
+@media (max-width: 480px) {
+  .publications-metrics-grid { grid-template-columns: 1fr; }
 }

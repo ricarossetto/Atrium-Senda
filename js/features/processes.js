@@ -67,10 +67,10 @@ export function createProcessesFeature({
         if (item.feeAmount && Number(item.feeAmount) > 0) {
           feeBadge = `<span class="fee-chip fixo">Valor: R$ ${Number(item.feeAmount).toLocaleString('pt-BR')}</span>`;
         } else if (item.feePercentage && Number(item.feePercentage) > 0) {
-          const feeStatusClass = item.feeStatus === 'quitado' || item.feeStatus === 'em_dia' ? 'fee-status-paid' : item.feeStatus === 'pendente' ? 'fee-status-pending' : 'fee-status-waiting';
+          const feeStatusClass = ['quitado', 'repassado', 'em_dia'].includes(item.feeStatus) ? 'fee-status-paid' : item.feeStatus === 'pendente' ? 'fee-status-pending' : 'fee-status-waiting';
           feeBadge = `<span class="fee-chip ${escapeHtml(item.feeType || 'exito')}">${escapeHtml(item.feePercentage)}% êxito<span class="fee-status-badge ${feeStatusClass}">${escapeHtml(item.feeStatus || 'regular')}</span></span>`;
         } else if (item.feeType && item.feeType !== 'exito' && item.feeType !== 'none') {
-          const feeStatusClass = item.feeStatus === 'quitado' || item.feeStatus === 'em_dia' ? 'fee-status-paid' : item.feeStatus === 'pendente' ? 'fee-status-pending' : 'fee-status-waiting';
+          const feeStatusClass = ['quitado', 'repassado', 'em_dia'].includes(item.feeStatus) ? 'fee-status-paid' : item.feeStatus === 'pendente' ? 'fee-status-pending' : 'fee-status-waiting';
           feeBadge = `<span class="fee-chip ${escapeHtml(item.feeType)}">${escapeHtml(item.feeType.toUpperCase())}<span class="fee-status-badge ${feeStatusClass}">${escapeHtml(item.feeStatus || 'regular')}</span></span>`;
         }
 
@@ -198,7 +198,7 @@ export function createProcessesFeature({
         { name: 'feePercentage', label: 'Percentual de êxito (%)', type: 'number', placeholder: 'Ex: 30' },
         { name: 'feeAmount', label: 'Valor fixo / causa (R$)', type: 'number', placeholder: 'Ex: 5000' },
         { name: 'feeMonthly', label: 'Valor mensal (R$)', type: 'number', placeholder: 'Ex: 1500' },
-        { name: 'feeStatus', label: 'Situação dos honorários', type: 'select', options: [{value:'em_dia',label:'Em dia / Regular'},{value:'aguardando_exito',label:'Aguardando êxito processual'},{value:'pendente',label:'Pendente / Cobrança'},{value:'quitado',label:'Quitado'}] },
+        { name: 'feeStatus', label: 'Situação dos honorários', type: 'select', options: [{value:'em_dia',label:'Em dia / Regular'},{value:'aguardando_exito',label:'Aguardando êxito processual'},{value:'pendente',label:'Pendente / Cobrança'},{value:'quitado',label:'Quitado'},{value:'repassado',label:'Quitado (compatibilidade legada)'}] },
         { name: 'requisitionType', label: 'Requisição judicial (RPV / Alvará)', type: 'select', options: [{value:'',label:'Nenhuma requisição ativa'},{value:'rpv_federal',label:'RPV Federal (TRF4)'},{value:'precatorio_federal',label:'Precatório Federal (TRF4)'},{value:'alvara_estadual',label:'Alvará Judicial Estadual (TJRS)'},{value:'alvara_trabalhista',label:'Alvará Trabalhista (TRT4)'}] },
         { name: 'requisitionAmount', label: 'Valor bruto requisitado (R$)', type: 'number', placeholder: 'Ex: 45000' },
         { name: 'requisitionBank', label: 'Banco depositário', type: 'select', options: [{value:'',label:'Não definido'},{value:'bb',label:'Banco do Brasil'},{value:'cef',label:'Caixa Econômica Federal'},{value:'banrisul',label:'Banrisul'},{value:'outro',label:'Outro banco'}] },
@@ -222,6 +222,20 @@ export function createProcessesFeature({
 
     saveProcess(data, defaults = {}) {
       const editing = Boolean(defaults.id);
+      const parseOptionalNumber = (value, { percentage = false } = {}) => {
+        if (value === '' || value === null || value === undefined) return null;
+        const number = Number(value);
+        if (!Number.isFinite(number) || number < 0 || (percentage && number > 100)) return undefined;
+        return number;
+      };
+      const feePercentage = parseOptionalNumber(data.feePercentage, { percentage: true });
+      const feeAmount = parseOptionalNumber(data.feeAmount);
+      const feeMonthly = parseOptionalNumber(data.feeMonthly);
+      const requisitionAmount = parseOptionalNumber(data.requisitionAmount);
+      if ([feePercentage, feeAmount, feeMonthly, requisitionAmount].includes(undefined)) {
+        showToast?.('Informe valores financeiros válidos, não negativos e percentual entre 0 e 100.', 'error');
+        return null;
+      }
       const record = {
         id: defaults.id || uid('proc'),
         source: defaults.source || 'Interna',
@@ -229,9 +243,10 @@ export function createProcessesFeature({
         lastMovementAt: isoDate(),
         ...defaults,
         ...data,
-        feePercentage: data.feePercentage ? Number(data.feePercentage) : null,
-        feeAmount: data.feeAmount ? Number(data.feeAmount) : null,
-        feeMonthly: data.feeMonthly ? Number(data.feeMonthly) : null,
+        feePercentage,
+        feeAmount,
+        feeMonthly,
+        requisitionAmount,
         secrecy: data.secrecy === 'true',
         updatedAt: new Date().toISOString()
       };
@@ -249,13 +264,14 @@ function mergeExternalProcess(existing, incoming) {
   const external = safeExternalRecord(incoming);
   const merged = { ...current };
   const officialFields = new Set(['court', 'actionType', 'subject', 'datajudAlias', 'collectedAt']);
+  const authoritativeExternal = /DataJud|CNJ/i.test(String(external.source || ''));
   for (const [field, value] of Object.entries(external)) {
     if (!meaningful(value) || ['lastMovement', 'lastMovementAt', 'movements', 'monitoredTermIds', 'source'].includes(field)) continue;
     if (['id', 'externalId', 'number'].includes(field)) {
       if (!meaningful(merged[field])) merged[field] = value;
     } else if (field === 'datajudUpdatedAt') {
       if (!timestamp(merged[field]) || timestamp(value) >= timestamp(merged[field])) merged[field] = value;
-    } else if (officialFields.has(field)) {
+    } else if (officialFields.has(field) && authoritativeExternal) {
       merged[field] = value;
     } else if (!meaningful(merged[field])) {
       merged[field] = value;
