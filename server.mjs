@@ -1,6 +1,6 @@
 import http from 'node:http';
-import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm, readdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm, readdir, copyFile, chmod } from 'node:fs/promises';
+import { existsSync, constants as fsConstants } from 'node:fs';
 import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
@@ -56,6 +56,7 @@ const RUNTIME_FILE = path.join(DATA_DIR, 'runtime.json');
 const APP_STATE_FILE = path.join(DATA_DIR, 'app-state.json');
 const INTEGRATIONS_FILE = path.join(DATA_DIR, 'judicial-integrations.json');
 const AI_SECRETS_FILE = path.join(DATA_DIR, 'ai-secrets.json');
+const FEEDBACK_FILE = path.join(DATA_DIR, 'feedback', 'beta-feedback.json');
 const MIGRATIONS_DIR = path.join(DATA_DIR, 'migrations', 'pre-migration');
 const RECOVERY_DIR = path.join(DATA_DIR, 'recovery');
 const DEFAULT_PORTALS_FILE = existsSync(path.join(ROOT, 'collector', 'portals.json')) ? path.join(ROOT, 'collector', 'portals.json') : path.join(ROOT, 'collector', 'portals.example.json');
@@ -109,6 +110,9 @@ const emptyRuntime = () => ({ events: [], tasks: [], intimations: [], processes:
 let interactiveCollector = null;
 let appStateMutationTail = Promise.resolve();
 let runtimeMutationTail = Promise.resolve();
+let runtimeStateStatus = 'EMPTY';
+let runtimeRecoveryDetails = null;
+let lastRuntimeUpdate = null;
 
 function enqueueAppStateMutation(operation) {
   const queued = appStateMutationTail.then(operation, operation);
@@ -157,14 +161,126 @@ async function ensureLocalSecrets(file) {
   await appendFile(file, `${preamble}${generated.join('\n')}\n`, { encoding: 'utf8', mode: 0o600 });
 }
 
-async function readRuntimeUnlocked() {
+function invalidRuntime(reason) {
+  return Object.assign(new Error('Runtime derivado inválido.'), { runtimeRecoveryReason: reason });
+}
+
+function normalizeRuntimePayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw invalidRuntime('INVALID_RUNTIME_PAYLOAD');
+  }
+  for (const key of ['events', 'tasks', 'intimations', 'processes', 'contacts', 'sources']) {
+    if (payload[key] !== undefined && !Array.isArray(payload[key])) {
+      throw invalidRuntime('INVALID_RUNTIME_PAYLOAD');
+    }
+  }
+  return { ...emptyRuntime(), ...payload };
+}
+
+function runtimeRecoveryFileLabel(filename) {
+  return path.posix.join('recovery', filename);
+}
+
+async function latestRuntimeRecoveryDetails() {
   try {
-    const stored = JSON.parse(await readFile(RUNTIME_FILE, 'utf8'));
-    if (stored?.encrypted) return { ...emptyRuntime(), ...JSON.parse(security.decrypt(stored.encrypted)) };
-    const legacy = { ...emptyRuntime(), ...stored };
-    await saveRuntimeUnlocked(legacy);
-    return legacy;
-  } catch { return emptyRuntime(); }
+    const names = (await readdir(RECOVERY_DIR))
+      .filter(name => /^runtime-corrupt-.*\.json$/.test(name))
+      .sort();
+    const filename = names.at(-1);
+    if (!filename) return null;
+    return {
+      reason: 'PREVIOUS_RUNTIME_QUARANTINE',
+      recoveryFile: runtimeRecoveryFileLabel(filename),
+      at: null
+    };
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
+async function quarantineCorruptRuntime(reason) {
+  await mkdir(RECOVERY_DIR, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  let filename;
+  let targetPath;
+  do {
+    filename = `runtime-corrupt-${timestamp}-${randomBytes(4).toString('hex')}.json`;
+    targetPath = path.join(RECOVERY_DIR, filename);
+  } while (existsSync(targetPath));
+
+  try {
+    await rename(RUNTIME_FILE, targetPath);
+  } catch (renameError) {
+    if (!existsSync(RUNTIME_FILE)) throw renameError;
+    await copyFile(RUNTIME_FILE, targetPath, fsConstants.COPYFILE_EXCL);
+    await chmod(targetPath, 0o600);
+    await unlink(RUNTIME_FILE);
+  }
+  await chmod(targetPath, 0o600);
+
+  runtimeStateStatus = 'QUARANTINED';
+  runtimeRecoveryDetails = {
+    reason,
+    recoveryFile: runtimeRecoveryFileLabel(filename),
+    at: new Date().toISOString()
+  };
+  lastRuntimeUpdate = null;
+  return runtimeRecoveryDetails;
+}
+
+async function readRuntimeUnlocked() {
+  let rawText;
+  try {
+    rawText = await readFile(RUNTIME_FILE, 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    if (runtimeStateStatus !== 'QUARANTINED') {
+      const previousRecovery = await latestRuntimeRecoveryDetails();
+      if (previousRecovery) {
+        runtimeStateStatus = 'QUARANTINED';
+        runtimeRecoveryDetails = previousRecovery;
+      } else {
+        runtimeStateStatus = 'EMPTY';
+        runtimeRecoveryDetails = null;
+      }
+    }
+    lastRuntimeUpdate = null;
+    return emptyRuntime();
+  }
+
+  let legacyRuntime = null;
+  try {
+    const stored = JSON.parse(rawText);
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) {
+      throw invalidRuntime('INVALID_RUNTIME_JSON');
+    }
+
+    if (Object.prototype.hasOwnProperty.call(stored, 'encrypted') || Object.prototype.hasOwnProperty.call(stored, 'algorithm')) {
+      if (stored.version !== 1 || stored.algorithm !== 'aes-256-gcm' || !stored.encrypted || typeof stored.encrypted !== 'object') {
+        throw invalidRuntime('INVALID_RUNTIME_ENVELOPE');
+      }
+      let decrypted;
+      try {
+        decrypted = JSON.parse(security.decrypt(stored.encrypted));
+      } catch {
+        throw invalidRuntime('RUNTIME_DECRYPTION_FAILED');
+      }
+      const runtime = normalizeRuntimePayload(decrypted);
+      runtimeStateStatus = 'READY';
+      runtimeRecoveryDetails = null;
+      lastRuntimeUpdate = stored.updatedAt || runtime.updatedAt || null;
+      return runtime;
+    }
+
+    legacyRuntime = normalizeRuntimePayload(stored);
+  } catch (error) {
+    await quarantineCorruptRuntime(error.runtimeRecoveryReason || (error instanceof SyntaxError ? 'RUNTIME_JSON_PARSE_FAILED' : 'INVALID_RUNTIME'));
+    return emptyRuntime();
+  }
+
+  await saveRuntimeUnlocked(legacyRuntime);
+  return legacyRuntime;
 }
 async function readRuntime() { return readRuntimeUnlocked(); }
 
@@ -177,6 +293,9 @@ async function saveRuntimeUnlocked(payload) {
     encrypted: security.encrypt(JSON.stringify({ ...emptyRuntime(), ...payload }))
   };
   await writePrivateJsonAtomically(RUNTIME_FILE, envelope);
+  runtimeStateStatus = 'READY';
+  runtimeRecoveryDetails = null;
+  lastRuntimeUpdate = envelope.updatedAt;
 }
 
 async function saveRuntime(payload) {
@@ -208,7 +327,17 @@ async function quarantineCorruptState(rawContent, reason) {
   const filename = `app-state-corrupt-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
   const targetPath = path.join(RECOVERY_DIR, filename);
   await writeFile(targetPath, typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent, null, 2), { encoding: 'utf8', mode: 0o600 });
-  return targetPath;
+  return path.posix.join('recovery', filename);
+}
+
+async function extractLegacyAiKeyForStartup(state, legacyKeyBeforeStateMigration = '') {
+  const legacyKey = String(legacyKeyBeforeStateMigration || state?.settings?.geminiApiKey || '').trim();
+  if (!legacyKey) return { state, migrated: false };
+
+  await saveAiApiKey(legacyKey);
+  const sanitizedState = structuredClone(state);
+  delete sanitizedState.settings.geminiApiKey;
+  return { state: sanitizedState, migrated: true };
 }
 
 async function initServerState() {
@@ -241,6 +370,7 @@ async function initServerState() {
   }
 
   const foundVersion = Number(decryptedState.schemaVersion ?? decryptedState.version ?? 1);
+  const legacyAiKeyBeforeStateMigration = String(decryptedState?.settings?.geminiApiKey || '').trim();
 
   if (foundVersion > CURRENT_SCHEMA_VERSION) {
     serverStateStatus = 'FUTURE_SCHEMA_ERROR';
@@ -273,25 +403,45 @@ async function initServerState() {
     }
 
     try {
-      await saveAppStateDirect(migrationResult.state, envelope.revision || envelope.updatedAt || null);
-      lastMigrationAt = migrationResult.state.migratedAt;
+      const aiMigration = await extractLegacyAiKeyForStartup(migrationResult.state, legacyAiKeyBeforeStateMigration);
+      await saveAppStateDirect(aiMigration.state, envelope.revision || envelope.updatedAt || null);
+      lastMigrationAt = aiMigration.state.migratedAt;
       serverStateStatus = 'READY';
-      return { status: 'READY', migrated: true, fromVersion: migrationResult.fromVersion, toVersion: migrationResult.toVersion };
+      stateRecoveryDetails = null;
+      return {
+        status: 'READY',
+        migrated: true,
+        aiSecretMigrated: aiMigration.migrated,
+        fromVersion: migrationResult.fromVersion,
+        toVersion: migrationResult.toVersion
+      };
     } catch (saveErr) {
       serverStateStatus = 'RECOVERY_REQUIRED';
-      stateRecoveryDetails = { reason: 'ATOMIC_SAVE_FAILED', error: saveErr.message, at: new Date().toISOString() };
+      stateRecoveryDetails = { reason: 'STARTUP_MIGRATION_SAVE_FAILED', at: new Date().toISOString() };
       return { status: serverStateStatus, details: stateRecoveryDetails };
     }
   }
 
   try {
     validateAppState(decryptedState, CURRENT_SCHEMA_VERSION);
-    serverStateStatus = 'READY';
-    return { status: 'READY' };
   } catch (valErr) {
     const corruptFile = await quarantineCorruptState(rawText, 'VALIDATION_FAILED');
     serverStateStatus = 'RECOVERY_REQUIRED';
     stateRecoveryDetails = { reason: 'VALIDATION_FAILED', file: corruptFile, error: valErr.message, at: new Date().toISOString() };
+    return { status: serverStateStatus, details: stateRecoveryDetails };
+  }
+
+  try {
+    const aiMigration = await extractLegacyAiKeyForStartup(decryptedState);
+    if (aiMigration.migrated) {
+      await saveAppStateDirect(aiMigration.state, envelope.revision || envelope.updatedAt || null);
+    }
+    serverStateStatus = 'READY';
+    stateRecoveryDetails = null;
+    return { status: 'READY', aiSecretMigrated: aiMigration.migrated };
+  } catch {
+    serverStateStatus = 'RECOVERY_REQUIRED';
+    stateRecoveryDetails = { reason: 'LEGACY_AI_SECRET_MIGRATION_FAILED', at: new Date().toISOString() };
     return { status: serverStateStatus, details: stateRecoveryDetails };
   }
 }
@@ -379,6 +529,7 @@ async function saveClientAppState(value, expectedRevision, session) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
     }
+    if (value.settings && typeof value.settings === 'object') delete value.settings.geminiApiKey;
     const current = await readAppStateEnvelope();
     const previousAudit = Array.isArray(current.state?.audit) ? current.state.audit : [];
     const previousKeys = new Set(previousAudit.map(entry => entry?.id || `${entry?.at || ''}|${entry?.action || ''}`));
@@ -413,14 +564,45 @@ async function readAiApiKey() {
 }
 
 async function saveAiApiKey(apiKey) {
-  await mkdir(DATA_DIR, { recursive: true });
+  if (process.env.NODE_ENV === 'test' && String(process.env.ATRIUM_TEST_FAIL_AI_SECRET_SAVE).toLowerCase() === 'true') {
+    throw new Error('Falha sintética ao preservar segredo legado.');
+  }
   const envelope = {
     version: 1,
     algorithm: 'aes-256-gcm',
     encrypted: security.encrypt(JSON.stringify({ geminiApiKey: String(apiKey || '').trim() })),
     updatedAt: new Date().toISOString()
   };
-  await writeFile(AI_SECRETS_FILE, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
+  await writePrivateJsonAtomically(AI_SECRETS_FILE, envelope);
+}
+
+async function readFeedbackEntries() {
+  let rawText;
+  try {
+    rawText = await readFile(FEEDBACK_FILE, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+
+  const stored = JSON.parse(rawText);
+  if (Array.isArray(stored)) return stored;
+  if (stored?.version !== 1 || stored?.algorithm !== 'aes-256-gcm' || !stored?.encrypted) {
+    throw new Error('O arquivo local de feedback possui formato inválido.');
+  }
+  const entries = JSON.parse(security.decrypt(stored.encrypted));
+  if (!Array.isArray(entries)) throw new Error('O conteúdo local de feedback é inválido.');
+  return entries;
+}
+
+async function saveFeedbackEntries(entries) {
+  const envelope = {
+    version: 1,
+    algorithm: 'aes-256-gcm',
+    encrypted: security.encrypt(JSON.stringify(entries.slice(0, 100))),
+    updatedAt: new Date().toISOString()
+  };
+  await writePrivateJsonAtomically(FEEDBACK_FILE, envelope);
 }
 
 async function appendServerAudit(action, detail, actor = 'Administrador') {
@@ -473,7 +655,7 @@ async function readPublicAppStateEnvelope() {
     };
   }
 
-  let envelope = await readAppStateEnvelope();
+  const envelope = await readAppStateEnvelope();
   if (!envelope.state) {
     return {
       stateStatus: 'NEW_INSTALL',
@@ -485,13 +667,6 @@ async function readPublicAppStateEnvelope() {
     };
   }
 
-  const legacyKey = String(envelope.state?.settings?.geminiApiKey || '').trim();
-  if (legacyKey) {
-    await saveAiApiKey(legacyKey);
-    delete envelope.state.settings.geminiApiKey;
-    const saved = await saveAppState(envelope.state, envelope.revision);
-    envelope = { state: envelope.state, revision: saved.revision };
-  }
   return {
     stateStatus: 'READY',
     state: envelope.state,
@@ -1687,7 +1862,7 @@ const server = http.createServer(async (req, res) => {
         const env = await readAppStateEnvelope();
         if (env?.state?.settings?.calendarUrl) hasCalendar = true;
       } catch {}
-      return json(res, 200, { mode: 'local-protected', calendarConfigured: hasCalendar, collectorConfigured: Boolean(runtime.updatedAt), lastCollectorRun: runtime.updatedAt, authentication: 'password+totp' });
+      return json(res, 200, { mode: 'local-protected', calendarConfigured: hasCalendar, collectorConfigured: Boolean(runtime.updatedAt), lastCollectorRun: runtime.updatedAt, authentication: 'password; totp-optional-per-user' });
     }
 
     // ==========================================
@@ -1726,7 +1901,7 @@ const server = http.createServer(async (req, res) => {
       const diagnostic = {
         app: {
           name: 'Atrium — Escritório Integrado',
-          version: '2.0.0',
+          version: APP_VERSION,
           uptimeSeconds: Math.floor(process.uptime()),
           nodeVersion: process.version,
           platform: process.platform,
@@ -1736,7 +1911,7 @@ const server = http.createServer(async (req, res) => {
         },
         storage: {
           type: 'Encrypted JSON State (AES-256-GCM)',
-          encryptedFile: 'storage/app-state.json',
+          encryptedFile: 'data/app-state.json (ou diretório de dados configurado)',
           sizeBytes: storageSizeBytes,
           revision: appEnv.revision || 'initial',
           records: {
@@ -1751,7 +1926,7 @@ const server = http.createServer(async (req, res) => {
         },
         security: {
           encryption: 'AES-256-GCM com derivação Scrypt',
-          twoFactor: 'TOTP RFC 6238 ativo',
+          twoFactor: 'TOTP RFC 6238 disponível por usuário',
           cookieSecure: Boolean(security.secureCookies),
           bootstrapTokenConfigured: Boolean(process.env.SETUP_BOOTSTRAP_TOKEN),
           totalUsers: (security.listUsers ? security.listUsers().length : 1),
@@ -1760,8 +1935,8 @@ const server = http.createServer(async (req, res) => {
         integrations: {
           djen: {
             strategy: 'djen',
-            status: 'conectado',
-            description: 'Diário de Justiça Eletrônico Nacional (API Oficial)'
+            status: 'consulta_sob_demanda',
+            description: 'Diário de Justiça Eletrônico Nacional — consulta pública sob demanda'
           },
           datajud: {
             strategy: 'datajud',
@@ -1769,14 +1944,22 @@ const server = http.createServer(async (req, res) => {
             description: 'Conselho Nacional de Justiça — Consulta Pública Processual'
           },
           gemini: {
-            status: aiKey ? 'configurado' : 'modo_local_sem_chave',
-            description: aiKey ? 'Google Gemini AI Ativo' : 'Assistência Local com Modelos Pré-Programados'
+            status: aiKey ? 'configurado' : 'nao_configurado',
+            description: aiKey ? 'Google Gemini configurado' : 'Não configurado'
           },
           collector: {
             strategy: CLOUD_MODE ? 'agente_remoto_local' : 'coletor_local',
             lastRun: runtime.updatedAt || null,
-            status: CLOUD_MODE ? 'cloud_mode' : (runtime.updatedAt ? 'ativo' : 'aguardando_primeira_execucao')
+            status: runtimeStateStatus === 'QUARANTINED'
+              ? 'atencao_runtime_quarentenado'
+              : (CLOUD_MODE ? 'cloud_mode' : (runtime.updatedAt ? 'ativo' : 'aguardando_primeira_execucao'))
           }
+        },
+        runtime: {
+          status: runtimeStateStatus,
+          recoveryDetails: runtimeRecoveryDetails,
+          fileExists: existsSync(RUNTIME_FILE),
+          lastRuntimeUpdate
         },
         backups: {
           totalBackups: backupCount,
@@ -1852,35 +2035,29 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/system/feedback') {
       const session = assertAuthenticated(req, true);
       const body = await readJson(req);
-      const feedbackType = body.type || 'sugestao';
-      const message = String(body.message || '').trim();
-      const component = String(body.component || 'Geral').trim();
+      const allowedFeedbackTypes = new Set(['sugestao', 'bug', 'dificuldade', 'performance']);
+      const feedbackType = allowedFeedbackTypes.has(body.type) ? body.type : 'sugestao';
+      const message = String(body.message || '').trim().slice(0, 10_000);
+      const component = String(body.component || 'Geral').trim().slice(0, 100) || 'Geral';
 
       if (!message) throw Object.assign(new Error('A mensagem de feedback não pode estar vazia.'), { statusCode: 400 });
 
-      const feedbackDir = path.join(DATA_DIR, 'feedback');
-      await mkdir(feedbackDir, { recursive: true });
-      const feedbackFile = path.join(feedbackDir, 'beta-feedback.json');
-      let feedbackList = [];
-      try {
-        feedbackList = JSON.parse(await readFile(feedbackFile, 'utf8'));
-      } catch {}
+      const feedbackList = await readFeedbackEntries();
 
       const entry = {
-        id: `fb-${Date.now()}`,
+        id: `fb-${Date.now()}-${randomBytes(4).toString('hex')}`,
         type: feedbackType,
         message,
         component,
-        user: session.username,
-        appVersion: '2.0.0',
-        platform: process.platform,
+        user: String(session.username || 'usuario-autenticado').slice(0, 64),
+        appVersion: APP_VERSION,
         createdAt: new Date().toISOString()
       };
 
       feedbackList.unshift(entry);
-      await writeFile(feedbackFile, JSON.stringify(feedbackList.slice(0, 100), null, 2), 'utf8');
+      await saveFeedbackEntries(feedbackList);
 
-      return json(res, 200, { ok: true, id: entry.id, message: 'Feedback registrado com sucesso. Agradecemos sua colaboração!' });
+      return json(res, 200, { ok: true, id: entry.id, message: 'Feedback registrado localmente com sucesso.' });
     }
 
     if (req.method === 'GET' && url.pathname === '/api/events') { assertAuthenticated(req); return json(res, 200, await readRuntime()); }
@@ -1908,6 +2085,9 @@ const server = http.createServer(async (req, res) => {
         stateReadable: serverStateStatus === 'READY',
         stateValid: serverStateStatus === 'READY',
         runtimeFileExists,
+        runtimeStateStatus,
+        runtimeRecoveryDetails,
+        lastRuntimeUpdate,
         profileCount,
         lastMigrationAt,
         recoveryDetails: stateRecoveryDetails
@@ -2909,6 +3089,8 @@ Diretrizes essenciais:
 
 const stateInitResult = await initServerState();
 console.log(`[ATRIUM Persistência]: Estado inicializado com status "${stateInitResult.status}". Schema v${CURRENT_SCHEMA_VERSION}.`);
+await readRuntime();
+console.log(`[ATRIUM Runtime]: Estado derivado inicializado com status "${runtimeStateStatus}".`);
 
 server.listen(PORT, HOST, () => {
   console.log(`Atrium Senda — Plataforma de Gestão Jurídica Inteligente: http://${HOST}:${PORT}`);

@@ -32,6 +32,8 @@ export function createSystemAdminFeature({
 
     diagnosticHtml(diagnostic) {
       const d = diagnostic;
+      const runtime = d.runtime || { status: 'UNKNOWN', recoveryDetails: null, fileExists: false, lastRuntimeUpdate: null };
+      const runtimeNeedsAttention = runtime.status === 'QUARANTINED';
       return `
           <div class="diagnostic-panel" style="padding: 16px; display: flex; flex-direction: column; gap: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line);">
@@ -41,7 +43,7 @@ export function createSystemAdminFeature({
               </div>
               <div style="display: flex; gap: 8px;">
                 <button type="button" class="button ghost" id="btnExportDiagnosticJson">📥 Exportar Relatório Anonimizado (.json)</button>
-                <button type="button" class="button gold" id="btnOpenFeedbackModal">💬 Enviar Feedback Beta</button>
+                <button type="button" class="button gold" id="btnOpenFeedbackModal">💬 Registrar Feedback Beta</button>
               </div>
             </div>
 
@@ -49,7 +51,7 @@ export function createSystemAdminFeature({
               <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                   <strong style="font-size: 13px; color: var(--ivory);">Banco de Dados & Estado</strong>
-                  <span class="status-chip connected" style="font-size: 10px;">Ativo</span>
+                  <span class="status-chip ${runtimeNeedsAttention ? 'warning' : 'connected'}" style="font-size: 10px;">${runtimeNeedsAttention ? 'Atenção' : 'Ativo'}</span>
                 </div>
                 <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.storage.type)}</p>
                 <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.6;">
@@ -57,6 +59,7 @@ export function createSystemAdminFeature({
                   <li>Processos: <strong>${d.storage.records.processes}</strong></li>
                   <li>Tarefas: <strong>${d.storage.records.tasks}</strong></li>
                   <li>Intimações: <strong>${d.storage.records.intimations}</strong></li>
+                  <li>Runtime derivado: <strong>${escapeHtml(runtime.status)}</strong></li>
                   <li>Tamanho do arquivo: <strong>${(d.storage.sizeBytes / 1024).toFixed(1)} KB</strong></li>
                 </ul>
               </div>
@@ -83,7 +86,7 @@ export function createSystemAdminFeature({
                 <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.integrations.djen.description)}</p>
                 <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.6;">
                   <li>DataJud CNJ: <strong>${d.integrations.datajud.status === 'configurado' ? 'Chave Ativa' : 'Consulta Pública'}</strong></li>
-                  <li>IA Gemini: <strong>${d.integrations.gemini.status === 'configurado' ? 'Online' : 'Modelos Locais'}</strong></li>
+                  <li>IA Gemini: <strong>${d.integrations.gemini.status === 'configurado' ? 'Configurado' : 'Não configurado'}</strong></li>
                   <li>Última Coleta: <strong>${d.integrations.collector.lastRun ? new Date(d.integrations.collector.lastRun).toLocaleString('pt-BR') : 'Nenhuma'}</strong></li>
                 </ul>
               </div>
@@ -246,7 +249,7 @@ export function createSystemAdminFeature({
     },
 
     openFeedbackModal() {
-      openModal('feedback', 'Enviar Feedback do Beta', 'Canal de Comunicação Direto', [
+      openModal('feedback', 'Registrar Feedback do Beta', 'Registro local neste ambiente', [
         { name: 'type', label: 'Tipo de Feedback', type: 'select', options: [
           { value: 'sugestao', label: '💡 Sugestão de Melhoria' },
           { value: 'bug', label: '🐛 Relato de Problema / Bug' },
@@ -263,7 +266,7 @@ export function createSystemAdminFeature({
           { value: 'Documentos', label: 'Minutas & Modelos' },
           { value: 'Configurações', label: 'Configurações' }
         ], required: true },
-        { name: 'message', label: 'Descrição Detalhada', type: 'textarea', full: true, required: true, placeholder: 'Descreva detalhadamente o que ocorreu ou sua sugestão (dados pessoais e processos não são enviados).' }
+        { name: 'message', label: 'Descrição Detalhada', type: 'textarea', full: true, required: true, placeholder: 'Descreva o que ocorreu ou sua sugestão sem incluir dados pessoais, processos ou conteúdo confidencial.' }
       ], {});
     },
 
@@ -276,12 +279,12 @@ export function createSystemAdminFeature({
           body: JSON.stringify(payload)
         });
         const responsePayload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(responsePayload.message || 'Falha ao enviar feedback.');
-        showToast('Feedback do Beta enviado com sucesso. Muito obrigado!', 'success');
+        if (!response.ok) throw new Error(responsePayload.message || 'Falha ao registrar feedback.');
+        showToast('Feedback do Beta registrado localmente com sucesso.', 'success');
         closeModal();
         return true;
       } catch (error) {
-        showToast(error.message || 'Falha ao enviar feedback.', 'error');
+        showToast(error.message || 'Falha ao registrar feedback.', 'error');
         return false;
       }
     }

@@ -966,15 +966,23 @@ try {
     await page.evaluate(() => window.KellerAuth?.logout());
     await page.locator('#authLoginForm.active').waitFor();
 
-    // Login do Admin Secundário
-    await page.locator('#authLoginForm [name="username"]').fill('admin2');
-    await page.locator('#authLoginForm [name="password"]').fill(admin2Password);
-    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(reg2Data.manualSecret));
-    const adminStateResponse = page.waitForResponse(response => response.url().endsWith('/api/state')
-      && response.request().method() === 'GET'
-      && response.status() === 200);
-    await page.locator('#authLoginForm button[type="submit"]').click();
-    await adminStateResponse;
+    // Login real do Admin Secundário e novo boot autenticado no contexto do navegador.
+    const admin2LoginResponse = await postJson(`${server.baseUrl}/api/auth/login`, {
+      username: 'admin2',
+      password: admin2Password,
+      code: generateTotp(reg2Data.manualSecret)
+    });
+    const admin2Login = await admin2LoginResponse.json();
+    assert.equal(admin2LoginResponse.status, 200, 'Login do admin secundário deve retornar 200.');
+    assert.equal(admin2Login.user.role, 'admin', 'Sessão do admin secundário deve preservar o papel admin.');
+    const [adminCookieName, adminCookieValue] = admin2LoginResponse.headers.get('set-cookie').split(';')[0].split('=');
+    await page.context().addCookies([{
+      name: adminCookieName,
+      value: adminCookieValue,
+      domain: new URL(server.baseUrl).hostname,
+      path: '/'
+    }]);
+    await page.reload({ waitUntil: 'networkidle' });
     await page.locator('#appShell:not(.hidden)').waitFor();
 
     // Abrir aba Publicações e detalhe

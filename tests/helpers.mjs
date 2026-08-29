@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import net from 'node:net';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -9,17 +9,21 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const STARTUP_TIMEOUT_MS = 45_000;
 
-export async function startTestServer({ env = {} } = {}) {
-  const dataDirectory = await mkdtemp(path.join(tmpdir(), 'keller-security-test-'));
+export async function startTestServer({ env = {}, dataDirectory: requestedDataDirectory = null, preserveDataDirectory = false } = {}) {
+  const ownsDataDirectory = !requestedDataDirectory;
+  const dataDirectory = requestedDataDirectory || await mkdtemp(path.join(tmpdir(), 'keller-security-test-'));
+  await mkdir(dataDirectory, { recursive: true });
   const port = await findAvailablePort();
   const collectorToken = randomBytes(32).toString('base64url');
+  const sessionSecret = env.AUTH_SESSION_SECRET || randomBytes(48).toString('base64url');
+  const encryptionKey = env.AUTH_ENCRYPTION_KEY || randomBytes(32).toString('base64');
   const child = spawn(process.execPath, ['server.mjs'], {
     cwd: ROOT,
     env: {
       ...process.env,
       PORT: String(port), HOST: '127.0.0.1', KELLER_DATA_DIR: dataDirectory, JURISFLOW_DATA_DIR: dataDirectory,
       KELLER_SKIP_COLLECTOR_ENV: 'true', ATRIUM_MOCK_SMTP: 'true',
-      AUTH_SESSION_SECRET: randomBytes(48).toString('base64url'), AUTH_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+      AUTH_SESSION_SECRET: sessionSecret, AUTH_ENCRYPTION_KEY: encryptionKey,
       COLLECTOR_INGEST_TOKEN: collectorToken, COOKIE_SECURE: 'false', EXTERNAL_CALENDAR_URL: '',
       ...env
     },
@@ -32,7 +36,7 @@ export async function startTestServer({ env = {} } = {}) {
   let lastStartupError = '';
   while (Date.now() - started < STARTUP_TIMEOUT_MS) {
     if (child.exitCode !== null) {
-      await rm(dataDirectory, { recursive: true, force: true });
+      if (ownsDataDirectory && !preserveDataDirectory) await rm(dataDirectory, { recursive: true, force: true });
       throw new Error(`Servidor de teste encerrou cedo: ${output || `código ${child.exitCode}`}`);
     }
     try {
@@ -44,10 +48,22 @@ export async function startTestServer({ env = {} } = {}) {
   }
   if (!ready) {
     await stopChild(child);
-    await rm(dataDirectory, { recursive: true, force: true });
+    if (ownsDataDirectory && !preserveDataDirectory) await rm(dataDirectory, { recursive: true, force: true });
     throw new Error(`Servidor de teste não iniciou em ${STARTUP_TIMEOUT_MS / 1_000}s: ${output || lastStartupError || 'sem saída do processo'}`);
   }
-  return { baseUrl, dataDirectory, collectorToken, async stop() { try { await stopChild(child); } finally { await rm(dataDirectory, { recursive: true, force: true }); } } };
+  return {
+    baseUrl,
+    dataDirectory,
+    collectorToken,
+    sessionSecret,
+    encryptionKey,
+    output: () => output,
+    async stop() {
+      try { await stopChild(child); } finally {
+        if (ownsDataDirectory && !preserveDataDirectory) await rm(dataDirectory, { recursive: true, force: true });
+      }
+    }
+  };
 }
 
 async function stopChild(child) {

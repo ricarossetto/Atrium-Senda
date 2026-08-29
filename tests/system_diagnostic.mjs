@@ -81,6 +81,12 @@ try {
   assert.ok(diagData.diagnostic.storage, 'Diagnóstico deve conter status de storage');
   assert.ok(diagData.diagnostic.security, 'Diagnóstico deve conter status de segurança');
   assert.ok(diagData.diagnostic.integrations, 'Diagnóstico deve conter status de integrações');
+  assert.equal(diagData.diagnostic.app.version, '2.0.0');
+  assert.equal(diagData.diagnostic.storage.encryptedFile, 'data/app-state.json (ou diretório de dados configurado)');
+  assert.equal(diagData.diagnostic.security.twoFactor, 'TOTP RFC 6238 disponível por usuário');
+  assert.equal(diagData.diagnostic.integrations.djen.status, 'consulta_sob_demanda');
+  assert.equal(diagData.diagnostic.integrations.gemini.description, 'Não configurado');
+  assert.equal(diagData.diagnostic.runtime.status, 'EMPTY');
   console.log('✓ Endpoint de diagnóstico validado com métricas completas de saúde.');
 
   // 3. Testar Exportação de Diagnóstico Anonimizado
