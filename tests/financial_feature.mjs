@@ -15,6 +15,7 @@ const visualArtifactsDir = fileURLToPath(new URL('../artifacts/financial-feature
 fs.mkdirSync(visualArtifactsDir, { recursive: true });
 
 const financialSource = fs.readFileSync(new URL('../js/features/financial.js', import.meta.url), 'utf8');
+const documentsSource = fs.readFileSync(new URL('../js/features/documents.js', import.meta.url), 'utf8');
 const portalSource = fs.readFileSync(new URL('../js/portal.js', import.meta.url), 'utf8');
 const processesSource = fs.readFileSync(new URL('../js/features/processes.js', import.meta.url), 'utf8');
 
@@ -45,8 +46,8 @@ assert.match(portalSource, /openFinancialEntryModal\(\) \{\s*return getFinancial
 assert.match(portalSource, /closeFinancialEntryModal\(\) \{\s*return getFinancialFeature\(\)\.closeEntryModal\(\);\s*\}/);
 assert.match(portalSource, /updateFinancialModalSummary\(\) \{\s*return getFinancialFeature\(\)\.updateModalSummary\(\);\s*\}/);
 assert.match(portalSource, /handleFinancialEntrySubmit\(event\) \{\s*return getFinancialFeature\(\)\.handleEntrySubmit\(event\);\s*\}/);
-assert.equal((portalSource.match(/btnGenDocPrestacao'\)\?\.addEventListener/g) || []).length, 1, 'Bridge de prestação de contas deve permanecer único.');
-assert.match(portalSource, /btnGenDocPrestacao'\)\?\.addEventListener\('click', \(\) => this\.openDocumentGenerator\(\{ type: 'prestacao_contas_rpv' \}\)\)/);
+assert.equal((documentsSource.match(/btnGenDocPrestacao'\)\?\.addEventListener/g) || []).length, 1, 'Bridge de prestação de contas deve permanecer único em Documents.');
+assert.match(documentsSource, /btnGenDocPrestacao'\)\?\.addEventListener\('click', \(\) => open\(\{ type: 'prestacao_contas_rpv' \}\)\)/);
 assert.equal(financialSource.includes('generatePrestacaoContasRpvText'), false);
 assert.equal(financialSource.includes('prestacao de contas'), false);
 assert.match(processesSource, /store\.upsert\('processes', record\)/, 'Processos deve conservar seu CRUD canônico.');
