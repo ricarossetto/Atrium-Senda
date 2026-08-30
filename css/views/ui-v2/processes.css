@@ -53,7 +53,7 @@ html[data-ui="v2"] .v2-process-heading {
 html[data-ui="v2"] .v2-process-heading p {
   grid-column: 1 / -1;
   margin: 0 0 var(--v2-space-1);
-  color: var(--v2-color-foreground-secondary);
+  color: var(--v2-color-gold);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .12em;
@@ -63,7 +63,8 @@ html[data-ui="v2"] .v2-process-heading p {
 html[data-ui="v2"] .v2-process-heading h2 {
   margin: 0;
   color: var(--v2-color-foreground);
-  font: 600 28px/34px var(--v2-font-editorial);
+  font: 600 32px/38px var(--v2-font-editorial);
+  letter-spacing: -.02em;
 }
 
 html[data-ui="v2"] .v2-process-heading span {
@@ -86,11 +87,11 @@ html[data-ui="v2"] #view-processes :where(.button, .v2-button, .icon-button) {
   font-family: var(--v2-font-interface);
   font-size: 13px;
   font-weight: 600;
-  transition: background-color var(--v2-duration-base) var(--v2-ease-standard), border-color var(--v2-duration-base) var(--v2-ease-standard), color var(--v2-duration-base) var(--v2-ease-standard);
+  transition: background-color var(--v2-duration-base) var(--v2-ease-standard), border-color var(--v2-duration-base) var(--v2-ease-standard), box-shadow var(--v2-duration-base) var(--v2-ease-standard), color var(--v2-duration-base) var(--v2-ease-standard), transform var(--v2-duration-base) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] #view-processes :where(.button, .v2-button, .icon-button):hover {
-  transform: none;
+  transform: translateY(-1px);
 }
 
 html[data-ui="v2"] #view-processes :where(.button.gold, .v2-button.is-primary) {
@@ -108,10 +109,10 @@ html[data-ui="v2"] #view-processes :where(.button.ghost, .v2-button.is-secondary
 html[data-ui="v2"] #view-processes .table-card {
   overflow: hidden;
   color: var(--v2-color-foreground);
-  background: var(--v2-color-surface);
+  background: var(--v2-color-surface-elevated);
   border: 1px solid var(--v2-color-border);
-  border-radius: var(--v2-radius-lg);
-  box-shadow: var(--v2-shadow-card);
+  border-radius: var(--v2-radius-xl);
+  box-shadow: var(--v2-shadow-slate);
 }
 
 html[data-ui="v2"] #view-processes .table-search {
@@ -120,6 +121,7 @@ html[data-ui="v2"] #view-processes .table-search {
   gap: var(--v2-space-1-5);
   padding: var(--v2-space-3) var(--v2-space-4);
   border-bottom: 1px solid var(--v2-color-border);
+  background: color-mix(in srgb, var(--v2-color-surface-elevated) 92%, var(--v2-color-primary-subtle));
 }
 
 html[data-ui="v2"] #view-processes .table-search label {
@@ -135,7 +137,7 @@ html[data-ui="v2"] #processSearch {
   min-height: 42px;
   padding: 0 var(--v2-space-3);
   color: var(--v2-color-foreground);
-  background: var(--v2-color-surface-secondary);
+  background: var(--v2-color-surface-inset);
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-md);
 }
@@ -157,7 +159,7 @@ html[data-ui="v2"] #processTable th {
   height: 38px;
   padding: 0 var(--v2-space-3);
   color: var(--v2-color-foreground-secondary);
-  background: var(--v2-color-surface-secondary);
+  background: var(--v2-color-primary-subtle);
   border-bottom: 1px solid var(--v2-color-border);
   font-size: 11px;
   font-weight: 700;
@@ -196,6 +198,7 @@ html[data-ui="v2"] #processTable th[aria-sort="ascending"],
 html[data-ui="v2"] #processTable th[aria-sort="descending"] {
   color: var(--v2-color-foreground);
   background: var(--v2-color-primary-soft);
+  box-shadow: inset 0 -2px 0 var(--v2-color-primary);
 }
 
 html[data-ui="v2"] #processTable td {
@@ -203,7 +206,7 @@ html[data-ui="v2"] #processTable td {
   padding: 10px var(--v2-space-3);
   vertical-align: top;
   color: var(--v2-color-foreground);
-  background: var(--v2-color-surface);
+  background: var(--v2-color-surface-elevated);
   border-bottom: 1px solid var(--v2-color-border-subtle);
   font-size: 12px;
   line-height: 16px;
@@ -224,6 +227,10 @@ html[data-ui="v2"] #processTable tbody tr:focus {
 
 html[data-ui="v2"] #processTable tbody tr.is-selected td {
   background: var(--v2-color-primary-soft);
+}
+
+html[data-ui="v2"] #processTable tbody tr.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--v2-color-gold);
 }
 
 html[data-ui="v2"] #processTable tbody tr.is-selected .process-cell-number::before {
@@ -338,6 +345,8 @@ html[data-ui="v2"] .process-inspector-backdrop {
   justify-content: flex-end;
   padding: 0;
   background: color-mix(in srgb, var(--v2-color-background) 78%, transparent);
+  backdrop-filter: blur(3px);
+  animation: v2-overlay-in var(--v2-duration-base) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"] .process-inspector {
@@ -346,9 +355,11 @@ html[data-ui="v2"] .process-inspector {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   color: var(--v2-color-foreground);
-  background: var(--v2-color-surface);
+  background: var(--v2-color-surface-elevated);
   border-left: 1px solid var(--v2-color-border);
   box-shadow: var(--v2-shadow-elevated);
+  transform-origin: right center;
+  animation: v2-drawer-in var(--v2-duration-slow) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"] .process-inspector > header,
@@ -358,11 +369,15 @@ html[data-ui="v2"] .process-inspector > footer {
   justify-content: space-between;
   gap: var(--v2-space-3);
   padding: var(--v2-space-4) var(--v2-space-5);
-  background: var(--v2-color-surface);
+  background: var(--v2-color-surface-elevated);
 }
 
 html[data-ui="v2"] .process-inspector > header {
   border-bottom: 1px solid var(--v2-color-border);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--v2-color-primary-subtle) 88%, transparent), transparent 70%),
+    var(--v2-color-surface-elevated);
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--v2-color-gold) 72%, transparent);
 }
 
 html[data-ui="v2"] .process-inspector > footer {
@@ -372,7 +387,7 @@ html[data-ui="v2"] .process-inspector > footer {
 
 html[data-ui="v2"] .process-inspector > header p {
   margin: 0 0 2px;
-  color: var(--v2-color-foreground-secondary);
+  color: var(--v2-color-gold);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .1em;
@@ -399,6 +414,7 @@ html[data-ui="v2"] .process-inspector-content {
   min-height: 0;
   overflow: auto;
   padding: var(--v2-space-5);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--v2-color-primary-subtle) 35%, transparent), transparent 180px);
 }
 
 html[data-ui="v2"] .process-inspector-identity {
@@ -408,7 +424,7 @@ html[data-ui="v2"] .process-inspector-identity {
 
 html[data-ui="v2"] .process-inspector-kicker {
   margin: 0 0 var(--v2-space-2);
-  color: var(--v2-color-foreground-secondary);
+  color: var(--v2-color-primary);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .08em;
@@ -457,10 +473,19 @@ html[data-ui="v2"] .process-inspector-section:last-child {
 
 html[data-ui="v2"] .process-inspector-section > h3 {
   margin: 0 0 var(--v2-space-3);
-  color: var(--v2-color-foreground);
+  color: var(--v2-color-primary);
   font: 700 13px/18px var(--v2-font-interface);
   letter-spacing: .035em;
   text-transform: uppercase;
+}
+
+html[data-ui="v2"] .process-inspector-section > h3::after {
+  width: 24px;
+  height: 1px;
+  display: inline-block;
+  margin: 0 0 3px var(--v2-space-2);
+  background: var(--v2-color-gold);
+  content: "";
 }
 
 html[data-ui="v2"] .process-inspector-metrics {
@@ -474,7 +499,7 @@ html[data-ui="v2"] .process-inspector-metrics > div {
   display: grid;
   gap: var(--v2-space-1);
   padding: var(--v2-space-2);
-  background: var(--v2-color-surface-secondary);
+  background: var(--v2-color-surface-inset);
   border: 1px solid var(--v2-color-border-subtle);
   border-radius: var(--v2-radius-md);
 }
@@ -499,7 +524,7 @@ html[data-ui="v2"] .process-last-movement {
   gap: var(--v2-space-1);
   margin-top: var(--v2-space-3);
   padding: var(--v2-space-3);
-  background: var(--v2-color-primary-soft);
+  background: var(--v2-color-primary-subtle);
   border-left: 3px solid var(--v2-color-primary);
   border-radius: var(--v2-radius-sm);
 }
@@ -549,7 +574,33 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="process"] .modal {
 }
 
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="process"] .modal h2 {
-  font-family: var(--v2-font-interface);
+  font-family: var(--v2-font-editorial);
+  letter-spacing: -.015em;
+}
+
+html[data-ui="v2"] .process-summary-card {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--v2-color-primary-subtle) 58%, transparent), transparent 62%),
+    var(--v2-color-surface-secondary);
+  border-color: var(--v2-color-border-strong);
+  border-radius: var(--v2-radius-lg);
+  box-shadow: inset 3px 0 0 var(--v2-color-gold);
+}
+
+html[data-ui="v2"] .process-summary-heading strong {
+  color: var(--v2-color-foreground);
+}
+
+html[data-ui="v2"] .process-summary-heading span,
+html[data-ui="v2"] .process-summary-heading small,
+html[data-ui="v2"] .process-summary-metrics span,
+html[data-ui="v2"] .process-summary-card p {
+  color: var(--v2-color-foreground-secondary);
+}
+
+html[data-ui="v2"] .process-summary-metrics div {
+  background: var(--v2-color-surface-elevated);
+  border-color: var(--v2-color-border);
 }
 
 html[data-ui="v2"] .process-form-sections {
@@ -561,16 +612,22 @@ html[data-ui="v2"] .process-form-section {
   min-width: 0;
   margin: 0;
   padding: var(--v2-space-4);
+  background: color-mix(in srgb, var(--v2-color-surface-elevated) 94%, var(--v2-color-primary-subtle));
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-lg);
 }
 
 html[data-ui="v2"] .process-form-section legend {
   padding: 0 var(--v2-space-2);
-  color: var(--v2-color-foreground);
+  color: var(--v2-color-primary);
   font: 700 12px/18px var(--v2-font-interface);
   letter-spacing: .055em;
   text-transform: uppercase;
+}
+
+html[data-ui="v2"] .process-form-section legend::before {
+  color: var(--v2-color-gold);
+  content: "— ";
 }
 
 html[data-ui="v2"] .process-form-section .form-grid {
@@ -632,7 +689,7 @@ html[data-ui="v2"] .process-form-section .form-grid {
 
   html[data-ui="v2"] #processTable tbody tr:not(.process-empty-row) {
     overflow: hidden;
-    background: var(--v2-color-surface);
+    background: var(--v2-color-surface-elevated);
     border: 1px solid var(--v2-color-border);
     border-radius: var(--v2-radius-lg);
   }
@@ -644,6 +701,13 @@ html[data-ui="v2"] .process-form-section .form-grid {
     padding: var(--v2-space-2) var(--v2-space-3);
     border-bottom: 1px solid var(--v2-color-border-subtle);
   }
+
+  html[data-ui="v2"] #processTable tbody tr.is-selected {
+    border-color: var(--v2-color-primary);
+    box-shadow: inset 3px 0 0 var(--v2-color-gold), var(--v2-shadow-slate);
+  }
+
+  html[data-ui="v2"] #processTable tbody tr.is-selected td:first-child { box-shadow: none; }
 
   html[data-ui="v2"] #processTable tbody tr:not(.process-empty-row) td::before {
     grid-row: 1 / span 3;

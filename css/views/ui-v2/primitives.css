@@ -1,7 +1,34 @@
 html[data-ui="v2"] body {
+  position: relative;
   color: var(--v2-color-foreground);
   background: var(--v2-color-background);
   font-family: var(--v2-font-interface);
+}
+
+html[data-ui="v2"] body::before {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--v2-z-toast) + 1);
+  pointer-events: none;
+  content: "";
+  opacity: var(--v2-grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+@keyframes v2-view-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes v2-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes v2-drawer-in {
+  from { opacity: .82; transform: scaleX(.985); }
+  to { opacity: 1; transform: none; }
 }
 
 html[data-ui="v2"] :where(
@@ -52,12 +79,18 @@ html[data-ui="v2"] .v2-button {
   font-family: var(--v2-font-interface);
   font-size: 13px;
   font-weight: 600;
-  transition: background-color var(--v2-duration-base) var(--v2-ease-standard), border-color var(--v2-duration-base) var(--v2-ease-standard), color var(--v2-duration-base) var(--v2-ease-standard);
+  transition: background-color var(--v2-duration-base) var(--v2-ease-standard), border-color var(--v2-duration-base) var(--v2-ease-standard), box-shadow var(--v2-duration-base) var(--v2-ease-standard), color var(--v2-duration-base) var(--v2-ease-standard), transform var(--v2-duration-base) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .button:hover,
 html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .icon-button:hover,
 html[data-ui="v2"] .v2-button:hover {
+  transform: translateY(-1px);
+}
+
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .button:active,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .icon-button:active,
+html[data-ui="v2"] .v2-button:active {
   transform: none;
 }
 
@@ -105,7 +138,7 @@ html[data-ui="v2"] :where(.topbar, #view-dashboard) button:disabled {
 html[data-ui="v2"] .v2-card,
 html[data-ui="v2"] #view-dashboard :where(.metric-card, .dashboard-widget, .dashboard-task-item) {
   color: var(--v2-color-foreground);
-  background: var(--v2-color-surface);
+  background: var(--v2-color-surface-elevated);
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-lg);
   box-shadow: var(--v2-shadow-card);
@@ -196,7 +229,7 @@ html[data-ui="v2"] .system-status-bar {
   margin: var(--v2-space-3) var(--v2-space-6) 0;
   padding: var(--v2-space-2) var(--v2-space-3);
   color: var(--v2-color-foreground-secondary);
-  background: var(--v2-color-surface);
+  background: color-mix(in srgb, var(--v2-color-surface-elevated) 94%, var(--v2-color-primary-subtle));
   border: 1px solid var(--v2-color-border);
   border-left: 3px solid var(--v2-color-info);
   border-radius: var(--v2-radius-md);
@@ -225,13 +258,14 @@ html[data-ui="v2"] .system-status-bar[data-tone="danger"] .system-status-icon { 
 
 html[data-ui="v2"] .modal-backdrop {
   background: color-mix(in srgb, var(--v2-color-background) 82%, transparent);
-  backdrop-filter: none;
+  backdrop-filter: blur(3px);
   z-index: var(--v2-z-overlay);
+  animation: v2-overlay-in var(--v2-duration-base) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"] .modal {
   color: var(--v2-color-foreground);
-  background: var(--v2-color-surface);
+  background: var(--v2-color-surface-elevated);
   border-color: var(--v2-color-border);
   border-radius: var(--v2-radius-xl);
   box-shadow: var(--v2-shadow-elevated);
@@ -240,21 +274,21 @@ html[data-ui="v2"] .modal {
 html[data-ui="v2"] .modal > header,
 html[data-ui="v2"] .modal footer {
   color: var(--v2-color-foreground);
-  background: var(--v2-color-surface);
+  background: var(--v2-color-surface-elevated);
   border-color: var(--v2-color-border-subtle);
 }
 
 html[data-ui="v2"] .modal :where(.field input, .field select, .field textarea) {
   min-height: 42px;
   color: var(--v2-color-foreground);
-  background: var(--v2-color-surface-secondary);
+  background: var(--v2-color-surface-inset);
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-md);
 }
 
 html[data-ui="v2"] .search-palette-dropdown {
   color: var(--v2-color-foreground);
-  background: var(--v2-color-surface);
+  background: var(--v2-color-surface-elevated);
   border-color: var(--v2-color-border);
   border-radius: var(--v2-radius-lg);
   box-shadow: var(--v2-shadow-elevated);
