@@ -332,3 +332,82 @@ export async function prepareUiV2TasksFixture(page) {
   await page.locator('#kanbanBoard [data-task-id="ui-v2-task-overdue"]').waitFor();
   return fixture;
 }
+
+export async function prepareUiV2AgendaFixture(page) {
+  const fixture = await page.evaluate(() => {
+    const localDate = offset => {
+      const value = new Date();
+      value.setHours(12, 0, 0, 0);
+      value.setDate(value.getDate() + offset);
+      return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+    };
+    const today = localDate(0);
+    const tomorrow = localDate(1);
+    const afterTomorrow = localDate(2);
+    const future = localDate(5);
+    const data = {
+      today,
+      tomorrow,
+      afterTomorrow,
+      future,
+      agenda: [
+        {
+          id: 'ui-v2-agenda-hearing', externalId: 'agenda:synthetic:hearing', title: 'Audiência de conciliação sintética',
+          date: today, time: '09:30', client: 'Cliente Agenda Sintética', process: '5004321-12.2026.8.21.0001',
+          location: 'Sala de audiências sintética', source: 'Agenda externa', description: 'Compromisso sintético para validação visual.',
+          unknownField: 'preservar'
+        },
+        {
+          id: 'ui-v2-agenda-meeting', title: 'Reunião de estratégia processual', date: today, time: '14:00',
+          client: 'Cliente Estratégia Sintética', process: '5012345-67.2026.4.04.7100', location: 'Sala mineral', source: 'Interna'
+        },
+        {
+          id: 'ui-v2-agenda-future', title: 'Atendimento futuro sintético', date: future, time: '11:00',
+          client: 'Cliente Futuro Sintético', location: 'Videoconferência', source: 'Importação'
+        }
+      ],
+      tasks: [
+        {
+          id: 'ui-v2-agenda-task', title: 'Conferir documentos para audiência', client: 'Cliente Agenda Sintética',
+          process: '5004321-12.2026.8.21.0001', deadline: today, status: 'andamento', timeLogs: [{ minutes: 45 }]
+        },
+        {
+          id: 'ui-v2-agenda-fatal', title: 'Interpor recurso com data confirmada', client: 'Cliente Recursal Sintético',
+          process: '5012345-67.2026.4.04.7100', deadline: afterTomorrow, fatalDeadline: tomorrow, status: 'prioridade',
+          timeLogs: [{ minutes: 75 }]
+        },
+        {
+          id: 'ui-v2-agenda-text-only', title: 'Manifestar em 15 dias conforme texto da publicação',
+          client: 'Cliente Sem Data Sintético', status: 'triagem', timeLogs: []
+        }
+      ],
+      intimations: [
+        {
+          id: 'ui-v2-agenda-publication', title: 'Publicação sintética para manifestação supervisionada',
+          publishedAt: today, createdAt: `${today}T08:00:00.000Z`, process: '5004321-12.2026.8.21.0001',
+          client: 'Cliente Agenda Sintética', text: 'Intime-se para manifestação em 15 dias. Texto sintético sem prazo cadastrado.',
+          type: 'intimacao', unread: true, treatmentStatus: 'untreated'
+        },
+        {
+          id: 'ui-v2-agenda-created-fallback', title: 'Publicação sintética com data de registro',
+          createdAt: `${tomorrow}T10:00:00.000Z`, process: '5012345-67.2026.4.04.7100',
+          client: 'Cliente Registro Sintético', text: 'Registro sintético sem inferência de vencimento.', treatmentStatus: 'in_review'
+        }
+      ]
+    };
+    const { App, Store } = window.Atrium;
+    Store.state.agenda = data.agenda;
+    Store.state.tasks = data.tasks;
+    Store.state.intimations = data.intimations;
+    Store.state.audit = [];
+    App.agendaSelectedDate = null;
+    App.agendaCalendarMonthOffset = 0;
+    App.agendaTypeFilter = 'all';
+    App.renderAll();
+    App.switchView('agenda');
+    return data;
+  });
+  await page.locator('#view-agenda.active').waitFor();
+  await page.locator('#agendaList [data-agenda-activity-id="ui-v2-agenda-hearing"]').waitFor();
+  return fixture;
+}
