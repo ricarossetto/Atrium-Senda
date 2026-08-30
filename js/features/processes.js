@@ -1,4 +1,5 @@
 import { Store, isoDate, uid } from '../core/store.js';
+import { createProcessesV2Presenter } from '../views/ui-v2/processes-presenter.js';
 
 export function createProcessesFeature({
   store = Store,
@@ -22,6 +23,39 @@ export function createProcessesFeature({
   let initialized = false;
   const sort = { field: 'registeredAt', direction: 'desc' };
   const byId = id => documentRef?.getElementById(id);
+  const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
+  let processesPresenter;
+
+  const getPresenter = () => {
+    processesPresenter ||= createProcessesV2Presenter({
+      documentRef,
+      escapeHtml,
+      formatDate,
+      formatMinutes,
+      onEdit: item => feature.openProcessModal(item),
+      onConsult: button => feature.consultTjrs(button)
+    });
+    return processesPresenter;
+  };
+
+  const canConsultTjrs = item => String(item.number || '').includes('.8.21.') || String(item.court || '').toUpperCase().includes('TJRS');
+
+  const getProcessSummary = item => {
+    const processNumber = String(item?.number || item?.protocol || '').trim();
+    const linkedTasks = item?.id ? getLinkedTasks?.(processNumber) || [] : [];
+    const linkedIntimations = item?.id ? getLinkedIntimations?.(processNumber) || [] : [];
+    const openTasks = linkedTasks.filter(task => !isTerminalStatus(task.status));
+    const timeMinutes = linkedTasks.reduce((total, task) => total + totalTimeMinutes(task.timeLogs), 0);
+    const nextDeadline = openTasks.map(task => task.fatalDeadline || task.deadline).filter(Boolean).sort()[0];
+    return Object.freeze({
+      processNumber,
+      openTasks: openTasks.length,
+      linkedIntimations: linkedIntimations.length,
+      timeMinutes,
+      nextDeadline,
+      canConsultTjrs: canConsultTjrs(item)
+    });
+  };
 
   const feature = {
     init() {
@@ -29,6 +63,7 @@ export function createProcessesFeature({
       initialized = true;
       byId('newProcessButton')?.addEventListener('click', () => this.openProcessModal());
       byId('processSearch')?.addEventListener('input', event => this.render(event.target.value));
+      getPresenter().init();
       return true;
     },
 
@@ -58,10 +93,20 @@ export function createProcessesFeature({
 
     render(query = '') {
       const needle = normalizeText(query);
-      let records = store.state.processes.filter(item => !needle || normalizeText(`${item.number} ${item.client} ${item.court} ${item.county || ''} ${item.nb || ''} ${item.opposingParty || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
+      const allProcesses = Array.isArray(store.state.processes) ? store.state.processes : [];
+      let records = allProcesses.filter(item => !needle || normalizeText(`${item.number} ${item.client} ${item.court} ${item.county || ''} ${item.nb || ''} ${item.opposingParty || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
       records = sortRecords(records, sort);
       updateTableSortHeaders('processTable', sort);
-      byId('processTableBody').innerHTML = records.length ? records.map(item => {
+      const presenter = getPresenter();
+      if (isV2()) {
+        presenter.close({ restoreFocus: false });
+        presenter.updateCount({ visible: records.length, total: allProcesses.length, query: String(query || '').trim() });
+        byId('processTableBody').innerHTML = records.length
+          ? presenter.renderRows(records)
+          : presenter.renderEmpty({ hasProcesses: allProcesses.length > 0, query: String(query || '').trim() });
+      } else {
+        presenter.close({ restoreFocus: false });
+        byId('processTableBody').innerHTML = records.length ? records.map(item => {
         const registeredDate = item.registeredAt || item.createdAt;
         let feeBadge = '';
         if (item.feeAmount && Number(item.feeAmount) > 0) {
@@ -76,8 +121,7 @@ export function createProcessesFeature({
 
         const nbChip = item.nb ? `<span class="nb-chip" title="Número do Benefício INSS">NB ${escapeHtml(item.nb)}</span>` : '';
         const riskChip = item.risk ? `<span class="risk-chip ${item.risk === 'remoto' ? 'remoto' : item.risk === 'possivel' ? 'possivel' : 'provavel'}" title="Probabilidade de Êxito">${item.risk === 'remoto' ? 'Risco Alto' : item.risk === 'possivel' ? 'Risco Médio' : 'Êxito Provável'}</span>` : '';
-        const isTjrs = String(item.number || '').includes('.8.21.') || String(item.court || '').toUpperCase().includes('TJRS');
-        const tjrsButton = isTjrs ? `<button type="button" class="btn-tjrs-consult" data-tjrs-consult="${escapeHtml(item.number)}" title="Consultar andamentos no microserviço oficial do TJRS">⚖ Consultar TJRS</button>` : '';
+        const tjrsButton = canConsultTjrs(item) ? `<button type="button" class="btn-tjrs-consult" data-tjrs-consult="${escapeHtml(item.number)}" title="Consultar andamentos no microserviço oficial do TJRS">⚖ Consultar TJRS</button>` : '';
 
         const clientPosition = item.clientPosition ? `<small style="color:var(--gold-soft);">${escapeHtml(item.clientPosition)}</small> ` : '';
         const opposingParty = item.opposingParty ? `<small> vs ${escapeHtml(item.opposingParty)}</small>` : '';
@@ -106,12 +150,17 @@ export function createProcessesFeature({
           <td><strong>${escapeHtml(item.lastMovement || 'Sem movimentação')}</strong><small>${formatDate(item.lastMovementAt)}</small></td>
           <td>${item.monitoring === 'active' ? '<span class="status-chip connected">Monitorando</span>' : '<span class="status-chip warning">Atenção</span>'}</td>
         </tr>`;
-      }).join('') : '<tr><td colspan="6">Nenhum processo encontrado.</td></tr>';
+        }).join('') : '<tr><td colspan="6">Nenhum processo encontrado.</td></tr>';
+      }
+
+      byId('processTableBody')?.querySelector('[data-process-create]')?.addEventListener('click', () => this.openProcessModal());
 
       documentRef.querySelectorAll('#processTableBody [data-process-id]').forEach(row => row.addEventListener('click', event => {
-        if (event.target.closest('.btn-tjrs-consult')) return;
+        if (event.target.closest('.btn-tjrs-consult, [data-tjrs-consult]')) return;
         const item = store.state.processes.find(record => record.id === row.dataset.processId);
-        if (item) this.openProcessModal(item);
+        if (!item) return;
+        if (isV2()) presenter.open(item, getProcessSummary(item), event.target.closest('[data-process-details]') || row);
+        else this.openProcessModal(item);
       }));
 
       documentRef.querySelectorAll('#processTableBody [data-tjrs-consult]').forEach(button => {
@@ -121,6 +170,10 @@ export function createProcessesFeature({
         });
       });
       return records;
+    },
+
+    closeInspector(options) {
+      return getPresenter().close(options);
     },
 
     async consultTjrs(button) {
@@ -156,19 +209,14 @@ export function createProcessesFeature({
     openProcessModal(defaults = {}) {
       const actionTypes = (store.state.configuration?.actionTypes || []).map(item => ({ value: item.name, label: item.name }));
       const actionGroups = (store.state.configuration?.actionGroups || []).map(item => ({ value: item.name, label: item.name }));
-      const processNumber = String(defaults.number || defaults.protocol || '').trim();
-      const linkedTasks = defaults.id ? getLinkedTasks?.(processNumber) || [] : [];
-      const linkedIntimations = defaults.id ? getLinkedIntimations?.(processNumber) || [] : [];
-      const openTasks = linkedTasks.filter(task => !isTerminalStatus(task.status));
-      const timeMinutes = linkedTasks.reduce((total, task) => total + totalTimeMinutes(task.timeLogs), 0);
-      const nextDeadline = openTasks.map(task => task.fatalDeadline || task.deadline).filter(Boolean).sort()[0];
+      const summary = getProcessSummary(defaults);
       const summaryHtml = defaults.id ? `<section class="process-summary-card" data-process-summary>
-        <div class="process-summary-heading"><div><span>Resumo rápido do processo</span><strong>${escapeHtml(processNumber || 'Processo sem número')}</strong></div><small>${escapeHtml(defaults.client || 'Cliente não informado')} · ${escapeHtml(defaults.court || 'Órgão não informado')}</small></div>
+        <div class="process-summary-heading"><div><span>Resumo rápido do processo</span><strong>${escapeHtml(summary.processNumber || 'Processo sem número')}</strong></div><small>${escapeHtml(defaults.client || 'Cliente não informado')} · ${escapeHtml(defaults.court || 'Órgão não informado')}</small></div>
         <div class="process-summary-metrics">
-          <div><strong>${openTasks.length}</strong><span>Tarefas abertas</span></div>
-          <div><strong>${linkedIntimations.length}</strong><span>Intimações</span></div>
-          <div><strong>${escapeHtml(formatMinutes(timeMinutes))}</strong><span>Tempo apontado</span></div>
-          <div><strong>${nextDeadline ? formatDate(nextDeadline) : '—'}</strong><span>Próximo prazo</span></div>
+          <div><strong>${summary.openTasks}</strong><span>Tarefas abertas</span></div>
+          <div><strong>${summary.linkedIntimations}</strong><span>Intimações</span></div>
+          <div><strong>${escapeHtml(formatMinutes(summary.timeMinutes))}</strong><span>Tempo apontado</span></div>
+          <div><strong>${summary.nextDeadline ? formatDate(summary.nextDeadline) : '—'}</strong><span>Próximo prazo</span></div>
         </div>
         <p><b>Último andamento:</b> ${escapeHtml(defaults.lastMovement || 'Ainda não informado.')} ${defaults.lastMovementAt ? `· ${formatDate(defaults.lastMovementAt)}` : ''}</p>
       </section>` : '';

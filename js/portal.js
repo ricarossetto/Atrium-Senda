@@ -208,12 +208,15 @@ import { createTasksFeature } from './features/tasks.js';
       const field = th.dataset.sortField;
       const indicator = th.querySelector('.sort-indicator');
       th.classList.remove('sorted-asc', 'sorted-desc');
+      th.setAttribute('aria-sort', 'none');
       if (field === currentSort.field) {
         if (currentSort.direction === 'asc') {
           th.classList.add('sorted-asc');
+          th.setAttribute('aria-sort', 'ascending');
           if (indicator) indicator.textContent = '▲';
         } else {
           th.classList.add('sorted-desc');
+          th.setAttribute('aria-sort', 'descending');
           if (indicator) indicator.textContent = '▼';
         }
       } else {
@@ -297,6 +300,7 @@ import { createTasksFeature } from './features/tasks.js';
         App.currentUiMode = mode;
         getUiShellComponent().applyMode(mode);
         if (App.currentView === 'dashboard') App.renderDashboard();
+        if (App.currentView === 'processes') App.renderProcesses(document.getElementById('processSearch')?.value || '');
       }
     });
     return uiModeComponent;
@@ -830,6 +834,7 @@ import { createTasksFeature } from './features/tasks.js';
       });
     },
     switchView(view) {
+      if (this.currentView === 'processes' && view !== 'processes') getProcessesFeature().closeInspector({ restoreFocus: false });
       this.currentView = view;
       document.querySelectorAll('.view').forEach(element => element.classList.toggle('active', element.id === `view-${view}`));
       document.querySelectorAll('.nav-item[data-view]').forEach(element => element.classList.toggle('active', element.dataset.view === view));

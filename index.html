@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/primitives.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/shell.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/dashboard.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/processes.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -774,7 +775,12 @@
 
       <section class="view" id="view-processes" data-title="Processos" data-eyebrow="Carteira processual">
         <div class="section-toolbar">
-          <div class="filter-tabs"><button class="active">Ativos</button><button>Com movimentação</button><button>Sigilosos</button></div>
+          <div class="filter-tabs classic-only"><button class="active">Ativos</button><button>Com movimentação</button><button>Sigilosos</button></div>
+          <div class="v2-process-heading v2-only">
+            <p>Carteira processual</p>
+            <h2>Processos</h2>
+            <span id="processResultCount" aria-live="polite">0 processos</span>
+          </div>
           <div class="toolbar-actions">
             <button class="button ghost" data-view-link="importer">
               <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -798,17 +804,20 @@
           </div>
         </div>
         <article class="card table-card">
-          <div class="table-search"><input id="processSearch" type="search" placeholder="Pesquisar número CNJ, cliente ou tribunal"></div>
+          <div class="table-search">
+            <label for="processSearch">Pesquisar processos</label>
+            <input id="processSearch" type="search" placeholder="Pesquisar número CNJ, cliente ou tribunal" autocomplete="off">
+          </div>
           <div class="responsive-table">
             <table class="sortable-table" id="processTable">
               <thead>
                 <tr>
-                  <th data-sort-table="process" data-sort-field="number" class="sort-header">Processo <span class="sort-indicator">↕</span></th>
-                  <th data-sort-table="process" data-sort-field="client" class="sort-header">Cliente <span class="sort-indicator">↕</span></th>
-                  <th data-sort-table="process" data-sort-field="court" class="sort-header">Tribunal <span class="sort-indicator">↕</span></th>
-                  <th data-sort-table="process" data-sort-field="registeredAt" class="sort-header">Data de cadastro <span class="sort-indicator">↕</span></th>
-                  <th data-sort-table="process" data-sort-field="lastMovementAt" class="sort-header">Última movimentação <span class="sort-indicator">↕</span></th>
-                  <th data-sort-table="process" data-sort-field="monitoring" class="sort-header">Monitoramento <span class="sort-indicator">↕</span></th>
+                  <th data-sort-table="process" data-sort-field="number" class="sort-header" aria-sort="none"><button type="button" class="process-sort-button">Processo <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+                  <th data-sort-table="process" data-sort-field="client" class="sort-header" aria-sort="none"><button type="button" class="process-sort-button">Cliente <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+                  <th data-sort-table="process" data-sort-field="court" class="sort-header" aria-sort="none"><button type="button" class="process-sort-button">Tribunal <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+                  <th data-sort-table="process" data-sort-field="registeredAt" class="sort-header" aria-sort="none"><button type="button" class="process-sort-button">Data de cadastro <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+                  <th data-sort-table="process" data-sort-field="lastMovementAt" class="sort-header" aria-sort="none"><button type="button" class="process-sort-button">Última movimentação <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
+                  <th data-sort-table="process" data-sort-field="monitoring" class="sort-header" aria-sort="none"><button type="button" class="process-sort-button">Monitoramento <span class="sort-indicator" aria-hidden="true">↕</span></button></th>
                 </tr>
               </thead>
               <tbody id="processTableBody"></tbody>
@@ -1539,6 +1548,20 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div class="process-inspector-backdrop v2-only hidden" id="processInspectorBackdrop">
+    <aside class="process-inspector" id="processInspector" role="dialog" aria-modal="true" aria-labelledby="processInspectorTitle" aria-describedby="processInspectorContent">
+      <header>
+        <div><p>Processo</p><h2 id="processInspectorTitle">Detalhes do processo</h2></div>
+        <button type="button" class="icon-button" id="processInspectorClose" aria-label="Fechar detalhes do processo">×</button>
+      </header>
+      <div class="process-inspector-content" id="processInspectorContent"></div>
+      <footer>
+        <button type="button" class="button ghost hidden" id="processInspectorTjrs">Consultar TJRS</button>
+        <button type="button" class="button gold" id="processInspectorEdit">Editar processo</button>
+      </footer>
+    </aside>
   </div>
 
   <div class="modal-backdrop hidden" id="modalBackdrop">

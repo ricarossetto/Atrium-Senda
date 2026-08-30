@@ -43,13 +43,19 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     onModeChange?.({ mode, defaults });
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalEyebrow').textContent = eyebrow;
-    document.getElementById('modalFields').innerHTML = `${topHtml}<div class="form-grid">${fields.map(field => {
+    const renderField = field => {
       const value = defaults[field.name] ?? field.value ?? '';
       if (field.type === 'textarea') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><textarea id="field-${field.name}" name="${field.name}" ${field.required ? 'required' : ''}>${escapeHtml(value)}</textarea>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
       if (field.type === 'select') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><select id="field-${field.name}" name="${field.name}">${field.options.map(option => `<option value="${escapeHtml(option.value)}" ${String(value) === String(option.value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div>`;
       return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><input id="field-${field.name}" name="${field.name}" type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''}>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
-    }).join('')}</div>`;
+    };
+    const useProcessSections = mode === 'process' && document.documentElement.dataset.ui === 'v2';
+    const fieldsHtml = useProcessSections
+      ? renderProcessSections(fields, renderField)
+      : `<div class="form-grid">${fields.map(renderField).join('')}</div>`;
+    document.getElementById('modalFields').innerHTML = `${topHtml}${fieldsHtml}`;
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
+    document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
@@ -64,6 +70,7 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     const backdrop = document.getElementById('modalBackdrop');
     const wasOpen = backdrop && !backdrop.classList.contains('hidden');
     backdrop?.classList.add('hidden');
+    backdrop?.removeAttribute('data-modal-mode');
     onModeChange?.(null);
     document.getElementById('modalForm').reset();
     if (wasOpen) {
@@ -73,4 +80,29 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
   }
 
   return Object.freeze({ init, open, close });
+}
+
+const PROCESS_FIELD_SECTIONS = Object.freeze({
+  number: 'Identificação', oldNumber: 'Identificação', nb: 'Identificação', protocol: 'Identificação', caseFolder: 'Identificação',
+  client: 'Partes', clientPosition: 'Partes', opposingParty: 'Partes',
+  actionGroup: 'Classificação', actionType: 'Classificação', judicialPhase: 'Classificação', risk: 'Classificação', stage: 'Classificação',
+  court: 'Órgão e responsabilidade', county: 'Órgão e responsabilidade', courtUnit: 'Órgão e responsabilidade', responsible: 'Órgão e responsabilidade',
+  registeredAt: 'Movimentação', lastMovementAt: 'Movimentação', lastMovement: 'Movimentação',
+  feeType: 'Honorários', feePercentage: 'Honorários', feeAmount: 'Honorários', feeMonthly: 'Honorários', feeStatus: 'Honorários', feeNotes: 'Honorários',
+  requisitionType: 'Requisições', requisitionAmount: 'Requisições', requisitionBank: 'Requisições', requisitionStatus: 'Requisições',
+  secrecy: 'Privacidade e acompanhamento', monitoring: 'Privacidade e acompanhamento', notes: 'Privacidade e acompanhamento'
+});
+
+function renderProcessSections(fields, renderField) {
+  const sections = new Map();
+  for (const field of fields) {
+    const section = PROCESS_FIELD_SECTIONS[field.name] || 'Outros dados';
+    if (!sections.has(section)) sections.set(section, []);
+    sections.get(section).push(field);
+  }
+  return `<div class="process-form-sections">${[...sections.entries()].map(([section, sectionFields]) => `
+    <fieldset class="process-form-section">
+      <legend>${section}</legend>
+      <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
+    </fieldset>`).join('')}</div>`;
 }
