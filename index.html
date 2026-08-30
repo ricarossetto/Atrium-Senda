@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/publications.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/tasks.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/agenda.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/contacts.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -839,7 +840,12 @@
 
       <section class="view" id="view-contacts" data-title="Contatos" data-eyebrow="Pessoas e relacionamentos">
         <div class="section-toolbar">
-          <div class="toolbar-copy"><p>Contatos importados de sistemas jurídicos e preservados no armazenamento criptografado.</p></div>
+          <div class="toolbar-copy classic-only"><p>Contatos importados de sistemas jurídicos e preservados no armazenamento criptografado.</p></div>
+          <div class="v2-contacts-heading v2-only">
+            <p>People workspace</p>
+            <h2>Clientes e contatos</h2>
+            <small>Uma base canônica para pessoas, papéis e relacionamentos do escritório.</small>
+          </div>
           <div class="toolbar-actions">
             <button class="button ghost" data-view-link="importer">
               <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -864,8 +870,8 @@
           </div>
         </div>
         <article class="card table-card">
-          <div class="table-search"><input id="contactSearch" type="search" placeholder="Pesquisar nome, documento, telefone, e-mail ou origem"></div>
-          <div class="responsive-table">
+          <div class="table-search contacts-search"><label class="v2-only" for="contactSearch">Buscar pessoas</label><input id="contactSearch" type="search" aria-label="Pesquisar contatos" placeholder="Pesquisar nome, documento, telefone, e-mail ou origem" autocomplete="off"></div>
+          <div class="responsive-table contacts-classic-table">
             <table class="sortable-table" id="contactTable">
               <thead>
                 <tr>
@@ -880,6 +886,7 @@
               <tbody id="contactTableBody"></tbody>
             </table>
           </div>
+          <div class="v2-only" id="contactsV2Workspace" aria-live="polite"></div>
         </article>
       </section>
 

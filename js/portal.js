@@ -304,6 +304,7 @@ import { createTasksFeature } from './features/tasks.js';
         if (App.currentView === 'inbox') App.renderInbox();
         if (App.currentView === 'kanban') App.renderKanban();
         if (App.currentView === 'agenda') App.renderAgenda();
+        if (App.currentView === 'contacts') App.renderContacts(document.getElementById('contactSearch')?.value || '');
       }
     });
     return uiModeComponent;

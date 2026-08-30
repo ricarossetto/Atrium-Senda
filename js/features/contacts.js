@@ -1,4 +1,5 @@
 import { Store, isoDate, uid } from '../core/store.js';
+import { renderContactsV2Workspace } from '../views/ui-v2/contacts-presenter.js';
 
 export function createContactsFeature({
   store = Store,
@@ -12,7 +13,11 @@ export function createContactsFeature({
 } = {}) {
   let initialized = false;
   const sort = { field: 'name', direction: 'asc' };
+  let roleFilter = 'all';
+  let selectedContactId = null;
+  let restoreContactId = null;
   const byId = id => documentRef?.getElementById(id);
+  const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
 
   const feature = {
     init() {
@@ -20,6 +25,45 @@ export function createContactsFeature({
       initialized = true;
       byId('newContactButton')?.addEventListener('click', () => this.openContactModal());
       byId('contactSearch')?.addEventListener('input', event => this.render(event.target.value));
+      byId('contactsV2Workspace')?.addEventListener('click', event => this.handleWorkspaceClick(event));
+      byId('contactsV2Workspace')?.addEventListener('keydown', event => this.handleWorkspaceKeydown(event));
+      return true;
+    },
+
+    get roleFilter() { return roleFilter; },
+    get selectedContactId() { return selectedContactId; },
+
+    setRoleFilter(value) {
+      const allowed = ['all', 'cliente', 'testemunha', 'perito', 'adverso', 'correspondente', 'preposto', 'outro'];
+      roleFilter = allowed.includes(value) ? value : 'all';
+      selectedContactId = null;
+      this.render(byId('contactSearch')?.value || '');
+      return roleFilter;
+    },
+
+    selectContact(id, { focusInspector = true } = {}) {
+      const item = store.state.contacts.find(record => String(record.id) === String(id));
+      if (!item) return null;
+      selectedContactId = item.id;
+      restoreContactId = item.id;
+      this.render(byId('contactSearch')?.value || '');
+      if (focusInspector) queueMicrotask(() => {
+        const target = this.isMobileViewport()
+          ? byId('contactInspector')?.querySelector('[data-contact-inspector-close]')
+          : byId('contactInspectorHeading');
+        target?.focus();
+      });
+      return item;
+    },
+
+    closeInspector({ restoreFocus = true } = {}) {
+      const contactId = restoreContactId;
+      selectedContactId = null;
+      this.render(byId('contactSearch')?.value || '');
+      if (restoreFocus && contactId) queueMicrotask(() => {
+        [...documentRef.querySelectorAll('#contactsV2Workspace [data-contact-id]')]
+          .find(element => String(element.dataset.contactId) === String(contactId))?.focus();
+      });
       return true;
     },
 
@@ -53,6 +97,26 @@ export function createContactsFeature({
       records = sortRecords(records, sort);
       updateTableSortHeaders('contactTable', sort);
       byId('contactCount').textContent = `${store.state.contacts.length} contatos`;
+      if (isV2()) {
+        const visibleRecords = roleFilter === 'all'
+          ? records
+          : records.filter(item => item.contactRole === roleFilter);
+        if (selectedContactId && !visibleRecords.some(item => String(item.id) === String(selectedContactId))) selectedContactId = null;
+        byId('contactTableBody').innerHTML = '';
+        byId('contactsV2Workspace').innerHTML = renderContactsV2Workspace({
+          records: visibleRecords,
+          allRecords: store.state.contacts,
+          selectedId: selectedContactId,
+          roleFilter,
+          query,
+          sort,
+          escapeHtml,
+          formatDate
+        });
+        this.syncInspectorSemantics();
+        return visibleRecords;
+      }
+      byId('contactsV2Workspace').innerHTML = '';
       const roleMap = { cliente: 'Cliente', testemunha: 'Testemunha', perito: 'Perito Judicial', adverso: 'Adv. Adverso', correspondente: 'Correspondente', preposto: 'Preposto', outro: 'Outro' };
       byId('contactTableBody').innerHTML = records.length ? records.map(item => {
         const registeredDate = item.registeredAt || item.createdAt;
@@ -79,8 +143,76 @@ export function createContactsFeature({
       return records;
     },
 
+    handleWorkspaceClick(event) {
+      const target = event.target.closest('button');
+      if (!target) return;
+      if (target.dataset.contactRoleFilter) {
+        this.setRoleFilter(target.dataset.contactRoleFilter);
+        return;
+      }
+      if (target.dataset.contactSortField) {
+        this.handleSort(target.dataset.contactSortField);
+        return;
+      }
+      if (target.dataset.contactId) {
+        this.selectContact(target.dataset.contactId);
+        return;
+      }
+      if (target.hasAttribute('data-contact-inspector-close')) {
+        this.closeInspector();
+        return;
+      }
+      if (target.hasAttribute('data-contact-edit')) {
+        const item = store.state.contacts.find(record => String(record.id) === String(selectedContactId));
+        if (item) this.openContactModal(item);
+        return;
+      }
+      if (target.hasAttribute('data-contact-documents')) {
+        byId('btnGenDocContact')?.click();
+        return;
+      }
+      if (target.hasAttribute('data-contact-create')) this.openContactModal();
+    },
+
+    handleWorkspaceKeydown(event) {
+      if (event.key === 'Escape' && selectedContactId) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeInspector();
+        return;
+      }
+      if (event.key !== 'Tab' || !selectedContactId || !this.isMobileViewport()) return;
+      const inspector = byId('contactInspector');
+      const focusable = [...(inspector?.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || [])]
+        .filter(element => element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && documentRef.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && documentRef.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    },
+
+    syncInspectorSemantics() {
+      const inspector = byId('contactInspector');
+      if (!inspector) return;
+      const mobile = this.isMobileViewport();
+      inspector.setAttribute('role', mobile && selectedContactId ? 'dialog' : 'region');
+      if (mobile && selectedContactId) inspector.setAttribute('aria-modal', 'true');
+      else inspector.removeAttribute('aria-modal');
+    },
+
+    isMobileViewport() {
+      return Boolean(documentRef?.defaultView?.matchMedia?.('(max-width: 760px)').matches);
+    },
+
     openContactModal(defaults = {}) {
-      openModal?.('contact', defaults.id ? 'Detalhes do contato' : 'Novo contato', 'Cadastro de pessoas', [
+      const v2 = isV2();
+      openModal?.('contact', defaults.id ? (v2 ? 'Editar contato' : 'Detalhes do contato') : 'Novo contato', v2 ? 'Pessoas e relacionamentos' : 'Cadastro de pessoas', [
         { name: 'name', label: 'Nome completo / razão social', required: true, full: true },
         { name: 'contactRole', label: 'Papel do contato', type: 'select', options: [{value:'cliente',label:'Cliente / Outorgante'},{value:'testemunha',label:'Testemunha'},{value:'perito',label:'Perito Judicial / Assistente'},{value:'adverso',label:'Advogado Adverso / Parte Contrária'},{value:'correspondente',label:'Correspondente Jurídico'},{value:'preposto',label:'Preposto / Representante'},{value:'outro',label:'Outro Contato'}] },
         { name: 'leadOrigin', label: 'Origem do contato / captação', type: 'select', options: [{value:'indicacao',label:'Indicação de Cliente'},{value:'parceria',label:'Parceria Profissional'},{value:'balcao',label:'Balcão / Atendimento Direto'},{value:'redes_sociais',label:'Redes Sociais / WhatsApp'},{value:'google_site',label:'Google / Site do Escritório'},{value:'convenio',label:'Convênio / Entidade Sindical'},{value:'outro',label:'Outra Origem'}] },

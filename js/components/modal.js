@@ -56,12 +56,14 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
         ? renderTaskSections(fields, renderField)
         : mode === 'agenda' && isV2
           ? renderAgendaSections(fields, renderField)
+        : mode === 'contact' && isV2
+          ? renderContactSections(fields, renderField)
       : `<div class="form-grid">${fields.map(renderField).join('')}</div>`;
     document.getElementById('modalFields').innerHTML = `${topHtml}${fieldsHtml}`;
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
-    if (['task', 'agenda'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
+    if (['task', 'agenda', 'contact'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
       const modalFields = document.getElementById('modalFields');
@@ -153,6 +155,30 @@ function renderAgendaSections(fields, renderField) {
   }
   return `<div class="agenda-form-sections">${[...sections.entries()].map(([section, sectionFields]) => `
     <fieldset class="agenda-form-section">
+      <legend>${section}</legend>
+      <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
+    </fieldset>`).join('')}</div>`;
+}
+
+const CONTACT_FIELD_SECTIONS = Object.freeze({
+  name: 'Identificação', contactRole: 'Identificação', document: 'Identificação', rg: 'Identificação',
+  birthDate: 'Identificação', profession: 'Identificação', maritalStatus: 'Identificação',
+  mobile: 'Contato', phone: 'Contato', email: 'Contato',
+  address: 'Endereço', district: 'Endereço', city: 'Endereço', state: 'Endereço', zip: 'Endereço',
+  leadOrigin: 'Relacionamento', origin: 'Relacionamento',
+  notes: 'Anotações'
+});
+
+const CONTACT_SECTION_ORDER = Object.freeze(['Identificação', 'Contato', 'Endereço', 'Relacionamento', 'Anotações']);
+
+function renderContactSections(fields, renderField) {
+  const sections = new Map(CONTACT_SECTION_ORDER.map(section => [section, []]));
+  for (const field of fields) {
+    const section = CONTACT_FIELD_SECTIONS[field.name] || 'Anotações';
+    sections.get(section).push(field);
+  }
+  return `<div class="contact-form-sections">${[...sections.entries()].filter(([, sectionFields]) => sectionFields.length).map(([section, sectionFields]) => `
+    <fieldset class="contact-form-section">
       <legend>${section}</legend>
       <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
     </fieldset>`).join('')}</div>`;
