@@ -1,9 +1,9 @@
 # ATRIUM — Roadmap pós-hardening técnico
 
-## NOW — Gate Beta Final pré-UI-V2
+## NOW — Consolidação do baseline humano pré-UI-V2
 
-- Fechar recuperação do runtime derivado, persistência de configuração vazia, migrações de segredo, feedback cifrado, toolchain Node 24 e documentação verificável.
-- Exigir suíte local e workflow canônico integralmente verdes antes de avançar.
+- Preservar em `main` o baseline aprovado no Human Beta Gate 1 e seus checkpoints históricos por tags imutáveis.
+- Exigir workflow canônico integralmente verde no HEAD final de `main` antes de avançar.
 - Preservar a UI atual, o único Store, o backend e todos os contratos jurídicos existentes.
 
 ## NEXT — UI V2 dual-mode
@@ -32,3 +32,4 @@ Esta etapa só começa em missão própria depois do Gate Beta verde.
 - Discovery DJEN → DataJud somente leitura, sem ciência judicial.
 - Backup/restore cifrado e atômico, runtime recuperável e feedback local cifrado.
 - Neutralidade de marca e compatibilidade legada restrita à camada necessária.
+- Human Beta Gate 1 aprovado com 55/55 suítes, A1 Windows e Visual QA verdes.

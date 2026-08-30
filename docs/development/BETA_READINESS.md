@@ -31,8 +31,8 @@
 
 ## Status atual
 
-- **Status técnico**: `TECHNICAL BETA READY — PRE-UI-V2`, condicionado ao GitHub Actions canônico verde do HEAD publicado.
-- **Branch**: `beta-hardening`.
+- **Status técnico**: `TECHNICAL BETA READY — PRE-UI-V2`; o Human Beta Gate 1 foi concluído com 55/55 suítes e os jobs Lint/Test/E2E, A1 Windows e Visual QA aprovados no baseline promovido.
+- **Branch canônica**: `main`.
 - **Não significa**: release final, ambiente de produção certificado, auditoria jurídica ou disponibilidade contínua de serviços externos.
 
 ## Dívida externa conhecida

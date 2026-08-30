@@ -2,7 +2,7 @@
 
 # 🏛️ ATRIUM — Escritório Integrado
 
-### Gestão jurídica local com armazenamento cifrado e fluxos supervisionados (v2.0 Beta)
+### Gestão jurídica local-first, segura e supervisionada (v2.0 Beta)
 
 [![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-gold.svg)](package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -15,7 +15,9 @@
 
 ## Sobre o ATRIUM
 
-O ATRIUM é uma aplicação open-source de gestão de escritório jurídico. A versão Beta atual reúne processos, contatos, publicações, tarefas, agenda, financeiro, documentos, configurações e integrações em um frontend JavaScript modular. O arquivo `js/portal.js` funciona como composition shell sobre um único Store e o backend canônico.
+O ATRIUM é um workspace open source e local-first para escritórios jurídicos. A versão Beta atual centraliza processos, contatos, publicações e intimações, tarefas/Kanban, agenda, financeiro, documentos e integrações judiciais, mantendo os dados do escritório sob controle local e cifrado.
+
+A IA, quando configurada, atua de forma assistencial e com contexto minimizado. Confirmação de prazos, envio de e-mail, ciência judicial e demais ações sensíveis permanecem sob supervisão humana.
 
 O armazenamento Beta usa JSON cifrado com AES-256-GCM, revisionamento otimista e gravações atômicas. SQLite permanece uma possibilidade de evolução futura; não é o armazenamento atual.
 
@@ -50,17 +52,17 @@ O armazenamento Beta usa JSON cifrado com AES-256-GCM, revisionamento otimista e
 
 ### Windows
 
-Dê duplo clique em `iniciar-atrium.bat`. O starter valida o Node.js, ativa `pnpm@11.19.0`, instala pelo lockfile congelado quando necessário e abre `http://127.0.0.1:4173` após o servidor responder.
+Dê duplo clique em `iniciar-atrium.bat`. O starter valida Node.js 24 e Corepack, executa `pnpm@11.19.0` diretamente por `corepack pnpm`, instala pelo lockfile congelado quando necessário, prepara o Chromium local do Playwright somente se estiver ausente e abre `http://127.0.0.1:4173` após o servidor responder. O fluxo normal não exige `corepack enable` nem privilégios administrativos.
 
 ### Terminal
 
 ```bash
 git clone https://github.com/ricarossetto/Atrium-Senda.git
 cd Atrium-Senda
-corepack enable
-corepack prepare pnpm@11.19.0 --activate
-pnpm install --frozen-lockfile
-pnpm start
+corepack --version
+corepack pnpm --version
+corepack pnpm install --frozen-lockfile
+corepack pnpm start
 ```
 
 ## Testes automatizados
@@ -68,15 +70,15 @@ pnpm start
 A suíte canônica contém 55 suítes registradas em `tests/run-all.mjs`, incluindo segurança, concorrência do Store, recuperação do runtime, migrações de segredo, primeira persistência de instalação nova, QR TOTP sintético, contrato de sincronização, backup/restore, integrações judiciais, módulos frontend, E2E e Visual QA.
 
 ```bash
-pnpm check
-pnpm test
+corepack pnpm check
+corepack pnpm test
 ```
 
 O CI usa Node 24, `pnpm@11.19.0` e `pnpm install --frozen-lockfile`. O fluxo A1 completo é validado no job Windows; testes locais em outros sistemas não substituem essa autoridade.
 
 ## Estado e limitações do Beta
 
-- Estado técnico pretendido deste gate: **TECHNICAL BETA READY — PRE-UI-V2**, condicionado ao workflow canônico verde do HEAD publicado.
+- Estado técnico: **HUMAN BETA GATE 1 PASSED — PRE-UI-V2**, com 55/55 suítes e jobs Lint/Test/E2E, A1 Windows e Visual QA aprovados no baseline promovido.
 - O feedback permanece local; o mantenedor só o recebe se o usuário exportar ou compartilhar deliberadamente o registro.
 - DJEN/DataJud e portais dependem de disponibilidade, credenciais e configuração do ambiente.
 - Ações oficiais, ciência judicial, envio de e-mail e confirmação de prazo permanecem sob responsabilidade humana.

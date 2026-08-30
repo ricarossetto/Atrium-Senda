@@ -1,13 +1,13 @@
 # ATRIUM — Plano-mestre de desenvolvimento
 
-## Modo atual: AUDIT / TECHNICAL BETA PRE-UI-V2
+## Modo atual: RELEASE CONSOLIDATION / HUMAN BETA PRE-UI-V2
 
 A arquitetura frontend foi modularizada. O foco atual é integridade, segurança, recuperação, instalação reproduzível e correspondência entre documentação e comportamento real. Não há nova fase arquitetural neste gate.
 
 ## Proteção das referências Git
 
-- Desenvolvimento exclusivamente em `beta-hardening`.
-- `main`, `checkpoint-pre-modularization` e `pre-modularization-beta-1` permanecem imutáveis sem autorização explícita.
+- `main` é a branch canônica após a promoção fast-forward expressamente autorizada do baseline humano aprovado.
+- Os marcos históricos permanecem imutáveis nas tags `pre-modularization-beta-1`, `pre-ui-v2-beta-technical-ready` e `pre-ui-v2-human-beta-gate1`.
 - Sem reset destrutivo, rebase de histórico ou force push.
 - Cada ciclo termina com regressões dirigidas, `pnpm check`, `pnpm test`, revisão do diff, commit, push e GitHub Actions completo.
 
@@ -41,10 +41,10 @@ A arquitetura frontend foi modularizada. O foco atual é integridade, segurança
 ## Critério de saída do gate
 
 - Testes novos de runtime recovery, configuração vazia, migrações de segurança, toolchain e readiness aprovados.
-- 52 suítes canônicas locais aprovadas.
+- 55 suítes canônicas aprovadas.
 - Lint/Test/E2E, job A1 Windows e Visual QA aprovados no mesmo HEAD, preferencialmente no attempt 1.
-- Working tree limpo e `beta-hardening` sincronizada com o remoto.
-- Status permitido: **TECHNICAL BETA READY — PRE-UI-V2**. Isso não equivale a release final, certificação jurídica ou produção final.
+- Working tree limpo e `main` sincronizada com o remoto.
+- Status: **HUMAN BETA GATE 1 PASSED — PRE-UI-V2**. Isso não equivale a release final, certificação jurídica ou produção final.
 
 ## Próximo ciclo autorizado após o gate
 
