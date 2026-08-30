@@ -533,3 +533,32 @@ export async function prepareUiV2DocumentsFixture(page) {
   await page.locator('#documentsTemplateGrid [data-generate-doc-type="procuracao"]').waitFor();
   return fixture;
 }
+
+export async function prepareUiV2LeadsFixture(page) {
+  const fixture = {
+    leads: [
+      { id: 'lead-v2-new', client: 'Ana Interessada Sintética', serviceType: 'Aposentadoria especial', status: 'novo', origin: 'Indicação de Cliente', estimatedFee: 5000, responsible: 'Advogada Teste UI V2', notes: 'Relato sigiloso sintético', registeredAt: '2026-08-20' },
+      { id: 'lead-v2-analysis', client: 'Bruno Análise Sintético', serviceType: 'Revisão documental previdenciária', status: 'em_analise', origin: 'Google / Site', estimatedFee: null, responsible: 'Advogada Beta', registeredAt: '2026-08-21' },
+      { id: 'lead-v2-proposal', client: 'Carla Proposta Sintética', serviceType: 'Planejamento sucessório', status: 'proposta', origin: 'Instagram / Redes Sociais', estimatedFee: 7500, responsible: 'Advogada Gama', registeredAt: '2026-08-22' },
+      { id: 'lead-v2-closed', client: 'Daniel Fechado Sintético', serviceType: 'Ação indenizatória', status: 'fechado', origin: 'Parceiro / Correspondente', estimatedFee: 9000, responsible: 'Advogada Delta', registeredAt: '2026-08-23' },
+      { id: 'lead-v2-declined', client: 'Elisa Declinada Sintética', serviceType: 'Consulta sem viabilidade', status: 'declinado', origin: 'Sindicato / Associação', estimatedFee: null, responsible: 'Advogada Épsilon', registeredAt: '2026-08-24' },
+      { id: 'lead-v2-long', client: 'Fundação Sintética de Assistência Jurídica e Relacionamento Institucional de Nome Extenso', serviceType: 'Análise jurídica multidisciplinar de alta complexidade com descrição extensa', status: 'novo', origin: 'Passante / Balcão', estimatedFee: 12000, responsible: 'Advogada Responsável de Nome Extenso', registeredAt: '2026-08-25' },
+      { id: 'lead-v2-unknown', client: '', serviceType: '', status: 'status_historico', origin: '', estimatedFee: 0, responsible: '', registeredAt: '2026-08-26' }
+    ],
+    contacts: [{ id: 'lead-contact-isolation', name: 'Contato Sintético Intacto', source: 'Fixture sintética' }],
+    processes: [{ id: 'lead-process-isolation', number: '0000000-00.2026.8.21.0000', client: 'Processo Sintético Intacto' }]
+  };
+
+  await page.evaluate(data => {
+    const { App, Store } = window.Atrium;
+    Store.state.leads = data.leads;
+    Store.state.contacts = data.contacts;
+    Store.state.processes = data.processes;
+    Store.state.audit = [];
+    App.renderAll();
+    App.switchView('leads');
+  }, fixture);
+  await page.locator('#view-leads.active').waitFor();
+  await page.locator('#leadsV2Workspace [data-lead-id="lead-v2-new"]').waitFor();
+  return fixture;
+}
