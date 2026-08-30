@@ -58,12 +58,14 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
           ? renderAgendaSections(fields, renderField)
         : mode === 'contact' && isV2
           ? renderContactSections(fields, renderField)
+        : mode === 'lead' && isV2
+          ? renderLeadSections(fields, renderField)
       : `<div class="form-grid">${fields.map(renderField).join('')}</div>`;
     document.getElementById('modalFields').innerHTML = `${topHtml}${fieldsHtml}`;
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
-    if (['task', 'agenda', 'contact'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
+    if (['task', 'agenda', 'contact', 'lead'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
       const modalFields = document.getElementById('modalFields');
@@ -179,6 +181,27 @@ function renderContactSections(fields, renderField) {
   }
   return `<div class="contact-form-sections">${[...sections.entries()].filter(([, sectionFields]) => sectionFields.length).map(([section, sectionFields]) => `
     <fieldset class="contact-form-section">
+      <legend>${section}</legend>
+      <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
+    </fieldset>`).join('')}</div>`;
+}
+
+const LEAD_FIELD_SECTIONS = Object.freeze({
+  client: 'Interessado', serviceType: 'Demanda jurídica',
+  status: 'Andamento', responsible: 'Andamento',
+  origin: 'Origem', estimatedFee: 'Estimativa', notes: 'Relato'
+});
+
+const LEAD_SECTION_ORDER = Object.freeze(['Interessado', 'Demanda jurídica', 'Andamento', 'Origem', 'Estimativa', 'Relato']);
+
+function renderLeadSections(fields, renderField) {
+  const sections = new Map(LEAD_SECTION_ORDER.map(section => [section, []]));
+  for (const field of fields) {
+    const section = LEAD_FIELD_SECTIONS[field.name] || 'Relato';
+    sections.get(section).push(field);
+  }
+  return `<div class="lead-form-sections">${[...sections.entries()].filter(([, sectionFields]) => sectionFields.length).map(([section, sectionFields]) => `
+    <fieldset class="lead-form-section">
       <legend>${section}</legend>
       <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
     </fieldset>`).join('')}</div>`;

@@ -8,7 +8,8 @@ export function createLeadsFeature({
   formatDate,
   formatCurrency,
   openModal,
-  getCurrentUserName
+  getCurrentUserName,
+  renderV2Workspace
 } = {}) {
   let initialized = false;
   let statusFilter = 'all';
@@ -47,6 +48,35 @@ export function createLeadsFeature({
 
       const countEl = byId('leadCount');
       if (countEl) countEl.textContent = `${filtered.length} atendimentos`;
+
+      byId('leadStatusFilters')?.querySelectorAll('button[data-lead-filter]').forEach(button => {
+        const selected = button.dataset.leadFilter === filter;
+        button.classList.toggle('active', selected);
+        button.setAttribute('aria-pressed', String(selected));
+      });
+
+      const workspace = byId('leadsV2Workspace');
+      const isV2 = documentRef?.documentElement?.dataset?.ui === 'v2';
+      if (isV2 && workspace && renderV2Workspace) {
+        listEl.innerHTML = '';
+        workspace.innerHTML = renderV2Workspace({
+          allLeads: leads,
+          leads: filtered,
+          statusFilter: filter,
+          escapeHtml,
+          formatDate,
+          formatCurrency,
+          fallbackDate: isoDate()
+        });
+        workspace.querySelectorAll('[data-lead-id]').forEach(record => {
+          record.addEventListener('click', () => {
+            const lead = store.state.leads.find(item => item.id === record.dataset.leadId);
+            if (lead) this.openLeadModal(lead);
+          });
+        });
+        return filtered;
+      }
+      if (workspace) workspace.innerHTML = '';
 
       if (!filtered.length) {
         listEl.innerHTML = '<tr><td colspan="7" class="empty-table" style="text-align:center;padding:24px;color:var(--muted);">Nenhum atendimento ou oportunidade registrada. Clique em "+ Novo Atendimento" para cadastrar.</td></tr>';

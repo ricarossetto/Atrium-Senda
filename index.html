@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/contacts.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/financial.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/documents.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/leads.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -590,13 +591,18 @@
 
       <section class="view" id="view-leads" data-title="Atendimentos e Oportunidades" data-eyebrow="CRM Jurídico & Captação">
         <div class="section-toolbar">
+          <div class="v2-leads-heading v2-only">
+            <p>Atendimentos</p>
+            <h2>Entrada e relacionamento</h2>
+            <small>Triagem das novas demandas jurídicas, da chegada à decisão de contratação.</small>
+          </div>
           <div class="filter-tabs" id="leadStatusFilters">
-            <button class="active" data-lead-filter="all">Todos</button>
-            <button data-lead-filter="novo">Novos</button>
-            <button data-lead-filter="em_analise">Em Análise</button>
-            <button data-lead-filter="proposta">Proposta Enviada</button>
-            <button data-lead-filter="fechado">Fechados</button>
-            <button data-lead-filter="declinado">Declinados</button>
+            <button type="button" class="active" data-lead-filter="all" aria-pressed="true">Todos</button>
+            <button type="button" data-lead-filter="novo" aria-pressed="false">Novos</button>
+            <button type="button" data-lead-filter="em_analise" aria-pressed="false">Em Análise</button>
+            <button type="button" data-lead-filter="proposta" aria-pressed="false">Proposta Enviada</button>
+            <button type="button" data-lead-filter="fechado" aria-pressed="false">Fechados</button>
+            <button type="button" data-lead-filter="declinado" aria-pressed="false">Declinados</button>
           </div>
           <div class="toolbar-actions">
             <span class="status-chip connected" id="leadCount">0 atendimentos</span>
@@ -604,8 +610,8 @@
           </div>
         </div>
         <article class="card table-card">
-          <div class="table-search"><input id="leadSearch" type="search" placeholder="Pesquisar cliente, tipo de atendimento, origem ou responsável"></div>
-          <div class="responsive-table">
+          <div class="table-search leads-search"><label class="v2-only" for="leadSearch">Buscar atendimentos</label><input id="leadSearch" type="search" aria-label="Pesquisar atendimentos" placeholder="Pesquisar cliente, tipo de atendimento, origem ou responsável"></div>
+          <div class="responsive-table leads-classic-table">
             <table class="sortable-table" id="leadTable">
               <thead>
                 <tr>
@@ -621,6 +627,7 @@
               <tbody id="leadTableBody"></tbody>
             </table>
           </div>
+          <div id="leadsV2Workspace" class="v2-only"></div>
         </article>
       </section>
 
