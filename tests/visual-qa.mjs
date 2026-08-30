@@ -458,3 +458,4 @@ await import('./visual_ui_v2_publications.mjs');
 await import('./visual_ui_v2_tasks.mjs');
 await import('./visual_ui_v2_agenda.mjs');
 await import('./visual_ui_v2_contacts.mjs');
+await import('./visual_ui_v2_financial.mjs');

@@ -449,3 +449,38 @@ export async function prepareUiV2ContactsFixture(page) {
   await page.locator('#contactsV2Workspace [data-contact-id="ui-v2-contact-client"]').waitFor();
   return fixture;
 }
+
+export async function prepareUiV2FinancialFixture(page) {
+  const fixture = {
+    processes: [
+      { id: 'fin-rpv-zero', number: '5000000-00.2026.8.21.0001', client: 'Cliente Zero Sintética', requisitionAmount: 0, rpvAmount: 9999, economicValue: 8888, feePercentage: 30, feeAmount: 0, requisitionStatus: 'requisitado', source: 'Fixture sintética' },
+      { id: 'fin-rpv-fallback', number: '5000001-11.2026.8.21.0001', client: 'Cliente RPV Sintética', rpvAmount: 10000, feePercentage: 20, requisitionStatus: 'aguardando_deposito', source: 'Fixture sintética' },
+      { id: 'fin-economic', number: '5000002-22.2026.8.21.0001', client: 'Cliente Econômica Sintética', economicValue: 20000, feePercentage: 25, feeAmount: 6000, requisitionStatus: 'disponivel_saque', source: 'Fixture sintética' },
+      { id: 'fin-final', number: '5000003-33.2026.8.21.0001', client: 'Cliente Quitada Sintética', requisitionAmount: 5000, feePercentage: 10, requisitionStatus: 'repassado', source: 'Fixture sintética' },
+      { id: 'fin-unknown', number: '5000004-44.2026.8.21.0001', client: 'Cliente Status Sintético', requisitionAmount: 7000, feePercentage: 15, requisitionStatus: 'em_conferencia_sintetica', source: 'Fixture sintética' },
+      { id: 'fin-fee-zero', number: '5000005-55.2026.8.21.0001', client: 'Cliente Honorário Zero', feeType: 'fixo', feeAmount: 0, feeStatus: 'a_faturar', source: 'Fixture sintética' },
+      { id: 'fin-fee-fixed', number: '5000006-66.2026.8.21.0001', client: 'Cliente Honorário Fixo', feeType: 'fixo', feeAmount: 2500, feeStatus: 'a_faturar', source: 'Fixture sintética' },
+      { id: 'fin-fee-monthly', number: '5000007-77.2026.8.21.0001', client: 'Cliente Mensal Sintética', feeType: 'mensal', feeMonthly: 800, feeStatus: 'pago', source: 'Fixture sintética' },
+      { id: 'fin-target-rpv', number: 'FIN-TARGET-RPV', client: 'Cliente Lançamento RPV', court: 'TJRS', customField: 'preservar-rpv' },
+      { id: 'fin-target-exito', number: 'FIN-TARGET-EXITO', client: 'Cliente Lançamento Êxito', court: 'TJRS', customField: 'preservar-exito' },
+      { id: 'fin-target-fixo', number: 'FIN-TARGET-FIXO', client: 'Cliente Lançamento Fixo', court: 'TJRS', customField: 'preservar-fixo' },
+      { id: 'fin-target-mensal', number: 'FIN-TARGET-MENSAL', client: 'Cliente Lançamento Mensal', court: 'TJRS', customField: 'preservar-mensal' },
+      { id: 'fin-target-custas', number: 'FIN-TARGET-CUSTAS', client: 'Cliente Custas Rejeitadas', court: 'TJRS', customField: 'preservar-custas' },
+      { id: 'fin-target-rollback', number: 'FIN-TARGET-ROLLBACK', client: 'Cliente Rollback', court: 'TJRS', customField: 'preservar-rollback' },
+      { id: 'fin-target-double', number: 'FIN-TARGET-DOUBLE', client: 'Cliente Double Submit', court: 'TJRS', customField: 'preservar-double' }
+    ],
+    tasks: [{ id: 'fin-time', title: 'Atividade financeira sintética', status: 'andamento', timeLogs: [{ minutes: 95 }] }]
+  };
+
+  await page.evaluate(data => {
+    const { App, Store } = window.Atrium;
+    Store.state.processes = data.processes;
+    Store.state.tasks = data.tasks;
+    Store.state.audit = [];
+    App.renderAll();
+    App.switchView('financial');
+  }, fixture);
+  await page.locator('#view-financial.active').waitFor();
+  await page.locator('#financialV2Workspace [data-financial-record="fin-rpv-zero"]').first().waitFor({ state: 'attached' });
+  return fixture;
+}
