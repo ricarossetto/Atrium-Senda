@@ -25,6 +25,7 @@ function recordScreenshot(file) {
   assert.equal(hashes.has(hash), false, `Screenshot duplicado: ${path.basename(file)}.`);
   hashes.add(hash);
   screenshots++;
+  return hash;
 }
 
 try {
@@ -102,12 +103,21 @@ try {
 
         if (config.form) {
           await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"] [data-process-details]').click();
+          await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
+          await page.locator('#processInspectorEdit').waitFor({ state: 'visible' });
+          await page.waitForTimeout(260);
           await page.locator('#processInspectorEdit').click();
-          await page.locator('#modalBackdrop[data-modal-mode="process"]:not(.hidden)').waitFor();
+          await page.waitForFunction(() => {
+            const backdrop = document.querySelector('#modalBackdrop[data-modal-mode="process"]:not(.hidden)');
+            const modal = backdrop?.querySelector('.modal');
+            const rect = modal?.getBoundingClientRect();
+            return Boolean(backdrop && rect && rect.width > 0 && rect.height > 0);
+          });
           const form = await page.evaluate(() => {
             const modal = document.querySelector('#modalBackdrop[data-modal-mode="process"] .modal');
             const rect = modal.getBoundingClientRect();
             return {
+              visible: rect.width > 0 && rect.height > 0,
               left: rect.left,
               right: rect.right,
               top: rect.top,
@@ -119,6 +129,7 @@ try {
               hiddenRequired: [...document.querySelectorAll('#modalForm [required]')].filter(element => element.getClientRects().length === 0).length
             };
           });
+          assert.equal(form.visible, true); assertions++;
           assert.ok(form.left >= -2 && form.right <= form.viewportWidth + 2); assertions++;
           assert.ok(form.top >= -2 && form.bottom <= form.viewportHeight + 2); assertions++;
           assert.ok(form.overflow <= 2); assertions++;
@@ -133,6 +144,39 @@ try {
         await context.close();
       }
     }
+  }
+
+  const comparisonContext = await session.createContext({ viewport: { width: 1440, height: 900 } });
+  try {
+    const { page, pageErrors } = await prepareUiV2Page(comparisonContext, session.server.baseUrl, { theme: 'light' });
+    await prepareUiV2ProcessesFixture(page);
+    await page.waitForTimeout(120);
+
+    const v2Heading = await page.locator('.v2-process-heading').boundingBox();
+    assert.ok(v2Heading && v2Heading.width > 0, 'A hierarquia V2 de Processos deve estar visível.'); assertions++;
+
+    await page.locator('[data-ui-mode="classic"]').click();
+    await page.locator('html[data-ui="classic"]').waitFor();
+    assert.equal(await page.locator('.v2-process-heading').isVisible(), false); assertions++;
+    const classicFile = path.join(OUTPUT, 'comparison-classic-light-1440x900-list.png');
+    await page.screenshot({ path: classicFile, fullPage: false });
+    recordScreenshot(classicFile);
+
+    await page.locator('html').evaluate(element => { element.style.filter = 'grayscale(1)'; });
+    const classicGrayFile = path.join(OUTPUT, 'comparison-classic-grayscale-1440x900-list.png');
+    await page.screenshot({ path: classicGrayFile, fullPage: false });
+    const classicGrayHash = recordScreenshot(classicGrayFile);
+
+    await page.locator('[data-ui-mode="v2"]').click();
+    await page.locator('html[data-ui="v2"]').waitFor();
+    assert.equal(await page.locator('.v2-process-heading').isVisible(), true); assertions++;
+    const v2GrayFile = path.join(OUTPUT, 'comparison-v2-grayscale-1440x900-list.png');
+    await page.screenshot({ path: v2GrayFile, fullPage: false });
+    const v2GrayHash = recordScreenshot(v2GrayFile);
+    assert.notEqual(classicGrayHash, v2GrayHash, 'Classic e V2 Processos devem permanecer distintos sem cor.'); assertions++;
+    assert.deepEqual(pageErrors, [], `Comparativo Processos gerou pageerror: ${pageErrors.join(' | ')}`); assertions++;
+  } finally {
+    await comparisonContext.close();
   }
 
   console.log('======================================================');

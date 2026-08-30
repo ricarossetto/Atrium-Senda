@@ -131,6 +131,7 @@ const checkFiles = [
   'tests/ui_v2_accessibility.mjs',
   'tests/ui_v2_processes.mjs',
   'tests/ui_v2_processes_accessibility.mjs',
+  'tests/ui_v2_visual_direction.mjs',
   'tests/visual_ui_v2_dashboard.mjs',
   'tests/visual_ui_v2_processes.mjs',
   'tests/visual-qa.mjs'
@@ -197,6 +198,7 @@ const testSuites = [
   { name: 'UI V2 Acessibilidade, Busca, Dialog e Mobile', file: 'tests/ui_v2_accessibility.mjs' },
   { name: 'UI V2 Processos, Tabela Densa, Inspector e Contratos Funcionais', file: 'tests/ui_v2_processes.mjs' },
   { name: 'UI V2 Processos, Acessibilidade e RecordList Responsiva', file: 'tests/ui_v2_processes_accessibility.mjs' },
+  { name: 'UI V2 Direção Mineral Editorial, Motion e Isolamento Classic', file: 'tests/ui_v2_visual_direction.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 

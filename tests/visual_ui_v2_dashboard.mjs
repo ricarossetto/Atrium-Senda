@@ -9,7 +9,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUTPUT = path.join(ROOT, 'artifacts', 'visual-qa', 'ui-v2-dashboard');
 const CONFIGS = [
   { name: '1440x900', width: 1440, height: 900 },
-  { name: '1280x720', width: 1280, height: 720 },
+  { name: '1280x800', width: 1280, height: 800 },
   { name: '1024x768', width: 1024, height: 768 },
   { name: '390x844', width: 390, height: 844 }
 ];
@@ -19,6 +19,14 @@ const session = await startUiV2Session();
 const hashes = new Set();
 let screenshots = 0;
 let assertions = 0;
+
+function recordScreenshot(file) {
+  const hash = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  assert.equal(hashes.has(hash), false, `Screenshot V2 duplicado: ${path.basename(file)}.`);
+  hashes.add(hash);
+  screenshots++;
+  return hash;
+}
 
 try {
   for (const theme of ['light', 'dark']) {
@@ -66,14 +74,42 @@ try {
 
         const file = path.join(OUTPUT, `${theme}-${config.name}.png`);
         await page.screenshot({ path: file, fullPage: false });
-        const hash = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-        assert.equal(hashes.has(hash), false, `Screenshot V2 duplicado em ${theme} ${config.name}.`);
-        hashes.add(hash);
-        screenshots++;
+        recordScreenshot(file);
       } finally {
         await context.close();
       }
     }
+  }
+
+  const comparisonContext = await session.createContext({ viewport: { width: 1440, height: 900 } });
+  try {
+    const { page, pageErrors } = await prepareUiV2Page(comparisonContext, session.server.baseUrl, { theme: 'light' });
+    await page.waitForTimeout(180);
+    const v2Opening = await page.locator('#v2DashboardOpening').boundingBox();
+    assert.ok(v2Opening && v2Opening.width > 700, 'A composição V2 deve possuir uma zona editorial dominante.'); assertions++;
+
+    await page.locator('[data-ui-mode="classic"]').click();
+    await page.locator('html[data-ui="classic"]').waitFor();
+    assert.equal(await page.locator('#v2DashboardOpening').isVisible(), false); assertions++;
+    const classicFile = path.join(OUTPUT, 'comparison-classic-light-1440x900.png');
+    await page.screenshot({ path: classicFile, fullPage: false });
+    recordScreenshot(classicFile);
+
+    await page.locator('html').evaluate(element => { element.style.filter = 'grayscale(1)'; });
+    const classicGrayFile = path.join(OUTPUT, 'comparison-classic-grayscale-1440x900.png');
+    await page.screenshot({ path: classicGrayFile, fullPage: false });
+    const classicGrayHash = recordScreenshot(classicGrayFile);
+
+    await page.locator('[data-ui-mode="v2"]').click();
+    await page.locator('html[data-ui="v2"]').waitFor();
+    assert.equal(await page.locator('#v2DashboardOpening').isVisible(), true); assertions++;
+    const v2GrayFile = path.join(OUTPUT, 'comparison-v2-grayscale-1440x900.png');
+    await page.screenshot({ path: v2GrayFile, fullPage: false });
+    const v2GrayHash = recordScreenshot(v2GrayFile);
+    assert.notEqual(classicGrayHash, v2GrayHash, 'Classic e V2 devem permanecer distintos sem cor.'); assertions++;
+    assert.deepEqual(pageErrors, [], `Comparativo Dashboard gerou pageerror: ${pageErrors.join(' | ')}`); assertions++;
+  } finally {
+    await comparisonContext.close();
   }
 
   console.log('======================================================');

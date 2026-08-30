@@ -21,15 +21,15 @@ for (const stylesheet of ['tokens.css', 'primitives.css', 'shell.css', 'dashboar
   assert.match(indexSource, new RegExp(`css/views/ui-v2/${stylesheet.replace('.', '\\.')}`), `${stylesheet} deve estar carregado.`);
 }
 for (const [token, value] of Object.entries({
-  '--v2-color-background': '#171915',
-  '--v2-color-surface': '#1E211C',
-  '--v2-color-foreground': '#ECECE5',
-  '--v2-color-primary': '#819477',
-  '--v2-color-gold': '#C0A15C'
+  '--v2-color-background': '#111315',
+  '--v2-color-surface': '#181B1E',
+  '--v2-color-foreground': '#ECEEED',
+  '--v2-color-primary': '#8297A6',
+  '--v2-color-gold': '#C0A261'
 })) {
   assert.ok(tokensSource.includes(`${token}: ${value}`), `Token dark ausente: ${token}.`);
 }
-for (const value of ['#F7F5EF', '#FCFBF7', '#292A25', '#596B50', '#A88742']) {
+for (const value of ['#F3F4F2', '#FAFAF8', '#252A2E', '#596C7A', '#A7894D']) {
   assert.ok(tokensSource.includes(value), `Valor light ausente: ${value}.`);
 }
 assert.match(tokensSource, /html\[data-ui="v2"\]/, 'O namespace V2 deve estar isolado no root.');
@@ -54,9 +54,9 @@ function contrast(a, b) {
   return (values[0] + .05) / (values[1] + .05);
 }
 
-assert.ok(contrast('#292A25', '#F7F5EF') >= 7, 'Texto principal light deve passar AAA.');
-assert.ok(contrast('#56584F', '#F7F5EF') >= 4.5, 'Texto secundário light deve passar AA.');
-assert.ok(contrast('#ECECE5', '#171915') >= 7, 'Texto principal dark deve passar AAA.');
-assert.ok(contrast('#BCC0B5', '#171915') >= 4.5, 'Texto secundário dark deve passar AA.');
+assert.ok(contrast('#252A2E', '#F3F4F2') >= 7, 'Texto principal light deve passar AAA.');
+assert.ok(contrast('#555D63', '#F3F4F2') >= 4.5, 'Texto secundário light deve passar AA.');
+assert.ok(contrast('#ECEEED', '#111315') >= 7, 'Texto principal dark deve passar AAA.');
+assert.ok(contrast('#B4B9BC', '#111315') >= 4.5, 'Texto secundário dark deve passar AA.');
 
 console.log('✓ Foundation UI V2 aprovada: tokens light/dark, isolamento, primitives, contraste, um DOM e zero framework.');
