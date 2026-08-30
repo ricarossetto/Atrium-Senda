@@ -484,3 +484,52 @@ export async function prepareUiV2FinancialFixture(page) {
   await page.locator('#financialV2Workspace [data-financial-record="fin-rpv-zero"]').first().waitFor({ state: 'attached' });
   return fixture;
 }
+
+export async function prepareUiV2DocumentsFixture(page) {
+  const fixture = {
+    contacts: [{
+      id: 'doc-contact',
+      name: 'Cliente Documental Sintética',
+      document: '000.000.000-00',
+      rg: 'RG-SINTETICO',
+      profession: 'Profissão Sintética',
+      maritalStatus: 'solteiro',
+      address: 'Rua Sintética, 100',
+      district: 'Centro Sintético',
+      city: 'Cidade Sintética',
+      state: 'RS',
+      zip: '00000-000'
+    }],
+    processes: [
+      { id: 'doc-process', number: '0000000-00.0000.0.00.0000', client: 'Cliente Documental Sintética', court: 'Vara Sintética', nb: 'NB-SINTETICO', feeType: 'exito', feePercentage: 12.5, feeAmount: 0, requisitionAmount: 10000 },
+      { id: 'doc-zero-percent', number: '0000001-11.0000.0.00.0000', client: 'Cliente Percentual Zero', feeType: 'exito', feePercentage: 0, feeAmount: 0, requisitionAmount: 10000 },
+      { id: 'doc-zero-fixed', number: '0000002-22.0000.0.00.0000', client: 'Cliente Valor Zero', feeType: 'fixo', feePercentage: 0, feeAmount: 0, requisitionAmount: 10000 },
+      { id: 'doc-invalid-fee', number: '0000003-33.0000.0.00.0000', client: 'Cliente Tipo Inválido', feeType: 'tipo-financeiro-invalido', feePercentage: 10, feeAmount: 999, requisitionAmount: 10000 },
+      { id: 'doc-rpv', number: '0000004-44.0000.0.00.0000', client: 'Cliente RPV Sintética', feeType: 'exito', feePercentage: 10, feeAmount: 999, requisitionAmount: 10000 }
+    ]
+  };
+
+  await page.evaluate(data => {
+    const { App, Store } = window.Atrium;
+    Store.state.contacts = data.contacts;
+    Store.state.processes = data.processes;
+    Store.state.settings = {
+      ...Store.state.settings,
+      officeName: 'Escritório Sintético',
+      officeSlogan: 'Slogan Sintético',
+      officeLogo: '',
+      lawyerName: 'Advogada Sintética',
+      lawyerOab: 'OAB/RS 000000',
+      lawyerCpfCnpj: '000.000.000-00',
+      lawyerAddress: 'Avenida Sintética, 200',
+      city: 'Cidade do Escritório/RS'
+    };
+    Store.state.terms = [{ id: 'doc-term', name: 'Nome Alternativo Sintético', registration: 'OAB/RS 999999' }];
+    Store.state.audit = [];
+    App.renderAll();
+    App.switchView('documents');
+  }, fixture);
+  await page.locator('#view-documents.active').waitFor();
+  await page.locator('#documentsTemplateGrid [data-generate-doc-type="procuracao"]').waitFor();
+  return fixture;
+}
