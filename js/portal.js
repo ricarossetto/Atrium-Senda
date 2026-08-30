@@ -545,7 +545,7 @@ import { createTasksFeature } from './features/tasks.js';
       escapeHtml,
       showToast: (message, type) => App.toast(message, type),
       audit: (action, detail) => Store.audit(action, detail),
-      onSyncAll: () => App.syncAll()
+      onSyncAll: options => App.syncAll(options)
     });
     return judicialIntegrationsFeature;
   }
@@ -571,7 +571,7 @@ import { createTasksFeature } from './features/tasks.js';
       windowRef: window,
       secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
       showToast: (message, type) => App.toast(message, type),
-      onSyncAll: () => App.syncAll()
+      onSyncAll: options => App.syncAll(options)
     });
     return externalCalendarFeature;
   }
@@ -1271,8 +1271,10 @@ import { createTasksFeature } from './features/tasks.js';
         if (!await Store.flush()) throw new Error('A sincronização foi recebida, mas não pôde ser persistida localmente. Tente novamente.');
         this.renderAll();
         if (!silent) this.toast('Sincronização concluída com sucesso.', 'success');
+        return true;
       } catch (error) {
         if (!silent) this.toast(error.message || 'Não foi possível sincronizar.', 'error');
+        return false;
       } finally {
         buttons.forEach(button => { if (button) button.disabled = false; });
       }

@@ -82,10 +82,16 @@ const jsQrFeature = createJudicialIntegrationsFeature({
     URL: { createObjectURL: () => 'blob:synthetic', revokeObjectURL() {} },
     jsQR: () => ({ data: TOTP_MARKER })
   },
-  secureFetch: async () => { throw new Error('não deveria consultar'); }
+  secureFetch: async url => ({
+    ok: true,
+    async json() {
+      assert.equal(url, '/api/integrations/judicial/totp/parse');
+      return { type: 'single', account: { secret: TOTP_MARKER, name: 'Conta Sintética', issuer: 'Tribunal Sintético', digits: 6 } };
+    }
+  })
 });
 await jsQrFeature.readPortalQr({ name: 'qr-jsqr.png' });
-assert.equal(jsQrFixture.elements.portalTotpSecret.value, TOTP_MARKER);
+assert.equal(jsQrFixture.elements.portalTotpSecret.value, '', 'Segredo extraído do QR não deve permanecer no DOM.');
 
 const barcodeFixture = createQrDocument();
 const warnings = [];
@@ -98,11 +104,17 @@ const barcodeFeature = createJudicialIntegrationsFeature({
     BarcodeDetector: class { async detect() { return [{ rawValue: 'SYNTHETIC_BARCODE_SECRET_MARKER' }]; } },
     createImageBitmap: async () => ({ close() {} })
   },
-  secureFetch: async () => { throw new Error('não deveria consultar'); },
+  secureFetch: async url => ({
+    ok: true,
+    async json() {
+      assert.equal(url, '/api/integrations/judicial/totp/parse');
+      return { type: 'single', account: { secret: 'JBSWY3DPEHPK3PXP', name: 'Conta Barcode', issuer: 'Tribunal Barcode', digits: 6 } };
+    }
+  }),
   warn: message => warnings.push(message)
 });
 await barcodeFeature.readPortalQr({ name: 'qr-barcode.png' });
-assert.equal(barcodeFixture.elements.portalTotpSecret.value, 'SYNTHETIC_BARCODE_SECRET_MARKER');
+assert.equal(barcodeFixture.elements.portalTotpSecret.value, '');
 assert.equal(JSON.stringify(warnings).includes(TOTP_MARKER), false);
 
 const failedQrFixture = createQrDocument();
@@ -206,7 +218,7 @@ try {
 
     await app.testA1Sandbox();
     let syncCalls = 0;
-    app.syncAll = async () => { syncCalls++; };
+    app.syncAll = async () => { syncCalls++; return true; };
     await app.syncJudicialNow();
 
     return { rendered, cleanup, requests, audits, toasts, resetBeforeConfirm, syncCalls };
@@ -261,14 +273,22 @@ try {
     const file = input.files[0];
     const toasts = [];
     app.toast = (message, type) => toasts.push({ message, type });
-    window.BarcodeDetector = class { async detect() { return [{ rawValue: 'SYNTHETIC_BARCODE_SECRET_MARKER' }]; } };
+    window.BarcodeDetector = class { async detect() { return [{ rawValue: 'JBSWY3DPEHPK3PXP' }]; } };
     window.createImageBitmap = async () => ({ close() {} });
+    window.KellerAuth.secureFetch = async url => ({
+      ok: true,
+      async json() {
+        if (url.endsWith('/totp/parse')) return { type: 'single', account: { secret: 'JBSWY3DPEHPK3PXP', name: 'Conta Sintética', issuer: 'Tribunal Sintético', digits: 6 } };
+        return { ok: true };
+      }
+    });
     await app.readPortalQr(file);
     const barcodeSecret = document.getElementById('portalTotpSecret').value;
+    const barcodeStatus = document.getElementById('portalQrStatus').textContent;
     delete window.BarcodeDetector;
     await app.readPortalQr(file);
     const failureSecret = document.getElementById('portalTotpSecret').value;
-    return { barcodeSecret, failureSecret, toasts };
+    return { barcodeSecret, barcodeStatus, failureSecret, toasts };
   });
 
   assert.equal(coverage.rendered.status, 'A1 Operacional · 1 2FA');
@@ -297,7 +317,8 @@ try {
   assert.equal(JSON.stringify(certificate.audits).includes(PFX_MARKER), false);
   assert.equal(tooLarge.requests, 0);
   assert.ok(tooLarge.toasts.some(item => item.message.includes('5 MB')));
-  assert.equal(qr.barcodeSecret, 'SYNTHETIC_BARCODE_SECRET_MARKER');
+  assert.equal(qr.barcodeSecret, '');
+  assert.match(qr.barcodeStatus, /QR lido com sucesso/);
   assert.equal(qr.failureSecret, '');
   console.log('✓ Feature modular de integrações judiciais preservada (A1, mTLS sandbox, TOTP, QR, cobertura, reset e sync)');
   await context.close();

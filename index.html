@@ -1543,6 +1543,7 @@
           <form id="portalTotpForm" class="totp-form">
             <label><span>Portal Judicial</span><select id="totpPortalSelect" required><option value="">Selecione o tribunal</option></select></label>
             <label class="file-picker"><span>Imagem do QR Code</span><input id="portalQrInput" type="file" accept="image/png,image/jpeg,image/webp"><small id="portalQrStatus">Selecionar imagem do QR</small></label>
+            <label id="portalTotpAccountField" class="hidden"><span>Conta do QR</span><select id="portalTotpAccountSelect"><option value="">Selecione a conta</option></select></label>
             <label><span>Ou Chave Manual Base32</span><input id="portalTotpSecret" type="password" autocomplete="off" maxlength="256" placeholder="Ex: JBSWY3DPEHPK3PXP"></label>
             <label><span>Código de 6 Dígitos (Teste)</span><input id="portalTotpCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"></label>
             <div class="totp-actions"><button class="button gold" type="submit">Testar e Ativar 2FA</button><button class="button ghost" id="removePortalTotpButton" type="button">Remover vínculo local</button></div>

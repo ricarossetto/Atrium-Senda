@@ -10,6 +10,7 @@ export function createJudicialIntegrationsFeature({
 } = {}) {
   let judicialStatus = null;
   let initialized = false;
+  let pendingTotpAccounts = [];
   const byId = id => documentRef.getElementById(id);
 
   const feature = {
@@ -72,6 +73,11 @@ export function createJudicialIntegrationsFeature({
       if (byId('portalTotpCode')) byId('portalTotpCode').value = '';
       if (byId('certificatePassphrase')) byId('certificatePassphrase').value = '';
       if (clearQr && byId('portalQrInput')) byId('portalQrInput').value = '';
+      pendingTotpAccounts = [];
+      const accountField = byId('portalTotpAccountField');
+      const accountSelect = byId('portalTotpAccountSelect');
+      accountField?.classList?.add('hidden');
+      if (accountSelect) accountSelect.innerHTML = '<option value="">Selecione a conta</option>';
     },
 
     async refreshStatus(showError = false) {
@@ -239,7 +245,7 @@ export function createJudicialIntegrationsFeature({
         audit('Certificado A1 configurado', 'Contêiner validado pelo Windows e armazenado cifrado no agente local.');
         showToast('Certificado validado com sucesso! Sincronizando dados judiciais...', 'success');
         await feature.refreshStatus();
-        await onSyncAll();
+        await onSyncAll({ silent: true });
       } catch (error) {
         showToast(error.message, 'error');
       } finally {
@@ -250,7 +256,9 @@ export function createJudicialIntegrationsFeature({
     async readPortalQr(file) {
       const status = byId('portalQrStatus');
       const secretInput = byId('portalTotpSecret');
-      secretInput.value = '';
+      if (secretInput) secretInput.value = '';
+      pendingTotpAccounts = [];
+      byId('portalTotpAccountField')?.classList?.add('hidden');
       if (!file) {
         status.textContent = 'Selecionar QR code';
         return;
@@ -260,24 +268,7 @@ export function createJudicialIntegrationsFeature({
         let raw = '';
         if (typeof windowRef.jsQR === 'function') {
           try {
-            const ImageConstructor = windowRef.Image || globalThis.Image;
-            const image = new ImageConstructor();
-            const imageLoaded = new Promise((resolve, reject) => {
-              image.onload = () => resolve();
-              image.onerror = () => reject(new Error('Falha ao carregar arquivo de imagem.'));
-            });
-            const objectUrl = windowRef.URL.createObjectURL(file);
-            image.src = objectUrl;
-            await imageLoaded;
-            windowRef.URL.revokeObjectURL(objectUrl);
-            const canvas = documentRef.createElement('canvas');
-            canvas.width = image.naturalWidth || image.width;
-            canvas.height = image.naturalHeight || image.height;
-            const context = canvas.getContext('2d', { willReadFrequently: true });
-            context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-            const qrResult = windowRef.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
-            if (qrResult?.data) raw = String(qrResult.data || '').trim();
+            raw = await decodeQrWithJsQr(file, { windowRef, documentRef });
           } catch {
             warn('Falha ao ler QR com jsQR.');
           }
@@ -294,11 +285,35 @@ export function createJudicialIntegrationsFeature({
           }
         }
         if (!raw) throw new Error('Não foi possível ler o QR Code da imagem. Verifique se o enquadramento está nítido ou cole a chave manual Base32.');
-        secretInput.value = raw;
-        status.textContent = `${file.name} · QR lido com sucesso`;
-        showToast('QR Code decodificado com sucesso! Digite o código de 6 dígitos para validar.', 'success');
+        const parsed = await feature.request('/api/integrations/judicial/totp/parse', { qrData: raw });
+        raw = '';
+        const parsedAccounts = parsed.type === 'migration' ? parsed.accounts : [parsed.account];
+        pendingTotpAccounts = (parsedAccounts || []).filter(account => account?.secret).map(account => ({
+          name: String(account.name || 'Conta sem nome').slice(0, 160),
+          issuer: String(account.issuer || 'Authenticator').slice(0, 160),
+          secret: String(account.secret || ''),
+          digits: Number(account.digits || 6)
+        }));
+        if (!pendingTotpAccounts.length) throw new Error('O QR foi lido, mas não contém uma conta TOTP válida.');
+
+        const accountField = byId('portalTotpAccountField');
+        const accountSelect = byId('portalTotpAccountSelect');
+        if (pendingTotpAccounts.length > 1) {
+          if (!accountSelect) throw new Error('O QR contém múltiplas contas, mas o seletor seguro não está disponível.');
+          accountSelect.innerHTML = `<option value="">Selecione a conta</option>${pendingTotpAccounts.map((account, index) => `<option value="${index}">${escapeHtml(account.issuer)} · ${escapeHtml(account.name)}</option>`).join('')}`;
+          accountField?.classList?.remove('hidden');
+          status.textContent = `${file.name} · ${pendingTotpAccounts.length} contas encontradas`;
+          showToast('QR lido. Selecione a conta judicial correta antes de validar o código.', 'success');
+        } else {
+          accountField?.classList?.add('hidden');
+          if (accountSelect) accountSelect.innerHTML = '<option value="0">Conta TOTP identificada</option>';
+          status.textContent = `${file.name} · QR lido com sucesso`;
+          showToast('QR Code decodificado com sucesso! Digite o código de 6 dígitos para validar.', 'success');
+        }
         byId('portalTotpCode').focus();
       } catch (error) {
+        pendingTotpAccounts = [];
+        byId('portalTotpAccountField')?.classList?.add('hidden');
         status.textContent = file.name;
         showToast(error.message, 'error');
       }
@@ -308,12 +323,22 @@ export function createJudicialIntegrationsFeature({
       event.preventDefault();
       const form = event.currentTarget;
       const portalId = byId('totpPortalSelect').value;
-      const secret = byId('portalTotpSecret').value;
+      let secret = String(byId('portalTotpSecret')?.value || '').trim();
+      if (!secret && pendingTotpAccounts.length === 1) secret = pendingTotpAccounts[0].secret;
+      if (!secret && pendingTotpAccounts.length > 1) {
+        const selectedValue = byId('portalTotpAccountSelect')?.value || '';
+        const selectedIndex = selectedValue === '' ? -1 : Number(selectedValue);
+        if (Number.isInteger(selectedIndex) && selectedIndex >= 0) secret = pendingTotpAccounts[selectedIndex]?.secret || '';
+      }
       const code = byId('portalTotpCode').value;
-      if (!portalId || !secret || !/^\d{6}$/.test(code)) return showToast('Selecione o portal, o QR/chave e informe o código atual de seis dígitos.', 'error');
+      if (!portalId || !secret || !/^\d{6}$/.test(code)) {
+        const accountHint = pendingTotpAccounts.length > 1 && !byId('portalTotpAccountSelect')?.value ? ' Selecione também a conta do QR.' : '';
+        return showToast(`Selecione o portal, o QR/chave e informe o código atual de seis dígitos.${accountHint}`, 'error');
+      }
       feature.setFormBusy(form, true);
       try {
         await feature.request('/api/integrations/judicial/2fa', { portalId, secret, code });
+        secret = '';
         feature.clearSecrets({ clearQr: true });
         if (byId('portalQrStatus')) byId('portalQrStatus').textContent = 'Selecionar QR code';
         audit('Segundo fator judicial ativado', `${judicialStatus?.portals?.find(portal => portal.id === portalId)?.name || portalId} · código TOTP validado.`);
@@ -374,11 +399,14 @@ export function createJudicialIntegrationsFeature({
       const button = byId('syncJudicialNowButton');
       if (button) { button.disabled = true; button.textContent = 'Sincronizando acervo e intimações…'; }
       try {
-        await onSyncAll();
+        const synchronized = await onSyncAll({ silent: true });
+        if (!synchronized) return false;
         showToast('Sincronização com DJEN e tribunais concluída com sucesso!', 'success');
         audit('Sincronização judicial autônoma', 'Coleta de intimações DJEN, DataJud e tribunais.');
+        return true;
       } catch (error) {
         showToast(error.message || 'Falha ao sincronizar.', 'error');
+        return false;
       } finally {
         if (button) { button.disabled = false; button.textContent = '✦ Sincronizar Acervo e Intimações Agora'; }
       }
@@ -406,4 +434,82 @@ export function createJudicialIntegrationsFeature({
   };
 
   return feature;
+}
+
+async function decodeQrWithJsQr(file, { windowRef, documentRef }) {
+  let imageSource;
+  let objectUrl = '';
+  try {
+    if (typeof windowRef.createImageBitmap === 'function') {
+      imageSource = await windowRef.createImageBitmap(file);
+    } else {
+      const ImageConstructor = windowRef.Image || globalThis.Image;
+      imageSource = new ImageConstructor();
+      const imageLoaded = new Promise((resolve, reject) => {
+        imageSource.onload = () => resolve();
+        imageSource.onerror = () => reject(new Error('Falha ao carregar arquivo de imagem.'));
+      });
+      objectUrl = windowRef.URL.createObjectURL(file);
+      imageSource.src = objectUrl;
+      await imageLoaded;
+    }
+    const sourceWidth = imageSource.naturalWidth || imageSource.width;
+    const sourceHeight = imageSource.naturalHeight || imageSource.height;
+    if (!sourceWidth || !sourceHeight) throw new Error('A imagem do QR não possui dimensões válidas.');
+
+    const largestSide = Math.max(sourceWidth, sourceHeight);
+    const normalizedScale = largestSide > 2400 ? 2400 / largestSide : 1;
+    const scales = [...new Set([
+      normalizedScale,
+      Math.min(normalizedScale * 1.5, 3000 / largestSide),
+      largestSide < 1000 ? Math.min(normalizedScale * 2, 3000 / largestSide) : normalizedScale,
+      Math.max(normalizedScale * 0.75, 0.25)
+    ].map(value => Number(value.toFixed(3))))];
+    const transformations = ['original', 'grayscale', 'contrast'];
+
+    for (const scale of scales) {
+      for (const addQuietZone of [false, true]) {
+        const scaledWidth = Math.max(1, Math.round(sourceWidth * scale));
+        const scaledHeight = Math.max(1, Math.round(sourceHeight * scale));
+        const padding = addQuietZone ? Math.max(16, Math.round(Math.max(scaledWidth, scaledHeight) * 0.06)) : 0;
+        const canvas = documentRef.createElement('canvas');
+        canvas.width = scaledWidth + padding * 2;
+        canvas.height = scaledHeight + padding * 2;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) continue;
+        context.fillStyle = '#ffffff';
+        context.fillRect?.(0, 0, canvas.width, canvas.height);
+        context.imageSmoothingEnabled = false;
+        context.drawImage(imageSource, padding, padding, scaledWidth, scaledHeight);
+        const source = context.getImageData(0, 0, canvas.width, canvas.height);
+
+        for (const transformation of transformations) {
+          const candidate = transformation === 'original' ? source : transformQrPixels(source, transformation);
+          const result = windowRef.jsQR(candidate.data, candidate.width, candidate.height, { inversionAttempts: 'attemptBoth' });
+          if (result?.data) return String(result.data).trim();
+        }
+      }
+    }
+    return '';
+  } finally {
+    imageSource?.close?.();
+    if (objectUrl) windowRef.URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function transformQrPixels(imageData, mode) {
+  const data = new Uint8ClampedArray(imageData.data);
+  let luminanceTotal = 0;
+  for (let index = 0; index < data.length; index += 4) {
+    luminanceTotal += Math.round(data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114);
+  }
+  const threshold = luminanceTotal / Math.max(1, data.length / 4);
+  for (let index = 0; index < data.length; index += 4) {
+    const luminance = Math.round(data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114);
+    const value = mode === 'contrast' ? (luminance < threshold ? 0 : 255) : luminance;
+    data[index] = value;
+    data[index + 1] = value;
+    data[index + 2] = value;
+  }
+  return { data, width: imageData.width, height: imageData.height };
 }
