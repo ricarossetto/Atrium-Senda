@@ -411,3 +411,41 @@ export async function prepareUiV2AgendaFixture(page) {
   await page.locator('#agendaList [data-agenda-activity-id="ui-v2-agenda-hearing"]').waitFor();
   return fixture;
 }
+
+export async function prepareUiV2ContactsFixture(page) {
+  const fixture = {
+    contacts: [
+      {
+        id: 'ui-v2-contact-client', externalId: 'contact:synthetic:client', name: 'Marina Duarte Sintética',
+        contactRole: 'cliente', leadOrigin: 'indicacao', document: '000.000.001-91', rg: 'RG-SINT-001',
+        birthDate: '1986-04-12', profession: 'Arquiteta', maritalStatus: 'casada', mobile: '(51) 90000-0001',
+        phone: '(51) 3000-0001', email: 'marina.duarte@example.test', origin: 'Texto livre não prioritário',
+        city: 'Porto Alegre', state: 'RS', address: 'Rua Mineral, 101', district: 'Centro Sintético',
+        zip: '90000-001', notes: 'Prefere contato no período da tarde.', registeredAt: '2026-08-10',
+        source: 'Planilha sintética', relatedProcessNumbers: ['5000001-11.2026.8.21.0001'],
+        monitoredTermIds: ['termo-sintetico-1'], unknownField: 'preservar'
+      },
+      { id: 'ui-v2-contact-witness', name: 'Bruno Testemunha Sintético', contactRole: 'testemunha', leadOrigin: 'parceria', mobile: '(51) 90000-0002', city: 'Canoas', state: 'RS', registeredAt: '2026-08-11', source: 'Interna' },
+      { id: 'ui-v2-contact-expert', name: 'Carla Perita Sintética', contactRole: 'perito', leadOrigin: 'convenio', phone: '(51) 3000-0003', city: 'Ijuí', state: 'RS', registeredAt: '2026-08-12', source: 'Interna' },
+      { id: 'ui-v2-contact-adverse', name: 'Daniel Adverso Sintético', contactRole: 'adverso', leadOrigin: 'balcao', mobile: '(51) 90000-0004', city: 'Santa Maria', state: 'RS', registeredAt: '2026-08-13', source: 'Interna' },
+      { id: 'ui-v2-contact-correspondent', name: 'Elisa Correspondente Sintética', contactRole: 'correspondente', leadOrigin: 'redes_sociais', mobile: '(51) 90000-0005', city: 'Pelotas', state: 'RS', registeredAt: '2026-08-14', source: 'Interna' },
+      { id: 'ui-v2-contact-representative', name: 'Fábio Preposto Sintético', contactRole: 'preposto', leadOrigin: 'google_site', mobile: '(51) 90000-0006', city: 'Novo Hamburgo', state: 'RS', registeredAt: '2026-08-15', source: 'Interna' },
+      { id: 'ui-v2-contact-other', name: 'Gabriela Outro Papel Sintética', contactRole: 'outro', leadOrigin: 'outro', mobile: '(51) 90000-0007', city: 'Passo Fundo', state: 'RS', registeredAt: '2026-08-16', source: 'Importação sintética' },
+      { id: 'ui-v2-contact-historical', name: 'Helena Histórica Sem Papel', origin: 'Arquivo histórico sintético', mobile: '(51) 90000-0008', city: 'Caxias do Sul', state: 'RS', createdAt: '2026-08-17', source: 'Legado sintético' },
+      { id: 'ui-v2-contact-long', name: 'Instituto Sintético de Estudos Jurídicos e Relações Profissionais de Nome Extenso', contactRole: 'cliente', leadOrigin: 'indicacao', mobile: '(51) 90000-0009', email: 'contato.longo@example.test', city: 'Porto Alegre', state: 'RS', registeredAt: '2026-08-18', source: 'Interna' }
+    ],
+    leads: [{ id: 'ui-v2-lead-isolated', name: 'Lead Sintético Isolado', status: 'novo' }]
+  };
+
+  await page.evaluate(data => {
+    const { App, Store } = window.Atrium;
+    Store.state.contacts = data.contacts;
+    Store.state.leads = data.leads;
+    Store.state.audit = [];
+    App.renderAll();
+    App.switchView('contacts');
+  }, fixture);
+  await page.locator('#view-contacts.active').waitFor();
+  await page.locator('#contactsV2Workspace [data-contact-id="ui-v2-contact-client"]').waitFor();
+  return fixture;
+}
