@@ -1,4 +1,5 @@
 import { Store, isoDate, uid } from '../core/store.js';
+import { createAgendaPresenter } from '../views/ui-v2/agenda-presenter.js';
 
 export function collectAgendaActivities({
   agenda = [],
@@ -48,7 +49,7 @@ export function collectAgendaActivities({
       type: 'intimation',
       id: intimation.id,
       date: targetDate,
-      time: intimation.fatalDeadline ? 'Prazo fatal' : 'Publicação',
+      time: 'Publicação',
       title: intimation.title,
       subtitle: `${intimation.process || 'Sem processo'} · ${getIntimationParties(intimation) || 'Partes não vinculadas'}`,
       act,
@@ -95,8 +96,10 @@ export function createAgendaFeature({
   let selectedDate = null;
   let calendarMonthOffset = 0;
   let typeFilter = 'all';
+  const presenter = createAgendaPresenter({ escapeHtml, formatMinutes });
 
   const byId = id => documentRef?.getElementById(id);
+  const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
 
   const feature = {
     get initialized() { return initialized; },
@@ -120,7 +123,6 @@ export function createAgendaFeature({
         const button = event.target.closest('button[data-agenda-filter]');
         if (!button) return;
         typeFilter = button.dataset.agendaFilter;
-        byId('agendaFilterTabs').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
         this.render();
       });
       byId('agendaTodayButton')?.addEventListener('click', () => {
@@ -176,17 +178,25 @@ export function createAgendaFeature({
       const titleEl = byId('agendaDayTitle');
       const eyebrowEl = byId('agendaDayEyebrow');
       const badgesEl = byId('agendaDayBadges');
+      const filterTabs = byId('agendaFilterTabs');
+      filterTabs?.querySelectorAll('button[data-agenda-filter]').forEach(button => {
+        const active = button.dataset.agendaFilter === typeFilter;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
       if (titleEl && eyebrowEl) {
         if (selectedDate) {
-          eyebrowEl.textContent = selectedDate === isoDate() ? 'Atividades de Hoje' : 'Atividades da Data Selecionada';
+          eyebrowEl.textContent = isV2()
+            ? (selectedDate === isoDate() ? 'Hoje' : 'Dia selecionado')
+            : (selectedDate === isoDate() ? 'Atividades de Hoje' : 'Atividades da Data Selecionada');
           titleEl.textContent = formatDate(selectedDate);
         } else {
-          eyebrowEl.textContent = 'Agenda Integrada';
-          titleEl.textContent = 'Próximas atividades e prazos';
+          eyebrowEl.textContent = isV2() ? 'Linha temporal integrada' : 'Agenda Integrada';
+          titleEl.textContent = isV2() ? 'Próximas atividades' : 'Próximas atividades e prazos';
         }
       }
       if (badgesEl) {
-        badgesEl.innerHTML = `
+        badgesEl.innerHTML = isV2() ? presenter.renderSummary({ events, tasks, intimations }) : `
           <span class="status-chip planned">${events.length} evento(s)</span>
           <span class="status-chip connected">${tasks.length} prazo(s)/tarefa(s)</span>
           <span class="status-chip warning">${intimations.length} intimação(ões)</span>
@@ -195,7 +205,11 @@ export function createAgendaFeature({
 
       const listEl = byId('agendaList');
       if (listEl) {
-        listEl.innerHTML = activities.length ? activities.map(item => {
+        listEl.innerHTML = isV2() ? presenter.renderActivities({
+          activities,
+          selectedDate,
+          today: isoDate()
+        }) : activities.length ? activities.map(item => {
           const date = item.date ? new Date(`${item.date}T12:00:00`) : new Date();
           const validDate = !Number.isNaN(date.getTime());
           const dayNum = validDate ? String(date.getDate()).padStart(2, '0') : '—';
@@ -230,8 +244,7 @@ export function createAgendaFeature({
           `;
         }).join('') : `<div class="empty-detail"><span>□</span><h3>Nenhuma atividade</h3><p>${selectedDate ? 'Não há eventos, tarefas ou intimações para esta data.' : 'Nenhuma atividade próxima encontrada.'}</p></div>`;
 
-        listEl.querySelectorAll('[data-agenda-activity-type]').forEach(row => {
-          row.addEventListener('click', () => {
+        const openActivity = row => {
             const activityType = row.dataset.agendaActivityType;
             const id = row.dataset.agendaActivityId;
             if (activityType === 'event') {
@@ -244,6 +257,13 @@ export function createAgendaFeature({
               const intimation = store.state.intimations.find(record => record.id === id);
               if (intimation) onOpenIntimation?.(intimation);
             }
+        };
+        listEl.querySelectorAll('[data-agenda-activity-type]').forEach(row => {
+          row.addEventListener('click', () => openActivity(row));
+          if (row.tagName !== 'BUTTON') row.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            openActivity(row);
           });
         });
       }
@@ -252,7 +272,7 @@ export function createAgendaFeature({
       return result;
     },
 
-    renderMiniCalendar() {
+    renderMiniCalendar(direction = '') {
       const offset = calendarMonthOffset || 0;
       const baseDate = new Date();
       baseDate.setDate(1);
@@ -298,7 +318,16 @@ export function createAgendaFeature({
       const monthName = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(baseDate);
       const calEl = byId('miniCalendar');
       if (calEl) {
-        calEl.innerHTML = `
+        calEl.innerHTML = isV2() ? presenter.renderCalendar({
+          year,
+          month,
+          selectedDate,
+          today: isoDate(),
+          agenda: agendaEvents,
+          tasks,
+          intimations,
+          direction
+        }) : `
           <header class="calendar-header">
             <h3>${monthName}</h3>
             <div class="calendar-nav">
@@ -315,12 +344,12 @@ export function createAgendaFeature({
         calEl.querySelector('#calPrevMonth')?.addEventListener('click', event => {
           event.stopPropagation();
           calendarMonthOffset = (calendarMonthOffset || 0) - 1;
-          this.renderMiniCalendar();
+          this.renderMiniCalendar('previous');
         });
         calEl.querySelector('#calNextMonth')?.addEventListener('click', event => {
           event.stopPropagation();
           calendarMonthOffset = (calendarMonthOffset || 0) + 1;
-          this.renderMiniCalendar();
+          this.renderMiniCalendar('next');
         });
         calEl.querySelectorAll('.calendar-day[data-cal-date]').forEach(button => {
           button.addEventListener('click', () => {

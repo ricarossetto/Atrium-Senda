@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/processes.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/publications.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/tasks.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/agenda.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -884,11 +885,16 @@
 
       <section class="view" id="view-agenda" data-title="Agenda integrada" data-eyebrow="Compromissos e prazos">
         <div class="section-toolbar">
-          <div class="filter-tabs" id="agendaFilterTabs">
-            <button class="active" data-agenda-filter="all">Todos</button>
-            <button data-agenda-filter="event">Audiências / Eventos</button>
-            <button data-agenda-filter="task">Tarefas / Prazos</button>
-            <button data-agenda-filter="intimation">Intimações</button>
+          <div class="v2-agenda-heading v2-only">
+            <p>Planejamento</p>
+            <h2>Agenda</h2>
+            <small>Compromissos, tarefas e publicações em uma linha temporal única.</small>
+          </div>
+          <div class="filter-tabs" id="agendaFilterTabs" role="group" aria-label="Filtrar atividades da agenda por tipo">
+            <button class="active" data-agenda-filter="all" aria-pressed="true"><span class="agenda-label-classic">Todos</span><span class="agenda-label-v2">Todas</span></button>
+            <button data-agenda-filter="event" aria-pressed="false"><span class="agenda-label-classic">Audiências / Eventos</span><span class="agenda-label-v2">Compromissos</span></button>
+            <button data-agenda-filter="task" aria-pressed="false"><span class="agenda-label-classic">Tarefas / Prazos</span><span class="agenda-label-v2">Tarefas</span></button>
+            <button data-agenda-filter="intimation" aria-pressed="false"><span class="agenda-label-classic">Intimações</span><span class="agenda-label-v2">Publicações</span></button>
           </div>
           <div class="toolbar-actions">
             <button class="button ghost" id="agendaTodayButton">
@@ -898,7 +904,7 @@
               </svg>
               <span>Hoje</span>
             </button>
-            <button class="button ghost" id="agendaAllUpcomingButton">Ver todos</button>
+            <button class="button ghost" id="agendaAllUpcomingButton"><span class="agenda-label-classic">Ver todos</span><span class="agenda-label-v2">Todas as próximas</span></button>
             <button class="button ghost" id="newAgendaButton">+ Novo compromisso</button>
             <button class="button gold" id="agendaSyncButton">
               <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

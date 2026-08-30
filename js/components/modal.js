@@ -54,12 +54,14 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
       ? renderProcessSections(fields, renderField)
       : mode === 'task' && isV2
         ? renderTaskSections(fields, renderField)
+        : mode === 'agenda' && isV2
+          ? renderAgendaSections(fields, renderField)
       : `<div class="form-grid">${fields.map(renderField).join('')}</div>`;
     document.getElementById('modalFields').innerHTML = `${topHtml}${fieldsHtml}`;
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
-    if (mode === 'task' && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
+    if (['task', 'agenda'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
       const modalFields = document.getElementById('modalFields');
@@ -128,6 +130,29 @@ function renderTaskSections(fields, renderField) {
   }
   return `<div class="task-form-sections">${[...sections.entries()].map(([section, sectionFields]) => `
     <fieldset class="task-form-section">
+      <legend>${section}</legend>
+      <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
+    </fieldset>`).join('')}</div>`;
+}
+
+const AGENDA_FIELD_SECTIONS = Object.freeze({
+  title: 'Identificação',
+  date: 'Quando', time: 'Quando',
+  client: 'Vínculos', process: 'Vínculos',
+  location: 'Local',
+  source: 'Origem',
+  description: 'Observações'
+});
+
+function renderAgendaSections(fields, renderField) {
+  const sections = new Map();
+  for (const field of fields) {
+    const section = AGENDA_FIELD_SECTIONS[field.name] || 'Outros dados';
+    if (!sections.has(section)) sections.set(section, []);
+    sections.get(section).push(field);
+  }
+  return `<div class="agenda-form-sections">${[...sections.entries()].map(([section, sectionFields]) => `
+    <fieldset class="agenda-form-section">
       <legend>${section}</legend>
       <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
     </fieldset>`).join('')}</div>`;
