@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/agenda.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/contacts.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/financial.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/documents.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -681,9 +682,14 @@
 
       <section class="view" id="view-documents" data-title="Modelos e Minutas Jurídicas" data-eyebrow="Automação Documental">
         <div class="section-toolbar">
-          <div class="toolbar-copy"><p>Geração instantânea de minutas com preenchimento automático dos dados do cliente e do processo.</p></div>
+          <div class="v2-documents-heading v2-only">
+            <p>Documentos</p>
+            <h2>Modelos e minutas</h2>
+            <small>Documentos recorrentes preenchidos com os dados já cadastrados no ATRIUM.</small>
+          </div>
+          <div class="toolbar-copy classic-only"><p>Geração instantânea de minutas com preenchimento automático dos dados do cliente e do processo.</p></div>
           <div class="toolbar-actions">
-            <button class="button gold" id="btnOpenDocGenModal">+ Nova Minuta</button>
+            <button type="button" class="button gold" id="btnOpenDocGenModal"><span class="classic-only">+ Nova Minuta</span><span class="v2-only">Gerar documento</span></button>
           </div>
         </div>
         <div class="prompts-grid" id="documentsTemplateGrid">
@@ -1677,12 +1683,21 @@
   <div class="modal-backdrop hidden" id="docGeneratorBackdrop">
     <section class="modal doc-generator-modal" role="dialog" aria-modal="true" aria-labelledby="docGenTitle">
       <header>
-        <div><p class="eyebrow">Automação de Minutas</p><h2 id="docGenTitle">Gerador de Documentos Jurídicos</h2></div>
-        <button class="icon-button" id="docGenClose" aria-label="Fechar">×</button>
+        <div>
+          <p class="eyebrow"><span class="classic-only">Automação de Minutas</span><span class="v2-only">Workspace documental</span></p>
+          <h2 id="docGenTitle">Gerador de Documentos Jurídicos</h2>
+          <div class="doc-generator-context v2-only" aria-live="polite">
+            <strong id="docGenContextType">Documento</strong>
+            <span id="docGenContextContact">Sem contato selecionado</span>
+            <span id="docGenContextProcess">Geral / Sem processo</span>
+          </div>
+        </div>
+        <button type="button" class="icon-button" id="docGenClose" aria-label="Fechar gerador de documentos">×</button>
       </header>
       <div class="doc-gen-body">
         <div class="doc-gen-controls">
-          <label><span>Tipo de documento</span>
+          <div class="doc-gen-panel-heading v2-only"><p>Configuração</p><span>Escolha apenas os dados já cadastrados.</span></div>
+          <label for="docGenTypeSelect"><span>Tipo de documento</span>
             <select id="docGenTypeSelect">
               <option value="procuracao">Procuração Ad Judicia et Extra (Art. 105 CPC)</option>
               <option value="procuracao_prev">Procuração Especial Previdenciária (INSS / RPV / Precatório)</option>
@@ -1695,21 +1710,22 @@
               <option value="substabelecimento">Substabelecimento de Poderes (Com/Sem Reserva)</option>
             </select>
           </label>
-          <label><span>Cliente / Outorgante</span>
+          <label for="docGenContactSelect"><span>Cliente / Outorgante</span>
             <select id="docGenContactSelect"><option value="">Selecione o contato</option></select>
           </label>
-          <label><span>Processo vinculado (opcional)</span>
+          <label for="docGenProcessSelect"><span>Processo vinculado (opcional)</span>
             <select id="docGenProcessSelect"><option value="">Geral / Sem processo</option></select>
           </label>
         </div>
         <div class="doc-preview-wrap">
           <div class="doc-preview-header">
-            <strong>Minuta Gerada</strong>
+            <div><strong><span class="classic-only">Minuta Gerada</span><span class="v2-only">Minuta para revisão</span></strong><span class="v2-only">Edição temporária · não salva</span></div>
             <div class="doc-preview-actions">
               <button class="button ghost" id="docGenCopyButton" type="button">Copiar minuta</button>
               <button class="button gold" id="docGenDownloadButton" type="button">Baixar .md / .txt</button>
             </div>
           </div>
+          <label class="doc-preview-label v2-only" for="docGenPreviewText">Texto integral da minuta</label>
           <textarea id="docGenPreviewText" class="doc-preview-textarea" rows="15" spellcheck="false"></textarea>
         </div>
       </div>

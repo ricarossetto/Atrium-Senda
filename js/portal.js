@@ -15,6 +15,7 @@ import { createUiMode } from './views/ui-v2/mode.js';
 import { createUiV2Shell } from './views/ui-v2/shell.js';
 import { createSystemStatusBar } from './views/ui-v2/system-status.js';
 import { renderFinancialV2Workspace } from './views/ui-v2/financial-presenter.js';
+import { renderDocumentsV2Catalog } from './views/ui-v2/documents-presenter.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -307,6 +308,7 @@ import { createTasksFeature } from './features/tasks.js';
         if (App.currentView === 'agenda') App.renderAgenda();
         if (App.currentView === 'contacts') App.renderContacts(document.getElementById('contactSearch')?.value || '');
         if (App.currentView === 'financial') App.renderFinancial(document.getElementById('financialSearch')?.value || '');
+        if (App.currentView === 'documents') App.renderDocuments();
       }
     });
     return uiModeComponent;
@@ -490,7 +492,8 @@ import { createTasksFeature } from './features/tasks.js';
       showToast: (message, type) => App.toast(message, type),
       getCurrentUser: () => window.KellerAuth?.currentUser,
       getIsoDate: () => isoDate(),
-      onOpenGenerator: options => App.openDocumentGenerator(options)
+      onOpenGenerator: options => App.openDocumentGenerator(options),
+      renderV2Catalog: renderDocumentsV2Catalog
     });
     return documentsFeature;
   }

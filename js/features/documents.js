@@ -60,10 +60,14 @@ export function createDocumentsFeature({
   showToast = () => {},
   getCurrentUser = () => null,
   getIsoDate = () => new Date().toISOString().slice(0, 10),
-  onOpenGenerator = null
+  onOpenGenerator = null,
+  renderV2Catalog = null
 } = {}) {
   let initialized = false;
+  let lastFocusedElement = null;
+  let previousBodyOverflow = '';
   const byId = id => documentRef.getElementById(id);
+  const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
 
   function getOfficeIdentity() {
     const s = store?.state?.settings || {};
@@ -444,6 +448,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('docGeneratorBackdrop')?.addEventListener('click', event => {
         if (event.target === byId('docGeneratorBackdrop')) feature.closeGenerator();
       });
+      if (byId('docGeneratorBackdrop')) byId('docGeneratorBackdrop').onkeydown = event => feature.handleGeneratorKeydown(event);
       byId('docGenTypeSelect')?.addEventListener('change', () => feature.updatePreview());
       byId('docGenContactSelect')?.addEventListener('change', () => feature.updatePreview());
       byId('docGenProcessSelect')?.addEventListener('change', () => feature.updatePreview());
@@ -455,7 +460,9 @@ ${id.lawyerOab} - ${id.officeName}`;
     render() {
       const grid = byId('documentsTemplateGrid');
       if (!grid) return false;
-      grid.innerHTML = DOCUMENT_CATALOG.map(template => `
+      grid.innerHTML = isV2() && renderV2Catalog
+        ? renderV2Catalog({ catalog: DOCUMENT_CATALOG, escapeHtml })
+        : DOCUMENT_CATALOG.map(template => `
         <div class="prompt-card">
           <div class="prompt-card-header">
             <span class="prompt-category-badge">${escapeHtml(template.category)}</span>
@@ -516,12 +523,52 @@ ${id.lawyerOab} - ${id.officeName}`;
       }
 
       if (!feature.updatePreview()) return false;
+      if (isV2()) {
+        lastFocusedElement = documentRef.activeElement;
+        previousBodyOverflow = documentRef.body.style.overflow;
+        byId('appShell')?.setAttribute('inert', '');
+      }
       byId('docGeneratorBackdrop').classList.remove('hidden');
+      if (isV2()) {
+        documentRef.body.style.overflow = 'hidden';
+        queueMicrotask(() => byId('docGenTypeSelect')?.focus());
+      }
       return true;
     },
 
     closeGenerator() {
-      byId('docGeneratorBackdrop').classList.add('hidden');
+      const backdrop = byId('docGeneratorBackdrop');
+      const wasOpen = backdrop && !backdrop.classList.contains('hidden');
+      backdrop?.classList.add('hidden');
+      if (isV2()) {
+        byId('appShell')?.removeAttribute('inert');
+        documentRef.body.style.overflow = previousBodyOverflow;
+        if (wasOpen && lastFocusedElement?.isConnected) lastFocusedElement.focus?.();
+      }
+    },
+
+    handleGeneratorKeydown(event) {
+      if (!isV2() || byId('docGeneratorBackdrop')?.classList.contains('hidden')) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        feature.closeGenerator();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const dialog = byId('docGeneratorBackdrop')?.querySelector('.doc-generator-modal');
+      const focusable = [...(dialog?.querySelectorAll('button:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])') || [])]
+        .filter(element => element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && documentRef.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && documentRef.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     },
 
     updatePreview() {
@@ -551,6 +598,12 @@ ${id.lawyerOab} - ${id.officeName}`;
       const text = DOCUMENT_GENERATORS[type](contact, process);
       const previewArea = byId('docGenPreviewText');
       if (previewArea) previewArea.value = text;
+      const typeContext = byId('docGenContextType');
+      const contactContext = byId('docGenContextContact');
+      const processContext = byId('docGenContextProcess');
+      if (typeContext) typeContext.textContent = byId('docGenTypeSelect')?.selectedOptions?.[0]?.textContent || 'Documento';
+      if (contactContext) contactContext.textContent = byId('docGenContactSelect')?.selectedOptions?.[0]?.textContent || 'Sem contato selecionado';
+      if (processContext) processContext.textContent = byId('docGenProcessSelect')?.selectedOptions?.[0]?.textContent || 'Geral / Sem processo';
       return true;
     },
 
