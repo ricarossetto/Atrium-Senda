@@ -9,7 +9,7 @@
 [![Node.js 24](https://img.shields.io/badge/Node.js-24.x-green.svg)](https://nodejs.org/)
 [![Security: AES-256-GCM](https://img.shields.io/badge/Security-AES--256--GCM-blue.svg)](#segurança-e-privacidade)
 [![2FA: TOTP](https://img.shields.io/badge/2FA-TOTP%20RFC%206238-blueviolet.svg)](#segurança-e-privacidade)
-[![Tests: 52 suites](https://img.shields.io/badge/Tests-52%20suites-brightgreen.svg)](#testes-automatizados)
+[![Tests: 55 suites](https://img.shields.io/badge/Tests-55%20suites-brightgreen.svg)](#testes-automatizados)
 
 </div>
 
@@ -65,7 +65,7 @@ pnpm start
 
 ## Testes automatizados
 
-A suíte canônica contém 52 suítes registradas em `tests/run-all.mjs`, incluindo segurança, concorrência do Store, recuperação do runtime, migrações de segredo, persistência de configuração vazia, backup/restore, integrações judiciais, módulos frontend, E2E e Visual QA.
+A suíte canônica contém 55 suítes registradas em `tests/run-all.mjs`, incluindo segurança, concorrência do Store, recuperação do runtime, migrações de segredo, primeira persistência de instalação nova, QR TOTP sintético, contrato de sincronização, backup/restore, integrações judiciais, módulos frontend, E2E e Visual QA.
 
 ```bash
 pnpm check

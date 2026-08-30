@@ -17,11 +17,18 @@ assert.ok((workflow.match(/pnpm install --frozen-lockfile/g) || []).length >= 3,
 
 assert.match(starter, /process\.versions\.node/);
 assert.match(starter, /LSS 24/);
-assert.match(starter, /corepack enable/);
-assert.match(starter, /corepack prepare pnpm@11\.19\.0 --activate/);
-assert.match(starter, /pnpm install --frozen-lockfile/);
-assert.match(starter, /pnpm start/);
+assert.match(starter, /corepack --version/);
+assert.match(starter, /corepack pnpm --version/);
+assert.doesNotMatch(starter, /corepack enable/);
+assert.doesNotMatch(starter, /corepack prepare/);
+assert.match(starter, /corepack pnpm install --frozen-lockfile/);
+assert.match(starter, /chromium\.executablePath\(\)/);
+assert.match(starter, /corepack pnpm exec playwright install chromium/);
+assert.match(starter, /corepack pnpm start/);
+assert.doesNotMatch(starter, /call\s+pnpm\b/i);
+assert.doesNotMatch(starter, /\brunas\b|net\s+session/i, 'Starter não pode exigir elevação administrativa.');
+assert.doesNotMatch(starter, /Reinstale o Node/i, 'Falha do Corepack não pode acusar falsamente instalação quebrada do Node.');
 assert.doesNotMatch(starter, /\bnpm\s+install\b/i);
 assert.doesNotMatch(starter, /\bpnpm\s+(?:add|update|up|remove)\b|--no-frozen-lockfile/i);
 
-console.log('✓ Node 24, pnpm 11.19.0 e frozen lock estão alinhados entre pacote, CI e starter Windows.');
+console.log('✓ Starter Windows usa Node 24 + corepack pnpm diretamente, frozen lock e Chromium idempotente sem elevação.');

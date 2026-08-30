@@ -26,7 +26,7 @@
 - [x] Runtime canônico Node 24.x.
 - [x] `pnpm@11.19.0` em package, CI e starter Windows.
 - [x] Instalação canônica por `pnpm install --frozen-lockfile`.
-- [x] 52 suítes canônicas registradas, além de syntax check, E2E, job A1 Windows e Visual QA.
+- [x] 55 suítes canônicas registradas, além de syntax check, E2E, job A1 Windows e Visual QA.
 - [x] UI V2 não faz parte deste gate.
 
 ## Status atual
