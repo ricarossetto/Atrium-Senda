@@ -37,6 +37,7 @@ const checkFiles = [
   'js/views/ui-v2/dashboard.js',
   'js/views/ui-v2/processes-presenter.js',
   'js/views/ui-v2/publications-presenter.js',
+  'js/views/ui-v2/tasks-presenter.js',
   'js/features/dashboard.js',
   'js/features/office-identity.js',
   'js/features/audit.js',
@@ -134,10 +135,13 @@ const checkFiles = [
   'tests/ui_v2_processes_accessibility.mjs',
   'tests/ui_v2_publications.mjs',
   'tests/ui_v2_publications_accessibility.mjs',
+  'tests/ui_v2_tasks.mjs',
+  'tests/ui_v2_tasks_accessibility.mjs',
   'tests/ui_v2_visual_direction.mjs',
   'tests/visual_ui_v2_dashboard.mjs',
   'tests/visual_ui_v2_processes.mjs',
   'tests/visual_ui_v2_publications.mjs',
+  'tests/visual_ui_v2_tasks.mjs',
   'tests/visual-qa.mjs'
 ];
 
@@ -204,6 +208,8 @@ const testSuites = [
   { name: 'UI V2 Processos, Acessibilidade e RecordList Responsiva', file: 'tests/ui_v2_processes_accessibility.mjs' },
   { name: 'UI V2 Publicações, Triagem, Leitura e Tratamento', file: 'tests/ui_v2_publications.mjs' },
   { name: 'UI V2 Publicações, Acessibilidade e Mobile Sheet', file: 'tests/ui_v2_publications_accessibility.mjs' },
+  { name: 'UI V2 Tarefas e Kanban, Movimento, Timer e Formulário', file: 'tests/ui_v2_tasks.mjs' },
+  { name: 'UI V2 Tarefas, Acessibilidade, RecordList e Drawer', file: 'tests/ui_v2_tasks_accessibility.mjs' },
   { name: 'UI V2 Direção Mineral Editorial, Motion e Isolamento Classic', file: 'tests/ui_v2_visual_direction.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];

@@ -455,3 +455,4 @@ try {
 await import('./visual_ui_v2_dashboard.mjs');
 await import('./visual_ui_v2_processes.mjs');
 await import('./visual_ui_v2_publications.mjs');
+await import('./visual_ui_v2_tasks.mjs');

@@ -271,3 +271,64 @@ export async function prepareUiV2PublicationsFixture(page) {
   await page.locator('#inboxList [data-intimation-id="ui-v2-publication-urgent"]').waitFor();
   return fixture;
 }
+
+export async function prepareUiV2TasksFixture(page) {
+  const fixture = {
+    tasks: [
+      {
+        id: 'ui-v2-task-overdue', externalId: 'task:synthetic:overdue', title: 'Revisar contestação sintética',
+        description: 'Conferir fundamentos e documentos antes do protocolo supervisionado.', source: 'Interna',
+        client: 'Cliente Sintética Tarefas', process: '5004321-12.2026.8.21.0001', responsible: 'Advogada Teste UI V2',
+        status: 'triagem', priority: 'urgente', points: 25, deadline: '2026-08-20', timeLogs: [], history: [], unknownField: 'preservar'
+      },
+      {
+        id: 'ui-v2-task-fatal', title: 'Preparar recurso com prazo confirmado', description: 'Prazo cadastrado manualmente para a fixture.',
+        source: 'Sistema jurídico', client: 'Cliente Recursal Sintético', process: '5012345-67.2026.4.04.7100',
+        responsible: 'Advogada Recursal Sintética', status: 'prioridade', priority: 'importante', points: 18,
+        deadline: '2026-09-02', fatalDeadline: '2026-09-03', timeLogs: [{ id: 'time-synthetic', minutes: 75 }], history: []
+      },
+      {
+        id: 'ui-v2-task-active', title: 'Elaborar minuta de manifestação', description: 'Atividade sintética em execução.',
+        source: 'Manual', client: 'Cliente Operacional Sintético', process: '5022222-22.2026.8.21.0001',
+        responsible: 'Advogada Cronômetro Sintética', status: 'andamento', priority: 'normal', points: 10,
+        deadline: '2026-09-05', timeLogs: [{ id: 'time-active', minutes: 20 }], history: []
+      },
+      {
+        id: 'ui-v2-task-waiting', title: 'Aguardar documento do cliente', description: 'Pendência externa sintética e explícita.',
+        source: 'Interna', client: 'Cliente Aguardando Sintético', responsible: 'Assistente Sintética', status: 'aguardando',
+        priority: 'normal', points: 8, deadline: '', timeLogs: [], history: []
+      },
+      {
+        id: 'ui-v2-task-publication', intimationId: 'ui-v2-task-publication-source', sourceIntimationId: 'ui-v2-task-publication-source',
+        title: 'Analisar publicação vinculada', description: 'TEXTO OFICIAL SINTÉTICO\nMenção textual a 15 dias sem inferência de prazo.',
+        source: 'DJEN', client: 'Cliente Publicação Sintético', process: '5033333-33.2026.8.21.0001',
+        responsible: 'Advogada Revisora Sintética', status: 'revisao', priority: 'importante', points: 16,
+        deadline: '', fatalDeadline: '', timeLogs: [], history: []
+      },
+      {
+        id: 'ui-v2-task-complete', title: 'Providência sintética concluída', description: 'Tarefa concluída preservada no fluxo.',
+        source: 'Interna', client: 'Cliente Concluído Sintético', responsible: 'Advogada Teste UI V2', status: 'concluida',
+        priority: 'normal', points: 12, deadline: '2026-08-28', completedAt: '2026-08-29T18:00:00.000Z', timeLogs: [{ minutes: 30 }], history: []
+      }
+    ],
+    intimations: [
+      {
+        id: 'ui-v2-task-publication-source', title: 'Publicação sintética vinculada', process: '5033333-33.2026.8.21.0001',
+        client: 'Cliente Publicação Sintético', text: 'TEXTO OFICIAL SINTÉTICO\nMenção textual a 15 dias sem inferência de prazo.',
+        source: 'DJEN', treatmentStatus: 'in_review', linkedTaskIds: ['ui-v2-task-publication']
+      }
+    ]
+  };
+
+  await page.evaluate(data => {
+    const { App, Store } = window.Atrium;
+    Store.state.tasks = data.tasks;
+    Store.state.intimations = data.intimations;
+    Store.state.audit = [];
+    App.renderAll();
+    App.switchView('kanban');
+  }, fixture);
+  await page.locator('#view-kanban.active').waitFor();
+  await page.locator('#kanbanBoard [data-task-id="ui-v2-task-overdue"]').waitFor();
+  return fixture;
+}
