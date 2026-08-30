@@ -14,6 +14,7 @@ import { Toast } from './components/toast.js';
 import { createUiMode } from './views/ui-v2/mode.js';
 import { createUiV2Shell } from './views/ui-v2/shell.js';
 import { createSystemStatusBar } from './views/ui-v2/system-status.js';
+import { renderFinancialV2Workspace } from './views/ui-v2/financial-presenter.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -305,6 +306,7 @@ import { createTasksFeature } from './features/tasks.js';
         if (App.currentView === 'kanban') App.renderKanban();
         if (App.currentView === 'agenda') App.renderAgenda();
         if (App.currentView === 'contacts') App.renderContacts(document.getElementById('contactSearch')?.value || '');
+        if (App.currentView === 'financial') App.renderFinancial(document.getElementById('financialSearch')?.value || '');
       }
     });
     return uiModeComponent;
@@ -515,7 +517,8 @@ import { createTasksFeature } from './features/tasks.js';
       escapeHtml,
       formatCurrency,
       showToast: (message, type) => App.toast(message, type),
-      renderDashboardFinancialWidgets: () => App.renderDashboardWidgets()
+      renderDashboardFinancialWidgets: () => App.renderDashboardWidgets(),
+      renderV2Workspace: renderFinancialV2Workspace
     });
     return financialFeature;
   }

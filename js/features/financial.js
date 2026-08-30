@@ -7,12 +7,16 @@ export function createFinancialFeature({
   escapeHtml,
   formatCurrency,
   showToast,
-  renderDashboardFinancialWidgets
+  renderDashboardFinancialWidgets,
+  renderV2Workspace
 } = {}) {
   let initialized = false;
   let financialFilter = 'all';
   let submittingEntry = false;
+  let lastFocusedElement = null;
+  let previousBodyOverflow = '';
   const byId = id => documentRef?.getElementById(id);
+  const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
 
   const feature = {
     get filter() { return financialFilter; },
@@ -34,6 +38,7 @@ export function createFinancialFeature({
       byId('financialEntryBackdrop')?.addEventListener('click', event => {
         if (event.target === byId('financialEntryBackdrop')) this.closeEntryModal();
       });
+      if (byId('financialEntryBackdrop')) byId('financialEntryBackdrop').onkeydown = event => this.handleEntryKeydown(event);
       byId('financialEntryForm')?.addEventListener('submit', event => this.handleEntrySubmit(event));
       byId('finGrossInput')?.addEventListener('input', () => this.updateModalSummary());
       byId('finFeePctInput')?.addEventListener('input', () => this.updateModalSummary());
@@ -61,11 +66,14 @@ export function createFinancialFeature({
       let rpvCount = 0;
 
       const rows = [];
+      const presentationRecords = [];
       processes.forEach(proc => {
         const isPaid = proc.feeStatus === 'pago' || proc.feeStatus === 'quitado' || proc.feeStatus === 'repassado' || proc.requisitionStatus === 'repassado' || proc.requisitionStatus === 'pago';
+        const hasRequisitionAmount = proc.requisitionAmount !== '' && proc.requisitionAmount !== null && proc.requisitionAmount !== undefined;
+        const hasRpvAmount = proc.rpvAmount !== '' && proc.rpvAmount !== null && proc.rpvAmount !== undefined;
 
         // Cálculo canônico do RPV / Precatório (BUG-003)
-        if (proc.requisitionStatus || proc.requisitionAmount || proc.rpvAmount) {
+        if (proc.requisitionStatus || hasRequisitionAmount || hasRpvAmount) {
           rpvCount++;
           const gross = Number(proc.requisitionAmount ?? proc.rpvAmount ?? proc.economicValue ?? 0);
           const feePct = Number(proc.feePercentage ?? 30);
@@ -80,6 +88,19 @@ export function createFinancialFeature({
 
           if (filter === 'all' || filter === 'rpv') {
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${statusInfo.label}`).includes(needle)) {
+              presentationRecords.push({
+                id: proc.id || proc.number,
+                kind: 'rpv',
+                processNumber: proc.number || 'Processo sem número',
+                client: proc.client || 'Cliente',
+                typeLabel: `RPV / Alvará (${feePct}%)`,
+                gross,
+                feeAmount,
+                netClient,
+                feeType: proc.feeType,
+                statusLabel: statusInfo.label,
+                statusTone: statusInfo.chipClass
+              });
               rows.push(`
                 <tr>
                   <td><strong>${escapeHtml(proc.number || 'Processo sem número')}</strong></td>
@@ -94,10 +115,25 @@ export function createFinancialFeature({
             }
           }
         } else if (filter === 'all' || filter === 'honorarios') {
-          if (proc.feeAmount || proc.feeMonthly) {
-            const feeVal = Number(proc.feeAmount || proc.feeMonthly || 0);
+          const hasFeeAmount = proc.feeAmount !== '' && proc.feeAmount !== null && proc.feeAmount !== undefined;
+          const hasFeeMonthly = proc.feeMonthly !== '' && proc.feeMonthly !== null && proc.feeMonthly !== undefined;
+          if (hasFeeAmount || hasFeeMonthly) {
+            const feeVal = Number(hasFeeAmount ? proc.feeAmount : proc.feeMonthly);
             if (!isPaid) totalHonorariosAFaturar += feeVal;
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.feeType}`).includes(needle)) {
+              presentationRecords.push({
+                id: proc.id || proc.number,
+                kind: 'honorarios',
+                processNumber: proc.number || 'Contrato',
+                client: proc.client || 'Cliente',
+                typeLabel: proc.feeType || 'Honorários Contratuais',
+                feeType: proc.feeType,
+                gross: feeVal,
+                feeAmount: feeVal,
+                netClient: null,
+                statusLabel: isPaid ? 'Quitado' : 'A Faturar',
+                statusTone: isPaid ? 'connected' : 'warning'
+              });
               rows.push(`
                 <tr>
                   <td><strong>${escapeHtml(proc.number || 'Contrato')}</strong></td>
@@ -118,8 +154,23 @@ export function createFinancialFeature({
       const rpvEl = byId('finMetricRpvCount');
       if (honEl) honEl.textContent = formatCurrency(totalHonorariosAFaturar);
       if (rpvEl) rpvEl.textContent = `${rpvCount} requisições`;
+      byId('financialFilters')?.querySelectorAll('button[data-fin-filter]').forEach(button => {
+        button.setAttribute?.('aria-pressed', String(button.dataset.finFilter === filter));
+      });
 
-      listEl.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" class="empty-table" style="text-align:center;padding:24px;color:var(--muted);">Nenhum lançamento financeiro ou requisição RPV localizada.</td></tr>';
+      if (isV2() && byId('financialV2Workspace') && renderV2Workspace) {
+        listEl.innerHTML = '';
+        byId('financialV2Workspace').innerHTML = renderV2Workspace({
+          records: presentationRecords,
+          query,
+          filter,
+          escapeHtml,
+          formatCurrency
+        });
+      } else {
+        if (byId('financialV2Workspace')) byId('financialV2Workspace').innerHTML = '';
+        listEl.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" class="empty-table" style="text-align:center;padding:24px;color:var(--muted);">Nenhum lançamento financeiro ou requisição RPV localizada.</td></tr>';
+      }
     },
 
     openEntryModal() {
@@ -134,15 +185,48 @@ export function createFinancialFeature({
       const form = byId('financialEntryForm');
       if (form) form.reset();
       this.updateModalSummary();
+      if (isV2()) {
+        lastFocusedElement = documentRef.activeElement;
+        previousBodyOverflow = documentRef.body.style.overflow;
+        byId('appShell')?.setAttribute('inert', '');
+      }
       backdrop.classList.remove('hidden');
       documentRef.body.style.overflow = 'hidden';
+      if (isV2()) queueMicrotask(() => byId('finProcessSelect')?.focus());
     },
 
     closeEntryModal() {
       const backdrop = byId('financialEntryBackdrop');
+      const wasOpen = backdrop && !backdrop.classList.contains('hidden');
       if (backdrop) backdrop.classList.add('hidden');
+      if (isV2()) byId('appShell')?.removeAttribute('inert');
       if (byId('modalBackdrop')?.classList.contains('hidden')) {
-        documentRef.body.style.overflow = '';
+        documentRef.body.style.overflow = isV2() ? previousBodyOverflow : '';
+      }
+      if (isV2() && wasOpen && lastFocusedElement?.isConnected) lastFocusedElement.focus?.();
+    },
+
+    handleEntryKeydown(event) {
+      if (!isV2() || byId('financialEntryBackdrop')?.classList.contains('hidden')) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeEntryModal();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const modal = byId('financialEntryBackdrop')?.querySelector('.financial-entry-modal');
+      const focusable = [...(modal?.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])') || [])]
+        .filter(element => element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && documentRef.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && documentRef.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     },
 

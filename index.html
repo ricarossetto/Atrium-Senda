@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/tasks.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/agenda.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/contacts.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/financial.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -624,20 +625,25 @@
 
       <section class="view" id="view-financial" data-title="Financeiro & Requisições" data-eyebrow="Honorários, RPVs e Prestação de Contas">
         <div class="section-toolbar">
+          <div class="v2-financial-heading v2-only">
+            <p>Operações financeiras</p>
+            <h2>Financeiro</h2>
+            <small>RPVs, alvarás e honorários vinculados à carteira processual.</small>
+          </div>
           <div class="filter-tabs" id="financialFilters">
-            <button class="active" data-fin-filter="all">Todos</button>
-            <button data-fin-filter="rpv">RPVs / Alvarás</button>
-            <button data-fin-filter="honorarios">Honorários</button>
+            <button type="button" class="active" data-fin-filter="all" aria-pressed="true">Todos</button>
+            <button type="button" data-fin-filter="rpv" aria-pressed="false">RPVs / Alvarás</button>
+            <button type="button" data-fin-filter="honorarios" aria-pressed="false">Honorários</button>
           </div>
           <div class="toolbar-actions">
-            <button class="button ghost" id="btnGenDocPrestacao">
+            <button type="button" class="button ghost" id="btnGenDocPrestacao">
               <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M18 13l-4 4-2-1 1-2 4-4a1.4 1.4 0 0 1 2 2z" stroke-width="1.8"/></svg>
               <span>Gerar Prestação de Contas RPV</span>
             </button>
-            <button class="button gold" id="newFinancialEntryButton">+ Novo Lançamento</button>
+            <button type="button" class="button gold" id="newFinancialEntryButton">+ Novo Lançamento</button>
           </div>
         </div>
-        <div class="metric-grid" style="margin-bottom:16px;">
+        <div class="metric-grid financial-summary-band" style="margin-bottom:16px;">
           <article class="metric-card success">
             <span class="metric-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
             <div><small>Honorários Contratuais Previstos</small><strong id="finMetricHonorarios">R$ 0,00</strong><p>calculados sobre a carteira</p></div>
@@ -651,9 +657,9 @@
             <div><small>Horas Apontadas (TimeSheet)</small><strong id="finMetricTimesheet">0h 0m</strong><p>valor hora apurado</p></div>
           </article>
         </div>
-        <article class="card table-card">
-          <div class="table-search"><input id="financialSearch" type="search" placeholder="Pesquisar por processo, cliente ou tipo de honorário"></div>
-          <div class="responsive-table">
+        <article class="card table-card financial-data-card">
+          <div class="table-search financial-search"><label class="v2-only" for="financialSearch">Pesquisar operações</label><input id="financialSearch" type="search" aria-label="Pesquisar operações financeiras" autocomplete="off" placeholder="Pesquisar por processo, cliente ou tipo de honorário"></div>
+          <div class="responsive-table financial-classic-table">
             <table class="sortable-table" id="financialTable">
               <thead>
                 <tr>
@@ -669,6 +675,7 @@
               <tbody id="financialTableBody"></tbody>
             </table>
           </div>
+          <div id="financialV2Workspace" class="v2-only"></div>
         </article>
       </section>
 
@@ -2055,12 +2062,17 @@
       </header>
       <form id="financialEntryForm">
         <div class="modal-body form-grid financial-entry-grid">
+          <div class="financial-entry-section is-link" role="group" aria-labelledby="finSectionLink" style="display:contents;">
+          <h4 id="finSectionLink" class="v2-only">Vínculo</h4>
           <label style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Processo / Cliente Vinculado</span>
             <select id="finProcessSelect" name="processId" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
               <option value="">Selecione o processo...</option>
             </select>
           </label>
+          </div>
+          <div class="financial-entry-section is-entry" role="group" aria-labelledby="finSectionEntry" style="display:contents;">
+          <h4 id="finSectionEntry" class="v2-only">Lançamento</h4>
           <label style="display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Tipo de Lançamento</span>
             <select id="finTypeSelect" name="entryType" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
@@ -2071,6 +2083,9 @@
               <option value="custas">Custas e Reembolsos</option>
             </select>
           </label>
+          </div>
+          <div class="financial-entry-section is-values" role="group" aria-labelledby="finSectionValues" style="display:contents;">
+          <h4 id="finSectionValues" class="v2-only">Valores</h4>
           <label style="display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Situação / Status</span>
             <select id="finStatusSelect" name="status" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
@@ -2088,10 +2103,14 @@
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Percentual de Honorários (%)</span>
             <input id="finFeePctInput" name="feePercentage" type="number" step="0.5" min="0" max="100" placeholder="Ex: 30" value="30" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
           </label>
-          <div class="financial-entry-summary">
+          </div>
+          <div class="financial-entry-section is-preview" role="group" aria-labelledby="finSectionPreview" style="display:contents;">
+          <h4 id="finSectionPreview" class="v2-only">Preview <span>Não persistido</span></h4>
+          <div class="financial-entry-summary" aria-live="polite">
             <div><small style="color:var(--muted); font-size:10px; text-transform:uppercase;">Valor Bruto</small><strong id="finSumGross" style="display:block; color:var(--ivory); font-size:15px; margin-top:2px;">R$ 0,00</strong></div>
             <div><small style="color:var(--muted); font-size:10px; text-transform:uppercase;">Honorários</small><strong id="finSumFee" style="display:block; color:var(--gold); font-size:15px; margin-top:2px;">R$ 0,00</strong></div>
             <div><small style="color:var(--muted); font-size:10px; text-transform:uppercase;">Líquido Cliente</small><strong id="finSumNet" style="display:block; color:var(--success); font-size:15px; margin-top:2px;">R$ 0,00</strong></div>
+          </div>
           </div>
         </div>
         <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
