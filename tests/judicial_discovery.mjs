@@ -266,23 +266,81 @@ assert.equal(frontendContactStore.state.contacts[0].email, 'frontend.sintetico@e
 assert.equal(frontendContactStore.state.contacts[0].city, 'Cidade Sintética');
 
 await verifyServerPipeline();
+await verifyPersistedOabDiscoveryPipeline();
 await verifySourceContracts();
 
 console.log('Judicial discovery passou: DJEN → DataJud → processo → contatos, multi-OAB, merges seguros, idempotência e endpoints canônicos.');
 
 async function runSyntheticDiscoveryCycle(cycleTarget) {
-  for (const term of [TERM_ALPHA, TERM_BETA]) {
+  const monitoredTerms = cycleTarget.terms || [];
+  for (const term of monitoredTerms) {
     await collectDjen({ ...djenPortal, ufOab: term.oabUf, numeroOab: term.oabNumber }, {
       monitoredTerm: term,
-      monitoredTerms: [TERM_ALPHA, TERM_BETA]
+      monitoredTerms
     }, cycleTarget, { fetchImpl: djenFetch, sleep: async () => {} });
   }
-  await collectDatajud(datajudPortal, { monitoredTerms: [TERM_ALPHA, TERM_BETA] }, cycleTarget, {
+  await collectDatajud(datajudPortal, { monitoredTerms }, cycleTarget, {
     apiKey: 'chave-publica-exclusivamente-sintetica',
     processNumbers: [PROCESS_NUMBER],
     fetchImpl: datajudFetch,
     sleep: async () => {}
   });
+}
+
+async function verifyPersistedOabDiscoveryPipeline() {
+  const server = await startTestServer();
+  try {
+    const session = await setupMaster(server.baseUrl);
+    let response = await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: session.cookie } });
+    const fresh = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(fresh.stateStatus, 'NEW_INSTALL');
+
+    const state = {
+      version: 1,
+      schemaVersion: fresh.schemaVersion,
+      dataVersion: fresh.dataVersion,
+      terms: [structuredClone(TERM_ALPHA), structuredClone(TERM_BETA)],
+      sources: [],
+      intimations: [],
+      tasks: [],
+      processes: [],
+      agenda: [],
+      audit: [],
+      contacts: [],
+      leads: [],
+      customPrompts: [],
+      customLinks: [],
+      configuration: {},
+      settings: { demoMode: false }
+    };
+    response = await postJson(`${server.baseUrl}/api/state`, { state, revision: null }, {
+      Cookie: session.cookie,
+      'X-CSRF-Token': session.csrf
+    });
+    const saved = await response.json();
+    assert.equal(response.status, 200);
+    assert.ok(saved.revision, 'Persistência da OAB sintética deve criar revision.');
+
+    response = await fetch(`${server.baseUrl}/api/state`, { headers: { Cookie: session.cookie } });
+    const reloaded = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(reloaded.stateStatus, 'READY');
+    assert.deepEqual(reloaded.state.terms.map(term => term.id), [TERM_ALPHA.id, TERM_BETA.id], 'OABs sintéticas devem sobreviver ao reload.');
+
+    const targetFromPersistedTerms = {
+      events: [], tasks: [], intimations: [], processes: [], contacts: [], sources: [],
+      terms: reloaded.state.terms
+    };
+    await runSyntheticDiscoveryCycle(targetFromPersistedTerms);
+    assert.equal(targetFromPersistedTerms.processes.length, 1);
+    assert.equal(targetFromPersistedTerms.processes[0].client, 'Cliente Alpha Sintética');
+    assert.equal(targetFromPersistedTerms.processes[0].counterpart, 'Empresa Adversa Sintética');
+    assert.equal(targetFromPersistedTerms.contacts.find(item => item.name === 'Cliente Alpha Sintética')?.contactRole, 'cliente');
+    assert.equal(targetFromPersistedTerms.contacts.find(item => item.name === 'Empresa Adversa Sintética')?.contactRole, 'adverso');
+  } finally {
+    await server.stop();
+  }
 }
 
 function collectionCounts(value) {

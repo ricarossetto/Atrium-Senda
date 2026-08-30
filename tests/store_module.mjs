@@ -164,7 +164,7 @@ try {
       eventDetail: JSON.stringify(eventDetails[0] || {}),
       legacyPresent: localStorage.getItem('jurisflow_storage_v1') !== null,
       reloads: globalThis.__storeCharacterization.conflictReloads,
-      toast: [...document.querySelectorAll('#toastRegion .toast')].map(item => item.textContent).find(text => text.includes('Não foi possível salvar as alterações')) || ''
+      toast: [...document.querySelectorAll('#toastRegion .toast')].map(item => item.textContent).find(text => text.includes('Não foi possível salvar:')) || ''
     };
     const recovered = await window.Atrium.Store.flush();
     return {
@@ -179,7 +179,9 @@ try {
   await page.unroute('**/api/state');
   assert.equal(visibleFailure.failed, false, 'HTTP 500 deve retornar false ao chamador.');
   assert.equal(visibleFailure.afterFailure.eventCount, 1, 'Uma requisição de persistência falha deve emitir exatamente um evento.');
-  assert.match(visibleFailure.afterFailure.toast, /Não foi possível salvar as alterações\. Verifique a conexão e tente novamente\./, 'Falha genérica deve ficar visível na UI.');
+  assert.match(visibleFailure.afterFailure.toast, /Não foi possível salvar: o servidor não conseguiu concluir a gravação\./, 'Falha HTTP deve ficar visível com motivo sanitizado.');
+  assert.match(visibleFailure.afterFailure.eventDetail, /"status":500/, 'Evento deve expor apenas o status HTTP seguro.');
+  assert.match(visibleFailure.afterFailure.eventDetail, /"reason":"o servidor não conseguiu concluir a gravação\."/, 'Evento deve expor motivo sanitizado.');
   assert.doesNotMatch(visibleFailure.afterFailure.eventDetail, /Cliente Teste|000\.000\.000-00|persistenceFailureProbe/, 'Detail do evento não pode incluir state ou PII.');
   assert.equal(visibleFailure.afterFailure.legacyPresent, true, 'localStorage legado não pode ser removido após falha.');
   assert.equal(visibleFailure.afterFailure.reloads, visibleFailure.reloadsBefore, 'Falha genérica não pode agendar reload.');
@@ -230,6 +232,7 @@ try {
   await assertStatusScenarios();
   await assertLegacyImport();
   await assertControlledFailures();
+  await assertSafeHttpReasons();
   await assertSerializedWrites();
   assert.deepEqual(pageErrors, [], `Store modular gerou pageerror: ${pageErrors.join(' | ')}`);
 
@@ -413,6 +416,8 @@ async function assertControlledFailures() {
     assert.equal(networkResult.loadedFallback, true, 'Falha de rede deve manter fallback utilizável.');
     assert.equal(networkResult.saved, false, 'Falha de rede deve retornar false sem timeout.');
     assert.equal(networkResult.events.length, 1, 'Falha de rede deve emitir um único evento.');
+    assert.equal(networkResult.events[0].status, null);
+    assert.match(networkResult.events[0].reason, /falha de conexão/);
     assert.equal(networkResult.reloads, 0, 'Falha de rede não deve reutilizar o reload do conflito 409.');
     assert.doesNotMatch(JSON.stringify(networkResult.events[0]), /Cliente Teste Sigiloso|clientMarker/, 'Evento de rede não pode vazar state ou PII.');
   } finally {
@@ -443,10 +448,50 @@ async function assertControlledFailures() {
     assert.equal(httpResult.recovered, true, 'Fila deve aceitar novo save bem-sucedido após HTTP 500.');
     assert.equal(httpResult.attempts, 2, 'Retry posterior deve executar uma nova requisição.');
     assert.equal(httpResult.events.length, 1, 'HTTP 500 deve emitir exatamente um evento de falha.');
+    assert.equal(httpResult.events[0].status, 500);
+    assert.equal(httpResult.events[0].reason, 'o servidor não conseguiu concluir a gravação.');
     assert.equal(httpResult.revision, 'http-r1', 'Retry deve atualizar revision normalmente.');
     assert.doesNotMatch(JSON.stringify(httpResult.events[0]), /Cliente Teste Protegido/, 'Evento HTTP não pode incluir conteúdo do estado.');
   } finally {
     await httpPage.close();
+  }
+}
+
+async function assertSafeHttpReasons() {
+  const scenarios = [
+    { status: 400, backendMessage: 'Estado incompatível com a versão atual.', expected: /Estado incompatível/ },
+    { status: 401, backendMessage: 'MARCADOR_SIGILOSO', expected: /sessão expirou/ },
+    { status: 403, backendMessage: 'MARCADOR_SIGILOSO', expected: /não tem permissão/ },
+    { status: 413, backendMessage: 'MARCADOR_SIGILOSO', expected: /excedem o limite/ },
+    { status: 423, backendMessage: 'MARCADOR_SIGILOSO', expected: /modo de recuperação/ },
+    { status: 500, backendMessage: 'C:\\dados\\Cliente Teste\\MARCADOR_SIGILOSO', expected: /não conseguiu concluir/ }
+  ];
+  for (const scenario of scenarios) {
+    const isolated = await isolatedPage();
+    try {
+      const result = await isolated.evaluate(async current => {
+        const events = [];
+        window.KellerAuth = {
+          secureFetch: async () => new Response(JSON.stringify({ message: current.backendMessage }), {
+            status: current.status,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        };
+        window.addEventListener('atrium:store-persistence-error', event => events.push(event.detail));
+        const { Store } = await import(`/js/core/store.js?case=http-${current.status}`);
+        Store.state = { audit: [], settings: { marker: 'Cliente Teste Protegido' } };
+        Store.revision = 'safe-http-r0';
+        const saved = await Store.flush();
+        return { saved, detail: events[0] };
+      }, scenario);
+      assert.equal(result.saved, false);
+      assert.equal(result.detail.status, scenario.status);
+      assert.match(result.detail.reason, scenario.expected);
+      assert.match(result.detail.message, /^Não foi possível salvar:/);
+      assert.doesNotMatch(JSON.stringify(result.detail), /Cliente Teste Protegido|MARCADOR_SIGILOSO|C:\\dados/, 'Erro sanitizado não pode incluir state, PII ou detalhe interno.');
+    } finally {
+      await isolated.close();
+    }
   }
 }
 

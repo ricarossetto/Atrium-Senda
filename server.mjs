@@ -650,6 +650,7 @@ async function readPublicAppStateEnvelope() {
       state: null,
       revision: null,
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      dataVersion: CURRENT_DATA_VERSION,
       appVersion: APP_VERSION,
       buildId: BUILD_ID
     };
@@ -662,6 +663,7 @@ async function readPublicAppStateEnvelope() {
       state: null,
       revision: null,
       schemaVersion: CURRENT_SCHEMA_VERSION,
+      dataVersion: CURRENT_DATA_VERSION,
       appVersion: APP_VERSION,
       buildId: BUILD_ID
     };
@@ -672,6 +674,7 @@ async function readPublicAppStateEnvelope() {
     state: envelope.state,
     revision: envelope.revision,
     schemaVersion: CURRENT_SCHEMA_VERSION,
+    dataVersion: CURRENT_DATA_VERSION,
     appVersion: APP_VERSION,
     buildId: BUILD_ID
   };

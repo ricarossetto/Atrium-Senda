@@ -17,7 +17,7 @@ const EXTERNAL_CALENDAR_DEFAULT_SOURCE = Object.freeze({
 
 export const STORE_PERSISTENCE_CONFLICT_EVENT = 'atrium:store-persistence-conflict';
 export const ATRIUM_STORE_PERSISTENCE_ERROR_EVENT = 'atrium:store-persistence-error';
-export const STORE_PERSISTENCE_ERROR_MESSAGE = 'Não foi possível salvar as alterações. Verifique a conexão e tente novamente.';
+export const STORE_PERSISTENCE_ERROR_MESSAGE = 'Não foi possível salvar: o servidor não confirmou a gravação.';
 
 export const isoDate = (offset = 0, baseDate = new Date()) => {
   const date = new Date(baseDate);
@@ -185,7 +185,12 @@ export const Store = {
         persisted = serverPayload.state;
         this.revision = serverPayload.revision || null;
         this.stateStatus = serverPayload.stateStatus || 'READY';
-        this.serverMeta = { appVersion: serverPayload.appVersion, buildId: serverPayload.buildId, schemaVersion: serverPayload.schemaVersion };
+        this.serverMeta = {
+          appVersion: serverPayload.appVersion,
+          buildId: serverPayload.buildId,
+          schemaVersion: serverPayload.schemaVersion,
+          dataVersion: serverPayload.dataVersion
+        };
       }
     } catch { /* servidor indisponível — modo offline seguro */ }
 
@@ -232,6 +237,12 @@ export const Store = {
     const seedConfigurationDefaults = !persisted;
     if (!persisted) {
       this.state = deepClone(sampleState);
+      const schemaVersion = Number(this.serverMeta?.schemaVersion);
+      const dataVersion = Number(this.serverMeta?.dataVersion);
+      if (Number.isInteger(schemaVersion) && schemaVersion > 0) {
+        this.state.schemaVersion = schemaVersion;
+        this.state.dataVersion = Number.isInteger(dataVersion) && dataVersion > 0 ? dataVersion : schemaVersion;
+      }
     } else {
       this.state = persisted;
     }
@@ -312,14 +323,19 @@ export const Store = {
         setTimeout(() => globalThis.location.reload(), 700);
         return false;
       }
-      if (!response.ok) throw new Error('Estado não persistido.');
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        const detail = persistenceFailureDetail(response.status, payload?.message);
+        throw Object.assign(new Error(detail.message), { persistenceDetail: detail });
+      }
       this.revision = (await response.json()).revision || this.revision;
       localStorage.removeItem(STORAGE_KEY);
       return true;
-    } catch {
+    } catch (error) {
+      const detail = error?.persistenceDetail || persistenceFailureDetail(null, '');
       if (typeof globalThis.dispatchEvent === 'function' && typeof globalThis.CustomEvent === 'function') {
         globalThis.dispatchEvent(new CustomEvent(ATRIUM_STORE_PERSISTENCE_ERROR_EVENT, {
-          detail: Object.freeze({ message: STORE_PERSISTENCE_ERROR_MESSAGE })
+          detail: Object.freeze(detail)
         }));
       }
       return false;
@@ -341,3 +357,26 @@ export const Store = {
     return record;
   }
 };
+
+function persistenceFailureDetail(status, backendMessage) {
+  const safeBackendMessage = String(backendMessage || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, 180);
+  const numericStatus = Number.isInteger(Number(status)) && Number(status) > 0 ? Number(status) : null;
+  let reason;
+  if (numericStatus === 400) reason = safeBackendMessage || 'o estado é incompatível com a versão atual.';
+  else if (numericStatus === 401) reason = 'a sessão expirou. Entre novamente antes de salvar.';
+  else if (numericStatus === 403) reason = 'a sessão atual não tem permissão para gravar.';
+  else if (numericStatus === 413) reason = 'os dados excedem o limite seguro de persistência.';
+  else if (numericStatus === 423) reason = 'o sistema está em modo de recuperação e bloqueou a gravação.';
+  else if (numericStatus && numericStatus >= 500) reason = 'o servidor não conseguiu concluir a gravação.';
+  else if (numericStatus) reason = safeBackendMessage || `o servidor recusou a gravação (HTTP ${numericStatus}).`;
+  else reason = 'falha de conexão com o servidor.';
+  return {
+    message: `Não foi possível salvar: ${reason}`,
+    status: numericStatus,
+    reason
+  };
+}
