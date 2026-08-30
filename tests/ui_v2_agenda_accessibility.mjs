@@ -38,6 +38,7 @@ try {
   await page.locator('#modalBackdrop[data-modal-mode="agenda"]:not(.hidden)').waitFor();
   assert.equal(await page.locator('#modalBackdrop .modal').getAttribute('aria-modal'), 'true');
   assert.equal(await page.locator('#appShell').getAttribute('inert'), '');
+  await page.waitForFunction(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement));
   assert.equal(await page.evaluate(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement)), true);
   await page.keyboard.press('Escape');
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
