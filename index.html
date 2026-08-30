@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/dashboard.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/processes.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/publications.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/tasks.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -770,13 +771,16 @@
 
       <section class="view" id="view-kanban" data-title="Kanban jurídico" data-eyebrow="Fluxo do escritório">
         <div class="section-toolbar">
-          <div class="toolbar-copy"><p>Organize o trabalho interno sem alterar silenciosamente a fonte oficial.</p></div>
+          <div class="toolbar-copy classic-only"><p>Organize o trabalho interno sem alterar silenciosamente a fonte oficial.</p></div>
+          <div class="v2-task-heading v2-only"><p>Gestão do trabalho</p><h2>Tarefas</h2><span id="taskResultCount" aria-live="polite">0 tarefas</span><small>Seis etapas canônicas, uma única fila operacional.</small></div>
           <div class="toolbar-actions">
             <button class="button ghost" id="kanbanFilterButton">Minhas tarefas</button>
             <button class="button gold" id="newTaskButton">+ Nova tarefa</button>
           </div>
         </div>
-        <div class="kanban-board" id="kanbanBoard"></div>
+        <p class="sr-only" id="taskBoardInstructions">Arraste uma tarefa ou use o controle Mover para em cada cartão.</p>
+        <div class="kanban-board" id="kanbanBoard" aria-describedby="taskBoardInstructions"></div>
+        <p class="sr-only" id="taskBoardLive" aria-live="polite"></p>
       </section>
 
       <section class="view" id="view-processes" data-title="Processos" data-eyebrow="Carteira processual">

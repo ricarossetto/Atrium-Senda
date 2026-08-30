@@ -49,14 +49,17 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
       if (field.type === 'select') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><select id="field-${field.name}" name="${field.name}">${field.options.map(option => `<option value="${escapeHtml(option.value)}" ${String(value) === String(option.value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div>`;
       return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><input id="field-${field.name}" name="${field.name}" type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''}>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
     };
-    const useProcessSections = mode === 'process' && document.documentElement.dataset.ui === 'v2';
-    const fieldsHtml = useProcessSections
+    const isV2 = document.documentElement.dataset.ui === 'v2';
+    const fieldsHtml = mode === 'process' && isV2
       ? renderProcessSections(fields, renderField)
+      : mode === 'task' && isV2
+        ? renderTaskSections(fields, renderField)
       : `<div class="form-grid">${fields.map(renderField).join('')}</div>`;
     document.getElementById('modalFields').innerHTML = `${topHtml}${fieldsHtml}`;
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
+    if (mode === 'task' && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
       const modalFields = document.getElementById('modalFields');
@@ -71,6 +74,7 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     const wasOpen = backdrop && !backdrop.classList.contains('hidden');
     backdrop?.classList.add('hidden');
     backdrop?.removeAttribute('data-modal-mode');
+    document.getElementById('appShell')?.removeAttribute('inert');
     onModeChange?.(null);
     document.getElementById('modalForm').reset();
     if (wasOpen) {
@@ -102,6 +106,28 @@ function renderProcessSections(fields, renderField) {
   }
   return `<div class="process-form-sections">${[...sections.entries()].map(([section, sectionFields]) => `
     <fieldset class="process-form-section">
+      <legend>${section}</legend>
+      <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
+    </fieldset>`).join('')}</div>`;
+}
+
+const TASK_FIELD_SECTIONS = Object.freeze({
+  title: 'Identificação', taskDefinition: 'Identificação', description: 'Identificação',
+  process: 'Vínculos', client: 'Vínculos', actionType: 'Vínculos', protocol: 'Vínculos',
+  fatalDeadline: 'Prazos e agenda', deadline: 'Prazos e agenda', date: 'Prazos e agenda', time: 'Prazos e agenda',
+  responsible: 'Responsabilidade', responsibles: 'Responsabilidade', status: 'Responsabilidade', priority: 'Responsabilidade', points: 'Responsabilidade',
+  addMinutes: 'Tempo apontado', timeDescription: 'Tempo apontado'
+});
+
+function renderTaskSections(fields, renderField) {
+  const sections = new Map();
+  for (const field of fields) {
+    const section = TASK_FIELD_SECTIONS[field.name] || 'Outros dados';
+    if (!sections.has(section)) sections.set(section, []);
+    sections.get(section).push(field);
+  }
+  return `<div class="task-form-sections">${[...sections.entries()].map(([section, sectionFields]) => `
+    <fieldset class="task-form-section">
       <legend>${section}</legend>
       <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
     </fieldset>`).join('')}</div>`;

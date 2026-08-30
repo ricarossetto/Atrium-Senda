@@ -1,4 +1,5 @@
 import { Store, isoDate, uid } from '../core/store.js';
+import { createTasksV2Presenter } from '../views/ui-v2/tasks-presenter.js';
 
 export const TASK_COLUMNS = Object.freeze([
   { id: 'triagem', title: 'Entrada & triagem', color: '#c9a84c' },
@@ -51,8 +52,22 @@ export function createTasksFeature({
   let activeTimeSheetTaskId = null;
   let timeSheetStartedAt = null;
   let timeSheetInterval = null;
+  let tasksPresenter;
 
   const byId = id => documentRef?.getElementById(id);
+  const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
+  const getPresenter = () => {
+    tasksPresenter ||= createTasksV2Presenter({
+      documentRef,
+      escapeHtml,
+      formatDate,
+      formatMinutes,
+      totalTimeMinutes,
+      daysUntil,
+      initials
+    });
+    return tasksPresenter;
+  };
 
   const feature = {
     get initialized() { return initialized; },
@@ -69,7 +84,17 @@ export function createTasksFeature({
 
     renderKanban() {
       const board = byId('kanbanBoard');
-      board.innerHTML = TASK_COLUMNS.map(column => {
+      if (!board) return;
+      if (isV2()) {
+        getPresenter().render({
+          board,
+          tasks: store.state.tasks,
+          columns: TASK_COLUMNS,
+          activeTaskId: activeTimeSheetTaskId,
+          elapsedLabel: this.formatElapsedTimer(),
+          sourceLabel: taskSourceLabel
+        });
+      } else board.innerHTML = TASK_COLUMNS.map(column => {
         const tasks = store.state.tasks.filter(task => task.status === column.id);
         return `<section class="kanban-column" data-column="${column.id}"><header class="column-header"><div class="column-title"><i class="column-dot" style="background:${column.color}"></i>${escapeHtml(column.title)}<span class="column-count">${tasks.length}</span></div><span>···</span></header><div class="column-cards">${tasks.length ? tasks.map(task => this.renderCard(task)).join('') : '<div class="empty-column">Arraste tarefas para cá</div>'}</div></section>`;
       }).join('');
@@ -77,9 +102,31 @@ export function createTasksFeature({
         card.addEventListener('dragstart', () => { card.classList.add('dragging'); card.dataset.dragging = 'true'; });
         card.addEventListener('dragend', () => { card.classList.remove('dragging'); delete card.dataset.dragging; });
         card.addEventListener('click', event => {
-          if (event.target.closest('.timesheet-btn')) return;
+          if (event.target.closest('.timesheet-btn, [data-task-move]')) return;
           const task = store.state.tasks.find(item => item.id === card.dataset.taskId);
           if (task) this.openTaskModal(task);
+        });
+      });
+      board.querySelectorAll('[data-task-open]').forEach(button => {
+        button.addEventListener('click', event => {
+          event.stopPropagation();
+          const task = store.state.tasks.find(item => item.id === button.dataset.taskOpen);
+          if (task) this.openTaskModal(task);
+        });
+      });
+      board.querySelectorAll('[data-task-move]').forEach(select => {
+        select.addEventListener('click', event => event.stopPropagation());
+        select.addEventListener('change', async event => {
+          event.stopPropagation();
+          const task = store.state.tasks.find(item => item.id === select.dataset.taskMove);
+          const previous = task?.status;
+          if (!task || previous === select.value) return;
+          select.disabled = true;
+          const moved = await this.moveTask(task.id, select.value);
+          if (!moved && select.isConnected) {
+            select.disabled = false;
+            select.value = previous;
+          }
         });
       });
       board.querySelectorAll('[data-timesheet-start]').forEach(button => {
@@ -207,10 +254,12 @@ export function createTasksFeature({
         store.state.audit = store.state.audit.filter(entry => entry.id !== audit?.id);
         onRenderAll?.();
         showToast?.('Não foi possível salvar a movimentação. Tente novamente.', 'error');
+        if (isV2()) getPresenter().announce('A movimentação não foi salva. A tarefa voltou para a etapa anterior.');
         return null;
       }
       onRenderAll?.();
       showToast?.('Tarefa movimentada com sucesso.', 'success');
+      if (isV2()) getPresenter().announce(`${task.title} movida para ${TASK_COLUMNS.find(column => column.id === status)?.title || status}.`);
       return task;
     },
 
@@ -256,11 +305,16 @@ export function createTasksFeature({
       const timeNote = totalTime > 0 ? `Tempo total acumulado nesta tarefa: ${formatMinutes(totalTime)}.` : '';
       const cleanDescription = decodeHtmlEntities(defaults.description || defaults.text || '');
       const cleanTitle = decodeHtmlEntities(defaults.title || '');
+      const hasPublicationContext = Boolean(defaults.intimationId || defaults.sourceIntimationId || /djen|datajud|publica/i.test(String(defaults.source || '')));
 
       let completionBarHtml = '';
       if (defaults.id) {
         const isDone = isTerminalStatus(defaults.status);
-        completionBarHtml = `
+        completionBarHtml = isV2() ? `
+        <div class="task-completion-bar">
+          <div><span>Situação da tarefa</span><strong class="task-completion-state ${isDone ? 'is-complete' : 'is-active'}">${isDone ? 'Concluída' : 'Em andamento'}</strong></div>
+          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask">Marcar como concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask">Reabrir tarefa</button>`}
+        </div>` : `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding:10px 14px; background:var(--panel-soft); border-radius:10px; border:1px solid var(--line);">
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="font-size:12px; color:var(--muted); font-weight:600;">Situação da Tarefa:</span>
@@ -271,9 +325,9 @@ export function createTasksFeature({
       }
 
       let topHtml = completionBarHtml;
-      if (cleanDescription) {
+      if (cleanDescription && (!isV2() || hasPublicationContext)) {
         topHtml += `
-        <div class="task-intimation-card">
+          <div class="task-intimation-card ${isV2() ? 'is-v2' : ''}">
           <div class="task-intimation-header">
             <div class="task-intimation-title">
               <svg class="nav-svg" style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>

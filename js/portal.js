@@ -302,6 +302,7 @@ import { createTasksFeature } from './features/tasks.js';
         if (App.currentView === 'dashboard') App.renderDashboard();
         if (App.currentView === 'processes') App.renderProcesses(document.getElementById('processSearch')?.value || '');
         if (App.currentView === 'inbox') App.renderInbox();
+        if (App.currentView === 'kanban') App.renderKanban();
       }
     });
     return uiModeComponent;
