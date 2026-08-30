@@ -8,7 +8,8 @@ const primitives = read('css/views/ui-v2/primitives.css');
 const shell = read('css/views/ui-v2/shell.css');
 const dashboard = read('css/views/ui-v2/dashboard.css');
 const processes = read('css/views/ui-v2/processes.css');
-const componentCss = [primitives, shell, dashboard, processes].join('\n');
+const publications = read('css/views/ui-v2/publications.css');
+const componentCss = [primitives, shell, dashboard, processes, publications].join('\n');
 
 for (const contract of [
   '--v2-color-background: #111315',
@@ -33,6 +34,7 @@ assert.doesNotMatch(componentCss, /animation[^;{}]*infinite/i, 'A UI V2 não pod
 assert.match(shell, /\.nav-count\s*\{[\s\S]*?min-width:\s*20px;[\s\S]*?height:\s*20px;[\s\S]*?display:\s*inline-flex;/, 'O badge deve possuir geometria explícita.');
 assert.match(dashboard, /border-radius:\s*26px 38px 28px 34px/, 'O foco editorial deve possuir assimetria controlada.');
 assert.match(processes, /v2-drawer-in/, 'O inspector deve reutilizar o contrato de movimento V2.');
+assert.match(publications, /v2-drawer-in/, 'A leitura mobile de Publicações deve reutilizar o contrato de movimento V2.');
 
 function rgbSpread(hex) {
   const channels = hex.slice(1).match(/../g).map(value => Number.parseInt(value, 16));

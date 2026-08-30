@@ -31,7 +31,7 @@
     "test:smoke": "node tests/smoke.mjs",
     "test:shared-components": "node tests/shared_components.mjs",
     "test:onboarding": "node tests/onboarding_component.mjs",
-    "test:ui-v2": "node tests/ui_v2_mode_contract.mjs && node tests/ui_v2_foundation.mjs && node tests/ui_v2_dashboard.mjs && node tests/ui_v2_accessibility.mjs && node tests/ui_v2_processes.mjs && node tests/ui_v2_processes_accessibility.mjs && node tests/ui_v2_visual_direction.mjs && node tests/visual_ui_v2_dashboard.mjs && node tests/visual_ui_v2_processes.mjs",
+    "test:ui-v2": "node tests/ui_v2_mode_contract.mjs && node tests/ui_v2_foundation.mjs && node tests/ui_v2_dashboard.mjs && node tests/ui_v2_accessibility.mjs && node tests/ui_v2_processes.mjs && node tests/ui_v2_processes_accessibility.mjs && node tests/ui_v2_publications.mjs && node tests/ui_v2_publications_accessibility.mjs && node tests/ui_v2_visual_direction.mjs && node tests/visual_ui_v2_dashboard.mjs && node tests/visual_ui_v2_processes.mjs && node tests/visual_ui_v2_publications.mjs",
     "test": "node tests/run-all.mjs"
   },
   "keywords": [

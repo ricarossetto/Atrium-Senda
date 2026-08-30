@@ -162,3 +162,112 @@ export async function prepareUiV2ProcessesFixture(page) {
   await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"]').waitFor();
   return fixture;
 }
+
+export async function prepareUiV2PublicationsFixture(page) {
+  const fixture = {
+    processes: [
+      {
+        id: 'ui-v2-publication-process',
+        number: '5004321-12.2026.8.21.0001',
+        client: 'Cliente Sintética Publicações',
+        opposingParty: 'Parte Adversa Sintética'
+      }
+    ],
+    tasks: [
+      {
+        id: 'ui-v2-publication-task',
+        title: 'Providência vinculada sintética',
+        intimationId: 'ui-v2-publication-treated',
+        sourceIntimationId: 'ui-v2-publication-treated',
+        responsible: 'Advogada Teste UI V2',
+        deadline: '2026-09-12',
+        status: 'triagem'
+      }
+    ],
+    intimations: [
+      {
+        id: 'ui-v2-publication-urgent',
+        externalId: 'djen:ui-v2-urgent',
+        title: 'Intimação sintética para manifestação supervisionada',
+        process: '5004321-12.2026.8.21.0001',
+        client: 'Cliente Sintética Publicações',
+        court: 'TJRS · 1ª Vara Cível Sintética',
+        source: 'DJEN sintético',
+        publishedAt: '2026-08-30',
+        text: 'TEXTO OFICIAL SINTÉTICO\nA parte deverá se manifestar em 15 dias.\nA data é apenas conteúdo da publicação e não constitui prazo cadastrado.',
+        status: 'nova',
+        treatmentStatus: 'untreated',
+        unread: true,
+        urgent: true,
+        priority: 'urgente',
+        responsible: 'Advogada Teste UI V2',
+        unknownField: 'preservar'
+      },
+      {
+        id: 'ui-v2-publication-review',
+        title: 'Decisão sintética em análise humana',
+        process: '5004321-12.2026.8.21.0001',
+        client: 'Cliente Sintética Publicações',
+        court: 'TJRS · 1ª Vara Cível Sintética',
+        source: 'DJEN sintético',
+        publishedAt: '2026-08-29',
+        text: 'Conteúdo sintético integral da decisão em análise.',
+        status: 'triagem',
+        treatmentStatus: 'in_review',
+        treatmentStartedAt: '2026-08-30T12:00:00.000Z',
+        treatmentStartedBy: 'Advogada Revisora Sintética',
+        unread: false,
+        important: true
+      },
+      {
+        id: 'ui-v2-publication-treated',
+        title: 'Publicação sintética tratada com providência',
+        process: '5004321-12.2026.8.21.0001',
+        client: 'Cliente Sintética Publicações',
+        court: 'TJRS · 1ª Vara Cível Sintética',
+        source: 'DJEN sintético',
+        publishedAt: '2026-08-28',
+        text: 'Conteúdo sintético integral da publicação tratada.',
+        status: 'prazo',
+        treatmentStatus: 'treated',
+        treatedAt: '2026-08-30T14:00:00.000Z',
+        treatedBy: 'Advogada Tratadora Sintética',
+        treatmentNote: 'Providência conferida manualmente.',
+        linkedTaskIds: ['ui-v2-publication-task'],
+        taskId: 'ui-v2-publication-task',
+        unread: false
+      },
+      {
+        id: 'ui-v2-publication-discarded',
+        title: 'Publicação sintética descartada',
+        process: '5004321-12.2026.8.21.0001',
+        client: 'Cliente Sintética Publicações',
+        court: 'TJRS · 1ª Vara Cível Sintética',
+        source: 'DJEN sintético',
+        publishedAt: '2026-08-27',
+        text: 'Conteúdo sintético integral descartado após revisão humana.',
+        status: 'arquivada',
+        treatmentStatus: 'discarded',
+        discardedAt: '2026-08-30T15:00:00.000Z',
+        discardedBy: 'Advogada Tratadora Sintética',
+        treatmentNote: 'Duplicidade sintética confirmada.',
+        unread: false
+      }
+    ]
+  };
+
+  await page.evaluate(data => {
+    const { App, Store } = window.Atrium;
+    Store.state.processes = data.processes;
+    Store.state.tasks = data.tasks;
+    Store.state.intimations = data.intimations;
+    App.inboxFilter = 'all';
+    App.inboxSort = 'date-desc';
+    App.inboxCutoff = 'all';
+    App.renderAll();
+    App.switchView('inbox');
+  }, fixture);
+  await page.locator('#view-inbox.active').waitFor();
+  await page.locator('#inboxList [data-intimation-id="ui-v2-publication-urgent"]').waitFor();
+  return fixture;
+}
