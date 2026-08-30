@@ -1,4 +1,10 @@
 import { Store, isoDate } from '../core/store.js';
+import {
+  createPublicationsV2Presenter,
+  renderPublicationDetail,
+  renderPublicationEmpty,
+  renderPublicationRow
+} from '../views/ui-v2/publications-presenter.js';
 
 export const ACT_RULES = [
   { regex: /\b(embargos?\s+de\s+declara[cç][aã]o|embargos?\s+declarat[oó]rios?)\b/i, category: 'Embargos de Declaração', priority: 'importante', label: 'Embargos', css: 'embargos' },
@@ -131,9 +137,18 @@ export function createPublicationsFeature({
   let inboxSort = 'priority-urgent';
   let inboxCutoff = 'all';
   let currentEmailBulletin = null;
+  let publicationsPresenter;
 
   const byId = id => documentRef?.getElementById(id);
   const toast = (message, type = '') => showToast?.(message, type);
+  const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
+  const getPresenter = () => {
+    publicationsPresenter ||= createPublicationsV2Presenter({
+      documentRef,
+      onCloseDetail: () => feature.closeDetail()
+    });
+    return publicationsPresenter;
+  };
 
   const feature = {
     get selectedIntimation() { return selectedIntimation; },
@@ -174,6 +189,7 @@ export function createPublicationsFeature({
       if (initialized) return false;
       initialized = true;
       this.bindListeners();
+      getPresenter().init();
       return true;
     },
 
@@ -197,6 +213,12 @@ export function createPublicationsFeature({
         documentRef.querySelectorAll('#publicationsMetrics .pub-metric-card').forEach(item => item.classList.toggle('active', item === card));
         byId('inboxFilters')?.querySelectorAll('button').forEach(item => item.classList.toggle('active', item.dataset.filter === inboxFilter));
         this.renderInbox();
+      });
+      byId('publicationsMetrics')?.addEventListener('keydown', event => {
+        const card = event.target.closest('.pub-metric-card[data-filter]');
+        if (!card || !['Enter', ' '].includes(event.key) || !isV2()) return;
+        event.preventDefault();
+        card.click();
       });
       byId('inboxSortSelect')?.addEventListener('change', event => {
         inboxSort = event.target.value;
@@ -285,6 +307,7 @@ export function createPublicationsFeature({
       if (byId('pubMetricDiscardedToday')) byId('pubMetricDiscardedToday').textContent = String(metrics.discardedToday);
       documentRef.querySelectorAll('#publicationsMetrics .pub-metric-card').forEach(card => {
         card.classList.toggle('active', card.dataset.filter === (inboxFilter || 'untreated'));
+        card.setAttribute('aria-pressed', card.dataset.filter === (inboxFilter || 'untreated') ? 'true' : 'false');
       });
     },
 
@@ -313,6 +336,7 @@ export function createPublicationsFeature({
     renderInbox() {
       this.renderMetrics();
       const items = this.filteredItems();
+      const allItems = Array.isArray(store.state.intimations) ? store.state.intimations : [];
       const dateButton = documentRef.querySelector('button[data-inbox-sort-col="date"]');
       const dateIcon = byId('inboxSortIconDate');
       if (dateButton && dateIcon) {
@@ -325,7 +349,18 @@ export function createPublicationsFeature({
         : '<div class="empty-detail"><span>✓</span><h3>Nenhuma publicação encontrada</h3><p>Não há publicações para o filtro ou ordenação selecionados.</p></div>';
       const list = byId('inboxList');
       if (!list) return;
-      list.innerHTML = items.length ? items.map(item => {
+      if (isV2()) {
+        getPresenter().updateCount({ visible: items.length, total: allItems.length });
+        list.innerHTML = items.length ? items.map(item => renderPublicationRow({
+          item,
+          act: classifyIntimationAct(item.text, item.title, item.type),
+          parties: this.intimationParties(item),
+          selected: selectedIntimation === item.id,
+          escapeHtml,
+          formatDate,
+          formatAge: formatPublicationAge
+        })).join('') : renderPublicationEmpty({ total: allItems.length, filter: inboxFilter, escapeHtml });
+      } else list.innerHTML = items.length ? items.map(item => {
         const act = classifyIntimationAct(item.text, item.title, item.type);
         const urgent = Boolean(item.urgent || item.priority === 'urgente');
         const urgentBadge = urgent ? '<span class="badge-urgent">URGENTE</span>' : '';
@@ -350,14 +385,15 @@ export function createPublicationsFeature({
         </button>`;
       }).join('') : emptyMessage;
 
-      documentRef.querySelectorAll('[data-intimation-id]').forEach(button => {
-        button.addEventListener('click', () => this.select(button.dataset.intimationId));
+      list.querySelectorAll('[data-intimation-id]').forEach(button => {
+        button.addEventListener('click', () => this.select(button.dataset.intimationId, button));
       });
       if (selectedIntimation) this.renderDetail();
     },
 
-    select(id) {
+    select(id, invoker = null) {
       selectedIntimation = id;
+      if (isV2()) getPresenter().prepareDetailOpen(invoker, id);
       const item = store.state.intimations.find(record => record.id === id);
       if (item && item.unread) {
         item.unread = false;
@@ -369,11 +405,27 @@ export function createPublicationsFeature({
       this.renderDetail();
     },
 
+    closeDetail() {
+      if (!isV2()) return false;
+      const selectedId = selectedIntimation;
+      selectedIntimation = null;
+      getPresenter().closeDetail({ restoreFocus: false });
+      this.renderInbox();
+      this.renderDetail();
+      if (selectedId) {
+        const returnTarget = [...(byId('inboxList')?.querySelectorAll('[data-intimation-id]') || [])]
+          .find(element => element.dataset.intimationId === selectedId);
+        if (returnTarget?.isConnected) queueMicrotask(() => returnTarget.focus());
+      }
+      return true;
+    },
+
     renderDetail() {
       const item = store.state.intimations.find(record => record.id === selectedIntimation);
       const container = byId('intimationDetail');
       if (!container) return;
       if (!item) {
+        getPresenter().closeDetail({ restoreFocus: false });
         container.innerHTML = '<div class="empty-detail"><span>✦</span><h3>Selecione uma publicação</h3><p>O texto original, o processo, alertas de urgência e o fluxo de tratamento aparecerão aqui.</p></div>';
         return;
       }
@@ -386,6 +438,34 @@ export function createPublicationsFeature({
       const emailAction = privileged
         ? '<button type="button" class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail" title="Enviar publicação por e-mail">✉️ Enviar por e-mail</button>'
         : '';
+
+      if (isV2()) {
+        const linkedTaskIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : (item.taskId ? [item.taskId] : []);
+        const linkedTasks = (store.state.tasks || []).filter(task => linkedTaskIds.includes(task.id) || task.intimationId === item.id || task.sourceIntimationId === item.id);
+        container.innerHTML = renderPublicationDetail({
+          item,
+          act,
+          parties: this.intimationParties(item),
+          linkedTasks,
+          privileged,
+          escapeHtml,
+          formatDate,
+          formatDateTime,
+          formatAge: formatPublicationAge
+        });
+        container.querySelectorAll('[data-detail-action]').forEach(button => {
+          button.addEventListener('click', () => this.handleAction(item, button.dataset.detailAction));
+        });
+        container.querySelectorAll('[data-open-task-id]').forEach(button => {
+          button.addEventListener('click', () => {
+            const task = store.state.tasks.find(record => record.id === button.dataset.openTaskId);
+            if (task) onOpenTask?.(task);
+          });
+        });
+        byId('publicationDetailClose')?.addEventListener('click', () => this.closeDetail());
+        getPresenter().syncDetailOpen();
+        return;
+      }
 
       let treatmentInfo = '';
       if (treatmentStatus === 'treated') {
@@ -621,28 +701,40 @@ export function createPublicationsFeature({
       byId('discardPublicationProcessRef').textContent = item.process || 'Sem processo vinculado';
       byId('discardPublicationTitleRef').textContent = item.title || 'Publicação';
       byId('discardReasonInput').value = '';
-      byId('discardPublicationBackdrop').classList.remove('hidden');
-      byId('discardReasonInput').focus();
+      if (!getPresenter().openOverlay('discardPublicationBackdrop', 'discardReasonInput')) {
+        byId('discardPublicationBackdrop').classList.remove('hidden');
+        byId('discardReasonInput').focus();
+      }
     },
-    closeDiscardModal() { byId('discardPublicationBackdrop')?.classList.add('hidden'); },
+    closeDiscardModal() {
+      if (!getPresenter().closeOverlay('discardPublicationBackdrop')) byId('discardPublicationBackdrop')?.classList.add('hidden');
+    },
     openTreatModal(item) {
       if (!item) return;
       byId('treatPublicationIdInput').value = item.id;
       byId('treatPublicationProcessRef').textContent = item.process || 'Sem processo vinculado';
       byId('treatPublicationTitleRef').textContent = item.title || 'Publicação';
       byId('treatNoteInput').value = '';
-      byId('treatPublicationBackdrop').classList.remove('hidden');
-      byId('treatNoteInput').focus();
+      if (!getPresenter().openOverlay('treatPublicationBackdrop', 'treatNoteInput')) {
+        byId('treatPublicationBackdrop').classList.remove('hidden');
+        byId('treatNoteInput').focus();
+      }
     },
-    closeTreatModal() { byId('treatPublicationBackdrop')?.classList.add('hidden'); },
+    closeTreatModal() {
+      if (!getPresenter().closeOverlay('treatPublicationBackdrop')) byId('treatPublicationBackdrop')?.classList.add('hidden');
+    },
 
     openPublicationsEmailModal() {
       currentEmailBulletin = null;
       const preview = byId('emailPreviewContainer');
       if (preview) preview.innerHTML = '<div style="padding:24px;text-align:center;color:#64748b;">✦ Informe o destinatário e confirme o envio manual para gerar o boletim com dados canônicos do servidor.</div>';
-      byId('publicationsEmailModalBackdrop')?.classList.remove('hidden');
+      if (!getPresenter().openOverlay('publicationsEmailModalBackdrop', 'emailTargetAddress')) {
+        byId('publicationsEmailModalBackdrop')?.classList.remove('hidden');
+      }
     },
-    closePublicationsEmailModal() { byId('publicationsEmailModalBackdrop')?.classList.add('hidden'); },
+    closePublicationsEmailModal() {
+      if (!getPresenter().closeOverlay('publicationsEmailModalBackdrop')) byId('publicationsEmailModalBackdrop')?.classList.add('hidden');
+    },
 
     async sendBatchEmail() {
       const recipient = byId('emailTargetAddress')?.value?.trim();
@@ -717,14 +809,18 @@ export function createPublicationsFeature({
         submitButton.disabled = false;
         submitButton.textContent = 'Enviar';
       }
-      backdrop.classList.remove('hidden');
-      documentRef.body.style.overflow = 'hidden';
-      if (recipient) windowRef.setTimeout(() => recipient.focus(), 50);
+      if (!getPresenter().openOverlay('publicationEmailBackdrop', 'publicationEmailRecipientInput')) {
+        backdrop.classList.remove('hidden');
+        documentRef.body.style.overflow = 'hidden';
+        if (recipient) windowRef.setTimeout(() => recipient.focus(), 50);
+      }
     },
 
     closePublicationEmailModal() {
-      byId('publicationEmailBackdrop')?.classList.add('hidden');
-      if (byId('modalBackdrop')?.classList.contains('hidden')) documentRef.body.style.overflow = '';
+      if (!getPresenter().closeOverlay('publicationEmailBackdrop')) {
+        byId('publicationEmailBackdrop')?.classList.add('hidden');
+        if (byId('modalBackdrop')?.classList.contains('hidden')) documentRef.body.style.overflow = '';
+      }
     },
 
     async submitPublicationEmail(event) {

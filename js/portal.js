@@ -301,6 +301,7 @@ import { createTasksFeature } from './features/tasks.js';
         getUiShellComponent().applyMode(mode);
         if (App.currentView === 'dashboard') App.renderDashboard();
         if (App.currentView === 'processes') App.renderProcesses(document.getElementById('processSearch')?.value || '');
+        if (App.currentView === 'inbox') App.renderInbox();
       }
     });
     return uiModeComponent;

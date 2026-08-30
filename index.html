@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/shell.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/dashboard.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/processes.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/publications.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -681,29 +682,34 @@
       </section>
 
       <section class="view" id="view-inbox" data-title="Publicações &amp; Intimações" data-eyebrow="Triagem e Tratamento">
+        <div class="v2-publications-heading v2-only">
+          <p>Triagem judicial supervisionada</p>
+          <h2>Publicações</h2>
+          <span id="publicationResultCount" aria-live="polite">0 de 0 publicações</span>
+        </div>
         <div class="publications-metrics-grid" id="publicationsMetrics">
-          <div class="pub-metric-card primary-focus active" data-filter="untreated">
+          <div class="pub-metric-card primary-focus active" data-filter="untreated" role="button" tabindex="0" aria-pressed="true">
             <div class="pub-metric-icon">⏳</div>
             <div class="pub-metric-content">
               <strong id="pubMetricUntreated">0</strong>
               <span>Não tratadas</span>
             </div>
           </div>
-          <div class="pub-metric-card" data-filter="in_review">
+          <div class="pub-metric-card" data-filter="in_review" role="button" tabindex="0" aria-pressed="false">
             <div class="pub-metric-icon">🔍</div>
             <div class="pub-metric-content">
               <strong id="pubMetricInReview">0</strong>
               <span>Em análise</span>
             </div>
           </div>
-          <div class="pub-metric-card" data-filter="treated">
+          <div class="pub-metric-card" data-filter="treated" role="button" tabindex="0" aria-pressed="false">
             <div class="pub-metric-icon">✓</div>
             <div class="pub-metric-content">
               <strong id="pubMetricTreatedToday">0</strong>
               <span>Tratadas hoje</span>
             </div>
           </div>
-          <div class="pub-metric-card" data-filter="discarded">
+          <div class="pub-metric-card" data-filter="discarded" role="button" tabindex="0" aria-pressed="false">
             <div class="pub-metric-icon">✕</div>
             <div class="pub-metric-content">
               <strong id="pubMetricDiscardedToday">0</strong>
@@ -713,7 +719,7 @@
         </div>
 
         <div class="section-toolbar">
-          <div class="filter-tabs" id="inboxFilters">
+          <div class="filter-tabs" id="inboxFilters" aria-label="Filtrar publicações por tratamento e prioridade">
             <button class="active" data-filter="untreated">Não tratadas</button>
             <button data-filter="in_review">Em análise</button>
             <button data-filter="all">Todas</button>
@@ -724,7 +730,7 @@
           </div>
           <div class="toolbar-actions">
             <div class="inbox-sort-control">
-              <span>Período:</span>
+              <label for="inboxCutoffSelect">Período:</label>
               <select id="inboxCutoffSelect">
                 <option value="today">Hoje em diante</option>
                 <option value="7days">Últimos 7 dias</option>
@@ -733,7 +739,7 @@
               </select>
             </div>
             <div class="inbox-sort-control">
-              <span>Ordenar:</span>
+              <label for="inboxSortSelect">Ordenar:</label>
               <select id="inboxSortSelect">
                 <option value="priority-urgent" selected>Atenção / Urgentes primeiro</option>
                 <option value="date-desc">Data (mais recentes)</option>
@@ -751,12 +757,12 @@
             <div class="list-head">
               <span>Ocorrência &amp; Destaque</span>
               <span class="col-head-source">Origem</span>
-              <button type="button" class="list-head-sort" data-inbox-sort-col="date" title="Clique para ordenar por data">Publicação / Idade <span class="sort-icon" id="inboxSortIconDate">▼</span></button>
+              <button type="button" class="list-head-sort" data-inbox-sort-col="date" title="Clique para ordenar por data" aria-label="Ordenar publicações por data">Publicação / Idade <span class="sort-icon" id="inboxSortIconDate">▼</span></button>
               <span>Tratamento</span>
             </div>
             <div id="inboxList" class="inbox-list"></div>
           </article>
-          <aside class="card intimation-detail" id="intimationDetail">
+          <aside class="card intimation-detail" id="intimationDetail" role="region" aria-label="Leitura da publicação selecionada">
             <div class="empty-detail"><span>✦</span><h3>Selecione uma publicação</h3><p>O texto original, o processo, alertas de urgência e o fluxo de tratamento aparecerão aqui.</p></div>
           </aside>
         </div>
