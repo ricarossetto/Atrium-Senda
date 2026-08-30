@@ -29,6 +29,12 @@ const checkFiles = [
   'js/components/theme.js',
   'js/components/global-search.js',
   'js/components/onboarding.js',
+  'js/views/ui-v2/preference-init.js',
+  'js/views/ui-v2/mode.js',
+  'js/views/ui-v2/primitives.js',
+  'js/views/ui-v2/system-status.js',
+  'js/views/ui-v2/shell.js',
+  'js/views/ui-v2/dashboard.js',
   'js/features/dashboard.js',
   'js/features/office-identity.js',
   'js/features/audit.js',
@@ -117,6 +123,12 @@ const checkFiles = [
   'tests/brand_neutrality.mjs',
   'tests/toolchain_contract.mjs',
   'tests/beta_readiness_gate.mjs',
+  'tests/ui_v2_helpers.mjs',
+  'tests/ui_v2_mode_contract.mjs',
+  'tests/ui_v2_foundation.mjs',
+  'tests/ui_v2_dashboard.mjs',
+  'tests/ui_v2_accessibility.mjs',
+  'tests/visual_ui_v2_dashboard.mjs',
   'tests/visual-qa.mjs'
 ];
 
@@ -175,6 +187,10 @@ const testSuites = [
   { name: 'Onboarding Modular, Primeiro Acesso e Persistência', file: 'tests/onboarding_component.mjs' },
   { name: 'Contrato Canônico Node 24, pnpm e Frozen Lockfile', file: 'tests/toolchain_contract.mjs' },
   { name: 'Gate Documental de Readiness Técnico Pré-UI-V2', file: 'tests/beta_readiness_gate.mjs' },
+  { name: 'UI V2 Mode sem Mutação de Store, Revision ou Network', file: 'tests/ui_v2_mode_contract.mjs' },
+  { name: 'UI V2 Foundation, Tokens, Primitives e Isolamento', file: 'tests/ui_v2_foundation.mjs' },
+  { name: 'UI V2 Dashboard Piloto e Hierarquia Operacional', file: 'tests/ui_v2_dashboard.mjs' },
+  { name: 'UI V2 Acessibilidade, Busca, Dialog e Mobile', file: 'tests/ui_v2_accessibility.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 

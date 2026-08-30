@@ -31,6 +31,7 @@
     "test:smoke": "node tests/smoke.mjs",
     "test:shared-components": "node tests/shared_components.mjs",
     "test:onboarding": "node tests/onboarding_component.mjs",
+    "test:ui-v2": "node tests/ui_v2_mode_contract.mjs && node tests/ui_v2_foundation.mjs && node tests/ui_v2_dashboard.mjs && node tests/ui_v2_accessibility.mjs && node tests/visual_ui_v2_dashboard.mjs",
     "test": "node tests/run-all.mjs"
   },
   "keywords": [
