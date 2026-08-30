@@ -82,6 +82,9 @@ try {
     assert.match(await detailsButton.getAttribute('aria-label') || await detailsButton.textContent(), /Ver detalhes/);
     await detailsButton.click();
     await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
+    await page.locator('#processInspector').evaluate(element => Promise.all(
+      element.getAnimations().map(animation => animation.finished)
+    ));
     const drawerBounds = await page.locator('#processInspector').evaluate(element => {
       const rect = element.getBoundingClientRect();
       return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, viewportWidth: innerWidth, viewportHeight: innerHeight };
