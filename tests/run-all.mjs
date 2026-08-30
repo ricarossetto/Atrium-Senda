@@ -35,6 +35,7 @@ const checkFiles = [
   'js/views/ui-v2/system-status.js',
   'js/views/ui-v2/shell.js',
   'js/views/ui-v2/dashboard.js',
+  'js/views/ui-v2/processes-presenter.js',
   'js/features/dashboard.js',
   'js/features/office-identity.js',
   'js/features/audit.js',
@@ -128,7 +129,10 @@ const checkFiles = [
   'tests/ui_v2_foundation.mjs',
   'tests/ui_v2_dashboard.mjs',
   'tests/ui_v2_accessibility.mjs',
+  'tests/ui_v2_processes.mjs',
+  'tests/ui_v2_processes_accessibility.mjs',
   'tests/visual_ui_v2_dashboard.mjs',
+  'tests/visual_ui_v2_processes.mjs',
   'tests/visual-qa.mjs'
 ];
 
@@ -191,6 +195,8 @@ const testSuites = [
   { name: 'UI V2 Foundation, Tokens, Primitives e Isolamento', file: 'tests/ui_v2_foundation.mjs' },
   { name: 'UI V2 Dashboard Piloto e Hierarquia Operacional', file: 'tests/ui_v2_dashboard.mjs' },
   { name: 'UI V2 Acessibilidade, Busca, Dialog e Mobile', file: 'tests/ui_v2_accessibility.mjs' },
+  { name: 'UI V2 Processos, Tabela Densa, Inspector e Contratos Funcionais', file: 'tests/ui_v2_processes.mjs' },
+  { name: 'UI V2 Processos, Acessibilidade e RecordList Responsiva', file: 'tests/ui_v2_processes_accessibility.mjs' },
   { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
 ];
 
