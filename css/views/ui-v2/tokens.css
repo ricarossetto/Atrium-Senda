@@ -1,0 +1,108 @@
+html[data-ui="classic"] .v2-only {
+  display: none !important;
+}
+
+html[data-ui="v2"] .classic-only {
+  display: none !important;
+}
+
+html[data-ui="v2"] {
+  color-scheme: dark;
+  --v2-color-background: #171915;
+  --v2-color-surface: #1E211C;
+  --v2-color-surface-secondary: #252920;
+  --v2-color-surface-hover: #2D3228;
+  --v2-color-foreground: #ECECE5;
+  --v2-color-foreground-secondary: #BCC0B5;
+  --v2-color-muted-foreground: #92978C;
+  --v2-color-primary: #819477;
+  --v2-color-primary-hover: #91A487;
+  --v2-color-primary-soft: #293226;
+  --v2-color-on-primary: #171915;
+  --v2-color-gold: #C0A15C;
+  --v2-color-gold-soft: #352E20;
+  --v2-color-success: #86A58C;
+  --v2-color-success-soft: #263128;
+  --v2-color-warning: #D2A05A;
+  --v2-color-warning-soft: #352C1E;
+  --v2-color-danger: #D57A74;
+  --v2-color-danger-soft: #382321;
+  --v2-color-info: #7FA0B4;
+  --v2-color-info-soft: #223039;
+  --v2-color-border: #343930;
+  --v2-color-border-subtle: #2A2E27;
+  --v2-color-focus: #C0A15C;
+
+  --v2-font-interface: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --v2-font-editorial: "Playfair Display", Georgia, serif;
+
+  --v2-space-0: 0;
+  --v2-space-1: 4px;
+  --v2-space-1-5: 6px;
+  --v2-space-2: 8px;
+  --v2-space-3: 12px;
+  --v2-space-4: 16px;
+  --v2-space-5: 20px;
+  --v2-space-6: 24px;
+  --v2-space-8: 32px;
+  --v2-space-10: 40px;
+  --v2-space-12: 48px;
+  --v2-space-16: 64px;
+
+  --v2-radius-sm: 6px;
+  --v2-radius-md: 10px;
+  --v2-radius-lg: 14px;
+  --v2-radius-xl: 18px;
+  --v2-radius-round: 999px;
+
+  --v2-shadow-subtle: none;
+  --v2-shadow-card: none;
+  --v2-shadow-elevated: 0 10px 30px rgba(0, 0, 0, .18);
+
+  --v2-duration-fast: 120ms;
+  --v2-duration-base: 180ms;
+  --v2-duration-slow: 220ms;
+  --v2-duration-max: 300ms;
+  --v2-ease-standard: cubic-bezier(.2, 0, 0, 1);
+
+  --v2-z-base: 0;
+  --v2-z-sticky: 20;
+  --v2-z-navigation: 40;
+  --v2-z-popover: 60;
+  --v2-z-overlay: 80;
+  --v2-z-toast: 100;
+
+  --v2-sidebar-width: 256px;
+  --v2-sidebar-collapsed-width: 70px;
+}
+
+html[data-ui="v2"][data-theme="light"] {
+  color-scheme: light;
+  --v2-color-background: #F7F5EF;
+  --v2-color-surface: #FCFBF7;
+  --v2-color-surface-secondary: #EFECE4;
+  --v2-color-surface-hover: #E9E6DD;
+  --v2-color-foreground: #292A25;
+  --v2-color-foreground-secondary: #56584F;
+  --v2-color-muted-foreground: #76796E;
+  --v2-color-primary: #596B50;
+  --v2-color-primary-hover: #4B5C44;
+  --v2-color-primary-soft: #E4E9DF;
+  --v2-color-on-primary: #FCFBF7;
+  --v2-color-gold: #A88742;
+  --v2-color-gold-soft: #EEE5D1;
+  --v2-color-success: #56735B;
+  --v2-color-success-soft: #E3ECE3;
+  --v2-color-warning: #A87535;
+  --v2-color-warning-soft: #F3E7D5;
+  --v2-color-danger: #A34F49;
+  --v2-color-danger-soft: #F3E1DF;
+  --v2-color-info: #536C7C;
+  --v2-color-info-soft: #E0E8EC;
+  --v2-color-border: #D9D5CA;
+  --v2-color-border-subtle: #E8E4DB;
+  --v2-color-focus: #596B50;
+  --v2-shadow-subtle: 0 1px 3px rgba(41, 42, 37, .06);
+  --v2-shadow-card: 0 4px 16px rgba(70, 75, 62, .08);
+  --v2-shadow-elevated: 0 10px 30px rgba(70, 75, 62, .12);
+}

@@ -1,4 +1,5 @@
 import { Store } from '../core/store.js';
+import { renderDashboardV2Summary } from '../views/ui-v2/dashboard.js';
 
 export function createDashboardFeature({
   store = Store,
@@ -50,9 +51,11 @@ export function createDashboardFeature({
 
     render() {
       renderOfficeIdentity?.();
-      this.renderMetrics();
+      const metrics = this.renderMetrics();
       this.renderTasks();
-      this.renderWidgets();
+      const widgets = this.renderWidgets();
+      renderDashboardV2Summary({ documentRef, metrics, widgets, formatDate });
+      return { metrics, widgets };
     },
 
     renderMetrics() {

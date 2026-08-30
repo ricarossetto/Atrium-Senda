@@ -1,6 +1,9 @@
+import { iconSvg } from '../views/ui-v2/primitives.js';
+
 export function createGlobalSearch({ getState, normalizeText, escapeHtml, formatDate, onSelect } = {}) {
   let initialized = false;
   let debounceTimer = null;
+  let activeIndex = -1;
 
   function init() {
     if (initialized) return;
@@ -8,12 +11,30 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     const input = document.getElementById('globalSearch');
     const results = document.getElementById('searchPaletteResults');
 
+    input?.setAttribute('role', 'combobox');
+    input?.setAttribute('aria-autocomplete', 'list');
+    input?.setAttribute('aria-controls', 'searchPaletteResults');
+    input?.setAttribute('aria-expanded', 'false');
+    results?.setAttribute('role', 'listbox');
+    results?.setAttribute('aria-label', 'Resultados da busca global');
+
     input?.addEventListener('input', event => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => perform(event.target.value), 180);
     });
     input?.addEventListener('keydown', event => {
-      if (event.key === 'Escape') {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        if (!document.getElementById('globalSearchPalette')?.classList.contains('hidden')) {
+          event.preventDefault();
+          moveActive(event.key === 'ArrowDown' ? 1 : -1);
+        }
+      } else if (event.key === 'Enter') {
+        const item = getItems()[activeIndex];
+        if (item) {
+          event.preventDefault();
+          selectItem(item);
+        }
+      } else if (event.key === 'Escape') {
         close();
         input.blur();
       }
@@ -21,9 +42,12 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     results?.addEventListener('click', event => {
       const item = event.target.closest('.search-palette-item');
       if (!item) return;
-      close();
-      if (input) input.value = '';
-      onSelect?.({ target: item.dataset.searchTarget, id: item.dataset.searchId });
+      selectItem(item);
+    });
+    results?.addEventListener('mousemove', event => {
+      const item = event.target.closest('.search-palette-item');
+      if (!item) return;
+      setActive(getItems().indexOf(item));
     });
     document.addEventListener('keydown', event => {
       const shortcut = ((event.key === 'k' || event.key === 'K') && (event.ctrlKey || event.metaKey))
@@ -44,6 +68,60 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
 
   function close() {
     document.getElementById('globalSearchPalette')?.classList.add('hidden');
+    const input = document.getElementById('globalSearch');
+    input?.setAttribute('aria-expanded', 'false');
+    input?.removeAttribute('aria-activedescendant');
+    setActive(-1);
+  }
+
+  function getItems() {
+    return [...(document.getElementById('searchPaletteResults')?.querySelectorAll('.search-palette-item') || [])];
+  }
+
+  function setActive(index) {
+    const items = getItems();
+    activeIndex = items.length && index >= 0 ? Math.min(index, items.length - 1) : -1;
+    items.forEach((item, itemIndex) => {
+      const selected = itemIndex === activeIndex;
+      item.classList.toggle('active', selected);
+      item.setAttribute('aria-selected', selected ? 'true' : 'false');
+    });
+    const input = document.getElementById('globalSearch');
+    if (activeIndex >= 0) {
+      input?.setAttribute('aria-activedescendant', items[activeIndex].id);
+      items[activeIndex].scrollIntoView?.({ block: 'nearest' });
+    } else input?.removeAttribute('aria-activedescendant');
+  }
+
+  function moveActive(direction) {
+    const items = getItems();
+    if (!items.length) return;
+    const nextIndex = activeIndex < 0
+      ? (direction > 0 ? 0 : items.length - 1)
+      : (activeIndex + direction + items.length) % items.length;
+    setActive(nextIndex);
+  }
+
+  function selectItem(item) {
+    const input = document.getElementById('globalSearch');
+    const selection = { target: item.dataset.searchTarget, id: item.dataset.searchId };
+    close();
+    if (input) input.value = '';
+    onSelect?.(selection);
+  }
+
+  function prepareResults() {
+    const input = document.getElementById('globalSearch');
+    const items = getItems();
+    items.forEach((item, index) => {
+      item.id = `global-search-option-${index}`;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', 'false');
+      item.setAttribute('tabindex', '-1');
+    });
+    activeIndex = -1;
+    input?.setAttribute('aria-expanded', 'true');
+    input?.removeAttribute('aria-activedescendant');
   }
 
   function perform(query) {
@@ -55,6 +133,8 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     if (!trimmed || trimmed.length < 2) {
       palette.classList.add('hidden');
       resultsEl.innerHTML = '';
+      document.getElementById('globalSearch')?.setAttribute('aria-expanded', 'false');
+      setActive(-1);
       return;
     }
 
@@ -76,37 +156,39 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     if (processes.length + contacts.length + tasks.length + intimations.length === 0) {
       resultsEl.innerHTML = `<div class="search-palette-empty">Nenhum resultado localizado para <strong>"${escapeHtml(trimmed)}"</strong>.</div>`;
       palette.classList.remove('hidden');
+      prepareResults();
       return;
     }
 
     const groups = [];
     if (processes.length > 0) groups.push(renderGroup('Processos', processes, process => `
       <div class="search-palette-item" data-search-target="process" data-search-id="${escapeHtml(process.id)}">
-        <span class="search-palette-icon">⚖️</span>
+        <span class="search-palette-icon" aria-hidden="true"><span class="classic-search-icon">⚖️</span><span class="v2-search-icon">${iconSvg('process')}</span></span>
         <div class="search-palette-info"><strong>${escapeHtml(process.number || 'Processo S/N')}</strong><small>${escapeHtml(process.client || 'Cliente')} · ${escapeHtml(process.court || 'Tribunal')}</small></div>
         <span class="search-palette-badge">${escapeHtml(process.actionType || 'Ação')}</span>
       </div>`));
     if (contacts.length > 0) groups.push(renderGroup('Contatos', contacts, contact => `
       <div class="search-palette-item" data-search-target="contact" data-search-id="${escapeHtml(contact.id)}">
-        <span class="search-palette-icon">👤</span>
+        <span class="search-palette-icon" aria-hidden="true"><span class="classic-search-icon">👤</span><span class="v2-search-icon">${iconSvg('contact')}</span></span>
         <div class="search-palette-info"><strong>${escapeHtml(contact.name || 'Contato')}</strong><small>${escapeHtml(contact.document || contact.email || contact.phone || 'Sem documento')}</small></div>
         <span class="search-palette-badge">${escapeHtml(contact.role || 'Cliente')}</span>
       </div>`));
     if (tasks.length > 0) groups.push(renderGroup('Tarefas &amp; Prazos', tasks, task => `
       <div class="search-palette-item" data-search-target="task" data-search-id="${escapeHtml(task.id)}">
-        <span class="search-palette-icon">📋</span>
+        <span class="search-palette-icon" aria-hidden="true"><span class="classic-search-icon">📋</span><span class="v2-search-icon">${iconSvg('task')}</span></span>
         <div class="search-palette-info"><strong>${escapeHtml(task.title || 'Tarefa')}</strong><small>${escapeHtml(task.client || task.process || 'Prazo: ' + formatDate(task.deadline))}</small></div>
         <span class="search-palette-badge">${escapeHtml(task.status || 'Pendente')}</span>
       </div>`));
     if (intimations.length > 0) groups.push(renderGroup('Publicações &amp; DJEN', intimations, intimation => `
       <div class="search-palette-item" data-search-target="intimation" data-search-id="${escapeHtml(intimation.id)}">
-        <span class="search-palette-icon">📬</span>
+        <span class="search-palette-icon" aria-hidden="true"><span class="classic-search-icon">📬</span><span class="v2-search-icon">${iconSvg('publication')}</span></span>
         <div class="search-palette-info"><strong>${escapeHtml(intimation.title || 'Publicação')}</strong><small>${escapeHtml(intimation.process || intimation.court || 'DataJud')}</small></div>
         <span class="search-palette-badge">${escapeHtml(intimation.category || 'Intimação')}</span>
       </div>`));
 
     resultsEl.innerHTML = groups.join('');
     palette.classList.remove('hidden');
+    prepareResults();
   }
 
   function renderGroup(title, items, renderItem) {
@@ -117,5 +199,5 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
       </div>`;
   }
 
-  return Object.freeze({ init, close, perform });
+  return Object.freeze({ init, close, perform, moveActive });
 }

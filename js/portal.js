@@ -11,6 +11,9 @@ import { createModal } from './components/modal.js';
 import { createOnboarding } from './components/onboarding.js';
 import { createTheme } from './components/theme.js';
 import { Toast } from './components/toast.js';
+import { createUiMode } from './views/ui-v2/mode.js';
+import { createUiV2Shell } from './views/ui-v2/shell.js';
+import { createSystemStatusBar } from './views/ui-v2/system-status.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -225,6 +228,9 @@ import { createTasksFeature } from './features/tasks.js';
   let modalComponent;
   let onboardingComponent;
   let themeComponent;
+  let uiModeComponent;
+  let uiShellComponent;
+  let systemStatusComponent;
   let agendaFeature;
   let assistantFeature;
   let auditFeature;
@@ -283,6 +289,27 @@ import { createTasksFeature } from './features/tasks.js';
       onChange: theme => { App.currentTheme = theme; }
     });
     return themeComponent;
+  }
+
+  function getUiModeComponent() {
+    uiModeComponent ||= createUiMode({
+      onChange: mode => {
+        App.currentUiMode = mode;
+        getUiShellComponent().applyMode(mode);
+        if (App.currentView === 'dashboard') App.renderDashboard();
+      }
+    });
+    return uiModeComponent;
+  }
+
+  function getUiShellComponent() {
+    uiShellComponent ||= createUiV2Shell();
+    return uiShellComponent;
+  }
+
+  function getSystemStatusComponent() {
+    systemStatusComponent ||= createSystemStatusBar();
+    return systemStatusComponent;
   }
 
   /*
@@ -645,6 +672,7 @@ import { createTasksFeature } from './features/tasks.js';
 
   const App = {
     currentView: 'dashboard',
+    currentUiMode: document.documentElement.dataset.ui || 'classic',
     get inboxFilter() { return getPublicationsFeature().inboxFilter; },
     set inboxFilter(value) { getPublicationsFeature().inboxFilter = value; },
     get inboxSort() { return getPublicationsFeature().inboxSort; },
@@ -695,6 +723,9 @@ import { createTasksFeature } from './features/tasks.js';
     async init() {
       await Store.load();
       await this.loadAuthUsers();
+      getUiModeComponent().init();
+      getUiShellComponent().init(getUiModeComponent().currentMode);
+      getSystemStatusComponent().init({ stateStatus: Store.stateStatus });
       this.initTheme();
       this.bindNavigation();
       this.bindActions();
@@ -736,8 +767,10 @@ import { createTasksFeature } from './features/tasks.js';
 
       document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => this.switchView(button.dataset.view)));
       document.addEventListener('click', event => { const link = event.target.closest('[data-view-link]'); if (link) this.switchView(link.dataset.viewLink); });
-      document.getElementById('menuToggle')?.addEventListener('click', () => document.getElementById('sidebar')?.classList.toggle('open'));
+      document.getElementById('menuToggle')?.addEventListener('click', event => getUiShellComponent().toggleNavigation(event.currentTarget));
       document.addEventListener('keydown', event => {
+        getUiShellComponent().handleKeydown(event);
+        if (event.defaultPrevented) return;
         if (event.key === 'Escape') {
           this.closeModal();
           this.closeJudicialSetup();
@@ -820,7 +853,7 @@ import { createTasksFeature } from './features/tasks.js';
       if (view === 'configuration') this.renderConfiguration();
       if (view === 'audit') this.renderAudit();
       if (view === 'integrations') { this.refreshJudicialStatus(); this.loadEmailStatus(); }
-      document.getElementById('sidebar').classList.remove('open');
+      getUiShellComponent().closeNavigation({ restoreFocus: false });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     renderAll() {
@@ -1247,6 +1280,7 @@ import { createTasksFeature } from './features/tasks.js';
     async syncAll({ silent = false } = {}) {
       const buttons = [document.getElementById('syncButton'), document.getElementById('agendaSyncButton')];
       buttons.forEach(button => { if (button) button.disabled = true; });
+      getSystemStatusComponent().setState('syncing');
       if (!silent) this.toast('Iniciando sincronização protegida…');
       try {
         if (!await Store.flush()) throw new Error('As alterações locais ainda não foram salvas. Sincronização cancelada para evitar perda de dados.');
@@ -1270,9 +1304,12 @@ import { createTasksFeature } from './features/tasks.js';
         Store.save();
         if (!await Store.flush()) throw new Error('A sincronização foi recebida, mas não pôde ser persistida localmente. Tente novamente.');
         this.renderAll();
+        getSystemStatusComponent().setState('saved', `Sincronização confirmada às ${new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date())}.`);
         if (!silent) this.toast('Sincronização concluída com sucesso.', 'success');
         return true;
       } catch (error) {
+        const message = error.message || 'Não foi possível sincronizar.';
+        getSystemStatusComponent().setState(/sessão|autent/i.test(message) ? 'reauth' : 'error', message);
         if (!silent) this.toast(error.message || 'Não foi possível sincronizar.', 'error');
         return false;
       } finally {
@@ -1339,9 +1376,11 @@ import { createTasksFeature } from './features/tasks.js';
 
   let initialized = false;
   window.addEventListener(STORE_PERSISTENCE_CONFLICT_EVENT, event => {
+    getSystemStatusComponent().setState('conflict', event.detail?.message);
     App.toast(event.detail?.message || 'Os dados foram atualizados em outra aba. Recarregando a versão mais recente…', 'error');
   });
   window.addEventListener(ATRIUM_STORE_PERSISTENCE_ERROR_EVENT, event => {
+    getSystemStatusComponent().setState(event.detail?.status === 401 ? 'reauth' : 'error', event.detail?.message);
     App.toast(event.detail?.message || STORE_PERSISTENCE_ERROR_MESSAGE, 'error');
   });
   const boot = () => {

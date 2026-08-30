@@ -1,5 +1,9 @@
 export function createModal({ escapeHtml, onModeChange } = {}) {
   let initialized = false;
+  let lastFocusedElement = null;
+  let previousBodyOverflow = '';
+
+  const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
   function init() {
     if (initialized) return;
@@ -9,9 +13,33 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     document.getElementById('modalBackdrop')?.addEventListener('click', event => {
       if (event.target === document.getElementById('modalBackdrop')) close();
     });
+    document.getElementById('modalBackdrop')?.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const modal = document.querySelector('#modalBackdrop .modal');
+      const focusable = [...(modal?.querySelectorAll(focusableSelector) || [])]
+        .filter(element => element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
   }
 
   function open(mode, title, eyebrow, fields, defaults = {}, topHtml = '') {
+    lastFocusedElement = document.activeElement;
+    previousBodyOverflow = document.body.style.overflow;
     onModeChange?.({ mode, defaults });
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalEyebrow').textContent = eyebrow;
@@ -23,6 +51,7 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     }).join('')}</div>`;
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
     setTimeout(() => {
       const modalFields = document.getElementById('modalFields');
       if (modalFields && (!document.activeElement || !modalFields.contains(document.activeElement))) {
@@ -32,9 +61,15 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
   }
 
   function close() {
-    document.getElementById('modalBackdrop').classList.add('hidden');
+    const backdrop = document.getElementById('modalBackdrop');
+    const wasOpen = backdrop && !backdrop.classList.contains('hidden');
+    backdrop?.classList.add('hidden');
     onModeChange?.(null);
     document.getElementById('modalForm').reset();
+    if (wasOpen) {
+      document.body.style.overflow = previousBodyOverflow;
+      if (lastFocusedElement?.isConnected && typeof lastFocusedElement.focus === 'function') lastFocusedElement.focus();
+    }
   }
 
   return Object.freeze({ init, open, close });

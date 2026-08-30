@@ -7,7 +7,12 @@
   <meta name="description" content="Atrium: Plataforma Open-Source de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
   <title>Atrium — Plataforma de Gestão Jurídica Inteligente</title>
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <script src="js/views/ui-v2/preference-init.js"></script>
   <link rel="stylesheet" href="css/portal.css?v=5.0.0-beta">
+  <link rel="stylesheet" href="css/views/ui-v2/tokens.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/primitives.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/shell.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/dashboard.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -112,6 +117,20 @@
       </div>
 
       <div class="sidebar-nav-wrap">
+        <div class="v2-navigation v2-only" id="v2Navigation">
+          <div class="v2-nav-section-title">Visão geral</div>
+          <nav class="main-nav" aria-label="Visão geral" data-v2-nav-group="overview"></nav>
+          <div class="v2-nav-section-title">Trabalho</div>
+          <nav class="main-nav" aria-label="Trabalho" data-v2-nav-group="work"></nav>
+          <div class="v2-nav-section-title">Relacionamento</div>
+          <nav class="main-nav" aria-label="Relacionamento" data-v2-nav-group="relationship"></nav>
+          <div class="v2-nav-section-title">Gestão</div>
+          <nav class="main-nav" aria-label="Gestão" data-v2-nav-group="management"></nav>
+          <div class="v2-nav-section-title">Inteligência</div>
+          <nav class="main-nav" aria-label="Inteligência" data-v2-nav-group="intelligence"></nav>
+          <div class="v2-nav-section-title">Sistema</div>
+          <nav class="main-nav secondary" aria-label="Sistema" data-v2-nav-group="system"></nav>
+        </div>
         <div class="nav-section-title">Principal</div>
         <nav class="main-nav" aria-label="Navegação principal">
           <button class="nav-item active" data-view="dashboard">
@@ -306,16 +325,23 @@
       </div>
     </aside>
 
+    <button type="button" class="v2-sidebar-scrim v2-only" id="sidebarScrim" aria-label="Fechar menu de navegação" tabindex="-1"></button>
+
     <main class="main-content">
       <header class="topbar">
         <div class="topbar-left">
-          <button class="icon-button mobile-only" id="menuToggle" aria-label="Abrir menu">☰</button>
+          <button class="icon-button mobile-only" id="menuToggle" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">☰</button>
           <div>
             <p class="eyebrow" id="viewEyebrow">Visão executiva</p>
             <h1 id="viewTitle">Área de Trabalho</h1>
           </div>
         </div>
         <div class="topbar-actions">
+          <div class="ui-mode-control" id="uiModeControl" role="group" aria-label="Interface">
+            <span class="ui-mode-label">Interface</span>
+            <button type="button" data-ui-mode="classic" aria-pressed="true">Clássica</button>
+            <button type="button" data-ui-mode="v2" aria-pressed="false">Nova</button>
+          </div>
           <button type="button" class="theme-toggle-btn" id="themeToggleButton" title="Alternar entre tema Claro e Escuro">
             <span id="themeToggleIcon">☀️</span>
             <span id="themeToggleText">Modo Claro</span>
@@ -346,6 +372,10 @@
             </svg>
             <span>Minutas</span>
           </button>
+          <details class="v2-utilities-menu v2-only" id="v2UtilitiesMenu">
+            <summary class="icon-button" aria-label="Abrir ferramentas adicionais" title="Mais ferramentas">•••</summary>
+            <div class="v2-utilities-menu-panel" id="v2UtilitiesMenuPanel"></div>
+          </details>
           <button class="button ghost" id="syncButton">
             <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21.5 2v6h-6M2.5 22v-6h6"/>
@@ -362,7 +392,42 @@
         </div>
       </header>
 
+      <div class="system-status-bar v2-only" id="systemStatusBar" role="status" aria-live="polite" data-status="ready" data-tone="neutral">
+        <span class="system-status-icon" id="systemStatusIcon" aria-hidden="true"></span>
+        <strong id="systemStatusLabel">Pronto</strong>
+        <span id="systemStatusDetail">Dados carregados; salvamento automático ativo.</span>
+      </div>
+
       <section class="view active" id="view-dashboard" data-title="Área de Trabalho" data-eyebrow="Atrium · Meu Dia">
+        <section class="v2-dashboard-opening v2-only" id="v2DashboardOpening" aria-labelledby="v2DashboardHeading" data-attention-state="clear">
+          <div class="v2-dashboard-opening-copy">
+            <p class="v2-kicker">Foco do dia</p>
+            <h2 id="v2DashboardHeading">O que precisa da sua atenção</h2>
+            <p id="v2AttentionSummary">Carregando o resumo operacional…</p>
+          </div>
+          <div class="v2-attention-grid" aria-label="Resumo de atenção">
+            <article class="v2-attention-item is-danger">
+              <span>Tarefas atrasadas</span>
+              <strong id="v2AttentionLate">0</strong>
+              <small>Revisão prioritária</small>
+            </article>
+            <article class="v2-attention-item is-warning">
+              <span>Publicações pendentes</span>
+              <strong id="v2AttentionPublications">0</strong>
+              <small>Triagem humana necessária</small>
+            </article>
+            <article class="v2-attention-item is-info">
+              <span>Compromissos em 7 dias</span>
+              <strong id="v2AttentionDeadlines">0</strong>
+              <small>Confirme datas críticas</small>
+            </article>
+            <article class="v2-attention-item is-neutral">
+              <span>Próximo compromisso</span>
+              <strong id="v2AttentionAgenda">Livre</strong>
+              <small id="v2AttentionAgendaDetail">Nenhum compromisso imediato.</small>
+            </article>
+          </div>
+        </section>
         <div class="environment-banner" id="environmentBanner">
           <span class="pulse-dot"></span>
           <strong>Ambiente Local Seguro (Zero Trust)</strong>
@@ -378,7 +443,8 @@
           </div>
         </div>
 
-        <div class="metric-grid">
+        <div class="v2-section-heading v2-only"><div><p class="v2-kicker">Resumo</p><h3>Visão do escritório</h3></div><span>Dados existentes, sem novas consultas</span></div>
+        <div class="metric-grid" aria-label="Resumo operacional">
           <article class="metric-card danger" data-view-link="inbox" tabindex="0">
             <span class="metric-icon">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
