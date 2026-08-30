@@ -2,7 +2,7 @@ name: Atrium CI
 
 on:
   push:
-    branches: [ main, v2.0, beta-hardening, master ]
+    branches: [ main, v2.0, beta-hardening, master, ui-v2 ]
   pull_request:
     branches: [ main, v2.0, beta-hardening, master ]
 
