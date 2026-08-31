@@ -165,6 +165,70 @@ export async function prepareUiV2ImporterFixture(page, { preview = false, data =
   return structuredClone(data);
 }
 
+export const UI_V2_AUDIT_FIXTURE = Object.freeze([
+  Object.freeze({ id: 'audit-security-v2', at: '2026-08-31T08:00:00.000Z', actor: 'Administradora Sintética', action: 'Login autorizado', detail: 'Sessão local validada com autenticação reforçada.' }),
+  Object.freeze({ id: 'audit-sync-v2', at: '2026-08-31T08:35:00.000Z', actor: 'Agente Coletor', action: 'Sincronização DJEN concluída', detail: 'Consulta oficial sob demanda concluída sem ciência automática.' }),
+  Object.freeze({ id: 'audit-import-v2', at: '2026-08-31T09:10:00.000Z', actor: 'Equipe de Dados', action: 'Importação de planilha concluída', detail: 'Lote sintético revisado e confirmado por pessoa responsável.' }),
+  Object.freeze({ id: 'audit-task-v2', at: '2026-08-31T10:20:00.000Z', actor: 'Advogada Teste', action: 'Tarefa criada', detail: 'Revisar publicação sintética; prazo informado manualmente.' }),
+  Object.freeze({ id: 'audit-process-v2', at: '2026-08-31T11:45:00.000Z', actor: 'Sistema', action: 'Processo atualizado', detail: 'Metadados do caso sintético preservados sem inferência de prazo.' }),
+  Object.freeze({ id: 'audit-config-v2', at: '2026-08-31T13:05:00.000Z', actor: 'Responsável com nome extenso para teste de contenção visual', action: 'Configuração institucional atualizada com descrição extensa', detail: '<script>não executar</script> <img src=x onerror=alert(1)> Conteúdo sintético longo para validar quebra, contraste e contenção sem transformar o registro em alerta ou prova externa.' })
+]);
+
+export async function prepareUiV2AuditFixture(page, { events = UI_V2_AUDIT_FIXTURE } = {}) {
+  await page.evaluate(fixture => {
+    const { App, Store } = window.Atrium;
+    const clone = value => structuredClone(value);
+    const originalToast = App.toast.bind(App);
+    const originalExportJson = App.exportJson.bind(App);
+    const originalSave = Store.save.bind(Store);
+    const originalFlush = Store.flush.bind(Store);
+    const originalAudit = Store.audit.bind(Store);
+
+    Store.state.audit = clone(fixture);
+    window.__uiV2AuditInitialState = clone(Store.state);
+    window.__uiV2AuditOps = [];
+    window.__uiV2AuditExports = [];
+    window.__uiV2AuditToasts = [];
+
+    Store.save = (...args) => {
+      window.__uiV2AuditOps.push({ type: 'save' });
+      return originalSave(...args);
+    };
+    Store.flush = (...args) => {
+      window.__uiV2AuditOps.push({ type: 'flush' });
+      return originalFlush(...args);
+    };
+    Store.audit = (...args) => {
+      window.__uiV2AuditOps.push({ type: 'audit', args: clone(args) });
+      return originalAudit(...args);
+    };
+    App.toast = (message, type) => {
+      window.__uiV2AuditToasts.push({ message, type });
+      return originalToast(message, type);
+    };
+    App.exportJson = (data, filename) => {
+      window.__uiV2AuditExports.push({ data: clone(data), filename });
+      return true;
+    };
+    window.__uiV2AuditRestore = () => {
+      Store.save = originalSave;
+      Store.flush = originalFlush;
+      Store.audit = originalAudit;
+      App.exportJson = originalExportJson;
+    };
+
+    App.auditFilter = 'all';
+    const search = document.getElementById('auditSearch');
+    if (search) search.value = '';
+    App.switchView('audit');
+    App.renderAudit('all', '');
+  }, structuredClone(events));
+
+  await page.locator('#view-audit.active').waitFor();
+  await page.waitForFunction(expected => document.querySelectorAll('#auditList tbody tr').length === expected, events.length);
+  return structuredClone(events);
+}
+
 export const UI_V2_CONFIGURATION_ADMIN_DIAGNOSTIC = Object.freeze({
   app: Object.freeze({ name: 'ATRIUM Sintético', version: '2.0.0', uptimeSeconds: 1260, nodeVersion: '24.0.0', platform: 'synthetic', arch: 'x64', cloudMode: false }),
   storage: Object.freeze({ type: 'Estado cifrado local', records: Object.freeze({ contacts: 12, processes: 8, tasks: 19, intimations: 31 }), sizeBytes: 16384 }),
