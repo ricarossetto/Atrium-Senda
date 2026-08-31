@@ -83,6 +83,88 @@ export async function prepareUiV2Page(context, baseUrl, { theme = 'light', probe
   return { page, pageErrors };
 }
 
+export const UI_V2_IMPORTER_FIXTURE = Object.freeze({
+  filename: 'lote-supervisionado-sintetico.csv',
+  totalRows: 4,
+  preview: Object.freeze([
+    Object.freeze({ 'Número CNJ': '5000000-00.2026.8.21.0001', Cliente: 'Cliente Mineral Sintético', Tribunal: 'TJ Sintético', Observação: '<script>não executar</script>' }),
+    Object.freeze({ 'Número CNJ': '5000000-00.2026.8.21.0002', Cliente: 'Pessoa Teste de Nome Extenso para Contenção', Tribunal: 'TRF Sintético', Observação: '<img src=x onerror=alert(1)>' }),
+    Object.freeze({ 'Número CNJ': '—', Cliente: 'Contato Sintético', Tribunal: '—', Observação: 'Revisão profissional obrigatória' }),
+    Object.freeze({ 'Número CNJ': '5000000-00.2026.8.21.0004', Cliente: 'Cliente Teste', Tribunal: 'TJ Sintético', Observação: 'Dado informado sem inferência de prazo fatal' })
+  ]),
+  processes: Object.freeze([{ externalId: 'import-process-v2', number: '5000000-00.2026.8.21.0001', client: 'Cliente Mineral Sintético', court: 'TJ Sintético', source: 'Importação' }]),
+  contacts: Object.freeze([{ externalId: 'import-contact-v2', name: 'Contato Mineral Sintético', document: 'DOCUMENTO-SINTETICO-IMPORT-001', source: 'Importação' }]),
+  tasks: Object.freeze([{ externalId: 'import-task-v2', title: 'Revisar lote sintético', deadline: '2026-09-10', fatalDeadline: '', source: 'Importação' }])
+});
+
+export async function prepareUiV2ImporterFixture(page, { preview = false, data = UI_V2_IMPORTER_FIXTURE } = {}) {
+  await page.evaluate(({ fixture, shouldPreview }) => {
+    const { App, Store } = window.Atrium;
+    const clone = value => structuredClone(value);
+    const originalSecureFetch = window.KellerAuth.secureFetch.bind(window.KellerAuth);
+    const originalToast = App.toast.bind(App);
+    const originalRenderAll = App.renderAll.bind(App);
+    const originalSwitchView = App.switchView.bind(App);
+
+    window.__uiV2ImporterRequests = [];
+    window.__uiV2ImporterOps = [];
+    window.__uiV2ImporterToasts = [];
+    window.__uiV2ImporterFlushResult = true;
+    window.__uiV2ImporterFixture = clone(fixture);
+
+    window.KellerAuth.secureFetch = async (url, options = {}) => {
+      if (url !== '/api/import/spreadsheet') return originalSecureFetch(url, options);
+      const request = {
+        url: String(url),
+        method: options.method || 'GET',
+        headers: clone(options.headers || {}),
+        body: options.body ? JSON.parse(options.body) : undefined
+      };
+      window.__uiV2ImporterRequests.push(request);
+      return { ok: true, async json() { return clone(window.__uiV2ImporterFixture); } };
+    };
+
+    Store.state.processes = [];
+    Store.state.contacts = [];
+    Store.state.tasks = [];
+    Store.state.audit = [];
+    Store.audit = (action, detail) => {
+      window.__uiV2ImporterOps.push({ type: 'audit', action, detail });
+      Store.state.audit.unshift({ id: `audit-${window.__uiV2ImporterOps.length}`, action, detail });
+    };
+    Store.save = () => { window.__uiV2ImporterOps.push({ type: 'save' }); };
+    Store.flush = async () => {
+      window.__uiV2ImporterOps.push({ type: 'flush' });
+      return window.__uiV2ImporterFlushResult;
+    };
+    App.toast = (message, type) => {
+      window.__uiV2ImporterToasts.push({ message, type });
+      window.__uiV2ImporterOps.push({ type: 'toast', message, toastType: type });
+      return originalToast(message, type);
+    };
+
+    App.importedSpreadsheetData = null;
+    App.switchView('importer');
+    App.renderAll = (...args) => {
+      window.__uiV2ImporterOps.push({ type: 'render' });
+      return originalRenderAll(...args);
+    };
+    App.switchView = (view, ...args) => {
+      window.__uiV2ImporterOps.push({ type: 'switch', view });
+      return originalSwitchView(view, ...args);
+    };
+
+    if (shouldPreview) {
+      App.importedSpreadsheetData = clone(fixture);
+      App.renderSpreadsheetPreview(clone(fixture));
+    }
+  }, { fixture: data, shouldPreview: preview });
+
+  await page.locator('#view-importer.active').waitFor();
+  if (preview) await page.locator('#importerPreviewCard:not(.hidden)').waitFor();
+  return structuredClone(data);
+}
+
 export const UI_V2_CONFIGURATION_ADMIN_DIAGNOSTIC = Object.freeze({
   app: Object.freeze({ name: 'ATRIUM Sintético', version: '2.0.0', uptimeSeconds: 1260, nodeVersion: '24.0.0', platform: 'synthetic', arch: 'x64', cloudMode: false }),
   storage: Object.freeze({ type: 'Estado cifrado local', records: Object.freeze({ contacts: 12, processes: 8, tasks: 19, intimations: 31 }), sizeBytes: 16384 }),
