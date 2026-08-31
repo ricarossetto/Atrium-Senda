@@ -24,7 +24,8 @@ export async function startUiV2Session({ viewport = { width: 1440, height: 900 }
     const context = await browser.newContext({
       viewport: options.viewport || viewport,
       locale: 'pt-BR',
-      deviceScaleFactor: 1
+      deviceScaleFactor: 1,
+      reducedMotion: options.reducedMotion
     });
     await context.addCookies([{ name, value, domain: '127.0.0.1', path: '/' }]);
     return context;
@@ -80,6 +81,129 @@ export async function prepareUiV2Page(context, baseUrl, { theme = 'light', probe
   await page.locator('#appShell:not(.hidden)').waitFor();
   await page.locator('#view-dashboard.active').waitFor();
   return { page, pageErrors };
+}
+
+export const UI_V2_CONFIGURATION_ADMIN_DIAGNOSTIC = Object.freeze({
+  app: Object.freeze({ name: 'ATRIUM Sintético', version: '2.0.0', uptimeSeconds: 1260, nodeVersion: '24.0.0', platform: 'synthetic', arch: 'x64', cloudMode: false }),
+  storage: Object.freeze({ type: 'Estado cifrado local', records: Object.freeze({ contacts: 12, processes: 8, tasks: 19, intimations: 31 }), sizeBytes: 16384 }),
+  security: Object.freeze({ encryption: 'AES-256-GCM', twoFactor: 'TOTP RFC 6238', totalUsers: 4 }),
+  integrations: Object.freeze({
+    djen: Object.freeze({ status: 'conectado', description: 'Consulta oficial sob demanda' }),
+    datajud: Object.freeze({ status: 'configurado' }),
+    gemini: Object.freeze({ status: 'configurado' }),
+    collector: Object.freeze({ lastRun: '2026-08-31T14:30:00.000Z' })
+  }),
+  runtime: Object.freeze({ status: 'READY', recoveryDetails: null, fileExists: true, lastRuntimeUpdate: '2026-08-31T14:30:00.000Z' })
+});
+
+export async function prepareUiV2ConfigurationAdminFixture(page, {
+  role = 'master_admin',
+  runtimeStatus = 'READY',
+  withLogo = false
+} = {}) {
+  await page.evaluate(({ currentRole, currentRuntimeStatus, includeLogo, diagnosticFixture }) => {
+    const store = window.Atrium.Store;
+    const app = window.Atrium.App;
+    const clone = value => structuredClone(value);
+    const response = (payload = {}, ok = true) => ({ ok, async json() { return clone(payload); } });
+    const authUsers = [
+      { id: 'master-admin-synthetic', username: 'master.synthetic', displayName: 'Administradora Mestre Sintética', email: 'master@synthetic.example.test', role: 'master_admin', status: 'active' },
+      { id: 'pending-user-synthetic', username: 'pending.synthetic', displayName: 'Usuária Pendente Sintética', email: 'pending@synthetic.example.test', role: 'collaborator', status: 'pending_approval' },
+      { id: 'active-user-synthetic', username: 'active.synthetic', displayName: 'Usuária Ativa Sintética', email: 'active@synthetic.example.test', role: 'collaborator', status: 'active' },
+      { id: 'inactive-user-synthetic', username: 'inactive.synthetic', displayName: 'Usuária Suspensa Sintética', email: 'inactive@synthetic.example.test', role: 'collaborator', status: 'inactive' }
+    ];
+    const configuration = {
+      taskDefinitions: [
+        { name: 'Revisar publicação sintética', points: 12, phase: 'Triagem' },
+        { name: 'Preparar minuta sintética', points: 28, phase: 'Redação' }
+      ],
+      users: [{ name: 'Usuária Estrutural Sintética', role: 'Colaboradora', pointsGoal: '120' }],
+      actionGroups: [
+        { name: 'Previdenciário sintético', publicationResponsible: 'Equipe Previdenciária' },
+        { name: 'Cível sintético', publicationResponsible: 'Equipe Cível' }
+      ],
+      actionTypes: [{ name: 'Ação de conhecimento sintética', group: 'Cível sintético' }],
+      stages: [{ name: 'Instrução sintética', classification: 'Ativa', phase: 'Conhecimento' }],
+      origins: [{ name: 'Indicação sintética' }],
+      goals: [{ group: 'Equipe Previdenciária', monthlyClosings: 8 }],
+      inboxSections: ['Prioridade sintética', 'Acompanhamento sintético'],
+      notificationAssignments: [{ event: 'Nova publicação sintética', responsibles: ['Advogada Teste', 'Equipe Sintética'] }],
+      integrations: [{ name: 'Integração sintética', status: 'Ativa', method: 'API' }]
+    };
+
+    window.__uiV2ConfigurationAdminRequests = [];
+    window.__uiV2ConfigurationAdminToasts = [];
+    window.__uiV2ConfigurationAdminOps = [];
+    window.__uiV2ConfigurationAdminAuthUsers = authUsers;
+    const originalSecureFetch = window.KellerAuth.secureFetch.bind(window.KellerAuth);
+    const originalFetch = window.fetch.bind(window);
+    const originalToast = app.toast.bind(app);
+    const safeRequest = (url, options = {}) => {
+      const body = options.body ? JSON.parse(options.body) : undefined;
+      const record = { url: String(url), method: options.method || 'GET', body };
+      window.__uiV2ConfigurationAdminRequests.push(record);
+      return record;
+    };
+    window.KellerAuth.secureFetch = async (url, options = {}) => {
+      const request = safeRequest(url, options);
+      if (url === '/api/auth/users') return response({ currentRole, users: authUsers });
+      if (url === '/api/auth/users/manage') return response({ ok: true });
+      if (url === '/api/system/rebuild-runtime') return response({ ok: true, message: 'Runtime sintético reconstruído.' });
+      if (url === '/api/system/backup/create') return response({
+        ok: true,
+        fileName: 'atrium-synthetic.atrium-backup',
+        backupData: { format: 'atrium-encrypted-backup-v1', encryptedState: { iv: 'synthetic', tag: 'synthetic', ciphertext: 'synthetic' }, checksum: '0'.repeat(64) }
+      });
+      if (url === '/api/system/backup/restore') return response({ ok: true });
+      if (url === '/api/system/feedback') return response({ ok: true, received: request.body });
+      return originalSecureFetch(url, options);
+    };
+    window.fetch = async (input, options = {}) => {
+      const url = String(input?.url || input);
+      if (url === '/api/system/diagnostic') {
+        safeRequest(url, options);
+        const diagnostic = clone(diagnosticFixture);
+        diagnostic.runtime.status = currentRuntimeStatus;
+        return response({ ok: true, diagnostic });
+      }
+      return originalFetch(input, options);
+    };
+    app.toast = (message, type) => {
+      window.__uiV2ConfigurationAdminToasts.push({ message, type });
+      return originalToast(message, type);
+    };
+    store.state.configuration = configuration;
+    store.state.contacts = Array.from({ length: 12 }, (_, index) => ({ id: `contact-admin-${index}` }));
+    store.state.settings ||= {};
+    Object.assign(store.state.settings, {
+      officeName: 'Escritório Mineral Sintético',
+      officeSlogan: 'Precisão jurídica, presença humana',
+      lawyerName: 'Advogada Teste',
+      lawyerOab: 'OAB/RS 000000',
+      lawyerAddress: 'Rua Mineral Sintética, 100',
+      city: 'Ijuí / RS',
+      officeLogo: includeLogo ? 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22120%22%3E%3Crect width=%22120%22 height=%22120%22 fill=%22%23596c7a%22/%3E%3Ctext x=%2260%22 y=%2272%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22%3EAM%3C/text%3E%3C/svg%3E' : null
+    });
+    store.state.terms ||= [{ id: 'term-office-synthetic', name: 'Advogada Teste', registration: 'OAB/RS 000000' }];
+    store.serverMeta = { appVersion: '2.0.0-synthetic', buildId: 'build-gate-18', schemaVersion: 9 };
+    store.stateStatus = currentRuntimeStatus === 'READY' ? 'READY' : 'ATTENTION';
+    store.save = () => { window.__uiV2ConfigurationAdminOps.push({ type: 'save' }); };
+    store.audit = (action, detail) => { window.__uiV2ConfigurationAdminOps.push({ type: 'audit', action, detail }); };
+    store.flush = async () => { window.__uiV2ConfigurationAdminOps.push({ type: 'flush' }); return true; };
+    app.authUsers = clone(authUsers);
+    app.currentAuthRole = currentRole;
+    app.configurationSection = 'taskDefinitions';
+    app.renderOfficeIdentity();
+    app.switchView('configuration');
+  }, {
+    currentRole: role,
+    currentRuntimeStatus: runtimeStatus,
+    includeLogo: withLogo,
+    diagnosticFixture: UI_V2_CONFIGURATION_ADMIN_DIAGNOSTIC
+  });
+  await page.locator('#view-configuration.active').waitFor();
+  await page.locator('#configurationTabs [data-config-section="taskDefinitions"][aria-current="page"]').waitFor();
+  return { role, runtimeStatus, withLogo };
 }
 
 export const UI_V2_JUDICIAL_STATUS = Object.freeze({
