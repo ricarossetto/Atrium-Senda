@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/financial.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/documents.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/leads.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/assistant.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -1182,6 +1183,11 @@
         <div class="ai-assistant-container">
           <div class="ai-assistant-header">
             <div class="ai-header-info">
+              <div class="assistant-v2-heading">
+                <p>Inteligência assistida</p>
+                <h2>Assistente jurídico</h2>
+                <small>Apoio para análise, redação e organização, sempre sujeito à revisão profissional.</small>
+              </div>
               <div class="ai-header-badge">
                 <span class="ai-spark-icon">
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
@@ -1197,19 +1203,37 @@
             <div class="ai-header-actions">
               <span id="aiKeyStatusChip" class="status-chip warning">Chave não configurada</span>
               <button class="button ghost" id="btnOpenGeminiKeyModal" type="button">Configurar Chave Gemini</button>
-              <button class="button ghost" id="btnClearAiConversation" type="button">Limpar conversa</button>
+              <button class="button ghost" id="btnClearAiConversation" type="button" aria-label="Limpar conversa do Assistente jurídico">Limpar conversa</button>
             </div>
           </div>
 
+          <div class="assistant-workspace-layout">
+          <aside class="assistant-context-rail" aria-label="Contexto e configuração do Assistente jurídico">
+          <section class="assistant-v2-overview" aria-label="Estado do Assistente">
+            <div class="assistant-v2-status-row">
+              <span class="assistant-v2-status-marker" aria-hidden="true"></span>
+              <div>
+                <span class="assistant-v2-kicker">Estado da conexão</span>
+                <strong id="assistantV2StatusText" data-state="unconfigured">Configuração necessária</strong>
+              </div>
+            </div>
+            <div class="assistant-v2-context" id="assistantV2Context" hidden>
+              <strong id="assistantV2ContextTitle"></strong>
+              <span id="assistantV2ContextMeta"></span>
+              <small>Somente esta publicação integra o contexto canônico do envio.</small>
+            </div>
+          </section>
+
           <!-- Barra de Especialidades / Skills do Agente Jurídico Codex -->
-          <div class="card" style="margin-bottom: 14px; padding: 12px 16px;">
+          <div class="card assistant-skills-card" style="margin-bottom: 14px; padding: 12px 16px;">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
               <div style="display:flex; align-items:center; gap:8px;">
                 <span class="gold-pill" style="font-weight:700;">✦ Skills Jurídicas Codex</span>
                 <span style="font-size:12px; color:var(--muted);">Selecione a especialidade para direcionar o raciocínio da IA:</span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
-                <select id="codexSkillSelect" style="padding:6px 12px; font-size:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel-soft); color:var(--text);">
+                <label class="assistant-field-label" for="codexSkillSelect">Especialidade jurídica</label>
+                <select id="codexSkillSelect" aria-describedby="codexSkillDescription" style="padding:6px 12px; font-size:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel-soft); color:var(--text);">
                   <option value="legal-agent">⭐ $legal-agent — Orquestrador Geral (Análise, Pesquisa e Redação)</option>
                   <option value="legal-ingest">📄 $legal-ingest — Ingestão dos Autos, Fatos &amp; Cronologia (D#)</option>
                   <option value="legal-planner">📐 $legal-planner — Planejador Estratégico &amp; Estrutura de Peça</option>
@@ -1229,7 +1253,7 @@
           <div id="aiOnboardingBanner" class="ai-onboarding-card card">
             <div class="ai-onboarding-content">
               <h3>Ative o Assistente Jurídico com o Google Gemini (Gratuito)</h3>
-              <p>O Assistente Jurídico do Atrium utiliza o <strong>Google Gemini</strong> e as <strong>Skills do Agente Codex</strong> para interpretar intimações, calcular prazos do CPC, redigir minutas e estruturar teses processuais.</p>
+              <p><span class="classic-only">O Assistente Jurídico do Atrium utiliza o <strong>Google Gemini</strong> e as <strong>Skills do Agente Codex</strong> para interpretar intimações, calcular prazos do CPC, redigir minutas e estruturar teses processuais.</span><span class="v2-only">O Assistente Jurídico do Atrium utiliza o <strong>Google Gemini</strong> e as <strong>Skills do Agente Codex</strong> como apoio para análise, redação e organização, sempre com conferência profissional.</span></p>
               <div class="ai-steps-grid">
                 <div class="ai-step-item">
                   <span class="ai-step-num">1</span>
@@ -1241,8 +1265,8 @@
                 <div class="ai-step-item">
                   <span class="ai-step-num">2</span>
                   <div>
-                    <strong>Raciocínio Jurídico Local</strong>
-                    <p>Estrutura pronta com 9 skills nativas de redação, pesquisa e auditoria.</p>
+                    <strong class="classic-only">Raciocínio Jurídico Local</strong><strong class="v2-only">Assistência Jurídica Supervisionada</strong>
+                    <p class="classic-only">Estrutura pronta com 9 skills nativas de redação, pesquisa e auditoria.</p><p class="v2-only">Estrutura pronta com 9 skills de apoio à redação, pesquisa e auditoria.</p>
                   </div>
                 </div>
                 <div class="ai-step-item">
@@ -1254,6 +1278,7 @@
                 </div>
               </div>
               <div class="ai-quick-key-form">
+                <label class="assistant-field-label" for="aiQuickKeyInput">Gemini API Key</label>
                 <input id="aiQuickKeyInput" type="password" placeholder="Cole sua Gemini API Key (AIzaSy...)" autocomplete="off">
                 <button class="button gold" id="btnSaveQuickAiKey" type="button">Ativar Assistente Gratuito</button>
               </div>
@@ -1279,8 +1304,10 @@
             </button>
           </div>
 
+          </aside>
+
           <div class="ai-chat-card card">
-            <div id="aiChatMessages" class="ai-chat-messages">
+            <div id="aiChatMessages" class="ai-chat-messages" role="log" aria-label="Conversa com o Assistente jurídico" aria-live="polite" aria-relevant="additions text">
               <div class="ai-message assistant-message">
                 <div class="message-avatar">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
@@ -1306,16 +1333,19 @@
 
             <form id="aiChatForm" class="ai-chat-input-form">
               <div class="ai-input-wrapper">
-                <textarea id="aiChatInput" placeholder="Faça uma pergunta jurídica, solicite a análise de uma intimação ou peça uma minuta (Enter envia, Shift+Enter quebra linha)..." rows="2"></textarea>
-                <button type="submit" id="btnSendAiMessage" class="button gold ai-send-btn" title="Enviar mensagem (Enter)">
+                <label class="assistant-sr-only" for="aiChatInput">Mensagem para o Assistente jurídico</label>
+                <textarea id="aiChatInput" aria-describedby="aiChatComposerHint" placeholder="Faça uma pergunta jurídica, solicite a análise de uma intimação ou peça uma minuta (Enter envia, Shift+Enter quebra linha)..." rows="2"></textarea>
+                <button type="submit" id="btnSendAiMessage" class="button gold ai-send-btn" title="Enviar mensagem (Enter)" aria-label="Enviar mensagem ao Assistente jurídico">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
                   </svg>
                   <span>Enviar</span>
                 </button>
               </div>
+              <p class="assistant-composer-hint" id="aiChatComposerHint">Enter envia · Shift+Enter insere uma nova linha</p>
               <p class="ai-privacy-notice">Ao enviar, sua mensagem, o histórico recente e apenas os registros relacionados à pergunta são transmitidos à API do Google Gemini. Prazos e referências devem ser conferidos no processo e em fontes oficiais.</p>
             </form>
+          </div>
           </div>
         </div>
       </section>

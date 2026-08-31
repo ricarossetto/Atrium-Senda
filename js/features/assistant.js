@@ -6,7 +6,8 @@ export function createAssistantFeature({
   showToast = () => {},
   audit = () => {},
   getSelectedIntimation = () => null,
-  getLegalSkills = () => []
+  getLegalSkills = () => [],
+  renderV2Presentation = () => false
 } = {}) {
   let configured = false;
   let chatHistory = [];
@@ -88,6 +89,28 @@ export function createAssistantFeature({
       byId('geminiKeyBackdrop')?.addEventListener('click', event => {
         if (event.target === byId('geminiKeyBackdrop')) feature.closeKeyModal();
       });
+      byId('geminiKeyBackdrop')?.addEventListener('keydown', event => {
+        const backdrop = byId('geminiKeyBackdrop');
+        if (!backdrop || backdrop.classList.contains('hidden')) return;
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          feature.closeKeyModal();
+          return;
+        }
+        if (event.key !== 'Tab') return;
+        const focusable = [...backdrop.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+          .filter(element => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && documentRef.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && documentRef.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      });
       byId('geminiKeyForm')?.addEventListener('submit', event => feature.handleKeySubmit(event));
       byId('btnSaveQuickAiKey')?.addEventListener('click', () => feature.handleQuickKeySubmit());
       byId('btnClearAiConversation')?.addEventListener('click', () => feature.clearConversation());
@@ -108,7 +131,16 @@ export function createAssistantFeature({
         feature.updateSkillDescription();
       }
       byId('btnApplyCodexSkill')?.addEventListener('click', () => feature.applySelectedSkill());
+      feature.syncPresentation();
       return true;
+    },
+
+    syncPresentation() {
+      return renderV2Presentation({
+        documentRef,
+        configured,
+        selectedIntimation: getSelectedIntimation()
+      });
     },
 
     async checkStatus() {
@@ -126,6 +158,7 @@ export function createAssistantFeature({
         chip.className = configured ? 'status-chip connected' : 'status-chip warning';
       }
       if (banner) banner.style.display = configured ? 'none' : 'block';
+      feature.syncPresentation();
       return configured;
     },
 
@@ -137,7 +170,12 @@ export function createAssistantFeature({
         feedback.className = 'gemini-key-feedback hidden';
         feedback.textContent = '';
       }
-      byId('geminiKeyBackdrop')?.classList.remove('hidden');
+      const backdrop = byId('geminiKeyBackdrop');
+      if (backdrop) {
+        backdrop.__assistantReturnFocus = documentRef.activeElement;
+        backdrop.classList.remove('hidden');
+      }
+      if (documentRef.documentElement?.dataset?.ui === 'v2') byId('appShell')?.setAttribute('inert', '');
       documentRef.body.style.overflow = 'hidden';
       windowRef.setTimeout(() => input?.focus(), 50);
     },
@@ -146,7 +184,11 @@ export function createAssistantFeature({
       const backdrop = byId('geminiKeyBackdrop');
       if (!backdrop || backdrop.classList.contains('hidden')) return;
       backdrop.classList.add('hidden');
+      byId('appShell')?.removeAttribute('inert');
       if (byId('modalBackdrop')?.classList.contains('hidden')) documentRef.body.style.overflow = '';
+      const returnFocus = backdrop.__assistantReturnFocus;
+      backdrop.__assistantReturnFocus = null;
+      if (returnFocus?.isConnected) returnFocus.focus();
     },
 
     async saveKey(apiKey) {

@@ -17,6 +17,7 @@ import { createSystemStatusBar } from './views/ui-v2/system-status.js';
 import { renderFinancialV2Workspace } from './views/ui-v2/financial-presenter.js';
 import { renderDocumentsV2Catalog } from './views/ui-v2/documents-presenter.js';
 import { renderLeadsV2Workspace } from './views/ui-v2/leads-presenter.js';
+import { renderAssistantV2Presentation } from './views/ui-v2/assistant-presenter.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -311,6 +312,7 @@ import { createTasksFeature } from './features/tasks.js';
         if (App.currentView === 'financial') App.renderFinancial(document.getElementById('financialSearch')?.value || '');
         if (App.currentView === 'documents') App.renderDocuments();
         if (App.currentView === 'leads') App.renderLeads(document.getElementById('leadSearch')?.value || '');
+        if (App.currentView === 'assistant') App.renderAssistant();
       }
     });
     return uiModeComponent;
@@ -558,7 +560,8 @@ import { createTasksFeature } from './features/tasks.js';
         const selectedId = getPublicationsFeature().selectedIntimation;
         return Store.state.intimations.find(item => item.id === selectedId) || null;
       },
-      getLegalSkills: () => window.CODEX_LEGAL_SKILLS || []
+      getLegalSkills: () => window.CODEX_LEGAL_SKILLS || [],
+      renderV2Presentation: renderAssistantV2Presentation
     });
     return assistantFeature;
   }
@@ -864,6 +867,7 @@ import { createTasksFeature } from './features/tasks.js';
       if (view === 'leads') this.renderLeads();
       if (view === 'financial') this.renderFinancial();
       if (view === 'documents') this.renderDocuments();
+      if (view === 'assistant') this.renderAssistant();
       if (view === 'agenda') this.renderAgenda();
       if (view === 'monitoring') this.renderMonitoring();
       if (view === 'prompts') this.renderPrompts();
@@ -927,6 +931,9 @@ import { createTasksFeature } from './features/tasks.js';
     },
     renderDocuments() {
       return getDocumentsFeature().render();
+    },
+    renderAssistant() {
+      return getAssistantFeature().syncPresentation();
     },
     filteredIntimations() {
       return getPublicationsFeature().filteredItems();
