@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/leads.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/assistant.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/prompts.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/monitoring.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -961,6 +962,11 @@
 
       <section class="view" id="view-monitoring" data-title="Termos monitorados" data-eyebrow="Intimações e fontes">
         <div class="section-toolbar">
+          <div class="v2-monitoring-heading v2-only">
+            <p>Sistema</p>
+            <h2>Monitoramento</h2>
+            <small>Acompanhamento das fontes e identidades utilizadas para coleta e integração jurídica.</small>
+          </div>
           <div class="toolbar-copy"><p>Monitore nomes e inscrições profissionais. Reconexões com certificado sempre exigem validação humana.</p></div>
           <button class="button gold" id="newTermButton">+ Adicionar termo</button>
         </div>
@@ -970,11 +976,12 @@
             <span class="status-chip monitoring"><i></i> Monitorando</span>
             <h2 id="primaryTermName">Dr(a). Advogado(a) Titular</h2>
             <p id="primaryTermRegistration">OAB/UF 000000 · Advogado(a) monitorado(a) principal</p>
+            <span class="monitor-v2-edit-affordance v2-only" aria-hidden="true">Editar principal <b>→</b></span>
           </div>
-          <div class="monitor-stats"><div><strong id="termSourceCount">0</strong><span>fontes</span></div><div><strong id="termIssueCount">0</strong><span>com atenção</span></div><div><strong id="termNewCount">0</strong><span>novas ocorrências</span></div></div>
+          <div class="monitor-stats" aria-label="Resumo do monitoramento"><div><strong id="termSourceCount">0</strong><span class="classic-only">fontes</span><span class="v2-only">Fontes</span></div><div><strong id="termIssueCount">0</strong><span class="classic-only">com atenção</span><span class="v2-only">Atenção</span></div><div><strong id="termNewCount">0</strong><span class="classic-only">novas ocorrências</span><span class="v2-only">Novas publicações</span></div></div>
         </article>
         <div class="source-table card">
-          <div class="source-table-head"><span>Fonte</span><span>Método</span><span>Última verificação</span><span>Situação</span><span></span></div>
+          <div class="source-table-head"><span>Fonte</span><span>Método</span><span>Última verificação</span><span>Situação</span><span class="v2-only">Configuração</span></div>
           <div id="monitorSourceList"></div>
         </div>
         <div class="security-note">

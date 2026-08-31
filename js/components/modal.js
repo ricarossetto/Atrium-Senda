@@ -62,12 +62,14 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
           ? renderLeadSections(fields, renderField)
         : mode === 'prompt' && isV2
           ? renderPromptSections(fields, renderField)
+        : ['term', 'source', 'datajud'].includes(mode) && isV2
+          ? renderMonitoringSections(mode, fields, renderField)
       : `<div class="form-grid">${fields.map(renderField).join('')}</div>`;
     document.getElementById('modalFields').innerHTML = `${topHtml}${fieldsHtml}`;
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
-    if (['task', 'agenda', 'contact', 'lead', 'prompt'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
+    if (['task', 'agenda', 'contact', 'lead', 'prompt', 'term', 'source', 'datajud'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
       const modalFields = document.getElementById('modalFields');
@@ -225,6 +227,30 @@ function renderPromptSections(fields, renderField) {
   }
   return `<div class="prompt-form-sections">${[...sections.entries()].filter(([, sectionFields]) => sectionFields.length).map(([section, sectionFields]) => `
     <fieldset class="prompt-form-section">
+      <legend>${section}</legend>
+      <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
+    </fieldset>`).join('')}</div>`;
+}
+
+const MONITORING_SECTION_ORDER = Object.freeze({
+  term: Object.freeze(['Identidade', 'OAB', 'Documento']),
+  source: Object.freeze(['Fonte', 'Estado', 'Detalhes']),
+  datajud: Object.freeze(['Acesso', 'Comportamento', 'Abrangência'])
+});
+
+const MONITORING_FIELD_SECTIONS = Object.freeze({
+  term: Object.freeze({ name: 'Identidade', type: 'Identidade', oabNumber: 'OAB', oabUf: 'OAB', document: 'Documento' }),
+  source: Object.freeze({ name: 'Fonte', short: 'Fonte', method: 'Fonte', status: 'Estado', detail: 'Detalhes' }),
+  datajud: Object.freeze({ apiKey: 'Acesso', autoSync: 'Comportamento', tribunals: 'Abrangência' })
+});
+
+function renderMonitoringSections(mode, fields, renderField) {
+  const order = MONITORING_SECTION_ORDER[mode];
+  const mapping = MONITORING_FIELD_SECTIONS[mode];
+  const sections = new Map(order.map(section => [section, []]));
+  for (const field of fields) sections.get(mapping[field.name] || order.at(-1)).push(field);
+  return `<div class="monitoring-form-sections" data-monitoring-form="${mode}">${[...sections.entries()].filter(([, sectionFields]) => sectionFields.length).map(([section, sectionFields]) => `
+    <fieldset class="monitoring-form-section">
       <legend>${section}</legend>
       <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
     </fieldset>`).join('')}</div>`;

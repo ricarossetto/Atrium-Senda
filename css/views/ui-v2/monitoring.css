@@ -1,0 +1,519 @@
+html[data-ui="v2"] #view-monitoring {
+  min-width: 0;
+  color: var(--v2-color-foreground);
+  font-family: var(--v2-font-interface);
+}
+
+html[data-ui="v2"] #view-monitoring > .section-toolbar {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) auto;
+  gap: var(--v2-space-5);
+  align-items: end;
+  margin-bottom: var(--v2-space-5);
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+html[data-ui="v2"] #view-monitoring .toolbar-copy { display: none; }
+
+html[data-ui="v2"] .v2-monitoring-heading p {
+  margin: 0 0 var(--v2-space-1);
+  color: var(--v2-color-gold);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] .v2-monitoring-heading h2 {
+  margin: 0;
+  color: var(--v2-color-foreground);
+  font: 600 clamp(28px, 2.3vw, 38px)/1.06 var(--v2-font-editorial);
+  letter-spacing: -.025em;
+}
+
+html[data-ui="v2"] .v2-monitoring-heading small {
+  display: block;
+  max-width: 680px;
+  margin-top: var(--v2-space-2);
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+html[data-ui="v2"] #newTermButton {
+  min-height: 44px;
+  padding-inline: var(--v2-space-5);
+}
+
+html[data-ui="v2"] #primaryTermCard {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(260px, 1fr) minmax(380px, .9fr);
+  gap: var(--v2-space-5);
+  align-items: center;
+  margin: 0 0 var(--v2-space-4);
+  padding: var(--v2-space-5) !important;
+  overflow: hidden;
+  color: var(--v2-color-foreground);
+  background: linear-gradient(115deg, color-mix(in srgb, var(--v2-color-gold-soft) 34%, var(--v2-color-surface)) 0%, var(--v2-color-surface) 52%);
+  border: 1px solid color-mix(in srgb, var(--v2-color-gold) 28%, var(--v2-color-border));
+  border-radius: var(--v2-radius-xl);
+  box-shadow: var(--v2-shadow-card);
+  cursor: pointer;
+  transition: border-color 160ms var(--v2-ease-standard), box-shadow 160ms var(--v2-ease-standard), transform 160ms var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] #primaryTermCard::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  content: "";
+  background: var(--v2-color-gold);
+}
+
+html[data-ui="v2"] #primaryTermCard:hover {
+  border-color: color-mix(in srgb, var(--v2-color-gold) 58%, var(--v2-color-border));
+  box-shadow: var(--v2-shadow-elevated);
+  transform: translateY(-1px);
+}
+
+html[data-ui="v2"] #primaryTermCard:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--v2-color-focus) 48%, transparent);
+  outline-offset: 3px;
+}
+
+html[data-ui="v2"] #primaryTermCard .monitor-avatar {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--v2-color-on-primary);
+  background: var(--v2-color-primary);
+  border: 1px solid color-mix(in srgb, var(--v2-color-gold) 48%, var(--v2-color-primary));
+  border-radius: var(--v2-radius-round);
+  font: 700 21px/1 var(--v2-font-editorial);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--v2-color-gold) 10%, transparent);
+}
+
+html[data-ui="v2"] #primaryTermCard .monitor-identity {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: var(--v2-space-2);
+}
+
+html[data-ui="v2"] #primaryTermCard .status-chip.monitoring {
+  min-height: 25px;
+  color: var(--v2-color-success);
+  background: var(--v2-color-success-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-success) 28%, transparent);
+  font-size: 9px;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] #primaryTermCard .status-chip.monitoring i { animation: none !important; }
+
+html[data-ui="v2"] #primaryTermName {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--v2-color-foreground);
+  font: 600 clamp(21px, 2vw, 28px)/1.15 var(--v2-font-editorial);
+  letter-spacing: -.018em;
+}
+
+html[data-ui="v2"] #primaryTermRegistration {
+  margin: 0;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+html[data-ui="v2"] #primaryTermCard .monitor-v2-edit-affordance {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--v2-space-1);
+  padding: 8px 13px;
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+html[data-ui="v2"] #primaryTermCard .monitor-v2-edit-affordance b { margin-left: 8px; color: var(--v2-color-gold); }
+
+html[data-ui="v2"] #primaryTermCard .monitor-stats {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--v2-color-surface-inset);
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-lg);
+}
+
+html[data-ui="v2"] #primaryTermCard .monitor-stats > div {
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  padding: var(--v2-space-3);
+  text-align: center;
+}
+
+html[data-ui="v2"] #primaryTermCard .monitor-stats > div + div { border-left: 1px solid var(--v2-color-border-subtle); }
+
+html[data-ui="v2"] #primaryTermCard .monitor-stats strong {
+  color: var(--v2-color-foreground);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+html[data-ui="v2"] #primaryTermCard .monitor-stats span {
+  color: var(--v2-color-muted-foreground);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: .055em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] #view-monitoring .source-table {
+  min-width: 0;
+  margin: 0;
+  padding: 0 !important;
+  overflow: hidden;
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-xl);
+  box-shadow: var(--v2-shadow-card);
+}
+
+html[data-ui="v2"] #view-monitoring .source-table-head,
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row {
+  display: grid;
+  grid-template-columns: minmax(250px, 1.55fr) minmax(105px, .65fr) minmax(145px, .85fr) minmax(90px, .55fr) minmax(98px, .55fr);
+  gap: var(--v2-space-3);
+  align-items: center;
+}
+
+html[data-ui="v2"] #view-monitoring .source-table-head {
+  min-height: 44px;
+  padding: 0 var(--v2-space-5);
+  color: var(--v2-color-muted-foreground);
+  background: var(--v2-color-surface-secondary);
+  border-bottom: 1px solid var(--v2-color-border);
+  font-size: 8.5px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] #monitorSourceList { min-width: 0; }
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row {
+  position: relative;
+  min-width: 0;
+  min-height: 78px;
+  padding: var(--v2-space-3) var(--v2-space-5);
+  background: var(--v2-color-surface);
+  border: 0;
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+  cursor: pointer;
+  transition: background 150ms var(--v2-ease-standard), box-shadow 150ms var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row:last-child { border-bottom: 0; }
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row:hover { background: var(--v2-color-surface-hover); }
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row:focus-visible {
+  z-index: 1;
+  outline: 3px solid color-mix(in srgb, var(--v2-color-focus) 45%, transparent);
+  outline-offset: -3px;
+  background: var(--v2-color-surface-hover);
+}
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row::before {
+  position: absolute;
+  inset: 16px auto 16px 0;
+  width: 3px;
+  content: "";
+  background: var(--v2-color-muted-foreground);
+  border-radius: 0 var(--v2-radius-round) var(--v2-radius-round) 0;
+  opacity: .35;
+}
+
+html[data-ui="v2"] #monitorSourceList .status-ok::before { background: var(--v2-color-success); opacity: .8; }
+html[data-ui="v2"] #monitorSourceList .status-attention::before { background: var(--v2-color-warning, var(--v2-color-gold)); opacity: .85; }
+html[data-ui="v2"] #monitorSourceList .status-error::before { background: var(--v2-color-danger); opacity: .85; }
+html[data-ui="v2"] #monitorSourceList .status-planned::before { background: var(--v2-color-primary); opacity: .55; }
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-identity {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: var(--v2-space-3);
+  align-items: center;
+}
+
+html[data-ui="v2"] #monitorSourceList .source-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  color: var(--v2-color-primary);
+  background: var(--v2-color-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-primary) 18%, var(--v2-color-border));
+  border-radius: var(--v2-radius-md);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .04em;
+}
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-identity strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--v2-color-foreground);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-identity small {
+  display: -webkit-box;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--v2-color-muted-foreground);
+  font-size: 10px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-meta {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-meta-label { display: none; }
+html[data-ui="v2"] #monitorSourceList .monitor-v2-last-check > span:last-child { font-variant-numeric: tabular-nums; }
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-status { justify-self: start; }
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-status .status-chip { min-height: 25px; font-size: 8.5px; }
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-route {
+  justify-self: end;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 9.5px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-source-route b { margin-left: 4px; color: var(--v2-color-gold); }
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-empty {
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--v2-space-2);
+  padding: var(--v2-space-7);
+  color: var(--v2-color-muted-foreground);
+  text-align: center;
+}
+
+html[data-ui="v2"] #monitorSourceList .monitor-v2-empty > span { color: var(--v2-color-gold); font-size: 28px; }
+html[data-ui="v2"] #monitorSourceList .monitor-v2-empty strong { color: var(--v2-color-foreground); }
+html[data-ui="v2"] #monitorSourceList .monitor-v2-empty p { max-width: 420px; margin: 0; font-size: 11px; }
+
+html[data-ui="v2"] #view-monitoring .security-note {
+  margin-top: var(--v2-space-4);
+  padding: var(--v2-space-4);
+  color: var(--v2-color-foreground-secondary);
+  background: color-mix(in srgb, var(--v2-color-primary-soft) 45%, var(--v2-color-surface));
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-lg);
+}
+
+html[data-ui="v2"] #view-monitoring .security-note > span { color: var(--v2-color-gold); }
+html[data-ui="v2"] #view-monitoring .security-note strong { color: var(--v2-color-foreground); font-size: 11px; }
+html[data-ui="v2"] #view-monitoring .security-note p { margin-top: 3px; color: var(--v2-color-muted-foreground); font-size: 10px; }
+
+html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) {
+  justify-content: flex-end;
+  padding: 0;
+  background: color-mix(in srgb, var(--v2-color-background) 70%, transparent);
+  backdrop-filter: blur(5px);
+}
+
+html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) .modal {
+  width: min(660px, calc(100vw - 72px));
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  background: var(--v2-color-surface);
+  border: 0;
+  border-left: 1px solid var(--v2-color-border);
+  border-radius: 0;
+  box-shadow: var(--v2-shadow-elevated);
+  animation: monitoring-drawer-in 240ms var(--v2-ease-standard) both;
+}
+
+html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) .modal > header {
+  padding: var(--v2-space-5);
+  background: var(--v2-color-surface-secondary);
+  border-bottom: 1px solid var(--v2-color-border);
+}
+
+html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) #modalEyebrow { color: var(--v2-color-gold); }
+html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) #modalTitle { font-family: var(--v2-font-editorial); font-size: 25px; }
+html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) #modalClose { min-width: 44px; min-height: 44px; }
+
+html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) #modalForm {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  padding: 0;
+  overflow: hidden;
+}
+
+html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) #modalFields {
+  min-height: 0;
+  padding: var(--v2-space-5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) #modalForm > footer {
+  margin: 0;
+  padding: var(--v2-space-4) var(--v2-space-5);
+  background: var(--v2-color-surface-elevated);
+  border-top: 1px solid var(--v2-color-border);
+  border-radius: 0;
+}
+
+html[data-ui="v2"] .monitoring-contract-note {
+  display: grid;
+  gap: 4px;
+  margin-bottom: var(--v2-space-4);
+  padding: var(--v2-space-3) var(--v2-space-4);
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-primary) 22%, var(--v2-color-border));
+  border-radius: var(--v2-radius-md);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+html[data-ui="v2"] .monitoring-contract-note strong { color: var(--v2-color-foreground); font-size: 10px; }
+html[data-ui="v2"] .monitoring-form-sections { display: grid; gap: var(--v2-space-4); }
+
+html[data-ui="v2"] .monitoring-form-section {
+  min-width: 0;
+  margin: 0;
+  padding: var(--v2-space-4);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-lg);
+}
+
+html[data-ui="v2"] .monitoring-form-section:not(:has(.field:not([style*="display: none"]))) {
+  display: none;
+}
+
+html[data-ui="v2"] .monitoring-form-section legend {
+  padding: 0 var(--v2-space-2);
+  color: var(--v2-color-gold);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] .monitoring-form-section .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--v2-space-3); }
+html[data-ui="v2"] .monitoring-form-section .field { min-width: 0; }
+html[data-ui="v2"] .monitoring-form-section .field.full { grid-column: 1 / -1; }
+html[data-ui="v2"] .monitoring-form-section textarea { min-height: 160px; resize: vertical; }
+html[data-ui="v2"] .monitoring-form-section .field-note { color: var(--v2-color-muted-foreground); font-size: 9px; line-height: 1.4; }
+
+@keyframes monitoring-drawer-in {
+  from { opacity: .72; transform: translateX(28px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 1120px) {
+  html[data-ui="v2"] #primaryTermCard { grid-template-columns: auto minmax(220px, 1fr); }
+  html[data-ui="v2"] #primaryTermCard .monitor-stats { grid-column: 1 / -1; min-height: 88px; }
+  html[data-ui="v2"] #view-monitoring .source-table-head,
+  html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row { grid-template-columns: minmax(220px, 1.45fr) minmax(90px, .65fr) minmax(130px, .85fr) minmax(82px, .55fr) 88px; }
+}
+
+@media (max-width: 760px) {
+  html[data-ui="v2"] #view-monitoring > .section-toolbar { grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: var(--v2-space-4); }
+  html[data-ui="v2"] .v2-monitoring-heading h2 { font-size: 28px; }
+  html[data-ui="v2"] #newTermButton { width: 100%; justify-content: center; }
+  html[data-ui="v2"] #primaryTermCard { grid-template-columns: auto minmax(0, 1fr); gap: var(--v2-space-4); padding: var(--v2-space-4) !important; border-radius: var(--v2-radius-lg); }
+  html[data-ui="v2"] #primaryTermCard .monitor-avatar { width: 58px; height: 58px; font-size: 18px; }
+  html[data-ui="v2"] #primaryTermName { font-size: 21px; }
+  html[data-ui="v2"] #primaryTermCard .monitor-v2-edit-affordance { min-height: 44px; }
+  html[data-ui="v2"] #primaryTermCard .monitor-stats { min-height: 82px; grid-column: 1 / -1; }
+  html[data-ui="v2"] #primaryTermCard .monitor-stats > div { padding: var(--v2-space-2); }
+  html[data-ui="v2"] #primaryTermCard .monitor-stats strong { font-size: 22px; }
+  html[data-ui="v2"] #view-monitoring .source-table { border-radius: var(--v2-radius-lg); }
+  html[data-ui="v2"] #view-monitoring .source-table-head { display: none; }
+  html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row {
+    min-height: 154px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "identity status"
+      "method method"
+      "check route";
+    gap: var(--v2-space-3);
+    padding: var(--v2-space-4);
+  }
+  html[data-ui="v2"] #monitorSourceList .monitor-v2-source-identity { grid-area: identity; }
+  html[data-ui="v2"] #monitorSourceList .monitor-v2-source-meta:nth-of-type(2) { grid-area: method; }
+  html[data-ui="v2"] #monitorSourceList .monitor-v2-last-check { grid-area: check; }
+  html[data-ui="v2"] #monitorSourceList .monitor-v2-source-status { grid-area: status; justify-self: end; }
+  html[data-ui="v2"] #monitorSourceList .monitor-v2-source-route { grid-area: route; align-self: end; min-height: 44px; display: inline-flex; align-items: center; }
+  html[data-ui="v2"] #monitorSourceList .monitor-v2-meta-label { display: block; color: var(--v2-color-muted-foreground); font-size: 8px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+  html[data-ui="v2"] #view-monitoring .security-note { align-items: flex-start; }
+  html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) .modal { width: 100vw; height: 100dvh; max-height: 100dvh; border: 0; }
+  html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) .modal > header,
+  html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) #modalFields,
+  html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) #modalForm > footer { padding: var(--v2-space-4); }
+  html[data-ui="v2"] .monitoring-form-section { padding: var(--v2-space-3); }
+  html[data-ui="v2"] .monitoring-form-section .form-grid { grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .monitoring-form-section .field { grid-column: 1; }
+  html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) #modalForm > footer .button { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="v2"] #primaryTermCard,
+  html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row,
+  html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) .modal {
+    animation: none !important;
+    transition-duration: .001ms !important;
+    transform: none !important;
+  }
+}

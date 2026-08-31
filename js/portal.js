@@ -19,6 +19,7 @@ import { renderDocumentsV2Catalog } from './views/ui-v2/documents-presenter.js';
 import { renderLeadsV2Workspace } from './views/ui-v2/leads-presenter.js';
 import { renderAssistantV2Presentation } from './views/ui-v2/assistant-presenter.js';
 import { renderPromptsV2Presentation } from './views/ui-v2/prompts-presenter.js';
+import { renderMonitoringV2Presentation } from './views/ui-v2/monitoring-presenter.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -655,7 +656,8 @@ import { createTasksFeature } from './features/tasks.js';
       closeModal: () => App.closeModal(),
       getFilteredIntimations: () => App.filteredIntimations(),
       onOpenJudicialSetup: () => getJudicialIntegrationsFeature().open(),
-      onOpenCalendarConfig: () => getExternalCalendarFeature().open()
+      onOpenCalendarConfig: () => getExternalCalendarFeature().open(),
+      renderV2Presentation: renderMonitoringV2Presentation
     });
     return monitoringFeature;
   }
