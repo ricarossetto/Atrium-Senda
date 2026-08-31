@@ -27,6 +27,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/integrations.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/configuration.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/importer.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/audit.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=1.0.0">
@@ -1239,30 +1240,39 @@
       </section>
 
       <section class="view" id="view-audit" data-title="Alertas & Auditoria" data-eyebrow="Segurança e Integridade">
-        <div class="section-toolbar">
-          <div class="filter-tabs" id="auditFilters">
-            <button class="active" data-audit-filter="all">Todos os Eventos</button>
-            <button data-audit-filter="security">Segurança &amp; Auth</button>
-            <button data-audit-filter="sync">Sincronizações</button>
-            <button data-audit-filter="task">Tarefas &amp; Prazos</button>
-            <button data-audit-filter="process">Processos</button>
+        <header class="audit-v2-header v2-only">
+          <p class="eyebrow">Rastreabilidade</p>
+          <h2>Auditoria</h2>
+          <p>Consulte o registro cronológico local das atividades recentes do sistema e exporte o histórico completo para conferência.</p>
+        </header>
+
+        <div class="section-toolbar audit-toolbar">
+          <div class="filter-tabs" id="auditFilters" role="group" aria-label="Filtrar registro de auditoria">
+            <button class="active" type="button" data-audit-filter="all" aria-pressed="true">Todos os Eventos</button>
+            <button type="button" data-audit-filter="security" aria-pressed="false">Segurança &amp; Auth</button>
+            <button type="button" data-audit-filter="sync" aria-pressed="false">Sincronizações</button>
+            <button type="button" data-audit-filter="task" aria-pressed="false">Tarefas &amp; Prazos</button>
+            <button type="button" data-audit-filter="process" aria-pressed="false">Processos</button>
           </div>
-          <div class="toolbar-actions">
-            <div class="table-search compact-search"><input id="auditSearch" type="search" placeholder="Pesquisar registros de auditoria"></div>
-            <button class="button ghost" id="btnExportAuditLog" type="button">Exportar Log (JSON)</button>
-            <button class="button ghost" id="btnClearAuditLog" type="button">Limpar Filtros</button>
+          <div class="toolbar-actions audit-actions">
+            <div class="table-search compact-search"><label class="sr-only" for="auditSearch">Pesquisar no registro de auditoria</label><input id="auditSearch" type="search" aria-label="Pesquisar no registro de auditoria" placeholder="Pesquisar registros de auditoria"></div>
+            <button class="button ghost" id="btnExportAuditLog" type="button" aria-label="Exportar registro completo de auditoria em JSON"><span class="classic-only">Exportar Log (JSON)</span><span class="v2-only">Exportar registro completo</span></button>
+            <button class="button ghost" id="btnClearAuditLog" type="button" aria-label="Redefinir filtros de auditoria"><span class="classic-only">Limpar Filtros</span><span class="v2-only">Redefinir filtros</span></button>
           </div>
         </div>
 
         <div class="audit-layout card">
           <div class="card-heading">
             <div>
-              <p class="eyebrow">Trilha de Auditoria Imutável (Zero Trust)</p>
-              <h3>Registro de Atividades do Sistema</h3>
+              <p class="eyebrow classic-only">Trilha de Auditoria Imutável (Zero Trust)</p>
+              <p class="eyebrow v2-only">Registro de atividades</p>
+              <h3 id="auditLedgerHeading">Registro de Atividades do Sistema</h3>
+              <p class="audit-v2-description v2-only">Eventos locais recentes, exibidos na ordem mantida pelo Store. A apresentação não altera nem reclassifica registros.</p>
             </div>
             <span class="status-chip connected" id="auditCountBadge">0 eventos</span>
           </div>
-          <div class="audit-list" id="auditList">
+          <p class="audit-export-note v2-only">A exportação inclui o registro completo, independentemente dos filtros exibidos.</p>
+          <div class="audit-list" id="auditList" role="region" aria-labelledby="auditLedgerHeading">
             <!-- Renderizado dinamicamente -->
           </div>
         </div>

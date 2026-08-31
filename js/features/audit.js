@@ -7,7 +7,8 @@ export function createAuditFeature({
   formatDateTime,
   exportJson,
   getIsoDate = isoDate,
-  showToast
+  showToast,
+  presentation
 } = {}) {
   let initialized = false;
   let auditFilter = 'all';
@@ -24,6 +25,7 @@ export function createAuditFeature({
     init() {
       if (initialized) return false;
       initialized = true;
+      presentation?.init?.();
       byId('auditFilters')?.addEventListener('click', event => {
         const button = event.target.closest('button[data-audit-filter]');
         if (!button) return;
@@ -67,6 +69,7 @@ export function createAuditFeature({
       auditQuery = query !== undefined ? query : (auditQuery || '');
       const events = this.filteredEvents(auditFilter, auditQuery);
       if (badge) badge.textContent = `${events.length} evento${events.length === 1 ? '' : 's'}`;
+      if (presentation?.render?.({ events, filter: auditFilter, query: auditQuery, formatDateTime })) return events;
       if (!events.length) {
         list.innerHTML = '<div class="empty-detail" style="padding:32px 16px;text-align:center;"><span>✦</span><h3>Nenhum evento registrado</h3><p>Não há eventos de auditoria para os filtros selecionados.</p></div>';
         return events;

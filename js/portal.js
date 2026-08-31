@@ -24,6 +24,7 @@ import { createJudicialIntegrationsPresenter } from './views/ui-v2/judicial-inte
 import { createEmailCalendarPresenter } from './views/ui-v2/email-calendar-presenter.js';
 import { createConfigurationAdminPresenter } from './views/ui-v2/configuration-presenter.js';
 import { createImporterPresenter } from './views/ui-v2/importer-presenter.js';
+import { createAuditPresenter } from './views/ui-v2/audit-presenter.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -247,6 +248,7 @@ import { createTasksFeature } from './features/tasks.js';
   let agendaFeature;
   let assistantFeature;
   let auditFeature;
+  let auditPresenter;
   let configurationFeature;
   let configurationAdminPresenter;
   let contactsFeature;
@@ -401,9 +403,15 @@ import { createTasksFeature } from './features/tasks.js';
       formatDateTime,
       exportJson: (data, filename) => App.exportJson(data, filename),
       getIsoDate: () => isoDate(),
-      showToast: (message, type) => App.toast(message, type)
+      showToast: (message, type) => App.toast(message, type),
+      presentation: getAuditPresenter()
     });
     return auditFeature;
+  }
+
+  function getAuditPresenter() {
+    auditPresenter ||= createAuditPresenter({ documentRef: document });
+    return auditPresenter;
   }
 
   function getLinksFeature() {
