@@ -243,7 +243,16 @@ try {
   assert.equal(await todayButton.locator('.cal-dot.event').count(), 1, 'Event dot ausente.');
   assert.equal(await todayButton.locator('.cal-dot.task').count(), 1, 'Task dot ausente.');
   assert.equal(await todayButton.locator('.cal-dot.intimation').count(), 1, 'Intimation dot ausente.');
+  const [todayYear, todayMonth] = fixture.today.split('-').map(Number);
+  const [tomorrowYear, tomorrowMonth] = fixture.tomorrow.split('-').map(Number);
+  const tomorrowMonthOffset = ((tomorrowYear - todayYear) * 12) + tomorrowMonth - todayMonth;
+  for (let offset = 0; offset < tomorrowMonthOffset; offset++) await page.click('#calNextMonth');
+  for (let offset = 0; offset > tomorrowMonthOffset; offset--) await page.click('#calPrevMonth');
+  await tomorrowButton.waitFor();
   assert.equal(await tomorrowButton.locator('.cal-dot.fatal').count(), 1, 'Fatal dot explícito ausente.');
+  for (let offset = 0; offset < tomorrowMonthOffset; offset++) await page.click('#calPrevMonth');
+  for (let offset = 0; offset > tomorrowMonthOffset; offset--) await page.click('#calNextMonth');
+  await todayButton.waitFor();
   assert.equal(await todayButton.evaluate(element => element.classList.contains('today')), true, 'Dia atual deve manter classe today.');
 
   await todayButton.click();

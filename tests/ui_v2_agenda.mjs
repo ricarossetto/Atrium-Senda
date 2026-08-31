@@ -61,8 +61,17 @@ try {
   assert.equal(await page.locator('#view-agenda').getAttribute('data-title'), 'Agenda integrada');
   assert.equal(await page.locator('#agendaList [data-agenda-activity-type]').count(), 7, 'Agenda V2 deve integrar 3 compromissos, 2 tarefas datadas e 2 publicações.');
   assert.equal(await page.locator('#agendaList [data-agenda-activity-id="ui-v2-agenda-text-only"]').count(), 0);
+  const [todayYear, todayMonth] = fixture.today.split('-').map(Number);
+  const [tomorrowYear, tomorrowMonth] = fixture.tomorrow.split('-').map(Number);
+  const tomorrowMonthOffset = ((tomorrowYear - todayYear) * 12) + tomorrowMonth - todayMonth;
+  for (let offset = 0; offset < tomorrowMonthOffset; offset++) await page.locator('#calNextMonth').click();
+  for (let offset = 0; offset > tomorrowMonthOffset; offset--) await page.locator('#calPrevMonth').click();
+  await page.locator(`#miniCalendar [data-cal-date="${fixture.tomorrow}"]`).waitFor();
   assert.equal(await page.locator(`#miniCalendar [data-cal-date="${fixture.tomorrow}"] .cal-dot.fatal`).count(), 1);
   assert.equal(await page.locator(`#miniCalendar [data-cal-date="${fixture.afterTomorrow}"] .cal-dot.fatal`).count(), 0, 'Deadline secundário não pode duplicar tarefa fatal em outro dia.');
+  for (let offset = 0; offset < tomorrowMonthOffset; offset++) await page.locator('#calPrevMonth').click();
+  for (let offset = 0; offset > tomorrowMonthOffset; offset--) await page.locator('#calNextMonth').click();
+  await page.locator(`#miniCalendar [data-cal-date="${fixture.today}"]`).waitFor();
   assert.match(await page.locator('[data-agenda-activity-id="ui-v2-agenda-publication"]').textContent(), /Data da publicação/);
   assert.doesNotMatch(await page.locator('[data-agenda-activity-id="ui-v2-agenda-publication"]').textContent(), /vencimento|data limite/i);
 

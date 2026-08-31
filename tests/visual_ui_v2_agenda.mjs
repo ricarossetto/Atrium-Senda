@@ -38,6 +38,12 @@ try {
       if (scenario.state === 'selected') {
         await page.locator(`#miniCalendar [data-cal-date="${fixture.today}"]`).click();
       } else if (scenario.state === 'fatal') {
+        const [todayYear, todayMonth] = fixture.today.split('-').map(Number);
+        const [targetYear, targetMonth] = fixture.tomorrow.split('-').map(Number);
+        const monthOffset = ((targetYear - todayYear) * 12) + targetMonth - todayMonth;
+        for (let offset = 0; offset < monthOffset; offset++) await page.locator('#calNextMonth').click();
+        for (let offset = 0; offset > monthOffset; offset--) await page.locator('#calPrevMonth').click();
+        await page.locator(`#miniCalendar [data-cal-date="${fixture.tomorrow}"]`).waitFor();
         await page.locator(`#miniCalendar [data-cal-date="${fixture.tomorrow}"]`).click();
       } else if (scenario.state === 'publication') {
         await page.locator('#agendaFilterTabs [data-agenda-filter="intimation"]').click();
