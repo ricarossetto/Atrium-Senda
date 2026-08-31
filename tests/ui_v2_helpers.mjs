@@ -634,3 +634,51 @@ export async function prepareUiV2PromptsFixture(page) {
   await page.locator('#promptsGrid [data-prompt-id="prompt-v2-custom"]').waitFor();
   return fixture;
 }
+
+export async function prepareUiV2MonitoringFixture(page) {
+  const fixture = {
+    terms: [
+      { id: 'monitor-term-primary', name: 'Advogada Mineral Sintética', registration: 'OAB/RS 000123', type: 'oab', active: true, unknownField: 'preservar-primary' },
+      { id: 'monitor-term-secondary', name: 'Advogado Secundário Sintético', registration: 'OAB/SC 000456', type: 'oab', active: true, unknownField: 'preservar-secondary' }
+    ],
+    sources: [
+      { id: 'a1', short: 'A1', name: 'Certificado A1 Sintético', detail: 'Autenticação local supervisionada sem exposição de certificado.', method: 'mTLS local', status: 'ok', lastCheck: '2026-08-30T15:00:00.000Z' },
+      { id: 'external-calendar', short: 'CAL', name: 'Calendário Externo Sintético', detail: 'Agenda externa requer revisão da configuração.', method: 'iCal protegido', status: 'attention' },
+      { id: 'djen-cnj', short: 'DJEN', name: 'Diário de Justiça Eletrônico Sintético', detail: 'Fonte oficial com falha sintética para validação visual.', method: 'API oficial', status: 'error', lastCheck: '2026-08-30T14:30:00.000Z' },
+      { id: 'datajud-cnj', short: 'DJ', name: 'DataJud CNJ Sintético', detail: 'Integração preparada para enriquecimento sob demanda.', method: 'API pública', status: 'planned' },
+      { id: 'generic-source', short: 'GEN', name: 'Fonte Manual Sintética', detail: 'Fonte operacional desativada com configuração manual.', method: 'Manual', status: 'off' }
+    ],
+    rawIntimations: [
+      { id: 'monitor-raw-1', status: 'nova' },
+      { id: 'monitor-raw-2', status: 'nova' },
+      { id: 'monitor-raw-3', status: 'nova' },
+      { id: 'monitor-raw-4', status: 'nova' },
+      { id: 'monitor-raw-read', status: 'lida' }
+    ],
+    filteredIntimations: [
+      { id: 'monitor-cutoff-1', status: 'nova' },
+      { id: 'monitor-cutoff-2', status: 'nova' },
+      { id: 'monitor-cutoff-read', status: 'lida' }
+    ]
+  };
+
+  await page.evaluate(data => {
+    const { App, Store } = window.Atrium;
+    Store.state.terms = data.terms;
+    Store.state.sources = data.sources;
+    Store.state.intimations = data.rawIntimations;
+    Store.state.settings = {
+      ...Store.state.settings,
+      datajudApiKey: 'SYNTHETIC_DATAJUD_PUBLIC_KEY',
+      monitoringFixtureMarker: 'preservar-settings'
+    };
+    Store.state.audit = [];
+    App.filteredIntimations = () => data.filteredIntimations;
+    App.renderAll();
+    App.switchView('monitoring');
+  }, fixture);
+
+  await page.locator('#view-monitoring.active').waitFor();
+  await page.locator('#monitorSourceList [data-source-id="a1"]').waitFor();
+  return fixture;
+}
