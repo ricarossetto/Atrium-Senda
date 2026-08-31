@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/documents.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/leads.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/assistant.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/prompts.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -1353,6 +1354,11 @@
       <!-- Biblioteca de Prompts Jurídicos -->
       <section class="view" id="view-prompts" data-title="Biblioteca de Prompts Jurídicos" data-eyebrow="Inteligência Artificial">
         <div class="section-toolbar">
+          <div class="v2-prompts-heading v2-only">
+            <p>Biblioteca jurídica</p>
+            <h2>Prompts e instruções</h2>
+            <small>Instruções reutilizáveis para apoiar análise e redação no Assistente, sempre sujeitas à revisão profissional.</small>
+          </div>
           <div class="toolbar-copy">
             <p>230 prompts jurídicos especializados e calibrados para pesquisa, redação de peças, análise de riscos e estratégia processual.</p>
           </div>
@@ -1362,13 +1368,13 @@
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              <span>+ Novo Prompt</span>
+              <span class="classic-only">+ Novo Prompt</span><span class="v2-only">Novo prompt</span>
             </button>
             <button class="button ghost" data-view-link="assistant">
               <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
               </svg>
-              <span>Abrir Assistente IA</span>
+              <span class="classic-only">Abrir Assistente IA</span><span class="v2-only">Abrir Assistente</span>
             </button>
           </div>
         </div>
@@ -1376,8 +1382,9 @@
         <div class="prompts-hub">
           <div class="prompts-filter-bar card">
             <div class="prompts-search-box">
+              <label class="prompts-search-label v2-only" for="promptsSearchInput">Pesquisar na biblioteca</label>
               <span class="search-icon" aria-hidden="true">⌕</span>
-              <input type="search" id="promptsSearchInput" placeholder="Pesquisar por título, palavras-chave, lei ou tema jurídico...">
+              <input type="search" id="promptsSearchInput" aria-label="Pesquisar prompts por título, descrição, palavras-chave ou texto integral" placeholder="Pesquisar por título, palavras-chave, lei ou tema jurídico...">
               <button type="button" class="btn-clear-search hidden" id="btnClearPromptsSearch" aria-label="Limpar busca">×</button>
             </div>
 
@@ -1401,15 +1408,15 @@
                 </select>
               </div>
 
-              <div class="prompts-counter-badge" id="promptsCountDisplay">
+              <div class="prompts-counter-badge" id="promptsCountDisplay" aria-live="polite">
                 Mostrando prompts...
               </div>
             </div>
           </div>
 
-          <div class="prompts-category-chips" id="promptsCategoryChips"></div>
+          <div class="prompts-category-chips" id="promptsCategoryChips" role="group" aria-label="Filtrar prompts por área do Direito"></div>
 
-          <div class="prompts-grid" id="promptsGrid">
+          <div class="prompts-grid" id="promptsGrid" aria-live="polite" aria-label="Biblioteca de prompts jurídicos">
             <!-- Os cards de prompts serão renderizados dinamicamente aqui -->
           </div>
         </div>

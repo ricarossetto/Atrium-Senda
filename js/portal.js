@@ -18,6 +18,7 @@ import { renderFinancialV2Workspace } from './views/ui-v2/financial-presenter.js
 import { renderDocumentsV2Catalog } from './views/ui-v2/documents-presenter.js';
 import { renderLeadsV2Workspace } from './views/ui-v2/leads-presenter.js';
 import { renderAssistantV2Presentation } from './views/ui-v2/assistant-presenter.js';
+import { renderPromptsV2Presentation } from './views/ui-v2/prompts-presenter.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -579,7 +580,8 @@ import { createTasksFeature } from './features/tasks.js';
       uid,
       openModal: (...args) => App.openModal(...args),
       switchView: view => App.switchView(view),
-      onUsePrompt: promptText => getAssistantFeature().loadPrompt(promptText)
+      onUsePrompt: promptText => getAssistantFeature().loadPrompt(promptText),
+      renderV2Presentation: renderPromptsV2Presentation
     });
     return promptsFeature;
   }

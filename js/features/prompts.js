@@ -10,7 +10,8 @@ export function createPromptsFeature({
   uid = prefix => `${prefix}-${Date.now()}`,
   openModal = () => {},
   switchView = () => {},
-  onUsePrompt = () => {}
+  onUsePrompt = () => {},
+  renderV2Presentation = null
 } = {}) {
   let filter = { search: '', category: 'all', type: 'all' };
   let initialized = false;
@@ -146,14 +147,6 @@ export function createPromptsFeature({
       }
 
       const topCategories = ['all', ...[...new Set(prompts.map(prompt => prompt.category))].slice(0, 12)];
-      if (chipsContainer) {
-        chipsContainer.innerHTML = topCategories.map(category => {
-          const selected = filter.category === category;
-          const label = category === 'all' ? 'Todas as Áreas' : category;
-          return `<button type="button" class="prompt-chip ${selected ? 'active' : ''}" data-category="${escapeHtml(category)}">${escapeHtml(label)}</button>`;
-        }).join('');
-      }
-
       const searchNeedle = normalizeText(filter.search || '');
       const filtered = prompts.filter(prompt => {
         if (filter.category !== 'all' && prompt.category !== filter.category) return false;
@@ -165,8 +158,23 @@ export function createPromptsFeature({
         return true;
       });
 
+      const v2Presentation = documentRef.documentElement?.dataset?.ui === 'v2' && typeof renderV2Presentation === 'function'
+        ? renderV2Presentation({ prompts: filtered, topCategories, selectedCategory: filter.category, escapeHtml, normalizeText })
+        : null;
+      if (chipsContainer) {
+        chipsContainer.innerHTML = v2Presentation?.chipsHtml || topCategories.map(category => {
+          const selected = filter.category === category;
+          const label = category === 'all' ? 'Todas as Áreas' : category;
+          return `<button type="button" class="prompt-chip ${selected ? 'active' : ''}" data-category="${escapeHtml(category)}">${escapeHtml(label)}</button>`;
+        }).join('');
+      }
+
       if (countDisplay) countDisplay.textContent = `Mostrando ${filtered.length} de ${prompts.length} prompts`;
       if (!grid) return;
+      if (v2Presentation) {
+        grid.innerHTML = v2Presentation.libraryHtml;
+        return;
+      }
       if (!filtered.length) {
         grid.innerHTML = `
           <div class="prompts-empty card">

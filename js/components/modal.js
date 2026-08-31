@@ -60,12 +60,14 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
           ? renderContactSections(fields, renderField)
         : mode === 'lead' && isV2
           ? renderLeadSections(fields, renderField)
+        : mode === 'prompt' && isV2
+          ? renderPromptSections(fields, renderField)
       : `<div class="form-grid">${fields.map(renderField).join('')}</div>`;
     document.getElementById('modalFields').innerHTML = `${topHtml}${fieldsHtml}`;
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
-    if (['task', 'agenda', 'contact', 'lead'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
+    if (['task', 'agenda', 'contact', 'lead', 'prompt'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
       const modalFields = document.getElementById('modalFields');
@@ -202,6 +204,27 @@ function renderLeadSections(fields, renderField) {
   }
   return `<div class="lead-form-sections">${[...sections.entries()].filter(([, sectionFields]) => sectionFields.length).map(([section, sectionFields]) => `
     <fieldset class="lead-form-section">
+      <legend>${section}</legend>
+      <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
+    </fieldset>`).join('')}</div>`;
+}
+
+const PROMPT_FIELD_SECTIONS = Object.freeze({
+  title: 'Identidade', category: 'Identidade', type: 'Identidade',
+  tags: 'Descobribilidade', description: 'Descobribilidade',
+  prompt: 'Instrução'
+});
+
+const PROMPT_SECTION_ORDER = Object.freeze(['Identidade', 'Descobribilidade', 'Instrução']);
+
+function renderPromptSections(fields, renderField) {
+  const sections = new Map(PROMPT_SECTION_ORDER.map(section => [section, []]));
+  for (const field of fields) {
+    const section = PROMPT_FIELD_SECTIONS[field.name] || 'Instrução';
+    sections.get(section).push(field);
+  }
+  return `<div class="prompt-form-sections">${[...sections.entries()].filter(([, sectionFields]) => sectionFields.length).map(([section, sectionFields]) => `
+    <fieldset class="prompt-form-section">
       <legend>${section}</legend>
       <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
     </fieldset>`).join('')}</div>`;
