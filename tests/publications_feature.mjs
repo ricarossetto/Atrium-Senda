@@ -326,6 +326,7 @@ try {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
   });
 
+  await page.addInitScript(() => localStorage.setItem('atrium:ui:mode', 'classic'));
   await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
   await page.click('.nav-item[data-view="inbox"]');

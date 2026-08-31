@@ -1,5 +1,26 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
+import { resolveUiMode } from '../js/views/ui-v2/mode.js';
 import { prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
+
+const preferenceInitSource = await readFile(new URL('../js/views/ui-v2/preference-init.js', import.meta.url), 'utf8');
+const resolvePrepaint = storage => {
+  const documentElement = { dataset: {} };
+  vm.runInNewContext(preferenceInitSource, { localStorage: storage, document: { documentElement } });
+  return documentElement.dataset.ui;
+};
+const storageFor = value => ({ getItem: () => value });
+const throwingStorage = { getItem() { throw new Error('Storage indisponível'); } };
+
+assert.equal(resolveUiMode(storageFor(null)), 'v2');
+assert.equal(resolveUiMode(storageFor('v2')), 'v2');
+assert.equal(resolveUiMode(storageFor('classic')), 'classic');
+assert.equal(resolveUiMode(throwingStorage), 'v2');
+assert.equal(resolvePrepaint(storageFor(null)), 'v2');
+assert.equal(resolvePrepaint(storageFor('v2')), 'v2');
+assert.equal(resolvePrepaint(storageFor('classic')), 'classic');
+assert.equal(resolvePrepaint(throwingStorage), 'v2');
 
 const session = await startUiV2Session();
 const context = await session.createContext();

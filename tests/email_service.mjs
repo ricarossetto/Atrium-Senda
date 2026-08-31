@@ -863,6 +863,7 @@ try {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem('atrium:ui:mode', 'classic'));
 
   try {
     // 5.1 MASTER ADMIN (role: master_admin):

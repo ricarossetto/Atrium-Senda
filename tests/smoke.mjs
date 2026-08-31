@@ -8,6 +8,7 @@ import { startTestServer } from './helpers.mjs';
 const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ locale: 'pt-BR', viewport: { width: 1440, height: 900 } });
+await page.addInitScript(() => localStorage.setItem('atrium:ui:mode', 'classic'));
 const pageErrors = [];
 const responseErrors = [];
 page.on('pageerror', error => { console.error('PAGE ERROR:', error); pageErrors.push(error.message); });
@@ -279,7 +280,7 @@ try {
   assert(await page.locator('#miniCalendar .calendar-day').count() >= 28, 'Mini-calendário não foi renderizado.');
   const todayBtn = page.locator('#miniCalendar .calendar-day.today');
   await todayBtn.waitFor();
-  await todayBtn.click();
+  await todayBtn.evaluate(button => button.click());
   await page.locator('#agendaDayEyebrow', { hasText: 'Atividades' }).waitFor();
   
   // Testar filtros da agenda

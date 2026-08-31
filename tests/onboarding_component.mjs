@@ -101,6 +101,7 @@ try {
   assert.equal(await page.evaluate(() => window.Atrium.Store.state.settings.guidedTourSeen), true, 'Reload deve recuperar guidedTourSeen do backend.');
   assertSingleListeners((await readProbe()).listeners);
 
+  await page.locator('#v2UtilitiesMenu > summary').click();
   await page.locator('#tourButton').click();
   await page.locator('#guidedTourBackdrop:not(.hidden)').waitFor();
   await assertSlide(0, 'Abertura manual pelo cabeçalho deve ignorar a flag de visto.');

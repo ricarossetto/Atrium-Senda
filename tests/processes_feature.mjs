@@ -189,6 +189,7 @@ try {
     localStorage.setItem('jurisflow_tour_completed', 'true');
     localStorage.setItem('jurisflow_tour_seen', 'true');
     localStorage.setItem('atrium_tour_seen', 'true');
+    localStorage.setItem('atrium:ui:mode', 'classic');
   });
   await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();

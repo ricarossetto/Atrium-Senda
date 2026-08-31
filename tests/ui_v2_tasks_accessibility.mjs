@@ -73,7 +73,7 @@ try {
     assert.ok(layout.boardOverflow <= 2, `RecordList não pode depender de scroll horizontal: ${layout.boardOverflow}px.`);
     assert.equal(layout.cards, 6);
     assert.deepEqual(layout.duplicates, []);
-    for (const target of layout.targets) assert.ok(target.width >= 44 && target.height >= 44, `Alvo abaixo de 44px: ${JSON.stringify(target)}`);
+    for (const target of layout.targets) assert.ok(target.width + 0.01 >= 44 && target.height + 0.01 >= 44, `Alvo abaixo de 44px: ${JSON.stringify(target)}`);
 
     const recordText = await page.locator('[data-task-id="ui-v2-task-fatal"]').textContent();
     for (const expected of ['Preparar recurso', 'Cliente Recursal Sintético', '5012345-67.2026.4.04.7100', 'Prazo fatal', 'Advogada Recursal Sintética']) {

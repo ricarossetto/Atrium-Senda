@@ -56,7 +56,7 @@ try {
   }));
   await prepareUiV2JudicialFixture(page);
 
-  assert.equal(await page.locator('.v2-integrations-header h2').textContent(), 'Integrações judiciais');
+  assert.equal(await page.locator('.v2-integrations-header h2').textContent(), 'Integrações seguras');
   assert.equal(await page.locator('.judicial-integration-card').count(), 1);
   assert.match(await page.locator('#certificateIntegrationStatus').textContent(), /A1 Operacional · 1 2FA/);
   assert.match(await page.locator('#certificateIntegrationDetail').textContent(), /Titular Judicial Sintética/);

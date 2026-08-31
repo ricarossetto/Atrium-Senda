@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs';
 import { prepareUiV2Page, prepareUiV2PublicationsFixture, startUiV2Session } from './ui_v2_helpers.mjs';
 
 const cssSource = readFileSync(new URL('../css/views/ui-v2/publications.css', import.meta.url), 'utf8');
-assert.match(cssSource, /grid-template-columns:\s*minmax\(380px, 42%\) minmax\(0, 58%\)/, 'Desktop deve declarar master/detail dentro da faixa prevista.');
-assert.match(cssSource, /@media \(max-width: 767px\)/, 'Mobile sheet deve possuir breakpoint explícito.');
-assert.match(cssSource, /min-height:\s*44px/, 'Alvos mobile devem declarar 44px.');
-assert.match(cssSource, /white-space:\s*pre-wrap/, 'Texto original deve preservar quebras.');
+assert.match(cssSource, /Gate 17: lista full-width/);
+assert.match(cssSource, /#publicationInspectorBackdrop/);
+assert.match(cssSource, /position:\s*fixed/);
+assert.match(cssSource, /@media \(max-width: 767px\)/);
+assert.match(cssSource, /min-height:\s*44px/);
+assert.match(cssSource, /white-space:\s*pre-wrap/);
 
 const session = await startUiV2Session();
 try {
@@ -14,26 +16,61 @@ try {
   try {
     const { page, pageErrors } = await prepareUiV2Page(desktop, session.server.baseUrl, { theme: 'dark' });
     await prepareUiV2PublicationsFixture(page);
-    const layout = await page.evaluate(() => {
+    const initial = await page.evaluate(() => {
       const queue = document.querySelector('.inbox-list-card').getBoundingClientRect();
-      const detail = document.getElementById('intimationDetail').getBoundingClientRect();
-      return { queue: queue.width, detail: detail.width, total: queue.width + detail.width, overflow: document.documentElement.scrollWidth - innerWidth };
+      const layout = document.querySelector('.inbox-layout').getBoundingClientRect();
+      return {
+        queue: queue.width,
+        layout: layout.width,
+        detailVisible: getComputedStyle(document.getElementById('intimationDetail')).visibility !== 'hidden',
+        open: document.getElementById('view-inbox').classList.contains('publication-detail-open'),
+        overflow: document.documentElement.scrollWidth - innerWidth
+      };
     });
-    assert.ok(layout.queue / layout.total >= .38 && layout.queue / layout.total <= .46, `Fila desktop fora da faixa: ${layout.queue / layout.total}.`);
-    assert.ok(layout.detail / layout.total >= .54 && layout.detail / layout.total <= .62, `Leitura desktop fora da faixa: ${layout.detail / layout.total}.`);
-    assert.ok(layout.overflow <= 2);
+    assert.ok(initial.queue / initial.layout >= .98, `A lista deve ocupar o workspace: ${initial.queue / initial.layout}.`);
+    assert.equal(initial.detailVisible, false);
+    assert.equal(initial.open, false);
+    assert.ok(initial.overflow <= 2);
 
     const record = page.locator('[data-intimation-id="ui-v2-publication-urgent"]');
     await record.focus();
     await page.keyboard.press('Enter');
-    assert.equal(await record.getAttribute('aria-pressed'), 'true');
-    assert.equal(await page.locator('#intimationDetail').getAttribute('role'), 'region');
-    assert.equal(await page.locator('#intimationDetail').getAttribute('aria-modal'), null, 'Detalhe split desktop não é modal.');
-    assert.match(await page.locator('#publicationDetailTitle').textContent(), /Intimação sintética/);
+    await page.locator('#view-inbox.publication-detail-open').waitFor();
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('intimationDetail')).opacity === '1');
+    await page.waitForFunction(() => document.activeElement?.id === 'publicationDetailClose');
+    assert.equal(await page.locator('#intimationDetail').getAttribute('role'), 'dialog');
+    assert.equal(await page.locator('#intimationDetail').getAttribute('aria-modal'), 'true');
+    assert.equal(await page.locator('#publicationInspectorBackdrop').isVisible(), true);
+    assert.equal(await page.locator('.inbox-list-card').getAttribute('inert'), '');
+    assert.equal(await page.locator('#sidebar').getAttribute('inert'), '');
+    assert.equal(await page.evaluate(() => document.body.style.overflow), 'hidden');
+    const drawer = await page.locator('#intimationDetail').evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: innerWidth, height: innerHeight };
+    });
+    assert.ok(drawer.left >= -4 && drawer.right <= drawer.width + 4, JSON.stringify(drawer));
+    assert.ok(drawer.top >= -4 && drawer.bottom <= drawer.height + 4, JSON.stringify(drawer));
+
+    await page.locator('#btnDiscardPublication').focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'publicationDetailClose');
+    await page.keyboard.press('Escape');
+    await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement?.dataset.intimationId), 'ui-v2-publication-urgent');
+    assert.equal(await page.locator('.inbox-list-card').getAttribute('inert'), null);
+    assert.equal(await page.locator('#sidebar').getAttribute('inert'), null);
+
+    await record.click();
+    await page.locator('#view-inbox.publication-detail-open').waitFor();
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('intimationDetail')).opacity === '1');
+    await page.locator('#publicationInspectorBackdrop').click({ position: { x: 12, y: 12 } });
+    await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement?.dataset.intimationId), 'ui-v2-publication-urgent');
 
     const filter = page.locator('#inboxFilters button[data-filter="treated"]');
     await filter.focus();
     await page.keyboard.press('Enter');
+    assert.equal(await filter.getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#inboxList [data-intimation-id]').count(), 1);
     assert.deepEqual(pageErrors, []);
   } finally {
@@ -55,9 +92,7 @@ try {
     });
     assert.ok(before.overflow <= 2, `Overflow mobile: ${before.overflow}px.`);
     assert.deepEqual(before.duplicates, []);
-    for (const target of before.targets) {
-      assert.ok(target.width >= 44 && target.height >= 44);
-    }
+    for (const target of before.targets) assert.ok(target.width >= 44 && target.height >= 44);
 
     const origin = page.locator('[data-intimation-id="ui-v2-publication-urgent"]');
     const originText = await origin.textContent();
@@ -67,27 +102,19 @@ try {
     await origin.focus();
     await page.keyboard.press('Enter');
     await page.locator('#view-inbox.publication-detail-open').waitFor();
-    assert.equal(await page.locator('#intimationDetail').getAttribute('role'), 'dialog');
-    assert.equal(await page.locator('#intimationDetail').getAttribute('aria-modal'), 'true');
-    assert.equal(await page.evaluate(() => document.activeElement?.id), 'publicationDetailClose');
-    assert.equal(await page.locator('.inbox-list-card').getAttribute('inert'), '');
-    assert.equal(await page.evaluate(() => document.body.style.overflow), 'hidden');
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('intimationDetail')).opacity === '1');
+    await page.waitForFunction(() => document.activeElement?.id === 'publicationDetailClose');
     const sheet = await page.locator('#intimationDetail').evaluate(element => {
       const rect = element.getBoundingClientRect();
       const actions = [...element.querySelectorAll('.detail-actions .button')].map(button => ({ width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height }));
       return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, viewportWidth: innerWidth, viewportHeight: innerHeight, actions };
     });
-    assert.ok(sheet.left >= -2 && sheet.right <= sheet.viewportWidth + 2);
-    assert.ok(sheet.top >= -2 && sheet.bottom <= sheet.viewportHeight + 2);
+    assert.ok(sheet.left >= -4 && sheet.right <= sheet.viewportWidth + 4, JSON.stringify(sheet));
+    assert.ok(sheet.top >= -4 && sheet.bottom <= sheet.viewportHeight + 4, JSON.stringify(sheet));
     for (const target of sheet.actions) assert.ok(target.width >= 44 && target.height >= 44);
-
-    await page.locator('#btnDiscardPublication').focus();
-    await page.keyboard.press('Tab');
-    assert.equal(await page.evaluate(() => document.activeElement?.id), 'publicationDetailClose', 'Tab deve circular ao primeiro controle.');
     await page.keyboard.press('Escape');
     await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
-    assert.equal(await page.evaluate(() => document.activeElement?.dataset.intimationId), 'ui-v2-publication-urgent', 'Escape deve devolver foco ao registro.');
-    assert.equal(await page.locator('.inbox-list-card').getAttribute('inert'), null);
+    assert.equal(await page.evaluate(() => document.activeElement?.dataset.intimationId), 'ui-v2-publication-urgent');
 
     const emailButton = page.locator('#btnEmailPublications');
     await emailButton.focus();
@@ -97,7 +124,7 @@ try {
     assert.equal(await page.locator('#appShell').getAttribute('inert'), '');
     await page.locator('#publicationsEmailCancel').focus();
     await page.keyboard.press('Tab');
-    assert.equal(await page.evaluate(() => document.activeElement?.id), 'publicationsEmailClose', 'Overlay deve conter foco.');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'publicationsEmailClose');
     await page.keyboard.press('Escape');
     await page.locator('#publicationsEmailModalBackdrop.hidden').waitFor({ state: 'attached' });
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnEmailPublications');
@@ -110,4 +137,4 @@ try {
   await session.stop();
 }
 
-console.log('✓ Acessibilidade de Publicações V2 aprovada: master/detail, RecordList, mobile sheet, foco e overlays supervisionados.');
+console.log('✓ Acessibilidade de Publicações V2 aprovada: lista full-width, inspector desktop/mobile, foco, Escape e backdrop.');

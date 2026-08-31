@@ -53,8 +53,13 @@ try {
     page.on('request', request => requests.push({ method: request.method(), url: request.url() }));
     const intervalBaseline = await page.evaluate(() => window.__uiV2RuntimeProbe.intervals);
 
+    assert.equal(await page.evaluate(() => window.Atrium.App.inboxFilter), 'all');
+    assert.equal(await page.locator('#inboxFilters [data-filter="all"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#inboxList [data-intimation-id]').count(), 4);
     assert.equal(await page.locator('#publicationResultCount').textContent(), '4 de 4 publicações');
+    assert.equal(await page.locator('#view-inbox').evaluate(view => view.classList.contains('publication-detail-open')), false);
+    assert.equal(await page.locator('#intimationDetail').isVisible(), false);
+    assert.equal(await page.locator('#publicationInspectorBackdrop').isVisible(), false);
     const urgentRow = page.locator('[data-intimation-id="ui-v2-publication-urgent"]');
     assert.match(await urgentRow.getAttribute('aria-label'), /Não lida[\s\S]*Não tratada/);
     const reviewRow = page.locator('[data-intimation-id="ui-v2-publication-review"]');
@@ -74,6 +79,9 @@ try {
 
     await urgentRow.click();
     await page.locator('#intimationDetail .detail-header').waitFor();
+    await page.locator('#view-inbox.publication-detail-open').waitFor();
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('intimationDetail')).opacity === '1');
+    assert.equal(await page.locator('#intimationDetail').getAttribute('role'), 'dialog');
     const readState = await page.evaluate(() => {
       const item = window.Atrium.Store.state.intimations.find(record => record.id === 'ui-v2-publication-urgent');
       return { unread: item.unread, treatmentStatus: item.treatmentStatus, deadline: item.deadline, fatalDeadline: item.fatalDeadline };
@@ -89,9 +97,12 @@ try {
     assert.equal(await page.locator('#field-deadline').inputValue(), '', 'Texto “15 dias” não pode preencher deadline.');
     assert.equal(await page.locator('#field-process').inputValue(), '5004321-12.2026.8.21.0001');
     await page.locator('#modalCancel').click();
+    if (await page.locator('#view-inbox').evaluate(view => view.classList.contains('publication-detail-open'))) await page.locator('#publicationDetailClose').click();
+    await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
 
     await page.evaluate(() => { window.Atrium.App.inboxFilter = 'treated'; window.Atrium.App.renderInbox(); });
     await page.locator('[data-intimation-id="ui-v2-publication-treated"]').click();
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('intimationDetail')).opacity === '1');
     assert.match(await page.locator('#intimationDetail').textContent(), /Providência vinculada sintética/);
     assert.match(await page.locator('#intimationDetail').textContent(), /Advogada Tratadora Sintética/);
     assert.match(await page.locator('#intimationDetail').textContent(), /Providência conferida manualmente/);
@@ -99,9 +110,12 @@ try {
     await page.locator('#modalBackdrop[data-modal-mode="task"]:not(.hidden)').waitFor();
     assert.equal(await page.locator('#field-title').inputValue(), 'Providência vinculada sintética');
     await page.locator('#modalCancel').click();
+    if (await page.locator('#view-inbox').evaluate(view => view.classList.contains('publication-detail-open'))) await page.locator('#publicationDetailClose').click();
+    await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
 
     await page.evaluate(() => { window.Atrium.App.inboxFilter = 'all'; window.Atrium.App.renderInbox(); });
     await page.locator('[data-intimation-id="ui-v2-publication-review"]').click();
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('intimationDetail')).opacity === '1');
     assert.equal(await page.locator('#btnSendIntimationEmail').count(), 1, 'Admin deve manter ação individual.');
     let individualRequests = 0;
     await page.route('**/api/intimations/email', async route => {
@@ -114,6 +128,8 @@ try {
     await page.locator('#publicationEmailSubmitBtn').click();
     await page.locator('#publicationEmailBackdrop.hidden').waitFor({ state: 'attached' });
     assert.equal(individualRequests, 1, 'Envio explícito deve produzir uma operação individual.');
+    await page.locator('#publicationDetailClose').click();
+    await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
 
     let batchRequests = 0;
     await page.route('**/api/publications/email/batch', async route => {

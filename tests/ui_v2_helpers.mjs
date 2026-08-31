@@ -128,6 +128,93 @@ export async function prepareUiV2JudicialFixture(page, status = UI_V2_JUDICIAL_S
   return status;
 }
 
+export const UI_V2_EMAIL_STATUS = Object.freeze({
+  configured: true,
+  host: 'smtp.synthetic.example.test',
+  port: 465,
+  secure: true,
+  userMasked: 'co***@synthetic.example.test',
+  fromName: 'Escritório Sintético',
+  fromAddress: 'comunicacoes@synthetic.example.test',
+  lastTestAt: '2026-08-30T12:00:00.000Z',
+  lastTestStatus: 'success'
+});
+
+export const UI_V2_EMAIL_RECEIVERS = Object.freeze([
+  Object.freeze({ id: 'receiver-internal', type: 'internal', userId: 'user-active', name: 'Advogada Interna Sintética', email: 'interna@synthetic.example.test', enabled: true, userStatus: 'active' }),
+  Object.freeze({ id: 'receiver-external', type: 'external', name: 'Contabilidade Sintética', email: 'contabilidade@synthetic.example.test', enabled: false }),
+  Object.freeze({ id: 'receiver-inactive', type: 'internal', userId: 'user-inactive', name: 'Usuário Inativo Sintético', email: 'inativo@synthetic.example.test', enabled: true, userStatus: 'inactive' })
+]);
+
+export async function prepareUiV2EmailCalendarFixture(page, {
+  emailStatus = UI_V2_EMAIL_STATUS,
+  receivers = UI_V2_EMAIL_RECEIVERS,
+  role = 'master_admin',
+  statusFailure = false
+} = {}) {
+  await page.evaluate(({ statusFixture, receiverFixtures, currentRole, failStatus }) => {
+    window.__uiV2EmailCalendarRequests = [];
+    window.__uiV2EmailCalendarToasts = [];
+    window.__uiV2SmtpPasswordObserved = false;
+    const originalSecureFetch = window.KellerAuth.secureFetch.bind(window.KellerAuth);
+    const originalToast = window.Atrium.App.toast.bind(window.Atrium.App);
+    const response = (payload = {}, ok = true) => ({ ok, async json() { return structuredClone(payload); } });
+    const record = (url, options, body) => {
+      const safeBody = url === '/api/integrations/email/configure' && body
+        ? { ...body, password: body.password ? '[REDACTED]' : '' }
+        : body;
+      window.__uiV2EmailCalendarRequests.push({ url, method: options.method || 'GET', body: safeBody });
+    };
+    if (window.KellerAuth.currentUser) window.KellerAuth.currentUser.role = currentRole;
+    window.Atrium.App.toast = (message, type) => {
+      window.__uiV2EmailCalendarToasts.push({ message, type });
+      return originalToast(message, type);
+    };
+    window.KellerAuth.secureFetch = async (url, options = {}) => {
+      const body = options.body ? JSON.parse(options.body) : undefined;
+      if (url === '/api/integrations/email/status') {
+        record(url, options, body);
+        if (failStatus) throw new Error('Falha sintética de status SMTP');
+        return response({ status: statusFixture });
+      }
+      if (url === '/api/integrations/email/configure') {
+        window.__uiV2SmtpPasswordObserved = Boolean(body?.password);
+        record(url, options, body);
+        return response({ ok: true });
+      }
+      if (url === '/api/integrations/email/test') {
+        record(url, options, body);
+        return response({ ok: true, message: 'E-mail sintético enviado.' });
+      }
+      if (url === '/api/integrations/email/receivers' && (options.method || 'GET') === 'GET') {
+        record(url, options, body);
+        return response({ receivers: receiverFixtures });
+      }
+      if (String(url).startsWith('/api/integrations/email/receivers')) {
+        record(url, options, body);
+        return response({ ok: true });
+      }
+      if (url === '/api/auth/users') {
+        record(url, options, body);
+        return response({ users: [
+          { id: 'user-active', displayName: 'Usuária Ativa Sintética', email: 'ativa@synthetic.example.test', status: 'active' },
+          { id: 'user-inactive', displayName: 'Usuária Inativa Sintética', email: 'inativa@synthetic.example.test', status: 'inactive' }
+        ] });
+      }
+      if (url === '/api/calendar/configure') {
+        record(url, options, body);
+        return response({ imported: 4, message: 'Agenda externa sintética sincronizada.' });
+      }
+      return originalSecureFetch(url, options);
+    };
+    window.Atrium.App.switchView('integrations');
+  }, { statusFixture: emailStatus, receiverFixtures: receivers, currentRole: role, failStatus: statusFailure });
+  await page.locator('#view-integrations.active').waitFor();
+  const expected = statusFailure ? 'Erro ao verificar' : emailStatus.configured ? 'SMTP conectado' : 'Não configurado';
+  await page.locator('#emailIntegrationStatus').filter({ hasText: expected }).waitFor();
+  return { emailStatus, receivers, role, statusFailure };
+}
+
 export async function prepareUiV2ProcessesFixture(page) {
   const fixture = {
     processes: [
@@ -315,6 +402,10 @@ export async function prepareUiV2PublicationsFixture(page) {
   }, fixture);
   await page.locator('#view-inbox.active').waitFor();
   await page.locator('#inboxList [data-intimation-id="ui-v2-publication-urgent"]').waitFor();
+  await page.waitForFunction(() => document.querySelectorAll('#view-inbox').length > 0
+    && Array.from(document.querySelectorAll('#view-inbox'))
+      .flatMap(element => element.getAnimations({ subtree: true }))
+      .every(animation => animation.playState === 'finished'));
   return fixture;
 }
 
