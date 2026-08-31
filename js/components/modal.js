@@ -69,7 +69,7 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
-    if (['task', 'agenda', 'contact', 'lead', 'prompt', 'term', 'source', 'datajud'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
+    if (['task', 'agenda', 'contact', 'lead', 'prompt', 'term', 'source', 'datajud', 'configuration', 'feedback'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
       const modalFields = document.getElementById('modalFields');

@@ -12,12 +12,13 @@ export function createSystemAdminFeature({
   switchView = () => {}
 } = {}) {
   const byId = id => documentRef.getElementById(id);
+  const isV2 = () => documentRef.documentElement?.dataset?.ui === 'v2';
 
   const feature = {
     async renderDiagnostic() {
       const container = byId('configurationList');
       if (!container) return;
-      container.innerHTML = '<div class="empty-detail"><span class="auth-spinner" style="margin:0 auto 16px;"></span><h3>Consultando diagnóstico…</h3><p>Verificando a integridade dos subsistemas.</p></div>';
+      container.innerHTML = '<div class="empty-detail configuration-system-loading" role="status"><span class="auth-spinner"></span><h3>Consultando diagnóstico…</h3><p>Verificando a integridade dos subsistemas.</p></div>';
       try {
         const response = await fetchFn('/api/system/diagnostic', { credentials: 'same-origin' });
         const data = await response.json();
@@ -26,7 +27,7 @@ export function createSystemAdminFeature({
         container.innerHTML = feature.diagnosticHtml(diagnostic);
         feature.bindDiagnosticActions();
       } catch (error) {
-        container.innerHTML = `<div class="empty-detail"><span style="color:var(--danger)">⚠️</span><h3>Erro ao gerar diagnóstico</h3><p>${escapeHtml(error.message)}</p></div>`;
+        container.innerHTML = `<div class="empty-detail configuration-system-error" role="alert"><span aria-hidden="true">!</span><h3>Erro ao gerar diagnóstico</h3><p>${escapeHtml(error.message)}</p></div>`;
       }
     },
 
@@ -34,6 +35,7 @@ export function createSystemAdminFeature({
       const d = diagnostic;
       const runtime = d.runtime || { status: 'UNKNOWN', recoveryDetails: null, fileExists: false, lastRuntimeUpdate: null };
       const runtimeNeedsAttention = runtime.status === 'QUARANTINED';
+      if (isV2()) return feature.diagnosticV2Html(d, runtime, runtimeNeedsAttention);
       return `
           <div class="diagnostic-panel" style="padding: 16px; display: flex; flex-direction: column; gap: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line);">
@@ -122,6 +124,85 @@ export function createSystemAdminFeature({
           </div>`;
     },
 
+    diagnosticV2Html(d, runtime, runtimeNeedsAttention) {
+      const djenConnected = d.integrations.djen.status === 'conectado';
+      const lastCollectorRun = d.integrations.collector.lastRun
+        ? new Date(d.integrations.collector.lastRun).toLocaleString('pt-BR')
+        : 'Nenhuma coleta registrada';
+      const stateStatus = store.stateStatus || 'READY';
+      return `
+        <section class="configuration-system-panel diagnostic-v2-panel" aria-labelledby="diagnosticV2Title">
+          <header class="configuration-system-header">
+            <div>
+              <p class="eyebrow">Saúde do sistema e proteção dos dados</p>
+              <h4 id="diagnosticV2Title">${escapeHtml(d.app.name)} <span>v${escapeHtml(d.app.version)}</span></h4>
+              <p>Visão administrativa do ambiente, da persistência e das integrações já configuradas.</p>
+            </div>
+            <div class="configuration-system-header-actions">
+              <button type="button" class="button ghost" id="btnExportDiagnosticJson">Exportar relatório JSON</button>
+              <button type="button" class="button gold" id="btnOpenFeedbackModal">Registrar feedback beta</button>
+            </div>
+          </header>
+
+          <div class="diagnostic-v2-grid">
+            <article class="diagnostic-v2-card" data-health-state="${runtimeNeedsAttention ? 'attention' : 'ready'}">
+              <div class="diagnostic-v2-card-heading"><div><span class="diagnostic-v2-kicker">Estado e persistência</span><h5>Dados jurídicos</h5></div><span class="configuration-status-badge ${runtimeNeedsAttention ? 'warning' : 'success'}">${runtimeNeedsAttention ? 'Requer atenção' : 'Operacional'}</span></div>
+              <p>${escapeHtml(d.storage.type)}</p>
+              <dl class="diagnostic-v2-definition-grid">
+                <div><dt>Contatos</dt><dd>${escapeHtml(d.storage.records.contacts)}</dd></div>
+                <div><dt>Processos</dt><dd>${escapeHtml(d.storage.records.processes)}</dd></div>
+                <div><dt>Tarefas</dt><dd>${escapeHtml(d.storage.records.tasks)}</dd></div>
+                <div><dt>Intimações</dt><dd>${escapeHtml(d.storage.records.intimations)}</dd></div>
+                <div><dt>Runtime derivado</dt><dd>${escapeHtml(runtime.status)}</dd></div>
+                <div><dt>Arquivo de estado</dt><dd>${escapeHtml((d.storage.sizeBytes / 1024).toFixed(1))} KB</dd></div>
+              </dl>
+            </article>
+
+            <article class="diagnostic-v2-card">
+              <div class="diagnostic-v2-card-heading"><div><span class="diagnostic-v2-kicker">Segurança</span><h5>Criptografia e sessão</h5></div><span class="configuration-status-badge success">Protegido</span></div>
+              <p>${escapeHtml(d.security.encryption)}</p>
+              <dl class="diagnostic-v2-list">
+                <div><dt>Segundo fator</dt><dd>${escapeHtml(d.security.twoFactor)}</dd></div>
+                <div><dt>Sessão</dt><dd>HttpOnly / Zero Trust</dd></div>
+                <div><dt>Usuários registrados</dt><dd>${escapeHtml(d.security.totalUsers)}</dd></div>
+                <div><dt>Modo</dt><dd>${d.app.cloudMode ? 'Nuvem / Cloud' : 'Local seguro'}</dd></div>
+              </dl>
+            </article>
+
+            <article class="diagnostic-v2-card">
+              <div class="diagnostic-v2-card-heading"><div><span class="diagnostic-v2-kicker">Integrações</span><h5>Fontes e serviços</h5></div><span class="configuration-status-badge ${djenConnected ? 'success' : 'neutral'}">${escapeHtml(d.integrations.djen.status)}</span></div>
+              <p>${escapeHtml(d.integrations.djen.description)}</p>
+              <dl class="diagnostic-v2-list">
+                <div><dt>DataJud CNJ</dt><dd>${d.integrations.datajud.status === 'configurado' ? 'Chave ativa' : 'Consulta pública'}</dd></div>
+                <div><dt>Gemini</dt><dd>${d.integrations.gemini.status === 'configurado' ? 'Configurado' : 'Não configurado'}</dd></div>
+                <div><dt>Última coleta</dt><dd>${escapeHtml(lastCollectorRun)}</dd></div>
+              </dl>
+            </article>
+
+            <article class="diagnostic-v2-card diagnostic-v2-runtime-card">
+              <div class="diagnostic-v2-card-heading"><div><span class="diagnostic-v2-kicker">Runtime e higiene</span><h5>Versões do ambiente</h5></div><span class="configuration-status-badge ${stateStatus === 'READY' ? 'success' : 'warning'}">${escapeHtml(stateStatus)}</span></div>
+              <dl class="diagnostic-v2-list">
+                <div><dt>App version</dt><dd>${escapeHtml(store.serverMeta?.appVersion || d.app.version || '—')}</dd></div>
+                <div><dt>Build ID</dt><dd><code>${escapeHtml(store.serverMeta?.buildId || '—')}</code></dd></div>
+                <div><dt>Schema version</dt><dd>v${escapeHtml(String(store.serverMeta?.schemaVersion || '?'))}</dd></div>
+                <div><dt>Node / plataforma</dt><dd>${escapeHtml(d.app.nodeVersion)} · ${escapeHtml(d.app.platform)} (${escapeHtml(d.app.arch)})</dd></div>
+                <div><dt>Uptime atual</dt><dd>${escapeHtml(Math.floor(d.app.uptimeSeconds / 60))} min</dd></div>
+              </dl>
+            </article>
+          </div>
+
+          <section class="diagnostic-v2-actions" aria-labelledby="diagnosticActionsTitle">
+            <div><p class="eyebrow">Ações explícitas</p><h5 id="diagnosticActionsTitle">Manutenção administrativa</h5><p>Nenhuma destas operações é executada automaticamente.</p></div>
+            <div class="diagnostic-v2-action-grid">
+              <button type="button" class="button ghost" id="btnClearUiCache" title="Remove apenas caches transitórios do navegador.">Limpar cache da interface</button>
+              <button type="button" class="button ghost" id="btnResetVisualPrefs" title="Reseta tema e layout sem apagar a escolha explícita de interface.">Resetar preferências visuais</button>
+              <button type="button" class="button ghost" id="btnRebuildRuntime" title="Reconstrói dados derivados sem alterar registros jurídicos.">Recriar dados derivados</button>
+              <button type="button" class="button ghost" id="btnManagePortalSessions" title="Abre as integrações judiciais para gerenciar sessões.">Gerenciar sessões do tribunal</button>
+            </div>
+          </section>
+        </section>`;
+    },
+
     bindDiagnosticActions() {
       byId('btnExportDiagnosticJson')?.addEventListener('click', () => feature.exportDiagnostic());
       byId('btnOpenFeedbackModal')?.addEventListener('click', () => feature.openFeedbackModal());
@@ -172,7 +253,10 @@ export function createSystemAdminFeature({
     renderBackups() {
       const container = byId('configurationList');
       if (!container) return;
-      container.innerHTML = `
+      if (isV2()) {
+        container.innerHTML = feature.backupsV2Html();
+      } else {
+        container.innerHTML = `
         <div style="padding: 16px; display: flex; flex-direction: column; gap: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line);">
             <div>
@@ -197,8 +281,48 @@ export function createSystemAdminFeature({
             </ul>
           </div>
         </div>`;
+      }
       byId('btnCreateBackupNow')?.addEventListener('click', () => feature.createBackup());
       byId('inputRestoreBackup')?.addEventListener('change', event => feature.restoreBackup(event.target.files?.[0], event.target));
+    },
+
+    backupsV2Html() {
+      return `
+        <section class="configuration-system-panel backup-v2-panel" aria-labelledby="backupV2Title">
+          <header class="configuration-system-header">
+            <div>
+              <p class="eyebrow">Proteção e recuperação</p>
+              <h4 id="backupV2Title">Cópias de segurança do ATRIUM</h4>
+              <p>Exporte um snapshot cifrado ou restaure um arquivo somente após confirmação humana.</p>
+            </div>
+          </header>
+          <div class="backup-v2-grid">
+            <article class="backup-v2-card backup-v2-create">
+              <span class="backup-v2-index">01</span>
+              <p class="eyebrow">Criar backup</p>
+              <h5>Guardar uma cópia protegida</h5>
+              <p>Gera e baixa um arquivo <code>.atrium-backup</code> com o estado atual cifrado.</p>
+              <button type="button" class="button gold" id="btnCreateBackupNow">Gerar backup criptografado</button>
+            </article>
+            <article class="backup-v2-card backup-v2-restore">
+              <span class="backup-v2-index">02</span>
+              <p class="eyebrow">Restaurar</p>
+              <h5>Aplicar um backup existente</h5>
+              <p>A restauração é uma ação sensível. O sistema pedirá confirmação antes de enviar o arquivo.</p>
+              <label class="button configuration-restore-button" for="inputRestoreBackup">Selecionar arquivo para restaurar</label>
+              <input type="file" id="inputRestoreBackup" accept=".atrium-backup,.json" class="configuration-restore-input">
+            </article>
+            <aside class="backup-v2-protections" aria-labelledby="backupProtectionsTitle">
+              <p class="eyebrow">Proteções</p>
+              <h5 id="backupProtectionsTitle">Integridade antes da restauração</h5>
+              <ul>
+                <li><strong>SHA-256</strong><span>checksum de integridade do arquivo</span></li>
+                <li><strong>AES-256-GCM</strong><span>conteúdo protegido por criptografia autenticada</span></li>
+                <li><strong>Snapshot preventivo</strong><span>cópia criada pelo backend antes de restaurar</span></li>
+              </ul>
+            </aside>
+          </div>
+        </section>`;
     },
 
     async createBackup() {

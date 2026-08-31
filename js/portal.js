@@ -22,6 +22,7 @@ import { renderPromptsV2Presentation } from './views/ui-v2/prompts-presenter.js'
 import { renderMonitoringV2Presentation } from './views/ui-v2/monitoring-presenter.js';
 import { createJudicialIntegrationsPresenter } from './views/ui-v2/judicial-integrations-presenter.js';
 import { createEmailCalendarPresenter } from './views/ui-v2/email-calendar-presenter.js';
+import { createConfigurationAdminPresenter } from './views/ui-v2/configuration-presenter.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -246,6 +247,7 @@ import { createTasksFeature } from './features/tasks.js';
   let assistantFeature;
   let auditFeature;
   let configurationFeature;
+  let configurationAdminPresenter;
   let contactsFeature;
   let dashboardFeature;
   let documentsFeature;
@@ -374,9 +376,19 @@ import { createTasksFeature } from './features/tasks.js';
       documentRef: document,
       escapeHtml,
       showToast: (message, type) => App.toast(message, type),
-      onRenderMonitoring: () => App.renderMonitoring()
+      onRenderMonitoring: () => App.renderMonitoring(),
+      presentation: getConfigurationAdminPresenter()
     });
     return officeIdentityFeature;
+  }
+
+  function getConfigurationAdminPresenter() {
+    configurationAdminPresenter ||= createConfigurationAdminPresenter({
+      documentRef: document,
+      onOpenOfficeIdentity: () => getOfficeIdentityFeature().open(),
+      onCloseOfficeIdentity: () => getOfficeIdentityFeature().close()
+    });
+    return configurationAdminPresenter;
   }
 
   function getAuditFeature() {
@@ -699,7 +711,8 @@ import { createTasksFeature } from './features/tasks.js';
       openModal: (...args) => App.openModal(...args),
       showToast: (message, type) => App.toast(message, type),
       onRenderDiagnostic: () => getSystemAdminFeature().renderDiagnostic(),
-      onRenderBackups: () => getSystemAdminFeature().renderBackups()
+      onRenderBackups: () => getSystemAdminFeature().renderBackups(),
+      presentation: getConfigurationAdminPresenter()
     });
     return configurationFeature;
   }

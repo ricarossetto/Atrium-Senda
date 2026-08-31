@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/prompts.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/monitoring.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/integrations.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/configuration.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=1.0.0">
@@ -1150,6 +1151,14 @@
       </section>
 
       <section class="view" id="view-configuration" data-title="Configurações do escritório" data-eyebrow="Identidade, tarefas e equipe">
+        <header class="configuration-v2-header v2-only">
+          <div>
+            <p class="eyebrow">Administração</p>
+            <h2>Configurações do Escritório</h2>
+            <p>Organize a estrutura, os acessos e a proteção dos dados em um único espaço administrativo.</p>
+          </div>
+          <span class="configuration-v2-header-mark" aria-hidden="true">ATRIUM · ADMIN</span>
+        </header>
         <article class="card interface-preference-card" aria-labelledby="interfacePreferenceTitle">
           <div class="interface-preference-copy"><p class="eyebrow">Aparência</p><h3 id="interfacePreferenceTitle">Modo de interface</h3><p>Escolha a apresentação do espaço de trabalho. A preferência fica somente neste navegador.</p></div>
           <div class="ui-mode-control" id="uiModeControl" role="group" aria-label="Modo de interface">
@@ -1160,7 +1169,7 @@
         </article>
         <div class="section-toolbar configuration-toolbar">
           <div class="filter-tabs config-tabs" id="configurationTabs"></div>
-          <div class="toolbar-actions config-actions"><div class="table-search compact-search"><input id="configurationSearch" type="search" placeholder="Buscar nesta configuração"></div><button class="button ghost" id="btnOpenTourFromConfig" type="button" title="Ver apresentação do Atrium">Ver Apresentação</button><button class="button gold" id="newConfigurationButton">+ Novo item</button></div>
+          <div class="toolbar-actions config-actions"><div class="table-search compact-search"><input id="configurationSearch" type="search" aria-label="Buscar nesta configuração" placeholder="Buscar nesta configuração"></div><button class="button ghost" id="btnOpenTourFromConfig" type="button" title="Ver apresentação do ATRIUM">Ver apresentação</button><button class="button gold" id="newConfigurationButton" type="button">Novo item</button></div>
         </div>
         <div class="configuration-metrics" id="configurationMetrics"></div>
         <article class="card config-catalog">
@@ -1799,39 +1808,65 @@
   </div>
 
   <div class="modal-backdrop hidden" id="officeSetupBackdrop">
-    <section class="modal office-setup-modal" role="dialog" aria-modal="true" aria-labelledby="officeSetupTitle">
+    <section class="modal office-setup-modal" role="dialog" aria-modal="true" aria-labelledby="officeSetupTitle" aria-describedby="officeSetupDescription" tabindex="-1">
       <header>
         <div>
-          <p class="eyebrow">Identidade Institucional</p>
-          <h2 id="officeSetupTitle">Personalização do Escritório</h2>
+          <p class="eyebrow">Identidade do escritório</p>
+          <h2 id="officeSetupTitle">Marca e dados institucionais</h2>
+          <p id="officeSetupDescription" class="office-setup-description">Dados usados na navegação e nos documentos gerados pelo ATRIUM.</p>
         </div>
         <button class="icon-button" id="officeSetupClose" aria-label="Fechar">×</button>
       </header>
       <form id="officeSetupForm">
-        <div class="office-logo-picker">
-          <div class="office-logo-preview" id="officeLogoPreview">
-            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/>
-            </svg>
+        <div class="office-identity-layout">
+          <aside class="office-brand-panel" aria-labelledby="officeBrandTitle">
+            <div>
+              <p class="eyebrow">Marca</p>
+              <h3 id="officeBrandTitle">Assinatura visual</h3>
+              <p>A marca permanece como Data URL no estado protegido do escritório.</p>
+            </div>
+            <div class="office-logo-picker">
+              <div class="office-logo-preview" id="officeLogoPreview" aria-live="polite">
+                <svg class="nav-svg" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/>
+                </svg>
+                <span class="office-logo-fallback-copy">Marca do escritório</span>
+              </div>
+              <div class="office-logo-actions">
+                <input type="file" id="officeLogoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" class="hidden" aria-describedby="officeLogoHelp">
+                <button class="button ghost" type="button" id="btnChooseOfficeLogo">Escolher logo</button>
+                <button class="button ghost hidden" type="button" id="btnRemoveOfficeLogo">Remover logo</button>
+                <small id="officeLogoHelp">PNG, JPG, SVG ou WebP, com no máximo 2 MB. A imagem fica salva localmente no ATRIUM.</small>
+              </div>
+            </div>
+            <div class="office-brand-preview" aria-hidden="true">
+              <span>Prévia institucional</span>
+              <strong>Seu escritório no centro do trabalho jurídico.</strong>
+            </div>
+          </aside>
+          <div class="office-identity-fields">
+            <fieldset class="office-identity-section">
+              <legend>Identidade</legend>
+              <div class="office-field-grid">
+                <label><span>Nome do Escritório / Banca</span><input id="officeInputName" required placeholder="Ex: Silva &amp; Associados Advocacia" maxlength="120"></label>
+                <label><span>Slogan / Subtítulo</span><input id="officeInputSlogan" placeholder="Ex: Sociedade de Advogados" maxlength="100"></label>
+              </div>
+            </fieldset>
+            <fieldset class="office-identity-section">
+              <legend>Responsável</legend>
+              <div class="office-field-grid office-responsible-grid">
+                <label><span>Advogado(a) Titular Responsável</span><input id="officeInputLawyer" required placeholder="Dr(a). Advogado(a) Titular" maxlength="100"></label>
+                <label><span>Inscrição OAB</span><input id="officeInputOab" placeholder="Ex: OAB/UF 000000" maxlength="40"></label>
+              </div>
+            </fieldset>
+            <fieldset class="office-identity-section">
+              <legend>Localização</legend>
+              <div class="office-field-grid">
+                <label><span>Endereço Profissional / Sede</span><input id="officeInputAddress" placeholder="Rua, Número, Sala/Andar" maxlength="150"></label>
+                <label><span>Cidade / UF</span><input id="officeInputCity" placeholder="Ex: Porto Alegre / RS" maxlength="80"></label>
+              </div>
+            </fieldset>
           </div>
-          <div>
-            <input type="file" id="officeLogoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" class="hidden">
-            <button class="button ghost" type="button" id="btnChooseOfficeLogo">Carregar Logo do Escritório</button>
-            <button class="button ghost hidden" type="button" id="btnRemoveOfficeLogo">Remover logo</button>
-            <small style="display:block;margin-top:6px;color:#817d74;font-size:11px;">Formatos: PNG, JPG ou SVG. Fica salva localmente no seu Atrium Senda.</small>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-          <label><span>Nome do Escritório / Banca</span><input id="officeInputName" required placeholder="Ex: Silva & Associados Advocacia" maxlength="120"></label>
-          <label><span>Slogan / Subtítulo</span><input id="officeInputSlogan" placeholder="Ex: Sociedade de Advogados" maxlength="100"></label>
-        </div>
-        <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:12px;margin-bottom:12px;">
-          <label><span>Advogado(a) Titular Responsável</span><input id="officeInputLawyer" required placeholder="Dr(a). Advogado(a) Titular" maxlength="100"></label>
-          <label><span>Inscrição OAB</span><input id="officeInputOab" placeholder="Ex: OAB/UF 000000" maxlength="40"></label>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-          <label><span>Endereço Profissional / Sede</span><input id="officeInputAddress" placeholder="Rua, Número, Sala/Andar" maxlength="150"></label>
-          <label><span>Cidade / UF</span><input id="officeInputCity" placeholder="Ex: Porto Alegre / RS" maxlength="80"></label>
         </div>
         <footer>
           <button type="button" class="button ghost" id="officeSetupCancel">Cancelar</button>

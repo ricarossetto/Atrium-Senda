@@ -36,6 +36,7 @@ export function createConfigurationFeature({
   showToast = () => {},
   onRenderDiagnostic = () => {},
   onRenderBackups = () => {},
+  presentation = null,
   warn = () => {}
 } = {}) {
   let configurationSection = 'taskDefinitions';
@@ -88,6 +89,7 @@ export function createConfigurationFeature({
         const records = Array.isArray(store.state.configuration?.[configurationSection]) ? store.state.configuration[configurationSection] : [];
         if (records[index] !== undefined) feature.openModal(records[index], index);
       });
+      presentation?.init?.();
       return true;
     },
 
@@ -131,6 +133,15 @@ export function createConfigurationFeature({
       const canManage = currentAuthRole === 'master_admin' && user.role !== 'master_admin';
       const nextStatus = user.status === 'active' ? 'inactive' : 'active';
       const actionLabel = user.status === 'pending_approval' ? 'Aprovar' : user.status === 'active' ? 'Suspender' : 'Reativar';
+      if (documentRef.documentElement?.dataset?.ui === 'v2') {
+        const roleLabel = user.role === 'master_admin' ? 'Administrador mestre' : 'Colaborador';
+        const statusLabel = labels[user.status] || user.status || 'Ativo';
+        return `<article class="configuration-row configuration-user-row" role="listitem" data-auth-user-id="${escapeHtml(user.id)}" data-auth-user-state="${escapeHtml(user.status || 'active')}">
+          <div class="config-row-info"><strong>${escapeHtml(user.displayName || user.username)}</strong><span>${escapeHtml(user.email || user.username)}</span><small>${escapeHtml(roleLabel)}</small></div>
+          <span class="configuration-user-status status-${escapeHtml(user.status || 'active')}">${escapeHtml(statusLabel)}</span>
+          <div class="configuration-row-actions">${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}" aria-label="${actionLabel} acesso de ${escapeHtml(user.displayName || user.username)}">${actionLabel}</button>` : '<span class="configuration-protected-access">Acesso protegido</span>'}</div>
+        </article>`;
+      }
       return `<div class="configuration-row" data-auth-user-id="${escapeHtml(user.id)}">
         <div class="config-row-info"><strong>${escapeHtml(user.displayName || user.username)}</strong><span>${escapeHtml(user.email || user.username)} · ${user.role === 'master_admin' ? 'Administrador' : 'Colaborador'}</span><small>${escapeHtml(labels[user.status] || user.status || 'Ativo')}</small></div>
         ${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}">${actionLabel}</button>` : ''}
@@ -140,7 +151,7 @@ export function createConfigurationFeature({
     render(query = '') {
       const config = store.state.configuration || {};
       const tabs = byId('configurationTabs');
-      if (tabs) tabs.innerHTML = CONFIGURATION_SECTIONS.map(([key, label]) => `<button class="${configurationSection === key ? 'active' : ''}" data-config-section="${key}">${label}</button>`).join('');
+      if (tabs) tabs.innerHTML = CONFIGURATION_SECTIONS.map(([key, label]) => `<button type="button" class="${configurationSection === key ? 'active' : ''}" data-config-section="${key}">${label}</button>`).join('');
       const metrics = byId('configurationMetrics');
       if (metrics) {
         metrics.innerHTML = [
@@ -161,12 +172,14 @@ export function createConfigurationFeature({
         if (byId('configurationHeading')) byId('configurationHeading').textContent = 'Diagnóstico & Saúde do Sistema';
         if (byId('configurationCount')) byId('configurationCount').textContent = 'Atrium v2.0';
         onRenderDiagnostic();
+        presentation?.sync?.({ section: configurationSection, special: true });
         return;
       }
       if (configurationSection === 'backups') {
         if (byId('configurationHeading')) byId('configurationHeading').textContent = 'Cópias de Segurança & Restauração';
         if (byId('configurationCount')) byId('configurationCount').textContent = 'Zero Trust';
         onRenderBackups();
+        presentation?.sync?.({ section: configurationSection, special: true });
         return;
       }
 
@@ -177,10 +190,20 @@ export function createConfigurationFeature({
       if (byId('configurationCount')) byId('configurationCount').textContent = `${records.length} itens`;
       const list = byId('configurationList');
       if (list) list.innerHTML = records.length ? records.map(({ item, index }) => isAuthUsers ? feature.authUserRow(item) : feature.row(item, index)).join('') : '<div class="empty-detail"><span>✓</span><h3>Nenhum item</h3><p>Não há registros nesta seção ou neste filtro.</p></div>';
+      presentation?.sync?.({ section: configurationSection, authUsers: isAuthUsers });
     },
 
     row(item, index) {
+      const v2 = documentRef.documentElement?.dataset?.ui === 'v2';
       if (typeof item === 'string') {
+        if (v2) return `
+          <article class="configuration-row" role="listitem" data-config-index="${index}">
+            <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(item)}">
+              <span class="config-row-info"><strong>${escapeHtml(item)}</strong><span>Seção da caixa de entrada</span><small>Ativa</small></span>
+              <span class="configuration-edit-affordance" aria-hidden="true">Editar →</span>
+            </button>
+            <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(item)}">Excluir</button>
+          </article>`;
         return `
           <div class="configuration-row" data-config-index="${index}">
             <div class="config-row-info">
@@ -195,6 +218,14 @@ export function createConfigurationFeature({
       const primary = item.name || item.event || item.group || 'Configuração';
       const secondary = item.role || item.phase || item.group || item.publicationResponsible || item.method || (item.responsibles || []).join(', ') || item.status || '—';
       const meta = Number.isFinite(item.points) ? `<span class="config-points">${item.points} pontos</span>` : item.monthlyClosings == null && 'monthlyClosings' in item ? '<small>Meta não definida</small>' : `<small>${escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
+      if (v2) return `
+        <article class="configuration-row" role="listitem" data-config-index="${index}">
+          <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(primary)}">
+            <span class="config-row-info"><strong>${escapeHtml(primary)}</strong><span>${escapeHtml(secondary)}</span>${meta}</span>
+            <span class="configuration-edit-affordance" aria-hidden="true">Editar →</span>
+          </button>
+          <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(primary)}">Excluir</button>
+        </article>`;
       return `
         <div class="configuration-row" data-config-index="${index}">
           <div class="config-row-info">
