@@ -592,3 +592,45 @@ export async function prepareUiV2AssistantFixture(page, { configured = true, wit
   await page.locator('#aiChatMessages[role="log"]').waitFor();
   return fixture;
 }
+
+export async function prepareUiV2PromptsFixture(page) {
+  const fixture = {
+    custom: {
+      id: 'prompt-v2-custom', isCustom: true, title: 'Pesquisa Custom Sintética', category: 'Cível', type: 'Pesquisa',
+      description: 'Roteiro customizado para localizar precedentes sintéticos.', tags: ['custom', 'pesquisa', 'precedentes'],
+      prompt: 'PESQUISE PRECEDENTES SINTÉTICOS E ORGANIZE OS FUNDAMENTOS SEM INVENTAR FONTES.',
+      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z'
+    },
+    defaults: [
+      {
+        id: 'prompt-v2-redacao', title: 'Redação Cível Sintética', category: 'Cível', type: 'Redação',
+        description: 'Estrutura de redação para peça cível supervisionada.', tags: ['petição', 'cpc', 'redação', 'revisão', 'síntese', 'sexta-tag'],
+        prompt: 'REDIJA UMA PEÇA CÍVEL SINTÉTICA COM BASE EXCLUSIVA NOS FATOS FORNECIDOS.'
+      },
+      {
+        id: 'prompt-v2-previdenciario', title: 'Análise Previdenciária Sintética', category: 'Previdenciário', type: 'Análise',
+        description: 'Análise de riscos e fatos de benefício previdenciário.', tags: ['benefício', 'risco'],
+        prompt: 'ANALISE O BENEFÍCIO PREVIDENCIÁRIO SINTÉTICO E SEPARE FATOS PROVADOS DE PENDÊNCIAS.'
+      },
+      {
+        id: 'prompt-v2-long', title: 'Instrução Jurídica Sintética de Extensão Controlada', category: 'Trabalhista', type: 'Geral',
+        description: 'Prompt longo usado para validar leitura, scroll interno e preservação integral.', tags: ['longo', 'leitura'],
+        prompt: Array.from({ length: 18 }, (_, index) => `ETAPA ${index + 1}: revise o fato sintético, indique a fonte e preserve a supervisão profissional.`).join('\n')
+      }
+    ]
+  };
+
+  await page.evaluate(data => {
+    const { App, Store } = window.Atrium;
+    window.PROMPTS_DATA = data.defaults;
+    Store.state.customPrompts = [data.custom];
+    Store.state.audit = [];
+    App.promptsFilter = { search: '', category: 'all', type: 'all' };
+    App.renderAll();
+    App.switchView('prompts');
+  }, fixture);
+
+  await page.locator('#view-prompts.active').waitFor();
+  await page.locator('#promptsGrid [data-prompt-id="prompt-v2-custom"]').waitFor();
+  return fixture;
+}
