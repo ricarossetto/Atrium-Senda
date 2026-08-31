@@ -13,7 +13,8 @@ export function createImporterFeature({
   upsertContact = () => {},
   upsertTask = () => {},
   onRenderAll = () => {},
-  onSwitchView = () => {}
+  onSwitchView = () => {},
+  presentation = null
 } = {}) {
   let initialized = false;
   let importedSpreadsheetData = null;
@@ -26,6 +27,7 @@ export function createImporterFeature({
     init() {
       if (initialized) return false;
       initialized = true;
+      presentation?.init?.();
       const dropzone = byId('importerDropzone');
       const fileInput = byId('importerFileInput');
       if (!dropzone || !fileInput) return true;
@@ -98,12 +100,16 @@ export function createImporterFeature({
       if (data.tasks?.length) badges.push(`<span class="status-chip warning">📅 ${data.tasks.length} Tarefa(s) / Prazo(s)</span>`);
       if (byId('importerBadges')) byId('importerBadges').innerHTML = badges.join('');
       const previewRows = data.preview || [];
-      if (!previewRows.length) return true;
+      if (!previewRows.length) {
+        presentation?.onPreview?.(data);
+        return true;
+      }
       const headers = Object.keys(previewRows[0]);
       if (byId('importerPreviewHead')) byId('importerPreviewHead').innerHTML = `<tr>${headers.map(header => `<th>${escapeHtml(header)}</th>`).join('')}</tr>`;
       if (byId('importerPreviewBody')) {
         byId('importerPreviewBody').innerHTML = previewRows.map(row => `<tr>${headers.map(header => `<td>${escapeHtml(String(row[header] || '—'))}</td>`).join('')}</tr>`).join('');
       }
+      presentation?.onPreview?.(data);
       card.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       return true;
     },
@@ -112,6 +118,7 @@ export function createImporterFeature({
       importedSpreadsheetData = null;
       byId('importerPreviewCard')?.classList.add('hidden');
       if (byId('importerFileInput')) byId('importerFileInput').value = '';
+      presentation?.onCancel?.();
       showToast('Importação descartada.');
       return true;
     },

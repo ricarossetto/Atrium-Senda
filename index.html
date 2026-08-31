@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/monitoring.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/integrations.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/configuration.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/importer.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=1.0.0">
@@ -1028,7 +1029,7 @@
             </div>
             <div class="integration-copy"><span class="status-chip muted" id="certificateIntegrationStatus">Verificando certificado</span><h3>Certificado Digital A1 & PJe</h3><p id="certificateIntegrationDetail">Ative o A1 localmente e sincronize expedientes e acervo com proteção criptográfica.</p><button class="button gold" id="certificateGuideButton">Gerenciar A1 e Tribunais</button></div>
           </article>
-          <article class="integration-card card">
+          <article class="integration-card card importer-integration-card">
             <div class="integration-logo legal-logo">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="3" width="12" height="12" rx="1.5"/>
@@ -1081,14 +1082,44 @@
       </section>
 
       <section class="view" id="view-importer" data-title="Importador de Planilhas" data-eyebrow="Importação em lote">
-        <div class="section-toolbar">
-          <div class="toolbar-copy"><p>Importe processos, contatos, clientes e tarefas em lote via arquivos Excel (.xlsx) ou CSV com mapeamento inteligente.</p></div>
-          <div class="toolbar-actions">
-            <a class="button ghost" href="/api/import/template?type=processes" download>Modelo Processos (CSV)</a>
-            <a class="button ghost" href="/api/import/template?type=contacts" download>Modelo Contatos (CSV)</a>
-            <a class="button ghost" href="/api/import/template?type=tasks" download>Modelo Prazos (CSV)</a>
+        <div class="section-toolbar importer-toolbar">
+          <div class="toolbar-copy classic-only"><p>Importe processos, contatos, clientes e tarefas em lote via arquivos Excel (.xlsx) ou CSV com mapeamento inteligente.</p></div>
+          <header class="importer-v2-header v2-only">
+            <p class="eyebrow">Dados · importação em lote</p>
+            <h2>Importar dados para o ATRIUM</h2>
+            <p>Revise uma planilha antes de consolidar processos, contatos e tarefas no escritório.</p>
+          </header>
+          <div class="toolbar-actions importer-template-grid" aria-label="Modelos de planilha">
+            <a class="button ghost importer-template-card" href="/api/import/template?type=processes" download>
+              <span class="classic-only">Modelo Processos (CSV)</span>
+              <span class="v2-only importer-template-kind">Processos</span>
+              <strong class="v2-only">Modelo de processos</strong>
+              <small class="v2-only">Número CNJ, cliente, tribunal, tipo de ação, etapa e dados de honorários.</small>
+              <span class="v2-only importer-template-action">Baixar CSV <span aria-hidden="true">↓</span></span>
+            </a>
+            <a class="button ghost importer-template-card" href="/api/import/template?type=contacts" download>
+              <span class="classic-only">Modelo Contatos (CSV)</span>
+              <span class="v2-only importer-template-kind">Contatos</span>
+              <strong class="v2-only">Modelo de contatos</strong>
+              <small class="v2-only">Nome, CPF/CNPJ, telefone, e-mail, cidade, UF e profissão.</small>
+              <span class="v2-only importer-template-action">Baixar CSV <span aria-hidden="true">↓</span></span>
+            </a>
+            <a class="button ghost importer-template-card" href="/api/import/template?type=tasks" download>
+              <span class="classic-only">Modelo Prazos (CSV)</span>
+              <span class="v2-only importer-template-kind">Tarefas e datas</span>
+              <strong class="v2-only">Modelo de tarefas</strong>
+              <small class="v2-only">Título, processo, cliente, data informada, responsável e pontos.</small>
+              <span class="v2-only importer-template-action">Baixar CSV <span aria-hidden="true">↓</span></span>
+            </a>
           </div>
         </div>
+
+        <ol class="importer-steps v2-only" aria-label="Etapas da importação">
+          <li data-importer-step="prepare"><span>1</span><div><strong>Preparar</strong><small>Baixe um modelo</small></div></li>
+          <li data-importer-step="select"><span>2</span><div><strong>Selecionar arquivo</strong><small>XLS, XLSX ou CSV</small></div></li>
+          <li data-importer-step="review"><span>3</span><div><strong>Revisar prévia</strong><small>Confira linhas e categorias</small></div></li>
+          <li data-importer-step="confirm"><span>4</span><div><strong>Confirmar</strong><small>Consolidação explícita</small></div></li>
+        </ol>
 
         <div class="importer-grid">
           <article class="card dropzone-card" id="importerDropzone">
@@ -1103,16 +1134,21 @@
                   <path d="M33 32v-3a3 3 0 0 1 6 0v3" stroke-width="2"/>
                 </svg>
               </div>
+              <p class="eyebrow v2-only">Selecionar arquivo</p>
               <h3>Arraste e solte sua planilha ou relatório eproc aqui</h3>
               <p>Suporta relatórios <strong>.XLS</strong> do eproc (TJRS, TRF4, TJSC, TJSP), planilhas <strong>.XLSX</strong> e arquivos <strong>.CSV</strong>.</p>
-              <button class="button gold" type="button" id="btnSelectSpreadsheet">Selecionar arquivo no computador</button>
-              <small class="dropzone-hint">Detecção inteligente: Número Processo, Classe, Autores/Clientes, Réus, Localidade, Assunto, Andamentos e Valores.</small>
+              <button class="button gold" type="button" id="btnSelectSpreadsheet">
+                <span class="classic-only">Selecionar arquivo no computador</span>
+                <span class="v2-only">Selecionar arquivo</span>
+              </button>
+              <small class="dropzone-hint classic-only">Detecção inteligente: Número Processo, Classe, Autores/Clientes, Réus, Localidade, Assunto, Andamentos e Valores.</small>
+              <small class="dropzone-hint v2-only">O arquivo será analisado antes de qualquer confirmação.</small>
             </div>
           </article>
 
           <article class="card importer-guide-card">
-            <div class="card-heading"><div><p class="eyebrow">Instruções de formato</p><h3>O que pode ser importado</h3></div></div>
-            <div class="importer-guide-list">
+            <div class="card-heading classic-only"><div><p class="eyebrow">Instruções de formato</p><h3>O que pode ser importado</h3></div></div>
+            <div class="importer-guide-list classic-only">
               <div class="guide-item">
                 <strong>Processos & Clientes</strong>
                 <p>Colunas como <em>Número do processo</em>, <em>Cliente</em>, <em>Tribunal/Comarca</em>, <em>Tipo de Ação</em>, <em>Fase</em> e <em>Honorários</em>.</p>
@@ -1126,22 +1162,46 @@
                 <p>Colunas como <em>Título da tarefa</em>, <em>Processo</em>, <em>Cliente</em>, <em>Data Limite / Prazo</em> e <em>Responsável</em>.</p>
               </div>
             </div>
+            <div class="importer-supervision v2-only">
+              <p class="eyebrow">Importação supervisionada</p>
+              <h3>Revise antes de consolidar</h3>
+              <p>O upload prepara uma prévia. Nenhum registro é importado até a confirmação explícita.</p>
+              <ul>
+                <li><span aria-hidden="true">01</span> Confira o arquivo e o total de linhas.</li>
+                <li><span aria-hidden="true">02</span> Verifique as categorias reconhecidas.</li>
+                <li><span aria-hidden="true">03</span> Confirme somente depois da revisão.</li>
+              </ul>
+              <div class="importer-deadline-note">
+                <strong>Datas exigem conferência profissional</strong>
+                <p>Datas presentes na planilha podem ser importadas como dados informados. O ATRIUM não calcula nem infere prazo fatal durante a importação.</p>
+              </div>
+            </div>
           </article>
         </div>
 
-        <article class="card importer-preview-card hidden" id="importerPreviewCard">
+        <article class="card importer-preview-card hidden" id="importerPreviewCard" aria-labelledby="importerSummaryTitle">
           <div class="card-heading">
             <div>
+              <span class="importer-review-kicker v2-only">Revisão da importação</span>
               <p class="eyebrow" id="importerFileLabel">Arquivo carregado</p>
               <h3 id="importerSummaryTitle">Pré-visualização dos dados</h3>
+              <p class="importer-review-helper v2-only">Revise a prévia e os totais antes de confirmar.</p>
             </div>
             <div class="toolbar-actions">
-              <button class="button ghost" id="importerCancelButton">Descartar</button>
-              <button class="button gold" id="importerCommitButton">Confirmar e Importar para o Atrium Senda</button>
+              <button class="button ghost" id="importerCancelButton" type="button">Descartar</button>
+              <button class="button gold" id="importerCommitButton" type="button">
+                <span class="classic-only">Confirmar e Importar para o Atrium Senda</span>
+                <span class="v2-only">Confirmar importação</span>
+              </button>
             </div>
           </div>
           <div class="importer-badges" id="importerBadges"></div>
-          <div class="responsive-table">
+          <div class="importer-confirmation-copy v2-only">
+            <strong>Consolidação pelas regras atuais do ATRIUM</strong>
+            <p>Registros existentes podem ser conciliados pelos identificadores já utilizados pelo sistema. A confirmação só é concluída após a persistência.</p>
+          </div>
+          <p class="importer-preview-empty v2-only hidden" id="importerPreviewEmpty">O arquivo não forneceu linhas para a prévia tabular. Revise os totais antes de confirmar.</p>
+          <div class="responsive-table importer-preview-scroll" role="region" aria-label="Prévia tabular da planilha" tabindex="0">
             <table class="sortable-table" id="importerPreviewTable">
               <thead id="importerPreviewHead"></thead>
               <tbody id="importerPreviewBody"></tbody>

@@ -1,0 +1,594 @@
+html[data-ui="v2"] #view-importer {
+  min-width: 0;
+  color: var(--v2-color-foreground);
+  font-family: var(--v2-font-interface);
+}
+
+html[data-ui="v2"] #view-importer .importer-toolbar {
+  display: grid;
+  gap: var(--v2-space-6);
+  margin-bottom: var(--v2-space-6);
+}
+
+html[data-ui="v2"] #view-importer .importer-v2-header {
+  max-width: 780px;
+}
+
+html[data-ui="v2"] #view-importer .importer-v2-header .eyebrow,
+html[data-ui="v2"] #view-importer .dropzone-content > .eyebrow,
+html[data-ui="v2"] #view-importer .importer-supervision > .eyebrow,
+html[data-ui="v2"] #view-importer .importer-review-kicker {
+  display: block;
+  margin: 0 0 var(--v2-space-2);
+  color: var(--v2-color-primary);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .13em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] #view-importer .importer-v2-header h2 {
+  margin: 0;
+  color: var(--v2-color-foreground);
+  font-family: var(--v2-font-editorial);
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 600;
+  letter-spacing: -.025em;
+  line-height: 1.05;
+}
+
+html[data-ui="v2"] #view-importer .importer-v2-header > p:last-child {
+  max-width: 660px;
+  margin: var(--v2-space-3) 0 0;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+html[data-ui="v2"] #view-importer .importer-template-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--v2-space-3);
+  width: 100%;
+}
+
+html[data-ui="v2"] #view-importer .importer-template-card.button {
+  min-width: 0;
+  min-height: 154px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--v2-space-2);
+  padding: var(--v2-space-4);
+  color: var(--v2-color-foreground);
+  text-align: left;
+  text-decoration: none;
+  white-space: normal;
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  box-shadow: var(--v2-shadow-subtle);
+  transition: border-color var(--v2-duration-base) var(--v2-ease-standard), background-color var(--v2-duration-base) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] #view-importer .importer-template-card.button:hover {
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-hover);
+  border-color: var(--v2-color-primary);
+  transform: none;
+}
+
+html[data-ui="v2"] #view-importer .importer-template-kind {
+  color: var(--v2-color-gold);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] #view-importer .importer-template-card strong {
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+html[data-ui="v2"] #view-importer .importer-template-card small {
+  flex: 1;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+html[data-ui="v2"] #view-importer .importer-template-action {
+  color: var(--v2-color-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+html[data-ui="v2"] #view-importer .importer-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0 0 var(--v2-space-5);
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  background: var(--v2-color-border);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+}
+
+html[data-ui="v2"] #view-importer .importer-steps li {
+  min-width: 0;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-3) var(--v2-space-4);
+  color: var(--v2-color-muted-foreground);
+  background: var(--v2-color-surface);
+}
+
+html[data-ui="v2"] #view-importer .importer-steps li > span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--v2-color-border);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+html[data-ui="v2"] #view-importer .importer-steps li div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+html[data-ui="v2"] #view-importer .importer-steps strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] #view-importer .importer-steps small {
+  overflow: hidden;
+  color: var(--v2-color-muted-foreground);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] #view-importer .importer-steps li[data-state="complete"],
+html[data-ui="v2"] #view-importer .importer-steps li[data-state="available"] {
+  color: var(--v2-color-foreground-secondary);
+}
+
+html[data-ui="v2"] #view-importer .importer-steps li[data-state="complete"] > span {
+  color: var(--v2-color-success);
+  background: var(--v2-color-success-soft);
+  border-color: var(--v2-color-success);
+}
+
+html[data-ui="v2"] #view-importer .importer-steps li[data-state="current"] {
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-primary-subtle);
+  box-shadow: inset 0 -2px var(--v2-color-primary);
+}
+
+html[data-ui="v2"] #view-importer .importer-steps li[data-state="current"] > span {
+  color: var(--v2-color-on-primary);
+  background: var(--v2-color-primary);
+  border-color: var(--v2-color-primary);
+}
+
+html[data-ui="v2"] #view-importer .importer-grid {
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, .75fr);
+  gap: var(--v2-space-4);
+  margin-bottom: var(--v2-space-6);
+}
+
+html[data-ui="v2"] #view-importer :where(.dropzone-card, .importer-guide-card, .importer-preview-card) {
+  min-width: 0;
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  box-shadow: var(--v2-shadow-card);
+}
+
+html[data-ui="v2"] #view-importer .dropzone-card {
+  min-height: 350px;
+  padding: var(--v2-space-8);
+  cursor: pointer;
+  background: color-mix(in srgb, var(--v2-color-surface) 88%, var(--v2-color-primary-subtle));
+  border: 1px dashed color-mix(in srgb, var(--v2-color-primary) 62%, var(--v2-color-border));
+  transition: border-color var(--v2-duration-base) var(--v2-ease-standard), background-color var(--v2-duration-base) var(--v2-ease-standard), box-shadow var(--v2-duration-base) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] #view-importer .dropzone-card:hover,
+html[data-ui="v2"] #view-importer .dropzone-card.drag-over {
+  background: var(--v2-color-primary-subtle);
+  border-color: var(--v2-color-primary);
+  box-shadow: inset 0 0 0 1px var(--v2-color-primary), var(--v2-shadow-slate);
+}
+
+html[data-ui="v2"] #view-importer .dropzone-content {
+  width: min(100%, 620px);
+}
+
+html[data-ui="v2"] #view-importer .dropzone-icon {
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto var(--v2-space-4);
+  color: var(--v2-color-primary);
+  background: var(--v2-color-primary-soft);
+  border: 1px solid var(--v2-color-border);
+  border-radius: 50%;
+}
+
+html[data-ui="v2"] #view-importer .dropzone-svg {
+  width: 30px;
+  height: 30px;
+}
+
+html[data-ui="v2"] #view-importer .dropzone-content h3 {
+  margin: 0 0 var(--v2-space-2);
+  color: var(--v2-color-foreground);
+  font-family: var(--v2-font-interface);
+  font-size: clamp(19px, 2vw, 24px);
+  font-weight: 650;
+  letter-spacing: -.015em;
+}
+
+html[data-ui="v2"] #view-importer .dropzone-content > p:not(.eyebrow) {
+  max-width: 540px;
+  margin: 0 auto var(--v2-space-5);
+  color: var(--v2-color-foreground-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+html[data-ui="v2"] #view-importer #btnSelectSpreadsheet,
+html[data-ui="v2"] #view-importer :where(#importerCancelButton, #importerCommitButton) {
+  min-height: 44px;
+  border-radius: var(--v2-radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+html[data-ui="v2"] #view-importer #btnSelectSpreadsheet,
+html[data-ui="v2"] #view-importer #importerCommitButton {
+  color: var(--v2-action-primary-text);
+  background: var(--v2-action-primary-bg);
+  border: 1px solid var(--v2-action-primary-border);
+  box-shadow: var(--v2-action-primary-shadow);
+}
+
+html[data-ui="v2"] #view-importer :where(#btnSelectSpreadsheet, #importerCommitButton):hover {
+  color: var(--v2-action-primary-text);
+  background: var(--v2-action-primary-hover);
+  transform: none;
+}
+
+html[data-ui="v2"] #view-importer #importerCancelButton {
+  color: var(--v2-color-foreground);
+  background: transparent;
+  border: 1px solid var(--v2-color-border);
+}
+
+html[data-ui="v2"] #view-importer .dropzone-hint {
+  max-width: 460px;
+  margin: var(--v2-space-4) auto 0;
+  color: var(--v2-color-muted-foreground);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+html[data-ui="v2"] #view-importer .importer-guide-card {
+  padding: var(--v2-space-5);
+}
+
+html[data-ui="v2"] #view-importer .importer-supervision h3 {
+  margin: 0;
+  color: var(--v2-color-foreground);
+  font-family: var(--v2-font-editorial);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+html[data-ui="v2"] #view-importer .importer-supervision > p:not(.eyebrow) {
+  margin: var(--v2-space-3) 0 0;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+html[data-ui="v2"] #view-importer .importer-supervision ul {
+  display: grid;
+  gap: var(--v2-space-3);
+  margin: var(--v2-space-5) 0;
+  padding: 0;
+  list-style: none;
+}
+
+html[data-ui="v2"] #view-importer .importer-supervision li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--v2-space-2);
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+html[data-ui="v2"] #view-importer .importer-supervision li span {
+  color: var(--v2-color-gold);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .08em;
+}
+
+html[data-ui="v2"] #view-importer .importer-deadline-note {
+  padding: var(--v2-space-4);
+  background: var(--v2-color-warning-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-warning) 52%, var(--v2-color-border));
+  border-radius: var(--v2-radius-md);
+}
+
+html[data-ui="v2"] #view-importer .importer-deadline-note strong {
+  color: var(--v2-color-foreground);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] #view-importer .importer-deadline-note p {
+  margin: var(--v2-space-2) 0 0;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+html[data-ui="v2"] #view-importer .importer-preview-card {
+  margin-top: 0;
+  padding: var(--v2-space-5);
+  scroll-margin-top: var(--v2-space-5);
+}
+
+html[data-ui="v2"] #view-importer .importer-preview-card > .card-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--v2-space-4);
+  margin-bottom: var(--v2-space-4);
+}
+
+html[data-ui="v2"] #view-importer #importerFileLabel {
+  margin: 0 0 var(--v2-space-1);
+  overflow-wrap: anywhere;
+  color: var(--v2-color-muted-foreground);
+  font-size: 11px;
+  letter-spacing: .02em;
+  text-transform: none;
+}
+
+html[data-ui="v2"] #view-importer #importerSummaryTitle {
+  margin: 0;
+  color: var(--v2-color-foreground);
+  font-family: var(--v2-font-editorial);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+html[data-ui="v2"] #view-importer .importer-review-helper {
+  margin: var(--v2-space-2) 0 0;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] #view-importer .importer-preview-card .toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--v2-space-2);
+}
+
+html[data-ui="v2"] #view-importer .importer-badges {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--v2-space-3);
+  margin: 0 0 var(--v2-space-4);
+}
+
+html[data-ui="v2"] #view-importer .importer-count {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: var(--v2-space-3) var(--v2-space-4);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+}
+
+html[data-ui="v2"] #view-importer .importer-count strong {
+  color: var(--v2-color-foreground);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+html[data-ui="v2"] #view-importer .importer-count span {
+  color: var(--v2-color-foreground-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] #view-importer .importer-confirmation-copy {
+  margin: 0 0 var(--v2-space-4);
+  padding: var(--v2-space-3) var(--v2-space-4);
+  background: var(--v2-color-primary-subtle);
+  border-left: 3px solid var(--v2-color-primary);
+  border-radius: 0 var(--v2-radius-md) var(--v2-radius-md) 0;
+}
+
+html[data-ui="v2"] #view-importer .importer-confirmation-copy strong {
+  color: var(--v2-color-foreground);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] #view-importer .importer-confirmation-copy p,
+html[data-ui="v2"] #view-importer .importer-preview-empty {
+  margin: var(--v2-space-1) 0 0;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+html[data-ui="v2"] #view-importer .importer-preview-empty {
+  margin: 0;
+  padding: var(--v2-space-5);
+  text-align: center;
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+}
+
+html[data-ui="v2"] #view-importer .importer-preview-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  background: var(--v2-color-surface-inset);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+}
+
+html[data-ui="v2"] #view-importer #importerPreviewTable {
+  width: max(100%, 720px);
+  border-collapse: collapse;
+  color: var(--v2-color-foreground);
+  font-family: var(--v2-font-interface);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] #view-importer #importerPreviewTable :where(th, td) {
+  max-width: 320px;
+  padding: 11px var(--v2-space-3);
+  overflow-wrap: anywhere;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+}
+
+html[data-ui="v2"] #view-importer #importerPreviewTable th {
+  position: sticky;
+  top: 0;
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-secondary);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] #view-importer #importerPreviewTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+html[data-ui="v2"] #view-importer #importerPreviewTable tbody tr:hover td {
+  background: var(--v2-color-surface-hover);
+}
+
+html[data-ui="v2"] #view-integrations .importer-integration-card {
+  border-color: color-mix(in srgb, var(--v2-color-primary) 36%, var(--v2-color-border));
+  background: color-mix(in srgb, var(--v2-color-surface) 92%, var(--v2-color-primary-subtle));
+}
+
+@media (max-width: 980px) {
+  html[data-ui="v2"] #view-importer .importer-template-grid,
+  html[data-ui="v2"] #view-importer .importer-badges {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-ui="v2"] #view-importer .importer-template-card.button {
+    min-height: 0;
+  }
+
+  html[data-ui="v2"] #view-importer .importer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  html[data-ui="v2"] #view-importer .importer-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  html[data-ui="v2"] #view-importer .importer-preview-card > .card-heading {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  html[data-ui="v2"] #view-importer .importer-preview-card .toolbar-actions {
+    justify-content: stretch;
+  }
+
+  html[data-ui="v2"] #view-importer :where(#importerCancelButton, #importerCommitButton) {
+    flex: 1 1 180px;
+  }
+}
+
+@media (max-width: 560px) {
+  html[data-ui="v2"] #view-importer .importer-toolbar,
+  html[data-ui="v2"] #view-importer .importer-grid {
+    gap: var(--v2-space-3);
+  }
+
+  html[data-ui="v2"] #view-importer .importer-v2-header h2 {
+    font-size: 31px;
+  }
+
+  html[data-ui="v2"] #view-importer .importer-template-card.button,
+  html[data-ui="v2"] #view-importer :where(.dropzone-card, .importer-guide-card, .importer-preview-card) {
+    padding: var(--v2-space-4);
+  }
+
+  html[data-ui="v2"] #view-importer .dropzone-card {
+    min-height: 320px;
+  }
+
+  html[data-ui="v2"] #view-importer .dropzone-icon {
+    width: 52px;
+    height: 52px;
+  }
+
+  html[data-ui="v2"] #view-importer .importer-steps li {
+    min-height: 64px;
+    padding: var(--v2-space-2) var(--v2-space-3);
+  }
+
+  html[data-ui="v2"] #view-importer .importer-steps small {
+    display: none;
+  }
+
+  html[data-ui="v2"] #view-importer .importer-preview-card .toolbar-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  html[data-ui="v2"] #view-importer :where(#importerCancelButton, #importerCommitButton) {
+    width: 100%;
+  }
+}

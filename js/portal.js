@@ -23,6 +23,7 @@ import { renderMonitoringV2Presentation } from './views/ui-v2/monitoring-present
 import { createJudicialIntegrationsPresenter } from './views/ui-v2/judicial-integrations-presenter.js';
 import { createEmailCalendarPresenter } from './views/ui-v2/email-calendar-presenter.js';
 import { createConfigurationAdminPresenter } from './views/ui-v2/configuration-presenter.js';
+import { createImporterPresenter } from './views/ui-v2/importer-presenter.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -255,6 +256,7 @@ import { createTasksFeature } from './features/tasks.js';
   let externalCalendarFeature;
   let financialFeature;
   let importerFeature;
+  let importerPresenter;
   let judicialIntegrationsFeature;
   let judicialIntegrationsPresenter;
   let emailCalendarPresenter;
@@ -649,6 +651,7 @@ import { createTasksFeature } from './features/tasks.js';
   }
 
   function getImporterFeature() {
+    importerPresenter ||= createImporterPresenter({ documentRef: document });
     if (!importerFeature) importerFeature = createImporterFeature({
       store: Store,
       documentRef: document,
@@ -660,7 +663,8 @@ import { createTasksFeature } from './features/tasks.js';
       upsertContact: record => getContactsFeature().upsertExternalContact(record),
       upsertTask: record => getTasksFeature().upsertExternalTask(record),
       onRenderAll: () => App.renderAll(),
-      onSwitchView: view => App.switchView(view)
+      onSwitchView: view => App.switchView(view),
+      presentation: importerPresenter
     });
     return importerFeature;
   }
