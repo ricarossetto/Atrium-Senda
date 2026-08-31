@@ -370,7 +370,26 @@ try {
           app.openTaskModal();
         }
       });
-      await page.waitForTimeout(100);
+      await page.waitForFunction(() => {
+        const financialBackdrop = document.getElementById('financialEntryBackdrop');
+        const genericBackdrop = document.getElementById('modalBackdrop');
+        const backdrop = financialBackdrop && !financialBackdrop.classList.contains('hidden')
+          ? financialBackdrop
+          : genericBackdrop && !genericBackdrop.classList.contains('hidden')
+            ? genericBackdrop
+            : null;
+        if (!backdrop) return false;
+
+        const modal = [...backdrop.querySelectorAll('.modal')].find(element => {
+          const style = getComputedStyle(element);
+          return style.display !== 'none' && style.visibility !== 'hidden';
+        });
+        if (!modal) return false;
+
+        return modal
+          .getAnimations({ subtree: true })
+          .every(animation => animation.playState === 'finished');
+      });
 
       // Assert: modal está visível
       const modalVisible = await page.evaluate(() => {

@@ -408,6 +408,53 @@ html[data-ui="v2"] .contact-form-section .field label { color: var(--v2-color-fo
   html[data-ui="v2"] .contact-inspector-section dl { grid-template-columns: 1fr; }
 }
 
+@media (min-width: 761px) {
+  html[data-ui="v2"] .main-content:has(#view-contacts.active) {
+    height: 100dvh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  html[data-ui="v2"] .main-content:has(#view-contacts.active) > :where(.topbar, .system-status-bar) {
+    flex: 0 0 auto;
+  }
+
+  html[data-ui="v2"] #view-contacts.active {
+    min-height: 0;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  html[data-ui="v2"] #view-contacts > .section-toolbar { flex: 0 0 auto; }
+
+  html[data-ui="v2"] #view-contacts > .table-card {
+    min-height: 0;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  html[data-ui="v2"] #view-contacts .contacts-search,
+  html[data-ui="v2"] #view-contacts .contact-role-filters { flex: 0 0 auto; }
+
+  html[data-ui="v2"] #contactsV2Workspace,
+  html[data-ui="v2"] .contacts-v2-shell {
+    min-height: 0;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  html[data-ui="v2"] #view-contacts .contacts-workspace-layout {
+    height: auto;
+    flex: 1 1 auto;
+  }
+}
+
 @media (max-width: 760px) {
   html[data-ui="v2"] #view-contacts:has(.contacts-inspector.is-open) { animation: none !important; transform: none !important; }
   html[data-ui="v2"] #view-contacts > .section-toolbar { gap: var(--v2-space-4); }
