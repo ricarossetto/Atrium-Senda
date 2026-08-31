@@ -20,6 +20,7 @@ import { renderLeadsV2Workspace } from './views/ui-v2/leads-presenter.js';
 import { renderAssistantV2Presentation } from './views/ui-v2/assistant-presenter.js';
 import { renderPromptsV2Presentation } from './views/ui-v2/prompts-presenter.js';
 import { renderMonitoringV2Presentation } from './views/ui-v2/monitoring-presenter.js';
+import { createJudicialIntegrationsPresenter } from './views/ui-v2/judicial-integrations-presenter.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -252,6 +253,7 @@ import { createTasksFeature } from './features/tasks.js';
   let financialFeature;
   let importerFeature;
   let judicialIntegrationsFeature;
+  let judicialIntegrationsPresenter;
   let leadsFeature;
   let linksFeature;
   let monitoringFeature;
@@ -588,6 +590,7 @@ import { createTasksFeature } from './features/tasks.js';
   }
 
   function getJudicialIntegrationsFeature() {
+    judicialIntegrationsPresenter ||= createJudicialIntegrationsPresenter({ documentRef: document });
     if (!judicialIntegrationsFeature) judicialIntegrationsFeature = createJudicialIntegrationsFeature({
       documentRef: document,
       windowRef: window,
@@ -595,7 +598,8 @@ import { createTasksFeature } from './features/tasks.js';
       escapeHtml,
       showToast: (message, type) => App.toast(message, type),
       audit: (action, detail) => Store.audit(action, detail),
-      onSyncAll: options => App.syncAll(options)
+      onSyncAll: options => App.syncAll(options),
+      presentation: judicialIntegrationsPresenter
     });
     return judicialIntegrationsFeature;
   }

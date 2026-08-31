@@ -6,7 +6,8 @@ export function createJudicialIntegrationsFeature({
   showToast = () => {},
   audit = () => {},
   onSyncAll = async () => {},
-  warn = () => {}
+  warn = () => {},
+  presentation = null
 } = {}) {
   let judicialStatus = null;
   let initialized = false;
@@ -29,6 +30,7 @@ export function createJudicialIntegrationsFeature({
     init() {
       if (initialized) return false;
       initialized = true;
+      presentation?.init?.();
       byId('certificateGuideButton')?.addEventListener('click', () => feature.open());
       byId('judicialSetupClose')?.addEventListener('click', () => feature.close());
       byId('judicialSetupBackdrop')?.addEventListener('click', event => {
@@ -57,6 +59,7 @@ export function createJudicialIntegrationsFeature({
     async open() {
       byId('judicialSetupBackdrop')?.classList.remove('hidden');
       documentRef.body.style.overflow = 'hidden';
+      presentation?.open?.();
       await feature.refreshStatus(true);
     },
 
@@ -66,6 +69,7 @@ export function createJudicialIntegrationsFeature({
       backdrop.classList.add('hidden');
       if (byId('modalBackdrop')?.classList.contains('hidden')) documentRef.body.style.overflow = '';
       feature.clearSecrets();
+      presentation?.close?.();
     },
 
     clearSecrets({ clearQr = false } = {}) {

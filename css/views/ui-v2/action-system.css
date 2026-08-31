@@ -1,0 +1,36 @@
+/* Loaded after feature styles so every authenticated V2 primary action shares one material. */
+html[data-ui="v2"] #appShell .button.gold,
+html[data-ui="v2"] body > .modal-backdrop .button.gold {
+  color: var(--v2-action-primary-text) !important;
+  background: var(--v2-action-primary-bg);
+  border-color: var(--v2-action-primary-border);
+  box-shadow: var(--v2-action-primary-shadow);
+  backdrop-filter: blur(8px) saturate(.94);
+  -webkit-backdrop-filter: blur(8px) saturate(.94);
+  text-shadow: none;
+  transform: none;
+  transition: background-color var(--v2-duration-base) var(--v2-ease-standard), border-color var(--v2-duration-base) var(--v2-ease-standard), box-shadow var(--v2-duration-base) var(--v2-ease-standard), color var(--v2-duration-base) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] #appShell .button.gold:hover,
+html[data-ui="v2"] body > .modal-backdrop .button.gold:hover {
+  color: var(--v2-action-primary-text) !important;
+  background: var(--v2-action-primary-hover);
+  border-color: var(--v2-action-primary-border);
+  box-shadow: var(--v2-action-primary-shadow);
+  transform: none;
+}
+
+html[data-ui="v2"] #appShell .button.gold:active,
+html[data-ui="v2"] body > .modal-backdrop .button.gold:active {
+  box-shadow: var(--v2-action-primary-shadow-pressed);
+  transform: none;
+}
+
+html[data-ui="v2"] #appShell .button.gold:disabled,
+html[data-ui="v2"] body > .modal-backdrop .button.gold:disabled {
+  cursor: not-allowed;
+  opacity: .54;
+  box-shadow: none;
+  transform: none;
+}

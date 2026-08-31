@@ -24,6 +24,8 @@
   <link rel="stylesheet" href="css/views/ui-v2/assistant.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/prompts.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/monitoring.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/integrations.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -348,11 +350,6 @@
           </div>
         </div>
         <div class="topbar-actions">
-          <div class="ui-mode-control" id="uiModeControl" role="group" aria-label="Interface">
-            <span class="ui-mode-label">Interface</span>
-            <button type="button" data-ui-mode="classic" aria-pressed="true">Clássica</button>
-            <button type="button" data-ui-mode="v2" aria-pressed="false">Nova</button>
-          </div>
           <button type="button" class="theme-toggle-btn" id="themeToggleButton" title="Alternar entre tema Claro e Escuro">
             <span id="themeToggleIcon">☀️</span>
             <span id="themeToggleText">Modo Claro</span>
@@ -990,6 +987,10 @@
       </section>
 
       <section class="view" id="view-integrations" data-title="Integrações" data-eyebrow="Fontes e conexões">
+        <div class="v2-integrations-header v2-only">
+          <div><p>CONEXÕES SEGURAS</p><h2>Integrações judiciais</h2><small>Certificado, tribunais e segundo fator em uma superfície operacional com conferência humana.</small></div>
+          <span class="v2-integrations-safety"><b aria-hidden="true">⌾</b> Credenciais protegidas no agente local</span>
+        </div>
         <div class="integration-grid">
           <article class="integration-card card">
             <div class="integration-logo external-calendar-logo">
@@ -1010,7 +1011,7 @@
             </div>
             <div class="integration-copy"><span class="status-chip planned">Oficial</span><h3>DJEN e DataJud (CNJ)</h3><p>Camada de conferência de publicações e andamentos do Diário de Justiça Eletrônico Nacional.</p><button class="button ghost" data-view-link="monitoring">Ver fontes</button></div>
           </article>
-          <article class="integration-card card">
+          <article class="integration-card card judicial-integration-card">
             <div class="integration-logo certificate-logo">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="3" width="6" height="6" rx="1"/>
@@ -1146,6 +1147,14 @@
       </section>
 
       <section class="view" id="view-configuration" data-title="Configurações do escritório" data-eyebrow="Identidade, tarefas e equipe">
+        <article class="card interface-preference-card" aria-labelledby="interfacePreferenceTitle">
+          <div class="interface-preference-copy"><p class="eyebrow">Aparência</p><h3 id="interfacePreferenceTitle">Modo de interface</h3><p>Escolha a apresentação do espaço de trabalho. A preferência fica somente neste navegador.</p></div>
+          <div class="ui-mode-control" id="uiModeControl" role="group" aria-label="Modo de interface">
+            <span class="ui-mode-label">Modo de interface</span>
+            <button type="button" data-ui-mode="v2" aria-pressed="false">Interface V2</button>
+            <button type="button" data-ui-mode="classic" aria-pressed="true">Layout clássico</button>
+          </div>
+        </article>
         <div class="section-toolbar configuration-toolbar">
           <div class="filter-tabs config-tabs" id="configurationTabs"></div>
           <div class="toolbar-actions config-actions"><div class="table-search compact-search"><input id="configurationSearch" type="search" placeholder="Buscar nesta configuração"></div><button class="button ghost" id="btnOpenTourFromConfig" type="button" title="Ver apresentação do Atrium">Ver Apresentação</button><button class="button gold" id="newConfigurationButton">+ Novo item</button></div>
@@ -1704,7 +1713,7 @@
 
           <form id="certificateSetupForm" class="setup-form-row">
             <label class="file-picker"><span>Arquivo .PFX ou .P12</span><input id="certificateFileInput" type="file" accept=".pfx,.p12,application/x-pkcs12" required><small id="certificateFileName">Selecionar certificado</small></label>
-            <label><span>Senha atual do certificado</span><input id="certificatePassphrase" type="password" autocomplete="new-password" maxlength="256" required placeholder="••••••••••••"></label>
+            <label><span>Senha atual do certificado</span><input id="certificatePassphrase" type="password" data-password-toggle-ready="true" autocomplete="new-password" maxlength="256" required placeholder="••••••••••••"></label>
             <button class="button gold" type="submit">Validar e Proteger</button>
           </form>
         </section>
@@ -1720,14 +1729,14 @@
             <label><span>Portal Judicial</span><select id="totpPortalSelect" required><option value="">Selecione o tribunal</option></select></label>
             <label class="file-picker"><span>Imagem do QR Code</span><input id="portalQrInput" type="file" accept="image/png,image/jpeg,image/webp"><small id="portalQrStatus">Selecionar imagem do QR</small></label>
             <label id="portalTotpAccountField" class="hidden"><span>Conta do QR</span><select id="portalTotpAccountSelect"><option value="">Selecione a conta</option></select></label>
-            <label><span>Ou Chave Manual Base32</span><input id="portalTotpSecret" type="password" autocomplete="off" maxlength="256" placeholder="Ex: JBSWY3DPEHPK3PXP"></label>
+            <label><span>Ou Chave Manual Base32</span><input id="portalTotpSecret" type="password" data-password-toggle-ready="true" autocomplete="off" maxlength="256" placeholder="Ex: JBSWY3DPEHPK3PXP"></label>
             <label><span>Código de 6 Dígitos (Teste)</span><input id="portalTotpCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"></label>
             <div class="totp-actions"><button class="button gold" type="submit">Testar e Ativar 2FA</button><button class="button ghost" id="removePortalTotpButton" type="button">Remover vínculo local</button></div>
           </form>
           <div class="setup-warning"><strong>Zero Trust:</strong> As imagens de QR Code são processadas em memória e descartadas imediatamente após a extração do segredo Base32.</div>
         </section>
       </div>
-      <footer class="judicial-setup-footer"><div><strong>Sincronização Judicial Autônoma</strong><span>O coletor monitora o DJEN, DataJud e tribunais vinculados automaticamente em segundo plano com IA.</span></div><button class="button gold" id="syncJudicialNowButton" type="button">✦ Sincronizar Acervo e Intimações Agora</button></footer>
+      <footer class="judicial-setup-footer"><div><strong class="classic-only">Sincronização Judicial Autônoma</strong><span class="classic-only">O coletor monitora o DJEN, DataJud e tribunais vinculados automaticamente em segundo plano com IA.</span><strong class="v2-only">Sincronização judicial sob demanda</strong><span class="v2-only">Atualiza as fontes configuradas e mantém os resultados sujeitos à conferência profissional.</span></div><button class="button gold" id="syncJudicialNowButton" type="button">✦ Sincronizar Acervo e Intimações Agora</button></footer>
     </section>
   </div>
 
