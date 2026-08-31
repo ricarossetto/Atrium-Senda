@@ -167,9 +167,8 @@ try {
   await page.locator('#judicialSetupBackdrop:not(.hidden)').waitFor();
   const certificatePassword = page.locator('#certificatePassphrase');
   assert(await certificatePassword.getAttribute('type') === 'password', 'Senha do certificado não iniciou oculta.');
-  await page.locator('#certificatePassphrase + .password-toggle').click();
-  assert(await certificatePassword.getAttribute('type') === 'text', 'Botão de visualizar senha do certificado não funcionou.');
-  await page.locator('#certificatePassphrase + .password-toggle').click();
+  assert.equal(await page.locator('#certificatePassphrase + .password-toggle').count(), 0, 'Segredo A1 não deve oferecer alternância visual persistente.');
+  assert.equal(await page.locator('#portalTotpSecret + .password-toggle').count(), 0, 'Segredo TOTP não deve oferecer alternância visual persistente.');
   assert(await page.locator('#portalCoverageList [data-portal-enabled]').count() === 23, 'O catálogo completo de portais judiciais não foi carregado no assistente.');
   assert(await page.locator('#portalCoverageList [data-portal-enabled]:checked').count() === 0, 'A cobertura autenticada deveria iniciar zerada.');
   assert(await page.locator('#portalCoverageList .portal-coverage-group').count() === 3, 'Os portais não foram organizados por Justiça Estadual, Trabalho e Federal.');

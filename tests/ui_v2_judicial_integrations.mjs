@@ -1,0 +1,100 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createJudicialIntegrationsFeature } from '../js/features/judicial-integrations.js';
+import { prepareUiV2JudicialFixture, prepareUiV2Page, startUiV2Session, UI_V2_JUDICIAL_STATUS } from './ui_v2_helpers.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const [featureSource, presenterSource, portalSource] = await Promise.all([
+  readFile(path.join(ROOT, 'js/features/judicial-integrations.js'), 'utf8'),
+  readFile(path.join(ROOT, 'js/views/ui-v2/judicial-integrations-presenter.js'), 'utf8'),
+  readFile(path.join(ROOT, 'js/portal.js'), 'utf8')
+]);
+
+console.log('\n===============================================================');
+console.log('  ATRIUM — UI V2 JUDICIAL CONNECTIONS WORKSPACE');
+console.log('===============================================================\n');
+
+assert.equal((portalSource.match(/createJudicialIntegrationsFeature\s*\(/g) || []).length, 1);
+assert.doesNotMatch(featureSource, /^\s*import\s/m);
+assert.doesNotMatch(featureSource, /\bStore\b|store\.state|localStorage|sessionStorage|\bfetch\s*\(/);
+assert.doesNotMatch(presenterSource, /\bStore\b|store\.state|localStorage|sessionStorage|\bfetch\s*\(|secureFetch|setTimeout|setInterval|passphrase|pfxBase64|portalTotpSecret|qrData|\baudit\s*\(/i);
+
+const listeners = new Map();
+const ids = ['certificateGuideButton', 'judicialSetupClose', 'judicialSetupBackdrop', 'certificateFileInput', 'certificateSetupForm', 'portalQrInput', 'portalTotpForm', 'removePortalTotpButton', 'resetJudicialConnectionsButton', 'syncJudicialNowButton', 'portalCoverageList'];
+const fakeElements = new Map(ids.map(id => [id, {
+  id,
+  addEventListener(type, handler) { listeners.set(`${id}:${type}`, [...(listeners.get(`${id}:${type}`) || []), handler]); },
+  classList: { contains: () => true },
+  closest: () => null
+}]));
+let requests = 0;
+let presentationInit = 0;
+const unitFeature = createJudicialIntegrationsFeature({
+  documentRef: { getElementById: id => fakeElements.get(id) || null },
+  secureFetch: async () => { requests++; return { ok: true, async json() { return UI_V2_JUDICIAL_STATUS; } }; },
+  presentation: { init() { presentationInit++; } }
+});
+assert.equal(unitFeature.init(), true);
+assert.equal(unitFeature.init(), false);
+assert.equal(requests, 0, 'init não pode consultar integração judicial.');
+assert.equal(presentationInit, 1);
+for (const key of ['certificateGuideButton:click', 'judicialSetupClose:click', 'judicialSetupBackdrop:click', 'certificateFileInput:change', 'certificateSetupForm:submit', 'portalQrInput:change', 'portalTotpForm:submit', 'removePortalTotpButton:click', 'resetJudicialConnectionsButton:click', 'syncJudicialNowButton:click', 'portalCoverageList:click']) {
+  assert.equal(listeners.get(key)?.length, 1, `${key} deve possuir um listener.`);
+}
+
+const session = await startUiV2Session();
+try {
+  const context = await session.createContext({ viewport: { width: 1440, height: 900 } });
+  const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'light', probe: true });
+  const before = await page.evaluate(() => ({
+    state: JSON.stringify(window.Atrium.Store.state),
+    revision: window.Atrium.Store.revision,
+    mutations: window.__uiV2RuntimeProbe.mutationRequests.length,
+    intervals: window.__uiV2RuntimeProbe.intervals
+  }));
+  await prepareUiV2JudicialFixture(page);
+
+  assert.equal(await page.locator('.v2-integrations-header h2').textContent(), 'Integrações judiciais');
+  assert.equal(await page.locator('.judicial-integration-card').count(), 1);
+  assert.match(await page.locator('#certificateIntegrationStatus').textContent(), /A1 Operacional · 1 2FA/);
+  assert.match(await page.locator('#certificateIntegrationDetail').textContent(), /Titular Judicial Sintética/);
+  await page.locator('#certificateGuideButton').click();
+  await page.locator('#judicialSetupBackdrop:not(.hidden)').waitFor();
+  assert.equal(await page.locator('#setupCertificateStatus').textContent(), 'A1 validado no Sandbox');
+  assert.equal(await page.locator('#setupPjeOfficeStatus').textContent(), 'Aplicativo oficial disponível');
+  assert.equal(await page.locator('#setupTotpStatus').textContent(), '1 portal(is) vinculado(s)');
+  assert.equal(await page.locator('#a1ActiveCard').isVisible(), true);
+  assert.match(await page.locator('#a1HolderName').textContent(), /Titular Judicial Sintética/);
+  assert.match(await page.locator('#a1DocAndIssuer').textContent(), /\*\*\*\.123\.\*\*\*-\*\*/);
+  assert.equal(await page.locator('.portal-coverage-group').count(), 3);
+  assert.equal(await page.locator('[data-portal-enabled]').count(), 3);
+  assert.equal(await page.locator('[data-configure-totp]').count(), 2);
+  assert.deepEqual(await page.locator('.portal-coverage-row small').allTextContents(), [
+    '2FA vinculado e verificado',
+    'Cobertura experimental · primeiro acesso acompanhado',
+    'Sessão com certificado, sem TOTP local'
+  ]);
+  assert.equal(await page.locator('#totpPortalSelect option').count(), 3);
+  assert.match(await page.locator('.judicial-setup-footer .v2-only').allTextContents().then(items => items.join(' ')), /conferência profissional/);
+
+  const after = await page.evaluate(() => ({
+    state: JSON.stringify(window.Atrium.Store.state),
+    revision: window.Atrium.Store.revision,
+    mutations: window.__uiV2RuntimeProbe.mutationRequests.length,
+    intervals: window.__uiV2RuntimeProbe.intervals,
+    requests: window.__uiV2JudicialRequests
+  }));
+  assert.equal(after.state, before.state);
+  assert.equal(after.revision, before.revision);
+  assert.equal(after.mutations, before.mutations);
+  assert.equal(after.intervals, before.intervals);
+  assert.ok(after.requests.every(request => request.method === 'GET' && request.url === '/api/integrations/judicial'));
+  assert.deepEqual(pageErrors, []);
+  await context.close();
+} finally {
+  await session.stop();
+}
+
+console.log('✓ UI V2 Judicial Integrations: arquitetura, status, A1, cobertura e zero mutação PASS.');

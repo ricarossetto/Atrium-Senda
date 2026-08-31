@@ -62,9 +62,15 @@ try {
   const mobileContext = await session.createContext({ viewport: { width: 390, height: 844 } });
   try {
     const mobile = await prepareUiV2Page(mobileContext, session.server.baseUrl, { theme: 'light' });
-    for (const selector of ['#menuToggle', '.global-search', '#syncButton', '.notification-button', '#btnDashboardNewTask', '[data-ui-mode="classic"]', '[data-ui-mode="v2"]']) {
+    for (const selector of ['#menuToggle', '.global-search', '#syncButton', '.notification-button', '#btnDashboardNewTask']) {
       const box = await mobile.page.locator(selector).boundingBox();
       assert.ok(box && box.height >= 44, `${selector} deve possuir target de pelo menos 44px no mobile.`);
+    }
+    await mobile.page.evaluate(() => window.Atrium.App.switchView('configuration'));
+    await mobile.page.locator('#view-configuration.active #uiModeControl').waitFor();
+    for (const selector of ['[data-ui-mode="classic"]', '[data-ui-mode="v2"]']) {
+      const box = await mobile.page.locator(selector).boundingBox();
+      assert.ok(box && box.height >= 44, `${selector} deve possuir target de pelo menos 44px em Configurações no mobile.`);
     }
     await mobile.page.locator('#menuToggle').click();
     await mobile.page.locator('#sidebar.open').waitFor();

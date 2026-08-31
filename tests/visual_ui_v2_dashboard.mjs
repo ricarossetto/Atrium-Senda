@@ -88,8 +88,11 @@ try {
     const v2Opening = await page.locator('#v2DashboardOpening').boundingBox();
     assert.ok(v2Opening && v2Opening.width > 700, 'A composição V2 deve possuir uma zona editorial dominante.'); assertions++;
 
+    await page.evaluate(() => window.Atrium.App.switchView('configuration'));
+    await page.locator('#view-configuration.active #uiModeControl').waitFor();
     await page.locator('[data-ui-mode="classic"]').click();
     await page.locator('html[data-ui="classic"]').waitFor();
+    await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
     assert.equal(await page.locator('#v2DashboardOpening').isVisible(), false); assertions++;
     const classicFile = path.join(OUTPUT, 'comparison-classic-light-1440x900.png');
     await page.screenshot({ path: classicFile, fullPage: false });
@@ -100,8 +103,11 @@ try {
     await page.screenshot({ path: classicGrayFile, fullPage: false });
     const classicGrayHash = recordScreenshot(classicGrayFile);
 
+    await page.evaluate(() => window.Atrium.App.switchView('configuration'));
+    await page.locator('#view-configuration.active #uiModeControl').waitFor();
     await page.locator('[data-ui-mode="v2"]').click();
     await page.locator('html[data-ui="v2"]').waitFor();
+    await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
     assert.equal(await page.locator('#v2DashboardOpening').isVisible(), true); assertions++;
     const v2GrayFile = path.join(OUTPUT, 'comparison-v2-grayscale-1440x900.png');
     await page.screenshot({ path: v2GrayFile, fullPage: false });

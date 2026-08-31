@@ -464,3 +464,4 @@ await import('./visual_ui_v2_leads.mjs');
 await import('./visual_ui_v2_assistant.mjs');
 await import('./visual_ui_v2_prompts.mjs');
 await import('./visual_ui_v2_monitoring.mjs');
+await import('./visual_ui_v2_judicial_integrations.mjs');

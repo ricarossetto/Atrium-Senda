@@ -7,7 +7,8 @@ const context = await session.createContext();
 try {
   const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'light', probe: true });
   await page.locator('#systemStatusBar[data-status="saved"], #systemStatusBar[data-status="ready"]').waitFor();
-  await page.waitForTimeout(350);
+  await page.evaluate(() => window.Atrium.App.switchView('configuration'));
+  await page.locator('#view-configuration.active #uiModeControl').waitFor();
   await page.locator('[data-ui-mode="classic"]').click();
   await page.locator('html[data-ui="classic"]').waitFor({ state: 'attached' });
 
@@ -38,7 +39,6 @@ try {
   await page.locator('html[data-ui="classic"]').waitFor({ state: 'attached' });
   await page.locator('[data-ui-mode="v2"]').click();
   await page.locator('html[data-ui="v2"]').waitFor({ state: 'attached' });
-  await page.waitForTimeout(120);
 
   const result = await page.evaluate(() => {
     const store = window.Atrium.Store;

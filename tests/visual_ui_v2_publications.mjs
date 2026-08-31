@@ -138,8 +138,11 @@ try {
     const v2File = path.join(OUTPUT, 'comparison-v2-light-1440x900.png');
     await page.screenshot({ path: v2File, fullPage: false });
     recordScreenshot(v2File);
+    await page.evaluate(() => window.Atrium.App.switchView('configuration'));
+    await page.locator('#view-configuration.active #uiModeControl').waitFor();
     await page.locator('[data-ui-mode="classic"]').click();
     await page.locator('html[data-ui="classic"]').waitFor();
+    await page.evaluate(() => window.Atrium.App.switchView('inbox'));
     assert.equal(await page.locator('.v2-publications-heading').isVisible(), false); assertions++;
     assert.ok(await page.locator('#inboxList .inbox-primary').count() > 0); assertions++;
     const classicFile = path.join(OUTPUT, 'comparison-classic-light-1440x900.png');

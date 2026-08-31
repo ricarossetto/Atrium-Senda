@@ -146,8 +146,11 @@ try {
     assert.deepEqual(pageErrors, [], `Pageerrors: ${pageErrors.join(' | ')}`);
     assert.equal(fixture.intimations.length, 4);
 
+    await page.evaluate(() => window.Atrium.App.switchView('configuration'));
+    await page.locator('#view-configuration.active #uiModeControl').waitFor();
     await page.locator('[data-ui-mode="classic"]').click();
     await page.locator('html[data-ui="classic"]').waitFor();
+    await page.evaluate(() => window.Atrium.App.switchView('inbox'));
     assert.equal(await page.locator('.v2-publications-heading').isVisible(), false);
     assert.ok(await page.locator('#inboxList .inbox-primary').count() > 0, 'Classic deve manter seu markup canônico.');
   } finally {

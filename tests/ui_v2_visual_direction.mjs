@@ -86,12 +86,18 @@ try {
   assert.equal(await badge.isVisible(), false, 'O badge deve recolher junto com a sidebar sem colisão.');
   await page.locator('#sidebarToggleBtn').click();
 
+  await page.evaluate(() => window.Atrium.App.switchView('configuration'));
+  await page.locator('#view-configuration.active #uiModeControl').waitFor();
   await page.locator('[data-ui-mode="classic"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
   assert.equal(await page.locator('html').getAttribute('data-ui'), 'classic');
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--v2-color-primary').trim()), '', 'Tokens V2 não podem vazar para o Classic.');
   assert.equal(await page.locator('#v2DashboardOpening').isVisible(), false, 'A superfície editorial V2 deve permanecer ausente no Classic.');
 
+  await page.evaluate(() => window.Atrium.App.switchView('configuration'));
+  await page.locator('#view-configuration.active #uiModeControl').waitFor();
   await page.locator('[data-ui-mode="v2"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
   assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
   assert.equal(await page.locator('#v2DashboardOpening').isVisible(), true);
   assert.deepEqual(pageErrors, [], `Direção visual gerou pageerror: ${pageErrors.join(' | ')}`);

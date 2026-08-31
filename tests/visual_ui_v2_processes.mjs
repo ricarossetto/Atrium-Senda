@@ -155,8 +155,11 @@ try {
     const v2Heading = await page.locator('.v2-process-heading').boundingBox();
     assert.ok(v2Heading && v2Heading.width > 0, 'A hierarquia V2 de Processos deve estar visível.'); assertions++;
 
+    await page.evaluate(() => window.Atrium.App.switchView('configuration'));
+    await page.locator('#view-configuration.active #uiModeControl').waitFor();
     await page.locator('[data-ui-mode="classic"]').click();
     await page.locator('html[data-ui="classic"]').waitFor();
+    await page.evaluate(() => window.Atrium.App.switchView('processes'));
     assert.equal(await page.locator('.v2-process-heading').isVisible(), false); assertions++;
     const classicFile = path.join(OUTPUT, 'comparison-classic-light-1440x900-list.png');
     await page.screenshot({ path: classicFile, fullPage: false });
@@ -167,8 +170,11 @@ try {
     await page.screenshot({ path: classicGrayFile, fullPage: false });
     const classicGrayHash = recordScreenshot(classicGrayFile);
 
+    await page.evaluate(() => window.Atrium.App.switchView('configuration'));
+    await page.locator('#view-configuration.active #uiModeControl').waitFor();
     await page.locator('[data-ui-mode="v2"]').click();
     await page.locator('html[data-ui="v2"]').waitFor();
+    await page.evaluate(() => window.Atrium.App.switchView('processes'));
     assert.equal(await page.locator('.v2-process-heading').isVisible(), true); assertions++;
     const v2GrayFile = path.join(OUTPUT, 'comparison-v2-grayscale-1440x900-list.png');
     await page.screenshot({ path: v2GrayFile, fullPage: false });

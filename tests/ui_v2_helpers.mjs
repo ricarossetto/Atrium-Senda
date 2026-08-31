@@ -82,6 +82,52 @@ export async function prepareUiV2Page(context, baseUrl, { theme = 'light', probe
   return { page, pageErrors };
 }
 
+export const UI_V2_JUDICIAL_STATUS = Object.freeze({
+  certificate: {
+    valid: true,
+    accessible: true,
+    status: 'operational',
+    fileName: 'certificado-sintetico.pfx',
+    summary: {
+      holder: 'Titular Judicial Sintética',
+      documentMasked: '***.123.***-**',
+      issuer: 'AC Sintética, ICP-Brasil',
+      notAfter: '2027-08-29T00:00:00.000Z'
+    }
+  },
+  pjeOffice: { available: true },
+  interactiveCollectorRunning: false,
+  portals: [
+    { id: 'tj-sintetico', name: 'Tribunal de Justiça Sintético', group: 'Justiça Estadual', enabled: true, supportsTotp: true, totpConfigured: true, system: 'PJe', automationLevel: 'stable' },
+    { id: 'trf-sintetico', name: 'Tribunal Regional Sintético', group: 'Justiça Federal', enabled: true, supportsTotp: true, totpConfigured: false, system: 'eproc', automationLevel: 'experimental' },
+    { id: 'tst-sintetico', name: 'Tribunal Superior Sintético', group: 'Tribunais superiores', enabled: false, supportsTotp: false, certificateMode: 'windows', automationLevel: 'stable' }
+  ]
+});
+
+export async function prepareUiV2JudicialFixture(page, status = UI_V2_JUDICIAL_STATUS) {
+  await page.evaluate(statusFixture => {
+    window.__uiV2JudicialRequests = [];
+    const originalSecureFetch = window.KellerAuth.secureFetch.bind(window.KellerAuth);
+    const response = payload => ({ ok: true, async json() { return payload; } });
+    window.KellerAuth.secureFetch = async (url, options = {}) => {
+      if (!String(url).startsWith('/api/integrations/judicial')) return originalSecureFetch(url, options);
+      window.__uiV2JudicialRequests.push({
+        url,
+        method: options.method || 'GET',
+        body: options.body ? JSON.parse(options.body) : undefined
+      });
+      if (url === '/api/integrations/judicial') return response(statusFixture);
+      if (url.endsWith('/reset')) return response({ certificatePreserved: true });
+      if (url.endsWith('/a1/sandbox')) return response({ sandbox: { operational: true, steps: [{ id: 'pfxFile', name: 'Arquivo PFX', status: 'OK' }] } });
+      return response({ ...statusFixture, ok: true });
+    };
+    window.Atrium.App.switchView('integrations');
+  }, status);
+  await page.locator('#view-integrations.active').waitFor();
+  await page.locator('#certificateIntegrationStatus').filter({ hasText: status.certificate.valid ? 'A1 Operacional' : 'Configuração necessária' }).waitFor();
+  return status;
+}
+
 export async function prepareUiV2ProcessesFixture(page) {
   const fixture = {
     processes: [
