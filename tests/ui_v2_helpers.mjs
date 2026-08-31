@@ -562,3 +562,33 @@ export async function prepareUiV2LeadsFixture(page) {
   await page.locator('#leadsV2Workspace [data-lead-id="lead-v2-new"]').waitFor();
   return fixture;
 }
+
+export async function prepareUiV2AssistantFixture(page, { configured = true, withContext = false } = {}) {
+  const fixture = {
+    intimation: {
+      id: 'assistant-intimation-v2',
+      title: 'Publicação sintética selecionada para revisão',
+      process: '0000000-00.2026.8.21.0000',
+      source: 'DJEN sintético',
+      text: 'Conteúdo oficial inteiramente sintético, sem inferência de prazo.'
+    }
+  };
+
+  await page.evaluate(({ data, isConfigured, hasContext }) => {
+    const { App, Store } = window.Atrium;
+    Store.state.intimations = [data.intimation];
+    App.selectedIntimation = hasContext ? data.intimation.id : null;
+    App.aiConfigured = isConfigured;
+    App.aiChatHistory = [];
+    const chip = document.getElementById('aiKeyStatusChip');
+    chip.textContent = isConfigured ? 'Chave Ativa' : 'Chave não configurada';
+    chip.className = isConfigured ? 'status-chip connected' : 'status-chip warning';
+    document.getElementById('aiOnboardingBanner').style.display = isConfigured ? 'none' : 'block';
+    App.switchView('assistant');
+    App.renderAssistant();
+  }, { data: fixture, isConfigured: configured, hasContext: withContext });
+
+  await page.locator('#view-assistant.active').waitFor();
+  await page.locator('#aiChatMessages[role="log"]').waitFor();
+  return fixture;
+}
