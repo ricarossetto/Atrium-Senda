@@ -7,9 +7,9 @@ export function resolveUiMode(storage = globalThis.localStorage) {
     const savedMode = storage?.getItem?.(UI_MODE_KEY);
     if (UI_MODES.includes(savedMode)) return savedMode;
   } catch {
-    // Classic is the safe presentation fallback when storage is unavailable.
+    // V2 remains the product baseline when local presentation storage is unavailable.
   }
-  return 'classic';
+  return 'v2';
 }
 
 export function createUiMode({

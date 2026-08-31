@@ -32,11 +32,15 @@
       byId('authTabLogin')?.addEventListener('click', () => {
         byId('authTabLogin')?.classList.add('active');
         byId('authTabRegister')?.classList.remove('active');
+        byId('authTabLogin')?.setAttribute('aria-selected', 'true');
+        byId('authTabRegister')?.setAttribute('aria-selected', 'false');
         this.show('authLoginForm');
       });
       byId('authTabRegister')?.addEventListener('click', () => {
         byId('authTabRegister')?.classList.add('active');
         byId('authTabLogin')?.classList.remove('active');
+        byId('authTabRegister')?.setAttribute('aria-selected', 'true');
+        byId('authTabLogin')?.setAttribute('aria-selected', 'false');
         this.show('authRegisterForm');
       });
       byId('skipMfaButton')?.addEventListener('click', async () => {
@@ -47,6 +51,7 @@
             state.registrationSetupToken = null;
             byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
             byId('authTabLogin')?.classList.add('active'); byId('authTabRegister')?.classList.remove('active');
+            byId('authTabLogin')?.setAttribute('aria-selected', 'true'); byId('authTabRegister')?.setAttribute('aria-selected', 'false');
             this.show('authLoginForm'); this.feedback(result.message, 'success');
             return;
           }
@@ -127,6 +132,7 @@
           state.registrationSetupToken = null;
           byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src'); formElement.reset();
           byId('authTabLogin')?.classList.add('active'); byId('authTabRegister')?.classList.remove('active');
+          byId('authTabLogin')?.setAttribute('aria-selected', 'true'); byId('authTabRegister')?.setAttribute('aria-selected', 'false');
           this.show('authLoginForm'); this.feedback(result.message, 'success');
           return;
         }

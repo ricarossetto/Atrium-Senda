@@ -10,7 +10,8 @@ export function createEmailIntegrationFeature({
   showToast = () => {},
   getCurrentUser = () => windowRef?.KellerAuth?.currentUser,
   getOfficeName = () => '',
-  confirmFn = message => windowRef?.confirm?.(message) ?? false
+  confirmFn = message => windowRef?.confirm?.(message) ?? false,
+  presentation = null
 } = {}) {
   let initialized = false;
   let emailReceivers = [];
@@ -24,6 +25,7 @@ export function createEmailIntegrationFeature({
     init() {
       if (initialized) return false;
       initialized = true;
+      presentation?.init?.();
 
       byId('btnConfigureEmail')?.addEventListener('click', () => this.openConfigModal());
       byId('emailConfigClose')?.addEventListener('click', () => this.closeConfigModal());
@@ -139,6 +141,7 @@ export function createEmailIntegrationFeature({
         if (byId('emailFromNameInput')) byId('emailFromNameInput').value = status.fromName || getOfficeName() || '';
         if (byId('emailFromAddressInput')) byId('emailFromAddressInput').value = status.fromAddress || '';
         backdrop.classList.remove('hidden');
+        presentation?.open?.('emailConfig');
         return true;
       } catch {
         showToast('Não foi possível carregar a configuração SMTP.', 'error');
@@ -150,6 +153,7 @@ export function createEmailIntegrationFeature({
       byId('emailConfigBackdrop')?.classList.add('hidden');
       const passwordInput = byId('emailPasswordInput');
       if (passwordInput) passwordInput.value = '';
+      presentation?.close?.('emailConfig');
     },
 
     async submitConfig(event) {
@@ -196,12 +200,16 @@ export function createEmailIntegrationFeature({
     openTestModal() {
       const backdrop = byId('emailTestBackdrop');
       if (!backdrop) return false;
+      const recipientInput = byId('emailTestRecipientInput');
+      if (recipientInput) recipientInput.value = '';
       backdrop.classList.remove('hidden');
+      presentation?.open?.('emailTest');
       return true;
     },
 
     closeTestModal() {
       byId('emailTestBackdrop')?.classList.add('hidden');
+      presentation?.close?.('emailTest');
     },
 
     async submitTest(event) {
@@ -269,7 +277,7 @@ export function createEmailIntegrationFeature({
       if (count) count.textContent = `${receivers.length} cadastrado${receivers.length === 1 ? '' : 's'}`;
       if (!list) return receivers;
       if (!receivers.length) {
-        list.innerHTML = '<div style="padding:14px; background:var(--panel-soft); border-radius:8px; border:1px solid var(--line); text-align:center;"><p style="margin:0; font-size:12.5px; color:var(--muted); font-style:italic;">Nenhum destinatário cadastrado para receber publicações.</p></div>';
+        list.innerHTML = '<div class="email-receivers-empty"><p>Nenhum destinatário cadastrado para receber publicações.</p></div>';
         return receivers;
       }
       list.innerHTML = receivers.map(receiver => this.receiverHtml(receiver)).join('');
@@ -280,25 +288,25 @@ export function createEmailIntegrationFeature({
       const isInternal = receiver.type === 'internal';
       const isUserInactive = isInternal && receiver.userStatus && receiver.userStatus !== 'active';
       const statusBadge = isUserInactive
-        ? '<span class="badge-chip" style="font-size:11px; padding:2px 8px; border-radius:10px; background:rgba(204,51,51,0.15); color:var(--danger); border:1px solid var(--danger); font-weight:600;">Usuário Inativo</span>'
+        ? '<span class="badge-chip email-receiver-status danger">Usuário Inativo</span>'
         : receiver.enabled
-          ? '<span class="badge-chip" style="font-size:11px; padding:2px 8px; border-radius:10px; background:rgba(56,161,105,0.15); color:var(--success); border:1px solid var(--success); font-weight:600;">Ativo</span>'
-          : '<span class="badge-chip" style="font-size:11px; padding:2px 8px; border-radius:10px; background:var(--panel); color:var(--muted); border:1px solid var(--line); font-weight:600;">Inativo</span>';
+          ? '<span class="badge-chip email-receiver-status success">Ativo</span>'
+          : '<span class="badge-chip email-receiver-status muted">Inativo</span>';
       const typeBadge = isInternal
-        ? '<span class="badge-chip" style="font-size:11px; padding:2px 6px; border-radius:4px; background:var(--panel); border:1px solid var(--line); color:var(--muted);">Usuário interno</span>'
-        : '<span class="badge-chip" style="font-size:11px; padding:2px 6px; border-radius:4px; background:var(--panel); border:1px solid var(--line); color:var(--muted);">Externo</span>';
+        ? '<span class="badge-chip email-receiver-type">Usuário interno</span>'
+        : '<span class="badge-chip email-receiver-type">Externo</span>';
       return `
-        <div class="email-receiver-item" data-receiver-id="${escapeHtml(receiver.id)}" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:10px 14px; background:var(--panel-soft); border-radius:8px; border:1px solid var(--line);">
-          <div style="display:flex; flex-direction:column; gap:2px; min-width:200px;">
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <strong style="font-size:13.5px; color:var(--ivory);">${escapeHtml(receiver.name || 'Sem nome')}</strong>${typeBadge}${statusBadge}
+        <div class="email-receiver-item" data-receiver-id="${escapeHtml(receiver.id)}">
+          <div class="email-receiver-identity">
+            <div class="email-receiver-heading">
+              <strong>${escapeHtml(receiver.name || 'Sem nome')}</strong>${typeBadge}${statusBadge}
             </div>
-            <span style="font-size:12.5px; color:var(--muted); font-family:monospace;">${escapeHtml(receiver.email || 'Sem e-mail')}</span>
+            <span class="email-receiver-address">${escapeHtml(receiver.email || 'Sem e-mail')}</span>
           </div>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button class="button ghost" data-receiver-action="toggle" data-receiver-id="${escapeHtml(receiver.id)}" data-receiver-enabled="${receiver.enabled ? 'true' : 'false'}" style="padding:4px 10px; font-size:12px;" title="${receiver.enabled ? 'Desativar recebimento' : 'Ativar recebimento'}">${receiver.enabled ? 'Desativar' : 'Ativar'}</button>
-            <button class="button ghost" data-receiver-action="edit" data-receiver-id="${escapeHtml(receiver.id)}" style="padding:4px 10px; font-size:12px;" title="Editar destinatário">Editar</button>
-            <button class="button ghost" data-receiver-action="delete" data-receiver-id="${escapeHtml(receiver.id)}" style="padding:4px 8px; font-size:12px; color:var(--danger);" title="Remover destinatário">✕</button>
+          <div class="email-receiver-actions">
+            <button class="button ghost" data-receiver-action="toggle" data-receiver-id="${escapeHtml(receiver.id)}" data-receiver-enabled="${receiver.enabled ? 'true' : 'false'}" title="${receiver.enabled ? 'Desativar recebimento' : 'Ativar recebimento'}">${receiver.enabled ? 'Desativar' : 'Ativar'}</button>
+            <button class="button ghost" data-receiver-action="edit" data-receiver-id="${escapeHtml(receiver.id)}" title="Editar destinatário">Editar</button>
+            <button class="button ghost email-receiver-delete" data-receiver-action="delete" data-receiver-id="${escapeHtml(receiver.id)}" aria-label="Remover destinatário ${escapeHtml(receiver.name || receiver.email || '')}" title="Remover destinatário">✕</button>
           </div>
         </div>`;
     },
@@ -362,12 +370,14 @@ export function createEmailIntegrationFeature({
       }
       backdrop.classList.remove('hidden');
       if (documentRef?.body) documentRef.body.style.overflow = 'hidden';
+      presentation?.open?.('emailReceiver');
       return true;
     },
 
     closeReceiverModal() {
       byId('emailReceiverModalBackdrop')?.classList.add('hidden');
       if (byId('modalBackdrop')?.classList.contains('hidden') && documentRef?.body) documentRef.body.style.overflow = '';
+      presentation?.close?.('emailReceiver');
     },
 
     async submitReceiver(event) {

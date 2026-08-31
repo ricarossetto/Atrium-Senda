@@ -133,7 +133,9 @@ export function createPublicationsFeature({
 }) {
   let initialized = false;
   let selectedIntimation = null;
-  let inboxFilter = 'untreated';
+  let inboxFilter = null;
+  let inboxFilterExplicit = false;
+  let inboxFilterMode = null;
   let inboxSort = 'priority-urgent';
   let inboxCutoff = 'all';
   let currentEmailBulletin = null;
@@ -142,6 +144,13 @@ export function createPublicationsFeature({
   const byId = id => documentRef?.getElementById(id);
   const toast = (message, type = '') => showToast?.(message, type);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
+  const ensurePresentationFilter = () => {
+    const mode = isV2() ? 'v2' : 'classic';
+    if (inboxFilter === null || (!inboxFilterExplicit && inboxFilterMode !== mode)) {
+      inboxFilter = mode === 'v2' ? 'all' : 'untreated';
+    }
+    inboxFilterMode = mode;
+  };
   const getPresenter = () => {
     publicationsPresenter ||= createPublicationsV2Presenter({
       documentRef,
@@ -153,8 +162,8 @@ export function createPublicationsFeature({
   const feature = {
     get selectedIntimation() { return selectedIntimation; },
     set selectedIntimation(value) { selectedIntimation = value; },
-    get inboxFilter() { return inboxFilter; },
-    set inboxFilter(value) { inboxFilter = value; },
+    get inboxFilter() { ensurePresentationFilter(); return inboxFilter; },
+    set inboxFilter(value) { inboxFilter = value; inboxFilterExplicit = true; inboxFilterMode = isV2() ? 'v2' : 'classic'; },
     get inboxSort() { return inboxSort; },
     set inboxSort(value) { inboxSort = value; },
     get inboxCutoff() { return inboxCutoff; },
@@ -188,6 +197,7 @@ export function createPublicationsFeature({
     init() {
       if (initialized) return false;
       initialized = true;
+      ensurePresentationFilter();
       this.bindListeners();
       getPresenter().init();
       return true;
@@ -202,6 +212,7 @@ export function createPublicationsFeature({
         const button = event.target.closest('button[data-filter]');
         if (!button) return;
         inboxFilter = button.dataset.filter;
+        inboxFilterExplicit = true;
         byId('inboxFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
         documentRef.querySelectorAll('#publicationsMetrics .pub-metric-card').forEach(card => card.classList.toggle('active', card.dataset.filter === inboxFilter));
         this.renderInbox();
@@ -210,6 +221,7 @@ export function createPublicationsFeature({
         const card = event.target.closest('.pub-metric-card[data-filter]');
         if (!card) return;
         inboxFilter = card.dataset.filter;
+        inboxFilterExplicit = true;
         documentRef.querySelectorAll('#publicationsMetrics .pub-metric-card').forEach(item => item.classList.toggle('active', item === card));
         byId('inboxFilters')?.querySelectorAll('button').forEach(item => item.classList.toggle('active', item.dataset.filter === inboxFilter));
         this.renderInbox();
@@ -282,6 +294,7 @@ export function createPublicationsFeature({
     },
 
     filteredItems() {
+      ensurePresentationFilter();
       return filterPublications(store.state.intimations, { filter: inboxFilter, sort: inboxSort, cutoff: inboxCutoff });
     },
 
@@ -300,6 +313,7 @@ export function createPublicationsFeature({
     },
 
     renderMetrics() {
+      ensurePresentationFilter();
       const metrics = this.getMetrics();
       if (byId('pubMetricUntreated')) byId('pubMetricUntreated').textContent = String(metrics.untreated);
       if (byId('pubMetricInReview')) byId('pubMetricInReview').textContent = String(metrics.inReview);
@@ -334,7 +348,13 @@ export function createPublicationsFeature({
     },
 
     renderInbox() {
+      ensurePresentationFilter();
       this.renderMetrics();
+      byId('inboxFilters')?.querySelectorAll('button[data-filter]').forEach(button => {
+        const active = button.dataset.filter === inboxFilter;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
       const items = this.filteredItems();
       const allItems = Array.isArray(store.state.intimations) ? store.state.intimations : [];
       const dateButton = documentRef.querySelector('button[data-inbox-sort-col="date"]');
@@ -389,6 +409,7 @@ export function createPublicationsFeature({
         button.addEventListener('click', () => this.select(button.dataset.intimationId, button));
       });
       if (selectedIntimation) this.renderDetail();
+      else if (isV2()) this.renderDetail();
     },
 
     select(id, invoker = null) {

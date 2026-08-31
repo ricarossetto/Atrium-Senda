@@ -1,0 +1,149 @@
+#guidedTourBackdrop {
+  --tour-bg: #131618;
+  --tour-surface: #1a1e21;
+  --tour-soft: #202529;
+  --tour-text: #eceeed;
+  --tour-muted: #aeb5b8;
+  --tour-line: #343b40;
+  --tour-accent: #b79a5d;
+  --tour-accent-soft: rgba(183, 154, 93, .13);
+  background: rgba(8, 10, 11, .74);
+  backdrop-filter: blur(8px);
+}
+
+html[data-theme="light"] #guidedTourBackdrop {
+  --tour-bg: #f4f5f3;
+  --tour-surface: #fffefd;
+  --tour-soft: #edf1f2;
+  --tour-text: #252a2e;
+  --tour-muted: #606970;
+  --tour-line: #d2d8da;
+  --tour-accent: #688493;
+  --tour-accent-soft: rgba(164, 196, 211, .22);
+  background: rgba(41, 49, 54, .38);
+}
+
+#guidedTourBackdrop .guided-tour-modal {
+  width: min(760px, calc(100vw - 40px));
+  max-height: min(88dvh, 760px);
+  border: 1px solid var(--tour-line);
+  border-radius: 18px;
+  color: var(--tour-text);
+  background: var(--tour-surface);
+  box-shadow: 0 24px 70px -42px rgba(0, 0, 0, .76);
+}
+
+#guidedTourBackdrop .tour-header,
+#guidedTourBackdrop .tour-footer {
+  border-color: var(--tour-line);
+  background: var(--tour-bg);
+}
+
+#guidedTourBackdrop .tour-header { padding: 17px 22px; }
+#guidedTourBackdrop .tour-badge { color: var(--tour-accent); letter-spacing: .105em; }
+#guidedTourBackdrop .tour-badge .brand-monogram-svg { filter: none; }
+#guidedTourBackdrop .tour-header .icon-button { min-width: 44px; min-height: 44px; color: var(--tour-muted); border-color: transparent; }
+#guidedTourBackdrop .tour-header .icon-button:hover { color: var(--tour-text); border-color: var(--tour-line); background: var(--tour-soft); transform: none; }
+
+#guidedTourBackdrop .tour-slides-container { padding: clamp(24px, 4vw, 40px); min-height: 350px; }
+#guidedTourBackdrop .tour-slide { animation: tourMineralReveal 180ms ease both; }
+#guidedTourBackdrop .tour-slide-hero { align-items: flex-start; gap: 18px; margin-bottom: 22px; }
+
+#guidedTourBackdrop .tour-icon-box {
+  width: 58px;
+  height: 58px;
+  border: 1px solid var(--tour-line);
+  border-radius: 12px;
+  color: var(--tour-accent);
+  background: var(--tour-accent-soft);
+  box-shadow: none;
+}
+
+#guidedTourBackdrop .tour-icon-box svg { filter: none; }
+#guidedTourBackdrop .tour-slide-hero h2 { margin: 0 0 6px; color: var(--tour-text); font: 600 clamp(24px, 3vw, 34px)/1.12 "Playfair Display", Georgia, serif; }
+#guidedTourBackdrop .tour-slide-hero p { color: var(--tour-accent); font-size: 12px; font-weight: 700; letter-spacing: .035em; }
+#guidedTourBackdrop .tour-slide-body { color: var(--tour-muted); font-size: 14px; line-height: 1.65; }
+
+#guidedTourBackdrop .tour-features-grid { gap: 12px; margin-top: 18px; }
+#guidedTourBackdrop .tour-feature-card,
+#guidedTourBackdrop .tour-integration-item {
+  border: 1px solid var(--tour-line);
+  border-radius: 10px;
+  background: var(--tour-soft);
+  box-shadow: none;
+}
+
+#guidedTourBackdrop .tour-feature-card { padding: 15px; }
+#guidedTourBackdrop .tour-feature-card strong,
+#guidedTourBackdrop .tour-integration-info strong { color: var(--tour-text); }
+#guidedTourBackdrop .tour-feature-card strong { margin-bottom: 6px; font-size: 12px; letter-spacing: .035em; text-transform: uppercase; }
+#guidedTourBackdrop .tour-feature-card span,
+#guidedTourBackdrop .tour-integration-info span { color: var(--tour-muted); }
+
+#guidedTourBackdrop .tour-note {
+  border: 1px solid color-mix(in srgb, var(--tour-accent) 46%, var(--tour-line));
+  border-radius: 9px;
+  color: var(--tour-muted);
+  background: var(--tour-accent-soft);
+}
+
+#guidedTourBackdrop .tour-status-tag { border-radius: 999px; }
+#guidedTourBackdrop .tour-status-tag.tag-available { color: #a9c4b0; border-color: #536d5a; background: rgba(75, 106, 83, .2); }
+#guidedTourBackdrop .tour-status-tag.tag-configuring { color: var(--tour-accent); border-color: color-mix(in srgb, var(--tour-accent) 60%, var(--tour-line)); background: var(--tour-accent-soft); }
+html[data-theme="light"] #guidedTourBackdrop .tour-status-tag.tag-available { color: #4c6954; background: #e4ece6; }
+
+#guidedTourBackdrop .tour-footer { padding: 14px 22px; }
+#guidedTourBackdrop .tour-dot {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  background: transparent;
+}
+#guidedTourBackdrop .tour-dot::before {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  content: "";
+  background: var(--tour-line);
+  transition: width 160ms ease, background-color 160ms ease;
+}
+#guidedTourBackdrop .tour-dot.active::before { width: 28px; background: var(--tour-accent); }
+#guidedTourBackdrop .tour-dot:focus-visible,
+#guidedTourBackdrop button:focus-visible { outline: 2px solid var(--tour-accent); outline-offset: 3px; }
+
+#guidedTourBackdrop .button { min-height: 44px; border-radius: 8px; box-shadow: none; }
+#guidedTourBackdrop .button:hover { transform: none; box-shadow: none; }
+#guidedTourBackdrop .button.gold { color: #172028; border-color: var(--tour-accent); background: var(--tour-accent); }
+html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510; }
+#guidedTourBackdrop .button.ghost { color: var(--tour-text); border-color: var(--tour-line); background: transparent; }
+
+@keyframes tourMineralReveal {
+  from { opacity: 0; transform: translateX(5px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 600px) {
+  #guidedTourBackdrop { align-items: flex-end; padding: 0; }
+  #guidedTourBackdrop .guided-tour-modal { width: 100%; max-height: 94dvh; border-width: 1px 0 0; border-radius: 16px 16px 0 0; }
+  #guidedTourBackdrop .tour-header { padding: 12px 14px; }
+  #guidedTourBackdrop .tour-badge { max-width: calc(100% - 52px); font-size: 9px; }
+  #guidedTourBackdrop .tour-slides-container { min-height: 0; padding: 20px 16px; }
+  #guidedTourBackdrop .tour-slide-hero { gap: 12px; margin-bottom: 16px; }
+  #guidedTourBackdrop .tour-icon-box { width: 48px; height: 48px; }
+  #guidedTourBackdrop .tour-slide-hero h2 { font-size: 24px; }
+  #guidedTourBackdrop .tour-slide-body { font-size: 13px; }
+  #guidedTourBackdrop .tour-features-grid { grid-template-columns: 1fr; gap: 8px; }
+  #guidedTourBackdrop .tour-integrations-list { gap: 7px; }
+  #guidedTourBackdrop .tour-integration-item { align-items: flex-start; padding: 10px; }
+  #guidedTourBackdrop .tour-footer { padding: 11px 14px max(12px, env(safe-area-inset-bottom)); }
+  #guidedTourBackdrop .tour-nav-actions { width: 100%; }
+  #guidedTourBackdrop .tour-nav-actions .button { flex: 1; }
+  #guidedTourBackdrop #tourSkipButton { min-width: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #guidedTourBackdrop .tour-slide { animation: none; }
+  #guidedTourBackdrop *, #guidedTourBackdrop *::before, #guidedTourBackdrop *::after { transition-duration: 1ms !important; }
+}

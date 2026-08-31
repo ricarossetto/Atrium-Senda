@@ -900,3 +900,96 @@ html[data-ui="v2"] #discardPublicationSubmitBtn {
     transition-duration: .01ms !important;
   }
 }
+
+/* Gate 17: lista full-width e um único inspector modal em qualquer viewport. */
+html[data-ui="v2"] #view-inbox.publication-detail-open {
+  animation: none !important;
+  transform: none !important;
+}
+
+html[data-ui="v2"] #view-inbox .inbox-layout {
+  display: block;
+  min-height: 0;
+}
+
+html[data-ui="v2"] #view-inbox .inbox-list-card {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+html[data-ui="v2"] #publicationInspectorBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 79;
+  display: block;
+  background: rgba(9, 12, 14, .54);
+  backdrop-filter: blur(3px);
+}
+
+html[data-ui="v2"][data-theme="light"] #publicationInspectorBackdrop { background: rgba(42, 51, 57, .30); }
+
+html[data-ui="v2"] #intimationDetail,
+html[data-ui="v2"] #view-inbox.publication-detail-open #intimationDetail {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 80;
+  display: block;
+  width: min(590px, calc(100vw - 48px));
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  overflow: auto;
+  border-width: 0 0 0 1px;
+  border-radius: 0;
+  background: var(--v2-color-surface-elevated);
+  box-shadow: -18px 0 42px -34px rgba(0, 0, 0, .78);
+  animation: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(24px);
+  pointer-events: none;
+  transition: transform var(--v2-duration-slow) var(--v2-ease-standard), opacity var(--v2-duration-base) ease, visibility 0s linear var(--v2-duration-slow);
+}
+
+html[data-ui="v2"] #view-inbox.publication-detail-open #intimationDetail {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+html[data-ui="v2"] #view-inbox.publication-detail-open::before { display: none; }
+html[data-ui="v2"] #intimationDetail > .empty-detail { display: none; }
+html[data-ui="v2"] #intimationDetail .publication-detail-shell { min-height: 100%; }
+html[data-ui="v2"] #intimationDetail .publication-detail-close {
+  position: absolute;
+  top: var(--v2-space-3);
+  right: var(--v2-space-3);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+html[data-ui="v2"] #intimationDetail .publication-detail-shell > .detail-header { padding-top: 64px; }
+
+@media (max-width: 767px) {
+  html[data-ui="v2"] #intimationDetail,
+  html[data-ui="v2"] #view-inbox.publication-detail-open #intimationDetail {
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    transform: translateY(22px);
+  }
+
+  html[data-ui="v2"] #view-inbox.publication-detail-open #intimationDetail { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="v2"] #intimationDetail { transition: none; }
+}

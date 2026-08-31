@@ -25,6 +25,8 @@
   <link rel="stylesheet" href="css/views/ui-v2/prompts.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/monitoring.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/integrations.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=1.0.0">
 </head>
 <body>
@@ -36,9 +38,9 @@
         </div>
       </div>
       <div class="auth-visual-copy">
-        <p class="eyebrow">✦ Centro Estratégico do Escritório Moderno</p>
+        <p class="eyebrow">Ambiente jurídico protegido</p>
         <h1>ATRIUM<br><em>Escritório Integrado.</em></h1>
-        <p>Sóbrio, imponente e seguro. Gestão jurídica inteligente, triagem autônoma de intimações e assistência com inteligência artificial.</p>
+        <p>Gestão jurídica organizada, segura e supervisionada para a rotina profissional do escritório.</p>
       </div>
       <div class="auth-security-list">
         <span>✓ Criptografia AES-256-GCM</span>
@@ -79,9 +81,9 @@
           <button class="button gold auth-submit" id="finishRecovery" type="button">Já guardei — entrar no Atrium</button>
         </div>
 
-        <div class="auth-tabs" id="authTabs">
-          <button type="button" class="auth-tab active" id="authTabLogin">Entrar na Conta</button>
-          <button type="button" class="auth-tab" id="authTabRegister">Criar Conta / Novo Membro</button>
+        <div class="auth-tabs" id="authTabs" role="tablist" aria-label="Escolher forma de acesso">
+          <button type="button" class="auth-tab active" id="authTabLogin" role="tab" aria-selected="true" aria-controls="authLoginForm">Entrar na Conta</button>
+          <button type="button" class="auth-tab" id="authTabRegister" role="tab" aria-selected="false" aria-controls="authRegisterForm">Criar Conta / Novo Membro</button>
         </div>
 
         <form id="authRegisterForm" class="auth-step">
@@ -785,7 +787,8 @@
             </div>
             <div id="inboxList" class="inbox-list"></div>
           </article>
-          <aside class="card intimation-detail" id="intimationDetail" role="region" aria-label="Leitura da publicação selecionada">
+          <div class="publication-inspector-backdrop v2-only hidden" id="publicationInspectorBackdrop" aria-hidden="true"></div>
+          <aside class="card intimation-detail" id="intimationDetail" role="region" aria-label="Leitura da publicação selecionada" aria-labelledby="publicationDetailTitle">
             <div class="empty-detail"><span>✦</span><h3>Selecione uma publicação</h3><p>O texto original, o processo, alertas de urgência e o fluxo de tratamento aparecerão aqui.</p></div>
           </aside>
         </div>
@@ -988,20 +991,20 @@
 
       <section class="view" id="view-integrations" data-title="Integrações" data-eyebrow="Fontes e conexões">
         <div class="v2-integrations-header v2-only">
-          <div><p>CONEXÕES SEGURAS</p><h2>Integrações judiciais</h2><small>Certificado, tribunais e segundo fator em uma superfície operacional com conferência humana.</small></div>
+          <div><p>CONEXÕES SEGURAS</p><h2>Integrações seguras</h2><small>Tribunais, comunicação e agenda externa em uma superfície operacional com credenciais protegidas e ações explícitas.</small></div>
           <span class="v2-integrations-safety"><b aria-hidden="true">⌾</b> Credenciais protegidas no agente local</span>
         </div>
         <div class="integration-grid">
-          <article class="integration-card card">
+          <article class="integration-card card connection-integration-card external-calendar-integration-card">
             <div class="integration-logo external-calendar-logo">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="5" width="18" height="16" rx="2"/>
                 <path d="M8 2v4M16 2v4M3 10h18"/>
               </svg>
             </div>
-            <div class="integration-copy"><span class="status-chip warning">Configuração disponível</span><h3>Agenda Externa (Webcal / iCal)</h3><p>Importação automática de eventos de Google Agenda, Microsoft Outlook, Apple Calendar ou Webcal.</p><button class="button ghost" id="configureCalendarButton">Configurar agenda</button></div>
+            <div class="integration-copy"><span class="status-chip warning" id="calendarIntegrationStatus">Webcal / iCal</span><h3>Agenda externa</h3><p id="externalCalendarIntegrationDetail">Conecte uma URL Webcal ou iCal para complementar a agenda do ATRIUM, sem alterar prazos processuais.</p><button class="button ghost v2-connection-primary" id="configureCalendarButton" aria-describedby="externalCalendarIntegrationDetail">Configurar agenda</button></div>
           </article>
-          <article class="integration-card card">
+          <article class="integration-card card connection-integration-card">
             <div class="integration-logo cnj-logo">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="7"/>
@@ -1036,7 +1039,7 @@
             </div>
             <div class="integration-copy"><span class="status-chip connected">Pronto</span><h3>Importador de Planilhas</h3><p>Importe processos, contatos e clientes em lote via planilhas XLSX ou relatórios XLS do eproc.</p><button class="button gold" data-view-link="importer">Abrir importador</button></div>
           </article>
-          <article class="integration-card card">
+          <article class="integration-card card email-integration-card">
             <div class="integration-logo email-logo">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2" y="4" width="20" height="16" rx="2"/>
@@ -1047,7 +1050,7 @@
               <span class="status-chip muted" id="emailIntegrationStatus">Não configurado</span>
               <h3>E-mail &amp; Notificações</h3>
               <p id="emailIntegrationDetail">Configure o transporte SMTP seguro para envio de comunicações e boletins do escritório.</p>
-              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+              <div class="email-integration-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
                 <button class="button gold" id="btnConfigureEmail">Configurar SMTP</button>
                 <button class="button ghost hidden" id="btnTestEmail">Enviar e-mail de teste</button>
                 <button class="button ghost hidden" id="btnAddEmailReceiver">+ Adicionar destinatário</button>
@@ -1055,7 +1058,7 @@
 
               <!-- Seção de Destinatários Salvos de Publicações -->
               <div class="email-receivers-section hidden" id="emailReceiversSection" style="margin-top:14px; border-top:1px solid var(--line); padding-top:14px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+                <div class="email-receivers-heading" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
                   <div>
                     <h4 style="margin:0; font-size:13.5px; font-weight:700; color:var(--ivory); letter-spacing:0.02em;">Destinatários de publicações</h4>
                     <p style="margin:2px 0 0; font-size:12px; color:var(--muted);">Lista de endereços habilitados para notificações judiciais.</p>
@@ -1877,8 +1880,8 @@
           </div>
         </article>
 
-        <!-- Slide 2: Área de Trabalho -->
-        <article class="tour-slide" data-slide="1" aria-label="Slide 2 de 6: Área de Trabalho">
+        <!-- Slide 2: Processos e Publicações -->
+        <article class="tour-slide" data-slide="1" aria-label="Slide 2 de 6: Processos e Publicações">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1886,21 +1889,21 @@
               </svg>
             </div>
             <div>
-              <h2>Sua rotina em primeiro plano</h2>
-              <p>Visão operacional clara e centralizada para o dia a dia.</p>
+              <h2>Processos e publicações</h2>
+              <p>Leitura rápida do acervo e triagem judicial supervisionada.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            <p>A Área de Trabalho concentra o que exige atenção no dia, reduzindo a necessidade de navegar por várias telas.</p>
+            <p>Consulte o contexto de cada processo e trate publicações sem confundir leitura, análise e providência profissional.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Prioridades do Dia</strong><span>Acompanhe tarefas críticas, prazos iminentes e próximos compromissos.</span></div>
-              <div class="tour-feature-card"><strong>Painel Operacional</strong><span>Indicadores rápidos de distribuição de atividades, publicações pendentes e acervo.</span></div>
+              <div class="tour-feature-card"><strong>Carteira processual</strong><span>Dados essenciais, andamentos e relações em superfícies de leitura antes da edição.</span></div>
+              <div class="tour-feature-card"><strong>Publicações</strong><span>Texto oficial preservado, filtros de tratamento e ações sempre explícitas.</span></div>
             </div>
           </div>
         </article>
 
-        <!-- Slide 3: Publicações -->
-        <article class="tour-slide" data-slide="2" aria-label="Slide 3 de 6: Publicações sob controle">
+        <!-- Slide 3: Tarefas e Agenda -->
+        <article class="tour-slide" data-slide="2" aria-label="Slide 3 de 6: Tarefas e Agenda">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1909,15 +1912,15 @@
               </svg>
             </div>
             <div>
-              <h2>Publicações sob controle</h2>
-              <p>Triagem estruturada e tratamento rigoroso de intimações.</p>
+              <h2>Tarefas e agenda</h2>
+              <p>Trabalho distribuído e compromissos em uma linha operacional clara.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            <p>Acompanhe publicações e intimações capturadas com preservação integral do texto original. O Atrium separa a leitura do tratamento efetivo e permite criar providências vinculadas ao processo.</p>
+            <p>Organize providências no Kanban e acompanhe compromissos na agenda integrada, mantendo responsáveis, prioridades e datas informadas.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Fluxo de Triagem</strong><span>Organize itens em: Não tratada, Em análise, Tratada e Descartada.</span></div>
-              <div class="tour-feature-card"><strong>Criação de Providências</strong><span>Crie tarefas para a equipe a partir da publicação com histórico preservado.</span></div>
+              <div class="tour-feature-card"><strong>Kanban jurídico</strong><span>Mova tarefas entre etapas canônicas sem perder o vínculo com sua origem.</span></div>
+              <div class="tour-feature-card"><strong>Agenda integrada</strong><span>Reuniões, audiências e prazos explicitamente cadastrados em visão diária e mensal.</span></div>
             </div>
             <div class="tour-note">
               <small><em>Nota:</em> O tratamento de publicações no Atrium organiza o fluxo interno do escritório e não substitui nem equivale a ciência judicial nos tribunais.</small>
@@ -1925,8 +1928,8 @@
           </div>
         </article>
 
-        <!-- Slide 4: Processos, Tarefas e Agenda -->
-        <article class="tour-slide" data-slide="3" aria-label="Slide 4 de 6: Processos, Tarefas e Agenda">
+        <!-- Slide 4: Contatos e Atendimentos -->
+        <article class="tour-slide" data-slide="3" aria-label="Slide 4 de 6: Contatos e Atendimentos">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1934,21 +1937,21 @@
               </svg>
             </div>
             <div>
-              <h2>Do processo à providência</h2>
-              <p>Acompanhamento processual, Kanban e calendário unificados.</p>
+              <h2>Contatos e atendimentos</h2>
+              <p>Relacionamentos e captação organizados sem duplicar pessoas.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            <p>Mantenha o cadastro e o acompanhamento dos processos integrados com tarefas e compromissos. Distribua responsabilidades, defina prioridades e visualize prazos no calendário e no quadro Kanban.</p>
+            <p>Consulte clientes, testemunhas, peritos e demais papéis em uma base única, enquanto os atendimentos acompanham oportunidades e próximos passos.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Kanban Jurídico</strong><span>Fluxo visual de trabalho por fases de elaboração, revisão e conclusão.</span></div>
-              <div class="tour-feature-card"><strong>Agenda &amp; Compromissos</strong><span>Prazos, audiências e reuniões organizados cronologicamente.</span></div>
+              <div class="tour-feature-card"><strong>Pessoas</strong><span>Dados de contato, identificação e relacionamento com hierarquia profissional.</span></div>
+              <div class="tour-feature-card"><strong>Atendimentos</strong><span>Origem, etapa, interesse e histórico de interação em fluxo supervisionado.</span></div>
             </div>
           </div>
         </article>
 
-        <!-- Slide 5: Ferramentas do Escritório -->
-        <article class="tour-slide" data-slide="4" aria-label="Slide 5 de 6: Ferramentas do Escritório">
+        <!-- Slide 5: Documentos e Inteligência Assistida -->
+        <article class="tour-slide" data-slide="4" aria-label="Slide 5 de 6: Documentos e Inteligência Assistida">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1956,21 +1959,21 @@
               </svg>
             </div>
             <div>
-              <h2>Mais do que acompanhamento processual</h2>
-              <p>Ferramentas de apoio à produção e gestão da advocacia.</p>
+              <h2>Documentos e inteligência assistida</h2>
+              <p>Minutas recorrentes, assistência jurídica e prompts sob revisão profissional.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            <p>Recursos complementares para o dia a dia da banca, integrando contatos de clientes, controle financeiro de honorários, gerador de minutas contratuais e assistente de inteligência artificial.</p>
+            <p>Gere documentos a partir dos dados cadastrados e use o Assistente e a Biblioteca de Prompts como apoio à análise e à redação.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Contatos &amp; Financeiro</strong><span>Gestão de clientes, partes contrárias, faturamento e honorários.</span></div>
-              <div class="tour-feature-card"><strong>Minutas &amp; Assistente IA</strong><span>Geração de procurações e assistente para apoiar pesquisa e organização de informações.</span></div>
+              <div class="tour-feature-card"><strong>Modelos e minutas</strong><span>Preview editável, cópia e download dos textos jurídicos canônicos.</span></div>
+              <div class="tour-feature-card"><strong>Apoio supervisionado</strong><span>Respostas e templates permanecem sujeitos à conferência do profissional responsável.</span></div>
             </div>
           </div>
         </article>
 
-        <!-- Slide 6: Integrações e Controle -->
-        <article class="tour-slide" data-slide="5" aria-label="Slide 6 de 6: Integrações e Controle">
+        <!-- Slide 6: Monitoramento, Integrações e Configurações -->
+        <article class="tour-slide" data-slide="5" aria-label="Slide 6 de 6: Monitoramento, Integrações e Configurações">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1978,12 +1981,12 @@
               </svg>
             </div>
             <div>
-              <h2>Integrações quando você precisar</h2>
-              <p>Conectividade modular com estados claros e visíveis.</p>
+              <h2>Monitoramento e integrações</h2>
+              <p>Conexões explícitas, estados verificáveis e configuração sob controle.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            <p>Conecte o Atrium aos serviços necessários para o seu fluxo de trabalho, com transparência sobre a disponibilidade de cada canal.</p>
+            <p>Acompanhe a saúde operacional e conecte tribunais, e-mail e agenda externa conforme a necessidade do escritório.</p>
             <div class="tour-integrations-list">
               <div class="tour-integration-item">
                 <div class="tour-integration-info">
@@ -1994,8 +1997,8 @@
               </div>
               <div class="tour-integration-item">
                 <div class="tour-integration-info">
-                  <strong>E-mail SMTP &amp; Planilhas</strong>
-                  <span>Envio de intimações por e-mail e importação de planilhas de processos (.XLSX/.CSV).</span>
+                  <strong>E-mail SMTP &amp; Agenda Externa</strong>
+                  <span>Comunicações explícitas e sincronização complementar por Webcal / iCal.</span>
                 </div>
                 <span class="tour-status-tag tag-available">Disponível</span>
               </div>
@@ -2030,27 +2033,30 @@
   </div>
 
   <!-- Modal de Configuração de Agenda Externa -->
-  <div class="modal-backdrop hidden" id="calendarConfigBackdrop">
-    <section class="modal calendar-config-modal" role="dialog" aria-modal="true" aria-labelledby="calendarConfigTitle">
+  <div class="modal-backdrop connection-backdrop hidden" id="calendarConfigBackdrop">
+    <section class="modal calendar-config-modal connection-sheet" role="dialog" aria-modal="true" aria-labelledby="calendarConfigTitle" aria-describedby="calendarConfigDescription">
       <header>
         <div>
           <p class="eyebrow">Sincronização de Agenda</p>
           <h2 id="calendarConfigTitle">Conectar Agenda Externa</h2>
         </div>
-        <button class="icon-button" id="calendarConfigClose" aria-label="Fechar">×</button>
+        <button class="icon-button" id="calendarConfigClose" type="button" aria-label="Fechar configuração de agenda externa">×</button>
       </header>
       <form id="calendarConfigForm">
-        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;">
-          Conecte o Atrium Senda com sua agenda externa favorita (Google Agenda, Microsoft Outlook, Apple Calendar ou qualquer servidor compatível com iCalendar / Webcal).
-        </p>
-        <div class="field full" style="margin-bottom:16px;">
-          <label for="calendarInputUrl">URL do Link da Agenda (iCal / Webcal .ics)</label>
-          <input id="calendarInputUrl" type="url" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics ou webcal://..." required>
-          <small class="field-note">
-            Como obter: No Google Agenda ou Outlook, acesse Configurações da Agenda &gt; Integrar agenda &gt; Copie o "Endereço secreto em formato iCal".
-          </small>
+        <div class="modal-body connection-calendar-body">
+          <p id="calendarConfigDescription" style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;">
+            Conecte o Atrium Senda com sua agenda externa favorita (Google Agenda, Microsoft Outlook, Apple Calendar ou qualquer servidor compatível com iCalendar / Webcal).
+          </p>
+          <div class="field full" style="margin-bottom:16px;">
+            <label for="calendarInputUrl">URL do Link da Agenda (iCal / Webcal .ics)</label>
+            <input id="calendarInputUrl" type="url" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics ou webcal://..." aria-describedby="calendarInputHelp calendarProfessionalWarning" required>
+            <small class="field-note" id="calendarInputHelp">
+              Como obter: No Google Agenda ou Outlook, acesse Configurações da Agenda &gt; Integrar agenda &gt; Copie o "Endereço secreto em formato iCal".
+            </small>
+          </div>
+          <p class="connection-professional-warning v2-only" id="calendarProfessionalWarning">A agenda externa complementa a Agenda do ATRIUM; datas processuais continuam sujeitas à conferência profissional.</p>
+          <div id="calendarConfigStatus" class="calendar-sync-status hidden" role="status" aria-live="polite"></div>
         </div>
-        <div id="calendarConfigStatus" class="calendar-sync-status hidden"></div>
         <footer>
           <button type="button" class="button ghost" id="calendarConfigCancel">Cancelar</button>
           <button type="submit" class="button gold" id="calendarConfigSubmit">Salvar e Sincronizar Agora</button>
@@ -2198,8 +2204,8 @@
   </div>
 
   <!-- Modal de Configuração SMTP (E-mail Seguro) -->
-  <div class="modal-backdrop hidden" id="emailConfigBackdrop">
-    <section class="modal card email-config-modal" role="dialog" aria-modal="true" aria-labelledby="emailConfigTitle" style="max-width:580px; width:92%;">
+  <div class="modal-backdrop connection-backdrop hidden" id="emailConfigBackdrop">
+    <section class="modal card email-config-modal connection-sheet" role="dialog" aria-modal="true" aria-labelledby="emailConfigTitle" aria-describedby="emailConfigDescription" style="max-width:580px; width:92%;">
       <header class="modal-header">
         <div>
           <p class="eyebrow">Integrações &amp; Infraestrutura</p>
@@ -2209,7 +2215,9 @@
       </header>
       <form id="emailConfigForm">
         <div class="modal-body form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:20px;">
-          <label style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
+          <p class="connection-sheet-description v2-only" id="emailConfigDescription">Configure a conexão, a autenticação e o remetente. A senha é transitória e nunca volta a ser exibida.</p>
+          <p class="connection-form-section v2-only">Conexão</p>
+          <label class="connection-field-wide" style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Servidor SMTP (Host) *</span>
             <input id="emailHostInput" name="host" type="text" placeholder="ex: smtp.gmail.com ou mail.escritorio.adv.br" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
           </label>
@@ -2224,15 +2232,17 @@
             </span>
             <small style="color:var(--muted); font-size:10px;">Porta 465 (SSL) ou 587 (STARTTLS)</small>
           </label>
-          <label style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
+          <p class="connection-form-section v2-only">Autenticação</p>
+          <label class="connection-field-wide" style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Usuário / E-mail de Autenticação *</span>
             <input id="emailUserInput" name="user" type="text" placeholder="ex: contato@escritorio.adv.br" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
           </label>
-          <label style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
+          <label class="connection-field-wide" style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Senha SMTP / Senha de Aplicativo *</span>
-            <input id="emailPasswordInput" name="password" type="password" placeholder="Digite a senha SMTP ou senha de app" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
-            <small style="color:var(--muted); font-size:10.5px;">A senha é criptografada em repouso (AES-256-GCM) e nunca é exposta na interface.</small>
+            <input id="emailPasswordInput" name="password" type="password" data-password-toggle-ready="true" autocomplete="new-password" placeholder="Digite a senha SMTP ou senha de app" aria-describedby="emailPasswordHelp" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+            <small id="emailPasswordHelp" style="color:var(--muted); font-size:10.5px;">A senha é utilizada somente para validar/configurar o SMTP e não é exibida novamente.</small>
           </label>
+          <p class="connection-form-section v2-only">Remetente</p>
           <label style="display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Nome do Remetente</span>
             <input id="emailFromNameInput" name="fromName" type="text" placeholder="ex: Atrium Senda Advocacia" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
@@ -2254,8 +2264,8 @@
   </div>
 
   <!-- Modal de Teste de Envio de E-mail -->
-  <div class="modal-backdrop hidden" id="emailTestBackdrop">
-    <section class="modal card email-test-modal" role="dialog" aria-modal="true" aria-labelledby="emailTestTitle" style="max-width:480px; width:92%;">
+  <div class="modal-backdrop connection-backdrop hidden" id="emailTestBackdrop">
+    <section class="modal card email-test-modal connection-sheet compact" role="dialog" aria-modal="true" aria-labelledby="emailTestTitle" aria-describedby="emailTestDescription" style="max-width:480px; width:92%;">
       <header class="modal-header">
         <div>
           <p class="eyebrow">Teste de Comunicação</p>
@@ -2265,7 +2275,7 @@
       </header>
       <form id="emailTestForm">
         <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
-          <p style="margin:0; font-size:12.5px; color:var(--muted); line-height:1.5;">
+          <p id="emailTestDescription" style="margin:0; font-size:12.5px; color:var(--muted); line-height:1.5;">
             Um e-mail de verificação com a assinatura do escritório será enviado imediatamente utilizando a conta SMTP configurada.
           </p>
           <label style="display:flex; flex-direction:column; gap:4px;">
@@ -2378,8 +2388,8 @@
   </div>
 
   <!-- Modal de Destinatário de Publicações -->
-  <div class="modal-backdrop hidden" id="emailReceiverModalBackdrop">
-    <section class="modal card email-receiver-modal" role="dialog" aria-modal="true" aria-labelledby="emailReceiverModalTitle" style="max-width:500px; width:92%;">
+  <div class="modal-backdrop connection-backdrop hidden" id="emailReceiverModalBackdrop">
+    <section class="modal card email-receiver-modal connection-sheet compact" role="dialog" aria-modal="true" aria-labelledby="emailReceiverModalTitle" aria-describedby="emailReceiverDescription" style="max-width:500px; width:92%;">
       <header class="modal-header">
         <div>
           <p class="eyebrow">Notificações por E-mail</p>
@@ -2391,6 +2401,7 @@
         <input type="hidden" id="receiverIdInput" name="id">
         <input type="hidden" id="receiverEditTypeInput" name="editType">
         <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+          <p class="connection-sheet-description v2-only" id="emailReceiverDescription">Defina quem recebe notificações de publicações. O acesso administrativo continua restrito por perfil.</p>
           <!-- Seletor de Tipo (apenas ao criar novo) -->
           <div id="receiverTypeSelectorContainer" style="display:flex; flex-direction:column; gap:6px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Tipo de Destinatário</span>

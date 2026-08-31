@@ -20,12 +20,11 @@ export function createPublicationsV2Presenter({
 
   const byId = id => documentRef?.getElementById(id);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
-  const isMobile = () => documentRef?.defaultView?.matchMedia?.('(max-width: 767px)').matches;
-
   function init() {
     if (initialized) return false;
     initialized = true;
     byId('intimationDetail')?.addEventListener('keydown', handleDetailKeydown);
+    byId('publicationInspectorBackdrop')?.addEventListener('click', () => onCloseDetail?.());
     for (const id of OWNED_OVERLAYS) {
       byId(id)?.addEventListener('keydown', event => handleOverlayKeydown(event, id));
     }
@@ -47,20 +46,20 @@ export function createPublicationsV2Presenter({
     const detail = byId('intimationDetail');
     const view = byId('view-inbox');
     if (!detail || !view) return;
+    if (!view.classList.contains('publication-detail-open')) detailBodyOverflow = documentRef.body?.style.overflow || '';
+    view.classList.add('publication-detail-open');
+    byId('publicationInspectorBackdrop')?.classList.remove('hidden');
+    byId('publicationInspectorBackdrop')?.setAttribute('aria-hidden', 'false');
     detail.setAttribute('aria-label', 'Leitura e tratamento da publicação selecionada');
-    if (isMobile()) {
-      if (!view.classList.contains('publication-detail-open')) detailBodyOverflow = documentRef.body?.style.overflow || '';
-      view.classList.add('publication-detail-open');
-      detail.setAttribute('role', 'dialog');
-      detail.setAttribute('aria-modal', 'true');
-      setDetailSiblingsInert(true);
-      if (documentRef.body) documentRef.body.style.overflow = 'hidden';
-      if (detailFocusPending) queueMicrotask(() => byId('publicationDetailClose')?.focus());
-    } else {
-      view.classList.remove('publication-detail-open');
-      detail.setAttribute('role', 'region');
-      detail.removeAttribute('aria-modal');
-      setDetailSiblingsInert(false);
+    detail.setAttribute('role', 'dialog');
+    detail.setAttribute('aria-modal', 'true');
+    setDetailSiblingsInert(true);
+    if (documentRef.body) documentRef.body.style.overflow = 'hidden';
+    if (detailFocusPending) {
+      const focusClose = () => byId('publicationDetailClose')?.focus({ preventScroll: true });
+      const requestFrame = documentRef?.defaultView?.requestAnimationFrame;
+      if (typeof requestFrame === 'function') requestFrame.call(documentRef.defaultView, focusClose);
+      else queueMicrotask(focusClose);
     }
     detailFocusPending = false;
   }
@@ -69,6 +68,8 @@ export function createPublicationsV2Presenter({
     const view = byId('view-inbox');
     const wasOpen = Boolean(view?.classList.contains('publication-detail-open'));
     view?.classList.remove('publication-detail-open');
+    byId('publicationInspectorBackdrop')?.classList.add('hidden');
+    byId('publicationInspectorBackdrop')?.setAttribute('aria-hidden', 'true');
     setDetailSiblingsInert(false);
     const detail = byId('intimationDetail');
     detail?.setAttribute('role', 'region');
@@ -115,7 +116,7 @@ export function createPublicationsV2Presenter({
   }
 
   function handleDetailKeydown(event) {
-    if (!isV2() || !isMobile() || !byId('view-inbox')?.classList.contains('publication-detail-open')) return;
+    if (!isV2() || !byId('view-inbox')?.classList.contains('publication-detail-open')) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
@@ -139,11 +140,12 @@ export function createPublicationsV2Presenter({
   function setDetailSiblingsInert(inert) {
     const view = byId('view-inbox');
     if (!view) return;
+    for (const shellElement of [byId('sidebar'), documentRef?.querySelector?.('.topbar')]) toggleInert(shellElement, inert);
     for (const element of view.children) {
       if (element === byId('intimationDetail')) continue;
       if (element.classList.contains('inbox-layout')) {
         for (const child of element.children) {
-          if (child !== byId('intimationDetail')) toggleInert(child, inert);
+          if (child !== byId('intimationDetail') && child !== byId('publicationInspectorBackdrop')) toggleInert(child, inert);
         }
       } else toggleInert(element, inert);
     }
@@ -296,6 +298,7 @@ function trapFocus(event, root) {
 }
 
 function toggleInert(element, inert) {
+  if (!element) return;
   if (inert) element.setAttribute('inert', '');
   else element.removeAttribute('inert');
 }

@@ -5,7 +5,8 @@ export function createExternalCalendarFeature({
   secureFetch = (...args) => windowRef?.KellerAuth?.secureFetch(...args),
   showToast = () => {},
   onSyncAll = () => {},
-  schedule = (callback, delay) => windowRef?.setTimeout?.(callback, delay) ?? globalThis.setTimeout(callback, delay)
+  schedule = (callback, delay) => windowRef?.setTimeout?.(callback, delay) ?? globalThis.setTimeout(callback, delay),
+  presentation = null
 } = {}) {
   let initialized = false;
   const byId = id => documentRef?.getElementById(id);
@@ -14,6 +15,7 @@ export function createExternalCalendarFeature({
     init() {
       if (initialized) return false;
       initialized = true;
+      presentation?.init?.();
       byId('configureCalendarButton')?.addEventListener('click', () => this.open());
       byId('calendarConfigClose')?.addEventListener('click', () => this.close());
       byId('calendarConfigCancel')?.addEventListener('click', () => this.close());
@@ -35,6 +37,7 @@ export function createExternalCalendarFeature({
       }
       byId('calendarConfigBackdrop')?.classList.remove('hidden');
       if (documentRef?.body) documentRef.body.style.overflow = 'hidden';
+      presentation?.open?.('externalCalendar');
       schedule(() => input?.focus?.(), 50);
       return url;
     },
@@ -44,6 +47,7 @@ export function createExternalCalendarFeature({
       if (!backdrop || backdrop.classList.contains('hidden')) return false;
       backdrop.classList.add('hidden');
       if (byId('modalBackdrop')?.classList.contains('hidden') && documentRef?.body) documentRef.body.style.overflow = '';
+      presentation?.close?.('externalCalendar');
       return true;
     },
 

@@ -1,3 +1,29 @@
+/* Presentation classes mirror the legacy inline receiver layout before V2 overrides apply. */
+.email-receivers-empty,
+.email-receiver-item {
+  padding: 10px 14px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.email-receivers-empty { text-align: center; }
+.email-receivers-empty p { margin: 0; color: var(--muted); font-size: 12.5px; font-style: italic; }
+.email-receiver-item { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.email-receiver-identity { min-width: 200px; display: flex; flex-direction: column; gap: 2px; }
+.email-receiver-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.email-receiver-heading strong { color: var(--ivory); font-size: 13.5px; }
+.email-receiver-address { color: var(--muted); font: 12.5px/1.4 monospace; }
+.email-receiver-type,
+.email-receiver-status { padding: 2px 8px; font-size: 11px; font-weight: 600; }
+.email-receiver-type,
+.email-receiver-status.muted { color: var(--muted); background: var(--panel); border-color: var(--line); }
+.email-receiver-status.success { color: var(--success); background: rgba(56, 161, 105, .15); border-color: var(--success); }
+.email-receiver-status.danger { color: var(--danger); background: rgba(204, 51, 51, .15); border-color: var(--danger); }
+.email-receiver-actions { display: flex; align-items: center; gap: 6px; }
+.email-receiver-actions .button { padding: 4px 10px; font-size: 12px; }
+.email-receiver-actions .email-receiver-delete { padding-inline: 8px; color: var(--danger); }
+
 html[data-ui="v2"] #view-integrations {
   max-width: 1440px;
   margin-inline: auto;
@@ -266,6 +292,243 @@ html[data-ui="v2"] .judicial-setup-footer strong { color: var(--v2-color-foregro
 html[data-ui="v2"] .judicial-setup-footer span { color: var(--v2-color-muted-foreground); }
 html[data-ui="v2"] #syncJudicialNowButton { min-height: 46px; }
 
+html[data-ui="v2"] #view-integrations .connection-integration-card {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--v2-color-surface-secondary) 48%, var(--v2-color-surface));
+  border-color: color-mix(in srgb, var(--v2-color-primary) 20%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] #view-integrations .connection-integration-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: color-mix(in srgb, var(--v2-color-primary) 56%, transparent);
+}
+
+html[data-ui="v2"] #view-integrations .connection-integration-card .integration-logo {
+  color: var(--v2-color-primary);
+  background: var(--v2-color-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-primary) 28%, var(--v2-color-border));
+  border-radius: var(--v2-radius-lg);
+}
+
+html[data-ui="v2"] #view-integrations .email-integration-card {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--v2-space-5);
+}
+
+html[data-ui="v2"] #view-integrations .email-integration-card .integration-logo {
+  width: 64px;
+  height: 64px;
+}
+
+html[data-ui="v2"] #view-integrations .email-integration-actions {
+  margin: var(--v2-space-4) 0 0 !important;
+}
+
+html[data-ui="v2"] #view-integrations .v2-connection-primary {
+  color: var(--v2-action-primary-text) !important;
+  background: var(--v2-action-primary-bg);
+  border-color: var(--v2-action-primary-border);
+  box-shadow: var(--v2-action-primary-shadow);
+  backdrop-filter: blur(8px) saturate(.94);
+  -webkit-backdrop-filter: blur(8px) saturate(.94);
+  text-shadow: none;
+  transform: none;
+}
+
+html[data-ui="v2"] #view-integrations .v2-connection-primary:hover,
+html[data-ui="v2"] #view-integrations .v2-connection-primary:active {
+  color: var(--v2-action-primary-text) !important;
+  background: var(--v2-action-primary-hover);
+  border-color: var(--v2-action-primary-border);
+  transform: none;
+}
+
+html[data-ui="v2"] #emailReceiversSection {
+  margin-top: var(--v2-space-5) !important;
+  padding-top: var(--v2-space-4) !important;
+  border-top-color: var(--v2-color-border) !important;
+}
+
+html[data-ui="v2"] .email-receivers-heading { margin-bottom: var(--v2-space-3) !important; }
+html[data-ui="v2"] .email-receivers-heading h4 { color: var(--v2-color-foreground) !important; font-size: 14px !important; }
+html[data-ui="v2"] .email-receivers-heading p { color: var(--v2-color-muted-foreground) !important; }
+html[data-ui="v2"] #emailReceiversCount { color: var(--v2-color-muted-foreground) !important; background: var(--v2-color-surface-inset) !important; border-color: var(--v2-color-border) !important; }
+
+html[data-ui="v2"] .email-receivers-list {
+  display: grid !important;
+  gap: var(--v2-space-2) !important;
+  margin-top: var(--v2-space-3) !important;
+}
+
+html[data-ui="v2"] .email-receivers-empty,
+html[data-ui="v2"] .email-receiver-item {
+  min-width: 0;
+  padding: var(--v2-space-3) var(--v2-space-4);
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-inset);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+}
+
+html[data-ui="v2"] .email-receivers-empty { text-align: center; }
+html[data-ui="v2"] .email-receivers-empty p { margin: 0; color: var(--v2-color-muted-foreground); font-size: 12px; }
+
+html[data-ui="v2"] .email-receiver-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-4);
+}
+
+html[data-ui="v2"] .email-receiver-identity { min-width: 0; display: grid; gap: 5px; }
+html[data-ui="v2"] .email-receiver-heading { display: flex; align-items: center; flex-wrap: wrap; gap: var(--v2-space-2); }
+html[data-ui="v2"] .email-receiver-heading strong { color: var(--v2-color-foreground); font-size: 13px; }
+html[data-ui="v2"] .email-receiver-address { overflow-wrap: anywhere; color: var(--v2-color-muted-foreground); font: 500 12px/1.4 var(--v2-font-sans); font-variant-numeric: tabular-nums; }
+html[data-ui="v2"] .email-receiver-type,
+html[data-ui="v2"] .email-receiver-status { padding: 3px 8px; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+html[data-ui="v2"] .email-receiver-type { color: var(--v2-color-muted-foreground); background: var(--v2-color-surface-secondary); border-color: var(--v2-color-border); }
+html[data-ui="v2"] .email-receiver-status.success { color: var(--v2-color-success); background: var(--v2-color-success-soft); border-color: color-mix(in srgb, var(--v2-color-success) 45%, var(--v2-color-border)); }
+html[data-ui="v2"] .email-receiver-status.danger { color: var(--v2-color-danger); background: var(--v2-color-danger-soft); border-color: color-mix(in srgb, var(--v2-color-danger) 45%, var(--v2-color-border)); }
+html[data-ui="v2"] .email-receiver-status.muted { color: var(--v2-color-muted-foreground); background: var(--v2-color-surface-secondary); border-color: var(--v2-color-border); }
+html[data-ui="v2"] .email-receiver-actions { flex: 0 0 auto; display: flex; align-items: center; gap: var(--v2-space-2); }
+html[data-ui="v2"] .email-receiver-actions .button { min-height: 40px; padding: 0 var(--v2-space-3); font-size: 11px; }
+html[data-ui="v2"] .email-receiver-actions .email-receiver-delete { min-width: 40px; padding: 0; color: var(--v2-color-danger); }
+
+html[data-ui="v2"] body > .connection-backdrop {
+  justify-content: flex-end;
+  padding: 0;
+  background: color-mix(in srgb, var(--v2-color-background) 72%, transparent);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet {
+  width: min(760px, calc(100vw - 72px)) !important;
+  max-width: none !important;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-background);
+  border: 0;
+  border-left: 1px solid var(--v2-color-border);
+  border-radius: 0;
+  box-shadow: var(--v2-shadow-overlay);
+  animation: connection-sheet-in 240ms var(--v2-ease-standard) both;
+}
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet.compact { width: min(600px, calc(100vw - 72px)) !important; }
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet > header {
+  padding: var(--v2-space-5) var(--v2-space-6);
+  background: var(--v2-color-surface-elevated);
+  border-bottom: 1px solid var(--v2-color-border);
+}
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet > header h2,
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet > header h3 {
+  margin: 0;
+  color: var(--v2-color-foreground);
+  font: 600 clamp(23px, 2.4vw, 31px)/1.08 var(--v2-font-editorial);
+  letter-spacing: -.02em;
+}
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet > header .eyebrow { color: var(--v2-color-gold); }
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet > header .icon-button { min-width: 44px; min-height: 44px; }
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet > form {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet .modal-body { color: var(--v2-color-foreground-secondary); }
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet .modal-body {
+  min-height: 0;
+  padding: var(--v2-space-5) var(--v2-space-6) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+html[data-ui="v2"] .connection-sheet-description {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+html[data-ui="v2"] .connection-form-section {
+  grid-column: 1 / -1;
+  margin: var(--v2-space-2) 0 0;
+  padding-bottom: var(--v2-space-2);
+  color: var(--v2-color-gold);
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet label { color: var(--v2-color-foreground-secondary); }
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet label > span { color: var(--v2-color-foreground-secondary) !important; }
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet :where(input:not([type="checkbox"]):not([type="radio"]), select) {
+  min-height: 44px;
+  color: var(--v2-color-foreground) !important;
+  background: var(--v2-color-surface-inset) !important;
+  border-color: var(--v2-color-border) !important;
+  border-radius: var(--v2-radius-md) !important;
+}
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet :where(input[type="checkbox"], input[type="radio"]) { min-width: 20px; min-height: 20px; }
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet small { color: var(--v2-color-muted-foreground) !important; }
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet .modal-footer,
+html[data-ui="v2"] body > #calendarConfigBackdrop .connection-sheet footer {
+  gap: var(--v2-space-3) !important;
+  padding: var(--v2-space-4) var(--v2-space-6) !important;
+  background: var(--v2-color-surface-elevated);
+  border-top: 1px solid var(--v2-color-border) !important;
+}
+
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet .modal-footer .button,
+html[data-ui="v2"] body > #calendarConfigBackdrop .connection-sheet footer .button { min-height: 44px; }
+
+html[data-ui="v2"] .connection-professional-warning {
+  margin: var(--v2-space-3) 0;
+  padding: var(--v2-space-3);
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-primary-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-primary) 28%, var(--v2-color-border));
+  border-radius: var(--v2-radius-md);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+html[data-ui="v2"] #calendarConfigStatus {
+  margin: var(--v2-space-3) 0;
+  padding: var(--v2-space-3);
+  border-radius: var(--v2-radius-md);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@keyframes connection-sheet-in {
+  from { opacity: .78; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
 @keyframes judicial-workspace-in {
   from { opacity: .76; transform: translateX(28px); }
   to { opacity: 1; transform: translateX(0); }
@@ -278,6 +541,13 @@ html[data-ui="v2"] #syncJudicialNowButton { min-height: 46px; }
   html[data-ui="v2"] #view-integrations .judicial-integration-card { grid-column: auto; min-height: 0; grid-template-columns: 56px minmax(0, 1fr); padding: var(--v2-space-4); }
   html[data-ui="v2"] #view-integrations .judicial-integration-card .integration-logo { width: 52px; height: 52px; }
   html[data-ui="v2"] #view-integrations .integration-copy .button { width: 100%; justify-content: center; }
+  html[data-ui="v2"] #view-integrations .email-integration-card { grid-column: auto; grid-template-columns: minmax(0, 1fr); gap: var(--v2-space-3); }
+  html[data-ui="v2"] #view-integrations .email-integration-card .integration-logo { width: 52px; height: 52px; }
+  html[data-ui="v2"] #view-integrations .email-integration-actions { display: grid !important; grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .email-receiver-item { align-items: stretch; flex-direction: column; padding: var(--v2-space-4); }
+  html[data-ui="v2"] .email-receiver-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-ui="v2"] .email-receiver-actions .button { min-height: 44px; }
+  html[data-ui="v2"] .email-receiver-actions .email-receiver-delete { width: 100%; }
   .interface-preference-card { align-items: stretch; flex-direction: column; }
   .interface-preference-card .ui-mode-control { width: 100%; }
   .interface-preference-card .ui-mode-control button { flex: 1; min-height: 44px !important; }
@@ -307,8 +577,20 @@ html[data-ui="v2"] #syncJudicialNowButton { min-height: 46px; }
   html[data-ui="v2"] .setup-heading-actions .button { min-height: 44px; }
   html[data-ui="v2"] .judicial-setup-footer { align-items: stretch; flex-direction: column; }
   html[data-ui="v2"] #syncJudicialNowButton { width: 100%; justify-content: center; }
+
+  html[data-ui="v2"] body > .connection-backdrop .connection-sheet,
+  html[data-ui="v2"] body > .connection-backdrop .connection-sheet.compact { width: 100vw !important; border: 0; }
+  html[data-ui="v2"] body > .connection-backdrop .connection-sheet > header,
+  html[data-ui="v2"] body > .connection-backdrop .connection-sheet .modal-body { padding-inline: var(--v2-space-4) !important; }
+  html[data-ui="v2"] body > .connection-backdrop .connection-sheet .modal-footer,
+  html[data-ui="v2"] body > #calendarConfigBackdrop .connection-sheet footer { display: grid !important; grid-template-columns: minmax(0, 1fr); padding-inline: var(--v2-space-4) !important; }
+  html[data-ui="v2"] body > .connection-backdrop .connection-sheet .modal-footer .button,
+  html[data-ui="v2"] body > #calendarConfigBackdrop .connection-sheet footer .button { width: 100%; min-height: 44px; justify-content: center; }
+  html[data-ui="v2"] #emailConfigBackdrop .form-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  html[data-ui="v2"] #emailConfigBackdrop .form-grid > * { grid-column: 1 / -1 !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html[data-ui="v2"] #judicialSetupBackdrop .judicial-setup-modal { animation: none !important; transition-duration: .001ms !important; }
+  html[data-ui="v2"] body > .connection-backdrop .connection-sheet { animation: none !important; transition-duration: .001ms !important; }
 }

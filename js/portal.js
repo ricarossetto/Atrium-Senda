@@ -21,6 +21,7 @@ import { renderAssistantV2Presentation } from './views/ui-v2/assistant-presenter
 import { renderPromptsV2Presentation } from './views/ui-v2/prompts-presenter.js';
 import { renderMonitoringV2Presentation } from './views/ui-v2/monitoring-presenter.js';
 import { createJudicialIntegrationsPresenter } from './views/ui-v2/judicial-integrations-presenter.js';
+import { createEmailCalendarPresenter } from './views/ui-v2/email-calendar-presenter.js';
 import { createAgendaFeature } from './features/agenda.js';
 import { createAssistantFeature } from './features/assistant.js';
 import { createAuditFeature } from './features/audit.js';
@@ -254,6 +255,7 @@ import { createTasksFeature } from './features/tasks.js';
   let importerFeature;
   let judicialIntegrationsFeature;
   let judicialIntegrationsPresenter;
+  let emailCalendarPresenter;
   let leadsFeature;
   let linksFeature;
   let monitoringFeature;
@@ -605,6 +607,7 @@ import { createTasksFeature } from './features/tasks.js';
   }
 
   function getEmailIntegrationFeature() {
+    emailCalendarPresenter ||= createEmailCalendarPresenter({ documentRef: document });
     if (!emailIntegrationFeature) emailIntegrationFeature = createEmailIntegrationFeature({
       documentRef: document,
       windowRef: window,
@@ -613,19 +616,22 @@ import { createTasksFeature } from './features/tasks.js';
       showToast: (message, type) => App.toast(message, type),
       getCurrentUser: () => window.KellerAuth?.currentUser,
       getOfficeName: () => Store.state.settings?.officeName || '',
-      confirmFn: message => window.confirm(message)
+      confirmFn: message => window.confirm(message),
+      presentation: emailCalendarPresenter
     });
     return emailIntegrationFeature;
   }
 
   function getExternalCalendarFeature() {
+    emailCalendarPresenter ||= createEmailCalendarPresenter({ documentRef: document });
     if (!externalCalendarFeature) externalCalendarFeature = createExternalCalendarFeature({
       store: Store,
       documentRef: document,
       windowRef: window,
       secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
       showToast: (message, type) => App.toast(message, type),
-      onSyncAll: options => App.syncAll(options)
+      onSyncAll: options => App.syncAll(options),
+      presentation: emailCalendarPresenter
     });
     return externalCalendarFeature;
   }
