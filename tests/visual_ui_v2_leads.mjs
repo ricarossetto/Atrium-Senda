@@ -39,7 +39,11 @@ try {
       if (scenario.state === 'long') await page.locator('[data-lead-id="lead-v2-long"]').scrollIntoViewIfNeeded();
 
       if (['new', 'edit'].includes(scenario.state)) {
-        await page.waitForFunction(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement));
+        await page.waitForFunction(() => {
+          const modal = document.querySelector('#modalBackdrop:not(.hidden) .modal');
+          if (!modal?.contains(document.activeElement)) return false;
+          return modal.getAnimations({ subtree: true }).every(animation => animation.playState === 'finished');
+        });
       }
       await page.waitForFunction(() => document.querySelector('#view-leads')?.getAnimations({ subtree: true }).every(animation => animation.playState === 'finished'));
 
