@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relativePath => fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
-const sha256 = relativePath => crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, relativePath))).digest('hex');
+const sha256CanonicalText = relativePath => crypto.createHash('sha256')
+  .update(read(relativePath).replaceAll('\r\n', '\n'))
+  .digest('hex');
 
 console.log('\n===============================================================');
 console.log('  ATRIUM — UI V2 ICONOGRAPHY SOURCE INVENTORY');
@@ -81,12 +83,12 @@ assert.equal(Object.keys(dependencies).some(name => /(?:icon|lucide|fontawesome|
 assert.doesNotMatch(index, /(?:fontawesome|font-awesome|material-icons|material-symbols|unpkg\.com\/.*icon|cdn\.jsdelivr\.net\/.*icon)/i, 'Não pode existir CDN de iconografia.');
 
 const brandHashes = {
-  'assets/icons/atrium-logo.svg': 'c84ab41edd51430a586e1bb54c59e389ccbce5c854a1acb866a5a7efe898ca7f',
-  'assets/icons/atrium-emblem.svg': 'e58a27d636079c59f79a25da8a7d16becdc4ce103735aada4ea1366f06f54611',
+  'assets/icons/atrium-logo.svg': '6db6896590bbe1a61a678e7760446b343299d1826109980edb10e2b4e68be8c1',
+  'assets/icons/atrium-emblem.svg': '9a3e5e785f6f446a46c0719f8fe6fe4d6ea69e6f45c01204a6535d0fde5f0d23',
   'assets/icons/favicon.svg': '14fde9b36ce5828ac511f00d95adbcf5f674e4cb98668083a683549c5c690619'
 };
 for (const [relativePath, expectedHash] of Object.entries(brandHashes)) {
-  assert.equal(sha256(relativePath), expectedHash, `${relativePath} deve permanecer byte a byte idêntico ao Gate 22.`);
+  assert.equal(sha256CanonicalText(relativePath), expectedHash, `${relativePath} deve permanecer idêntico ao Gate 22, independentemente do EOL do checkout.`);
 }
 
 const controlledFiles = [
