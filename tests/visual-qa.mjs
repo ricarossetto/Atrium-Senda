@@ -427,15 +427,14 @@ try {
 
       // ── SCREENSHOT: PALETA DE BUSCA GLOBAL ──
       if (vp.width > 860) {
-        await page.evaluate(() => {
+        await page.evaluate(async () => {
           const input = document.getElementById('globalSearch');
           const app = window.Atrium?.App || window.JurisFlow?.App || window.portalApp;
           if (input && app) {
             input.value = 'Direito';
-            app.performGlobalSearch('Direito');
+            await app.performGlobalSearch('Direito');
           }
         });
-        await page.waitForTimeout(100);
 
         const paletteVisible = await page.evaluate(() => !document.getElementById('globalSearchPalette')?.classList.contains('hidden'));
         assert.ok(paletteVisible, 'Paleta de busca global deve estar visível para captura do screenshot global_search_palette.png');
@@ -485,3 +484,4 @@ await import('./visual_ui_v2_prompts.mjs');
 await import('./visual_ui_v2_monitoring.mjs');
 await import('./visual_ui_v2_judicial_integrations.mjs');
 await import('./visual_ui_v2_email_calendar_integrations.mjs');
+await import('./visual_ui_v2_full_text_search.mjs');

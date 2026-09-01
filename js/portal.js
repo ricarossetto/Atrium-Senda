@@ -6,6 +6,7 @@ import {
   isoDate,
   uid
 } from './core/store.js';
+import { searchContent } from './core/api.js';
 import { createGlobalSearch } from './components/global-search.js';
 import { createModal } from './components/modal.js';
 import { createOnboarding } from './components/onboarding.js';
@@ -278,6 +279,7 @@ import { createTasksFeature } from './features/tasks.js';
       normalizeText,
       escapeHtml,
       formatDate,
+      searchContent,
       onSelect: selection => App.handleGlobalSearchSelection(selection)
     });
     return globalSearchComponent;
@@ -1089,7 +1091,7 @@ import { createTasksFeature } from './features/tasks.js';
       getGlobalSearchComponent().close();
     },
     performGlobalSearch(query) {
-      getGlobalSearchComponent().perform(query);
+      return getGlobalSearchComponent().perform(query);
     },
     handleGlobalSearchSelection({ target, id }) {
       if (target === 'process') {
@@ -1115,6 +1117,25 @@ import { createTasksFeature } from './features/tasks.js';
       } else if (target === 'intimation') {
         this.switchView('inbox');
         this.selectIntimation(id);
+      } else if (target === 'document') {
+        this.switchView('documents');
+        getDocumentsFeature().focusDocument(id);
+      } else if (target === 'prompt') {
+        this.switchView('prompts');
+        const prompt = [...(Store.state.customPrompts || []), ...(window.PROMPTS_DATA || [])].find(item => item.id === id);
+        if (prompt) {
+          const input = document.getElementById('promptsSearchInput');
+          if (input) input.value = prompt.title || '';
+          getPromptsFeature().filter = { ...getPromptsFeature().filter, search: prompt.title || '' };
+          getPromptsFeature().render();
+        }
+      } else if (target === 'audit') {
+        this.switchView('audit');
+        const entry = (Store.state.audit || []).find(item => item.id === id);
+        const query = entry?.action || '';
+        const input = document.getElementById('auditSearch');
+        if (input) input.value = query;
+        this.renderAudit('all', query);
       }
     },
     openModal(mode, title, eyebrow, fields, defaults = {}, topHtml = '') {

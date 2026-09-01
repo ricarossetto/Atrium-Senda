@@ -529,7 +529,7 @@ ${id.lawyerOab} - ${id.officeName}`;
     if (status) status.textContent = `${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'} ${archiveFilter === 'deleted' ? 'na lixeira' : 'no acervo ativo'}`;
     if (!list) return;
     list.innerHTML = documents.length ? documents.map(document => `
-      <article class="document-record${document.deletedAt ? ' is-deleted' : ''}" data-document-id="${escapeHtml(document.id)}">
+      <article class="document-record${document.deletedAt ? ' is-deleted' : ''}" data-document-id="${escapeHtml(document.id)}" tabindex="-1">
         <div class="document-record-icon" aria-hidden="true">${iconSvg('documents')}</div>
         <div class="document-record-copy">
           <strong>${escapeHtml(document.name)}</strong>
@@ -642,6 +642,18 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (type) type.value = ownerType === 'process' ? 'process' : 'contact';
       updateOwnerOptions();
       byId('documentArchiveWorkspace')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+      return true;
+    },
+
+    focusDocument(id) {
+      feature.setArchiveFilter('active');
+      const records = [...(byId('documentArchiveList')?.querySelectorAll('[data-document-id]') || [])];
+      records.forEach(record => record.classList.remove('is-search-match'));
+      const record = records.find(item => item.dataset.documentId === String(id));
+      if (!record) return false;
+      record.classList.add('is-search-match');
+      record.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      record.focus?.({ preventScroll: true });
       return true;
     },
 

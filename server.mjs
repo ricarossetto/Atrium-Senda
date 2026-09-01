@@ -23,6 +23,7 @@ import {
   sanitizeDocumentFilename
 } from './lib/documents/document-service.mjs';
 import { DocumentIntelligenceService } from './lib/documents/document-intelligence.mjs';
+import { SearchIndex, parseDefaultPromptsSource } from './lib/search-index.mjs';
 import { runA1Sandbox } from './lib/judicial/a1-sandbox.mjs';
 import { runTotpSandbox, parseTotpUri } from './lib/judicial/totp-sandbox.mjs';
 import {
@@ -101,6 +102,16 @@ await emailService.init();
 const documentBlobStore = new DocumentBlobStore({ dataDirectory: DATA_DIR, securityManager: security });
 await documentBlobStore.init();
 const documentIntelligence = new DocumentIntelligenceService();
+let defaultSearchPrompts = [];
+try {
+  defaultSearchPrompts = parseDefaultPromptsSource(await readFile(path.join(ROOT, 'js', 'prompts-data.js'), 'utf8'));
+} catch (error) {
+  console.warn(`[ATRIUM Busca]: catálogo padrão indisponível para indexação derivada (${error.message}).`);
+}
+const searchIndex = new SearchIndex({
+  defaultPrompts: defaultSearchPrompts,
+  loadOcrText: async checksum => (await documentBlobStore.read(checksum)).toString('utf8')
+});
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -2145,6 +2156,37 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/state') {
       const session = assertAuthenticated(req, true); const body = await readJson(req, 3_000_000); const saved = await saveClientAppState(body.state, body.revision ?? null, session);
       return json(res, 200, { ok: true, ...saved });
+    }
+
+    // Índice global exclusivamente derivado: nunca substitui nem altera o Store canônico.
+    if (req.method === 'GET' && url.pathname === '/api/search') {
+      assertAuthenticated(req);
+      const query = String(url.searchParams.get('q') || '').trim();
+      if (query.length < 2) return json(res, 200, { ok: true, query, results: [], index: searchIndex.status });
+      if (query.length > 160) throw Object.assign(new Error('A busca global aceita no máximo 160 caracteres.'), { statusCode: 400 });
+      const envelope = await readAppStateEnvelope();
+      const synchronization = await searchIndex.ensure({ state: envelope.state || {}, revision: envelope.revision || null });
+      const results = searchIndex.search(query, { limit: url.searchParams.get('limit') });
+      return json(res, 200, {
+        ok: true,
+        query,
+        results,
+        index: {
+          version: searchIndex.status.version,
+          sourceRevision: searchIndex.status.sourceRevision,
+          entryCount: searchIndex.status.entryCount,
+          generatedAt: searchIndex.status.generatedAt,
+          rebuilt: synchronization.rebuilt,
+          synchronized: synchronization.synchronized
+        }
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/search/rebuild') {
+      assertAdmin(req, true, 'Apenas administradores podem reconstruir o índice derivado de busca.');
+      const envelope = await readAppStateEnvelope();
+      const rebuilt = await searchIndex.rebuild({ state: envelope.state || {}, revision: envelope.revision || null });
+      return json(res, 200, { ok: true, index: rebuilt });
     }
 
     // Acervo documental canônico: metadata no estado; bytes deduplicados e criptografados fora dele.

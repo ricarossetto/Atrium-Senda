@@ -9,6 +9,7 @@ const SPECS = [
   'judicial-readonly-policy',
   'managed-judicial-connectivity',
   'document-management',
+  'full-text-search',
   'email-policy',
   'security-boundaries',
   'audit-policy',
@@ -52,6 +53,9 @@ assert.match(specs['document-management'], /metadata can[oô]nica vive em `state
 assert.match(specs['document-management'], /Soft delete precede a exclus[aã]o permanente/i);
 assert.match(specs['document-management'], /OCR nunca substitui o original/i);
 assert.match(specs['document-management'], /FUTURE[^\n]*classifica[cç][aã]o, versionamento/i);
+assert.match(specs['full-text-search'], /DERIVED \/ REBUILDABLE/i);
+assert.match(specs['full-text-search'], /nunca é fonte de verdade/i);
+assert.match(specs['full-text-search'], /n[aã]o s[aã]o fontes/i);
 assert.match(specs['email-policy'], /envio exclusivamente manual/i);
 assert.match(specs['security-boundaries'], /deny-by-default/i);
 assert.match(specs['audit-policy'], /n[aã]o inclui CPF\/RG\/telefone\/e-mail\/endere[cç]o\/notas/i);

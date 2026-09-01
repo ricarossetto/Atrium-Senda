@@ -24,3 +24,13 @@ export function persistState(state, revision) {
     keepalive: true
   });
 }
+
+export async function searchContent(query, limit = 24) {
+  const params = new URLSearchParams({ q: String(query || ''), limit: String(limit) });
+  const response = await authenticatedRequest(`/api/search?${params.toString()}`, {
+    headers: { Accept: 'application/json' }
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || 'A busca global não pôde ser concluída.');
+  return Array.isArray(payload.results) ? payload.results : [];
+}

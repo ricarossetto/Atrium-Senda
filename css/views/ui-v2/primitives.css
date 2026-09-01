@@ -330,6 +330,7 @@ html[data-ui="v2"] .search-palette-item:is(:hover, .active) {
 
 html[data-ui="v2"] .search-palette-info strong { color: var(--v2-color-foreground); font-size: 13px; }
 html[data-ui="v2"] .search-palette-info small { color: var(--v2-color-foreground-secondary); font-size: 12px; }
+html[data-ui="v2"] .search-palette-info mark { color: var(--v2-color-foreground); background: color-mix(in srgb, var(--v2-color-primary) 22%, transparent); }
 html[data-ui="v2"] .search-palette-group-title { color: var(--v2-color-foreground-secondary); font-size: 11px; }
 html[data-ui="v2"] .search-palette-badge { color: var(--v2-color-foreground-secondary); background: var(--v2-color-surface-secondary); }
 html[data-ui="v2"] .search-palette-icon { color: var(--v2-color-primary); background: var(--v2-color-primary-soft); }

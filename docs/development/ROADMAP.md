@@ -26,6 +26,7 @@
 - Gate 26A: árvore `specs/` estabelece contratos CURRENT/FUTURE e guidance obrigatório para agentes.
 - Gate 26B: acervo documental canônico com ownership por contato/processo, naming seguro, blobs cifrados deduplicados e lixeira recuperável.
 - Gate 26C: preview inerte, extração/OCR local supervisionada e conversão textual determinística para PDF.
+- Gate 26D: índice full-text derivado, versionado e reconstruível sobre Store/OCR cifrados, com busca global segura em sete domínios.
 
 ## CONCLUÍDO
 

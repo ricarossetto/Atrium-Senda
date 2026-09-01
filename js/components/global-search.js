@@ -1,9 +1,20 @@
 import { iconSvg } from '../views/ui-v2/primitives.js';
 
-export function createGlobalSearch({ getState, normalizeText, escapeHtml, formatDate, onSelect } = {}) {
+const GROUPS = Object.freeze({
+  process: { label: 'Processos', icon: 'process', classic: '⚖️', target: 'process' },
+  contact: { label: 'Contatos', icon: 'contact', classic: '👤', target: 'contact' },
+  publication: { label: 'Publicações & DJEN', icon: 'publication', classic: '📬', target: 'intimation' },
+  task: { label: 'Tarefas & Prazos', icon: 'task', classic: '📋', target: 'task' },
+  document: { label: 'Documentos & OCR', icon: 'documents', classic: 'DOC', target: 'document' },
+  prompt: { label: 'Prompts jurídicos', icon: 'prompts', classic: 'PR', target: 'prompt' },
+  audit: { label: 'Auditoria', icon: 'audit', classic: 'AUD', target: 'audit' }
+});
+
+export function createGlobalSearch({ getState, normalizeText, escapeHtml, formatDate, searchContent, onSelect } = {}) {
   let initialized = false;
   let debounceTimer = null;
   let activeIndex = -1;
+  let requestSequence = 0;
 
   function init() {
     if (initialized) return;
@@ -20,7 +31,7 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
 
     input?.addEventListener('input', event => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => perform(event.target.value), 180);
+      debounceTimer = setTimeout(() => { void perform(event.target.value); }, 180);
     });
     input?.addEventListener('keydown', event => {
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -41,13 +52,11 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     });
     results?.addEventListener('click', event => {
       const item = event.target.closest('.search-palette-item');
-      if (!item) return;
-      selectItem(item);
+      if (item) selectItem(item);
     });
     results?.addEventListener('mousemove', event => {
       const item = event.target.closest('.search-palette-item');
-      if (!item) return;
-      setActive(getItems().indexOf(item));
+      if (item) setActive(getItems().indexOf(item));
     });
     document.addEventListener('keydown', event => {
       const shortcut = ((event.key === 'k' || event.key === 'K') && (event.ctrlKey || event.metaKey))
@@ -67,9 +76,11 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
   }
 
   function close() {
+    requestSequence += 1;
     document.getElementById('globalSearchPalette')?.classList.add('hidden');
     const input = document.getElementById('globalSearch');
     input?.setAttribute('aria-expanded', 'false');
+    input?.setAttribute('aria-busy', 'false');
     input?.removeAttribute('aria-activedescendant');
     setActive(-1);
   }
@@ -124,77 +135,125 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     input?.removeAttribute('aria-activedescendant');
   }
 
-  function perform(query) {
-    const trimmed = String(query || '').trim();
+  function localResults(state, query) {
+    const needle = normalizeText(query);
+    const matches = (collection, entityType, target, title, context, haystack, matchedField) => (collection || [])
+      .filter(item => normalizeText(haystack(item)).includes(needle))
+      .map(item => ({
+        entityType,
+        target,
+        id: item.id,
+        title: title(item),
+        context: context(item),
+        snippet: context(item),
+        matchedField,
+        relevance: 0
+      }));
+    return [
+      ...matches(state.processes, 'process', 'process', item => item.number || 'Processo S/N', item => `${item.client || 'Cliente'} · ${item.court || 'Tribunal'}`, item => `${item.number} ${item.client} ${item.court} ${item.actionType}`, 'Registro processual'),
+      ...matches(state.contacts, 'contact', 'contact', item => item.name || 'Contato', item => item.document || item.email || item.phone || 'Sem documento', item => `${item.name} ${item.document} ${item.email} ${item.phone}`, 'Cadastro do contato'),
+      ...matches(state.tasks, 'task', 'task', item => item.title || 'Tarefa', item => item.client || item.process || `Prazo: ${formatDate(item.deadline)}`, item => `${item.title} ${item.description} ${item.client} ${item.process} ${item.responsible}`, 'Tarefa'),
+      ...matches(state.intimations, 'publication', 'intimation', item => item.title || 'Publicação', item => item.process || item.court || 'DataJud', item => `${item.title} ${item.text} ${item.client} ${item.process} ${item.court}`, 'Publicação'),
+      ...matches((state.documents || []).filter(item => !item.deletedAt), 'document', 'document', item => item.name || item.originalName || 'Documento', item => `${item.documentType || 'Documento'} · ${item.documentDate || ''}`, item => `${item.name} ${item.originalName} ${item.documentType} ${item.documentDate}`, 'Metadata documental'),
+      ...matches(state.customPrompts, 'prompt', 'prompt', item => item.title || 'Prompt jurídico', item => `${item.category || ''} · ${item.type || ''}`, item => `${item.title} ${item.description} ${(item.tags || []).join(' ')} ${item.prompt}`, 'Prompt jurídico'),
+      ...matches(state.audit, 'audit', 'audit', item => item.action || 'Registro de auditoria', item => `${item.actor || 'Sistema'} · ${formatDate(item.at)}`, item => `${item.action} ${item.actor}`, 'Auditoria')
+    ];
+  }
+
+  function mergeResults(remote, local) {
+    const merged = new Map();
+    for (const result of [...remote, ...local]) {
+      if (!GROUPS[result?.entityType] || !result?.id || !result?.title) continue;
+      const key = `${result.entityType}:${result.id}`;
+      if (!merged.has(key)) merged.set(key, result);
+    }
+    return [...merged.values()].sort((left, right) => Number(right.relevance || 0) - Number(left.relevance || 0)).slice(0, 30);
+  }
+
+  function highlighted(value, query) {
+    const text = String(value || '');
+    const tokens = [...new Set(String(query || '').trim().split(/\s+/).filter(token => token.length >= 2))];
+    if (!tokens.length) return escapeHtml(text);
+    const escapedTokens = tokens.map(token => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const matcher = new RegExp(`(${escapedTokens.join('|')})`, 'gi');
+    let cursor = 0;
+    let html = '';
+    for (const match of text.matchAll(matcher)) {
+      html += escapeHtml(text.slice(cursor, match.index));
+      html += `<mark>${escapeHtml(match[0])}</mark>`;
+      cursor = match.index + match[0].length;
+    }
+    return html + escapeHtml(text.slice(cursor));
+  }
+
+  function renderResults(results, query) {
     const palette = document.getElementById('globalSearchPalette');
     const resultsEl = document.getElementById('searchPaletteResults');
     if (!palette || !resultsEl) return;
-
-    if (!trimmed || trimmed.length < 2) {
-      palette.classList.add('hidden');
-      resultsEl.innerHTML = '';
-      document.getElementById('globalSearch')?.setAttribute('aria-expanded', 'false');
-      setActive(-1);
-      return;
-    }
-
-    const state = getState();
-    const needle = normalizeText(trimmed);
-    const processes = (state.processes || []).filter(item =>
-      normalizeText(`${item.number} ${item.client} ${item.court} ${item.actionType}`).includes(needle)
-    ).slice(0, 4);
-    const contacts = (state.contacts || []).filter(item =>
-      normalizeText(`${item.name} ${item.document} ${item.email} ${item.phone}`).includes(needle)
-    ).slice(0, 4);
-    const tasks = (state.tasks || []).filter(item =>
-      normalizeText(`${item.title} ${item.client} ${item.process} ${item.responsible}`).includes(needle)
-    ).slice(0, 4);
-    const intimations = (state.intimations || []).filter(item =>
-      normalizeText(`${item.title} ${item.client} ${item.process} ${item.court}`).includes(needle)
-    ).slice(0, 4);
-
-    if (processes.length + contacts.length + tasks.length + intimations.length === 0) {
-      resultsEl.innerHTML = `<div class="search-palette-empty">Nenhum resultado localizado para <strong>"${escapeHtml(trimmed)}"</strong>.</div>`;
+    if (!results.length) {
+      resultsEl.innerHTML = `<div class="search-palette-empty">Nenhum resultado localizado para <strong>"${escapeHtml(query)}"</strong>.</div>`;
       palette.classList.remove('hidden');
       prepareResults();
       return;
     }
-
     const groups = [];
-    if (processes.length > 0) groups.push(renderGroup('Processos', processes, process => `
-      <div class="search-palette-item" data-search-target="process" data-search-id="${escapeHtml(process.id)}">
-        <span class="search-palette-icon" aria-hidden="true"><span class="classic-search-icon">⚖️</span><span class="v2-search-icon">${iconSvg('process')}</span></span>
-        <div class="search-palette-info"><strong>${escapeHtml(process.number || 'Processo S/N')}</strong><small>${escapeHtml(process.client || 'Cliente')} · ${escapeHtml(process.court || 'Tribunal')}</small></div>
-        <span class="search-palette-badge">${escapeHtml(process.actionType || 'Ação')}</span>
-      </div>`));
-    if (contacts.length > 0) groups.push(renderGroup('Contatos', contacts, contact => `
-      <div class="search-palette-item" data-search-target="contact" data-search-id="${escapeHtml(contact.id)}">
-        <span class="search-palette-icon" aria-hidden="true"><span class="classic-search-icon">👤</span><span class="v2-search-icon">${iconSvg('contact')}</span></span>
-        <div class="search-palette-info"><strong>${escapeHtml(contact.name || 'Contato')}</strong><small>${escapeHtml(contact.document || contact.email || contact.phone || 'Sem documento')}</small></div>
-        <span class="search-palette-badge">${escapeHtml(contact.role || 'Cliente')}</span>
-      </div>`));
-    if (tasks.length > 0) groups.push(renderGroup('Tarefas &amp; Prazos', tasks, task => `
-      <div class="search-palette-item" data-search-target="task" data-search-id="${escapeHtml(task.id)}">
-        <span class="search-palette-icon" aria-hidden="true"><span class="classic-search-icon">📋</span><span class="v2-search-icon">${iconSvg('task')}</span></span>
-        <div class="search-palette-info"><strong>${escapeHtml(task.title || 'Tarefa')}</strong><small>${escapeHtml(task.client || task.process || 'Prazo: ' + formatDate(task.deadline))}</small></div>
-        <span class="search-palette-badge">${escapeHtml(task.status || 'Pendente')}</span>
-      </div>`));
-    if (intimations.length > 0) groups.push(renderGroup('Publicações &amp; DJEN', intimations, intimation => `
-      <div class="search-palette-item" data-search-target="intimation" data-search-id="${escapeHtml(intimation.id)}">
-        <span class="search-palette-icon" aria-hidden="true"><span class="classic-search-icon">📬</span><span class="v2-search-icon">${iconSvg('publication')}</span></span>
-        <div class="search-palette-info"><strong>${escapeHtml(intimation.title || 'Publicação')}</strong><small>${escapeHtml(intimation.process || intimation.court || 'DataJud')}</small></div>
-        <span class="search-palette-badge">${escapeHtml(intimation.category || 'Intimação')}</span>
-      </div>`));
-
+    for (const [entityType, config] of Object.entries(GROUPS)) {
+      const groupResults = results.filter(result => result.entityType === entityType);
+      if (!groupResults.length) continue;
+      groups.push(renderGroup(config.label, groupResults, result => {
+        const detail = result.snippet && result.snippet !== result.context
+          ? `${result.context ? `${result.context} · ` : ''}${result.snippet}`
+          : result.context || result.snippet || '';
+        return `
+          <div class="search-palette-item" data-search-target="${escapeHtml(config.target)}" data-search-id="${escapeHtml(result.id)}">
+            <span class="search-palette-icon" aria-hidden="true"><span class="classic-search-icon">${escapeHtml(config.classic)}</span><span class="v2-search-icon">${iconSvg(config.icon)}</span></span>
+            <div class="search-palette-info"><strong>${highlighted(result.title, query)}</strong><small>${highlighted(detail, query)}</small></div>
+            <span class="search-palette-badge">${escapeHtml(result.matchedField || config.label)}</span>
+          </div>`;
+      }));
+    }
     resultsEl.innerHTML = groups.join('');
     palette.classList.remove('hidden');
     prepareResults();
   }
 
+  async function perform(query) {
+    const trimmed = String(query || '').trim();
+    const palette = document.getElementById('globalSearchPalette');
+    const resultsEl = document.getElementById('searchPaletteResults');
+    const input = document.getElementById('globalSearch');
+    if (!palette || !resultsEl) return [];
+    const requestId = ++requestSequence;
+    if (!trimmed || trimmed.length < 2) {
+      palette.classList.add('hidden');
+      resultsEl.innerHTML = '';
+      input?.setAttribute('aria-expanded', 'false');
+      input?.setAttribute('aria-busy', 'false');
+      setActive(-1);
+      return [];
+    }
+
+    const local = localResults(getState() || {}, trimmed);
+    renderResults(local, trimmed);
+    if (typeof searchContent !== 'function') return local;
+    input?.setAttribute('aria-busy', 'true');
+    try {
+      const remote = await searchContent(trimmed, 24);
+      if (requestId !== requestSequence) return [];
+      const merged = mergeResults(remote, local);
+      renderResults(merged, trimmed);
+      return merged;
+    } catch {
+      return local;
+    } finally {
+      if (requestId === requestSequence) input?.setAttribute('aria-busy', 'false');
+    }
+  }
+
   function renderGroup(title, items, renderItem) {
     return `
       <div class="search-palette-group">
-        <div class="search-palette-group-title"><span>${title} (${items.length})</span></div>
+        <div class="search-palette-group-title"><span>${escapeHtml(title)} (${items.length})</span></div>
         ${items.map(renderItem).join('')}
       </div>`;
   }
