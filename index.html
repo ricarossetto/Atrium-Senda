@@ -756,6 +756,7 @@
             <span id="processResultCount" aria-live="polite">0 processos</span>
           </div>
           <div class="toolbar-actions">
+            <button class="button ghost v2-only hidden" id="processSuppressionButton" type="button">Reativar descoberta (0)</button>
             <button class="button ghost" data-view-link="importer">
               <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-importer"></use></svg>
               <span>Importar planilha</span>
@@ -1616,8 +1617,10 @@
       <div class="process-inspector-content" id="processInspectorContent"></div>
       <footer>
         <button type="button" class="button ghost" id="processInspectorDocuments">Ver documentos</button>
+        <button type="button" class="button ghost" id="processInspectorExport">Baixar processo</button>
         <button type="button" class="button ghost hidden" id="processInspectorTjrs">Consultar TJRS</button>
-        <button type="button" class="button gold" id="processInspectorEdit">Editar processo</button>
+        <button type="button" class="button process-edit-action" id="processInspectorEdit">Editar processo</button>
+        <button type="button" class="button danger-outline process-delete-action" id="processInspectorDelete">Excluir processo</button>
       </footer>
     </aside>
   </div>

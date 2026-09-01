@@ -497,7 +497,10 @@ import { createTasksFeature } from './features/tasks.js';
       getLinkedTasks: processNumber => Store.state.tasks.filter(task => processNumber && String(task.process || '').trim() === processNumber),
       getLinkedIntimations: processNumber => Store.state.intimations.filter(item => processNumber && String(item.process || '').trim() === processNumber),
       isTerminalStatus: status => TERMINAL_STATUSES.includes(status),
-      openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId)
+      openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId),
+      exportJson: (data, filename) => App.exportJson(data, filename),
+      confirmProcessDeletion: number => window.prompt(`Para excluir o processo ${number}, digite o número completo:`),
+      requestProcessReenable: () => window.prompt('Digite o número CNJ cuja descoberta automática deve ser reativada:')
     });
     return processesFeature;
   }

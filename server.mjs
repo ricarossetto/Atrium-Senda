@@ -66,6 +66,7 @@ const DATA_DIR = path.resolve(process.env.JURISFLOW_DATA_DIR || process.env.KELL
 const RUNTIME_FILE = path.join(DATA_DIR, 'runtime.json');
 const APP_STATE_FILE = path.join(DATA_DIR, 'app-state.json');
 const INTEGRATIONS_FILE = path.join(DATA_DIR, 'judicial-integrations.json');
+const PORTAL_PREFERENCES_FILE = path.join(DATA_DIR, 'judicial-portal-preferences.json');
 const AI_SECRETS_FILE = path.join(DATA_DIR, 'ai-secrets.json');
 const FEEDBACK_FILE = path.join(DATA_DIR, 'feedback', 'beta-feedback.json');
 const MIGRATIONS_DIR = path.join(DATA_DIR, 'migrations', 'pre-migration');
@@ -741,9 +742,49 @@ async function saveJudicialSecrets(value) {
 }
 
 async function readPortalConfiguration() {
-  const config = JSON.parse(await readFile(PORTALS_FILE, 'utf8'));
-  if (!Array.isArray(config.portals)) throw new Error('A lista local de portais é inválida.');
-  return config;
+  const catalog = JSON.parse(await readFile(PORTALS_FILE, 'utf8'));
+  if (!Array.isArray(catalog.portals)) throw new Error('A lista local de portais é inválida.');
+  const preferences = await readPortalPreferences();
+  const enabledIds = new Set(preferences.enabledIds || catalog.portals.filter(portal => portal.enabled).map(portal => portal.id));
+  const appState = await readAppState().catch(() => null);
+  const terms = sanitizeArray(appState?.terms);
+  const primaryTerm = terms.find(term => term.primary !== false && term.active !== false) || terms[0] || {};
+  const identity = extractOabAndUf(primaryTerm, appState?.settings?.lawyerOab || '');
+  const monitoredTerm = {
+    ...primaryTerm,
+    registration: primaryTerm.registration || appState?.settings?.lawyerOab || '',
+    oabNumber: identity.num,
+    oabUf: identity.uf
+  };
+  return {
+    ...catalog,
+    monitoredTerm,
+    portals: catalog.portals.map(portal => ({
+      ...portal,
+      enabled: ['djen', 'datajud'].includes(portal.strategy) ? true : enabledIds.has(portal.id),
+      ...(portal.strategy === 'djen' ? { ufOab: identity.uf, numeroOab: identity.num } : {})
+    }))
+  };
+}
+
+async function readPortalPreferences() {
+  if (!existsSync(PORTAL_PREFERENCES_FILE)) return { enabledIds: [] };
+  const envelope = JSON.parse(await readFile(PORTAL_PREFERENCES_FILE, 'utf8'));
+  const value = JSON.parse(security.decrypt(envelope.encrypted));
+  return { enabledIds: Array.isArray(value.enabledIds) ? [...new Set(value.enabledIds.map(String))] : [] };
+}
+
+async function savePortalPreferences(enabledIds) {
+  await mkdir(DATA_DIR, { recursive: true });
+  const envelope = {
+    version: 1,
+    algorithm: 'aes-256-gcm',
+    encrypted: security.encrypt(JSON.stringify({ enabledIds, updatedAt: new Date().toISOString() })),
+    updatedAt: new Date().toISOString()
+  };
+  const temporary = `${PORTAL_PREFERENCES_FILE}.${process.pid}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(envelope, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+  await rename(temporary, PORTAL_PREFERENCES_FILE);
 }
 
 function publicCertificatePortals(config, secrets) {
@@ -763,6 +804,12 @@ function publicCertificatePortals(config, secrets) {
     totpConfigured: Boolean(secrets.totpSecrets?.[portal.id]?.secret),
     firstLoginRequired: portal.strategy === 'pje' && !portal.enabled
   }));
+}
+
+function authenticatedPortalIds(config) {
+  return new Set(config.portals
+    .filter(portal => portal.accountScoped && portal.group !== 'Sistemas do escritório')
+    .map(portal => portal.id));
 }
 
 async function judicialIntegrationStatus() {
@@ -960,12 +1007,12 @@ async function saveUploadedCertificate(body) {
 async function updatePortalCoverage(enabledIds) {
   const enabled = new Set(Array.isArray(enabledIds) ? enabledIds.map(String) : []);
   const config = await readPortalConfiguration();
-  const certificateIds = new Set(config.portals.filter(portal => portal.usesCertificate).map(portal => portal.id));
-  for (const portal of config.portals) if (certificateIds.has(portal.id)) portal.enabled = enabled.has(portal.id);
-  const temporary = `${PORTALS_FILE}.${process.pid}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(config, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
-  await rename(temporary, PORTALS_FILE);
-  return { enabled: [...enabled].filter(id => certificateIds.has(id)) };
+  const allowedIds = authenticatedPortalIds(config);
+  const selected = [...enabled].filter(id => allowedIds.has(id));
+  await savePortalPreferences(selected);
+  const reconciled = await readPortalConfiguration();
+  judicialOrchestrator.setPortals(reconciled.portals);
+  return { enabled: selected };
 }
 
 async function resetJudicialConnections() {
@@ -1006,7 +1053,7 @@ async function startInteractiveCollector(portalIds) {
   if (CLOUD_MODE) throw Object.assign(new Error('A primeira conexão com tribunais deve ser iniciada no agente local com PJeOffice.'), { statusCode: 503 });
   if (interactiveCollector && interactiveCollector.exitCode === null) throw Object.assign(new Error('Já existe uma primeira conexão em andamento.'), { statusCode: 409 });
   const config = await readPortalConfiguration();
-  const allowed = new Set(config.portals.filter(portal => portal.usesCertificate).map(portal => portal.id));
+  const allowed = authenticatedPortalIds(config);
   const selected = [...new Set((Array.isArray(portalIds) ? portalIds : []).map(String))].filter(id => allowed.has(id));
   if (!selected.length) throw Object.assign(new Error('Selecione ao menos um portal para a primeira conexão.'), { statusCode: 400 });
   const centralUrl = `http://${HOST}:${PORT}`;
@@ -1632,6 +1679,16 @@ function assertAdmin(req, requireCsrf = false, customMessage = 'Você não possu
   return session;
 }
 
+function processDiscoverySuppressionSet(state) {
+  return new Set((Array.isArray(state?.settings?.processDiscoverySuppressions) ? state.settings.processDiscoverySuppressions : [])
+    .map(item => String(item?.cnj || item || '').replace(/\D/g, ''))
+    .filter(value => value.length === 20));
+}
+
+function withoutSuppressedProcesses(records, suppressions) {
+  return sanitizeArray(records).filter(item => !suppressions.has(String(item.number || item.processNumber || '').replace(/\D/g, '')));
+}
+
 function documentActor(session) {
   return String(session?.displayName || session?.username || 'Usuário autenticado').slice(0, 100);
 }
@@ -1902,6 +1959,7 @@ const server = http.createServer(async (req, res) => {
       }
       const config = await readPortalConfiguration();
       const enabledIds = config.portals.filter(p => p.enabled || p.strategy === 'djen' || p.strategy === 'datajud').map(p => p.id);
+      const identity = extractOabAndUf(config.monitoredTerm);
       managedCollector = spawn(process.execPath, [COLLECTOR_AGENT_FILE], {
         cwd: ROOT,
         env: {
@@ -1910,7 +1968,9 @@ const server = http.createServer(async (req, res) => {
           COLLECTOR_HEADLESS: 'true',
           COLLECTOR_INTERACTIVE: 'false',
           COLLECTOR_PORTAL_IDS: enabledIds.join(','),
-          JUDICIAL_IDENTITY_ID: 'office-primary'
+          JUDICIAL_IDENTITY_ID: 'office-primary',
+          JUDICIAL_OAB_UF: identity.uf,
+          JUDICIAL_OAB_NUMBER: identity.num
         },
         windowsHide: true,
         stdio: 'ignore'
@@ -2031,8 +2091,8 @@ const server = http.createServer(async (req, res) => {
           },
           datajud: {
             strategy: 'datajud',
-            status: (state.settings?.datajudApiKey || process.env.DATAJUD_API_KEY) ? 'configurado' : 'chave_pendente',
-            description: 'Conselho Nacional de Justiça — Consulta Pública Processual'
+            status: 'fonte_publica_sob_demanda',
+            description: 'Conselho Nacional de Justiça — API pública consultada sob demanda; indisponibilidade externa não significa falta de configuração'
           },
           gemini: {
             status: aiKey ? 'configurado' : 'nao_configurado',
@@ -3193,23 +3253,39 @@ Diretrizes essenciais:
       const session = assertAuthenticated(req);
       const diagnostics = await judicialOrchestrator.getDiagnostics(session.username);
       const legacyStatus = await judicialIntegrationStatus();
-      const managedByPortal = new Map((diagnostics.coverage || []).map(item => [item.id, item]));
+      const runtime = await readRuntime();
+      const runtimeSources = new Map(sanitizeArray(runtime.sources).map(source => [source.id, source]));
+      const managedCoverage = (diagnostics.coverage || []).map(item => {
+        if (item.authStrategy !== 'public') return item;
+        const aliases = item.id === 'djen-cnj' ? ['djen-cnj', 'djen'] : item.id === 'datajud-cnj' ? ['datajud-cnj', 'datajud'] : [item.id];
+        const source = aliases.map(id => runtimeSources.get(id)).find(Boolean);
+        if (!source) return item;
+        return {
+          ...item,
+          connectivityState: source.status === 'error' ? 'error' : source.status === 'attention' ? 'attention' : 'connected',
+          lastSuccessfulSyncAt: source.lastCheck || item.lastSuccessfulSyncAt,
+          lastAttemptAt: source.lastCheck || item.lastAttemptAt,
+          publicDetail: String(source.detail || '').slice(0, 280)
+        };
+      });
+      const managedByPortal = new Map(managedCoverage.map(item => [item.id, item]));
+      const reconciledDiagnostics = { ...diagnostics, coverage: managedCoverage };
       return json(res, 200, {
         ok: true,
         ...legacyStatus,
         portals: legacyStatus.portals.map(portal => ({ ...portal, managed: managedByPortal.get(portal.id) || null })),
-        managedCoverage: diagnostics.coverage || [],
+        managedCoverage,
         managedPolicy: {
           readOnly: true,
           cadence: 'conservative-with-backoff',
           humanSupervision: true,
-          forbiddenAutomaticActions: diagnostics.forbiddenAutomaticActions
+          forbiddenAutomaticActions: reconciledDiagnostics.forbiddenAutomaticActions
         },
-        diagnostics,
+        diagnostics: reconciledDiagnostics,
         certificate: {
           ...legacyStatus.certificate,
-          summary: diagnostics.a1.summary,
-          status: diagnostics.a1.status
+          summary: reconciledDiagnostics.a1.summary,
+          status: reconciledDiagnostics.a1.status
         }
       });
     }
@@ -3315,11 +3391,13 @@ Diretrizes essenciais:
     if (req.method === 'POST' && url.pathname === '/api/ingest') {
       if (!collectorAuthorized(req)) return json(res, 401, { message: 'Coletor não autorizado.' });
       const incoming = await readJson(req, 5_000_000);
+      const appState = await readAppState().catch(() => null);
+      const suppressions = processDiscoverySuppressionSet(appState);
       const collections = {
         events: sanitizeArray(incoming.events),
         tasks: sanitizeArray(incoming.tasks),
         intimations: sanitizeArray(incoming.intimations),
-        processes: sanitizeArray(incoming.processes),
+        processes: withoutSuppressedProcesses(incoming.processes, suppressions),
         contacts: sanitizeArray(incoming.contacts),
         sources: sanitizeArray(incoming.sources)
       };
@@ -3327,7 +3405,7 @@ Diretrizes essenciais:
         events: mergeBy(runtime.events, collections.events),
         tasks: mergeBy(runtime.tasks, collections.tasks),
         intimations: mergeExternalIntimations(runtime.intimations, collections.intimations),
-        processes: mergeExternalProcesses(runtime.processes, collections.processes),
+        processes: mergeExternalProcesses(withoutSuppressedProcesses(runtime.processes, suppressions), collections.processes),
         contacts: mergeExternalContacts(runtime.contacts, collections.contacts),
         sources: mergeBy(runtime.sources, collections.sources, 'id'),
         updatedAt: new Date().toISOString()
@@ -3378,6 +3456,8 @@ Diretrizes essenciais:
         const envelope = await readAppStateEnvelope();
         if (envelope?.state) appState = envelope.state;
       } catch { /* sem estado salvo */ }
+      const processSuppressions = processDiscoverySuppressionSet(appState);
+      processes = withoutSuppressedProcesses(processes, processSuppressions);
 
       // 1. Discovery judicial canônico: termos monitorados -> DJEN -> CNJ -> DataJud.
       if (process.env.KELLER_SKIP_COLLECTOR_ENV !== 'true') {
@@ -3389,7 +3469,7 @@ Diretrizes essenciais:
         const target = {
           intimations,
           tasks,
-          processes: mergeExternalProcesses(sanitizeArray(appState?.processes), processes),
+          processes: mergeExternalProcesses(withoutSuppressedProcesses(appState?.processes, processSuppressions), processes),
           contacts: mergeExternalContacts(sanitizeArray(appState?.contacts), contacts),
           sources: [],
           terms: monitoredTerms
@@ -3443,14 +3523,14 @@ Diretrizes essenciais:
 
         const knownProcesses = new Set(target.processes.map(item => String(item.number || '').replace(/\D/g, '')).filter(value => value.length === 20));
         const processNumbers = [
-          ...target.processes
+          ...withoutSuppressedProcesses(target.processes, processSuppressions)
             .filter(item => item.monitoring !== 'inactive' && !String(item.id || '').includes('demo'))
             .map(item => item.number),
           ...target.intimations
             .filter(item => !String(item.id || '').includes('demo'))
             .filter(item => {
               const key = String(item.process || '').replace(/\D/g, '');
-              return key.length === 20 && !knownProcesses.has(key);
+              return key.length === 20 && !knownProcesses.has(key) && !processSuppressions.has(key);
             })
             .map(item => item.process)
         ];
@@ -3494,7 +3574,7 @@ Diretrizes essenciais:
 
         intimations = target.intimations;
         tasks = target.tasks;
-        processes = mergeExternalProcesses(processes, target.processes.filter(item => item.datajudAlias || /DataJud/i.test(String(item.source || ''))));
+        processes = mergeExternalProcesses(processes, withoutSuppressedProcesses(target.processes, processSuppressions).filter(item => item.datajudAlias || /DataJud/i.test(String(item.source || ''))));
         contacts = mergeExternalContacts(contacts, target.contacts.filter(item => item.datajudAlias || /DataJud/i.test(String(item.source || ''))));
         judicialImported = ['intimations', 'tasks', 'processes', 'contacts']
           .reduce((total, key) => total + Math.max(0, target[key].length - initialCounts[key]), 0);
@@ -3528,7 +3608,7 @@ Diretrizes essenciais:
         events: mergeBy(current.events, updatedRuntime.events),
         tasks: mergeBy(current.tasks, updatedRuntime.tasks),
         intimations: mergeExternalIntimations(current.intimations, updatedRuntime.intimations),
-        processes: mergeExternalProcesses(current.processes, updatedRuntime.processes),
+        processes: mergeExternalProcesses(withoutSuppressedProcesses(current.processes, processSuppressions), updatedRuntime.processes),
         contacts: mergeExternalContacts(current.contacts, updatedRuntime.contacts),
         sources: mergeBy(current.sources, updatedRuntime.sources, 'id'),
         updatedAt: updatedRuntime.updatedAt
@@ -3551,6 +3631,7 @@ Diretrizes essenciais:
 
 const stateInitResult = await initServerState();
 console.log(`[ATRIUM Persistência]: Estado inicializado com status "${stateInitResult.status}". Schema v${CURRENT_SCHEMA_VERSION}.`);
+judicialOrchestrator.setPortals((await readPortalConfiguration()).portals);
 await readRuntime();
 console.log(`[ATRIUM Runtime]: Estado derivado inicializado com status "${runtimeStateStatus}".`);
 

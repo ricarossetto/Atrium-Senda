@@ -20,7 +20,10 @@ export function createProcessesFeature({
   getLinkedTasks,
   getLinkedIntimations,
   isTerminalStatus,
-  openOwnerDocuments
+  openOwnerDocuments,
+  exportJson,
+  confirmProcessDeletion = number => globalThis.prompt?.(`Para excluir o processo ${number}, digite o número completo:`) || '',
+  requestProcessReenable = () => globalThis.prompt?.('Digite o número CNJ cuja descoberta automática deve ser reativada:') || ''
 } = {}) {
   let initialized = false;
   const sort = { field: 'registeredAt', direction: 'desc' };
@@ -36,7 +39,9 @@ export function createProcessesFeature({
       formatMinutes,
       onEdit: item => feature.openProcessModal(item),
       onConsult: button => feature.consultTjrs(button),
-      onDocuments: item => openOwnerDocuments?.('process', item.id)
+      onDocuments: item => openOwnerDocuments?.('process', item.id),
+      onExport: item => feature.exportProcess(item),
+      onDelete: item => feature.deleteProcess(item)
     });
     return processesPresenter;
   };
@@ -66,6 +71,7 @@ export function createProcessesFeature({
       initialized = true;
       byId('newProcessButton')?.addEventListener('click', () => this.openProcessModal());
       byId('processSearch')?.addEventListener('input', event => this.render(event.target.value));
+      byId('processSuppressionButton')?.addEventListener('click', () => this.reenableProcessDiscovery());
       getPresenter().init();
       return true;
     },
@@ -85,6 +91,7 @@ export function createProcessesFeature({
       const incoming = safeExternalRecord(record);
       const identity = processIdentity(incoming);
       if (!identity) return null;
+      if (isProcessSuppressed(store.state, incoming.number)) return null;
       store.state.processes = Array.isArray(store.state.processes) ? store.state.processes : [];
       const index = store.state.processes.findIndex(item => processIdentity(item) === identity);
       const merged = mergeExternalProcess(index >= 0 ? store.state.processes[index] : null, incoming);
@@ -97,6 +104,12 @@ export function createProcessesFeature({
     render(query = '') {
       const needle = normalizeText(query);
       const allProcesses = Array.isArray(store.state.processes) ? store.state.processes : [];
+      const suppressions = processSuppressions(store.state);
+      const suppressionButton = byId('processSuppressionButton');
+      if (suppressionButton) {
+        suppressionButton.classList.toggle('hidden', suppressions.length === 0);
+        suppressionButton.textContent = `Reativar descoberta (${suppressions.length})`;
+      }
       let records = allProcesses.filter(item => !needle || normalizeText(`${item.number} ${item.client} ${item.court} ${item.county || ''} ${item.nb || ''} ${item.opposingParty || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
       records = sortRecords(records, sort);
       updateTableSortHeaders('processTable', sort);
@@ -177,6 +190,64 @@ export function createProcessesFeature({
 
     closeInspector(options) {
       return getPresenter().close(options);
+    },
+
+    exportProcess(item) {
+      const dossier = buildProcessDossier(store.state, item);
+      const digits = String(item?.number || item?.id || 'sem-numero').replace(/\D/g, '') || 'sem-numero';
+      exportJson?.(dossier, `processo-${digits}.json`);
+      showToast?.('Dossiê local do processo preparado para download.', 'success');
+      return dossier;
+    },
+
+    async deleteProcess(item) {
+      const number = String(item?.number || item?.protocol || '').trim();
+      if (!item?.id || !number) return false;
+      const confirmation = String(await confirmProcessDeletion(number) || '').trim();
+      if (confirmation !== number) {
+        showToast?.('Exclusão cancelada: o número informado não confere.', 'error');
+        return false;
+      }
+      const snapshot = snapshotProcessCollections(store.state);
+      try {
+        store.state.processes = (store.state.processes || []).filter(record => record.id !== item.id);
+        unlinkProcessReferences(store.state, item);
+        if (isExternallyDiscoveredProcess(item)) addProcessSuppression(store.state, item);
+        store.audit('Processo excluído', `${number} · registros vinculados preservados e desvinculados`);
+        if (!await store.flush()) throw new Error('Não foi possível persistir a exclusão do processo.');
+        getPresenter().close({ restoreFocus: false });
+        feature.render(byId('processSearch')?.value || '');
+        showToast?.('Processo excluído. Registros vinculados foram preservados.', 'success');
+        return true;
+      } catch (error) {
+        restoreProcessCollections(store.state, snapshot);
+        feature.render(byId('processSearch')?.value || '');
+        showToast?.(error.message || 'Não foi possível excluir o processo.', 'error');
+        return false;
+      }
+    },
+
+    async reenableProcessDiscovery(value) {
+      const informed = String(value || await requestProcessReenable() || '').trim();
+      const cnj = normalizeCnj(informed);
+      const suppressions = processSuppressions(store.state);
+      if (!cnj || !suppressions.some(item => normalizeCnj(item?.cnj || item) === cnj)) {
+        showToast?.('Nenhuma supressão de descoberta foi localizada para esse número.', 'error');
+        return false;
+      }
+      const previous = structuredClone(suppressions);
+      store.state.settings ||= {};
+      store.state.settings.processDiscoverySuppressions = suppressions.filter(item => normalizeCnj(item?.cnj || item) !== cnj);
+      store.audit('Descoberta processual reativada', formatProcessNumber(cnj));
+      if (!await store.flush()) {
+        store.state.settings.processDiscoverySuppressions = previous;
+        feature.render(byId('processSearch')?.value || '');
+        showToast?.('Não foi possível persistir a reativação.', 'error');
+        return false;
+      }
+      feature.render(byId('processSearch')?.value || '');
+      showToast?.('Descoberta automática reativada para esse processo.', 'success');
+      return true;
     },
 
     async consultTjrs(button) {
@@ -308,6 +379,115 @@ export function createProcessesFeature({
   };
 
   return feature;
+}
+
+function processSuppressions(state) {
+  return Array.isArray(state?.settings?.processDiscoverySuppressions) ? state.settings.processDiscoverySuppressions : [];
+}
+
+function normalizeCnj(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length === 20 ? digits : '';
+}
+
+function isProcessSuppressed(state, number) {
+  const cnj = normalizeCnj(number);
+  return Boolean(cnj && processSuppressions(state).some(item => normalizeCnj(item?.cnj || item) === cnj));
+}
+
+function isExternallyDiscoveredProcess(item) {
+  return Boolean(normalizeCnj(item?.number) && (item?.externalId || item?.datajudAlias || /DJEN|DataJud|CNJ/i.test(String(item?.source || ''))));
+}
+
+function addProcessSuppression(state, item) {
+  const cnj = normalizeCnj(item.number);
+  if (!cnj || isProcessSuppressed(state, cnj)) return;
+  state.settings ||= {};
+  state.settings.processDiscoverySuppressions = [...processSuppressions(state), {
+    cnj,
+    deletedAt: new Date().toISOString(),
+    source: String(item.source || 'Descoberta judicial').slice(0, 160),
+    reason: 'user-deleted'
+  }];
+}
+
+function snapshotProcessCollections(state) {
+  return structuredClone({
+    processes: state.processes,
+    tasks: state.tasks,
+    intimations: state.intimations,
+    documents: state.documents,
+    settings: state.settings,
+    audit: state.audit
+  });
+}
+
+function restoreProcessCollections(state, snapshot) {
+  for (const key of ['processes', 'tasks', 'intimations', 'documents', 'settings', 'audit']) state[key] = snapshot[key];
+}
+
+function unlinkProcessReferences(state, item) {
+  const number = String(item.number || '').trim();
+  const cnj = normalizeCnj(number);
+  for (const collection of ['tasks', 'intimations', 'documents']) {
+    if (!Array.isArray(state[collection])) continue;
+    state[collection] = state[collection].map(record => {
+      const directId = String(record?.processId || '') === String(item.id);
+      const owner = record?.ownerType === 'process' && String(record?.ownerId || '') === String(item.id);
+      const linkedNumber = cnj && normalizeCnj(record?.process || record?.processNumber) === cnj;
+      if (!directId && !owner && !linkedNumber) return record;
+      const next = { ...record, unlinkedProcessNumber: number, unlinkedAt: new Date().toISOString() };
+      if (directId) delete next.processId;
+      if (owner) { delete next.ownerType; delete next.ownerId; }
+      if (linkedNumber) {
+        if ('process' in next) next.process = '';
+        if ('processNumber' in next) next.processNumber = '';
+      }
+      return next;
+    });
+  }
+}
+
+function buildProcessDossier(state, item) {
+  const number = String(item?.number || '').trim();
+  const cnj = normalizeCnj(number);
+  const linked = record => String(record?.processId || '') === String(item?.id)
+    || (record?.ownerType === 'process' && String(record?.ownerId || '') === String(item?.id))
+    || Boolean(cnj && normalizeCnj(record?.process || record?.processNumber) === cnj);
+  const safe = value => stripSecrets(structuredClone(value));
+  return {
+    format: 'atrium-process-dossier',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    scope: { processId: String(item?.id || ''), processNumber: number },
+    process: safe(item),
+    provenance: safe({ source: item?.source || '', externalId: item?.externalId || null, datajudAlias: item?.datajudAlias || null, collectedAt: item?.collectedAt || null, datajudUpdatedAt: item?.datajudUpdatedAt || null }),
+    movements: safe(Array.isArray(item?.movements) ? item.movements : []),
+    linked: {
+      intimations: safe((state.intimations || []).filter(linked)),
+      tasks: safe((state.tasks || []).filter(linked)),
+      documents: safe((state.documents || []).filter(linked).map(document => ({
+        id: document.id,
+        name: document.name || document.fileName || document.title || '',
+        type: document.type || document.mimeType || '',
+        createdAt: document.createdAt || null,
+        updatedAt: document.updatedAt || null,
+        source: document.source || ''
+      })))
+    },
+    audit: safe((state.audit || []).filter(entry => number && String(entry?.detail || '').includes(number)))
+  };
+}
+
+function stripSecrets(value) {
+  if (Array.isArray(value)) return value.map(stripSecrets);
+  if (!value || typeof value !== 'object') return value;
+  const result = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (/(?:passphrase|password|secret|token|cookie|apiKey|certificate|pfx)/i.test(key)) continue;
+    result[key] = stripSecrets(item);
+  }
+  return result;
 }
 
 function mergeExternalProcess(existing, incoming) {

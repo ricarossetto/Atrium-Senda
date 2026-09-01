@@ -155,18 +155,27 @@ function mergeDatajudRecord(record, number, alias, portal, config, target) {
   const matchedTermIds = parties.flatMap(item => item.matchedTerms.map(termIdentity));
   incomingProcess.monitoredTermIds = uniqueStrings([...(existing?.monitoredTermIds || []), ...relatedTermIds, ...matchedTermIds]);
 
-  const discoveredContacts = parties.map(({ party, pole, matchedTerms }) => partyContact(party, {
-    alias,
-    normalizedNumber,
-    now,
-    portal,
-    contactRole: representedPole
-      ? (pole === representedPole ? (matchedTerms.length ? 'cliente' : 'outro') : 'adverso')
-      : 'outro',
-    monitoredTermIds: representedPole && pole === representedPole
-      ? matchedTerms.map(termIdentity)
-      : incomingProcess.monitoredTermIds
-  })).filter(Boolean);
+  const discoveredContacts = parties.map(({ party, pole, matchedTerms }) => {
+    const selfRepresentedProfessional = matchedTerms.some(term => partyIdentityMatchesTerm(party, term));
+    const representedByTermIds = representedPole && pole === representedPole ? matchedTerms.map(termIdentity) : [];
+    return partyContact(party, {
+      alias,
+      normalizedNumber,
+      now,
+      portal,
+      contactRole: selfRepresentedProfessional
+        ? 'outro'
+        : representedPole
+          ? (pole === representedPole ? (matchedTerms.length ? 'cliente' : 'outro') : 'adverso')
+          : 'outro',
+      monitoredTermIds: representedByTermIds.length ? representedByTermIds : incomingProcess.monitoredTermIds,
+      relationship: selfRepresentedProfessional
+        ? { status: 'requires-human-confirmation', reason: 'monitored-professional-is-party', representedByTermIds }
+        : representedByTermIds.length
+          ? { status: 'inferred-from-authoritative-source', reason: 'represented-by-monitored-oab', representedByTermIds }
+          : null
+    });
+  }).filter(Boolean);
   const clients = discoveredContacts.filter(contact => contact.contactRole === 'cliente');
   const opponents = discoveredContacts.filter(contact => contact.contactRole === 'adverso');
   if (clients.length === 1) incomingProcess.client = clients[0].name;
@@ -291,7 +300,7 @@ export function mergeExternalContactRecord(existing, incoming) {
   return merged;
 }
 
-function partyContact(party, { alias, normalizedNumber, now, portal, contactRole, monitoredTermIds }) {
+function partyContact(party, { alias, normalizedNumber, now, portal, contactRole, monitoredTermIds, relationship = null }) {
   const person = party?.pessoa && typeof party.pessoa === 'object' ? party.pessoa : party;
   const name = normalizeText(person?.nome || party?.nome || '');
   if (!name) return null;
@@ -325,6 +334,7 @@ function partyContact(party, { alias, normalizedNumber, now, portal, contactRole
     datajudAlias: `api_publica_${alias}`,
     relatedProcessNumbers: [normalizedNumber],
     monitoredTermIds: uniqueStrings(monitoredTermIds),
+    ...(relationship ? { relationshipProvenance: { ...relationship, source: portal.name || 'DataJud/CNJ', collectedAt: now } } : {}),
     registeredAt: now.slice(0, 10),
     collectedAt: now
   };
@@ -350,6 +360,13 @@ function partyMatchesTerm(party, term) {
     }
     return Boolean(exactName);
   });
+}
+
+function partyIdentityMatchesTerm(party, term) {
+  const person = party?.pessoa && typeof party.pessoa === 'object' ? party.pessoa : party;
+  const partyName = normalizeIdentity(person?.nome || party?.nome);
+  const termName = normalizeIdentity(term?.name);
+  return Boolean(partyName && termName && partyName === termName);
 }
 
 function contactMatchIndex(records, incoming) {
@@ -423,7 +440,9 @@ function termIdentity(term) {
 
 function normalizePole(value) { return normalizeText(value || '').toUpperCase(); }
 function normalizeDocument(value) { return String(value || '').replace(/[^A-Za-z0-9]/g, '').toLowerCase(); }
-function normalizeIdentity(value) { return normalizeText(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+function normalizeIdentity(value) {
+  return normalizeText(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
 function uniqueStrings(values) { return [...new Set((Array.isArray(values) ? values : []).map(value => String(value || '').trim()).filter(Boolean))]; }
 
 function processNumbersFrom(target) {

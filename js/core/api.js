@@ -20,8 +20,7 @@ export function persistState(state, revision) {
   return authenticatedRequest('/api/state', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ state, revision }),
-    keepalive: true
+    body: JSON.stringify({ state, revision })
   });
 }
 

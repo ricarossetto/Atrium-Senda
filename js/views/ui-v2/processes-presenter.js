@@ -7,7 +7,9 @@ export function createProcessesV2Presenter({
   formatMinutes,
   onEdit,
   onConsult,
-  onDocuments
+  onDocuments,
+  onExport,
+  onDelete
 } = {}) {
   let initialized = false;
   let selectedItem = null;
@@ -40,6 +42,12 @@ export function createProcessesV2Presenter({
       const item = selectedItem;
       close({ restoreFocus: false });
       onDocuments?.(item);
+    });
+    byId('processInspectorExport')?.addEventListener('click', () => {
+      if (selectedItem) onExport?.(selectedItem);
+    });
+    byId('processInspectorDelete')?.addEventListener('click', () => {
+      if (selectedItem) onDelete?.(selectedItem);
     });
     return true;
   }

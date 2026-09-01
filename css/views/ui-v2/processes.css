@@ -372,6 +372,20 @@ html[data-ui="v2"] .process-inspector > footer {
   background: var(--v2-color-surface-elevated);
 }
 
+html[data-ui="v2"] .process-edit-action {
+  border-color: color-mix(in srgb, var(--v2-color-gold) 52%, var(--v2-color-border));
+  background: color-mix(in srgb, var(--v2-color-gold-soft) 48%, var(--v2-color-surface));
+  color: var(--v2-color-foreground);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
+}
+
+html[data-ui="v2"] .process-edit-action:hover {
+  background: color-mix(in srgb, var(--v2-color-gold-soft) 64%, var(--v2-color-surface));
+  border-color: color-mix(in srgb, var(--v2-color-gold) 64%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .process-delete-action { margin-inline-start: auto; }
+
 html[data-ui="v2"] .process-inspector > header {
   border-bottom: 1px solid var(--v2-color-border);
   background:
@@ -382,6 +396,7 @@ html[data-ui="v2"] .process-inspector > header {
 
 html[data-ui="v2"] .process-inspector > footer {
   justify-content: flex-end;
+  flex-wrap: wrap;
   border-top: 1px solid var(--v2-color-border);
 }
 

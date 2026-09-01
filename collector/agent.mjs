@@ -32,6 +32,22 @@ const loginWaitMs = Math.max(0, Number(process.env.LOGIN_WAIT_SECONDS || 180)) *
 const judicialIdentityId = String(process.env.JUDICIAL_IDENTITY_ID || 'office-primary').replace(/[^a-zA-Z0-9_-]/g, '_');
 const configFile = existsSync(path.join(COLLECTOR_DIR, 'portals.json')) ? path.join(COLLECTOR_DIR, 'portals.json') : path.join(COLLECTOR_DIR, 'portals.example.json');
 const config = JSON.parse(await readFile(configFile, 'utf8'));
+const runtimeOabUf = String(process.env.JUDICIAL_OAB_UF || '').trim().toUpperCase();
+const runtimeOabNumber = String(process.env.JUDICIAL_OAB_NUMBER || '').replace(/\D/g, '');
+if (runtimeOabUf && runtimeOabNumber) {
+  config.monitoredTerm = {
+    ...(config.monitoredTerm || {}),
+    registration: `OAB/${runtimeOabUf} ${runtimeOabNumber}`,
+    oabUf: runtimeOabUf,
+    oabNumber: runtimeOabNumber
+  };
+  for (const portal of config.portals || []) {
+    if (portal.strategy === 'djen') {
+      portal.ufOab = runtimeOabUf;
+      portal.numeroOab = runtimeOabNumber;
+    }
+  }
+}
 const requestedPortalIds = new Set(String(process.env.COLLECTOR_PORTAL_IDS || '').split(',').map(value => value.trim()).filter(Boolean));
 const portals = (config.portals || []).filter(portal => requestedPortalIds.size ? requestedPortalIds.has(portal.id) : portal.enabled);
 

@@ -32,6 +32,12 @@ const FIELDS_BY_SECTION = {
   integrations: [{name:'name',label:'Integração',required:true,full:true},{name:'status',label:'Status'},{name:'method',label:'Método'}]
 };
 
+const formatResponsibles = value => {
+  if (Array.isArray(value)) return value.map(item => String(item ?? '').trim()).filter(Boolean).join(', ');
+  if (typeof value === 'string') return value.trim();
+  return '';
+};
+
 export function createConfigurationFeature({
   store,
   documentRef = globalThis.document,
@@ -223,7 +229,7 @@ export function createConfigurationFeature({
       }
       if (!item || typeof item !== 'object') return '';
       const primary = item.name || item.event || item.group || 'Configuração';
-      const secondary = item.role || item.phase || item.group || item.publicationResponsible || item.method || (item.responsibles || []).join(', ') || item.status || '—';
+      const secondary = item.role || item.phase || item.group || item.publicationResponsible || item.method || formatResponsibles(item.responsibles) || item.status || '—';
       const meta = Number.isFinite(item.points) ? `<span class="config-points">${item.points} pontos</span>` : item.monthlyClosings == null && 'monthlyClosings' in item ? '<small>Meta não definida</small>' : `<small>${escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
       if (v2) return `
         <article class="configuration-row" role="listitem" data-config-index="${index}">
@@ -247,7 +253,7 @@ export function createConfigurationFeature({
     openModal(defaults = {}, index = null) {
       const fields = FIELDS_BY_SECTION[configurationSection] || [{ name: 'name', label: 'Nome', required: true, full: true }];
       const values = typeof defaults === 'string' ? { value: defaults } : { ...defaults };
-      if (Array.isArray(values.responsibles)) values.responsibles = values.responsibles.join(', ');
+      if ('responsibles' in values) values.responsibles = formatResponsibles(values.responsibles);
       openModal('configuration', index === null ? 'Novo item de configuração' : 'Editar configuração', 'Estrutura do escritório', fields, { ...values, _section: configurationSection, _index: index });
     },
 

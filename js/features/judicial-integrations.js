@@ -220,20 +220,28 @@ export function createJudicialIntegrationsFeature({
       const list = byId('managedCoverageList');
       const summary = byId('managedCoverageSummary');
       if (!list || !summary) return;
-      const connected = coverage.filter(item => item.connectivityState === 'connected').length;
-      const actionRequired = coverage.filter(item => ['action_required', 'human_action_required', 'expired'].includes(item.connectivityState)).length;
-      const errors = coverage.filter(item => item.connectivityState === 'error').length;
-      summary.textContent = `${connected} conectada(s) · ${actionRequired} requer(em) ação · ${errors} com erro transitório`;
-      list.innerHTML = coverage.length ? coverage.map(item => {
-        const state = feature.managedStateLabel(item.connectivityState);
-        const detail = item.humanAction || item.lastError || (item.lastSuccessfulSyncAt ? `Último sucesso ${feature.formatManagedTime(item.lastSuccessfulSyncAt)}` : 'Ainda sem sincronização autenticada');
-        const next = item.nextRefreshAt ? `Próxima tentativa ${feature.formatManagedTime(item.nextRefreshAt)}` : item.humanAction ? 'Atualização pausada até intervenção' : 'Cadência ainda não definida';
-        return `<article class="managed-coverage-row" data-managed-state="${escapeHtml(item.connectivityState || 'not_configured')}">
+      const publicSources = coverage.filter(item => item.authStrategy === 'public');
+      const authenticatedPortals = coverage.filter(item => item.authStrategy !== 'public');
+      const connected = authenticatedPortals.filter(item => item.connectivityState === 'connected').length;
+      const actionRequired = authenticatedPortals.filter(item => ['action_required', 'human_action_required', 'expired'].includes(item.connectivityState)).length;
+      const errors = authenticatedPortals.filter(item => item.connectivityState === 'error').length;
+      summary.textContent = `${publicSources.length} fonte(s) pública(s) ativa(s) · ${connected} portal(is) conectado(s) · ${actionRequired} requer(em) ação · ${errors} com erro transitório`;
+      const renderRows = items => items.map(item => {
+        const isPublic = item.authStrategy === 'public';
+        const state = isPublic ? 'Ativo' : feature.managedStateLabel(item.connectivityState);
+        const detail = item.humanAction || item.lastError || (isPublic && item.publicDetail
+          ? `${item.publicDetail}${item.lastSuccessfulSyncAt ? ` · Última consulta ${feature.formatManagedTime(item.lastSuccessfulSyncAt)}` : ''}`
+          : item.lastSuccessfulSyncAt
+          ? `Última consulta ${feature.formatManagedTime(item.lastSuccessfulSyncAt)}`
+          : isPublic ? 'API pública oficial · aguardando primeira consulta' : 'Ainda sem sincronização autenticada');
+        const next = item.nextRefreshAt ? `Próxima tentativa ${feature.formatManagedTime(item.nextRefreshAt)}` : item.humanAction ? 'Atualização pausada até intervenção' : isPublic ? 'Consulta somente leitura sob demanda' : 'Cadência ainda não definida';
+        return `<article class="managed-coverage-row" data-managed-state="${escapeHtml(isPublic ? 'public-active' : item.connectivityState || 'not_configured')}">
           <div class="managed-coverage-identity"><strong>${escapeHtml(item.name || item.id)}</strong><span>${escapeHtml(item.system || 'Portal judicial')} · ${escapeHtml(feature.strategyLabel(item.authStrategy))}</span></div>
-          <div class="managed-coverage-status"><span class="status-chip ${item.connectivityState === 'connected' ? 'connected' : ['error', 'expired'].includes(item.connectivityState) ? 'warning' : 'muted'}">${escapeHtml(state)}</span><small>${escapeHtml(detail)}</small></div>
-          <div class="managed-coverage-next"><span>${escapeHtml(item.verification === 'verified' ? 'Verificado' : item.verification === 'experimental' ? 'Experimental' : 'Não verificado em portal real')}</span><small>${escapeHtml(next)}</small></div>
+          <div class="managed-coverage-status"><span class="status-chip ${isPublic || item.connectivityState === 'connected' ? 'connected' : ['error', 'expired'].includes(item.connectivityState) ? 'warning' : 'muted'}">${escapeHtml(state)}</span><small>${escapeHtml(detail)}</small></div>
+          <div class="managed-coverage-next"><span>${escapeHtml(isPublic ? 'API pública oficial' : item.verification === 'verified' ? 'Verificado' : item.verification === 'experimental' ? 'Experimental' : 'Não verificado em portal real')}</span><small>${escapeHtml(next)}</small></div>
         </article>`;
-      }).join('') : '<div class="setup-loading">Nenhuma fonte judicial foi configurada.</div>';
+      }).join('');
+      list.innerHTML = coverage.length ? `${publicSources.length ? `<section class="managed-coverage-group" data-coverage-kind="public"><h4>Fontes públicas</h4>${renderRows(publicSources)}</section>` : ''}${authenticatedPortals.length ? `<section class="managed-coverage-group" data-coverage-kind="authenticated"><h4>Portais autenticados</h4>${renderRows(authenticatedPortals)}</section>` : ''}` : '<div class="setup-loading">Nenhuma fonte judicial foi configurada.</div>';
     },
 
     portalCoverageDescription(portal) {
