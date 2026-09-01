@@ -183,11 +183,30 @@ html[data-ui="v2"] .document-record-copy small { display: block; overflow: hidde
 html[data-ui="v2"] .document-record-copy strong { color: var(--v2-color-foreground); font-size: 13px; }
 html[data-ui="v2"] .document-record-copy span { margin-top: 3px; color: var(--v2-color-foreground-secondary); font-size: 11px; }
 html[data-ui="v2"] .document-record-copy small { margin-top: 2px; color: var(--v2-color-foreground-muted); font-size: 10px; }
-html[data-ui="v2"] .document-record-actions { display: flex; gap: 6px; }
+html[data-ui="v2"] .document-record-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 390px; }
 html[data-ui="v2"] .document-record-actions .button { min-height: 36px; padding-inline: 10px; font-size: 11px; }
+html[data-ui="v2"] .document-intelligence-status { color: var(--v2-color-success) !important; font-weight: 700; }
 html[data-ui="v2"] .document-empty-state { display: grid; place-items: center; min-height: 180px; padding: var(--v2-space-6); border: 1px dashed var(--v2-color-border); border-radius: var(--v2-radius-sm); text-align: center; }
 html[data-ui="v2"] .document-empty-state strong { color: var(--v2-color-foreground); }
 html[data-ui="v2"] .document-empty-state span { color: var(--v2-color-foreground-secondary); font-size: 12px; }
+html[data-ui="v2"] .document-intelligence-panel {
+  margin-top: var(--v2-space-5);
+  overflow: hidden;
+  border: 1px solid var(--v2-color-border-strong);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface-inset);
+  box-shadow: var(--v2-shadow-card);
+}
+html[data-ui="v2"] .document-intelligence-panel:focus { outline: 3px solid color-mix(in srgb, var(--v2-color-focus) 28%, transparent); outline-offset: 2px; }
+html[data-ui="v2"] .document-intelligence-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--v2-space-4); padding: var(--v2-space-4); border-bottom: 1px solid var(--v2-color-border); background: var(--v2-color-surface-elevated); }
+html[data-ui="v2"] .document-intelligence-panel > header .eyebrow { margin: 0; color: var(--v2-color-gold); }
+html[data-ui="v2"] .document-intelligence-panel > header h4 { margin: 4px 0 0; color: var(--v2-color-foreground); font: 650 20px/1.2 var(--v2-font-editorial); }
+html[data-ui="v2"] .document-intelligence-panel > header span { display: block; margin-top: 5px; color: var(--v2-color-foreground-secondary); font-size: 11px; }
+html[data-ui="v2"] .document-intelligence-body { display: grid; place-items: start center; min-height: 220px; max-height: 560px; padding: var(--v2-space-5); overflow: auto; overscroll-behavior: contain; }
+html[data-ui="v2"] .document-intelligence-body img { display: block; max-width: 100%; height: auto; border: 1px solid var(--v2-color-border); background: #fff; box-shadow: 0 12px 28px rgba(14, 19, 18, .12); }
+html[data-ui="v2"] .document-intelligence-body pre { width: 100%; min-height: 180px; margin: 0; padding: var(--v2-space-5); overflow-wrap: anywhere; white-space: pre-wrap; color: var(--v2-color-foreground); background: var(--v2-color-surface-secondary); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-sm); font: 500 12px/1.65 var(--v2-font-interface); }
+html[data-ui="v2"] .document-intelligence-loading { margin: auto; color: var(--v2-color-foreground-secondary); font-size: 12px; }
+html[data-ui="v2"] .document-intelligence-panel > footer { padding: 10px var(--v2-space-4); color: var(--v2-color-foreground-muted); background: var(--v2-color-surface-secondary); border-top: 1px solid var(--v2-color-border); font-size: 10px; line-height: 1.45; }
 
 html[data-ui="v2"] #docGeneratorBackdrop {
   align-items: center;
@@ -365,6 +384,10 @@ html[data-ui="v2"] #docGeneratorBackdrop .doc-generator-modal > footer .button {
   html[data-ui="v2"] .document-record { grid-template-columns: 36px minmax(0, 1fr); }
   html[data-ui="v2"] .document-record-actions { grid-column: 1 / -1; }
   html[data-ui="v2"] .document-record-actions .button { flex: 1; min-height: 44px; }
+  html[data-ui="v2"] .document-intelligence-panel > header { padding: var(--v2-space-3); }
+  html[data-ui="v2"] .document-intelligence-panel > header .icon-button { min-width: 44px; min-height: 44px; }
+  html[data-ui="v2"] .document-intelligence-body { max-height: 520px; padding: var(--v2-space-3); }
+  html[data-ui="v2"] .document-intelligence-body pre { padding: var(--v2-space-4); }
 }
 
 @media (prefers-reduced-motion: reduce) {

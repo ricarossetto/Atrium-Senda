@@ -50,7 +50,8 @@ assert.match(specs['judicial-readonly-policy'], /Ci[eê]ncia, acknowledgment, as
 assert.match(specs['managed-judicial-connectivity'], /backoff exponencial/i);
 assert.match(specs['document-management'], /metadata can[oô]nica vive em `state\.documents`/i);
 assert.match(specs['document-management'], /Soft delete precede a exclus[aã]o permanente/i);
-assert.match(specs['document-management'], /FUTURE[^\n]*OCR, classifica[cç][aã]o, versionamento/i);
+assert.match(specs['document-management'], /OCR nunca substitui o original/i);
+assert.match(specs['document-management'], /FUTURE[^\n]*classifica[cç][aã]o, versionamento/i);
 assert.match(specs['email-policy'], /envio exclusivamente manual/i);
 assert.match(specs['security-boundaries'], /deny-by-default/i);
 assert.match(specs['audit-policy'], /n[aã]o inclui CPF\/RG\/telefone\/e-mail\/endere[cç]o\/notas/i);

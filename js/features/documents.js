@@ -70,6 +70,7 @@ export function createDocumentsFeature({
   let previousBodyOverflow = '';
   let archiveFilter = 'active';
   let selectedOwner = null;
+  let intelligenceObjectUrl = null;
   const byId = id => documentRef.getElementById(id);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
 
@@ -477,6 +478,46 @@ ${id.lawyerOab} - ${id.officeName}`;
     return owner ? ownerLabel(owner, document.ownerType) : 'Proprietário indisponível';
   }
 
+  function canConvertDocumentToPdf(document) {
+    const mime = String(document?.mime || '').split(';', 1)[0].toLowerCase();
+    return mime === 'text/plain' || mime === 'text/markdown' || /\.(txt|md|markdown)$/i.test(String(document?.name || ''));
+  }
+
+  function closeIntelligencePanel() {
+    if (intelligenceObjectUrl) windowRef.URL.revokeObjectURL(intelligenceObjectUrl);
+    intelligenceObjectUrl = null;
+    byId('documentIntelligencePanel')?.classList.add('hidden');
+    const body = byId('documentIntelligenceBody');
+    if (body) body.replaceChildren();
+  }
+
+  function openIntelligencePanel(document, title, meta) {
+    const panel = byId('documentIntelligencePanel');
+    const heading = byId('documentIntelligenceTitle');
+    const metadata = byId('documentIntelligenceMeta');
+    const body = byId('documentIntelligenceBody');
+    if (!panel || !body) return null;
+    if (intelligenceObjectUrl) windowRef.URL.revokeObjectURL(intelligenceObjectUrl);
+    intelligenceObjectUrl = null;
+    if (heading) heading.textContent = title;
+    if (metadata) metadata.textContent = meta || `${document.name} · original preservado`;
+    body.replaceChildren();
+    body.setAttribute('aria-busy', 'true');
+    const loading = documentRef.createElement('p');
+    loading.className = 'document-intelligence-loading';
+    loading.textContent = 'Preparando leitura segura…';
+    body.append(loading);
+    panel.classList.remove('hidden');
+    panel.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+    panel.focus?.({ preventScroll: true });
+    return body;
+  }
+
+  async function responseError(response, fallback) {
+    const payload = await response.json().catch(() => ({}));
+    return new Error(payload.message || fallback);
+  }
+
   function renderArchive() {
     if (!isV2()) return;
     updateOwnerOptions();
@@ -494,11 +535,12 @@ ${id.lawyerOab} - ${id.officeName}`;
           <strong>${escapeHtml(document.name)}</strong>
           <span>${escapeHtml(documentOwnerName(document))}</span>
           <small>${escapeHtml(document.documentType || 'Documento')} · ${escapeHtml(document.documentDate || '')} · ${escapeHtml(formatDocumentSize(document.size))}</small>
+          ${document.intelligence?.ocr ? `<small class="document-intelligence-status">Texto extraído sob supervisão · ${escapeHtml(String(document.intelligence.ocr.characterCount || 0))} caracteres</small>` : ''}
         </div>
         <div class="document-record-actions">
           ${document.deletedAt
             ? `<button class="button ghost" type="button" data-document-action="restore">Restaurar</button><button class="button danger" type="button" data-document-action="purge">Excluir definitivamente</button>`
-            : `<button class="button ghost" type="button" data-document-action="download">Baixar</button><button class="button ghost" type="button" data-document-action="delete">Mover para lixeira</button>`}
+            : `<button class="button ghost" type="button" data-document-action="preview">Preview</button><button class="button ghost" type="button" data-document-action="${document.intelligence?.ocr ? 'read-ocr' : 'ocr'}">${document.intelligence?.ocr ? 'Ver extração' : 'Extrair texto'}</button>${canConvertDocumentToPdf(document) ? '<button class="button ghost" type="button" data-document-action="pdf">Gerar PDF</button>' : ''}<button class="button ghost" type="button" data-document-action="download">Baixar</button><button class="button ghost" type="button" data-document-action="delete">Mover para lixeira</button>`}
         </div>
       </article>`).join('')
       : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.'}</span></div>`;
@@ -540,6 +582,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('documentOwnerType')?.addEventListener('change', () => { selectedOwner = null; updateOwnerOptions(); });
       byId('documentUploadForm')?.addEventListener('submit', event => feature.uploadDocument(event));
       byId('documentNamingSave')?.addEventListener('click', () => feature.saveNamingTemplate());
+      byId('documentIntelligenceClose')?.addEventListener('click', closeIntelligencePanel);
       byId('documentArchiveWorkspace')?.addEventListener('click', event => {
         const filter = event.target.closest('[data-document-filter]');
         if (filter) return feature.setArchiveFilter(filter.dataset.documentFilter);
@@ -666,6 +709,10 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (!secureFetch) return false;
       const document = (store.state.documents || []).find(item => item.id === id);
       if (!document) return false;
+      if (action === 'preview') return feature.showDocumentPreview(document);
+      if (action === 'read-ocr') return feature.showExtractedText(document);
+      if (action === 'ocr') return feature.extractDocumentText(document);
+      if (action === 'pdf') return feature.convertDocumentToPdf(document);
       if (action === 'download') {
         try {
           const response = await secureFetch(`/api/documents/${encodeURIComponent(id)}/content`, { headers: { Accept: 'application/octet-stream' } });
@@ -698,6 +745,95 @@ ${id.lawyerOab} - ${id.officeName}`;
       } catch (error) {
         showToast(error.message, 'error');
         return false;
+      }
+    },
+
+    async showDocumentPreview(document) {
+      const body = openIntelligencePanel(document, 'Preview seguro', `${document.name} · conteúdo derivado apenas para leitura`);
+      if (!body) return false;
+      try {
+        const response = await secureFetch(`/api/documents/${encodeURIComponent(document.id)}/preview`, { headers: { Accept: 'text/plain,image/png,image/jpeg,image/webp' } });
+        if (!response.ok) throw await responseError(response, 'Não foi possível gerar preview seguro deste arquivo.');
+        body.replaceChildren();
+        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+        if (contentType.startsWith('image/')) {
+          intelligenceObjectUrl = windowRef.URL.createObjectURL(await response.blob());
+          const image = documentRef.createElement('img');
+          image.src = intelligenceObjectUrl;
+          image.alt = `Preview seguro de ${document.name}`;
+          body.append(image);
+        } else {
+          const text = documentRef.createElement('pre');
+          text.textContent = await response.text();
+          body.append(text);
+        }
+        body.setAttribute('aria-busy', 'false');
+        return true;
+      } catch (error) {
+        closeIntelligencePanel();
+        showToast(error.message, 'error');
+        return false;
+      }
+    },
+
+    async showExtractedText(document) {
+      const body = openIntelligencePanel(document, 'Texto extraído', `${document.name} · ${document.intelligence?.ocr?.engine || 'motor local'} · revisão humana obrigatória`);
+      if (!body) return false;
+      try {
+        const response = await secureFetch(`/api/documents/${encodeURIComponent(document.id)}/ocr`, { headers: { Accept: 'text/plain' } });
+        if (!response.ok) throw await responseError(response, 'Não foi possível abrir o texto extraído.');
+        const text = documentRef.createElement('pre');
+        text.textContent = await response.text();
+        body.replaceChildren(text);
+        body.setAttribute('aria-busy', 'false');
+        return true;
+      } catch (error) {
+        closeIntelligencePanel();
+        showToast(error.message, 'error');
+        return false;
+      }
+    },
+
+    async extractDocumentText(document) {
+      const action = byId('documentArchiveList')?.querySelector(`[data-document-id="${windowRef.CSS?.escape ? windowRef.CSS.escape(document.id) : document.id}"] [data-document-action="ocr"]`);
+      if (action) action.disabled = true;
+      try {
+        const payload = await responsePayload(await secureFetch(`/api/documents/${encodeURIComponent(document.id)}/ocr`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ revision: store.revision })
+        }));
+        syncDocumentState(payload);
+        renderArchive();
+        const updated = (store.state.documents || []).find(item => item.id === document.id);
+        showToast('Texto extraído localmente. Revise o resultado antes de usar.', 'success');
+        return feature.showExtractedText(updated || document);
+      } catch (error) {
+        showToast(error.message, 'error');
+        return false;
+      } finally {
+        if (action?.isConnected) action.disabled = false;
+      }
+    },
+
+    async convertDocumentToPdf(document) {
+      const action = byId('documentArchiveList')?.querySelector(`[data-document-id="${windowRef.CSS?.escape ? windowRef.CSS.escape(document.id) : document.id}"] [data-document-action="pdf"]`);
+      if (action) action.disabled = true;
+      try {
+        const payload = await responsePayload(await secureFetch(`/api/documents/${encodeURIComponent(document.id)}/pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ revision: store.revision })
+        }));
+        syncDocumentState(payload);
+        renderArchive();
+        showToast('PDF derivado criado sem substituir o documento original.', 'success');
+        return true;
+      } catch (error) {
+        showToast(error.message, 'error');
+        return false;
+      } finally {
+        if (action?.isConnected) action.disabled = false;
       }
     },
 

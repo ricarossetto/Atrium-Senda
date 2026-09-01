@@ -628,6 +628,18 @@
               </div>
               <div id="documentArchiveStatus" class="document-archive-status" role="status" aria-live="polite"></div>
               <div id="documentArchiveList" class="document-archive-list"></div>
+              <section id="documentIntelligencePanel" class="document-intelligence-panel hidden" aria-labelledby="documentIntelligenceTitle" tabindex="-1">
+                <header>
+                  <div>
+                    <p class="eyebrow">Leitura local supervisionada</p>
+                    <h4 id="documentIntelligenceTitle">Preview documental</h4>
+                    <span id="documentIntelligenceMeta">O original permanece preservado.</span>
+                  </div>
+                  <button class="icon-button" id="documentIntelligenceClose" type="button" aria-label="Fechar preview documental"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
+                </header>
+                <div id="documentIntelligenceBody" class="document-intelligence-body" aria-live="polite"></div>
+                <footer>OCR e conversão são ações explícitas. O ATRIUM nunca envia o arquivo a um serviço de nuvem neste pipeline.</footer>
+              </section>
             </div>
           </div>
         </section>

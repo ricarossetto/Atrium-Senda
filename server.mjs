@@ -22,6 +22,7 @@ import {
   resolveDocumentName,
   sanitizeDocumentFilename
 } from './lib/documents/document-service.mjs';
+import { DocumentIntelligenceService } from './lib/documents/document-intelligence.mjs';
 import { runA1Sandbox } from './lib/judicial/a1-sandbox.mjs';
 import { runTotpSandbox, parseTotpUri } from './lib/judicial/totp-sandbox.mjs';
 import {
@@ -99,6 +100,7 @@ await emailService.init();
 
 const documentBlobStore = new DocumentBlobStore({ dataDirectory: DATA_DIR, securityManager: security });
 await documentBlobStore.init();
+const documentIntelligence = new DocumentIntelligenceService();
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -1645,6 +1647,18 @@ function documentResponseState(state, saved) {
   return { documents: state.documents || [], revision: saved.revision };
 }
 
+function documentContentReferenceExists(state, checksum) {
+  if (!checksum) return false;
+  return (state?.documents || []).some(item => item?.checksum === checksum || item?.intelligence?.ocr?.checksum === checksum);
+}
+
+function activeDocumentFromState(state, id) {
+  const document = (state?.documents || []).find(item => item?.id === id);
+  if (!document) throw Object.assign(new Error('Documento não encontrado.'), { statusCode: 404 });
+  if (document.deletedAt) throw Object.assign(new Error('Restaure o documento antes de usar o pipeline de inteligência.'), { statusCode: 410 });
+  return document;
+}
+
 function documentIdFromPath(pathname, suffix = '') {
   const pattern = suffix
     ? new RegExp(`^/api/documents/([^/]+)/${suffix}$`)
@@ -2245,6 +2259,169 @@ const server = http.createServer(async (req, res) => {
       return res.end(binary);
     }
 
+    if (req.method === 'GET' && /^\/api\/documents\/[^/]+\/preview$/.test(url.pathname)) {
+      assertAuthenticated(req);
+      const id = documentIdFromPath(url.pathname, 'preview');
+      const envelope = await readAppStateEnvelope();
+      const document = activeDocumentFromState(envelope.state, id);
+      const source = await documentBlobStore.read(document.checksum);
+      const preview = await documentIntelligence.createPreview(source, { mime: document.mime, name: document.name });
+      applySecurityHeaders(res);
+      res.writeHead(200, {
+        'Content-Type': preview.mime,
+        'Content-Length': String(preview.binary.length),
+        'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(`preview${preview.extension}`)}`,
+        'Cache-Control': 'no-store, private',
+        'Content-Security-Policy': "sandbox; default-src 'none'; script-src 'none'; object-src 'none'",
+        'Cross-Origin-Resource-Policy': 'same-origin',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Atrium-Preview-Engine': preview.engine
+      });
+      return res.end(preview.binary);
+    }
+
+    if (req.method === 'GET' && /^\/api\/documents\/[^/]+\/ocr$/.test(url.pathname)) {
+      assertAuthenticated(req);
+      const id = documentIdFromPath(url.pathname, 'ocr');
+      const envelope = await readAppStateEnvelope();
+      const document = activeDocumentFromState(envelope.state, id);
+      const ocr = document.intelligence?.ocr;
+      if (!ocr?.checksum) throw Object.assign(new Error('Este documento ainda não possui extração supervisionada.'), { statusCode: 404 });
+      const extracted = await documentBlobStore.read(ocr.checksum);
+      applySecurityHeaders(res);
+      res.writeHead(200, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Length': String(extracted.length),
+        'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(`${path.basename(document.name, path.extname(document.name))}-ocr.txt`)}`,
+        'Cache-Control': 'no-store, private',
+        'Content-Security-Policy': "sandbox; default-src 'none'; script-src 'none'; object-src 'none'",
+        'Cross-Origin-Resource-Policy': 'same-origin',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      return res.end(extracted);
+    }
+
+    if (req.method === 'POST' && /^\/api\/documents\/[^/]+\/ocr$/.test(url.pathname)) {
+      const session = assertAuthenticated(req, true);
+      const id = documentIdFromPath(url.pathname, 'ocr');
+      const body = await readJson(req, 20_000);
+      const sourceEnvelope = await readAppStateEnvelope();
+      assertDocumentRevision(sourceEnvelope, body.revision);
+      const sourceDocument = structuredClone(activeDocumentFromState(sourceEnvelope.state, id));
+      const sourceBinary = await documentBlobStore.read(sourceDocument.checksum);
+      const extraction = await documentIntelligence.extractText(sourceBinary, { mime: sourceDocument.mime, name: sourceDocument.name });
+      const extractedBinary = Buffer.from(extraction.text, 'utf8');
+      const stored = await documentBlobStore.put(extractedBinary);
+      let previousChecksum = null;
+      try {
+        const result = await enqueueAppStateMutation(async () => {
+          const envelope = await readAppStateEnvelope();
+          assertDocumentRevision(envelope, body.revision);
+          const state = envelope.state || {};
+          const document = activeDocumentFromState(state, id);
+          if (document.checksum !== sourceDocument.checksum) throw Object.assign(new Error('O documento foi alterado durante a extração. Tente novamente.'), { statusCode: 409 });
+          previousChecksum = document.intelligence?.ocr?.checksum || null;
+          const generatedAt = new Date().toISOString();
+          document.intelligence = {
+            ...(document.intelligence && typeof document.intelligence === 'object' ? document.intelligence : {}),
+            ocr: {
+              sourceDocumentId: document.id,
+              sourceChecksum: document.checksum,
+              checksum: stored.checksum,
+              generatedAt,
+              engine: extraction.engine,
+              engineVersion: extraction.engineVersion,
+              language: extraction.language,
+              pageCount: extraction.pageCount,
+              characterCount: extraction.text.length,
+              sourceKind: extraction.sourceKind,
+              supervised: true
+            }
+          };
+          document.updatedAt = generatedAt;
+          appendDocumentAudit(state, 'Extração documental supervisionada', `${document.name} · ${extraction.engine} · ${extraction.text.length} caracteres`, session);
+          const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
+          return { document, state, saved };
+        });
+        if (previousChecksum && previousChecksum !== stored.checksum && !documentContentReferenceExists(result.state, previousChecksum)) {
+          await documentBlobStore.remove(previousChecksum);
+        }
+        return json(res, 200, { ok: true, intelligence: result.document.intelligence, ...documentResponseState(result.state, result.saved) });
+      } catch (error) {
+        if (stored.created) {
+          const latest = await readAppStateEnvelope().catch(() => null);
+          if (!documentContentReferenceExists(latest?.state, stored.checksum)) await documentBlobStore.remove(stored.checksum).catch(() => {});
+        }
+        throw error;
+      }
+    }
+
+    if (req.method === 'POST' && /^\/api\/documents\/[^/]+\/pdf$/.test(url.pathname)) {
+      const session = assertAuthenticated(req, true);
+      const id = documentIdFromPath(url.pathname, 'pdf');
+      const body = await readJson(req, 20_000);
+      const sourceEnvelope = await readAppStateEnvelope();
+      assertDocumentRevision(sourceEnvelope, body.revision);
+      const sourceDocument = structuredClone(activeDocumentFromState(sourceEnvelope.state, id));
+      const sourceBinary = await documentBlobStore.read(sourceDocument.checksum);
+      const conversion = documentIntelligence.convertTextToPdf(sourceBinary, { mime: sourceDocument.mime, name: sourceDocument.name });
+      const stored = await documentBlobStore.put(conversion.binary);
+      try {
+        const result = await enqueueAppStateMutation(async () => {
+          const envelope = await readAppStateEnvelope();
+          assertDocumentRevision(envelope, body.revision);
+          const state = envelope.state || {};
+          if (!Array.isArray(state.documents)) state.documents = [];
+          const currentSource = activeDocumentFromState(state, id);
+          if (currentSource.checksum !== sourceDocument.checksum) throw Object.assign(new Error('O documento foi alterado durante a conversão. Tente novamente.'), { statusCode: 409 });
+          const baseName = path.basename(currentSource.name, path.extname(currentSource.name));
+          const name = sanitizeDocumentFilename(`${baseName}-convertido.pdf`, 'documento-convertido.pdf');
+          if (state.documents.some(item => !item.deletedAt && item.ownerType === currentSource.ownerType && item.ownerId === currentSource.ownerId && normalizeDocumentFilename(item.name) === normalizeDocumentFilename(name))) {
+            throw Object.assign(new Error('Já existe um PDF derivado com este nome para o proprietário selecionado.'), { statusCode: 409 });
+          }
+          const nowIso = new Date().toISOString();
+          const document = {
+            id: `doc-${Date.now()}-${randomBytes(5).toString('hex')}`,
+            name,
+            originalName: name,
+            mime: 'application/pdf',
+            size: conversion.binary.length,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+            documentDate: currentSource.documentDate,
+            ownerType: currentSource.ownerType,
+            ownerId: currentSource.ownerId,
+            documentType: 'PDF derivado',
+            deletedAt: null,
+            deletedBy: null,
+            checksum: stored.checksum,
+            sourceDocumentId: currentSource.id,
+            derivation: {
+              kind: 'pdf-conversion',
+              sourceDocumentId: currentSource.id,
+              sourceChecksum: currentSource.checksum,
+              generatedAt: nowIso,
+              engine: conversion.engine,
+              engineVersion: conversion.engineVersion,
+              pageCount: conversion.pageCount,
+              supervised: true
+            }
+          };
+          state.documents.unshift(document);
+          appendDocumentAudit(state, 'PDF documental derivado', `${name} · origem ${currentSource.name}`, session);
+          const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
+          return { document, state, saved };
+        });
+        return json(res, 201, { ok: true, document: result.document, ...documentResponseState(result.state, result.saved) });
+      } catch (error) {
+        if (stored.created) {
+          const latest = await readAppStateEnvelope().catch(() => null);
+          if (!documentContentReferenceExists(latest?.state, stored.checksum)) await documentBlobStore.remove(stored.checksum).catch(() => {});
+        }
+        throw error;
+      }
+    }
+
     if (req.method === 'POST' && /^\/api\/documents\/[^/]+\/(delete|restore)$/.test(url.pathname)) {
       const session = assertAuthenticated(req, true);
       const action = url.pathname.endsWith('/restore') ? 'restore' : 'delete';
@@ -2295,8 +2472,9 @@ const server = http.createServer(async (req, res) => {
         const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
         return { document, state, saved };
       });
-      const stillReferenced = result.state.documents.some(item => item?.checksum === result.document.checksum);
-      if (!stillReferenced) await documentBlobStore.remove(result.document.checksum);
+      if (!documentContentReferenceExists(result.state, result.document.checksum)) await documentBlobStore.remove(result.document.checksum);
+      const extractedChecksum = result.document.intelligence?.ocr?.checksum;
+      if (extractedChecksum && !documentContentReferenceExists(result.state, extractedChecksum)) await documentBlobStore.remove(extractedChecksum);
       return json(res, 200, { ok: true, permanentlyDeleted: true, ...documentResponseState(result.state, result.saved) });
     }
 
