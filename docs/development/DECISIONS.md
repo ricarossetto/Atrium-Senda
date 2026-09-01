@@ -1,5 +1,11 @@
 # ATRIUM — Registro de decisões arquiteturais
 
+## 2026-09-01 — DAV como foundation experimental, sem sync automático
+
+- **Decisão**: entregar primitives explícitas e cofre cifrado para WebDAV, CalDAV e CardDAV, sem implementar stacks completas ou reconciliação automática.
+- **Status verdadeiro**: endpoint que respondeu ao probe continua `Experimental / Unverified`; não significa compatibilidade nem conexão de produção.
+- **Limite**: Agenda, Contatos, Documentos e Store não são mutados. Promoção futura exige subgate por protocolo, servidor real e política de conflitos supervisionada.
+
 ## 2026-09-01 — Storage documental por provider canônico
 
 - **Decisão**: separar a autoridade física de blobs do serviço de regras documentais por contrato mínimo `put/get/exists/delete/metadata/health`.

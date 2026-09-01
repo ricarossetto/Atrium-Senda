@@ -10,6 +10,7 @@ const SPECS = [
   'managed-judicial-connectivity',
   'document-management',
   'full-text-search',
+  'dav-integrations',
   'email-policy',
   'security-boundaries',
   'audit-policy',
@@ -56,6 +57,8 @@ assert.match(specs['document-management'], /FUTURE[^\n]*classifica[cç][aã]o, v
 assert.match(specs['full-text-search'], /DERIVED \/ REBUILDABLE/i);
 assert.match(specs['full-text-search'], /nunca é fonte de verdade/i);
 assert.match(specs['full-text-search'], /n[aã]o s[aã]o fontes/i);
+assert.match(specs['dav-integrations'], /EXPERIMENTAL \/ UNVERIFIED/i);
+assert.match(specs['dav-integrations'], /n[aã]o existe timer, sync bidirecional ou reconcilia[cç][aã]o autom[aá]tica/i);
 assert.match(specs['email-policy'], /envio exclusivamente manual/i);
 assert.match(specs['security-boundaries'], /deny-by-default/i);
 assert.match(specs['audit-policy'], /n[aã]o inclui CPF\/RG\/telefone\/e-mail\/endere[cç]o\/notas/i);
