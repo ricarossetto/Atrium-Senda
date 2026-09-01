@@ -14,7 +14,6 @@ import { collectDatajud, mergeExternalContacts, mergeExternalProcesses } from '.
 import { JudicialOrchestrator } from './lib/judicial/orchestrator.mjs';
 import { EmailService, maskEmail } from './lib/email/email-service.mjs';
 import {
-  DocumentBlobStore,
   assertDocumentOwner,
   decodeDocumentPayload,
   documentNamingValues,
@@ -22,6 +21,10 @@ import {
   resolveDocumentName,
   sanitizeDocumentFilename
 } from './lib/documents/document-service.mjs';
+import {
+  EncryptedLocalDocumentStorageProvider,
+  assertDocumentStorageProvider
+} from './lib/documents/document-storage-provider.mjs';
 import { DocumentIntelligenceService } from './lib/documents/document-intelligence.mjs';
 import { SearchIndex, parseDefaultPromptsSource } from './lib/search-index.mjs';
 import { runA1Sandbox } from './lib/judicial/a1-sandbox.mjs';
@@ -100,8 +103,10 @@ const emailService = new EmailService({
 });
 await emailService.init();
 
-const documentBlobStore = new DocumentBlobStore({ dataDirectory: DATA_DIR, securityManager: security });
-await documentBlobStore.init();
+const documentStorage = assertDocumentStorageProvider(
+  new EncryptedLocalDocumentStorageProvider({ dataDirectory: DATA_DIR, securityManager: security })
+);
+await documentStorage.init();
 const documentIntelligence = new DocumentIntelligenceService();
 let defaultSearchPrompts = [];
 try {
@@ -111,7 +116,7 @@ try {
 }
 const searchIndex = new SearchIndex({
   defaultPrompts: defaultSearchPrompts,
-  loadOcrText: async checksum => (await documentBlobStore.read(checksum)).toString('utf8')
+  loadOcrText: async checksum => (await documentStorage.get(checksum)).toString('utf8')
 });
 
 const mimeTypes = {
@@ -2297,7 +2302,7 @@ const server = http.createServer(async (req, res) => {
           throw Object.assign(new Error('Já existe um documento com este nome para o proprietário selecionado. Nenhum arquivo foi sobrescrito.'), { statusCode: 409 });
         }
 
-        await documentBlobStore.put(binary);
+        await documentStorage.put(binary);
         const nowIso = new Date().toISOString();
         const document = {
           id: `doc-${Date.now()}-${randomBytes(5).toString('hex')}`,
@@ -2349,7 +2354,7 @@ const server = http.createServer(async (req, res) => {
       const document = (envelope.state?.documents || []).find(item => item?.id === id);
       if (!document) throw Object.assign(new Error('Documento não encontrado.'), { statusCode: 404 });
       if (document.deletedAt) throw Object.assign(new Error('Restaure o documento antes de baixá-lo.'), { statusCode: 410 });
-      const binary = await documentBlobStore.read(document.checksum);
+      const binary = await documentStorage.get(document.checksum);
       applySecurityHeaders(res);
       const downloadName = sanitizeDocumentFilename(document.name, 'documento');
       res.writeHead(200, {
@@ -2366,7 +2371,7 @@ const server = http.createServer(async (req, res) => {
       const id = documentIdFromPath(url.pathname, 'preview');
       const envelope = await readAppStateEnvelope();
       const document = activeDocumentFromState(envelope.state, id);
-      const source = await documentBlobStore.read(document.checksum);
+      const source = await documentStorage.get(document.checksum);
       const preview = await documentIntelligence.createPreview(source, { mime: document.mime, name: document.name });
       applySecurityHeaders(res);
       res.writeHead(200, {
@@ -2389,7 +2394,7 @@ const server = http.createServer(async (req, res) => {
       const document = activeDocumentFromState(envelope.state, id);
       const ocr = document.intelligence?.ocr;
       if (!ocr?.checksum) throw Object.assign(new Error('Este documento ainda não possui extração supervisionada.'), { statusCode: 404 });
-      const extracted = await documentBlobStore.read(ocr.checksum);
+      const extracted = await documentStorage.get(ocr.checksum);
       applySecurityHeaders(res);
       res.writeHead(200, {
         'Content-Type': 'text/plain; charset=utf-8',
@@ -2410,10 +2415,10 @@ const server = http.createServer(async (req, res) => {
       const sourceEnvelope = await readAppStateEnvelope();
       assertDocumentRevision(sourceEnvelope, body.revision);
       const sourceDocument = structuredClone(activeDocumentFromState(sourceEnvelope.state, id));
-      const sourceBinary = await documentBlobStore.read(sourceDocument.checksum);
+      const sourceBinary = await documentStorage.get(sourceDocument.checksum);
       const extraction = await documentIntelligence.extractText(sourceBinary, { mime: sourceDocument.mime, name: sourceDocument.name });
       const extractedBinary = Buffer.from(extraction.text, 'utf8');
-      const stored = await documentBlobStore.put(extractedBinary);
+      const stored = await documentStorage.put(extractedBinary);
       let previousChecksum = null;
       try {
         const result = await enqueueAppStateMutation(async () => {
@@ -2446,13 +2451,13 @@ const server = http.createServer(async (req, res) => {
           return { document, state, saved };
         });
         if (previousChecksum && previousChecksum !== stored.checksum && !documentContentReferenceExists(result.state, previousChecksum)) {
-          await documentBlobStore.remove(previousChecksum);
+          await documentStorage.delete(previousChecksum);
         }
         return json(res, 200, { ok: true, intelligence: result.document.intelligence, ...documentResponseState(result.state, result.saved) });
       } catch (error) {
         if (stored.created) {
           const latest = await readAppStateEnvelope().catch(() => null);
-          if (!documentContentReferenceExists(latest?.state, stored.checksum)) await documentBlobStore.remove(stored.checksum).catch(() => {});
+          if (!documentContentReferenceExists(latest?.state, stored.checksum)) await documentStorage.delete(stored.checksum).catch(() => {});
         }
         throw error;
       }
@@ -2465,9 +2470,9 @@ const server = http.createServer(async (req, res) => {
       const sourceEnvelope = await readAppStateEnvelope();
       assertDocumentRevision(sourceEnvelope, body.revision);
       const sourceDocument = structuredClone(activeDocumentFromState(sourceEnvelope.state, id));
-      const sourceBinary = await documentBlobStore.read(sourceDocument.checksum);
+      const sourceBinary = await documentStorage.get(sourceDocument.checksum);
       const conversion = documentIntelligence.convertTextToPdf(sourceBinary, { mime: sourceDocument.mime, name: sourceDocument.name });
-      const stored = await documentBlobStore.put(conversion.binary);
+      const stored = await documentStorage.put(conversion.binary);
       try {
         const result = await enqueueAppStateMutation(async () => {
           const envelope = await readAppStateEnvelope();
@@ -2518,7 +2523,7 @@ const server = http.createServer(async (req, res) => {
       } catch (error) {
         if (stored.created) {
           const latest = await readAppStateEnvelope().catch(() => null);
-          if (!documentContentReferenceExists(latest?.state, stored.checksum)) await documentBlobStore.remove(stored.checksum).catch(() => {});
+          if (!documentContentReferenceExists(latest?.state, stored.checksum)) await documentStorage.delete(stored.checksum).catch(() => {});
         }
         throw error;
       }
@@ -2574,9 +2579,9 @@ const server = http.createServer(async (req, res) => {
         const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
         return { document, state, saved };
       });
-      if (!documentContentReferenceExists(result.state, result.document.checksum)) await documentBlobStore.remove(result.document.checksum);
+      if (!documentContentReferenceExists(result.state, result.document.checksum)) await documentStorage.delete(result.document.checksum);
       const extractedChecksum = result.document.intelligence?.ocr?.checksum;
-      if (extractedChecksum && !documentContentReferenceExists(result.state, extractedChecksum)) await documentBlobStore.remove(extractedChecksum);
+      if (extractedChecksum && !documentContentReferenceExists(result.state, extractedChecksum)) await documentStorage.delete(extractedChecksum);
       return json(res, 200, { ok: true, permanentlyDeleted: true, ...documentResponseState(result.state, result.saved) });
     }
 
