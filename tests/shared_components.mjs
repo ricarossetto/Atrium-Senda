@@ -30,15 +30,17 @@ try {
   await page.locator('#appShell:not(.hidden)').waitFor();
   await dismissTour();
 
-  const initialListeners = await readListeners();
-  for (const key of [
+  const expectedListenerKeys = [
     'modalClose:click',
     'modalCancel:click',
     'modalBackdrop:click',
     'themeToggleButton:click',
     'globalSearch:input',
     'globalSearch:keydown'
-  ]) {
+  ];
+  await page.waitForFunction(keys => keys.every(key => globalThis.__sharedComponentsProbe?.listeners?.[key] >= 1), expectedListenerKeys);
+  const initialListeners = await readListeners();
+  for (const key of expectedListenerKeys) {
     assert.equal(initialListeners[key], 1, `${key} deve ser registrado uma única vez.`);
   }
 
