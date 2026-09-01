@@ -352,7 +352,8 @@ html[data-ui="v2"] #promptsGrid .prompt-tag {
 
 html[data-ui="v2"] #promptsGrid .prompt-box {
   min-width: 0;
-  max-height: 180px;
+  min-height: 150px;
+  max-height: 240px;
   margin: 0;
   padding: var(--v2-space-3) var(--v2-space-4);
   overflow: auto;
@@ -366,7 +367,7 @@ html[data-ui="v2"] #promptsGrid .prompt-box {
 html[data-ui="v2"] #promptsGrid .prompt-text {
   margin: 0;
   color: inherit;
-  font: 500 11px/1.62 ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font: 500 13px/1.68 var(--v2-font-interface);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   word-break: break-word;
@@ -374,7 +375,7 @@ html[data-ui="v2"] #promptsGrid .prompt-text {
 
 html[data-ui="v2"] #promptsGrid .prompt-card-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(100px, .8fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--v2-space-2);
   margin: 0;
   padding-top: var(--v2-space-3);
@@ -383,16 +384,16 @@ html[data-ui="v2"] #promptsGrid .prompt-card-actions {
 
 html[data-ui="v2"] #promptsGrid .prompt-card-actions .button {
   min-width: 0;
-  min-height: 40px;
-  padding: 8px 11px;
+  min-height: 36px;
+  padding: 7px 10px;
   font: 750 10px/1.2 var(--v2-font-interface);
   box-shadow: none;
 }
 
 html[data-ui="v2"] #promptsGrid .prompt-card-actions .btn-use-prompt {
-  justify-content: space-between;
+  justify-content: center;
   color: var(--v2-color-foreground);
-  background: var(--v2-color-gold-soft);
+  background: var(--v2-color-surface-secondary);
   border-color: color-mix(in srgb, var(--v2-color-gold) 36%, transparent);
 }
 

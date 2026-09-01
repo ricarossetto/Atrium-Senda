@@ -79,7 +79,7 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     const previousButton = document.getElementById('tourPrevButton');
     const nextButton = document.getElementById('tourNextButton');
     if (previousButton) previousButton.style.display = index > 0 ? 'inline-block' : 'none';
-    if (nextButton) nextButton.textContent = index === total - 1 ? '🚀 Começar a usar o Atrium' : 'Próximo →';
+    if (nextButton) nextButton.textContent = index === total - 1 ? 'Começar a usar o Atrium' : 'Próximo →';
   }
 
   function hasBeenSeen() {

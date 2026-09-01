@@ -93,18 +93,18 @@ html[data-ui="v2"] #view-integrations .integration-card {
 }
 
 html[data-ui="v2"] #view-integrations .judicial-integration-card {
-  grid-column: 1 / -1;
-  min-height: 220px;
+  grid-column: auto;
+  min-height: 0;
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: start;
   background: linear-gradient(120deg, color-mix(in srgb, var(--v2-color-gold-soft) 38%, var(--v2-color-surface)) 0%, var(--v2-color-surface) 54%);
   border-color: color-mix(in srgb, var(--v2-color-gold) 34%, var(--v2-color-border));
 }
 
 html[data-ui="v2"] #view-integrations .judicial-integration-card .integration-logo {
-  width: 72px;
-  height: 72px;
+  width: 52px;
+  height: 52px;
   color: var(--v2-color-gold);
   background: var(--v2-color-gold-soft);
   border: 1px solid color-mix(in srgb, var(--v2-color-gold) 30%, var(--v2-color-border));
@@ -306,6 +306,16 @@ html[data-ui="v2"] #judicialSetupBackdrop .setup-section {
   box-shadow: var(--v2-shadow-subtle);
 }
 
+html[data-ui="v2"] #judicialSetupBackdrop :where(.file-picker, .portal-qr-upload, .totp-qr-dropzone) {
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-inset) !important;
+  border-color: var(--v2-color-border) !important;
+}
+html[data-ui="v2"] #judicialSetupBackdrop :where(.file-picker, .portal-qr-upload, .totp-qr-dropzone):hover {
+  background: var(--v2-color-surface-hover) !important;
+  border-color: var(--v2-color-primary) !important;
+}
+
 html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading { gap: var(--v2-space-4); }
 html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading h3 { color: var(--v2-color-foreground); font-size: 17px; }
 html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading p:not(.eyebrow) { color: var(--v2-color-muted-foreground); line-height: 1.5; }
@@ -391,16 +401,16 @@ html[data-ui="v2"] #view-integrations .connection-integration-card .integration-
 }
 
 html[data-ui="v2"] #view-integrations .email-integration-card {
-  grid-column: 1 / -1;
+  grid-column: auto;
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
   align-items: start;
   gap: var(--v2-space-5);
 }
 
 html[data-ui="v2"] #view-integrations .email-integration-card .integration-logo {
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
 }
 
 html[data-ui="v2"] #view-integrations .email-integration-actions {

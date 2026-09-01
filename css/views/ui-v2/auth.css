@@ -200,7 +200,7 @@ html[data-theme="light"] .auth-gate .auth-logo-frame {
 }
 
 .auth-gate .password-input-wrap { position: relative; display: block; }
-.auth-gate .password-input-wrap input { padding-right: 50px; }
+.auth-gate .password-input-wrap input { width: 100%; box-sizing: border-box; padding-right: 52px; }
 .auth-gate .password-toggle {
   position: absolute;
   inset: 1px 1px 1px auto;
@@ -212,6 +212,9 @@ html[data-theme="light"] .auth-gate .auth-logo-frame {
   color: var(--auth-muted);
   background: transparent;
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  transform: none;
 }
 
 .auth-gate .auth-submit { min-height: 46px; border-radius: 9px; }

@@ -25,8 +25,8 @@ html[data-ui="v2"] .v2-dashboard-opening {
   grid-template-columns: minmax(0, 1.55fr) minmax(310px, .9fr);
   align-items: stretch;
   gap: var(--v2-space-8);
-  min-height: 306px;
-  padding: var(--v2-space-8);
+  min-height: 226px;
+  padding: var(--v2-space-6);
   color: var(--v2-color-foreground);
   background: linear-gradient(145deg, var(--v2-color-surface-elevated), color-mix(in srgb, var(--v2-color-surface) 92%, var(--v2-color-primary-subtle)));
   border: 1px solid color-mix(in srgb, var(--v2-color-primary) 46%, var(--v2-color-border));
@@ -54,7 +54,7 @@ html[data-ui="v2"] .v2-dashboard-opening-copy {
   z-index: 1;
   align-self: center;
   max-width: 660px;
-  padding: var(--v2-space-5) var(--v2-space-8) var(--v2-space-5) 0;
+  padding: var(--v2-space-3) var(--v2-space-6) var(--v2-space-3) 0;
   border-right: 1px solid color-mix(in srgb, var(--v2-color-gold) 34%, var(--v2-color-border-subtle));
 }
 
@@ -71,7 +71,7 @@ html[data-ui="v2"] .v2-dashboard-opening h2 {
   margin: 0;
   color: var(--v2-color-foreground);
   max-width: 13ch;
-  font: 600 clamp(38px, 4vw, 54px)/.98 var(--v2-font-editorial);
+  font: 600 clamp(34px, 3.3vw, 46px)/1 var(--v2-font-editorial);
   letter-spacing: -.035em;
 }
 
