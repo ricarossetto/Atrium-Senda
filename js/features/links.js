@@ -58,24 +58,32 @@ export function createLinksFeature({
       section.classList.remove('hidden');
       grid.innerHTML = customLinks.map(link => {
         const safeUrl = normalizeExternalUrl(link.url);
+        const title = link.title || 'Link sem título';
         let domain = '';
         try { domain = new URL(safeUrl).hostname.replace(/^www\./, ''); } catch { domain = 'Endereço inválido'; }
+        const openLabel = `Abrir ${title} em nova guia`;
+        const openIcon = safeUrl
+          ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="external-icon" aria-label="${escapeHtml(openLabel)}">↗</a>`
+          : '<span class="external-icon link-action-disabled" aria-label="Endereço inválido">↗</span>';
+        const openAction = safeUrl
+          ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="link-tag" aria-label="${escapeHtml(openLabel)}">Acessar</a>`
+          : '<span class="link-tag link-action-disabled">Indisponível</span>';
         return `
-          <div class="link-card card custom-link-card">
+          <article class="link-card card custom-link-card" aria-label="${escapeHtml(`${title}, ${link.category || 'Link Personalizado'}`)}">
             <div class="link-card-header">
               <div class="link-badge">${escapeHtml(link.category || 'Link Personalizado')}</div>
               <div class="link-card-top-actions">
-                <a href="${escapeHtml(safeUrl || '#')}" target="_blank" rel="noopener noreferrer" class="external-icon" title="Abrir link">↗</a>
-                <button type="button" class="btn-delete-link" data-delete-link="${escapeHtml(link.id)}" title="Excluir este link">×</button>
+                ${openIcon}
+                <button type="button" class="btn-delete-link" data-delete-link="${escapeHtml(link.id)}" aria-label="${escapeHtml(`Excluir link ${title}`)}" title="Excluir este link">×</button>
               </div>
             </div>
-            <h4>${escapeHtml(link.title)}</h4>
+            <h4>${escapeHtml(title)}</h4>
             <p>${escapeHtml(link.description || 'Link personalizado adicionado ao escritório.')}</p>
             <div class="link-card-meta">
               <span class="link-domain">${escapeHtml(domain)}</span>
-              <a href="${escapeHtml(safeUrl || '#')}" target="_blank" rel="noopener noreferrer" class="link-tag">Acessar</a>
+              ${openAction}
             </div>
-          </div>`;
+          </article>`;
       }).join('');
     },
 

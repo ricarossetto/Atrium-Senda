@@ -2689,6 +2689,10 @@ td small { color: var(--text-secondary); }
   margin-bottom: 4px;
 }
 
+.links-section-spaced {
+  margin-top: 32px;
+}
+
 .links-section-header h3 {
   color: #fff;
   font-size: 16px;
@@ -2754,6 +2758,12 @@ td small { color: var(--text-secondary); }
   background: rgba(52, 199, 89, 0.15);
   border-color: rgba(52, 199, 89, 0.35);
   color: #34c759;
+}
+
+.link-badge.webhub-badge {
+  background: rgba(212, 175, 55, 0.18);
+  color: var(--gold-soft);
+  border-color: rgba(212, 175, 55, 0.35);
 }
 
 .link-card .external-icon {

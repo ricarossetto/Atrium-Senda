@@ -28,6 +28,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/configuration.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/importer.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/audit.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/links.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=1.0.0">
@@ -1522,7 +1523,13 @@
 
       <!-- Central de Links Úteis & Ferramentas -->
       <section class="view" id="view-links" data-title="Links Úteis & Ferramentas" data-eyebrow="Acesso Rápido Oficial">
-        <div class="section-toolbar">
+        <header class="links-v2-header v2-only">
+          <p class="eyebrow">Referências</p>
+          <h2>Links úteis</h2>
+          <p>Acesse legislação, jurisprudência e ferramentas externas utilizadas na rotina do escritório.</p>
+        </header>
+
+        <div class="section-toolbar links-commandbar">
           <div class="toolbar-copy">
             <p>Atalhos diretos para legislações oficiais compiladas do Planalto, pesquisa de jurisprudência do STJ, ferramentas de IA jurídica e links personalizados.</p>
           </div>
@@ -1532,7 +1539,8 @@
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              <span>+ Novo Link Útil</span>
+              <span class="classic-only">+ Novo Link Útil</span>
+              <span class="v2-only">Novo Link Útil</span>
             </button>
             <button class="button ghost" data-view-link="prompts">
               <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1544,24 +1552,27 @@
           </div>
         </div>
 
-        <div class="links-hub">
+        <div class="links-hub" aria-label="Referências jurídicas e ferramentas externas">
           <!-- Seção de Links Personalizados do Usuário -->
-          <div id="customLinksSection" class="hidden">
+          <section id="customLinksSection" class="links-collection links-collection-custom hidden" aria-labelledby="customLinksHeading" data-links-group="custom">
             <div class="links-section-header">
-              <h3>Meus Links Personalizados</h3>
+              <p class="links-section-kicker v2-only">Do escritório</p>
+              <h3 id="customLinksHeading">Meus Links Personalizados</h3>
               <p>Atalhos e referências adicionadas pelo seu escritório.</p>
             </div>
             <div class="links-grid" id="customLinksGrid"></div>
-          </div>
+          </section>
 
           <!-- Seção de Legislação Principal -->
-          <div class="links-section-header">
-            <h3>Legislação &amp; Códigos Fundamentais (Planalto)</h3>
-            <p>Textos legais oficiais e compilados com as últimas atualizações legislativas.</p>
-          </div>
+          <section class="links-collection" aria-labelledby="legislationLinksHeading">
+            <div class="links-section-header">
+              <p class="links-section-kicker v2-only">Fontes normativas</p>
+              <h3 id="legislationLinksHeading">Legislação &amp; Códigos Fundamentais (Planalto)</h3>
+              <p>Textos legais oficiais e compilados com as últimas atualizações legislativas.</p>
+            </div>
 
-          <div class="links-grid">
-            <a href="https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+            <div class="links-grid" data-links-group="legislation">
+            <a href="https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Código Civil (CC) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">Lei nº 10.406/2002</div>
                 <span class="external-icon">↗</span>
@@ -1574,7 +1585,7 @@
               </div>
             </a>
 
-            <a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+            <a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Código de Processo Civil (CPC) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">Lei nº 13.105/2015</div>
                 <span class="external-icon">↗</span>
@@ -1587,7 +1598,7 @@
               </div>
             </a>
 
-            <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del5452compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+            <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del5452compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Consolidação das Leis do Trabalho (CLT) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">Decreto-Lei nº 5.452/1943</div>
                 <span class="external-icon">↗</span>
@@ -1600,7 +1611,7 @@
               </div>
             </a>
 
-            <a href="https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+            <a href="https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Constituição Federal (CF/88) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">CF/1988</div>
                 <span class="external-icon">↗</span>
@@ -1613,7 +1624,7 @@
               </div>
             </a>
 
-            <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+            <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Código Penal (CP) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">Decreto-Lei nº 2.848/1940</div>
                 <span class="external-icon">↗</span>
@@ -1626,7 +1637,7 @@
               </div>
             </a>
 
-            <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card">
+            <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Código de Processo Penal (CPP) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">Decreto-Lei nº 3.689/1941</div>
                 <span class="external-icon">↗</span>
@@ -1638,16 +1649,19 @@
                 <span class="link-tag">Compilado</span>
               </div>
             </a>
-          </div>
+            </div>
+          </section>
 
           <!-- Seção de Jurisprudência & Tribunais -->
-          <div class="links-section-header" style="margin-top: 32px;">
-            <h3>Jurisprudência &amp; Precedentes Oficiais</h3>
-            <p>Pesquisa unificada de acórdãos, súmulas e teses repetitivas nos Tribunais Superiores.</p>
-          </div>
+          <section class="links-collection links-section-spaced" aria-labelledby="caseLawLinksHeading">
+            <div class="links-section-header">
+              <p class="links-section-kicker v2-only">Precedentes</p>
+              <h3 id="caseLawLinksHeading">Jurisprudência &amp; Precedentes Oficiais</h3>
+              <p>Pesquisa unificada de acórdãos, súmulas e teses repetitivas nos Tribunais Superiores.</p>
+            </div>
 
-          <div class="links-grid">
-            <a href="https://processo.stj.jus.br/SCON/" target="_blank" rel="noopener noreferrer" class="link-card card highlight-gold">
+            <div class="links-grid" data-links-group="case-law">
+            <a href="https://processo.stj.jus.br/SCON/" target="_blank" rel="noopener noreferrer" class="link-card card highlight-gold" aria-label="Abrir Jurisprudência do STJ (SCON) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge stj-badge">Superior Tribunal de Justiça</div>
                 <span class="external-icon">↗</span>
@@ -1659,18 +1673,21 @@
                 <span class="link-tag">Oficial</span>
               </div>
             </a>
-          </div>
+            </div>
+          </section>
 
           <!-- Seção de Ferramentas Gratuitas com IA & Repositório -->
-          <div class="links-section-header" style="margin-top: 32px;">
-            <h3>Ferramentas Gratuitas com Inteligência Artificial &amp; Repositório</h3>
-            <p>Plataformas externas gratuitas com IA e hubs de apoio à prática jurídica.</p>
-          </div>
+          <section class="links-collection links-section-spaced" aria-labelledby="toolsLinksHeading">
+            <div class="links-section-header">
+              <p class="links-section-kicker v2-only">Apoio externo</p>
+              <h3 id="toolsLinksHeading">Ferramentas Gratuitas com Inteligência Artificial &amp; Repositório</h3>
+              <p>Plataformas externas gratuitas com IA e hubs de apoio à prática jurídica.</p>
+            </div>
 
-          <div class="links-grid">
-            <a href="https://ricarossetto.github.io/prompts-atualizados-02-2026/" target="_blank" rel="noopener noreferrer" class="link-card card highlight-gold">
+            <div class="links-grid" data-links-group="tools">
+            <a href="https://ricarossetto.github.io/prompts-atualizados-02-2026/" target="_blank" rel="noopener noreferrer" class="link-card card highlight-gold" aria-label="Abrir Prompts Jurídicos Atualizados (02/2026) em nova guia">
               <div class="link-card-header">
-                <div class="link-badge" style="background:rgba(212,175,55,0.18);color:var(--gold-soft);border:1px solid rgba(212,175,55,0.35);">Web Hub Oficial</div>
+                <div class="link-badge webhub-badge">Web Hub Oficial</div>
                 <span class="external-icon">↗</span>
               </div>
               <h4>Prompts Jurídicos Atualizados (02/2026)</h4>
@@ -1681,7 +1698,7 @@
               </div>
             </a>
 
-            <a href="https://www.jurisprudenciaia.com.br/" target="_blank" rel="noopener noreferrer" class="link-card card ai-card">
+            <a href="https://www.jurisprudenciaia.com.br/" target="_blank" rel="noopener noreferrer" class="link-card card ai-card" aria-label="Abrir JURISPRUDENCIAIA em nova guia">
               <div class="link-card-header">
                 <div class="link-badge ai-badge">IA Gratuita</div>
                 <span class="external-icon">↗</span>
@@ -1694,7 +1711,7 @@
               </div>
             </a>
 
-            <a href="https://www.transcreveia.com.br/" target="_blank" rel="noopener noreferrer" class="link-card card ai-card">
+            <a href="https://www.transcreveia.com.br/" target="_blank" rel="noopener noreferrer" class="link-card card ai-card" aria-label="Abrir TRANSCREVEIA em nova guia">
               <div class="link-card-header">
                 <div class="link-badge ai-badge">IA Gratuita</div>
                 <span class="external-icon">↗</span>
@@ -1706,10 +1723,11 @@
                 <span class="link-tag">Transcrição IA</span>
               </div>
             </a>
-          </div>
+            </div>
+          </section>
 
           <!-- Subjanela de Prompts Integrada -->
-          <div class="prompts-banner-card card" style="margin-top: 32px;">
+          <div class="prompts-banner-card card links-section-spaced">
             <div class="prompts-banner-content">
               <div class="prompts-banner-icon">
                 <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
