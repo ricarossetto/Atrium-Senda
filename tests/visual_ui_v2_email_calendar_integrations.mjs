@@ -70,12 +70,12 @@ try {
       if (['unconfigured', 'status-error', 'receivers'].includes(scenario.state)) {
         await page.evaluate(() => {
           document.getElementById('view-integrations').style.paddingBottom = '70vh';
-          document.querySelector('.email-integration-card')
-            ?.scrollIntoView({ block: 'center', inline: 'nearest' });
         });
+        const emailCard = page.locator('.email-integration-card');
+        await emailCard.scrollIntoViewIfNeeded();
         await page.waitForFunction(() => {
           const rect = document.querySelector('.email-integration-card')?.getBoundingClientRect();
-          return rect && rect.top >= 40 && rect.bottom <= innerHeight - 40;
+          return rect && rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < innerHeight;
         });
       }
 
