@@ -1,5 +1,11 @@
 # ATRIUM — Registro de decisões arquiteturais
 
+## 2026-09-01 — API interna evolui sem versionamento em massa
+
+- **Decisão**: preservar as rotas internas atuais e adicionar apenas metadata autenticada, headers de contrato e rejeição segura de prefixos desconhecidos.
+- **Política**: mudança incompatível e consumidor externo real são gatilhos para um router versionado separado; data ou estética não são.
+- **Limite**: nenhuma API pública, SDK ou cliente mobile/desktop foi declarado operacional.
+
 ## 2026-09-01 — DAV como foundation experimental, sem sync automático
 
 - **Decisão**: entregar primitives explícitas e cofre cifrado para WebDAV, CalDAV e CardDAV, sem implementar stacks completas ou reconciliação automática.

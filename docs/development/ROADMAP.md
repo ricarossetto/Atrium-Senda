@@ -29,6 +29,7 @@
 - Gate 26D: índice full-text derivado, versionado e reconstruível sobre Store/OCR cifrados, com busca global segura em sete domínios.
 - Gate 26E: regras documentais desacopladas do storage físico por provider canônico; adapter local cifrado preserva paths, deduplicação e atomicidade do baseline.
 - Gate 26F: foundation DAV executável com cofre cifrado, transporte explícito e defesas de rede; WebDAV/CalDAV/CardDAV permanecem experimentais e não verificados.
+- Gate 26G: contrato incremental da API interna com metadata autenticada, headers e política de compatibilidade; API pública/versionada permanece futura.
 
 ## CONCLUÍDO
 

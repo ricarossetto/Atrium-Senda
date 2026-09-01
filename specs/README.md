@@ -15,6 +15,7 @@ Antes de alterar um domínio, leia a spec correspondente e as specs transversais
 - [Documentos](document-management.md)
 - [Busca global full-text](full-text-search.md)
 - [Integrações DAV experimentais](dav-integrations.md)
+- [Evolução da API](api-evolution.md)
 - [E-mail](email-policy.md)
 - [Limites de segurança](security-boundaries.md)
 - [Auditoria](audit-policy.md)
