@@ -7,6 +7,7 @@ import { generateTotp, SecurityManager } from '../lib/security.mjs';
 import { JudicialSessionManager, SESSION_STATUS } from '../lib/judicial/session-manager.mjs';
 import { createModernizedPfx } from '../lib/judicial/a1-sandbox.mjs';
 import { getAuthAdapter, AUTH_STRATEGIES } from '../lib/judicial/auth-adapters.mjs';
+import { computeNextRefresh, isRefreshDue, sanitizeJudicialError } from '../lib/judicial/managed-connectivity.mjs';
 import { collectDjen } from './adapters/djen.mjs';
 import { collectDatajud } from './adapters/datajud.mjs';
 import { collectPje } from './adapters/pje.mjs';
@@ -28,6 +29,7 @@ const CENTRAL_URL = process.env.CENTRAL_URL || 'http://127.0.0.1:4173';
 const headless = String(process.env.COLLECTOR_HEADLESS).toLowerCase() === 'true';
 const interactive = String(process.env.COLLECTOR_INTERACTIVE ?? 'true').toLowerCase() === 'true';
 const loginWaitMs = Math.max(0, Number(process.env.LOGIN_WAIT_SECONDS || 180)) * 1000;
+const judicialIdentityId = String(process.env.JUDICIAL_IDENTITY_ID || 'office-primary').replace(/[^a-zA-Z0-9_-]/g, '_');
 const configFile = existsSync(path.join(COLLECTOR_DIR, 'portals.json')) ? path.join(COLLECTOR_DIR, 'portals.json') : path.join(COLLECTOR_DIR, 'portals.example.json');
 const config = JSON.parse(await readFile(configFile, 'utf8'));
 const requestedPortalIds = new Set(String(process.env.COLLECTOR_PORTAL_IDS || '').split(',').map(value => value.trim()).filter(Boolean));
@@ -47,14 +49,25 @@ try {
   for (const portal of preBrowserPortals) await collectPublicPortal(portal, payload);
 
   for (const portal of browserPortals) {
-    const profileDir = sessionManager.getProfileDir('agent-local', portal.id);
+    const previousSession = await sessionManager.getSessionStatus('agent-local', portal.id, judicialIdentityId);
+    if (!requestedPortalIds.size && !isRefreshDue(previousSession)) {
+      payload.sources.push(source(portal, previousSession.status === SESSION_STATUS.CONNECTED ? 'ok' : 'attention', previousSession.lastCheckedAt, `Próxima atualização gerenciada: ${previousSession.nextRefreshAt || 'aguardando intervenção humana'}.`));
+      continue;
+    }
+    const profileDir = sessionManager.getProfileDir('agent-local', portal.id, judicialIdentityId);
     await mkdir(profileDir, { recursive: true });
     let releaseLock = null;
     let modernCertCleanup = null;
     let context = null;
 
     try {
-      releaseLock = await sessionManager.acquireLock('agent-local', portal.id);
+      releaseLock = await sessionManager.acquireLock('agent-local', portal.id, judicialIdentityId);
+      const attemptedAt = new Date().toISOString();
+      await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.AUTHENTICATING, {
+        lastAttemptAt: attemptedAt,
+        error: null,
+        humanAction: null
+      }, judicialIdentityId);
       const clientCerts = [];
       const authStrategy = portal.authStrategy || (
         portal.strategy === 'pje' ? AUTH_STRATEGIES.PJEOFFICE_LOCAL :
@@ -92,11 +105,46 @@ try {
         clientCertificates: clientCerts.length ? clientCerts : undefined
       });
 
-      await collectPortal(context, portal, payload, authAdapter, credentials);
-      await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.CONNECTED);
+      const collection = await collectPortal(context, portal, payload, authAdapter, credentials);
+      if (collection.state === SESSION_STATUS.ACTION_REQUIRED) {
+        await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.ACTION_REQUIRED, {
+          lastAttemptAt: attemptedAt,
+          nextRefreshAt: null,
+          failureCount: Number(previousSession.failureCount || 0),
+          humanAction: collection.humanAction,
+          error: null
+        }, judicialIdentityId);
+      } else if (collection.state === SESSION_STATUS.ERROR) {
+        const failureCount = Number(previousSession.failureCount || 0) + 1;
+        await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.ERROR, {
+          lastAttemptAt: attemptedAt,
+          nextRefreshAt: computeNextRefresh({ failureCount }),
+          failureCount,
+          error: collection.error,
+          humanAction: null
+        }, judicialIdentityId);
+      } else {
+        const completedAt = new Date().toISOString();
+        await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.CONNECTED, {
+          lastAttemptAt: attemptedAt,
+          lastSuccessfulSyncAt: completedAt,
+          nextRefreshAt: computeNextRefresh({ success: true }),
+          failureCount: 0,
+          humanAction: null,
+          error: null
+        }, judicialIdentityId);
+      }
     } catch (portalError) {
-      console.error(`Erro na coleta do portal ${portal.name}:`, portalError.message);
-      await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.ERROR, { error: portalError.message });
+      const failureCount = Number(previousSession.failureCount || 0) + 1;
+      const safeError = sanitizeJudicialError(portalError);
+      console.error(`Erro na coleta do portal ${portal.name}:`, safeError);
+      await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.ERROR, {
+        lastAttemptAt: new Date().toISOString(),
+        nextRefreshAt: computeNextRefresh({ failureCount }),
+        failureCount,
+        error: safeError,
+        humanAction: null
+      }, judicialIdentityId);
     } finally {
       if (context) { try { await context.close(); } catch {} }
       if (modernCertCleanup) { try { await modernCertCleanup(); } catch {} }
@@ -119,23 +167,59 @@ try {
 } catch (error) { throw error; }
 
 async function collectPublicPortal(portal, target) {
+  const previousSession = await sessionManager.getSessionStatus('agent-local', portal.id, judicialIdentityId);
+  if (!requestedPortalIds.size && !isRefreshDue(previousSession)) {
+    target.sources.push(source(portal, previousSession.status === SESSION_STATUS.CONNECTED ? 'ok' : 'attention', previousSession.lastCheckedAt, `Próxima atualização gerenciada: ${previousSession.nextRefreshAt || 'aguardando intervenção humana'}.`));
+    return;
+  }
+
   const checkedAt = new Date().toISOString();
+  let releaseLock = null;
   try {
+    releaseLock = await sessionManager.acquireLock('agent-local', portal.id, judicialIdentityId);
+    await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.AUTHENTICATING, {
+      authStrategy: AUTH_STRATEGIES.PUBLIC,
+      lastAttemptAt: checkedAt,
+      error: null,
+      humanAction: null
+    }, judicialIdentityId);
     console.log(`Verificando ${portal.name}…`);
     if (portal.strategy === 'datajud') {
       const result = await collectDatajud(portal, config, target, { seedProcessNumbers: existingProcessNumbers });
       const status = result.complete ? 'ok' : 'attention';
       const refresh = result.refreshedKey ? ' Chave pública atualizada pela página oficial do CNJ.' : '';
       target.sources.push(source(portal, status, checkedAt, `${result.queried} processo(s) consultado(s) · ${result.found} localizado(s) · ${result.updated} atualizado(s) · ${result.failed} falha(s) · ${result.partial} resposta(s) parcial(is).${refresh}`));
-      return;
+    } else {
+      const result = await collectDjen(portal, config, target);
+      const status = result.complete ? 'ok' : 'attention';
+      const completeness = result.complete ? '' : ' Coleta parcial; será repetida no próximo ciclo.';
+      target.sources.push(source(portal, status, checkedAt, `${result.records} publicação(ões) única(s) entre ${result.start} e ${result.end}.${completeness}`));
     }
-    const result = await collectDjen(portal, config, target);
-    const status = result.complete ? 'ok' : 'attention';
-    const completeness = result.complete ? '' : ' Coleta parcial; será repetida no próximo ciclo.';
-    target.sources.push(source(portal, status, checkedAt, `${result.records} publicação(ões) única(s) entre ${result.start} e ${result.end}.${completeness}`));
+    const completedAt = new Date().toISOString();
+    await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.CONNECTED, {
+      authStrategy: AUTH_STRATEGIES.PUBLIC,
+      lastAttemptAt: checkedAt,
+      lastSuccessfulSyncAt: completedAt,
+      nextRefreshAt: computeNextRefresh({ success: true }),
+      failureCount: 0,
+      humanAction: null,
+      error: null
+    }, judicialIdentityId);
   } catch (error) {
-    target.sources.push(source(portal, 'error', checkedAt, safeMessage(error)));
-    console.error(`${portal.name}: ${safeMessage(error)}`);
+    const failureCount = Number(previousSession.failureCount || 0) + 1;
+    const safeError = sanitizeJudicialError(error);
+    target.sources.push(source(portal, 'error', checkedAt, safeError));
+    await sessionManager.updateSessionStatus('agent-local', portal.id, SESSION_STATUS.ERROR, {
+      authStrategy: AUTH_STRATEGIES.PUBLIC,
+      lastAttemptAt: checkedAt,
+      nextRefreshAt: computeNextRefresh({ failureCount }),
+      failureCount,
+      humanAction: null,
+      error: safeError
+    }, judicialIdentityId);
+    console.error(`${portal.name}: ${safeError}`);
+  } finally {
+    if (releaseLock) releaseLock();
   }
 }
 
@@ -148,7 +232,7 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
       const pjeCheck = await authAdapter.checkHealth();
       if (!pjeCheck.available) {
         target.sources.push(source(portal, 'attention', checkedAt, 'PJeOffice Pro oficial não está respondendo em 127.0.0.1:8800. Inicie o aplicativo e autentique novamente.'));
-        return;
+        return { state: SESSION_STATUS.ACTION_REQUIRED, humanAction: 'Abra o PJeOffice Pro e reconecte este portal.' };
       }
     }
 
@@ -171,7 +255,7 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
       }
       if (await needsHumanAuthentication(page)) {
         target.sources.push(source(portal, 'attention', checkedAt, 'Autenticação manual necessária; nenhuma tentativa de contornar CAPTCHA ou 2FA foi feita.'));
-        return;
+        return { state: SESSION_STATUS.ACTION_REQUIRED, humanAction: 'Conclua o login, CAPTCHA ou segundo fator no portal.' };
       }
     }
 
@@ -183,13 +267,13 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
     if (portal.strategy === 'eproc') {
       const result = await collectEproc(page, portal, target);
       target.sources.push(source(portal, 'ok', checkedAt, `${result.processes} processo(s) · ${result.deadlines} prazo(s) · ${result.pending} intimação(ões) pendente(s).`));
-      return;
+      return { state: SESSION_STATUS.CONNECTED, counts: result };
     }
 
     if (portal.strategy === 'pje') {
       const result = await collectPje(page, portal, config, target);
       target.sources.push(source(portal, 'ok', checkedAt, `${result.processes} processo(s) · ${result.intimations} expediente(s), em modo somente leitura.`));
-      return;
+      return { state: SESSION_STATUS.CONNECTED, counts: result };
     }
 
     const selector = portal.itemSelector || 'table tbody tr';
@@ -199,9 +283,12 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
     else if (portal.strategy === 'intimations') collectIntimations(unique, portal, target);
     else collectTasks(unique, portal, target);
     target.sources.push(source(portal, 'ok', checkedAt, `${unique.length} item(ns) visível(is) analisado(s).`));
+    return { state: SESSION_STATUS.CONNECTED, counts: { items: unique.length } };
   } catch (error) {
-    target.sources.push(source(portal, 'error', checkedAt, safeMessage(error)));
-    console.error(`${portal.name}: ${safeMessage(error)}`);
+    const safeError = sanitizeJudicialError(error);
+    target.sources.push(source(portal, 'error', checkedAt, safeError));
+    console.error(`${portal.name}: ${safeError}`);
+    return { state: SESSION_STATUS.ERROR, error: safeError };
   } finally {
     await page.close();
   }

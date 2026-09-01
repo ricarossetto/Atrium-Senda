@@ -177,6 +177,7 @@ html[data-ui="v2"] #judicialSetupBackdrop .judicial-setup-modal > header {
 
 html[data-ui="v2"] #judicialSetupTitle { font-family: var(--v2-font-editorial); font-size: clamp(24px, 2.5vw, 32px); }
 html[data-ui="v2"] #judicialSetupClose { min-width: 44px; min-height: 44px; }
+html[data-ui="v2"] .managed-judicial-subtitle { max-width: 680px; margin: var(--v2-space-2) 0 0; color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.45; }
 
 html[data-ui="v2"] .judicial-setup-body {
   min-height: 0;
@@ -191,6 +192,66 @@ html[data-ui="v2"] .setup-status-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--v2-space-3);
+}
+
+html[data-ui="v2"] .managed-coverage-overview {
+  display: grid;
+  gap: var(--v2-space-4);
+  padding: var(--v2-space-5);
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border-strong);
+  border-radius: var(--v2-radius-xl);
+  box-shadow: var(--v2-shadow-card);
+}
+
+html[data-ui="v2"] .managed-coverage-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--v2-space-4);
+}
+
+html[data-ui="v2"] .managed-coverage-heading h3 { margin: 2px 0 0; font-size: 18px; }
+html[data-ui="v2"] .managed-coverage-heading p:last-child { margin: var(--v2-space-2) 0 0; color: var(--v2-color-muted-foreground); font-size: 12px; }
+
+html[data-ui="v2"] .managed-coverage-list {
+  overflow: hidden;
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+}
+
+html[data-ui="v2"] .managed-coverage-row {
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: minmax(190px, 1.1fr) minmax(180px, .9fr) minmax(180px, .9fr);
+  align-items: center;
+  gap: var(--v2-space-4);
+  padding: var(--v2-space-3) var(--v2-space-4);
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+}
+
+html[data-ui="v2"] .managed-coverage-row:last-child { border-bottom: 0; }
+html[data-ui="v2"] .managed-coverage-row[data-managed-state="action_required"],
+html[data-ui="v2"] .managed-coverage-row[data-managed-state="human_action_required"],
+html[data-ui="v2"] .managed-coverage-row[data-managed-state="expired"] { background: color-mix(in srgb, var(--v2-color-warning-soft) 38%, var(--v2-color-surface)); }
+html[data-ui="v2"] .managed-coverage-row[data-managed-state="error"] { background: color-mix(in srgb, var(--v2-color-danger-soft) 24%, var(--v2-color-surface)); }
+
+html[data-ui="v2"] :where(.managed-coverage-identity, .managed-coverage-status, .managed-coverage-next) { min-width: 0; display: grid; gap: 4px; }
+html[data-ui="v2"] .managed-coverage-identity strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+html[data-ui="v2"] :where(.managed-coverage-identity, .managed-coverage-status, .managed-coverage-next) :where(span, small) { color: var(--v2-color-muted-foreground); font-size: 11px; line-height: 1.4; }
+html[data-ui="v2"] .managed-coverage-status .status-chip { width: fit-content; color: var(--v2-color-foreground); }
+
+html[data-ui="v2"] .managed-readonly-notice {
+  margin: 0;
+  padding: var(--v2-space-3) var(--v2-space-4);
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-primary-soft);
+  border-left: 3px solid var(--v2-color-primary);
+  border-radius: var(--v2-radius-sm);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 html[data-ui="v2"] .setup-status-grid article {
@@ -274,6 +335,7 @@ html[data-ui="v2"] .portal-coverage-row small { color: var(--v2-color-muted-fore
 html[data-ui="v2"] .portal-coverage-row.experimental { background: color-mix(in srgb, var(--v2-color-warning-soft) 42%, transparent); }
 html[data-ui="v2"] .portal-coverage-row input { min-width: 20px; min-height: 20px; }
 html[data-ui="v2"] .portal-coverage-row .button { min-height: 40px; }
+html[data-ui="v2"] .portal-row-actions { display: flex; justify-content: flex-end; gap: var(--v2-space-2); }
 
 html[data-ui="v2"] #judicialSetupBackdrop .setup-warning {
   color: var(--v2-color-foreground-secondary);
@@ -557,6 +619,10 @@ html[data-ui="v2"] #calendarConfigStatus {
   html[data-ui="v2"] .judicial-setup-body,
   html[data-ui="v2"] .judicial-setup-footer { padding-inline: var(--v2-space-4); }
   html[data-ui="v2"] .setup-status-grid { grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .managed-coverage-overview { padding: var(--v2-space-4); }
+  html[data-ui="v2"] .managed-coverage-heading { align-items: stretch; flex-direction: column; }
+  html[data-ui="v2"] .managed-coverage-row { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: var(--v2-space-3); padding: var(--v2-space-4); }
+  html[data-ui="v2"] .managed-coverage-identity strong { white-space: normal; }
   html[data-ui="v2"] #judicialSetupBackdrop .setup-section { padding: var(--v2-space-4); }
   html[data-ui="v2"] #a1ActiveCard > div:first-child { align-items: stretch !important; flex-direction: column; gap: var(--v2-space-3); }
   html[data-ui="v2"] #a1ActiveCard > div:first-child > div:last-child { display: grid !important; grid-template-columns: minmax(0, 1fr); }
@@ -572,7 +638,9 @@ html[data-ui="v2"] #calendarConfigStatus {
   html[data-ui="v2"] .portal-coverage-row > input { grid-area: check; }
   html[data-ui="v2"] .portal-coverage-row > span:nth-of-type(1) { grid-area: identity; }
   html[data-ui="v2"] .portal-coverage-row .portal-method { grid-area: method; }
-  html[data-ui="v2"] .portal-coverage-row .portal-qr-button { grid-area: action; width: 100%; min-height: 44px; justify-content: center; }
+  html[data-ui="v2"] .portal-row-actions { grid-area: action; display: grid; grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .portal-coverage-row .portal-qr-button,
+  html[data-ui="v2"] .portal-row-actions .button { width: 100%; min-height: 44px; justify-content: center; }
   html[data-ui="v2"] .setup-heading-actions { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] .setup-heading-actions .button { min-height: 44px; }
   html[data-ui="v2"] .judicial-setup-footer { align-items: stretch; flex-direction: column; }

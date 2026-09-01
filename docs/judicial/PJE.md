@@ -15,6 +15,8 @@ O Processo Judicial Eletrônico (PJe) e a Plataforma Digital do Poder Judiciári
 3. **Primeiro Acesso Manual Assistido (`ManualPersistentSessionAdapter`)**:
    - Criação assistida do primeiro login para guardar cookies e sessão de forma persistente.
 
+Essas estratégias representam capacidades técnicas separadas, não certificação universal dos portais PJe. PFX cifrado, PJeOffice em execução e sessão autenticada são estados independentes. Sem evidência live específica, o portal permanece `experimental` ou `not_verified`.
+
 ---
 
 ## 🛡️ Trava de Segurança Read-Only Absoluta

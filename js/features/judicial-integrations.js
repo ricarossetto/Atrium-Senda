@@ -45,13 +45,18 @@ export function createJudicialIntegrationsFeature({
       byId('portalTotpForm')?.addEventListener('submit', event => feature.savePortalTotp(event));
       byId('removePortalTotpButton')?.addEventListener('click', () => feature.removePortalTotp());
       byId('resetJudicialConnectionsButton')?.addEventListener('click', () => feature.resetConnections());
+      byId('savePortalCoverageButton')?.addEventListener('click', () => feature.savePortalCoverage());
       byId('syncJudicialNowButton')?.addEventListener('click', () => feature.syncNow());
       byId('portalCoverageList')?.addEventListener('click', event => {
-        const button = event.target.closest('[data-configure-totp]');
-        if (!button) return;
-        byId('totpPortalSelect').value = button.dataset.configureTotp;
-        byId('totpSetupSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        byId('portalQrInput').focus();
+        const totpButton = event.target.closest('[data-configure-totp]');
+        if (totpButton) {
+          byId('totpPortalSelect').value = totpButton.dataset.configureTotp;
+          byId('totpSetupSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          byId('portalQrInput').focus();
+          return;
+        }
+        const reconnectButton = event.target.closest('[data-reconnect-portal]');
+        if (reconnectButton) feature.reconnectPortal(reconnectButton.dataset.reconnectPortal, reconnectButton);
       });
       return true;
     },
@@ -108,6 +113,7 @@ export function createJudicialIntegrationsFeature({
       if (!status) return;
       const certificate = status.certificate || {};
       const portals = status.portals || [];
+      feature.renderManagedCoverage();
       const totpCount = portals.filter(portal => portal.totpConfigured).length;
       const setStatusIcon = (id, ok) => {
         const element = byId(id);
@@ -159,16 +165,24 @@ export function createJudicialIntegrationsFeature({
         certificateForm?.classList.remove('hidden');
       }
 
+      const hasManagedCoverage = Array.isArray(status.managedCoverage);
+      const managed = status.managedCoverage || [];
+      const connected = managed.filter(item => item.connectivityState === 'connected').length;
+      const actionRequired = managed.filter(item => ['action_required', 'human_action_required', 'expired'].includes(item.connectivityState)).length;
       const integrationChip = byId('certificateIntegrationStatus');
       if (integrationChip) {
-        integrationChip.textContent = certificate.valid ? `A1 Operacional · ${totpCount} 2FA` : 'Configuração necessária';
-        integrationChip.className = `status-chip ${certificate.valid ? 'connected' : 'warning'}`;
+        integrationChip.textContent = !hasManagedCoverage
+          ? certificate.valid ? `A1 Operacional · ${totpCount} 2FA` : 'Configuração necessária'
+          : actionRequired ? `${actionRequired} ação(ões) necessária(s)` : connected ? `${connected} fonte(s) conectada(s)` : certificate.valid ? 'Credencial disponível' : 'Configuração necessária';
+        integrationChip.className = `status-chip ${actionRequired ? 'warning' : connected || certificate.valid ? 'connected' : 'warning'}`;
       }
       const integrationDetail = byId('certificateIntegrationDetail');
       if (integrationDetail) {
-        integrationDetail.textContent = certificate.valid
+        integrationDetail.textContent = !hasManagedCoverage ? (certificate.valid
           ? `${certificate.summary?.holder || certificate.fileName || 'Certificado'} validado com mTLS Sandbox. ${portals.filter(portal => portal.enabled).length} portal(is) habilitado(s) e ${totpCount} segundo(s) fator(es) protegido(s).`
-          : 'Ative o A1, selecione os tribunais e vincule um QR novo de cada portal em um único assistente protegido.';
+          : 'Ative o A1, selecione os tribunais e vincule um QR novo de cada portal em um único assistente protegido.') : certificate.valid
+          ? `${certificate.summary?.holder || certificate.fileName || 'Certificado'} disponível no agente local. A autenticação e o estado continuam independentes em cada portal.`
+          : 'Configure somente as credenciais necessárias. A1, PJeOffice, repositório do Windows e segundo fator não são tratados como equivalentes.';
       }
 
       const coverageList = byId('portalCoverageList');
@@ -180,9 +194,9 @@ export function createJudicialIntegrationsFeature({
             ${items.map(portal => `
               <label class="portal-coverage-row ${portal.automationLevel === 'experimental' ? 'experimental' : ''}">
                 <input type="checkbox" data-portal-enabled value="${escapeHtml(portal.id)}" ${portal.enabled ? 'checked' : ''}>
-                <span><strong>${escapeHtml(portal.name)}</strong><small>${portal.automationLevel === 'experimental' ? 'Cobertura experimental · primeiro acesso acompanhado' : portal.supportsTotp ? portal.totpConfigured ? '2FA vinculado e verificado' : 'Sem QR/2FA vinculado' : 'Sessão com certificado, sem TOTP local'}</small></span>
+                <span><strong>${escapeHtml(portal.name)}</strong><small>${escapeHtml(feature.portalCoverageDescription(portal))}</small></span>
                 <span class="portal-method">${escapeHtml(portal.system || (portal.certificateMode === 'pjeoffice' ? 'PJeOffice oficial' : 'Certificado do Windows'))}</span>
-                ${portal.supportsTotp ? `<button class="button ghost portal-qr-button" type="button" data-configure-totp="${escapeHtml(portal.id)}">${portal.totpConfigured ? 'Trocar QR' : 'Vincular 2FA'}</button>` : '<span></span>'}
+                <span class="portal-row-actions">${portal.supportsTotp ? `<button class="button ghost portal-qr-button" type="button" data-configure-totp="${escapeHtml(portal.id)}">${portal.totpConfigured ? 'Trocar QR' : 'Vincular 2FA'}</button>` : ''}${['action_required', 'human_action_required', 'expired'].includes(portal.managed?.connectivityState) ? `<button class="button ghost" type="button" data-reconnect-portal="${escapeHtml(portal.id)}">Reconectar</button>` : ''}</span>
               </label>`).join('')}
           </section>`).join('') : '<div class="setup-loading">Nenhum portal com certificado foi configurado.</div>';
       }
@@ -198,6 +212,64 @@ export function createJudicialIntegrationsFeature({
       if (launchButton) {
         launchButton.disabled = Boolean(status.interactiveCollectorRunning);
         launchButton.textContent = status.interactiveCollectorRunning ? 'Primeira conexão em andamento…' : 'Abrir primeira conexão';
+      }
+    },
+
+    renderManagedCoverage() {
+      const coverage = judicialStatus?.managedCoverage || [];
+      const list = byId('managedCoverageList');
+      const summary = byId('managedCoverageSummary');
+      if (!list || !summary) return;
+      const connected = coverage.filter(item => item.connectivityState === 'connected').length;
+      const actionRequired = coverage.filter(item => ['action_required', 'human_action_required', 'expired'].includes(item.connectivityState)).length;
+      const errors = coverage.filter(item => item.connectivityState === 'error').length;
+      summary.textContent = `${connected} conectada(s) · ${actionRequired} requer(em) ação · ${errors} com erro transitório`;
+      list.innerHTML = coverage.length ? coverage.map(item => {
+        const state = feature.managedStateLabel(item.connectivityState);
+        const detail = item.humanAction || item.lastError || (item.lastSuccessfulSyncAt ? `Último sucesso ${feature.formatManagedTime(item.lastSuccessfulSyncAt)}` : 'Ainda sem sincronização autenticada');
+        const next = item.nextRefreshAt ? `Próxima tentativa ${feature.formatManagedTime(item.nextRefreshAt)}` : item.humanAction ? 'Atualização pausada até intervenção' : 'Cadência ainda não definida';
+        return `<article class="managed-coverage-row" data-managed-state="${escapeHtml(item.connectivityState || 'not_configured')}">
+          <div class="managed-coverage-identity"><strong>${escapeHtml(item.name || item.id)}</strong><span>${escapeHtml(item.system || 'Portal judicial')} · ${escapeHtml(feature.strategyLabel(item.authStrategy))}</span></div>
+          <div class="managed-coverage-status"><span class="status-chip ${item.connectivityState === 'connected' ? 'connected' : ['error', 'expired'].includes(item.connectivityState) ? 'warning' : 'muted'}">${escapeHtml(state)}</span><small>${escapeHtml(detail)}</small></div>
+          <div class="managed-coverage-next"><span>${escapeHtml(item.verification === 'verified' ? 'Verificado' : item.verification === 'experimental' ? 'Experimental' : 'Não verificado em portal real')}</span><small>${escapeHtml(next)}</small></div>
+        </article>`;
+      }).join('') : '<div class="setup-loading">Nenhuma fonte judicial foi configurada.</div>';
+    },
+
+    portalCoverageDescription(portal) {
+      if (!portal.managed) return portal.automationLevel === 'experimental' ? 'Cobertura experimental · primeiro acesso acompanhado' : portal.supportsTotp ? portal.totpConfigured ? '2FA vinculado e verificado' : 'Sem QR/2FA vinculado' : 'Sessão com certificado, sem TOTP local';
+      const verification = portal.managed?.verification === 'verified' ? 'verificado' : portal.managed?.verification === 'experimental' || portal.automationLevel === 'experimental' ? 'experimental' : 'não verificado em portal real';
+      const state = feature.managedStateLabel(portal.managed?.connectivityState || 'not_configured');
+      const factor = portal.supportsTotp ? portal.totpConfigured ? '2FA protegido' : '2FA não vinculado' : 'sem TOTP local';
+      return `${state} · ${factor} · ${verification}`;
+    },
+
+    managedStateLabel(state) {
+      return ({ connected: 'Conectado', authenticating: 'Autenticando', connecting: 'Conectando', action_required: 'Ação necessária', human_action_required: 'Ação necessária', expired: 'Sessão expirada', error: 'Erro com backoff', not_configured: 'Não configurado' })[state] || 'Estado não informado';
+    },
+
+    strategyLabel(strategy) {
+      return ({ public: 'Fonte pública', 'client-cert-mtls': 'Certificado mTLS', 'pjeoffice-local': 'PJeOffice local', totp: 'TOTP', 'credentials-totp': 'Usuário, senha e TOTP', 'username-password-plus-totp': 'Usuário, senha e TOTP', 'windows-store': 'Certificado do Windows', 'interactive-human-required': 'Login acompanhado', 'manual-persistent-session': 'Sessão acompanhada' })[strategy] || 'Estratégia específica do portal';
+    },
+
+    formatManagedTime(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'não informado';
+      return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(date);
+    },
+
+    async reconnectPortal(portalId, button) {
+      if (!portalId) return false;
+      if (button) button.disabled = true;
+      try {
+        await feature.request('/api/integrations/judicial/connect', { portalIds: [portalId] });
+        showToast('Conexão acompanhada aberta. Conclua somente as etapas exigidas pelo portal.', 'success');
+        return true;
+      } catch (error) {
+        showToast(error.message, 'error');
+        return false;
+      } finally {
+        if (button) button.disabled = false;
       }
     },
 
@@ -403,16 +475,18 @@ export function createJudicialIntegrationsFeature({
       const button = byId('syncJudicialNowButton');
       if (button) { button.disabled = true; button.textContent = 'Sincronizando acervo e intimações…'; }
       try {
+        await feature.request('/api/integrations/judicial/sync', {});
         const synchronized = await onSyncAll({ silent: true });
         if (!synchronized) return false;
         showToast('Sincronização com DJEN e tribunais concluída com sucesso!', 'success');
-        audit('Sincronização judicial autônoma', 'Coleta de intimações DJEN, DataJud e tribunais.');
+        audit('Atualização judicial supervisionada', 'Leitura de acervo, movimentos e publicações iniciada sem ciência, assinatura ou protocolo.');
+        await feature.refreshStatus();
         return true;
       } catch (error) {
         showToast(error.message || 'Falha ao sincronizar.', 'error');
         return false;
       } finally {
-        if (button) { button.disabled = false; button.innerHTML = `${presentation?.icon?.('sync') || '✦ '}Sincronizar Acervo e Intimações Agora`; }
+        if (button) { button.disabled = false; button.innerHTML = `${presentation?.icon?.('sync') || '✦ '}<span class="classic-only">Sincronizar Acervo e Intimações Agora</span><span class="v2-only">Atualizar cobertura agora</span>`; }
       }
     },
 

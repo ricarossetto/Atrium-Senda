@@ -1,5 +1,17 @@
 # ATRIUM — Registro de decisões arquiteturais
 
+## 2026-09-01 — Conectividade judicial gerenciada e estritamente read-only
+
+- **Decisão**: reutilizar cofre, adapters, sessões persistentes e coletor existentes sob uma autoridade de cobertura por usuário, identidade e portal, com estratégia explícita, estado persistido, cadência conservadora e backoff.
+- **Limite**: A1 armazenado, PJeOffice disponível, Windows Store e sessão autenticada são estados distintos. Portal autenticado sem evidência live permanece experimental ou não verificado.
+- **Supervisão**: CAPTCHA, segundo fator interativo ou sessão expirada pausam retries e exigem reconexão humana. Ciência, assinatura, petição, protocolo, acknowledgment e confirmação automática de prazo são proibidos.
+- **Matching**: CNJ e referências estáveis podem deduplicar; sinais de partes/tribunal produzem somente sugestão explicável.
+
+## 2026-09-01 — UI V2 iconography e global polish concluídos
+
+- **Decisão**: consolidar sprite local próprio e refinamento Mineral Editorial transversal sem novo framework, dependência ou runtime.
+- **Checkpoints**: `ui-v2-iconography` e `ui-v2-global-polish` permanecem referências imutáveis; Classic, um App e um Store foram preservados.
+
 ## 2026-08-31 — Migração UI V2 concluída em modo dual
 
 - **Decisão**: considerar concluída a migração das 17 views canônicas para a UI V2 na branch `ui-v2`. A V2 é o modo padrão e a UI Clássica permanece fallback visual selecionável.

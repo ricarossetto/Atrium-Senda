@@ -1,26 +1,24 @@
 # ATRIUM — Roadmap pós-hardening técnico
 
-## NOW — Baseline técnico da UI V2 concluído
+## NOW — Managed Judicial Connectivity
 
-- Preservar na branch `ui-v2` o checkpoint final aprovado e todos os checkpoints históricos por tags imutáveis.
-- Manter a UI V2 como padrão e a UI Clássica como fallback visual selecionável.
-- Preservar um único App, Store, backend, schemas, rotas e conjunto de regras de negócio.
-- Não promover para `main`, publicar release ou remover a Classic sem decisão posterior e explícita.
+- Operar A1, PJeOffice, TOTP e sessões como estratégias independentes por portal.
+- Manter cobertura read-only com cadência conservadora, backoff, pausa por autenticação e reconexão supervisionada.
+- Expor somente estado e erros sanitizados; credenciais continuam cifradas no agente local.
+- Tratar portais autenticados sem evidência live como experimentais ou não verificados.
 
-## NEXT — Iconography & Visual Language Polish
+## NEXT — Canonical Product Specifications
 
-- Consolidar iconografia e linguagem visual em missão própria, sem reabrir regras de negócio.
+- Registrar contratos canônicos do produto para reduzir ambiguidades em mudanças futuras.
 
-## AFTER — Global Visual Polish
+## AFTER — Product Maturity / Document Intelligence
 
-- Executar o refinamento visual transversal somente depois da iconografia, preservando acessibilidade, temas e fallback Classic.
+- Evoluir documentos, preview/OCR, busca, storage e adapters externos por subgates independentes e recuperáveis.
 
-## THEN — Managed Judicial Connectivity
+## CHECKPOINTS VISUAIS CONCLUÍDOS
 
-- Planejar conectividade judicial gerenciada para A1, PJeOffice e TOTP, com credenciais supervisionadas, sessões por portal, descoberta e sincronização do acervo, movimentações e estado de conexão.
-- Manter intervenção humana quando o portal exigir e comportamento read-only por padrão.
-- Não realizar ciência, assinatura ou protocolo automático.
-- Esta capacidade está apenas planejada; não foi implementada pelo Gate 22.
+- Gate 23: iconografia original, coerente e acessível, checkpoint `ui-v2-iconography`.
+- Gate 24: polish global Mineral Editorial, temas e responsividade, checkpoint `ui-v2-global-polish`.
 
 ## CONCLUÍDO
 

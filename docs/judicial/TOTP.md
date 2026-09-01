@@ -1,7 +1,7 @@
 # ARQUITETURA DO SEGUNDO FATOR (TOTP / 2FA)
 ## Especificação RFC 6238, Parsers de QR Code e Verificação de Desvio de Relógio
 
-O ATRIUM implementa suporte universal e autônomo ao segundo fator (2FA) por meio do algoritmo Time-Based One-Time Password (RFC 6238).
+O ATRIUM implementa geração e validação local de segundo fator TOTP (RFC 6238). A compatibilidade de login depende de cada portal e não é considerada universal nem certificada sem evidência específica.
 
 ---
 

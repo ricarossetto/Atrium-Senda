@@ -37,8 +37,11 @@ graph TD
 - **Responsabilidade**: Estratégias formais de autenticação encapsuladas e desacopladas dos coletores de dados:
   - `public`: Sem autenticação (APIs públicas do DJEN e DataJud).
   - `credentials-totp`: Login com usuário + senha + 2FA com detecção de CAPTCHA (`HUMAN_ACTION_REQUIRED`).
+  - `totp` e `username-password-plus-totp`: Estratégias explícitas que não confundem a presença do segundo fator com outras credenciais.
   - `client-cert-mtls`: Apresentação direta de certificado digital de cliente via TLS handshake.
   - `pjeoffice-local`: Interação local via socket loopback com o aplicativo PJeOffice Pro (`127.0.0.1:8800`).
+  - `windows-store`: Certificado fornecido pelo repositório do Windows, separado do PFX cifrado.
+  - `interactive-human-required`: Intervenção explícita sem bypass de CAPTCHA ou consentimento.
   - `manual-persistent-session`: Navegador assistido interativo para primeiro login humano e captura de sessão persistente.
 
 ### 3. `SecondFactorProvider` (TOTP Sandbox)
@@ -48,12 +51,12 @@ graph TD
 
 ### 4. `JudicialSessionManager`
 - **Responsabilidade**: Ciclo de vida das sessões nos portais judiciais.
-- **Isolamento de Perfis**: Perfis de navegador persistentes estritamente isolados por usuário e por portal (`data/browser-profiles/<user-id>/<portal-id>`).
+- **Isolamento de Perfis**: Perfis de navegador persistentes isolados por usuário, identidade judicial e portal (`data/browser-profiles/<user-id>/<identity-id>/<portal-id>`), com fallback controlado para o perfil primário legado.
 - **Locks de Concorrência**: Prevenção de conflito de múltiplos processos acessando simultaneamente a mesma pasta de perfil do Chromium.
-- **Taxonomia de Status**: `not_configured`, `connecting`, `connected`, `expired`, `human_action_required`, `error`.
+- **Taxonomia de Status**: `not_configured`, `authenticating`, `connected`, `action_required`, `expired`, `error`.
 
 ### 5. `CollectorAdapter`
-- **Responsabilidade**: Coleta autônoma e estruturação de expedientes, intimações e acervo.
+- **Responsabilidade**: Coleta supervisionada e estruturação de expedientes, intimações e acervo, com cadência conservadora e backoff.
 - **Proteção Read-Only**: Bloqueio rigoroso de ações processuais ativas no PJe/eproc (dar ciência, peticionar, assinar).
 
 ---

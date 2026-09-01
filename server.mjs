@@ -108,6 +108,7 @@ const privateStaticFiles = new Set(['.env', 'package.json', 'pnpm-lock.yaml', 'p
 const privateStaticExtensions = new Set(['.key', '.pem', '.pfx', '.p12', '.crt']);
 const emptyRuntime = () => ({ events: [], tasks: [], intimations: [], processes: [], contacts: [], sources: [], updatedAt: null });
 let interactiveCollector = null;
+let managedCollector = null;
 let appStateMutationTail = Promise.resolve();
 let runtimeMutationTail = Promise.resolve();
 let runtimeStateStatus = 'EMPTY';
@@ -1821,15 +1822,27 @@ const server = http.createServer(async (req, res) => {
       if (CLOUD_MODE) {
         return json(res, 200, { ok: true, cloud: true, message: 'Modo nuvem ativo: o coletor judicial autônomo executa no dispositivo seguro do escritório.' });
       }
+      if (managedCollector && managedCollector.exitCode === null) {
+        return json(res, 202, { ok: true, alreadyRunning: true, readOnly: true, message: 'A cobertura judicial gerenciada já está em atualização.' });
+      }
       const config = await readPortalConfiguration();
       const enabledIds = config.portals.filter(p => p.enabled || p.strategy === 'djen' || p.strategy === 'datajud').map(p => p.id);
-      spawn(process.execPath, [COLLECTOR_AGENT_FILE], {
+      managedCollector = spawn(process.execPath, [COLLECTOR_AGENT_FILE], {
         cwd: ROOT,
-        env: { ...process.env, CENTRAL_URL: `http://${HOST}:${PORT}`, COLLECTOR_HEADLESS: 'true', COLLECTOR_PORTAL_IDS: enabledIds.join(',') },
+        env: {
+          ...process.env,
+          CENTRAL_URL: `http://${HOST}:${PORT}`,
+          COLLECTOR_HEADLESS: 'true',
+          COLLECTOR_INTERACTIVE: 'false',
+          COLLECTOR_PORTAL_IDS: enabledIds.join(','),
+          JUDICIAL_IDENTITY_ID: 'office-primary'
+        },
         windowsHide: true,
         stdio: 'ignore'
       });
-      return json(res, 200, { ok: true, message: 'Sincronização com DJEN, DataJud e tribunais disparada em segundo plano.' });
+      managedCollector.once('exit', () => { managedCollector = null; });
+      managedCollector.once('error', () => { managedCollector = null; });
+      return json(res, 202, { ok: true, readOnly: true, portalCount: enabledIds.length, message: 'Atualização judicial somente leitura iniciada em segundo plano.' });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/trusted-device/revoke') {
       assertAuthenticated(req, true); const revoked = await security.revokeTrustedDevice(req);
@@ -2743,9 +2756,18 @@ Diretrizes essenciais:
       const session = assertAuthenticated(req);
       const diagnostics = await judicialOrchestrator.getDiagnostics(session.username);
       const legacyStatus = await judicialIntegrationStatus();
+      const managedByPortal = new Map((diagnostics.coverage || []).map(item => [item.id, item]));
       return json(res, 200, {
         ok: true,
         ...legacyStatus,
+        portals: legacyStatus.portals.map(portal => ({ ...portal, managed: managedByPortal.get(portal.id) || null })),
+        managedCoverage: diagnostics.coverage || [],
+        managedPolicy: {
+          readOnly: true,
+          cadence: 'conservative-with-backoff',
+          humanSupervision: true,
+          forbiddenAutomaticActions: diagnostics.forbiddenAutomaticActions
+        },
         diagnostics,
         certificate: {
           ...legacyStatus.certificate,

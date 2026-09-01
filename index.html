@@ -878,7 +878,7 @@
             <div class="integration-logo certificate-logo">
               <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-certificate"></use></svg>
             </div>
-            <div class="integration-copy"><span class="status-chip muted" id="certificateIntegrationStatus">Verificando certificado</span><h3>Certificado Digital A1 & PJe</h3><p id="certificateIntegrationDetail">Ative o A1 localmente e sincronize expedientes e acervo com proteção criptográfica.</p><button class="button gold" id="certificateGuideButton">Gerenciar A1 e Tribunais</button></div>
+            <div class="integration-copy"><span class="status-chip muted" id="certificateIntegrationStatus">Verificando cobertura</span><h3><span class="classic-only">Certificado Digital A1 &amp; PJe</span><span class="v2-only">Cobertura judicial gerenciada</span></h3><p id="certificateIntegrationDetail">Acompanhe credenciais, sessões e atualizações read-only por portal, com intervenção humana quando exigida.</p><button class="button gold" id="certificateGuideButton"><span class="classic-only">Gerenciar A1 e Tribunais</span><span class="v2-only">Gerenciar cobertura judicial</span></button></div>
           </article>
           <article class="integration-card card importer-integration-card">
             <div class="integration-logo legal-logo">
@@ -1584,8 +1584,16 @@
 
   <div class="modal-backdrop hidden" id="judicialSetupBackdrop">
     <section class="modal judicial-setup-modal" role="dialog" aria-modal="true" aria-labelledby="judicialSetupTitle">
-      <header><div><p class="eyebrow">Monitoramento autenticado</p><h2 id="judicialSetupTitle">Certificado A1, Segundo Fator & Tribunais</h2></div><button class="icon-button" id="judicialSetupClose" aria-label="Fechar"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button></header>
+      <header><div><p class="eyebrow"><span class="classic-only">Monitoramento autenticado</span><span class="v2-only">Cobertura judicial</span></p><h2 id="judicialSetupTitle"><span class="classic-only">Certificado A1, Segundo Fator &amp; Tribunais</span><span class="v2-only">Conectividade judicial gerenciada</span></h2><p class="v2-only managed-judicial-subtitle">Sessões isoladas, sincronização conservadora e intervenção humana quando o portal exigir.</p></div><button class="icon-button" id="judicialSetupClose" aria-label="Fechar"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button></header>
       <div class="judicial-setup-body">
+        <section class="managed-coverage-overview v2-only" aria-labelledby="managedCoverageTitle">
+          <div class="managed-coverage-heading">
+            <div><p class="eyebrow">Visão operacional</p><h3 id="managedCoverageTitle">Cobertura por fonte e portal</h3><p id="managedCoverageSummary" aria-live="polite">Carregando estado das conexões…</p></div>
+            <span class="status-chip muted" id="managedReadOnlyBadge">Somente leitura</span>
+          </div>
+          <div class="managed-coverage-list" id="managedCoverageList"><div class="setup-loading">Carregando cobertura…</div></div>
+          <p class="managed-readonly-notice" id="managedReadOnlyNotice"><strong>Limite operacional:</strong> o ATRIUM consulta acervo, movimentos e publicações; nunca pratica ciência, assinatura, petição, protocolo ou confirmação automática de prazo.</p>
+        </section>
         <div class="setup-status-grid">
           <article><span class="setup-status-icon" id="setupCertificateIcon">1</span><div><small>Certificado A1</small><strong id="setupCertificateStatus">Verificando…</strong></div></article>
           <article><span class="setup-status-icon" id="setupPjeOfficeIcon">2</span><div><small>PJeOffice Pro</small><strong id="setupPjeOfficeStatus">Verificando…</strong></div></article>
@@ -1634,7 +1642,7 @@
         </section>
 
         <section class="setup-section">
-          <div class="setup-section-heading"><div><p class="eyebrow">Etapa 2</p><h3>Cobertura dos Tribunais & Sessões</h3><p>Marque os portais que o coletor deve acessar. Fontes públicas DJEN e DataJud continuam ativas separadamente.</p></div><div class="setup-heading-actions"><button class="button danger-outline" id="resetJudicialConnectionsButton" type="button">Zerar acessos</button><button class="button ghost" id="savePortalCoverageButton" type="button">Salvar cobertura</button></div></div>
+          <div class="setup-section-heading"><div><p class="eyebrow">Etapa 2</p><h3>Portais autenticados</h3><p>Habilite somente os portais usados pelo escritório. PFX, PJeOffice, Windows Store e TOTP permanecem estratégias independentes.</p></div><div class="setup-heading-actions"><button class="button danger-outline" id="resetJudicialConnectionsButton" type="button">Zerar acessos</button><button class="button ghost" id="savePortalCoverageButton" type="button">Salvar cobertura</button></div></div>
           <div class="portal-coverage-list" id="portalCoverageList"><div class="setup-loading">Carregando portais…</div></div>
         </section>
 
@@ -1651,7 +1659,7 @@
           <div class="setup-warning"><strong>Zero Trust:</strong> As imagens de QR Code são processadas em memória e descartadas imediatamente após a extração do segredo Base32.</div>
         </section>
       </div>
-      <footer class="judicial-setup-footer"><div><strong class="classic-only">Sincronização Judicial Autônoma</strong><span class="classic-only">O coletor monitora o DJEN, DataJud e tribunais vinculados automaticamente em segundo plano com IA.</span><strong class="v2-only">Sincronização judicial sob demanda</strong><span class="v2-only">Atualiza as fontes configuradas e mantém os resultados sujeitos à conferência profissional.</span></div><button class="button gold" id="syncJudicialNowButton" type="button"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-sync"></use></svg>Sincronizar Acervo e Intimações Agora</button></footer>
+      <footer class="judicial-setup-footer"><div><strong class="classic-only">Sincronização Judicial Autônoma</strong><span class="classic-only">O coletor monitora o DJEN, DataJud e tribunais vinculados automaticamente em segundo plano com IA.</span><strong class="v2-only">Atualização judicial supervisionada</strong><span class="v2-only">Executa leitura explícita agora; a agenda local respeita cadência, backoff e pausas para ação humana.</span></div><button class="button gold" id="syncJudicialNowButton" type="button"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-sync"></use></svg><span class="classic-only">Sincronizar Acervo e Intimações Agora</span><span class="v2-only">Atualizar cobertura agora</span></button></footer>
     </section>
   </div>
 
