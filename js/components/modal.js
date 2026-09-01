@@ -47,7 +47,11 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
       const value = defaults[field.name] ?? field.value ?? '';
       if (field.type === 'textarea') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><textarea id="field-${field.name}" name="${field.name}" ${field.required ? 'required' : ''}>${escapeHtml(value)}</textarea>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
       if (field.type === 'select') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><select id="field-${field.name}" name="${field.name}">${field.options.map(option => `<option value="${escapeHtml(option.value)}" ${String(value) === String(option.value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div>`;
-      return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><input id="field-${field.name}" name="${field.name}" type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''}>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
+      const suggestions = Array.isArray(field.suggestions) && field.suggestions.length
+        ? `<datalist id="field-${field.name}-suggestions">${field.suggestions.map(option => `<option value="${escapeHtml(option.value ?? option)}">${escapeHtml(option.label || '')}</option>`).join('')}</datalist>`
+        : '';
+      const list = suggestions ? `list="field-${field.name}-suggestions" autocomplete="off" role="combobox" aria-autocomplete="list"` : '';
+      return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><input id="field-${field.name}" name="${field.name}" type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} ${list}>${suggestions}${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
     };
     const isV2 = document.documentElement.dataset.ui === 'v2';
     const fieldsHtml = mode === 'process' && isV2

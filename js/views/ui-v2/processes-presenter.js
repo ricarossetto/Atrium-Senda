@@ -8,6 +8,8 @@ export function createProcessesV2Presenter({
   onEdit,
   onConsult,
   onDocuments,
+  onClient,
+  onTasks,
   onExport,
   onDelete
 } = {}) {
@@ -26,6 +28,14 @@ export function createProcessesV2Presenter({
       if (event.target === byId('processInspectorBackdrop')) close();
     });
     byId('processInspectorBackdrop')?.addEventListener('keydown', handleInspectorKeydown);
+    byId('processInspectorContent')?.addEventListener('click', event => {
+      if (!selectedItem) return;
+      if (event.target.closest('[data-process-client]')) {
+        const item = selectedItem; close({ restoreFocus: false }); onClient?.(item);
+      } else if (event.target.closest('[data-process-tasks]')) {
+        const item = selectedItem; close({ restoreFocus: false }); onTasks?.(item);
+      }
+    });
     byId('processInspectorEdit')?.addEventListener('click', () => {
       if (!selectedItem) return;
       const item = selectedItem;
@@ -214,7 +224,7 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
   return `<section class="process-inspector-identity" aria-labelledby="processInspectorIdentityHeading">
     <p class="process-inspector-kicker" id="processInspectorIdentityHeading">Leitura processual</p>
     <div class="process-inspector-number"><strong data-process-number>${escapeHtml(number)}</strong>${secrecy}</div>
-    <h3>${escapeHtml(item.client || 'Cliente não informado')}</h3>
+    <h3><button type="button" class="process-inspector-client-link" data-process-client aria-label="Abrir contato de ${escapeHtml(item.client || 'cliente não informado')}">${escapeHtml(item.client || 'Cliente não informado')}</button></h3>
     <p>${escapeHtml(item.clientPosition || 'Posição não informada')}${item.opposingParty ? ` <span>vs.</span> ${escapeHtml(item.opposingParty)}` : ''}</p>
     <div class="process-inspector-context"><strong>${escapeHtml(item.court || item.county || 'Órgão não informado')}</strong><span>${escapeHtml(unique([item.courtUnit, item.actionType, item.judicialPhase, item.stage]).join(' · ') || 'Classificação não informada')}</span></div>
   </section>
@@ -222,12 +232,22 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
   <section class="process-inspector-section" aria-labelledby="processOperationalHeading">
     <h3 id="processOperationalHeading">Resumo operacional</h3>
     <div class="process-inspector-metrics">
-      ${metric(summary.openTasks, 'Tarefas abertas', escapeHtml)}
+      <button type="button" class="process-inspector-metric-link" data-process-tasks>${metric(summary.openTasks, 'Tarefas abertas', escapeHtml)}</button>
       ${metric(summary.linkedIntimations, 'Intimações vinculadas', escapeHtml)}
       ${metric(formatMinutes(summary.timeMinutes), 'Tempo apontado', escapeHtml)}
       ${metric(summary.nextDeadline ? formatDate(summary.nextDeadline) : '—', 'Próximo prazo existente', escapeHtml)}
     </div>
     <div class="process-last-movement"><span>Último andamento</span><strong>${escapeHtml(item.lastMovement || 'Ainda não informado.')}</strong><small>${formatDate(item.lastMovementAt)}</small></div>
+  </section>
+
+  <section class="process-inspector-section" aria-labelledby="processTasksHeading">
+    <div class="process-inspector-section-heading"><h3 id="processTasksHeading">Tarefas vinculadas</h3><button type="button" class="button ghost" data-process-tasks>Abrir em Tarefas</button></div>
+    ${renderLinkedTasks(summary.linkedTasks || [], escapeHtml, formatDate)}
+  </section>
+
+  <section class="process-inspector-section" aria-labelledby="processMovementsHeading">
+    <h3 id="processMovementsHeading">Movimentações</h3>
+    ${renderMovements(summary.movements || [], item, escapeHtml, formatDate)}
   </section>
 
   <section class="process-inspector-section" aria-labelledby="processDataHeading">
@@ -267,6 +287,17 @@ function definition(label, value, escapeHtml) {
 
 function metric(value, label, escapeHtml) {
   return `<div><strong>${escapeHtml(value ?? '—')}</strong><span>${escapeHtml(label)}</span></div>`;
+}
+
+function renderLinkedTasks(tasks, escapeHtml, formatDate) {
+  if (!tasks.length) return '<p class="process-inspector-empty">Nenhuma tarefa vinculada a este processo.</p>';
+  return `<div class="process-linked-list">${tasks.map(task => `<article><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><span>${escapeHtml(task.status || 'Status não informado')}${task.fatalDeadline || task.deadline ? ` · ${escapeHtml(formatDate(task.fatalDeadline || task.deadline))}` : ''}</span></article>`).join('')}</div>`;
+}
+
+function renderMovements(movements, item, escapeHtml, formatDate) {
+  const records = movements.length ? movements : (item.lastMovement ? [{ description: item.lastMovement, date: item.lastMovementAt }] : []);
+  if (!records.length) return '<p class="process-inspector-empty">Nenhuma movimentação cadastrada.</p>';
+  return `<ol class="process-movement-list">${records.slice().sort((a, b) => String(b.date || b.occurredAt || '').localeCompare(String(a.date || a.occurredAt || ''))).map(movement => `<li><time>${escapeHtml(formatDate(movement.date || movement.occurredAt || movement.createdAt))}</time><p>${escapeHtml(movement.description || movement.text || movement.name || 'Movimentação sem descrição')}</p></li>`).join('')}</ol>`;
 }
 
 function riskPresentation(value) {

@@ -498,6 +498,17 @@ import { createTasksFeature } from './features/tasks.js';
       getLinkedIntimations: processNumber => Store.state.intimations.filter(item => processNumber && String(item.process || '').trim() === processNumber),
       isTerminalStatus: status => TERMINAL_STATUSES.includes(status),
       openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId),
+      openClient: name => {
+        App.switchView('contacts');
+        const input = document.getElementById('contactSearch');
+        if (input) input.value = name || '';
+        App.renderContacts(name || '');
+      },
+      openLinkedTasks: processNumber => {
+        App.switchView('kanban');
+        App.renderKanban?.();
+        App.toast(`Tarefas vinculadas ao processo ${processNumber || 'selecionado'} estão destacadas pelos dados do cartão.`, 'info');
+      },
       exportJson: (data, filename) => App.exportJson(data, filename),
       confirmProcessDeletion: number => window.prompt(`Para excluir o processo ${number}, digite o número completo:`),
       requestProcessReenable: () => window.prompt('Digite o número CNJ cuja descoberta automática deve ser reativada:')
@@ -548,6 +559,7 @@ import { createTasksFeature } from './features/tasks.js';
       formatCurrency,
       openModal: (...args) => App.openModal(...args),
       getCurrentUserName: () => window.KellerAuth?.currentUser?.displayName,
+      getContacts: () => Store.state.contacts || [],
       renderV2Workspace: renderLeadsV2Workspace
     });
     return leadsFeature;

@@ -246,9 +246,13 @@ html[data-ui="v2"] #intimationDetail {
 }
 
 html[data-ui="v2"] #view-inbox .inbox-list-card {
-  max-height: calc(100dvh - 490px);
+  max-height: none;
   overflow: hidden;
 }
+
+html[data-ui="v2"] #view-inbox .inbox-list { max-height: none; overflow: visible; }
+html[data-ui="v2"] #view-inbox .original-text { min-height: min(42vh, 520px); max-height: none; overflow: visible; white-space: pre-wrap; line-height: 1.7; }
+html[data-ui="v2"] #view-inbox .detail-actions { position: sticky; bottom: 0; z-index: 2; background: var(--v2-color-surface-elevated); border-top: 1px solid var(--v2-color-border); box-shadow: 0 -12px 28px -28px var(--v2-color-foreground); }
 
 html[data-ui="v2"] #view-inbox .list-head {
   min-height: 38px;

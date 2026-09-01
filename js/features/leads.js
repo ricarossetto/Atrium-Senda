@@ -9,6 +9,7 @@ export function createLeadsFeature({
   formatCurrency,
   openModal,
   getCurrentUserName,
+  getContacts = () => [],
   renderV2Workspace
 } = {}) {
   let initialized = false;
@@ -119,7 +120,7 @@ export function createLeadsFeature({
     openLeadModal(defaults = {}) {
       const editing = Boolean(defaults.id);
       const fields = [
-        { name: 'client', label: 'Nome do Cliente / Interessado', required: true, full: true, placeholder: 'Ex: Maria da Silva' },
+        { name: 'client', label: 'Cliente / interessado', required: true, full: true, placeholder: 'Busque um contato ou informe um novo interessado', suggestions: getContacts().map(contact => ({ value: contact.name, label: [contact.mobile || contact.phone, contact.email].filter(Boolean).join(' · ') })), note: 'Selecione um contato existente quando aplicável; um nome novo não cria contato automaticamente.' },
         { name: 'serviceType', label: 'Tipo de Ação / Serviço Jurídico', required: true, full: true, placeholder: 'Ex: Concessão de Aposentadoria Especial' },
         {
           name: 'status', label: 'Status do Atendimento', type: 'select',

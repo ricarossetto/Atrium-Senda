@@ -544,6 +544,20 @@ html[data-ui="v2"] .process-last-movement {
   border-radius: var(--v2-radius-sm);
 }
 
+html[data-ui="v2"] .process-inspector-client-link { padding: 0; color: inherit; background: transparent; border: 0; border-bottom: 1px solid var(--v2-color-border-strong); font: inherit; text-align: left; cursor: pointer; }
+html[data-ui="v2"] .process-inspector-client-link:hover { color: var(--v2-color-primary); border-color: currentColor; }
+html[data-ui="v2"] .process-inspector-metric-link { min-width: 0; padding: 0; color: inherit; background: transparent; border: 0; text-align: inherit; cursor: pointer; }
+html[data-ui="v2"] .process-inspector-metric-link > div { height: 100%; }
+html[data-ui="v2"] .process-inspector-section-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--v2-space-3); }
+html[data-ui="v2"] .process-linked-list { display: grid; gap: var(--v2-space-2); }
+html[data-ui="v2"] .process-linked-list article { display: grid; gap: 3px; padding: var(--v2-space-3); background: var(--v2-color-surface-secondary); border: 1px solid var(--v2-color-border-subtle); border-radius: var(--v2-radius-md); }
+html[data-ui="v2"] .process-linked-list span,
+html[data-ui="v2"] .process-inspector-empty { color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] .process-movement-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+html[data-ui="v2"] .process-movement-list li { position: relative; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: var(--v2-space-3); padding: var(--v2-space-3) 0; border-bottom: 1px solid var(--v2-color-border-subtle); }
+html[data-ui="v2"] .process-movement-list time { color: var(--v2-color-muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
+html[data-ui="v2"] .process-movement-list p { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 12px; line-height: 1.55; }
+
 html[data-ui="v2"] .process-last-movement span,
 html[data-ui="v2"] .process-last-movement small {
   color: var(--v2-color-foreground-secondary);
