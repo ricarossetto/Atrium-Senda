@@ -154,6 +154,7 @@ function renderContactInspector({ item, escapeHtml, formatDate }) {
     </div>
     <footer class="contact-inspector-actions">
       <button type="button" class="v2-button is-secondary" data-contact-documents>${iconSvg('documents')}Gerar documento</button>
+      <button type="button" class="v2-button is-secondary" data-contact-archive>${iconSvg('documents')}Ver acervo</button>
       <button type="button" class="v2-button is-primary" data-contact-edit>${iconSvg('edit')}Editar contato</button>
     </footer>
   </aside>`;

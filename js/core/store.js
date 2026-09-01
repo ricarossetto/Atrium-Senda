@@ -73,6 +73,7 @@ const sampleState = {
     { id: 'proc-demo-2', number: '5000000-00.2026.4.04.0000', client: 'Processo de demonstração', court: 'TRF · 2ª Vara Federal', secrecy: true, lastMovement: 'Movimentação capturada pelo conector', lastMovementAt: isoDate(-1), monitoring: 'attention' }
   ],
   contacts: [],
+  documents: [],
   customPrompts: [],
   customLinks: [],
   configuration: {
@@ -98,6 +99,7 @@ const sampleState = {
     demoMode: true,
     calendarConfigured: false,
     collectorConfigured: false,
+    documentNamingTemplate: '',
     dismissedBanner: false
   }
 };
@@ -250,7 +252,7 @@ export const Store = {
     this.save();
   },
   ensureShape({ seedConfigurationDefaults = false } = {}) {
-    ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'leads', 'customPrompts', 'customLinks'].forEach(key => {
+    ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'documents', 'leads', 'customPrompts', 'customLinks'].forEach(key => {
       if (!Array.isArray(this.state[key])) this.state[key] = [];
     });
     this.state.configuration = { ...(this.state.configuration || {}) };

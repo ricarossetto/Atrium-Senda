@@ -24,6 +24,7 @@
 
 - `GATE25_HEAD=e658c1734be912dfb66961f780b00466ed39d0e6` — Managed Judicial Connectivity aprovada na CI e protegida pela tag `managed-judicial-connectivity`.
 - Gate 26A: árvore `specs/` estabelece contratos CURRENT/FUTURE e guidance obrigatório para agentes.
+- Gate 26B: acervo documental canônico com ownership por contato/processo, naming seguro, blobs cifrados deduplicados e lixeira recuperável.
 
 ## CONCLUÍDO
 

@@ -494,7 +494,8 @@ import { createTasksFeature } from './features/tasks.js';
       copyToClipboard: value => navigator.clipboard.writeText(value),
       getLinkedTasks: processNumber => Store.state.tasks.filter(task => processNumber && String(task.process || '').trim() === processNumber),
       getLinkedIntimations: processNumber => Store.state.intimations.filter(item => processNumber && String(item.process || '').trim() === processNumber),
-      isTerminalStatus: status => TERMINAL_STATUSES.includes(status)
+      isTerminalStatus: status => TERMINAL_STATUSES.includes(status),
+      openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId)
     });
     return processesFeature;
   }
@@ -508,7 +509,8 @@ import { createTasksFeature } from './features/tasks.js';
       formatDate,
       sortRecords,
       updateTableSortHeaders,
-      openModal: (...args) => App.openModal(...args)
+      openModal: (...args) => App.openModal(...args),
+      openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId)
     });
     return contactsFeature;
   }
@@ -525,7 +527,8 @@ import { createTasksFeature } from './features/tasks.js';
       getCurrentUser: () => window.KellerAuth?.currentUser,
       getIsoDate: () => isoDate(),
       onOpenGenerator: options => App.openDocumentGenerator(options),
-      renderV2Catalog: renderDocumentsV2Catalog
+      renderV2Catalog: renderDocumentsV2Catalog,
+      secureFetch: (...args) => window.KellerAuth.secureFetch(...args)
     });
     return documentsFeature;
   }
@@ -970,6 +973,10 @@ import { createTasksFeature } from './features/tasks.js';
     },
     renderDocuments() {
       return getDocumentsFeature().render();
+    },
+    openOwnerDocuments(ownerType, ownerId) {
+      this.switchView('documents');
+      return getDocumentsFeature().openOwnerDocuments(ownerType, ownerId);
     },
     renderAssistant() {
       return getAssistantFeature().syncPresentation();

@@ -61,11 +61,15 @@ export function createDocumentsFeature({
   getCurrentUser = () => null,
   getIsoDate = () => new Date().toISOString().slice(0, 10),
   onOpenGenerator = null,
-  renderV2Catalog = null
+  renderV2Catalog = null,
+  secureFetch = null,
+  confirmAction = message => windowRef?.confirm?.(message) === true
 } = {}) {
   let initialized = false;
   let lastFocusedElement = null;
   let previousBodyOverflow = '';
+  let archiveFilter = 'active';
+  let selectedOwner = null;
   const byId = id => documentRef.getElementById(id);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
 
@@ -421,6 +425,85 @@ ${id.lawyerOab} - ${id.officeName}`;
     return Object.hasOwn(DOCUMENT_GENERATORS, canonical) ? canonical : null;
   }
 
+  function ownerLabel(item, ownerType) {
+    return ownerType === 'process'
+      ? `${item.number || item.protocol || 'Processo'}${item.client ? ` · ${item.client}` : ''}`
+      : item.name || 'Contato';
+  }
+
+  function updateOwnerOptions() {
+    const type = byId('documentOwnerType')?.value || selectedOwner?.ownerType || 'contact';
+    const select = byId('documentOwnerId');
+    if (!select) return;
+    const records = type === 'process' ? (store?.state?.processes || []) : (store?.state?.contacts || []);
+    const previous = selectedOwner?.ownerType === type ? selectedOwner.ownerId : select.value;
+    select.innerHTML = `<option value="">Selecione</option>${records.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(ownerLabel(item, type))}</option>`).join('')}`;
+    if (previous && records.some(item => item.id === previous)) select.value = previous;
+  }
+
+  function syncDocumentState(payload) {
+    if (Array.isArray(payload?.documents)) store.state.documents = payload.documents;
+    if (payload?.settings && typeof payload.settings === 'object') store.state.settings = { ...store.state.settings, ...payload.settings };
+    if (payload?.revision) store.revision = payload.revision;
+  }
+
+  async function responsePayload(response) {
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw Object.assign(new Error(payload.message || 'Não foi possível concluir a operação documental.'), { status: response.status });
+    return payload;
+  }
+
+  function fileToBase64(file) {
+    return file.arrayBuffer().then(buffer => {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let index = 0; index < bytes.length; index += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+      }
+      return windowRef.btoa(binary);
+    });
+  }
+
+  function formatDocumentSize(size) {
+    const value = Number(size) || 0;
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function documentOwnerName(document) {
+    const collection = document.ownerType === 'process' ? store.state.processes : store.state.contacts;
+    const owner = (collection || []).find(item => item.id === document.ownerId);
+    return owner ? ownerLabel(owner, document.ownerType) : 'Proprietário indisponível';
+  }
+
+  function renderArchive() {
+    if (!isV2()) return;
+    updateOwnerOptions();
+    const template = byId('documentNamingTemplate');
+    if (template && documentRef.activeElement !== template) template.value = store.state.settings?.documentNamingTemplate || '';
+    const documents = (store.state.documents || []).filter(item => archiveFilter === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt);
+    const list = byId('documentArchiveList');
+    const status = byId('documentArchiveStatus');
+    if (status) status.textContent = `${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'} ${archiveFilter === 'deleted' ? 'na lixeira' : 'no acervo ativo'}`;
+    if (!list) return;
+    list.innerHTML = documents.length ? documents.map(document => `
+      <article class="document-record${document.deletedAt ? ' is-deleted' : ''}" data-document-id="${escapeHtml(document.id)}">
+        <div class="document-record-icon" aria-hidden="true">${iconSvg('documents')}</div>
+        <div class="document-record-copy">
+          <strong>${escapeHtml(document.name)}</strong>
+          <span>${escapeHtml(documentOwnerName(document))}</span>
+          <small>${escapeHtml(document.documentType || 'Documento')} · ${escapeHtml(document.documentDate || '')} · ${escapeHtml(formatDocumentSize(document.size))}</small>
+        </div>
+        <div class="document-record-actions">
+          ${document.deletedAt
+            ? `<button class="button ghost" type="button" data-document-action="restore">Restaurar</button><button class="button danger" type="button" data-document-action="purge">Excluir definitivamente</button>`
+            : `<button class="button ghost" type="button" data-document-action="download">Baixar</button><button class="button ghost" type="button" data-document-action="delete">Mover para lixeira</button>`}
+        </div>
+      </article>`).join('')
+      : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.'}</span></div>`;
+  }
+
   const feature = {
     get initialized() {
       return initialized;
@@ -454,6 +537,18 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('docGenProcessSelect')?.addEventListener('change', () => feature.updatePreview());
       byId('docGenCopyButton')?.addEventListener('click', () => feature.copyToClipboard());
       byId('docGenDownloadButton')?.addEventListener('click', () => feature.download());
+      byId('documentOwnerType')?.addEventListener('change', () => { selectedOwner = null; updateOwnerOptions(); });
+      byId('documentUploadForm')?.addEventListener('submit', event => feature.uploadDocument(event));
+      byId('documentNamingSave')?.addEventListener('click', () => feature.saveNamingTemplate());
+      byId('documentArchiveWorkspace')?.addEventListener('click', event => {
+        const filter = event.target.closest('[data-document-filter]');
+        if (filter) return feature.setArchiveFilter(filter.dataset.documentFilter);
+        const action = event.target.closest('[data-document-action]');
+        const record = action?.closest('[data-document-id]');
+        if (action && record) feature.handleArchiveAction(record.dataset.documentId, action.dataset.documentAction);
+      });
+      const dateInput = byId('documentDateInput');
+      if (dateInput && !dateInput.value) dateInput.value = getIsoDate();
       return true;
     },
 
@@ -484,7 +579,126 @@ ${id.lawyerOab} - ${id.officeName}`;
           else feature.openGenerator({ type: button.dataset.generateDocType });
         });
       });
+      renderArchive();
       return true;
+    },
+
+    setArchiveFilter(filter) {
+      archiveFilter = filter === 'deleted' ? 'deleted' : 'active';
+      byId('documentArchiveWorkspace')?.querySelectorAll('[data-document-filter]').forEach(button => {
+        const active = button.dataset.documentFilter === archiveFilter;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+      renderArchive();
+    },
+
+    openOwnerDocuments(ownerType, ownerId) {
+      selectedOwner = { ownerType, ownerId };
+      const type = byId('documentOwnerType');
+      if (type) type.value = ownerType === 'process' ? 'process' : 'contact';
+      updateOwnerOptions();
+      byId('documentArchiveWorkspace')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+      return true;
+    },
+
+    async uploadDocument(event) {
+      event?.preventDefault?.();
+      if (!secureFetch) return false;
+      const file = byId('documentFileInput')?.files?.[0];
+      const ownerType = byId('documentOwnerType')?.value;
+      const ownerId = byId('documentOwnerId')?.value;
+      if (!file || !ownerId) {
+        showToast('Selecione o proprietário e o arquivo.', 'error');
+        return false;
+      }
+      const button = byId('documentUploadButton');
+      if (button) button.disabled = true;
+      try {
+        const payload = await responsePayload(await secureFetch('/api/documents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            revision: store.revision,
+            ownerType,
+            ownerId,
+            originalName: file.name,
+            mime: file.type || 'application/octet-stream',
+            documentType: byId('documentTypeInput')?.value || '',
+            documentDate: byId('documentDateInput')?.value || getIsoDate(),
+            contentBase64: await fileToBase64(file)
+          })
+        }));
+        syncDocumentState(payload);
+        byId('documentUploadForm')?.reset();
+        byId('documentOwnerType').value = ownerType;
+        selectedOwner = { ownerType, ownerId };
+        byId('documentDateInput').value = getIsoDate();
+        renderArchive();
+        showToast('Documento adicionado ao acervo seguro.', 'success');
+        return true;
+      } catch (error) {
+        showToast(error.message, 'error');
+        return false;
+      } finally {
+        if (button) button.disabled = false;
+      }
+    },
+
+    async saveNamingTemplate() {
+      if (!secureFetch) return false;
+      try {
+        const payload = await responsePayload(await secureFetch('/api/documents/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ revision: store.revision, template: byId('documentNamingTemplate')?.value || '' })
+        }));
+        syncDocumentState(payload);
+        showToast('Padrão de nomes documentais salvo.', 'success');
+        return true;
+      } catch (error) {
+        showToast(error.message, 'error');
+        return false;
+      }
+    },
+
+    async handleArchiveAction(id, action) {
+      if (!secureFetch) return false;
+      const document = (store.state.documents || []).find(item => item.id === id);
+      if (!document) return false;
+      if (action === 'download') {
+        try {
+          const response = await secureFetch(`/api/documents/${encodeURIComponent(id)}/content`, { headers: { Accept: 'application/octet-stream' } });
+          if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Falha ao baixar documento.');
+          const url = windowRef.URL.createObjectURL(await response.blob());
+          const anchor = documentRef.createElement('a');
+          anchor.href = url;
+          anchor.download = document.name;
+          anchor.click();
+          windowRef.URL.revokeObjectURL(url);
+          return true;
+        } catch (error) {
+          showToast(error.message, 'error');
+          return false;
+        }
+      }
+      if (action === 'purge' && !confirmAction(`Excluir permanentemente “${document.name}”? Esta ação não pode ser desfeita.`)) return false;
+      try {
+        const endpoint = action === 'delete' ? 'delete' : action === 'restore' ? 'restore' : '';
+        const response = await secureFetch(endpoint ? `/api/documents/${encodeURIComponent(id)}/${endpoint}` : `/api/documents/${encodeURIComponent(id)}`, {
+          method: endpoint ? 'POST' : 'DELETE',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ revision: store.revision, confirm: action === 'purge' })
+        });
+        const payload = await responsePayload(response);
+        syncDocumentState(payload);
+        renderArchive();
+        showToast(action === 'restore' ? 'Documento restaurado.' : action === 'purge' ? 'Documento excluído permanentemente.' : 'Documento movido para a lixeira.', 'success');
+        return true;
+      } catch (error) {
+        showToast(error.message, 'error');
+        return false;
+      }
     },
 
     openGenerator(options = {}) {

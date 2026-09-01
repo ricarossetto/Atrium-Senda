@@ -6,7 +6,8 @@ export function createProcessesV2Presenter({
   formatDate,
   formatMinutes,
   onEdit,
-  onConsult
+  onConsult,
+  onDocuments
 } = {}) {
   let initialized = false;
   let selectedItem = null;
@@ -33,6 +34,12 @@ export function createProcessesV2Presenter({
     });
     byId('processInspectorTjrs')?.addEventListener('click', event => {
       if (selectedItem) onConsult?.(event.currentTarget, selectedItem);
+    });
+    byId('processInspectorDocuments')?.addEventListener('click', () => {
+      if (!selectedItem) return;
+      const item = selectedItem;
+      close({ restoreFocus: false });
+      onDocuments?.(item);
     });
     return true;
   }

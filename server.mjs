@@ -13,6 +13,15 @@ import { collectDjen } from './collector/adapters/djen.mjs';
 import { collectDatajud, mergeExternalContacts, mergeExternalProcesses } from './collector/adapters/datajud.mjs';
 import { JudicialOrchestrator } from './lib/judicial/orchestrator.mjs';
 import { EmailService, maskEmail } from './lib/email/email-service.mjs';
+import {
+  DocumentBlobStore,
+  assertDocumentOwner,
+  decodeDocumentPayload,
+  documentNamingValues,
+  normalizeDocumentFilename,
+  resolveDocumentName,
+  sanitizeDocumentFilename
+} from './lib/documents/document-service.mjs';
 import { runA1Sandbox } from './lib/judicial/a1-sandbox.mjs';
 import { runTotpSandbox, parseTotpUri } from './lib/judicial/totp-sandbox.mjs';
 import {
@@ -87,6 +96,9 @@ const emailService = new EmailService({
   securityManager: security
 });
 await emailService.init();
+
+const documentBlobStore = new DocumentBlobStore({ dataDirectory: DATA_DIR, securityManager: security });
+await documentBlobStore.init();
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -532,6 +544,10 @@ async function saveClientAppState(value, expectedRevision, session) {
     }
     if (value.settings && typeof value.settings === 'object') delete value.settings.geminiApiKey;
     const current = await readAppStateEnvelope();
+    // Metadata e naming documentais são server-authoritative e só mudam pelas rotas dedicadas.
+    value.documents = Array.isArray(current.state?.documents) ? structuredClone(current.state.documents) : [];
+    if (!value.settings || typeof value.settings !== 'object' || Array.isArray(value.settings)) value.settings = {};
+    value.settings.documentNamingTemplate = String(current.state?.settings?.documentNamingTemplate || '');
     const previousAudit = Array.isArray(current.state?.audit) ? current.state.audit : [];
     const previousKeys = new Set(previousAudit.map(entry => entry?.id || `${entry?.at || ''}|${entry?.action || ''}`));
     const submittedAudit = Array.isArray(value?.audit) ? value.audit : [];
@@ -1603,6 +1619,40 @@ function assertAdmin(req, requireCsrf = false, customMessage = 'Você não possu
   return session;
 }
 
+function documentActor(session) {
+  return String(session?.displayName || session?.username || 'Usuário autenticado').slice(0, 100);
+}
+
+function assertDocumentRevision(envelope, revision) {
+  if (envelope?.revision && revision !== envelope.revision) {
+    throw Object.assign(new Error('Os documentos foram atualizados por outro usuário. Recarregue os dados.'), { statusCode: 409 });
+  }
+}
+
+function appendDocumentAudit(state, action, detail, session) {
+  if (!Array.isArray(state.audit)) state.audit = [];
+  state.audit.unshift({
+    id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
+    at: new Date().toISOString(),
+    action: String(action).slice(0, 160),
+    detail: String(detail || '').slice(0, 500),
+    actor: documentActor(session)
+  });
+  state.audit = state.audit.slice(0, 1000);
+}
+
+function documentResponseState(state, saved) {
+  return { documents: state.documents || [], revision: saved.revision };
+}
+
+function documentIdFromPath(pathname, suffix = '') {
+  const pattern = suffix
+    ? new RegExp(`^/api/documents/([^/]+)/${suffix}$`)
+    : /^\/api\/documents\/([^/]+)$/;
+  const match = pathname.match(pattern);
+  return match ? decodeURIComponent(match[1]).trim() : '';
+}
+
 const JUDICIAL_ADMIN_FORBIDDEN_MESSAGE = 'Você não possui permissão para administrar a integração judicial.';
 
 const ENCRYPTED_BACKUP_FORMAT = 'atrium-encrypted-backup-v1';
@@ -2081,6 +2131,173 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/state') {
       const session = assertAuthenticated(req, true); const body = await readJson(req, 3_000_000); const saved = await saveClientAppState(body.state, body.revision ?? null, session);
       return json(res, 200, { ok: true, ...saved });
+    }
+
+    // Acervo documental canônico: metadata no estado; bytes deduplicados e criptografados fora dele.
+    if (req.method === 'GET' && url.pathname === '/api/documents') {
+      assertAuthenticated(req);
+      const envelope = await readAppStateEnvelope();
+      const ownerType = String(url.searchParams.get('ownerType') || '').trim();
+      const ownerId = String(url.searchParams.get('ownerId') || '').trim();
+      const includeDeleted = url.searchParams.get('includeDeleted') === 'true';
+      let documents = Array.isArray(envelope.state?.documents) ? envelope.state.documents : [];
+      if (ownerType) documents = documents.filter(item => item.ownerType === ownerType);
+      if (ownerId) documents = documents.filter(item => item.ownerId === ownerId);
+      if (!includeDeleted) documents = documents.filter(item => !item.deletedAt);
+      return json(res, 200, { ok: true, documents, revision: envelope.revision });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/documents') {
+      const session = assertAuthenticated(req, true);
+      const body = await readJson(req, 28_000_000);
+      const binary = decodeDocumentPayload(body.contentBase64);
+      const checksum = createHash('sha256').update(binary).digest('hex');
+      const result = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        assertDocumentRevision(envelope, body.revision);
+        const state = envelope.state || {};
+        if (!Array.isArray(state.documents)) state.documents = [];
+        const ownerType = String(body.ownerType || '').trim();
+        const ownerId = String(body.ownerId || '').trim();
+        const owner = assertDocumentOwner(state, ownerType, ownerId);
+        const originalName = sanitizeDocumentFilename(body.originalName, 'documento');
+        const documentDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.documentDate || ''))
+          ? String(body.documentDate)
+          : new Date().toISOString().slice(0, 10);
+        const template = body.namingTemplate === undefined
+          ? String(state.settings?.documentNamingTemplate || '')
+          : String(body.namingTemplate || '');
+        const name = resolveDocumentName({
+          template,
+          originalName,
+          values: documentNamingValues({ state, ownerType, owner, documentType: body.documentType, documentDate })
+        });
+        const sameOwner = item => item?.ownerType === ownerType && item?.ownerId === ownerId;
+        if (state.documents.some(item => sameOwner(item) && !item.deletedAt && item.checksum === checksum)) {
+          throw Object.assign(new Error('Este mesmo conteúdo já está vinculado ao proprietário selecionado.'), { statusCode: 409 });
+        }
+        const normalizedName = normalizeDocumentFilename(name);
+        if (state.documents.some(item => sameOwner(item) && !item.deletedAt && normalizeDocumentFilename(item.name) === normalizedName)) {
+          throw Object.assign(new Error('Já existe um documento com este nome para o proprietário selecionado. Nenhum arquivo foi sobrescrito.'), { statusCode: 409 });
+        }
+
+        await documentBlobStore.put(binary);
+        const nowIso = new Date().toISOString();
+        const document = {
+          id: `doc-${Date.now()}-${randomBytes(5).toString('hex')}`,
+          name,
+          originalName,
+          mime: String(body.mime || 'application/octet-stream').slice(0, 120),
+          size: binary.length,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          documentDate,
+          ownerType,
+          ownerId,
+          documentType: String(body.documentType || '').trim().slice(0, 100),
+          deletedAt: null,
+          deletedBy: null,
+          checksum
+        };
+        state.documents.unshift(document);
+        appendDocumentAudit(state, 'Documento adicionado', `${name} · ${ownerType}:${ownerId}`, session);
+        const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
+        return { document, state, saved };
+      });
+      return json(res, 201, { ok: true, document: result.document, ...documentResponseState(result.state, result.saved) });
+    }
+
+    if (req.method === 'PATCH' && url.pathname === '/api/documents/settings') {
+      const session = assertAdmin(req, true, 'Apenas administradores podem alterar o padrão de nomes de documentos.');
+      const body = await readJson(req, 20_000);
+      const template = String(body.template || '').trim();
+      // Valida placeholders sem depender de dados reais.
+      resolveDocumentName({ template, originalName: 'documento.pdf', values: {} });
+      const result = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        assertDocumentRevision(envelope, body.revision);
+        const state = envelope.state || {};
+        if (!state.settings || typeof state.settings !== 'object') state.settings = {};
+        state.settings.documentNamingTemplate = template;
+        appendDocumentAudit(state, 'Padrão de nomes documentais atualizado', template || 'Nome original seguro', session);
+        const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
+        return { state, saved };
+      });
+      return json(res, 200, { ok: true, template, revision: result.saved.revision, settings: result.state.settings });
+    }
+
+    if (req.method === 'GET' && /^\/api\/documents\/[^/]+\/content$/.test(url.pathname)) {
+      assertAuthenticated(req);
+      const id = documentIdFromPath(url.pathname, 'content');
+      const envelope = await readAppStateEnvelope();
+      const document = (envelope.state?.documents || []).find(item => item?.id === id);
+      if (!document) throw Object.assign(new Error('Documento não encontrado.'), { statusCode: 404 });
+      if (document.deletedAt) throw Object.assign(new Error('Restaure o documento antes de baixá-lo.'), { statusCode: 410 });
+      const binary = await documentBlobStore.read(document.checksum);
+      applySecurityHeaders(res);
+      const downloadName = sanitizeDocumentFilename(document.name, 'documento');
+      res.writeHead(200, {
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': String(binary.length),
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(downloadName)}`,
+        'Cache-Control': 'no-store, private'
+      });
+      return res.end(binary);
+    }
+
+    if (req.method === 'POST' && /^\/api\/documents\/[^/]+\/(delete|restore)$/.test(url.pathname)) {
+      const session = assertAuthenticated(req, true);
+      const action = url.pathname.endsWith('/restore') ? 'restore' : 'delete';
+      const id = documentIdFromPath(url.pathname, action);
+      const body = await readJson(req, 20_000);
+      const result = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        assertDocumentRevision(envelope, body.revision);
+        const state = envelope.state || {};
+        if (!Array.isArray(state.documents)) state.documents = [];
+        const document = state.documents.find(item => item?.id === id);
+        if (!document) throw Object.assign(new Error('Documento não encontrado.'), { statusCode: 404 });
+        const nowIso = new Date().toISOString();
+        if (action === 'delete') {
+          if (document.deletedAt) throw Object.assign(new Error('O documento já está na lixeira.'), { statusCode: 409 });
+          document.deletedAt = nowIso;
+          document.deletedBy = documentActor(session);
+          appendDocumentAudit(state, 'Documento movido para a lixeira', document.name, session);
+        } else {
+          if (!document.deletedAt) throw Object.assign(new Error('O documento não está na lixeira.'), { statusCode: 409 });
+          document.deletedAt = null;
+          document.deletedBy = null;
+          document.updatedAt = nowIso;
+          appendDocumentAudit(state, 'Documento restaurado', document.name, session);
+        }
+        const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
+        return { document, state, saved };
+      });
+      return json(res, 200, { ok: true, document: result.document, ...documentResponseState(result.state, result.saved) });
+    }
+
+    if (req.method === 'DELETE' && /^\/api\/documents\/[^/]+$/.test(url.pathname)) {
+      const session = assertAuthenticated(req, true);
+      const id = documentIdFromPath(url.pathname);
+      const body = await readJson(req, 20_000);
+      if (body.confirm !== true) throw Object.assign(new Error('Confirmação explícita obrigatória para exclusão permanente.'), { statusCode: 400 });
+      const result = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        assertDocumentRevision(envelope, body.revision);
+        const state = envelope.state || {};
+        if (!Array.isArray(state.documents)) state.documents = [];
+        const index = state.documents.findIndex(item => item?.id === id);
+        if (index === -1) throw Object.assign(new Error('Documento não encontrado.'), { statusCode: 404 });
+        const document = state.documents[index];
+        if (!document.deletedAt) throw Object.assign(new Error('Mova o documento para a lixeira antes da exclusão permanente.'), { statusCode: 409 });
+        state.documents.splice(index, 1);
+        appendDocumentAudit(state, 'Documento excluído permanentemente', document.name, session);
+        const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
+        return { document, state, saved };
+      });
+      const stillReferenced = result.state.documents.some(item => item?.checksum === result.document.checksum);
+      if (!stillReferenced) await documentBlobStore.remove(result.document.checksum);
+      return json(res, 200, { ok: true, permanentlyDeleted: true, ...documentResponseState(result.state, result.saved) });
     }
 
     if (req.method === 'GET' && url.pathname === '/api/system/state-diagnostics') {

@@ -9,7 +9,8 @@ export function createContactsFeature({
   formatDate,
   sortRecords,
   updateTableSortHeaders,
-  openModal
+  openModal,
+  openOwnerDocuments
 } = {}) {
   let initialized = false;
   const sort = { field: 'name', direction: 'asc' };
@@ -169,6 +170,10 @@ export function createContactsFeature({
       }
       if (target.hasAttribute('data-contact-documents')) {
         byId('btnGenDocContact')?.click();
+        return;
+      }
+      if (target.hasAttribute('data-contact-archive')) {
+        if (selectedContactId) openOwnerDocuments?.('contact', selectedContactId);
         return;
       }
       if (target.hasAttribute('data-contact-create')) this.openContactModal();

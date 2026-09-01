@@ -190,7 +190,7 @@ try {
     requests: window.__uiV2RuntimeProbe.mutationRequests.length,
     intervals: window.__uiV2RuntimeProbe.intervals
   }));
-  assert.equal(after.state, before.state, 'Documentos V2 deve ser integralmente read-only.');
+  assert.equal(after.state, before.state, 'Catálogo e gerador V2 devem permanecer read-only.');
   assert.deepEqual(after.counts, { upsert: 0, audit: 0, save: 0, flush: 0 });
   assert.equal(after.requests, before.requests);
   assert.equal(after.intervals, before.intervals);
@@ -201,4 +201,4 @@ try {
   await session.stop();
 }
 
-console.log('✓ Documentos V2: catálogo, registry, gerador, semântica financeira e read-only aprovados.');
+console.log('✓ Documentos V2: catálogo, registry, gerador, semântica financeira e preview read-only aprovados.');

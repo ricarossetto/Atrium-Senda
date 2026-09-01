@@ -20,7 +20,9 @@ const SCENARIOS = [
   { file: '08-light-390x844-mobile-catalog.png', theme: 'light', viewport: { width: 390, height: 844 }, state: 'catalog' },
   { file: '09-dark-390x844-mobile-catalog.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'catalog' },
   { file: '10-light-390x844-mobile-generator.png', theme: 'light', viewport: { width: 390, height: 844 }, state: 'mobile-generator' },
-  { file: '11-dark-390x844-mobile-preview.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'mobile-preview' }
+  { file: '11-dark-390x844-mobile-preview.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'mobile-preview' },
+  { file: '12-light-1440x900-document-archive.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'archive' },
+  { file: '13-dark-390x844-mobile-document-archive.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'archive' }
 ];
 
 const session = await startUiV2Session();
@@ -34,7 +36,30 @@ try {
       await prepareUiV2DocumentsFixture(page);
       await page.waitForFunction(() => document.querySelector('#view-documents')?.getAnimations({ subtree: true }).every(animation => animation.playState === 'finished'));
 
-      if (scenario.state !== 'catalog') {
+      if (scenario.state === 'archive') {
+        await page.evaluate(() => {
+          window.Atrium.Store.state.documents = [{
+            id: 'visual-document-1',
+            name: '5000000-00.2026.8.21.0001 - Cliente Documental - identidade - 2026-09-01.pdf',
+            originalName: 'identidade.pdf',
+            mime: 'application/pdf',
+            size: 248320,
+            createdAt: '2026-09-01T12:00:00.000Z',
+            updatedAt: '2026-09-01T12:00:00.000Z',
+            documentDate: '2026-09-01',
+            ownerType: 'contact',
+            ownerId: 'doc-contact',
+            documentType: 'Identidade civil',
+            deletedAt: null,
+            deletedBy: null,
+            checksum: 'a'.repeat(64)
+          }];
+          window.Atrium.App.renderDocuments();
+          document.getElementById('documentArchiveWorkspace').scrollIntoView({ block: 'start' });
+        });
+      }
+
+      if (scenario.state !== 'catalog' && scenario.state !== 'archive') {
         await page.locator('#btnOpenDocGenModal').click();
         await page.waitForFunction(() => document.querySelector('#docGeneratorBackdrop .doc-generator-modal')?.contains(document.activeElement));
         await page.waitForFunction(() => {
@@ -95,14 +120,15 @@ try {
       }
 
       const output = path.join(OUTPUT, scenario.file);
-      await page.screenshot({ path: output, fullPage: false });
+      if (scenario.state === 'archive') await page.locator('#documentArchiveWorkspace').screenshot({ path: output });
+      else await page.screenshot({ path: output, fullPage: false });
       hashes.add(crypto.createHash('sha256').update(fs.readFileSync(output)).digest('hex'));
     } finally {
       await context.close();
     }
   }
 
-  assert.equal(hashes.size, SCENARIOS.length, 'Os onze estados visuais devem produzir hashes distintos.');
+  assert.equal(hashes.size, SCENARIOS.length, 'Os treze estados visuais devem produzir hashes distintos.');
   console.log('======================================================');
   console.log('✓ UI V2 DOCUMENTS VISUAL QA CONCLUÍDO!');
   console.log(`- Screenshots: ${SCENARIOS.length}`);

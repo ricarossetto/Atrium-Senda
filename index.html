@@ -597,6 +597,40 @@
         <div class="prompts-grid" id="documentsTemplateGrid">
           <!-- Renderizado dinamicamente -->
         </div>
+        <section class="document-archive v2-only" id="documentArchiveWorkspace" aria-labelledby="documentArchiveTitle">
+          <header class="document-archive-header">
+            <div>
+              <p class="eyebrow">Acervo seguro</p>
+              <h3 id="documentArchiveTitle">Documentos de clientes e processos</h3>
+              <span>Um arquivo, uma referência canônica e exclusão recuperável.</span>
+            </div>
+            <div class="document-archive-tabs" role="group" aria-label="Exibir documentos">
+              <button class="button ghost is-active" type="button" data-document-filter="active" aria-pressed="true">Ativos</button>
+              <button class="button ghost" type="button" data-document-filter="deleted" aria-pressed="false">Lixeira</button>
+            </div>
+          </header>
+          <div class="document-archive-layout">
+            <form id="documentUploadForm" class="document-upload-panel" aria-labelledby="documentUploadTitle">
+              <h4 id="documentUploadTitle">Adicionar ao acervo</h4>
+              <label><span>Vincular a</span><select id="documentOwnerType" name="ownerType"><option value="contact">Cliente / contato</option><option value="process">Processo</option></select></label>
+              <label><span>Proprietário</span><select id="documentOwnerId" name="ownerId" required><option value="">Selecione</option></select></label>
+              <div class="document-upload-row">
+                <label><span>Tipo</span><input id="documentTypeInput" name="documentType" maxlength="100" placeholder="Ex: identidade, comprovante"></label>
+                <label><span>Data do documento</span><input id="documentDateInput" name="documentDate" type="date" required></label>
+              </div>
+              <label class="document-file-field"><span>Arquivo</span><input id="documentFileInput" name="file" type="file" required><small>Até 20 MB. O conteúdo é criptografado no servidor.</small></label>
+              <button class="button gold" id="documentUploadButton" type="submit">Adicionar documento</button>
+            </form>
+            <div class="document-library-panel">
+              <div class="document-library-toolbar">
+                <label for="documentNamingTemplate"><span>Padrão de nome do escritório</span><input id="documentNamingTemplate" maxlength="180" placeholder="{cliente} - {tipo} - {data}"><small>Campos: {processo}, {cliente}, {tipo}, {data}, {tribunal}, {oab}. Vazio mantém o nome seguro original.</small></label>
+                <button class="button ghost" id="documentNamingSave" type="button">Salvar padrão</button>
+              </div>
+              <div id="documentArchiveStatus" class="document-archive-status" role="status" aria-live="polite"></div>
+              <div id="documentArchiveList" class="document-archive-list"></div>
+            </div>
+          </div>
+        </section>
       </section>
 
       <section class="view" id="view-inbox" data-title="Publicações &amp; Intimações" data-eyebrow="Triagem e Tratamento">
@@ -1569,6 +1603,7 @@
       </header>
       <div class="process-inspector-content" id="processInspectorContent"></div>
       <footer>
+        <button type="button" class="button ghost" id="processInspectorDocuments">Ver documentos</button>
         <button type="button" class="button ghost hidden" id="processInspectorTjrs">Consultar TJRS</button>
         <button type="button" class="button gold" id="processInspectorEdit">Editar processo</button>
       </footer>

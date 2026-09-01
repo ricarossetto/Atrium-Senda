@@ -681,6 +681,7 @@ export async function prepareUiV2ProcessesFixture(page) {
   await page.evaluate(data => {
     const { App, Store } = window.Atrium;
     Store.state.processes = data.processes;
+    Store.state.documents = [];
     Store.state.tasks = data.tasks;
     Store.state.intimations = data.intimations;
     App.renderAll();
@@ -1054,7 +1055,8 @@ export async function prepareUiV2DocumentsFixture(page) {
       lawyerOab: 'OAB/RS 000000',
       lawyerCpfCnpj: '000.000.000-00',
       lawyerAddress: 'Avenida Sintética, 200',
-      city: 'Cidade do Escritório/RS'
+      city: 'Cidade do Escritório/RS',
+      documentNamingTemplate: ''
     };
     Store.state.terms = [{ id: 'doc-term', name: 'Nome Alternativo Sintético', registration: 'OAB/RS 999999' }];
     Store.state.audit = [];

@@ -65,7 +65,7 @@ for (const forbiddenImport of [
   assert.equal(documentsSource.includes(forbiddenImport), false, `Documents não pode importar ${forbiddenImport}.`);
 }
 for (const forbiddenSideEffect of [
-  'fetch(', 'secureFetch', 'XMLHttpRequest', 'WebSocket', 'Store.save', 'Store.flush',
+  'fetch(', 'XMLHttpRequest', 'WebSocket', 'Store.save', 'Store.flush',
   'store.save', 'store.flush', 'window.Atrium', 'window.portalApp'
 ]) {
   assert.equal(documentsSource.includes(forbiddenSideEffect), false, `Documents não pode conter ${forbiddenSideEffect}.`);
@@ -448,7 +448,7 @@ try {
   assert.deepEqual(pageErrors, [], `Feature Documents gerou pageerror: ${pageErrors.join(' | ')}.`);
 
   await context.close();
-  console.log('Feature Documents aprovada: arquitetura, textos, UI, financeiro, clipboard, download, read-only e zero rede.');
+  console.log('Feature Documents aprovada: arquitetura, textos, gerador, financeiro, clipboard, download e zero rede no fluxo de minutas.');
 } finally {
   await browser.close();
   await server.stop();

@@ -19,7 +19,8 @@ export function createProcessesFeature({
   copyToClipboard,
   getLinkedTasks,
   getLinkedIntimations,
-  isTerminalStatus
+  isTerminalStatus,
+  openOwnerDocuments
 } = {}) {
   let initialized = false;
   const sort = { field: 'registeredAt', direction: 'desc' };
@@ -34,7 +35,8 @@ export function createProcessesFeature({
       formatDate,
       formatMinutes,
       onEdit: item => feature.openProcessModal(item),
-      onConsult: button => feature.consultTjrs(button)
+      onConsult: button => feature.consultTjrs(button),
+      onDocuments: item => openOwnerDocuments?.('process', item.id)
     });
     return processesPresenter;
   };

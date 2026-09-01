@@ -36,7 +36,8 @@ const {
   migrate5To6,
   migrate6To7,
   migrate7To8,
-  migrate8To9
+  migrate8To9,
+  migrate9To10
 } = await import(migrationsUrl);
 
 const FIXTURES = path.join(ROOT, 'tests', 'fixtures', 'state');
@@ -395,6 +396,16 @@ test('migrate8To9 cleanses legacy fabricated timestamps on migrated records', ()
   assert.equal(result.intimations[0].treatedAt, null, 'Fabricated timestamp must be cleansed to null');
   assert.equal(result.intimations[1].treatedAt, '2026-08-20T10:00:00.000Z', 'Real user timestamp must be preserved');
   assert.equal(result.intimations[2].discardedAt, null, 'Fabricated timestamp must be cleansed to null');
+});
+
+test('migrate9To10 initializes canonical document metadata without inventing files', () => {
+  const input = { schemaVersion: 9, dataVersion: 9, settings: { officeName: 'Escritório preservado' } };
+  const result = migrate9To10(input);
+  assert.equal(result.schemaVersion, 10);
+  assert.equal(result.dataVersion, 10);
+  assert.deepEqual(result.documents, []);
+  assert.equal(result.settings.documentNamingTemplate, '');
+  assert.equal(result.settings.officeName, 'Escritório preservado');
 });
 
 // ─────────────────────────────────────────
