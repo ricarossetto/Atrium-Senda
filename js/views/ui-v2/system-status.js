@@ -17,12 +17,15 @@ export function createSystemStatusBar({
 } = {}) {
   let initialized = false;
   let currentState = 'ready';
+  let dismissTimer = null;
 
   function setState(state, detail) {
     const definition = SYSTEM_STATUS_STATES[state] || SYSTEM_STATUS_STATES.ready;
     currentState = SYSTEM_STATUS_STATES[state] ? state : 'ready';
     const bar = documentRef?.getElementById?.('systemStatusBar');
     if (!bar) return currentState;
+    if (dismissTimer) windowRef?.clearTimeout?.(dismissTimer);
+    bar.classList.remove('is-transient-hidden');
     bar.dataset.status = currentState;
     bar.dataset.tone = definition.tone;
     const icon = documentRef.getElementById('systemStatusIcon');
@@ -31,6 +34,9 @@ export function createSystemStatusBar({
     if (icon) icon.innerHTML = iconSvg(definition.icon);
     if (label) label.textContent = definition.label;
     if (message) message.textContent = String(detail || definition.detail);
+    if (['ready', 'saved'].includes(currentState)) {
+      dismissTimer = windowRef?.setTimeout?.(() => bar.classList.add('is-transient-hidden'), currentState === 'saved' ? 4200 : 2600);
+    }
     return currentState;
   }
 

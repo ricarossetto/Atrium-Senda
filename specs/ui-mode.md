@@ -4,7 +4,7 @@ Status: **CURRENT**
 
 ## Purpose
 
-Permitir UI V2 como apresentação padrão e UI Clássica como fallback sobre a mesma aplicação funcional.
+Definir UI V2 como a única apresentação selecionável pelo usuário, preservando a camada Classic apenas como compatibilidade interna temporária sobre a mesma aplicação funcional.
 
 ## Canonical authority
 
@@ -14,7 +14,8 @@ Permitir UI V2 como apresentação padrão e UI Clássica como fallback sobre a 
 
 - Existe um único App, um único Store e uma única árvore operacional por feature.
 - Trocar `data-ui` altera apresentação local, não dados, revision ou regras de negócio.
-- V2 é padrão; Classic permanece selecionável.
+- V2 é padrão e única apresentação exposta ao usuário.
+- Classic não aparece na navegação nem nas configurações; sua árvore interna pode permanecer durante a transição para testes de compatibilidade, sem virar uma segunda aplicação.
 
 ## Allowed operations
 
@@ -24,11 +25,11 @@ Permitir UI V2 como apresentação padrão e UI Clássica como fallback sobre a 
 ## Forbidden operations
 
 - Criar segunda feature, Store, listener funcional ou request por causa do modo.
-- Remover Classic sem gate explícito.
+- Reexpor Classic como preferência ou alternativa selecionável sem gate explícito.
 
 ## State model
 
-`v2` ou `classic`; o estado é de apresentação e não integra o estado jurídico persistido.
+`v2` para toda sessão de produto. O valor `classic` é reservado à compatibilidade interna e não integra o estado jurídico persistido.
 
 ## Security boundary
 

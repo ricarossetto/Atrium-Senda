@@ -286,7 +286,14 @@
             <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-sync"></use></svg>
             <span>Sincronizar</span>
           </button>
-          <button class="icon-button notification-button" data-view-link="inbox" aria-label="Ver intimações"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-notification"></use></svg><span id="notificationDot"></span></button>
+          <div class="notification-center v2-only">
+            <button class="icon-button notification-button" id="notificationButton" type="button" aria-label="Abrir central de notificações" aria-haspopup="dialog" aria-expanded="false" aria-controls="notificationPanel"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-notification"></use></svg><span id="notificationDot"></span></button>
+            <section class="notification-panel hidden" id="notificationPanel" role="dialog" aria-modal="false" aria-labelledby="notificationPanelTitle">
+              <header><div><p class="eyebrow">Acompanhamento</p><h2 id="notificationPanelTitle">Notificações</h2></div><button type="button" class="icon-button" id="notificationPanelClose" aria-label="Fechar notificações"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button></header>
+              <div class="notification-panel-body" id="notificationPanelBody" aria-live="polite"></div>
+              <footer><button type="button" class="button ghost" data-view-link="inbox">Abrir Publicações</button><button type="button" class="button ghost" data-view-link="kanban">Abrir Tarefas</button></footer>
+            </section>
+          </div>
           <button class="profile-button" id="logoutButton" aria-label="Encerrar sessão com segurança" title="Encerrar sessão">
             <span class="avatar">AT</span>
             <span class="profile-copy"><strong>Administrador</strong><small>Advogado(a) Titular</small></span>
@@ -963,7 +970,7 @@
             </div>
           </article>
         </div>
-        <article class="card architecture-card">
+        <article class="card architecture-card legacy-architecture-note" aria-hidden="true">
           <div><p class="eyebrow">Arquitetura protegida</p><h3>Separação entre interface e credenciais</h3></div>
           <div class="architecture-flow"><span>Portais judiciais</span><b>→</b><span>Agente local seguro</span><b>→</b><span>Atrium Senda</span><b>→</b><span>Triagem humana</span></div>
           <button class="button ghost hidden" id="forgetTrustedDeviceButton" type="button">Esquecer este navegador</button>
@@ -1104,7 +1111,7 @@
         </header>
         <article class="card interface-preference-card" aria-labelledby="interfacePreferenceTitle">
           <div class="interface-preference-copy"><p class="eyebrow">Aparência</p><h3 id="interfacePreferenceTitle">Modo de interface</h3><p>Escolha a apresentação do espaço de trabalho. A preferência fica somente neste navegador.</p></div>
-          <div class="ui-mode-control" id="uiModeControl" role="group" aria-label="Modo de interface">
+          <div class="ui-mode-control" id="uiModeControl" role="group" aria-label="Compatibilidade interna de interface" aria-hidden="true">
             <span class="ui-mode-label">Modo de interface</span>
             <button type="button" data-ui-mode="v2" aria-pressed="false">Interface V2</button>
             <button type="button" data-ui-mode="classic" aria-pressed="true">Layout clássico</button>

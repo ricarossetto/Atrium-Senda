@@ -19,6 +19,7 @@ const NAVIGATION_GROUPS = Object.freeze({
 });
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const SYSTEM_ORDER = Object.freeze(['monitoring', 'links', 'importer', 'integrations', 'audit', 'configuration']);
 
 export function createUiV2Shell({
   documentRef = globalThis.document,
@@ -56,6 +57,11 @@ export function createUiV2Shell({
       navItems.forEach(item => {
         const group = NAVIGATION_GROUPS[item.dataset.view];
         documentRef?.querySelector?.(`[data-v2-nav-group="${group}"]`)?.appendChild(item);
+      });
+      const systemNav = documentRef?.querySelector?.('[data-v2-nav-group="system"]');
+      SYSTEM_ORDER.forEach(view => {
+        const item = systemNav?.querySelector?.(`[data-view="${view}"]`);
+        if (item) systemNav.appendChild(item);
       });
       const panel = documentRef?.getElementById?.('v2UtilitiesMenuPanel');
       utilityButtons.forEach(button => panel?.appendChild(button));
@@ -137,6 +143,44 @@ export function createUiV2Shell({
     documentRef?.getElementById?.('sidebarScrim')?.addEventListener('click', () => closeNavigation());
     documentRef?.getElementById?.('v2UtilitiesMenuPanel')?.addEventListener('click', () => {
       documentRef.getElementById('v2UtilitiesMenu')?.removeAttribute('open');
+    });
+    const notificationButton = documentRef?.getElementById?.('notificationButton');
+    const notificationPanel = documentRef?.getElementById?.('notificationPanel');
+    const closeNotifications = ({ restoreFocus = true } = {}) => {
+      const wasOpen = !notificationPanel?.classList.contains('hidden');
+      notificationPanel?.classList.add('hidden');
+      notificationButton?.setAttribute('aria-expanded', 'false');
+      if (wasOpen && restoreFocus) notificationButton?.focus();
+    };
+    const renderNotifications = () => {
+      const pending = Number(documentRef?.getElementById?.('inboxBadge')?.textContent || 0);
+      const overdue = Number(documentRef?.getElementById?.('v2AttentionOverdue')?.textContent || 0);
+      const body = documentRef?.getElementById?.('notificationPanelBody');
+      if (!body) return;
+      const items = [
+        pending > 0 ? `<button type="button" data-view-link="inbox"><strong>${pending} publicaç${pending === 1 ? 'ão pendente' : 'ões pendentes'}</strong><span>Revisar a triagem judicial</span></button>` : '',
+        overdue > 0 ? `<button type="button" data-view-link="kanban"><strong>${overdue} tarefa${overdue === 1 ? ' atrasada' : 's atrasadas'}</strong><span>Ver prioridades do escritório</span></button>` : ''
+      ].filter(Boolean);
+      body.innerHTML = items.length ? items.join('') : '<div class="notification-empty"><strong>Tudo acompanhado</strong><p>Não há publicações pendentes nem tarefas atrasadas neste momento.</p></div>';
+    };
+    notificationButton?.addEventListener('click', () => {
+      const open = notificationPanel?.classList.contains('hidden');
+      if (open) {
+        renderNotifications();
+        notificationPanel?.classList.remove('hidden');
+        notificationButton.setAttribute('aria-expanded', 'true');
+        notificationPanel?.querySelector(FOCUSABLE)?.focus();
+      } else closeNotifications();
+    });
+    documentRef?.getElementById?.('notificationPanelClose')?.addEventListener('click', () => closeNotifications());
+    notificationPanel?.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); closeNotifications(); }
+    });
+    notificationPanel?.addEventListener('click', event => {
+      if (event.target.closest('[data-view-link]')) closeNotifications({ restoreFocus: false });
+    });
+    documentRef?.addEventListener?.('click', event => {
+      if (!notificationPanel?.classList.contains('hidden') && !event.target.closest('.notification-center')) closeNotifications({ restoreFocus: false });
     });
     applyMode(mode);
     return true;
