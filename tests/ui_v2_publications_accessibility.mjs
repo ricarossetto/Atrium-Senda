@@ -51,8 +51,13 @@ try {
     assert.ok(drawer.left >= -4 && drawer.right <= drawer.width + 4, JSON.stringify(drawer));
     assert.ok(drawer.top >= -4 && drawer.bottom <= drawer.height + 4, JSON.stringify(drawer));
 
-    await page.locator('#btnDiscardPublication').focus();
+    await page.locator('#intimationDetail').evaluate(detail => {
+      const focusable = [...detail.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter(element => !element.hidden && element.getClientRects().length > 0);
+      focusable.at(-1)?.focus();
+    });
     await page.keyboard.press('Tab');
+    await page.waitForFunction(() => document.activeElement?.id === 'publicationDetailClose');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'publicationDetailClose');
     await page.keyboard.press('Escape');
     await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();

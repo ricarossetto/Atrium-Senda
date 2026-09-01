@@ -212,7 +212,10 @@ try {
   const pageErrors = [];
   const observedRequests = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  page.on('request', request => observedRequests.push({ url: request.url(), method: request.method() }));
+  page.on('request', request => {
+    const pathname = new URL(request.url()).pathname;
+    if (pathname.startsWith('/api/')) observedRequests.push({ url: request.url(), method: request.method() });
+  });
   await page.addInitScript(() => {
     localStorage.setItem('jurisflow_tour_completed', 'true');
     localStorage.setItem('jurisflow_tour_seen', 'true');
@@ -326,7 +329,7 @@ try {
   await page.click('#newFinancialEntryButton');
   await page.locator('#financialEntryBackdrop', { has: page.locator('.financial-entry-modal') }).click({ position: { x: 3, y: 3 } });
   await page.locator('#financialEntryBackdrop').waitFor({ state: 'hidden' });
-  assert.equal(observedRequests.length, requestsBeforeReadOnly, 'Render, filtros, busca e modal não devem criar requests.');
+  assert.equal(observedRequests.length, requestsBeforeReadOnly, 'Render, filtros, busca e modal não devem criar requests de negócio.');
 
   await page.click('#newFinancialEntryButton');
   await page.evaluate(() => {

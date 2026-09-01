@@ -30,8 +30,13 @@ try {
   await page.locator('#judicialSetupClose').focus();
   await page.keyboard.press('Shift+Tab');
   assert.equal(await page.evaluate(() => document.querySelector('#judicialSetupBackdrop [role="dialog"]')?.contains(document.activeElement)), true);
-  await page.locator('#syncJudicialNowButton').focus();
+  await page.locator('#judicialSetupBackdrop [role="dialog"]').evaluate(dialog => {
+    const focusable = [...dialog.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      .filter(element => !element.hidden && element.getClientRects().length > 0);
+    focusable.at(-1)?.focus();
+  });
   await page.keyboard.press('Tab');
+  await page.waitForFunction(() => document.activeElement?.id === 'judicialSetupClose');
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'judicialSetupClose');
   await page.keyboard.press('Escape');
   await page.locator('#judicialSetupBackdrop').waitFor({ state: 'hidden' });
