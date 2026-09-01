@@ -61,7 +61,7 @@ html[data-ui="v2"] #documentsTemplateGrid .document-template-card {
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-xl);
   box-shadow: var(--v2-shadow-card);
-  transition: transform 160ms var(--v2-ease-standard), border-color 160ms var(--v2-ease-standard), box-shadow 160ms var(--v2-ease-standard);
+  transition: border-color var(--v2-duration-fast) var(--v2-ease-standard), box-shadow var(--v2-duration-fast) var(--v2-ease-standard), background-color var(--v2-duration-fast) var(--v2-ease-standard);
 }
 html[data-ui="v2"] #documentsTemplateGrid .document-template-card::after {
   content: "";
@@ -74,9 +74,9 @@ html[data-ui="v2"] #documentsTemplateGrid .document-template-card::after {
   pointer-events: none;
 }
 html[data-ui="v2"] #documentsTemplateGrid .document-template-card:hover {
-  transform: translateY(-2px);
   border-color: var(--v2-color-border-strong);
-  box-shadow: var(--v2-shadow-overlay);
+  background: var(--v2-color-surface-elevated);
+  box-shadow: var(--v2-shadow-card);
 }
 html[data-ui="v2"] #documentsTemplateGrid .prompt-card-header {
   display: flex;

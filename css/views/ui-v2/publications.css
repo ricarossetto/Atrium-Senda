@@ -59,7 +59,7 @@ html[data-ui="v2"] #view-inbox :where(.button, .icon-button, .filter-tabs button
 }
 
 html[data-ui="v2"] #view-inbox :where(.button, .icon-button, .filter-tabs button):hover {
-  transform: translateY(-1px);
+  border-color: var(--v2-color-border-strong);
 }
 
 html[data-ui="v2"] #view-inbox .button.gold {

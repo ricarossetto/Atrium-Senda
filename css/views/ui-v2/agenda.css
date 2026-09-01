@@ -290,8 +290,7 @@ html[data-ui="v2"] #agendaList .agenda-item {
 }
 html[data-ui="v2"] #agendaList .agenda-item:hover {
   background: var(--v2-color-surface-elevated);
-  border-color: var(--v2-color-border);
-  transform: translateY(-1px);
+  border-color: var(--v2-color-border-strong);
 }
 html[data-ui="v2"] #agendaList .agenda-date {
   padding: 7px 3px;

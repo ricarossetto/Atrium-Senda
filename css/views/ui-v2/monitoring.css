@@ -76,8 +76,7 @@ html[data-ui="v2"] #primaryTermCard::before {
 
 html[data-ui="v2"] #primaryTermCard:hover {
   border-color: color-mix(in srgb, var(--v2-color-gold) 58%, var(--v2-color-border));
-  box-shadow: var(--v2-shadow-elevated);
-  transform: translateY(-1px);
+  box-shadow: var(--v2-shadow-card);
 }
 
 html[data-ui="v2"] #primaryTermCard:focus-visible {

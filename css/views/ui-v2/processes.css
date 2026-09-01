@@ -91,7 +91,7 @@ html[data-ui="v2"] #view-processes :where(.button, .v2-button, .icon-button) {
 }
 
 html[data-ui="v2"] #view-processes :where(.button, .v2-button, .icon-button):hover {
-  transform: translateY(-1px);
+  border-color: var(--v2-color-border-strong);
 }
 
 html[data-ui="v2"] #view-processes :where(.button.gold, .v2-button.is-primary) {

@@ -192,8 +192,7 @@ html[data-ui="v2"] .task-card::before {
 
 html[data-ui="v2"] .task-card:is(:hover, :focus-within) {
   border-color: var(--v2-color-primary);
-  box-shadow: var(--v2-shadow-slate);
-  transform: translateY(-1px);
+  box-shadow: var(--v2-shadow-card);
 }
 
 html[data-ui="v2"] .task-card.is-overdue::before { background: var(--v2-color-danger); }

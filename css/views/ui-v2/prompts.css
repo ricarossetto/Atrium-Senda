@@ -212,7 +212,6 @@ html[data-ui="v2"] #promptsCategoryChips .prompt-chip:hover {
   color: var(--v2-color-foreground);
   background: var(--v2-color-surface-hover);
   border-color: var(--v2-color-border-strong, var(--v2-color-primary));
-  transform: translateY(-1px);
 }
 
 html[data-ui="v2"] #promptsCategoryChips .prompt-chip.active,
@@ -265,9 +264,8 @@ html[data-ui="v2"] #promptsGrid .prompt-library-card.custom-card {
 html[data-ui="v2"] #promptsGrid .prompt-library-card.custom-card::before { background: var(--v2-color-gold); opacity: .9; }
 
 html[data-ui="v2"] #promptsGrid .prompt-library-card:hover {
-  transform: translateY(-2px);
   border-color: var(--v2-color-primary);
-  box-shadow: var(--v2-shadow-elevated);
+  box-shadow: var(--v2-shadow-card);
 }
 
 html[data-ui="v2"] #promptsGrid .prompt-card-top {

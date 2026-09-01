@@ -34,3 +34,13 @@ html[data-ui="v2"] body > .modal-backdrop .button.gold:disabled {
   box-shadow: none;
   transform: none;
 }
+
+@media (max-width: 860px) {
+  html[data-ui="v2"] .view.active :where(button, [role="button"], input, select, textarea) {
+    min-height: 44px !important;
+  }
+
+  html[data-ui="v2"] .view.active :where(.icon-button, button:has(> .atrium-icon:only-child), button:has(> .v2-local-icon:only-child)) {
+    min-width: 44px !important;
+  }
+}

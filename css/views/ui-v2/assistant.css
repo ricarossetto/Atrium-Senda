@@ -229,7 +229,7 @@ html[data-ui="v2"] #btnSaveQuickAiKey {
 }
 
 html[data-ui="v2"] #view-assistant .ai-onboarding-card {
-  background: linear-gradient(145deg, var(--v2-color-surface), var(--v2-color-gold-soft));
+  background: color-mix(in srgb, var(--v2-color-surface) 88%, var(--v2-color-gold-soft));
 }
 
 html[data-ui="v2"] #view-assistant .ai-onboarding-content h3 {
@@ -309,14 +309,13 @@ html[data-ui="v2"] #view-assistant .quick-prompt-btn {
   line-height: 1.35;
   text-align: left;
   white-space: normal;
-  transition: color var(--v2-duration-base) var(--v2-ease-standard), background var(--v2-duration-base) var(--v2-ease-standard), border-color var(--v2-duration-base) var(--v2-ease-standard), transform var(--v2-duration-base) var(--v2-ease-standard);
+  transition: color var(--v2-duration-fast) var(--v2-ease-standard), background-color var(--v2-duration-fast) var(--v2-ease-standard), border-color var(--v2-duration-fast) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] #view-assistant .quick-prompt-btn:hover {
   color: var(--v2-color-foreground);
   background: var(--v2-color-surface-hover);
-  border-color: var(--v2-color-border);
-  transform: translateY(-1px);
+  border-color: var(--v2-color-border-strong);
 }
 
 html[data-ui="v2"] #view-assistant .ai-chat-card {
@@ -337,7 +336,7 @@ html[data-ui="v2"] #view-assistant .ai-chat-card {
 html[data-ui="v2"] #view-assistant .ai-chat-messages {
   gap: var(--v2-space-4);
   padding: clamp(16px, 2.1vw, 28px);
-  background: linear-gradient(180deg, var(--v2-color-surface), var(--v2-color-background-subtle));
+  background: color-mix(in srgb, var(--v2-color-surface) 94%, var(--v2-color-background-subtle));
   scrollbar-color: var(--v2-color-border) transparent;
 }
 
