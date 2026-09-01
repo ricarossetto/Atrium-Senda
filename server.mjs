@@ -27,6 +27,11 @@ import {
 } from './lib/documents/document-storage-provider.mjs';
 import { DocumentIntelligenceService } from './lib/documents/document-intelligence.mjs';
 import { SearchIndex, parseDefaultPromptsSource } from './lib/search-index.mjs';
+import {
+  apiContractHeaders,
+  buildApiMetadata,
+  isUnknownVersionedApiPath
+} from './lib/api/api-contract.mjs';
 import { runA1Sandbox } from './lib/judicial/a1-sandbox.mjs';
 import { runTotpSandbox, parseTotpUri } from './lib/judicial/totp-sandbox.mjs';
 import {
@@ -1093,7 +1098,12 @@ function applySecurityHeaders(res) {
 }
 function json(res, status, payload, headers = {}) {
   applySecurityHeaders(res);
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store, private', ...headers });
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store, private',
+    ...apiContractHeaders(),
+    ...headers
+  });
   res.end(JSON.stringify(payload));
 }
 async function readJson(req, limit = 1_000_000) {
@@ -1907,6 +1917,14 @@ async function serveStatic(req, res) {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    if (req.method === 'GET' && url.pathname === '/api/system/api-metadata') {
+      assertAuthenticated(req);
+      return json(res, 200, buildApiMetadata({ applicationVersion: APP_VERSION }));
+    }
+    if (isUnknownVersionedApiPath(url.pathname)) {
+      assertAuthenticated(req);
+      return json(res, 404, { message: 'Versão de API não suportada.', code: 'UNSUPPORTED_API_VERSION' });
+    }
     if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, security.publicStatus(req));
     if (req.method === 'POST' && url.pathname === '/api/auth/setup') return json(res, 200, await security.beginSetup(await readJson(req), remoteAddress(req)));
     if (req.method === 'POST' && url.pathname === '/api/auth/setup/verify') {
