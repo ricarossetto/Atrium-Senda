@@ -9,13 +9,15 @@
 [![Node.js 24](https://img.shields.io/badge/Node.js-24.x-green.svg)](https://nodejs.org/)
 [![Security: AES-256-GCM](https://img.shields.io/badge/Security-AES--256--GCM-blue.svg)](#segurança-e-privacidade)
 [![2FA: TOTP](https://img.shields.io/badge/2FA-TOTP%20RFC%206238-blueviolet.svg)](#segurança-e-privacidade)
-[![Tests: 55 suites](https://img.shields.io/badge/Tests-55%20suites-brightgreen.svg)](#testes-automatizados)
+[![Validation: CI gated](https://img.shields.io/badge/Validation-CI%20gated-brightgreen.svg)](#testes-automatizados)
 
 </div>
 
 ## Sobre o ATRIUM
 
 O ATRIUM é um workspace open source e local-first para escritórios jurídicos. A versão Beta atual centraliza processos, contatos, publicações e intimações, tarefas/Kanban, agenda, financeiro, documentos e integrações judiciais, mantendo os dados do escritório sob controle local e cifrado.
+
+A UI V2 é a interface visual padrão. A UI Clássica permanece disponível como fallback selecionável; ambas operam sobre o mesmo App, o mesmo Store, o mesmo backend e as mesmas regras de negócio, sem duplicação de dados ou autoridades funcionais.
 
 A IA, quando configurada, atua de forma assistencial e com contexto minimizado. Confirmação de prazos, envio de e-mail, ciência judicial e demais ações sensíveis permanecem sob supervisão humana.
 
@@ -67,7 +69,7 @@ corepack pnpm start
 
 ## Testes automatizados
 
-A suíte canônica contém 55 suítes registradas em `tests/run-all.mjs`, incluindo segurança, concorrência do Store, recuperação do runtime, migrações de segredo, primeira persistência de instalação nova, QR TOTP sintético, contrato de sincronização, backup/restore, integrações judiciais, módulos frontend, E2E e Visual QA.
+A suíte canônica integral, registrada em `tests/run-all.mjs`, cobre segurança, concorrência do Store, recuperação do runtime, migrações de segredo, primeira persistência de instalação nova, QR TOTP sintético, contrato de sincronização, backup/restore, integrações judiciais, módulos frontend, acessibilidade, E2E e Visual QA. A contagem exata pertence a cada execução do CI para não tornar esta documentação obsoleta.
 
 ```bash
 corepack pnpm check
@@ -78,11 +80,11 @@ O CI usa Node 24, `pnpm@11.19.0` e `pnpm install --frozen-lockfile`. O fluxo A1 
 
 ## Estado e limitações do Beta
 
-- Estado técnico: **HUMAN BETA GATE 1 PASSED — PRE-UI-V2**, com 55/55 suítes e jobs Lint/Test/E2E, A1 Windows e Visual QA aprovados no baseline promovido.
+- Estado técnico: **UI V2 MIGRATION COMPLETE** na baseline técnica da branch `ui-v2`, condicionada à suíte canônica integral e aos jobs Lint/Test/E2E, A1 Windows e Visual QA no mesmo HEAD.
 - O feedback permanece local; o mantenedor só o recebe se o usuário exportar ou compartilhar deliberadamente o registro.
 - DJEN/DataJud e portais dependem de disponibilidade, credenciais e configuração do ambiente.
 - Ações oficiais, ciência judicial, envio de e-mail e confirmação de prazo permanecem sob responsabilidade humana.
-- A UI V2 dual-mode é etapa futura. A UI Clássica atual permanece a única interface deste ciclo.
+- A UI V2 permanece padrão e a UI Clássica continua sendo fallback visual. Essa conclusão técnica não equivale a release final, certificação de produção, certificação jurídica ou garantia de disponibilidade dos serviços externos.
 
 Consulte também o [Guia do Testador Beta](docs/BETA_TESTER_GUIDE.md), o [checklist de readiness](docs/development/BETA_READINESS.md) e o [roadmap](docs/development/ROADMAP.md).
 

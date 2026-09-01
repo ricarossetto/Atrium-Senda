@@ -1,4 +1,4 @@
-# ATRIUM — Checklist técnico do Beta pré-UI-V2
+# ATRIUM — Checklist técnico do Beta e da migração UI V2
 
 ## Gate de integridade e segurança
 
@@ -19,6 +19,8 @@
 - [x] Discovery DJEN → CNJ → DataJud → processo/contatos é somente leitura e não produz ciência judicial.
 - [x] Tratamento de publicação permanece separado de read/unread e de ciência oficial.
 - [x] Frontend modular concluído; `js/portal.js` é composition shell sobre o Store e o backend existentes.
+- [x] Migração UI V2 concluída sobre o mesmo App, Store, backend e regras de negócio da UI Clássica.
+- [x] UI V2 é o modo padrão; a UI Clássica permanece fallback visual selecionável.
 - [x] Neutralidade de marca protegida pela suíte dedicada.
 
 ## Gate de instalação e validação
@@ -26,14 +28,15 @@
 - [x] Runtime canônico Node 24.x.
 - [x] `pnpm@11.19.0` em package, CI e starter Windows.
 - [x] Instalação canônica por `pnpm install --frozen-lockfile`.
-- [x] 55 suítes canônicas registradas, além de syntax check, E2E, job A1 Windows e Visual QA.
-- [x] UI V2 não faz parte deste gate.
+- [x] Suíte canônica integral registrada, além de syntax check, E2E, job A1 Windows e Visual QA.
+- [x] Paridade final, acessibilidade global, reflow e higiene de runtime da UI V2 cobertos pelo gate de conclusão.
 
 ## Status atual
 
-- **Status técnico**: `TECHNICAL BETA READY — PRE-UI-V2`; o Human Beta Gate 1 foi concluído com 55/55 suítes e os jobs Lint/Test/E2E, A1 Windows e Visual QA aprovados no baseline promovido.
-- **Branch canônica**: `main`.
-- **Não significa**: release final, ambiente de produção certificado, auditoria jurídica ou disponibilidade contínua de serviços externos.
+- **Status técnico**: `UI V2 MIGRATION COMPLETE`, sujeito ao workflow integralmente verde do HEAD aprovado na branch `ui-v2`.
+- **UI mode**: V2 por padrão, com preferência Classic respeitada como fallback de apresentação.
+- **Autoridade funcional**: um único App, Store e backend para os dois modos.
+- **Não significa**: release final, ambiente de produção certificado, auditoria jurídica ou disponibilidade contínua de serviços externos. A promoção para `main` depende de decisão posterior e explícita.
 
 ## Dívida externa conhecida
 

@@ -1,6 +1,6 @@
 # ATRIUM — Guia do Testador Beta
 
-Este guia descreve o Beta técnico pré-UI-V2. Ele não substitui conferência jurídica, política de segurança do escritório nem validação dos atos oficiais.
+Este guia descreve o Beta técnico com a UI V2 como interface padrão e a UI Clássica como fallback visual selecionável. Os dois modos usam o mesmo App, Store, backend e regras de negócio. O guia não substitui conferência jurídica, política de segurança do escritório nem validação dos atos oficiais.
 
 ## 1. Iniciar no Windows
 
@@ -54,4 +54,5 @@ Descreva o comportamento observado sem inserir nomes de clientes, números de pr
 - Integrações externas dependem de rede, configuração e disponibilidade dos serviços.
 - A confirmação de ciência, prazo e envio permanece humana.
 - O feedback não possui transporte externo neste Beta.
-- A UI V2 dual-mode é futura; este ciclo preserva a UI Clássica atual.
+- A UI V2 é o modo padrão; a UI Clássica permanece disponível em Configurações como fallback visual, sem criar uma segunda aplicação ou uma segunda base de dados.
+- A conclusão da migração visual não equivale a release final nem certificação de produção.

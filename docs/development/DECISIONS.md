@@ -1,14 +1,20 @@
 # ATRIUM — Registro de decisões arquiteturais
 
+## 2026-08-31 — Migração UI V2 concluída em modo dual
+
+- **Decisão**: considerar concluída a migração das 17 views canônicas para a UI V2 na branch `ui-v2`. A V2 é o modo padrão e a UI Clássica permanece fallback visual selecionável.
+- **Consequência**: os dois modos continuam sobre o mesmo App, Store, backend, schemas e regras de negócio. A conclusão técnica não promove `main`, não publica release, não certifica produção e não autoriza remover a Classic.
+- **Sequência futura**: Iconography & Visual Language Polish, depois Global Visual Polish e, somente então, estudo de Managed Judicial Connectivity read-only e supervisionada.
+
 ## 2026-08-29 — Frontend modular concluído
 
 - **Decisão**: considerar encerrado o ciclo de modularização frontend. `js/portal.js` permanece como composition shell, e features/componentes vivem nos módulos já extraídos.
 - **Consequência**: não haverá Fase 20 de modularização. Mudanças seguintes devem preservar o Store único, o backend e os contratos atuais.
 
-## 2026-08-29 — UI V2 futura em modo dual
+## 2026-08-29 — Planejamento histórico da UI V2 em modo dual
 
-- **Decisão**: a futura UI V2 usará o mesmo Store/backend e será o modo visual padrão, mantendo a UI Clássica selecionável ao lado do tema Claro/Escuro.
-- **Consequência**: rollback visual instantâneo sem duplicação de dados ou regras. Nenhum código da UI V2 pertence ao Gate Beta atual.
+- **Decisão histórica**: planejar a UI V2 sobre o mesmo Store/backend, como modo visual padrão, mantendo a UI Clássica selecionável ao lado do tema Claro/Escuro.
+- **Situação posterior**: decisão executada e encerrada pelo gate de conclusão de 2026-08-31, sem duplicação de dados ou regras.
 
 ## 2026-08-29 — Neutralidade de marca
 

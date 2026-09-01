@@ -485,6 +485,7 @@ html[data-ui="v2"] .v2-sidebar-scrim {
 
   html[data-ui="v2"] #menuToggle {
     width: 44px;
+    min-width: 44px;
     height: 44px;
     min-height: 44px;
   }
