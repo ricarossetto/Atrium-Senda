@@ -32,7 +32,8 @@ assert.match(primitives, /@keyframes v2-view-enter/, 'A entrada curta de layout 
 assert.match(primitives, /@keyframes v2-drawer-in/, 'O inspector deve possuir movimento curto dedicado.');
 assert.doesNotMatch(componentCss, /animation[^;{}]*infinite/i, 'A UI V2 não pode introduzir animações infinitas.');
 assert.match(shell, /\.nav-count\s*\{[\s\S]*?min-width:\s*20px;[\s\S]*?height:\s*20px;[\s\S]*?display:\s*inline-flex;/, 'O badge deve possuir geometria explícita.');
-assert.match(dashboard, /border-radius:\s*26px 38px 28px 34px/, 'O foco editorial deve possuir assimetria controlada.');
+assert.match(dashboard, /\.v2-dashboard-opening\s*\{[\s\S]*?border-radius:\s*var\(--v2-radius-xl\)/, 'O foco editorial deve usar geometria mineral precisa e tokenizada.');
+assert.doesNotMatch(dashboard, /radial-gradient\s*\(/i, 'O foco editorial não deve depender de bolhas radiais decorativas.');
 assert.match(processes, /v2-drawer-in/, 'O inspector deve reutilizar o contrato de movimento V2.');
 assert.match(publications, /v2-drawer-in/, 'A leitura mobile de Publicações deve reutilizar o contrato de movimento V2.');
 
