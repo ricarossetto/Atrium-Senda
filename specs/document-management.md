@@ -8,7 +8,7 @@ Definir o contrato do gerador de minutas e do acervo documental vinculado a clie
 
 ## Canonical authority
 
-`js/features/documents.js`, `lib/documents/document-service.mjs`, `lib/documents/document-intelligence.mjs`, as rotas `/api/documents*` de `server.mjs`, `state.documents` e os nove generators canônicos.
+`js/features/documents.js`, `lib/documents/document-service.mjs`, `lib/documents/document-storage-provider.mjs`, `lib/documents/document-intelligence.mjs`, as rotas `/api/documents*` de `server.mjs`, `state.documents` e os nove generators canônicos.
 
 ## Invariants
 
@@ -17,6 +17,7 @@ Definir o contrato do gerador de minutas e do acervo documental vinculado a clie
 - Metadata canônica vive em `state.documents`; bytes nunca são duplicados dentro do estado.
 - Cada documento pertence diretamente a exatamente um `contact` ou `process` existente.
 - Conteúdo idêntico usa um único blob SHA-256, mesmo quando há referências legítimas por proprietários distintos.
+- Regras documentais dependem do contrato `put/get/exists/delete/metadata/health`, não de paths ou filesystem; o provider CURRENT é local, privado e cifrado.
 - Soft delete precede a exclusão permanente; restore não recria nem altera os bytes.
 - Padrões de nome aceitam somente `{processo}`, `{cliente}`, `{tipo}`, `{data}`, `{tribunal}` e `{oab}`.
 - Preview, OCR e conversão são sempre ações explícitas; renderizar o acervo não inicia processamento.
@@ -51,7 +52,7 @@ Definir o contrato do gerador de minutas e do acervo documental vinculado a clie
 
 ## Security boundary
 
-O servidor é autoridade de ownership, naming, checksum, deduplicação, revisão, lixeira, restore, purge e derivados. Blobs são AES-256-GCM no diretório privado de dados; downloads exigem sessão e usam attachment com `application/octet-stream`. Preview aplica `nosniff`, CSP sandbox e somente tipos allowlisted. Processos locais são chamados sem shell, com argumentos separados, temporário privado, limites e cleanup. Toda mutação exige CSRF e revisão atual. Presenter não contém generators nem acessa storage diretamente.
+O servidor é autoridade de ownership, naming, checksum, deduplicação, revisão, lixeira, restore, purge e derivados. O provider CURRENT grava blobs AES-256-GCM no diretório privado de dados com temp+rename e valida checksum sem aceitar traversal; downloads exigem sessão e usam attachment com `application/octet-stream`. Preview aplica `nosniff`, CSP sandbox e somente tipos allowlisted. Processos locais são chamados sem shell, com argumentos separados, temporário privado, limites e cleanup. Toda mutação exige CSRF e revisão atual. Presenter não contém generators nem acessa storage diretamente.
 
 ## Failure semantics
 
@@ -63,4 +64,4 @@ Metadata e auditoria são gravadas atomicamente no estado criptografado com revi
 
 ## Relevant tests
 
-`tests/documents_feature.mjs`, `tests/document_type_ids.mjs`, `tests/document_storage.mjs`, `tests/document_intelligence.mjs`, `tests/ui_v2_documents.mjs`, `tests/ui_v2_documents_accessibility.mjs`, `tests/ui_v2_document_storage.mjs`, `tests/ui_v2_document_intelligence.mjs`, `tests/visual_ui_v2_documents.mjs` e `tests/state_migrations.mjs`.
+`tests/documents_feature.mjs`, `tests/document_type_ids.mjs`, `tests/document_storage_provider.mjs`, `tests/document_storage.mjs`, `tests/document_intelligence.mjs`, `tests/ui_v2_documents.mjs`, `tests/ui_v2_documents_accessibility.mjs`, `tests/ui_v2_document_storage.mjs`, `tests/ui_v2_document_intelligence.mjs`, `tests/visual_ui_v2_documents.mjs` e `tests/state_migrations.mjs`.

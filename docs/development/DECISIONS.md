@@ -1,5 +1,11 @@
 # ATRIUM — Registro de decisões arquiteturais
 
+## 2026-09-01 — Storage documental por provider canônico
+
+- **Decisão**: separar a autoridade física de blobs do serviço de regras documentais por contrato mínimo `put/get/exists/delete/metadata/health`.
+- **Provider CURRENT**: adapter local privado, cifrado em AES-256-GCM, endereçado por SHA-256 e publicado por temp+rename; `DocumentBlobStore` permanece apenas como compatibilidade.
+- **Limite**: nenhum adapter remoto foi declarado operacional. S3, R2, NAS, WebDAV e backup portátil de blobs exigem subgate e evidência próprios.
+
 ## 2026-09-01 — Especificações canônicas antes da maturidade documental
 
 - **Decisão**: criar `specs/` como índice curto de contratos de produto, sempre ligado à autoridade executável e aos testes relevantes.

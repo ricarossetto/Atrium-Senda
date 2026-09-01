@@ -5,9 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { prepareUiV2DocumentsFixture, prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const [featureSource, serviceSource, serverSource, migrationSource] = await Promise.all([
+const [featureSource, serviceSource, providerSource, serverSource, migrationSource] = await Promise.all([
   readFile(path.join(ROOT, 'js/features/documents.js'), 'utf8'),
   readFile(path.join(ROOT, 'lib/documents/document-service.mjs'), 'utf8'),
+  readFile(path.join(ROOT, 'lib/documents/document-storage-provider.mjs'), 'utf8'),
   readFile(path.join(ROOT, 'server.mjs'), 'utf8'),
   readFile(path.join(ROOT, 'lib/state-migrations.mjs'), 'utf8')
 ]);
@@ -17,8 +18,9 @@ console.log('  ATRIUM — UI V2 DOCUMENT STORAGE');
 console.log('===============================================================\n');
 
 assert.match(featureSource, /secureFetch\('\/api\/documents'/);
-assert.match(serviceSource, /aes-256-gcm/);
-assert.match(serviceSource, /sha256/);
+assert.match(providerSource, /aes-256-gcm/);
+assert.match(providerSource, /sha256/);
+assert.match(serviceSource, /document-storage-provider\.mjs/);
 assert.match(serverSource, /Confirmação explícita obrigatória para exclusão permanente/);
 assert.match(migrationSource, /export function migrate9To10/);
 const generatorRegistrySource = featureSource.slice(featureSource.indexOf('const DOCUMENT_GENERATORS'), featureSource.indexOf('function resolveDocumentType'));
