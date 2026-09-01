@@ -1,3 +1,9 @@
+const PROMPTS_ICON_NAMES = new Set(['assistant', 'check', 'copy', 'search']);
+const iconSvg = name => {
+  const safeName = PROMPTS_ICON_NAMES.has(name) ? name : 'search';
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-${safeName}"></use></svg>`;
+};
+
 export function createPromptsFeature({
   store,
   documentRef = globalThis.document,
@@ -104,7 +110,9 @@ export function createPromptsFeature({
       return navigatorRef.clipboard.writeText(promptText).then(() => {
         if (buttonElement) {
           const originalText = buttonElement.innerHTML;
-          buttonElement.innerHTML = `
+          buttonElement.innerHTML = documentRef.documentElement?.dataset?.ui === 'v2'
+            ? `${iconSvg('check')}<span>Copiado!</span>`
+            : `
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="20 6 9 17 4 12"></polyline>
             </svg>

@@ -71,7 +71,7 @@ export function createAuditFeature({
       if (badge) badge.textContent = `${events.length} evento${events.length === 1 ? '' : 's'}`;
       if (presentation?.render?.({ events, filter: auditFilter, query: auditQuery, formatDateTime })) return events;
       if (!events.length) {
-        list.innerHTML = '<div class="empty-detail" style="padding:32px 16px;text-align:center;"><span>✦</span><h3>Nenhum evento registrado</h3><p>Não há eventos de auditoria para os filtros selecionados.</p></div>';
+        list.innerHTML = `<div class="empty-detail" style="padding:32px 16px;text-align:center;"><span>${iconSvg('audit')}</span><h3>Nenhum evento registrado</h3><p>Não há eventos de auditoria para os filtros selecionados.</p></div>`;
         return events;
       }
       list.innerHTML = `
@@ -107,3 +107,4 @@ export function createAuditFeature({
 
   return feature;
 }
+import { iconSvg } from '../views/ui-v2/icons.js';

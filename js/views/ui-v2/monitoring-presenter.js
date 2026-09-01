@@ -1,3 +1,5 @@
+import { iconSvg } from './icons.js';
+
 const SOURCE_STATUS = Object.freeze({
   ok: Object.freeze({ label: 'Ativo', className: 'connected' }),
   attention: Object.freeze({ label: 'Atenção', className: 'warning' }),
@@ -37,12 +39,12 @@ export function renderMonitoringV2Presentation({
             <div class="monitor-v2-source-status">
               <span class="status-chip ${status.className}">${status.label}</span>
             </div>
-            <span class="monitor-v2-source-route" aria-hidden="true">Configurar <b>→</b></span>
+            <span class="monitor-v2-source-route" aria-hidden="true">Configurar ${iconSvg('chevron-right')}</span>
           </div>`;
       }).join('')
     : `
       <div class="monitor-v2-empty" role="status">
-        <span aria-hidden="true">◇</span>
+        <span aria-hidden="true">${iconSvg('monitoring')}</span>
         <strong>Nenhuma fonte configurada</strong>
         <p>As fontes jurídicas cadastradas aparecerão aqui com seu estado operacional.</p>
       </div>`;

@@ -1,3 +1,9 @@
+const SYSTEM_ADMIN_ICON_NAMES = new Set(['configuration', 'court', 'delete', 'download', 'edit', 'security', 'sync', 'theme-light', 'upload']);
+const iconSvg = name => {
+  const safeName = SYSTEM_ADMIN_ICON_NAMES.has(name) ? name : 'configuration';
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-${safeName}"></use></svg>`;
+};
+
 export function createSystemAdminFeature({
   store,
   documentRef = globalThis.document,
@@ -139,8 +145,8 @@ export function createSystemAdminFeature({
               <p>Visão administrativa do ambiente, da persistência e das integrações já configuradas.</p>
             </div>
             <div class="configuration-system-header-actions">
-              <button type="button" class="button ghost" id="btnExportDiagnosticJson">Exportar relatório JSON</button>
-              <button type="button" class="button gold" id="btnOpenFeedbackModal">Registrar feedback beta</button>
+              <button type="button" class="button ghost" id="btnExportDiagnosticJson">${iconSvg('download')}Exportar relatório JSON</button>
+              <button type="button" class="button gold" id="btnOpenFeedbackModal">${iconSvg('edit')}Registrar feedback beta</button>
             </div>
           </header>
 
@@ -194,10 +200,10 @@ export function createSystemAdminFeature({
           <section class="diagnostic-v2-actions" aria-labelledby="diagnosticActionsTitle">
             <div><p class="eyebrow">Ações explícitas</p><h5 id="diagnosticActionsTitle">Manutenção administrativa</h5><p>Nenhuma destas operações é executada automaticamente.</p></div>
             <div class="diagnostic-v2-action-grid">
-              <button type="button" class="button ghost" id="btnClearUiCache" title="Remove apenas caches transitórios do navegador.">Limpar cache da interface</button>
-              <button type="button" class="button ghost" id="btnResetVisualPrefs" title="Reseta tema e layout sem apagar a escolha explícita de interface.">Resetar preferências visuais</button>
-              <button type="button" class="button ghost" id="btnRebuildRuntime" title="Reconstrói dados derivados sem alterar registros jurídicos.">Recriar dados derivados</button>
-              <button type="button" class="button ghost" id="btnManagePortalSessions" title="Abre as integrações judiciais para gerenciar sessões.">Gerenciar sessões do tribunal</button>
+              <button type="button" class="button ghost" id="btnClearUiCache" title="Remove apenas caches transitórios do navegador.">${iconSvg('delete')}Limpar cache da interface</button>
+              <button type="button" class="button ghost" id="btnResetVisualPrefs" title="Reseta tema e layout sem apagar a escolha explícita de interface.">${iconSvg('theme-light')}Resetar preferências visuais</button>
+              <button type="button" class="button ghost" id="btnRebuildRuntime" title="Reconstrói dados derivados sem alterar registros jurídicos.">${iconSvg('sync')}Recriar dados derivados</button>
+              <button type="button" class="button ghost" id="btnManagePortalSessions" title="Abre as integrações judiciais para gerenciar sessões.">${iconSvg('court')}Gerenciar sessões do tribunal</button>
             </div>
           </section>
         </section>`;
@@ -302,14 +308,14 @@ export function createSystemAdminFeature({
               <p class="eyebrow">Criar backup</p>
               <h5>Guardar uma cópia protegida</h5>
               <p>Gera e baixa um arquivo <code>.atrium-backup</code> com o estado atual cifrado.</p>
-              <button type="button" class="button gold" id="btnCreateBackupNow">Gerar backup criptografado</button>
+              <button type="button" class="button gold" id="btnCreateBackupNow">${iconSvg('security')}Gerar backup criptografado</button>
             </article>
             <article class="backup-v2-card backup-v2-restore">
               <span class="backup-v2-index">02</span>
               <p class="eyebrow">Restaurar</p>
               <h5>Aplicar um backup existente</h5>
               <p>A restauração é uma ação sensível. O sistema pedirá confirmação antes de enviar o arquivo.</p>
-              <label class="button configuration-restore-button" for="inputRestoreBackup">Selecionar arquivo para restaurar</label>
+              <label class="button configuration-restore-button" for="inputRestoreBackup">${iconSvg('upload')}Selecionar arquivo para restaurar</label>
               <input type="file" id="inputRestoreBackup" accept=".atrium-backup,.json" class="configuration-restore-input">
             </article>
             <aside class="backup-v2-protections" aria-labelledby="backupProtectionsTitle">
@@ -373,12 +379,15 @@ export function createSystemAdminFeature({
     },
 
     openFeedbackModal() {
+      const labels = isV2()
+        ? ['Sugestão de Melhoria', 'Relato de Problema / Bug', 'Dificuldade de Uso', 'Desempenho / Lentidão']
+        : ['💡 Sugestão de Melhoria', '🐛 Relato de Problema / Bug', '❓ Dificuldade de Uso', '⚡ Desempenho / Lentidão'];
       openModal('feedback', 'Registrar Feedback do Beta', 'Registro local neste ambiente', [
         { name: 'type', label: 'Tipo de Feedback', type: 'select', options: [
-          { value: 'sugestao', label: '💡 Sugestão de Melhoria' },
-          { value: 'bug', label: '🐛 Relato de Problema / Bug' },
-          { value: 'dificuldade', label: '❓ Dificuldade de Uso' },
-          { value: 'performance', label: '⚡ Desempenho / Lentidão' }
+          { value: 'sugestao', label: labels[0] },
+          { value: 'bug', label: labels[1] },
+          { value: 'dificuldade', label: labels[2] },
+          { value: 'performance', label: labels[3] }
         ], required: true },
         { name: 'component', label: 'Módulo / Tela Afetada', type: 'select', options: [
           { value: 'Geral', label: 'Geral / Outros' },

@@ -17,8 +17,8 @@ export function renderPromptsV2Presentation({
         const tagsHtml = (prompt.tags || []).slice(0, 5).map(tag => `<span class="prompt-tag">${escapeHtml(tag)}</span>`).join('');
         const origin = prompt.isCustom ? 'Personalizado' : 'Biblioteca Atrium';
         const customActions = prompt.isCustom ? `
-          <button type="button" class="button ghost btn-edit-prompt" data-edit-prompt="${escapeHtml(prompt.id)}" aria-label="Editar prompt ${escapeHtml(prompt.title)}">Editar</button>
-          <button type="button" class="button danger-ghost btn-delete-prompt" data-delete-prompt="${escapeHtml(prompt.id)}" aria-label="Excluir prompt ${escapeHtml(prompt.title)}">Excluir</button>
+          <button type="button" class="button ghost btn-edit-prompt" data-edit-prompt="${escapeHtml(prompt.id)}" aria-label="Editar prompt ${escapeHtml(prompt.title)}">${iconSvg('edit')}Editar</button>
+          <button type="button" class="button danger-ghost btn-delete-prompt" data-delete-prompt="${escapeHtml(prompt.id)}" aria-label="Excluir prompt ${escapeHtml(prompt.title)}">${iconSvg('delete')}Excluir</button>
         ` : '';
         return `
           <article class="card prompt-card prompt-library-card ${prompt.isCustom ? 'custom-card' : ''}" data-prompt-id="${escapeHtml(prompt.id)}" data-prompt-origin="${prompt.isCustom ? 'custom' : 'default'}">
@@ -39,11 +39,10 @@ export function renderPromptsV2Presentation({
             </section>
             <footer class="prompt-card-actions">
               <button type="button" class="button gold btn-use-prompt" data-use-prompt="${escapeHtml(prompt.id)}" aria-label="Usar prompt ${escapeHtml(prompt.title)} no Assistente">
-                <span>Usar no Assistente</span>
-                <span aria-hidden="true">→</span>
+                ${iconSvg('assistant')}<span>Usar no Assistente</span>
               </button>
               <button type="button" class="button ghost btn-copy-prompt" data-copy-prompt="${escapeHtml(prompt.id)}" aria-label="Copiar texto integral do prompt ${escapeHtml(prompt.title)}">
-                <span>Copiar</span>
+                ${iconSvg('copy')}<span>Copiar</span>
               </button>
               ${customActions}
             </footer>
@@ -51,10 +50,11 @@ export function renderPromptsV2Presentation({
       }).join('')
     : `
       <div class="prompts-empty card" role="status">
-        <div class="empty-icon" aria-hidden="true">◇</div>
+        <div class="empty-icon" aria-hidden="true">${iconSvg('search')}</div>
         <h3>Nenhum prompt encontrado</h3>
         <p>Tente ajustar os termos da pesquisa ou selecione outra área do direito.</p>
       </div>`;
 
   return Object.freeze({ chipsHtml, libraryHtml });
 }
+import { iconSvg } from './icons.js';

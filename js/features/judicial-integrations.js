@@ -113,7 +113,7 @@ export function createJudicialIntegrationsFeature({
         const element = byId(id);
         if (element) {
           element.className = `setup-status-icon ${ok ? 'ok' : 'off'}`;
-          element.textContent = ok ? '✓' : '·';
+          element.innerHTML = ok ? (presentation?.icon?.('check') || '✓') : '·';
         }
       };
       setStatusIcon('setupCertificateIcon', certificate.valid);
@@ -203,7 +203,7 @@ export function createJudicialIntegrationsFeature({
 
     async testA1Sandbox() {
       const button = byId('btnRunA1Sandbox');
-      if (button) { button.disabled = true; button.textContent = '🧪 Executando Sandbox...'; }
+      if (button) { button.disabled = true; button.innerHTML = `${presentation?.icon?.('certificate') || '🧪 '}Executando Sandbox...`; }
       try {
         const response = await secureFetch('/api/integrations/judicial/a1/sandbox', {
           method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({})
@@ -216,7 +216,7 @@ export function createJudicialIntegrationsFeature({
             const element = byId(`chkStep-${step.id}`);
             if (element) {
               const ok = step.status === 'OK';
-              element.innerHTML = `<span>${escapeHtml(step.name)}:</span> <strong style="color:${ok ? '#4ade80' : '#f87171'}">${ok ? '✓ OK' : '✗ Falha'}</strong>`;
+              element.innerHTML = `<span>${escapeHtml(step.name)}:</span> <strong style="color:${ok ? '#4ade80' : '#f87171'}">${presentation?.icon?.(ok ? 'check' : 'warning') || (ok ? '✓ ' : '✗ ')}${ok ? 'OK' : 'Falha'}</strong>`;
             }
           }
         }
@@ -228,7 +228,7 @@ export function createJudicialIntegrationsFeature({
       } catch (error) {
         showToast(`Erro no Sandbox: ${error.message}`, 'error');
       } finally {
-        if (button) { button.disabled = false; button.textContent = '🧪 Testar Certificado no Sandbox'; }
+        if (button) { button.disabled = false; button.innerHTML = `${presentation?.icon?.('certificate') || '🧪 '}Testar Certificado no Sandbox`; }
       }
     },
 
@@ -412,7 +412,7 @@ export function createJudicialIntegrationsFeature({
         showToast(error.message || 'Falha ao sincronizar.', 'error');
         return false;
       } finally {
-        if (button) { button.disabled = false; button.textContent = '✦ Sincronizar Acervo e Intimações Agora'; }
+        if (button) { button.disabled = false; button.innerHTML = `${presentation?.icon?.('sync') || '✦ '}Sincronizar Acervo e Intimações Agora`; }
       }
     },
 

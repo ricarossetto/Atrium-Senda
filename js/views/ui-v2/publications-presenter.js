@@ -1,4 +1,4 @@
-const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const OWNED_OVERLAYS = Object.freeze([
   'publicationsEmailModalBackdrop',
   'publicationEmailBackdrop',
@@ -213,7 +213,7 @@ export function renderPublicationDetail({
 
   return `<div class="publication-detail-shell">
     <header class="detail-header">
-      <button type="button" class="icon-button publication-detail-close" id="publicationDetailClose" aria-label="Fechar leitura da publicação">×</button>
+      <button type="button" class="icon-button publication-detail-close" id="publicationDetailClose" aria-label="Fechar leitura da publicação">${iconSvg('close')}</button>
       <div class="publication-detail-kicker"><span class="publication-read-state ${item.unread ? 'is-unread' : ''}">${unreadLabel}</span><span class="treatment-badge ${treatment.css}">${treatment.label}</span><span class="act-chip ${escapeHtml(act.css)}">${escapeHtml(act.label)}</span></div>
       <h2 id="publicationDetailTitle" tabindex="-1">${escapeHtml(item.title || 'Publicação sem título')}</h2>
       <p>${escapeHtml(item.court || 'Origem judicial não informada')}</p>
@@ -257,11 +257,11 @@ function renderLinkedTasks({ linkedTasks, escapeHtml, formatDate }) {
 }
 
 function renderActions({ status, privileged }) {
-  const email = privileged ? '<button type="button" class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail">Enviar por e-mail</button>' : '';
-  if (status === 'untreated') return `<button type="button" class="button gold" data-detail-action="start-review" id="btnStartReview">Iniciar análise</button><button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button><button type="button" class="button ghost btn-success-action" data-detail-action="treat" id="btnMarkTreated">Marcar como tratada</button>${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">Descartar</button>`;
-  if (status === 'in_review') return `<button type="button" class="button gold btn-success-action" data-detail-action="treat" id="btnMarkTreated">Marcar como tratada</button><button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">Descartar</button>`;
-  if (status === 'treated') return `<button type="button" class="button ghost" data-detail-action="reopen" id="btnReopenPublication">Reabrir análise</button><button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>${email}`;
-  return `<button type="button" class="button gold" data-detail-action="restore" id="btnRestorePublication">Restaurar para triagem</button>${email}`;
+  const email = privileged ? `<button type="button" class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail">${iconSvg('email')}Enviar por e-mail</button>` : '';
+  if (status === 'untreated') return `<button type="button" class="button gold" data-detail-action="start-review" id="btnStartReview">${iconSvg('search')}Iniciar análise</button><button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')}Criar tarefa</button><button type="button" class="button ghost btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')}Marcar como tratada</button>${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')}Descartar</button>`;
+  if (status === 'in_review') return `<button type="button" class="button gold btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')}Marcar como tratada</button><button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')}Criar tarefa</button>${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')}Descartar</button>`;
+  if (status === 'treated') return `<button type="button" class="button ghost" data-detail-action="reopen" id="btnReopenPublication">${iconSvg('reopen')}Reabrir análise</button><button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')}Criar tarefa</button>${email}`;
+  return `<button type="button" class="button gold" data-detail-action="restore" id="btnRestorePublication">${iconSvg('reopen')}Restaurar para triagem</button>${email}`;
 }
 
 function treatmentPresentation(value) {
@@ -302,3 +302,4 @@ function toggleInert(element, inert) {
   if (inert) element.setAttribute('inert', '');
   else element.removeAttribute('inert');
 }
+import { iconSvg } from './icons.js';

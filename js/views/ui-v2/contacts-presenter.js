@@ -112,7 +112,7 @@ function renderContactInspector({ item, escapeHtml, formatDate }) {
   if (!item) {
     return `<aside class="contacts-inspector is-empty" id="contactInspector" aria-labelledby="contactInspectorHeading">
       <div class="contact-inspector-empty">
-        <span aria-hidden="true">◇</span>
+        <span aria-hidden="true">${iconSvg('contacts')}</span>
         <h3 id="contactInspectorHeading">Selecione uma pessoa</h3>
         <p>Abra um registro para consultar os dados de relacionamento sem entrar no formulário de edição.</p>
       </div>
@@ -124,7 +124,7 @@ function renderContactInspector({ item, escapeHtml, formatDate }) {
   const address = [item.address, item.district, item.zip].filter(Boolean).join(' · ');
   return `<aside class="contacts-inspector is-open" id="contactInspector" aria-labelledby="contactInspectorHeading">
     <header class="contact-inspector-header">
-      <button type="button" class="contact-inspector-close" data-contact-inspector-close aria-label="Fechar detalhes do contato">×</button>
+      <button type="button" class="contact-inspector-close" data-contact-inspector-close aria-label="Fechar detalhes do contato">${iconSvg('close')}</button>
       <span class="contact-role-label"><span class="contact-role-marker is-${escapeHtml(role.key)}" aria-hidden="true"></span>${escapeHtml(role.label)}</span>
       <h3 id="contactInspectorHeading" tabindex="-1">${escapeHtml(item.name || 'Contato sem nome')}</h3>
       <p>${escapeHtml(item.profession || 'Profissão não informada')}<span aria-hidden="true"> · </span>${escapeHtml(location)}</p>
@@ -153,8 +153,8 @@ function renderContactInspector({ item, escapeHtml, formatDate }) {
       ${item.notes ? `<section class="contact-inspector-section contact-notes"><h4>Notas</h4><p>${escapeHtml(item.notes)}</p></section>` : ''}
     </div>
     <footer class="contact-inspector-actions">
-      <button type="button" class="v2-button is-secondary" data-contact-documents>Gerar documento</button>
-      <button type="button" class="v2-button is-primary" data-contact-edit>Editar contato</button>
+      <button type="button" class="v2-button is-secondary" data-contact-documents>${iconSvg('documents')}Gerar documento</button>
+      <button type="button" class="v2-button is-primary" data-contact-edit>${iconSvg('edit')}Editar contato</button>
     </footer>
   </aside>`;
 }
@@ -180,10 +180,10 @@ function sortButton(field, label, sort) {
 function renderEmpty({ hasContacts, query, roleFilter }) {
   const filtered = hasContacts && (Boolean(query) || roleFilter !== 'all');
   return `<div class="contact-empty-state">
-    <span aria-hidden="true">◇</span>
+    <span aria-hidden="true">${iconSvg('contacts')}</span>
     <strong>${filtered ? 'Nenhum contato encontrado.' : 'Nenhum contato cadastrado.'}</strong>
     <p>${filtered ? 'Revise a busca ou selecione outro papel.' : 'Cadastre a primeira pessoa para iniciar a base de relacionamentos.'}</p>
-    ${filtered ? '' : '<button type="button" class="v2-button is-primary" data-contact-create>Novo contato</button>'}
+    ${filtered ? '' : `<button type="button" class="v2-button is-primary" data-contact-create>${iconSvg('add')}Novo contato</button>`}
   </div>`;
 }
 
@@ -194,3 +194,4 @@ function roleCounts(records) {
     return counts;
   }, {});
 }
+import { iconSvg } from './icons.js';

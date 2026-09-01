@@ -9,7 +9,7 @@ const SECTION_GROUPS = Object.freeze([
 
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
-  '[href]',
+  'a[href]',
   'input:not([disabled])',
   'select:not([disabled])',
   'textarea:not([disabled])',

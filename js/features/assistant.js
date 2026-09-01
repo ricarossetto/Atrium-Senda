@@ -274,9 +274,7 @@ export function createAssistantFeature({
         container.innerHTML = `
           <div class="ai-message assistant-message">
             <div class="message-avatar">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-              </svg>
+              ${ASSISTANT_ICON}
             </div>
             <div class="message-body">
               <div class="message-text">
@@ -332,9 +330,7 @@ export function createAssistantFeature({
       typingDiv.className = 'ai-message assistant-message ai-typing-row';
       typingDiv.innerHTML = `
         <div class="message-avatar">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-          </svg>
+          ${ASSISTANT_ICON}
         </div>
         <div class="message-body">
           <div class="ai-typing-indicator">
@@ -369,9 +365,7 @@ export function createAssistantFeature({
         assistantDiv.className = 'ai-message assistant-message';
         assistantDiv.innerHTML = `
           <div class="message-avatar">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-            </svg>
+            ${ASSISTANT_ICON}
           </div>
           <div class="message-body">
             <div class="message-text">${replyHtml}</div>
@@ -440,3 +434,4 @@ export function createAssistantFeature({
 
   return feature;
 }
+const ASSISTANT_ICON = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-assistant"></use></svg>';

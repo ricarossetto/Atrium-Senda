@@ -1,3 +1,9 @@
+const CONFIGURATION_ICON_NAMES = new Set(['check', 'delete']);
+const iconSvg = name => {
+  const safeName = CONFIGURATION_ICON_NAMES.has(name) ? name : 'check';
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-${safeName}"></use></svg>`;
+};
+
 const CONFIGURATION_SECTIONS = [
   ['taskDefinitions', 'Tarefas'],
   ['users', 'Usuários'],
@@ -189,7 +195,8 @@ export function createConfigurationFeature({
       if (byId('configurationHeading')) byId('configurationHeading').textContent = label;
       if (byId('configurationCount')) byId('configurationCount').textContent = `${records.length} itens`;
       const list = byId('configurationList');
-      if (list) list.innerHTML = records.length ? records.map(({ item, index }) => isAuthUsers ? feature.authUserRow(item) : feature.row(item, index)).join('') : '<div class="empty-detail"><span>✓</span><h3>Nenhum item</h3><p>Não há registros nesta seção ou neste filtro.</p></div>';
+      const emptyIcon = documentRef.documentElement?.dataset?.ui === 'v2' ? iconSvg('check') : '✓';
+      if (list) list.innerHTML = records.length ? records.map(({ item, index }) => isAuthUsers ? feature.authUserRow(item) : feature.row(item, index)).join('') : `<div class="empty-detail"><span>${emptyIcon}</span><h3>Nenhum item</h3><p>Não há registros nesta seção ou neste filtro.</p></div>`;
       presentation?.sync?.({ section: configurationSection, authUsers: isAuthUsers });
     },
 
@@ -202,7 +209,7 @@ export function createConfigurationFeature({
               <span class="config-row-info"><strong>${escapeHtml(item)}</strong><span>Seção da caixa de entrada</span><small>Ativa</small></span>
               <span class="configuration-edit-affordance" aria-hidden="true">Editar →</span>
             </button>
-            <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(item)}">Excluir</button>
+            <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(item)}">${iconSvg('delete')} Excluir</button>
           </article>`;
         return `
           <div class="configuration-row" data-config-index="${index}">
@@ -224,7 +231,7 @@ export function createConfigurationFeature({
             <span class="config-row-info"><strong>${escapeHtml(primary)}</strong><span>${escapeHtml(secondary)}</span>${meta}</span>
             <span class="configuration-edit-affordance" aria-hidden="true">Editar →</span>
           </button>
-          <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(primary)}">Excluir</button>
+          <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(primary)}">${iconSvg('delete')} Excluir</button>
         </article>`;
       return `
         <div class="configuration-row" data-config-index="${index}">

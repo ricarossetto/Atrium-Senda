@@ -1,6 +1,8 @@
+import { iconSvg } from './icons.js';
+
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
-  '[href]',
+  'a[href]',
   'input:not([disabled])',
   'select:not([disabled])',
   'textarea:not([disabled])',
@@ -58,6 +60,10 @@ export function createEmailCalendarPresenter({ documentRef = globalThis.document
   }
 
   return Object.freeze({
+    icon(name) {
+      return isV2() ? iconSvg(name) : '';
+    },
+
     init() {
       if (initialized) return false;
       initialized = true;

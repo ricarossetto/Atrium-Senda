@@ -472,7 +472,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           <p>${escapeHtml(template.description)}</p>
           <div class="prompt-card-actions">
             <button class="button gold btn-full" data-generate-doc-type="${escapeHtml(template.id)}">
-              ⚡ Preencher e Gerar Minuta
+              ${iconSvg('documents')}Preencher e Gerar Minuta
             </button>
           </div>
         </div>
@@ -637,3 +637,4 @@ ${id.lawyerOab} - ${id.officeName}`;
 
   return feature;
 }
+import { iconSvg } from '../views/ui-v2/icons.js';

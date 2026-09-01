@@ -1,6 +1,8 @@
+import { iconSvg } from './icons.js';
+
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
-  '[href]',
+  'a[href]',
   'input:not([disabled])',
   'select:not([disabled])',
   'textarea:not([disabled])',
@@ -36,6 +38,10 @@ export function createJudicialIntegrationsPresenter({ documentRef = globalThis.d
   }
 
   return Object.freeze({
+    icon(name) {
+      return documentRef?.documentElement?.dataset?.ui === 'v2' ? iconSvg(name) : '';
+    },
+
     init() {
       if (initialized) return false;
       initialized = true;

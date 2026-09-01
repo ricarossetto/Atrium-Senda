@@ -1,7 +1,9 @@
+import { iconSvg } from './icons.js';
+
 const COUNT_DEFINITIONS = Object.freeze([
-  Object.freeze({ key: 'processes', label: 'Processos' }),
-  Object.freeze({ key: 'contacts', label: 'Contatos' }),
-  Object.freeze({ key: 'tasks', label: 'Tarefas' })
+  Object.freeze({ key: 'processes', label: 'Processos', icon: 'processes' }),
+  Object.freeze({ key: 'contacts', label: 'Contatos', icon: 'contacts' }),
+  Object.freeze({ key: 'tasks', label: 'Tarefas', icon: 'tasks' })
 ]);
 
 export function createImporterPresenter({ documentRef = globalThis.document } = {}) {
@@ -31,6 +33,7 @@ export function createImporterPresenter({ documentRef = globalThis.document } = 
       const item = documentRef.createElement('div');
       item.className = 'importer-count';
       item.dataset.importerCount = definition.key;
+      item.insertAdjacentHTML('beforeend', iconSvg(definition.icon));
       const value = documentRef.createElement('strong');
       value.textContent = String(count);
       const label = documentRef.createElement('span');

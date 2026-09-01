@@ -1,4 +1,5 @@
 import { Store, uid } from '../core/store.js';
+import { iconSvg } from '../views/ui-v2/icons.js';
 
 export const LINK_CATEGORIES = Object.freeze([
   { value: 'Legislação', label: 'Legislação & Códigos' },
@@ -63,8 +64,8 @@ export function createLinksFeature({
         try { domain = new URL(safeUrl).hostname.replace(/^www\./, ''); } catch { domain = 'Endereço inválido'; }
         const openLabel = `Abrir ${title} em nova guia`;
         const openIcon = safeUrl
-          ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="external-icon" aria-label="${escapeHtml(openLabel)}">↗</a>`
-          : '<span class="external-icon link-action-disabled" aria-label="Endereço inválido">↗</span>';
+          ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="external-icon" aria-label="${escapeHtml(openLabel)}">${iconSvg('external-link')}</a>`
+          : `<span class="external-icon link-action-disabled" aria-label="Endereço inválido">${iconSvg('external-link')}</span>`;
         const openAction = safeUrl
           ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="link-tag" aria-label="${escapeHtml(openLabel)}">Acessar</a>`
           : '<span class="link-tag link-action-disabled">Indisponível</span>';
@@ -74,7 +75,7 @@ export function createLinksFeature({
               <div class="link-badge">${escapeHtml(link.category || 'Link Personalizado')}</div>
               <div class="link-card-top-actions">
                 ${openIcon}
-                <button type="button" class="btn-delete-link" data-delete-link="${escapeHtml(link.id)}" aria-label="${escapeHtml(`Excluir link ${title}`)}" title="Excluir este link">×</button>
+                <button type="button" class="btn-delete-link" data-delete-link="${escapeHtml(link.id)}" aria-label="${escapeHtml(`Excluir link ${title}`)}" title="Excluir este link">${iconSvg('delete')}</button>
               </div>
             </div>
             <h4>${escapeHtml(title)}</h4>

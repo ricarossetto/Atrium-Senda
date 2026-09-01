@@ -242,7 +242,7 @@ export function createEmailIntegrationFeature({
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
-          submitButton.textContent = '🚀 Enviar Teste Agora';
+          submitButton.innerHTML = `${presentation?.icon?.('send') || '🚀 '}Enviar Teste Agora`;
         }
       }
     },
@@ -306,7 +306,7 @@ export function createEmailIntegrationFeature({
           <div class="email-receiver-actions">
             <button class="button ghost" data-receiver-action="toggle" data-receiver-id="${escapeHtml(receiver.id)}" data-receiver-enabled="${receiver.enabled ? 'true' : 'false'}" title="${receiver.enabled ? 'Desativar recebimento' : 'Ativar recebimento'}">${receiver.enabled ? 'Desativar' : 'Ativar'}</button>
             <button class="button ghost" data-receiver-action="edit" data-receiver-id="${escapeHtml(receiver.id)}" title="Editar destinatário">Editar</button>
-            <button class="button ghost email-receiver-delete" data-receiver-action="delete" data-receiver-id="${escapeHtml(receiver.id)}" aria-label="Remover destinatário ${escapeHtml(receiver.name || receiver.email || '')}" title="Remover destinatário">✕</button>
+            <button class="button ghost email-receiver-delete" data-receiver-action="delete" data-receiver-id="${escapeHtml(receiver.id)}" aria-label="Remover destinatário ${escapeHtml(receiver.name || receiver.email || '')}" title="Remover destinatário">${presentation?.icon?.('delete') || '✕'}</button>
           </div>
         </div>`;
     },

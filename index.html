@@ -32,6 +32,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/icons.css?v=1.0.0">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -47,9 +48,9 @@
         <p>Gestão jurídica organizada, segura e supervisionada para a rotina profissional do escritório.</p>
       </div>
       <div class="auth-security-list">
-        <span>✓ Criptografia AES-256-GCM</span>
-        <span>✓ Segundo Fator TOTP (RFC 6238)</span>
-        <span>✓ Sessão HttpOnly &amp; Zero Trust</span>
+        <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>Criptografia AES-256-GCM</span>
+        <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>Segundo Fator TOTP (RFC 6238)</span>
+        <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>Sessão HttpOnly &amp; Zero Trust</span>
       </div>
     </div>
     <div class="auth-panel">
@@ -129,9 +130,7 @@
           </div>
         </div>
         <button type="button" class="sidebar-collapse-btn" id="sidebarToggleBtn" title="Recolher / Expandir Menu Lateral" aria-label="Recolher Menu">
-          <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
+          <svg class="atrium-icon toggle-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-sidebar-collapse"></use></svg>
         </button>
       </div>
 
@@ -153,33 +152,15 @@
         <div class="nav-section-title">Principal</div>
         <nav class="main-nav" aria-label="Navegação principal">
           <button class="nav-item active" data-view="dashboard">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 11l3 3L22 4"/>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                <path d="M7 16h6M7 12h3M7 8h5"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-dashboard"></use></svg></span>
             <span>Área de trabalho</span>
           </button>
           <button class="nav-item" data-view="kanban">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="5" height="16" rx="1.5"/>
-                <rect x="10" y="4" width="5" height="11" rx="1.5"/>
-                <rect x="17" y="4" width="5" height="16" rx="1.5"/>
-                <path d="M4.5 9h2M11.5 9h2M18.5 9h2"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-tasks"></use></svg></span>
             <span>Gestão kanban</span>
           </button>
           <button class="nav-item" data-view="agenda">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="5" width="18" height="16" rx="2"/>
-                <path d="M8 2v4M16 2v4M3 10h18"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-agenda"></use></svg></span>
             <span>Agenda</span>
           </button>
         </nav>
@@ -187,51 +168,24 @@
         <div class="nav-section-title">Processual</div>
         <nav class="main-nav" aria-label="Navegação processual">
           <button class="nav-item" data-view="processes">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
-                <path d="M3 10h18"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-processes"></use></svg></span>
             <span>Processos e casos</span>
           </button>
           <button class="nav-item" data-view="inbox">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                <path d="M18 15a2.5 2.5 0 0 0-2.5 2.5v1.5l-1 1h7l-1-1v-1.5A2.5 2.5 0 0 0 18 15z"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-publications"></use></svg></span>
             <span>Publicações</span>
             <strong class="nav-count" id="inboxBadge">0</strong>
           </button>
           <button class="nav-item" data-view="leads">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-leads"></use></svg></span>
             <span>Atendimentos</span>
           </button>
           <button class="nav-item" data-view="contacts">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;">
-                <circle cx="12" cy="7" r="4"/>
-                <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-contacts"></use></svg></span>
             <span>Contatos</span>
           </button>
           <button class="nav-item" data-view="financial">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="1" x2="12" y2="23"/>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-financial"></use></svg></span>
             <span>Financeiro</span>
           </button>
         </nav>
@@ -239,33 +193,15 @@
         <div class="nav-section-title">Inteligência IA</div>
         <nav class="main-nav" aria-label="Inteligência IA">
           <button class="nav-item" data-view="assistant">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-assistant"></use></svg></span>
             <span>Criação de peças IA</span>
           </button>
           <button class="nav-item" data-view="prompts">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                <path d="M8 7h8M8 11h6"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-prompts"></use></svg></span>
             <span>Biblioteca de Prompts</span>
           </button>
           <button class="nav-item" data-view="documents">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-                <line x1="10" y1="9" x2="8" y2="9"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-documents"></use></svg></span>
             <span>Documentos</span>
           </button>
         </nav>
@@ -273,63 +209,27 @@
         <div class="nav-section-title">Ajustes & Sistema</div>
         <nav class="main-nav secondary" aria-label="Sistema e configurações">
           <button class="nav-item" data-view="monitoring">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-monitoring"></use></svg></span>
             <span>Monitoramento</span>
           </button>
           <button class="nav-item" data-view="integrations">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="7"/>
-                <path d="M21 21l-4.5-4.5"/>
-                <path d="M7 11h2l1.5-3 2 6 1.5-3h2" stroke-width="1.8"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-integrations"></use></svg></span>
             <span>Integrações &amp; A1</span>
           </button>
           <button class="nav-item" data-view="configuration">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-configuration"></use></svg></span>
             <span>Configurações</span>
           </button>
           <button class="nav-item" data-view="importer">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="12" height="12" rx="1.5"/>
-                <path d="M3 7h12M3 11h12M7 3v12M11 3v12"/>
-                <path d="M18 10l3-3m0 0l3 3m-3-3v7" stroke-width="2"/>
-                <rect x="15" y="16" width="6" height="5" rx="1" fill="currentColor" fill-opacity="0.2" stroke-width="1.8"/>
-                <path d="M16.5 16v-1.5a1.5 1.5 0 0 1 3 0V16" stroke-width="1.6"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-importer"></use></svg></span>
             <span>Importador</span>
           </button>
           <button class="nav-item" data-view="audit">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                <rect x="8" y="2" width="8" height="4" rx="1"/>
-                <path d="M8 10h4M8 14h3"/>
-                <circle cx="16" cy="15" r="2.5"/>
-                <path d="M15 17.5l-1 3 2-1 2 1-1-3"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-audit"></use></svg></span>
             <span>Alertas / Auditoria</span>
           </button>
           <button class="nav-item" data-view="links">
-            <span class="nav-icon" aria-hidden="true">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
-            </span>
+            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-links"></use></svg></span>
             <span>Links Úteis</span>
           </button>
         </nav>
@@ -349,7 +249,7 @@
     <main class="main-content">
       <header class="topbar">
         <div class="topbar-left">
-          <button class="icon-button mobile-only" id="menuToggle" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">☰</button>
+          <button class="icon-button mobile-only" id="menuToggle" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-menu"></use></svg></button>
           <div>
             <p class="eyebrow" id="viewEyebrow">Visão executiva</p>
             <h1 id="viewTitle">Área de Trabalho</h1>
@@ -357,12 +257,12 @@
         </div>
         <div class="topbar-actions">
           <button type="button" class="theme-toggle-btn" id="themeToggleButton" title="Alternar entre tema Claro e Escuro">
-            <span id="themeToggleIcon">☀️</span>
+            <span id="themeToggleIcon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
             <span id="themeToggleText">Modo Claro</span>
           </button>
           <div class="global-search-container">
             <label class="global-search" for="globalSearch">
-              <span aria-hidden="true">⌕</span>
+              <span aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-search"></use></svg></span>
               <input id="globalSearch" type="search" placeholder="Pesquisar (Ctrl+K ou /)" autocomplete="off">
               <kbd>/</kbd>
             </label>
@@ -371,33 +271,22 @@
             </div>
           </div>
           <button class="button ghost" id="tourButton" title="Ver apresentação do Atrium" aria-label="Ver apresentação do Atrium">
-            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
+            <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-info"></use></svg>
             <span>Apresentação</span>
           </button>
           <button class="button ghost" id="quickDocGenButton" title="Gerar Minuta de Procuração ou Contrato">
-            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <path d="M14 2v6h6"/>
-              <path d="M18 13l-4 4-2-1 1-2 4-4a1.4 1.4 0 0 1 2 2z" stroke-width="1.8"/>
-            </svg>
+            <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-documents"></use></svg>
             <span>Minutas</span>
           </button>
           <details class="v2-utilities-menu v2-only" id="v2UtilitiesMenu">
-            <summary class="icon-button" aria-label="Abrir ferramentas adicionais" title="Mais ferramentas">•••</summary>
+            <summary class="icon-button" aria-label="Abrir ferramentas adicionais" title="Mais ferramentas"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-more"></use></svg></summary>
             <div class="v2-utilities-menu-panel" id="v2UtilitiesMenuPanel"></div>
           </details>
           <button class="button ghost" id="syncButton">
-            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6"/>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L21.5 8M2.5 16l3.14 2.36A9 9 0 0 0 20.49 15"/>
-            </svg>
+            <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-sync"></use></svg>
             <span>Sincronizar</span>
           </button>
-          <button class="icon-button notification-button" data-view-link="inbox" aria-label="Ver intimações">♢<span id="notificationDot"></span></button>
+          <button class="icon-button notification-button" data-view-link="inbox" aria-label="Ver intimações"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-notification"></use></svg><span id="notificationDot"></span></button>
           <button class="profile-button" id="logoutButton" aria-label="Encerrar sessão com segurança" title="Encerrar sessão">
             <span class="avatar">AT</span>
             <span class="profile-copy"><strong>Administrador</strong><small>Advogado(a) Titular</small></span>
@@ -446,13 +335,13 @@
           <span class="pulse-dot"></span>
           <strong>Ambiente Local Seguro (Zero Trust)</strong>
           <span>Dados processuais e chaves de segurança protegidos com criptografia no dispositivo.</span>
-          <button id="dismissBanner" aria-label="Fechar aviso">×</button>
+          <button id="dismissBanner" aria-label="Fechar aviso"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
         </div>
 
         <div class="section-toolbar" style="margin-bottom: 16px;">
-          <div class="toolbar-copy"><p><span class="gold-pill">✦ Atrium · <span id="todayLabel"></span></span></p></div>
+          <div class="toolbar-copy"><p><span class="gold-pill"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-dashboard"></use></svg>Atrium · <span id="todayLabel"></span></span></p></div>
           <div class="toolbar-actions">
-            <button class="button gold" id="btnDashboardNewTask">+ Adicionar Tarefa</button>
+            <button class="button gold" id="btnDashboardNewTask"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Adicionar Tarefa</button>
             <button class="button ghost" data-view-link="kanban">Ver Quadro Kanban →</button>
           </div>
         </div>
@@ -461,25 +350,25 @@
         <div class="metric-grid" aria-label="Resumo operacional">
           <article class="metric-card danger" data-view-link="inbox" tabindex="0">
             <span class="metric-icon">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-publications"></use></svg>
             </span>
             <div><small>Publicações novas</small><strong id="metricInbox">0</strong><p>aguardando triagem</p></div>
           </article>
           <article class="metric-card warning" data-view-link="kanban" tabindex="0">
             <span class="metric-icon">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-deadline"></use></svg>
             </span>
             <div><small>Prazos em 7 dias</small><strong id="metricDeadlines">0</strong><p>confirme os prazos fatais</p></div>
           </article>
           <article class="metric-card info" data-view-link="processes" tabindex="0">
             <span class="metric-icon">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M3 10h18"/></svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-processes"></use></svg>
             </span>
             <div><small>Processos Ativos</small><strong id="metricTasks">0</strong><p>carteira monitorada</p></div>
           </article>
           <article class="metric-card success" data-view-link="monitoring" tabindex="0">
             <span class="metric-icon">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>
             </span>
             <div><small>Fontes saudáveis</small><strong id="metricSources">0/0</strong><p>na última verificação</p></div>
           </article>
@@ -612,7 +501,7 @@
           </div>
           <div class="toolbar-actions">
             <span class="status-chip connected" id="leadCount">0 atendimentos</span>
-            <button class="button gold" id="newLeadButton">+ Novo Atendimento</button>
+            <button class="button gold" id="newLeadButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Novo Atendimento</button>
           </div>
         </div>
         <article class="card table-card">
@@ -651,23 +540,23 @@
           </div>
           <div class="toolbar-actions">
             <button type="button" class="button ghost" id="btnGenDocPrestacao">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M18 13l-4 4-2-1 1-2 4-4a1.4 1.4 0 0 1 2 2z" stroke-width="1.8"/></svg>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-documents"></use></svg>
               <span>Gerar Prestação de Contas RPV</span>
             </button>
-            <button type="button" class="button gold" id="newFinancialEntryButton">+ Novo Lançamento</button>
+            <button type="button" class="button gold" id="newFinancialEntryButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Novo Lançamento</button>
           </div>
         </div>
         <div class="metric-grid financial-summary-band" style="margin-bottom:16px;">
           <article class="metric-card success">
-            <span class="metric-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+            <span class="metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-financial"></use></svg></span>
             <div><small>Honorários Contratuais Previstos</small><strong id="finMetricHonorarios">R$ 0,00</strong><p>calculados sobre a carteira</p></div>
           </article>
           <article class="metric-card warning">
-            <span class="metric-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
+            <span class="metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-documents"></use></svg></span>
             <div><small>RPVs / Alvarás em Tramitação</small><strong id="finMetricRpvCount">0 requisições</strong><p>aguardando expedição/pagamento</p></div>
           </article>
           <article class="metric-card info">
-            <span class="metric-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+            <span class="metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-deadline"></use></svg></span>
             <div><small>Horas Apontadas (TimeSheet)</small><strong id="finMetricTimesheet">0h 0m</strong><p>valor hora apurado</p></div>
           </article>
         </div>
@@ -702,7 +591,7 @@
           </div>
           <div class="toolbar-copy classic-only"><p>Geração instantânea de minutas com preenchimento automático dos dados do cliente e do processo.</p></div>
           <div class="toolbar-actions">
-            <button type="button" class="button gold" id="btnOpenDocGenModal"><span class="classic-only">+ Nova Minuta</span><span class="v2-only">Gerar documento</span></button>
+            <button type="button" class="button gold" id="btnOpenDocGenModal"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg><span class="classic-only">Nova Minuta</span><span class="v2-only">Gerar documento</span></button>
           </div>
         </div>
         <div class="prompts-grid" id="documentsTemplateGrid">
@@ -718,28 +607,28 @@
         </div>
         <div class="publications-metrics-grid" id="publicationsMetrics">
           <div class="pub-metric-card primary-focus active" data-filter="untreated" role="button" tabindex="0" aria-pressed="true">
-            <div class="pub-metric-icon">⏳</div>
+            <div class="pub-metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-deadline"></use></svg></div>
             <div class="pub-metric-content">
               <strong id="pubMetricUntreated">0</strong>
               <span>Não tratadas</span>
             </div>
           </div>
           <div class="pub-metric-card" data-filter="in_review" role="button" tabindex="0" aria-pressed="false">
-            <div class="pub-metric-icon">🔍</div>
+            <div class="pub-metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-search"></use></svg></div>
             <div class="pub-metric-content">
               <strong id="pubMetricInReview">0</strong>
               <span>Em análise</span>
             </div>
           </div>
           <div class="pub-metric-card" data-filter="treated" role="button" tabindex="0" aria-pressed="false">
-            <div class="pub-metric-icon">✓</div>
+            <div class="pub-metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg></div>
             <div class="pub-metric-content">
               <strong id="pubMetricTreatedToday">0</strong>
               <span>Tratadas hoje</span>
             </div>
           </div>
           <div class="pub-metric-card" data-filter="discarded" role="button" tabindex="0" aria-pressed="false">
-            <div class="pub-metric-icon">✕</div>
+            <div class="pub-metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></div>
             <div class="pub-metric-content">
               <strong id="pubMetricDiscardedToday">0</strong>
               <span>Descartadas hoje</span>
@@ -776,9 +665,9 @@
                 <option value="process">Por Processo</option>
               </select>
             </div>
-            <button class="button ghost" id="btnEmailPublications" style="color:var(--gold); border-color:var(--gold);" title="Enviar ou exportar boletim diário de publicações por email">📧 Enviar por E-mail</button>
+            <button class="button ghost" id="btnEmailPublications" style="color:var(--gold); border-color:var(--gold);" title="Enviar ou exportar boletim diário de publicações por email"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-email"></use></svg>Enviar por E-mail</button>
             <button class="button ghost" id="importIntimationButton">Importar JSON</button>
-            <button class="button gold" id="newIntimationButton">+ Nova intimação</button>
+            <button class="button gold" id="newIntimationButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Nova intimação</button>
           </div>
         </div>
         <div class="inbox-layout">
@@ -793,7 +682,7 @@
           </article>
           <div class="publication-inspector-backdrop v2-only hidden" id="publicationInspectorBackdrop" aria-hidden="true"></div>
           <aside class="card intimation-detail" id="intimationDetail" role="region" aria-label="Leitura da publicação selecionada" aria-labelledby="publicationDetailTitle">
-            <div class="empty-detail"><span>✦</span><h3>Selecione uma publicação</h3><p>O texto original, o processo, alertas de urgência e o fluxo de tratamento aparecerão aqui.</p></div>
+            <div class="empty-detail"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-publications"></use></svg></span><h3>Selecione uma publicação</h3><p>O texto original, o processo, alertas de urgência e o fluxo de tratamento aparecerão aqui.</p></div>
           </aside>
         </div>
       </section>
@@ -804,7 +693,7 @@
           <div class="v2-task-heading v2-only"><p>Gestão do trabalho</p><h2>Tarefas</h2><span id="taskResultCount" aria-live="polite">0 tarefas</span><small>Seis etapas canônicas, uma única fila operacional.</small></div>
           <div class="toolbar-actions">
             <button class="button ghost" id="kanbanFilterButton">Minhas tarefas</button>
-            <button class="button gold" id="newTaskButton">+ Nova tarefa</button>
+            <button class="button gold" id="newTaskButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Nova tarefa</button>
           </div>
         </div>
         <p class="sr-only" id="taskBoardInstructions">Arraste uma tarefa ou use o controle Mover para em cada cartão.</p>
@@ -822,24 +711,14 @@
           </div>
           <div class="toolbar-actions">
             <button class="button ghost" data-view-link="importer">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="12" height="12" rx="1.5"/>
-                <path d="M3 7h12M3 11h12M7 3v12M11 3v12"/>
-                <path d="M18 10l3-3m0 0l3 3m-3-3v7" stroke-width="2"/>
-                <rect x="15" y="16" width="6" height="5" rx="1" fill="currentColor" fill-opacity="0.2" stroke-width="1.8"/>
-                <path d="M16.5 16v-1.5a1.5 1.5 0 0 1 3 0V16" stroke-width="1.6"/>
-              </svg>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-importer"></use></svg>
               <span>Importar planilha</span>
             </button>
             <button class="button ghost" id="btnGenDocProcess">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <path d="M18 13l-4 4-2-1 1-2 4-4a1.4 1.4 0 0 1 2 2z" stroke-width="1.8"/>
-              </svg>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-documents"></use></svg>
               <span>Gerar minuta</span>
             </button>
-            <button class="button gold" id="newProcessButton">+ Cadastrar processo</button>
+            <button class="button gold" id="newProcessButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Cadastrar processo</button>
           </div>
         </div>
         <article class="card table-card">
@@ -875,25 +754,15 @@
           </div>
           <div class="toolbar-actions">
             <button class="button ghost" data-view-link="importer">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="12" height="12" rx="1.5"/>
-                <path d="M3 7h12M3 11h12M7 3v12M11 3v12"/>
-                <path d="M18 10l3-3m0 0l3 3m-3-3v7" stroke-width="2"/>
-                <rect x="15" y="16" width="6" height="5" rx="1" fill="currentColor" fill-opacity="0.2" stroke-width="1.8"/>
-                <path d="M16.5 16v-1.5a1.5 1.5 0 0 1 3 0V16" stroke-width="1.6"/>
-              </svg>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-importer"></use></svg>
               <span>Importar planilha</span>
             </button>
             <button class="button ghost" id="btnGenDocContact">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <path d="M14 2v6h6"/>
-                <path d="M18 13l-4 4-2-1 1-2 4-4a1.4 1.4 0 0 1 2 2z" stroke-width="1.8"/>
-              </svg>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-documents"></use></svg>
               <span>Gerar minuta</span>
             </button>
             <span class="status-chip connected" id="contactCount">0 contatos</span>
-            <button class="button gold" id="newContactButton">+ Novo contato</button>
+            <button class="button gold" id="newContactButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Novo contato</button>
           </div>
         </div>
         <article class="card table-card">
@@ -932,19 +801,13 @@
           </div>
           <div class="toolbar-actions">
             <button class="button ghost" id="agendaTodayButton">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="5" width="18" height="16" rx="2"/>
-                <path d="M8 2v4M16 2v4M3 10h18"/>
-              </svg>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-agenda"></use></svg>
               <span>Hoje</span>
             </button>
             <button class="button ghost" id="agendaAllUpcomingButton"><span class="agenda-label-classic">Ver todos</span><span class="agenda-label-v2">Todas as próximas</span></button>
-            <button class="button ghost" id="newAgendaButton">+ Novo compromisso</button>
+            <button class="button ghost" id="newAgendaButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Novo compromisso</button>
             <button class="button gold" id="agendaSyncButton">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21.5 2v6h-6M2.5 22v-6h6"/>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L21.5 8M2.5 16l3.14 2.36A9 9 0 0 0 20.49 15"/>
-              </svg>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-sync"></use></svg>
               <span>Atualizar agenda</span>
             </button>
           </div>
@@ -972,7 +835,7 @@
             <small>Acompanhamento das fontes e identidades utilizadas para coleta e integração jurídica.</small>
           </div>
           <div class="toolbar-copy"><p>Monitore nomes e inscrições profissionais. Reconexões com certificado sempre exigem validação humana.</p></div>
-          <button class="button gold" id="newTermButton">+ Adicionar termo</button>
+          <button class="button gold" id="newTermButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Adicionar termo</button>
         </div>
         <article class="monitor-hero card" id="primaryTermCard" tabindex="0" title="Clique para editar o termo monitorado">
           <div class="monitor-avatar" id="primaryTermAvatar">AD</div>
@@ -989,66 +852,43 @@
           <div id="monitorSourceList"></div>
         </div>
         <div class="security-note">
-          <span>⌾</span><div><strong>Certificado A1 fica no agente local</strong><p>O arquivo PFX e a senha nunca são expostos externamente ou enviados a terceiros.</p></div>
+          <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-security"></use></svg></span><div><strong>Certificado A1 fica no agente local</strong><p>O arquivo PFX e a senha nunca são expostos externamente ou enviados a terceiros.</p></div>
         </div>
       </section>
 
       <section class="view" id="view-integrations" data-title="Integrações" data-eyebrow="Fontes e conexões">
         <div class="v2-integrations-header v2-only">
           <div><p>CONEXÕES SEGURAS</p><h2>Integrações seguras</h2><small>Tribunais, comunicação e agenda externa em uma superfície operacional com credenciais protegidas e ações explícitas.</small></div>
-          <span class="v2-integrations-safety"><b aria-hidden="true">⌾</b> Credenciais protegidas no agente local</span>
+          <span class="v2-integrations-safety"><b aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-security"></use></svg></b> Credenciais protegidas no agente local</span>
         </div>
         <div class="integration-grid">
           <article class="integration-card card connection-integration-card external-calendar-integration-card">
             <div class="integration-logo external-calendar-logo">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="5" width="18" height="16" rx="2"/>
-                <path d="M8 2v4M16 2v4M3 10h18"/>
-              </svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-agenda"></use></svg>
             </div>
             <div class="integration-copy"><span class="status-chip warning" id="calendarIntegrationStatus">Webcal / iCal</span><h3>Agenda externa</h3><p id="externalCalendarIntegrationDetail">Conecte uma URL Webcal ou iCal para complementar a agenda do ATRIUM, sem alterar prazos processuais.</p><button class="button ghost v2-connection-primary" id="configureCalendarButton" aria-describedby="externalCalendarIntegrationDetail">Configurar agenda</button></div>
           </article>
           <article class="integration-card card connection-integration-card">
             <div class="integration-logo cnj-logo">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="7"/>
-                <path d="M21 21l-4.5-4.5"/>
-                <path d="M7 11h2l1.5-3 2 6 1.5-3h2" stroke-width="1.8"/>
-              </svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-monitoring"></use></svg>
             </div>
             <div class="integration-copy"><span class="status-chip planned">Oficial</span><h3>DJEN e DataJud (CNJ)</h3><p>Camada de conferência de publicações e andamentos do Diário de Justiça Eletrônico Nacional.</p><button class="button ghost" data-view-link="monitoring">Ver fontes</button></div>
           </article>
           <article class="integration-card card judicial-integration-card">
             <div class="integration-logo certificate-logo">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="6" height="6" rx="1"/>
-                <rect x="15" y="3" width="6" height="6" rx="1"/>
-                <rect x="3" y="15" width="6" height="6" rx="1"/>
-                <path d="M5 5h2v2H5zM17 5h2v2h-2zM5 17h2v2H5z" fill="currentColor"/>
-                <rect x="14" y="15" width="7" height="6" rx="1" fill="currentColor" fill-opacity="0.2" stroke-width="1.8"/>
-                <path d="M15.5 15v-1.5a2 2 0 0 1 4 0V15" stroke-width="1.6"/>
-              </svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-certificate"></use></svg>
             </div>
             <div class="integration-copy"><span class="status-chip muted" id="certificateIntegrationStatus">Verificando certificado</span><h3>Certificado Digital A1 & PJe</h3><p id="certificateIntegrationDetail">Ative o A1 localmente e sincronize expedientes e acervo com proteção criptográfica.</p><button class="button gold" id="certificateGuideButton">Gerenciar A1 e Tribunais</button></div>
           </article>
           <article class="integration-card card importer-integration-card">
             <div class="integration-logo legal-logo">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="12" height="12" rx="1.5"/>
-                <path d="M3 7h12M3 11h12M7 3v12M11 3v12"/>
-                <path d="M18 10l3-3m0 0l3 3m-3-3v7" stroke-width="2"/>
-                <rect x="15" y="16" width="6" height="5" rx="1" fill="currentColor" fill-opacity="0.2" stroke-width="1.8"/>
-                <path d="M16.5 16v-1.5a1.5 1.5 0 0 1 3 0V16" stroke-width="1.6"/>
-              </svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-importer"></use></svg>
             </div>
             <div class="integration-copy"><span class="status-chip connected">Pronto</span><h3>Importador de Planilhas</h3><p>Importe processos, contatos e clientes em lote via planilhas XLSX ou relatórios XLS do eproc.</p><button class="button gold" data-view-link="importer">Abrir importador</button></div>
           </article>
           <article class="integration-card card email-integration-card">
             <div class="integration-logo email-logo">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="4" width="20" height="16" rx="2"/>
-                <path d="M22 6l-10 7L2 6"/>
-              </svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-email"></use></svg>
             </div>
             <div class="integration-copy">
               <span class="status-chip muted" id="emailIntegrationStatus">Não configurado</span>
@@ -1057,7 +897,7 @@
               <div class="email-integration-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
                 <button class="button gold" id="btnConfigureEmail">Configurar SMTP</button>
                 <button class="button ghost hidden" id="btnTestEmail">Enviar e-mail de teste</button>
-                <button class="button ghost hidden" id="btnAddEmailReceiver">+ Adicionar destinatário</button>
+                <button class="button ghost hidden" id="btnAddEmailReceiver"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Adicionar destinatário</button>
               </div>
 
               <!-- Seção de Destinatários Salvos de Publicações -->
@@ -1128,13 +968,7 @@
             <input type="file" id="importerFileInput" accept=".xlsx,.xls,.csv" class="hidden">
             <div class="dropzone-content">
               <div class="dropzone-icon">
-                <svg class="dropzone-svg" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="6" y="6" width="24" height="24" rx="3"/>
-                  <path d="M6 14h24M6 22h24M14 6v24M22 6v24"/>
-                  <path d="M36 20l6-6m0 0l6 6m-6-6v14" stroke-width="2.5"/>
-                  <rect x="30" y="32" width="12" height="10" rx="2" fill="currentColor" fill-opacity="0.2" stroke-width="2"/>
-                  <path d="M33 32v-3a3 3 0 0 1 6 0v3" stroke-width="2"/>
-                </svg>
+                <svg class="atrium-icon dropzone-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-importer"></use></svg>
               </div>
               <p class="eyebrow v2-only">Selecionar arquivo</p>
               <h3>Arraste e solte sua planilha ou relatório eproc aqui</h3>
@@ -1290,9 +1124,7 @@
               </div>
               <div class="ai-header-badge">
                 <span class="ai-spark-icon">
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-                  </svg>
+                  <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-assistant"></use></svg>
                 </span>
                 <div>
                   <strong>Agente Jurídico Codex &amp; Assistente IA</strong>
@@ -1328,21 +1160,21 @@
           <div class="card assistant-skills-card" style="margin-bottom: 14px; padding: 12px 16px;">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <span class="gold-pill" style="font-weight:700;">✦ Skills Jurídicas Codex</span>
+                <span class="gold-pill" style="font-weight:700;"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-assistant"></use></svg>Skills Jurídicas Codex</span>
                 <span style="font-size:12px; color:var(--muted);">Selecione a especialidade para direcionar o raciocínio da IA:</span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
                 <label class="assistant-field-label" for="codexSkillSelect">Especialidade jurídica</label>
                 <select id="codexSkillSelect" aria-describedby="codexSkillDescription" style="padding:6px 12px; font-size:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel-soft); color:var(--text);">
-                  <option value="legal-agent">⭐ $legal-agent — Orquestrador Geral (Análise, Pesquisa e Redação)</option>
-                  <option value="legal-ingest">📄 $legal-ingest — Ingestão dos Autos, Fatos &amp; Cronologia (D#)</option>
-                  <option value="legal-planner">📐 $legal-planner — Planejador Estratégico &amp; Estrutura de Peça</option>
-                  <option value="legal-research-br">⚖️ $legal-research-br — Pesquisa Jurisprudencial STF / STJ (J#)</option>
-                  <option value="legal-draft-br">✍️ $legal-draft-br — Redator Jurídico Técnico Brasileiro (L#)</option>
-                  <option value="legal-audit">🛡️ $legal-audit — Auditor Adversarial (Revisão Crítica de Petição)</option>
-                  <option value="prescricao-intercorrente">⏳ $prescricao-intercorrente — Prescrição Intercorrente (Art. 921 CPC)</option>
-                  <option value="fazenda-publica-cumprimento">🏛️ $fazenda-publica-cumprimento — Cumprimento contra Fazenda &amp; RPV</option>
-                  <option value="previdenciario-incapacidade">🏥 $previdenciario-incapacidade — Perícias &amp; Benefícios por Incapacidade</option>
+                  <option value="legal-agent">$legal-agent — Orquestrador Geral (Análise, Pesquisa e Redação)</option>
+                  <option value="legal-ingest">$legal-ingest — Ingestão dos Autos, Fatos &amp; Cronologia (D#)</option>
+                  <option value="legal-planner">$legal-planner — Planejador Estratégico &amp; Estrutura de Peça</option>
+                  <option value="legal-research-br">$legal-research-br — Pesquisa Jurisprudencial STF / STJ (J#)</option>
+                  <option value="legal-draft-br">$legal-draft-br — Redator Jurídico Técnico Brasileiro (L#)</option>
+                  <option value="legal-audit">$legal-audit — Auditor Adversarial (Revisão Crítica de Petição)</option>
+                  <option value="prescricao-intercorrente">$prescricao-intercorrente — Prescrição Intercorrente (Art. 921 CPC)</option>
+                  <option value="fazenda-publica-cumprimento">$fazenda-publica-cumprimento — Cumprimento contra Fazenda &amp; RPV</option>
+                  <option value="previdenciario-incapacidade">$previdenciario-incapacidade — Perícias &amp; Benefícios por Incapacidade</option>
                 </select>
                 <button type="button" class="button gold" id="btnApplyCodexSkill" style="padding:6px 12px; font-size:12px;">Carregar Skill</button>
               </div>
@@ -1388,7 +1220,7 @@
           <div class="ai-quick-prompts">
             <span class="quick-prompts-label">Ações Rápidas:</span>
             <button class="quick-prompt-btn highlight-gold-btn" type="button" data-view-link="prompts">
-              ✦ Abrir Biblioteca de Prompts (230)
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-prompts"></use></svg>Abrir Biblioteca de Prompts (230)
             </button>
             <button class="quick-prompt-btn" type="button" data-prompt="Analise a última intimação judicial recebida no sistema, explique a determinação judicial em linguagem clara e aponte a peça processual cabível e o prazo aplicável do CPC.">
               Analisar Última Intimação (DJEN)
@@ -1410,9 +1242,7 @@
             <div id="aiChatMessages" class="ai-chat-messages" role="log" aria-label="Conversa com o Assistente jurídico" aria-live="polite" aria-relevant="additions text">
               <div class="ai-message assistant-message">
                 <div class="message-avatar">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-                  </svg>
+                  <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-assistant"></use></svg>
                 </div>
                 <div class="message-body">
                   <div class="message-text">
@@ -1436,9 +1266,7 @@
                 <label class="assistant-sr-only" for="aiChatInput">Mensagem para o Assistente jurídico</label>
                 <textarea id="aiChatInput" aria-describedby="aiChatComposerHint" placeholder="Faça uma pergunta jurídica, solicite a análise de uma intimação ou peça uma minuta (Enter envia, Shift+Enter quebra linha)..." rows="2"></textarea>
                 <button type="submit" id="btnSendAiMessage" class="button gold ai-send-btn" title="Enviar mensagem (Enter)" aria-label="Enviar mensagem ao Assistente jurídico">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                  </svg>
+                  <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-send"></use></svg>
                   <span>Enviar</span>
                 </button>
               </div>
@@ -1463,16 +1291,11 @@
           </div>
           <div class="toolbar-actions">
             <button class="button gold" id="btnNewPrompt" type="button">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span class="classic-only">+ Novo Prompt</span><span class="v2-only">Novo prompt</span>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>
+              <span class="classic-only">Novo Prompt</span><span class="v2-only">Novo prompt</span>
             </button>
             <button class="button ghost" data-view-link="assistant">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-              </svg>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-assistant"></use></svg>
               <span class="classic-only">Abrir Assistente IA</span><span class="v2-only">Abrir Assistente</span>
             </button>
           </div>
@@ -1482,9 +1305,9 @@
           <div class="prompts-filter-bar card">
             <div class="prompts-search-box">
               <label class="prompts-search-label v2-only" for="promptsSearchInput">Pesquisar na biblioteca</label>
-              <span class="search-icon" aria-hidden="true">⌕</span>
+              <span class="search-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-search"></use></svg></span>
               <input type="search" id="promptsSearchInput" aria-label="Pesquisar prompts por título, descrição, palavras-chave ou texto integral" placeholder="Pesquisar por título, palavras-chave, lei ou tema jurídico...">
-              <button type="button" class="btn-clear-search hidden" id="btnClearPromptsSearch" aria-label="Limpar busca">×</button>
+              <button type="button" class="btn-clear-search hidden" id="btnClearPromptsSearch" aria-label="Limpar busca"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
             </div>
 
             <div class="prompts-filter-row">
@@ -1535,18 +1358,12 @@
           </div>
           <div class="toolbar-actions">
             <button class="button gold" id="btnNewLink" type="button">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span class="classic-only">+ Novo Link Útil</span>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>
+              <span class="classic-only">Novo Link Útil</span>
               <span class="v2-only">Novo Link Útil</span>
             </button>
             <button class="button ghost" data-view-link="prompts">
-              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-              </svg>
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-prompts"></use></svg>
               <span>Biblioteca de Prompts</span>
             </button>
           </div>
@@ -1575,7 +1392,7 @@
             <a href="https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Código Civil (CC) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">Lei nº 10.406/2002</div>
-                <span class="external-icon">↗</span>
+                <span class="external-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-external-link"></use></svg></span>
               </div>
               <h4>Código Civil (CC)</h4>
               <p>Texto legal compilado oficial da legislação civil brasileira (obrigações, contratos, família, sucessões, posse e propriedade).</p>
@@ -1588,7 +1405,7 @@
             <a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Código de Processo Civil (CPC) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">Lei nº 13.105/2015</div>
-                <span class="external-icon">↗</span>
+                <span class="external-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-external-link"></use></svg></span>
               </div>
               <h4>Código de Processo Civil (CPC)</h4>
               <p>Código de Processo Civil vigente (contagem de prazos em dias úteis, tutelas provisórias, execução, recursos e precedentes).</p>
@@ -1601,7 +1418,7 @@
             <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del5452compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Consolidação das Leis do Trabalho (CLT) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">Decreto-Lei nº 5.452/1943</div>
-                <span class="external-icon">↗</span>
+                <span class="external-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-external-link"></use></svg></span>
               </div>
               <h4>Consolidação das Leis do Trabalho (CLT)</h4>
               <p>Normas que regulam as relações individuais e coletivas de trabalho e o direito processual do trabalho no Brasil.</p>
@@ -1614,7 +1431,7 @@
             <a href="https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Constituição Federal (CF/88) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">CF/1988</div>
-                <span class="external-icon">↗</span>
+                <span class="external-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-external-link"></use></svg></span>
               </div>
               <h4>Constituição Federal (CF/88)</h4>
               <p>Constituição da República Federativa do Brasil promulgada em 5 de outubro de 1988 com todas as Emendas Constitucionais.</p>
@@ -1627,7 +1444,7 @@
             <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Código Penal (CP) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">Decreto-Lei nº 2.848/1940</div>
-                <span class="external-icon">↗</span>
+                <span class="external-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-external-link"></use></svg></span>
               </div>
               <h4>Código Penal (CP)</h4>
               <p>Código Penal brasileiro compilado (parte geral, crimes contra a pessoa, patrimônio, dignidade sexual e administração pública).</p>
@@ -1640,7 +1457,7 @@
             <a href="https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm" target="_blank" rel="noopener noreferrer" class="link-card card" aria-label="Abrir Código de Processo Penal (CPP) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge">Decreto-Lei nº 3.689/1941</div>
-                <span class="external-icon">↗</span>
+                <span class="external-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-external-link"></use></svg></span>
               </div>
               <h4>Código de Processo Penal (CPP)</h4>
               <p>Código de Processo Penal brasileiro compilado (inquérito policial, ação penal, provas, prisões cautelares, júri e recursos).</p>
@@ -1664,7 +1481,7 @@
             <a href="https://processo.stj.jus.br/SCON/" target="_blank" rel="noopener noreferrer" class="link-card card highlight-gold" aria-label="Abrir Jurisprudência do STJ (SCON) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge stj-badge">Superior Tribunal de Justiça</div>
-                <span class="external-icon">↗</span>
+                <span class="external-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-external-link"></use></svg></span>
               </div>
               <h4>Jurisprudência do STJ (SCON)</h4>
               <p>Sistema de Consulta de Jurisprudência oficial do STJ. Pesquisa de acórdãos, decisões monocráticas, súmulas e recursos repetitivos.</p>
@@ -1688,7 +1505,7 @@
             <a href="https://ricarossetto.github.io/prompts-atualizados-02-2026/" target="_blank" rel="noopener noreferrer" class="link-card card highlight-gold" aria-label="Abrir Prompts Jurídicos Atualizados (02/2026) em nova guia">
               <div class="link-card-header">
                 <div class="link-badge webhub-badge">Web Hub Oficial</div>
-                <span class="external-icon">↗</span>
+                <span class="external-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-external-link"></use></svg></span>
               </div>
               <h4>Prompts Jurídicos Atualizados (02/2026)</h4>
               <p>Portal web dedicado com o catálogo completo de 230 prompts jurídicos estruturados, busca interativa e atalhos de cópia rápida.</p>
@@ -1701,7 +1518,7 @@
             <a href="https://www.jurisprudenciaia.com.br/" target="_blank" rel="noopener noreferrer" class="link-card card ai-card" aria-label="Abrir JURISPRUDENCIAIA em nova guia">
               <div class="link-card-header">
                 <div class="link-badge ai-badge">IA Gratuita</div>
-                <span class="external-icon">↗</span>
+                <span class="external-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-external-link"></use></svg></span>
               </div>
               <h4>JURISPRUDENCIAIA</h4>
               <p>Ferramenta gratuita de pesquisa de jurisprudência potencializada por Inteligência Artificial para busca semântica e precedentes.</p>
@@ -1714,7 +1531,7 @@
             <a href="https://www.transcreveia.com.br/" target="_blank" rel="noopener noreferrer" class="link-card card ai-card" aria-label="Abrir TRANSCREVEIA em nova guia">
               <div class="link-card-header">
                 <div class="link-badge ai-badge">IA Gratuita</div>
-                <span class="external-icon">↗</span>
+                <span class="external-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-external-link"></use></svg></span>
               </div>
               <h4>TRANSCREVEIA</h4>
               <p>Ferramenta gratuita de transcrição de áudio e vídeo de audiências com Inteligência Artificial, geração de resumos e minutagem.</p>
@@ -1730,9 +1547,7 @@
           <div class="prompts-banner-card card links-section-spaced">
             <div class="prompts-banner-content">
               <div class="prompts-banner-icon">
-                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-                </svg>
+                <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-prompts"></use></svg>
               </div>
               <div>
                 <h3>Biblioteca de 230 Prompts Jurídicos Integrada</h3>
@@ -1750,7 +1565,7 @@
     <aside class="process-inspector" id="processInspector" role="dialog" aria-modal="true" aria-labelledby="processInspectorTitle" aria-describedby="processInspectorContent">
       <header>
         <div><p>Processo</p><h2 id="processInspectorTitle">Detalhes do processo</h2></div>
-        <button type="button" class="icon-button" id="processInspectorClose" aria-label="Fechar detalhes do processo">×</button>
+        <button type="button" class="icon-button" id="processInspectorClose" aria-label="Fechar detalhes do processo"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <div class="process-inspector-content" id="processInspectorContent"></div>
       <footer>
@@ -1762,14 +1577,14 @@
 
   <div class="modal-backdrop hidden" id="modalBackdrop">
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <header><div><p class="eyebrow" id="modalEyebrow">Novo registro</p><h2 id="modalTitle">Nova tarefa</h2></div><button class="icon-button" id="modalClose" aria-label="Fechar">×</button></header>
+      <header><div><p class="eyebrow" id="modalEyebrow">Novo registro</p><h2 id="modalTitle">Nova tarefa</h2></div><button class="icon-button" id="modalClose" aria-label="Fechar"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button></header>
       <form id="modalForm"><div id="modalFields"></div><footer><button type="button" class="button ghost" id="modalCancel">Cancelar</button><button type="submit" class="button gold">Salvar</button></footer></form>
     </section>
   </div>
 
   <div class="modal-backdrop hidden" id="judicialSetupBackdrop">
     <section class="modal judicial-setup-modal" role="dialog" aria-modal="true" aria-labelledby="judicialSetupTitle">
-      <header><div><p class="eyebrow">Monitoramento autenticado</p><h2 id="judicialSetupTitle">Certificado A1, Segundo Fator & Tribunais</h2></div><button class="icon-button" id="judicialSetupClose" aria-label="Fechar">×</button></header>
+      <header><div><p class="eyebrow">Monitoramento autenticado</p><h2 id="judicialSetupTitle">Certificado A1, Segundo Fator & Tribunais</h2></div><button class="icon-button" id="judicialSetupClose" aria-label="Fechar"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button></header>
       <div class="judicial-setup-body">
         <div class="setup-status-grid">
           <article><span class="setup-status-icon" id="setupCertificateIcon">1</span><div><small>Certificado A1</small><strong id="setupCertificateStatus">Verificando…</strong></div></article>
@@ -1794,20 +1609,20 @@
                 <small id="a1DocAndIssuer" style="color: var(--muted); font-size: 12px;">CPF / Emissor</small>
               </div>
               <div style="display: flex; gap: 8px; align-items: center;">
-                <button class="button gold" id="btnRunA1Sandbox" type="button" style="padding: 4px 12px; font-size: 12px;">🧪 Testar Certificado no Sandbox</button>
+                <button class="button gold" id="btnRunA1Sandbox" type="button" style="padding: 4px 12px; font-size: 12px;"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-certificate"></use></svg>Testar Certificado no Sandbox</button>
                 <button class="button ghost" id="btnReplaceCertToggle" type="button" style="padding: 4px 10px; font-size: 12px;">Substituir</button>
               </div>
             </div>
             
             <div id="a1SandboxChecklist" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; font-size: 11.5px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
-              <div id="chkStep-pfxFile"><span>📁 Arquivo PFX:</span> <strong>·</strong></div>
-              <div id="chkStep-passphrase"><span>🔑 Senha:</span> <strong>·</strong></div>
-              <div id="chkStep-x509Cert"><span>📜 X.509 ICP-Brasil:</span> <strong>·</strong></div>
-              <div id="chkStep-validity"><span>⏳ Validade:</span> <strong>·</strong></div>
-              <div id="chkStep-privateKey"><span>🛡️ Chave Privada:</span> <strong>·</strong></div>
-              <div id="chkStep-signature"><span>✍️ Assinatura SHA-256:</span> <strong>·</strong></div>
-              <div id="chkStep-serverHttps"><span>🌐 Servidor HTTPS 127.0.0.1:</span> <strong>·</strong></div>
-              <div id="chkStep-fingerprint"><span>🎯 mTLS Fingerprint:</span> <strong>·</strong></div>
+              <div id="chkStep-pfxFile"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-certificate"></use></svg>Arquivo PFX:</span> <strong>·</strong></div>
+              <div id="chkStep-passphrase"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-security"></use></svg>Senha:</span> <strong>·</strong></div>
+              <div id="chkStep-x509Cert"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-certificate"></use></svg>X.509 ICP-Brasil:</span> <strong>·</strong></div>
+              <div id="chkStep-validity"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-deadline"></use></svg>Validade:</span> <strong>·</strong></div>
+              <div id="chkStep-privateKey"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-security"></use></svg>Chave Privada:</span> <strong>·</strong></div>
+              <div id="chkStep-signature"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-edit"></use></svg>Assinatura SHA-256:</span> <strong>·</strong></div>
+              <div id="chkStep-serverHttps"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-integrations"></use></svg>Servidor HTTPS 127.0.0.1:</span> <strong>·</strong></div>
+              <div id="chkStep-fingerprint"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>mTLS Fingerprint:</span> <strong>·</strong></div>
             </div>
           </div>
 
@@ -1836,7 +1651,7 @@
           <div class="setup-warning"><strong>Zero Trust:</strong> As imagens de QR Code são processadas em memória e descartadas imediatamente após a extração do segredo Base32.</div>
         </section>
       </div>
-      <footer class="judicial-setup-footer"><div><strong class="classic-only">Sincronização Judicial Autônoma</strong><span class="classic-only">O coletor monitora o DJEN, DataJud e tribunais vinculados automaticamente em segundo plano com IA.</span><strong class="v2-only">Sincronização judicial sob demanda</strong><span class="v2-only">Atualiza as fontes configuradas e mantém os resultados sujeitos à conferência profissional.</span></div><button class="button gold" id="syncJudicialNowButton" type="button">✦ Sincronizar Acervo e Intimações Agora</button></footer>
+      <footer class="judicial-setup-footer"><div><strong class="classic-only">Sincronização Judicial Autônoma</strong><span class="classic-only">O coletor monitora o DJEN, DataJud e tribunais vinculados automaticamente em segundo plano com IA.</span><strong class="v2-only">Sincronização judicial sob demanda</strong><span class="v2-only">Atualiza as fontes configuradas e mantém os resultados sujeitos à conferência profissional.</span></div><button class="button gold" id="syncJudicialNowButton" type="button"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-sync"></use></svg>Sincronizar Acervo e Intimações Agora</button></footer>
     </section>
   </div>
 
@@ -1852,7 +1667,7 @@
             <span id="docGenContextProcess">Geral / Sem processo</span>
           </div>
         </div>
-        <button type="button" class="icon-button" id="docGenClose" aria-label="Fechar gerador de documentos">×</button>
+        <button type="button" class="icon-button" id="docGenClose" aria-label="Fechar gerador de documentos"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <div class="doc-gen-body">
         <div class="doc-gen-controls">
@@ -1903,7 +1718,7 @@
           <h2 id="officeSetupTitle">Marca e dados institucionais</h2>
           <p id="officeSetupDescription" class="office-setup-description">Dados usados na navegação e nos documentos gerados pelo ATRIUM.</p>
         </div>
-        <button class="icon-button" id="officeSetupClose" aria-label="Fechar">×</button>
+        <button class="icon-button" id="officeSetupClose" aria-label="Fechar"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <form id="officeSetupForm">
         <div class="office-identity-layout">
@@ -1915,9 +1730,7 @@
             </div>
             <div class="office-logo-picker">
               <div class="office-logo-preview" id="officeLogoPreview" aria-live="polite">
-                <svg class="nav-svg" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/>
-                </svg>
+                <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-office"></use></svg>
                 <span class="office-logo-fallback-copy">Marca do escritório</span>
               </div>
               <div class="office-logo-actions">
@@ -1975,7 +1788,7 @@
           </svg>
           <span id="tourModalTitle">Apresentação do Atrium · Escritório Integrado</span>
         </div>
-        <button class="icon-button" id="tourCloseButton" aria-label="Fechar apresentação">×</button>
+        <button class="icon-button" id="tourCloseButton" aria-label="Fechar apresentação"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
 
       <div class="tour-slides-container">
@@ -2007,9 +1820,7 @@
         <article class="tour-slide" data-slide="1" aria-label="Slide 2 de 6: Processos e Publicações">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
-              </svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-processes"></use></svg>
             </div>
             <div>
               <h2>Processos e publicações</h2>
@@ -2029,10 +1840,7 @@
         <article class="tour-slide" data-slide="2" aria-label="Slide 3 de 6: Tarefas e Agenda">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                <path d="M18 15a2.5 2.5 0 0 0-2.5 2.5v1.5l-1 1h7l-1-1v-1.5A2.5 2.5 0 0 0 18 15z"/>
-              </svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-tasks"></use></svg>
             </div>
             <div>
               <h2>Tarefas e agenda</h2>
@@ -2055,9 +1863,7 @@
         <article class="tour-slide" data-slide="3" aria-label="Slide 4 de 6: Contatos e Atendimentos">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="5" height="16" rx="1.5"/><path d="M4.5 9h2M11.5 9h2M18.5 9h2"/>
-              </svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-contacts"></use></svg>
             </div>
             <div>
               <h2>Contatos e atendimentos</h2>
@@ -2077,9 +1883,7 @@
         <article class="tour-slide" data-slide="4" aria-label="Slide 5 de 6: Documentos e Inteligência Assistida">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
-              </svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-assistant"></use></svg>
             </div>
             <div>
               <h2>Documentos e inteligência assistida</h2>
@@ -2099,9 +1903,7 @@
         <article class="tour-slide" data-slide="5" aria-label="Slide 6 de 6: Monitoramento, Integrações e Configurações">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
-              <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/><path d="M7 11h2l1.5-3 2 6 1.5-3h2" stroke-width="1.8"/>
-              </svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-integrations"></use></svg>
             </div>
             <div>
               <h2>Monitoramento e integrações</h2>
@@ -2163,7 +1965,7 @@
           <p class="eyebrow">Sincronização de Agenda</p>
           <h2 id="calendarConfigTitle">Conectar Agenda Externa</h2>
         </div>
-        <button class="icon-button" id="calendarConfigClose" type="button" aria-label="Fechar configuração de agenda externa">×</button>
+        <button class="icon-button" id="calendarConfigClose" type="button" aria-label="Fechar configuração de agenda externa"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <form id="calendarConfigForm">
         <div class="modal-body connection-calendar-body">
@@ -2196,7 +1998,7 @@
           <p class="eyebrow">Inteligência Artificial</p>
           <h2 id="geminiKeyTitle">Configurar Chave Google Gemini</h2>
         </div>
-        <button class="icon-button" id="geminiKeyClose" aria-label="Fechar">×</button>
+        <button class="icon-button" id="geminiKeyClose" aria-label="Fechar"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <form id="geminiKeyForm">
         <div class="ai-guide-box">
@@ -2229,7 +2031,7 @@
           <p class="eyebrow" id="emailModalEyebrow">Comunicação e Notificações</p>
           <h2 id="emailModalTitle">Boletim de Publicações por E-mail</h2>
         </div>
-        <button type="button" class="icon-button" id="publicationsEmailClose" aria-label="Fechar modal">×</button>
+        <button type="button" class="icon-button" id="publicationsEmailClose" aria-label="Fechar modal"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <div class="modal-body" style="padding:20px; max-height:75vh; overflow-y:auto;">
         <div class="field full" style="margin-bottom:16px;">
@@ -2239,9 +2041,9 @@
         </div>
 
         <div style="display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;">
-          <button type="button" class="button gold" id="btnSendEmailDirect">🚀 Enviar E-mail via Servidor</button>
-          <button type="button" class="button ghost" id="btnCopyEmailHtml">📋 Copiar HTML Formatado</button>
-          <button type="button" class="button ghost" id="btnDownloadEmailHtml">💾 Baixar Arquivo HTML</button>
+          <button type="button" class="button gold" id="btnSendEmailDirect"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-send"></use></svg>Enviar E-mail via Servidor</button>
+          <button type="button" class="button ghost" id="btnCopyEmailHtml"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-copy"></use></svg>Copiar HTML Formatado</button>
+          <button type="button" class="button ghost" id="btnDownloadEmailHtml"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-download"></use></svg>Baixar Arquivo HTML</button>
         </div>
 
         <div style="font-weight:600; margin-bottom:8px; color:var(--ivory); font-size:13px;">Pré-visualização do Boletim:</div>
@@ -2263,7 +2065,7 @@
           <p class="eyebrow">Gestão Financeira &amp; Honorários</p>
           <h3 id="finModalTitle">Novo Lançamento Financeiro</h3>
         </div>
-        <button class="icon-button" id="financialEntryClose" type="button" aria-label="Fechar modal">✕</button>
+        <button class="icon-button" id="financialEntryClose" type="button" aria-label="Fechar modal"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <form id="financialEntryForm">
         <div class="modal-body form-grid financial-entry-grid">
@@ -2334,7 +2136,7 @@
           <p class="eyebrow">Integrações &amp; Infraestrutura</p>
           <h3 id="emailConfigTitle">Configuração de Servidor SMTP</h3>
         </div>
-        <button class="icon-button" id="emailConfigClose" type="button" aria-label="Fechar modal">✕</button>
+        <button class="icon-button" id="emailConfigClose" type="button" aria-label="Fechar modal"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <form id="emailConfigForm">
         <div class="modal-body form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:20px;">
@@ -2375,7 +2177,7 @@
             <input id="emailFromAddressInput" name="fromAddress" type="email" placeholder="ex: contato@escritorio.adv.br" required style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
           </label>
           <div style="grid-column:span 2; background:var(--panel-soft); padding:12px; border-radius:8px; border:1px solid var(--line); font-size:11.5px; color:var(--muted); line-height:1.5;">
-            🔒 <strong>Zero Trust:</strong> Ao salvar, o ATRIUM testará imediatamente o handshake com o servidor SMTP antes de ativar a integração.
+            <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-security"></use></svg><strong>Zero Trust:</strong> Ao salvar, o ATRIUM testará imediatamente o handshake com o servidor SMTP antes de ativar a integração.
           </div>
         </div>
         <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
@@ -2394,7 +2196,7 @@
           <p class="eyebrow">Teste de Comunicação</p>
           <h3 id="emailTestTitle">Enviar E-mail de Teste</h3>
         </div>
-        <button class="icon-button" id="emailTestClose" type="button" aria-label="Fechar modal">✕</button>
+        <button class="icon-button" id="emailTestClose" type="button" aria-label="Fechar modal"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <form id="emailTestForm">
         <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
@@ -2408,7 +2210,7 @@
         </div>
         <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
           <button class="button ghost" id="emailTestCancel" type="button">Cancelar</button>
-          <button class="button gold" id="emailTestSubmitBtn" type="submit">🚀 Enviar Teste Agora</button>
+          <button class="button gold" id="emailTestSubmitBtn" type="submit"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-send"></use></svg>Enviar Teste Agora</button>
         </footer>
       </form>
     </section>
@@ -2422,7 +2224,7 @@
           <p class="eyebrow">Comunicação Judicial</p>
           <h3 id="publicationEmailTitle">Enviar publicação por e-mail</h3>
         </div>
-        <button class="icon-button" id="publicationEmailClose" type="button" aria-label="Fechar modal">✕</button>
+        <button class="icon-button" id="publicationEmailClose" type="button" aria-label="Fechar modal"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <form id="publicationEmailForm">
         <input type="hidden" id="publicationEmailIdInput" name="publicationId">
@@ -2452,7 +2254,7 @@
           <p class="eyebrow" style="color:var(--danger);">Triagem de Publicações</p>
           <h3 id="discardPublicationTitle">Descartar publicação</h3>
         </div>
-        <button class="icon-button" id="discardPublicationClose" type="button" aria-label="Fechar modal">✕</button>
+        <button class="icon-button" id="discardPublicationClose" type="button" aria-label="Fechar modal"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <form id="discardPublicationForm">
         <input type="hidden" id="discardPublicationIdInput" name="id">
@@ -2485,7 +2287,7 @@
           <p class="eyebrow" style="color:var(--success);">Triagem de Publicações</p>
           <h3 id="treatPublicationTitle">Marcar publicação como tratada</h3>
         </div>
-        <button class="icon-button" id="treatPublicationClose" type="button" aria-label="Fechar modal">✕</button>
+        <button class="icon-button" id="treatPublicationClose" type="button" aria-label="Fechar modal"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <form id="treatPublicationForm">
         <input type="hidden" id="treatPublicationIdInput" name="id">
@@ -2504,7 +2306,7 @@
         </div>
         <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--border);">
           <button class="button ghost" id="treatPublicationCancel" type="button">Cancelar</button>
-          <button class="button gold" id="treatPublicationSubmitBtn" type="submit">✓ Confirmar Tratamento</button>
+          <button class="button gold" id="treatPublicationSubmitBtn" type="submit"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>Confirmar Tratamento</button>
         </footer>
       </form>
     </section>
@@ -2518,7 +2320,7 @@
           <p class="eyebrow">Notificações por E-mail</p>
           <h3 id="emailReceiverModalTitle">Adicionar destinatário de publicações</h3>
         </div>
-        <button class="icon-button" id="emailReceiverModalClose" type="button" aria-label="Fechar modal">✕</button>
+        <button class="icon-button" id="emailReceiverModalClose" type="button" aria-label="Fechar modal"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
       <form id="emailReceiverForm">
         <input type="hidden" id="receiverIdInput" name="id">

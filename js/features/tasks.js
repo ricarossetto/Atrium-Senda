@@ -1,5 +1,6 @@
 import { Store, isoDate, uid } from '../core/store.js';
 import { createTasksV2Presenter } from '../views/ui-v2/tasks-presenter.js';
+import { iconSvg } from '../views/ui-v2/icons.js';
 
 export const TASK_COLUMNS = Object.freeze([
   { id: 'triagem', title: 'Entrada & triagem', color: '#c9a84c' },
@@ -156,18 +157,18 @@ export function createTasksFeature({
     renderCard(task) {
       const overdue = daysUntil(task.deadline) < 0 && task.status !== 'concluida';
       const timeMins = totalTimeMinutes(task.timeLogs);
-      const timeBadge = timeMins > 0 ? `<span class="task-timelog" title="Tempo total registrado no TimeSheet">⏱ ${formatMinutes(timeMins)}</span>` : '';
+      const timeBadge = timeMins > 0 ? `<span class="task-timelog" title="Tempo total registrado no TimeSheet">${iconSvg('deadline')} ${formatMinutes(timeMins)}</span>` : '';
       const isTimerRunning = activeTimeSheetTaskId === task.id;
       const timerButton = isTimerRunning
-        ? `<button type="button" class="timesheet-btn active timesheet-live" data-timesheet-stop="${escapeHtml(task.id)}" title="Clique para pausar e salvar apontamento no TimeSheet">⏹ ${this.formatElapsedTimer()}</button>`
-        : `<button type="button" class="timesheet-btn" data-timesheet-start="${escapeHtml(task.id)}" title="Iniciar cronômetro de TimeSheet">▶ Iniciar</button>`;
+        ? `<button type="button" class="timesheet-btn active timesheet-live" data-timesheet-stop="${escapeHtml(task.id)}" title="Clique para pausar e salvar apontamento no TimeSheet">${iconSvg('check')} ${this.formatElapsedTimer()}</button>`
+        : `<button type="button" class="timesheet-btn" data-timesheet-start="${escapeHtml(task.id)}" title="Iniciar cronômetro de TimeSheet">${iconSvg('deadline')} Iniciar</button>`;
 
       const points = Number(task.points) || (task.priority === 'urgente' ? 25 : 10);
       return `<article class="task-card ${isTimerRunning ? 'timer-active' : ''}" draggable="true" data-task-id="${escapeHtml(task.id)}">
         <div class="task-top">
           <span class="task-source">${escapeHtml(taskSourceLabel(task.source))}</span>
           <span class="task-badges">
-            <b class="task-points" title="Pontuação da tarefa">✦ ${points} pts</b>
+            <b class="task-points" title="Pontuação da tarefa">${iconSvg('tasks')} ${points} pts</b>
             ${timeBadge}
             ${task.priority === 'urgente' ? '<span class="task-priority" title="Urgente">!</span>' : ''}
           </span>
@@ -197,7 +198,7 @@ export function createTasksFeature({
       windowRef.clearInterval(timeSheetInterval);
       timeSheetInterval = windowRef.setInterval(() => {
         const liveButton = documentRef.querySelector(`.timesheet-live[data-timesheet-stop="${activeTimeSheetTaskId}"]`);
-        if (liveButton) liveButton.textContent = `⏹ ${this.formatElapsedTimer()}`;
+        if (liveButton) liveButton.innerHTML = `${iconSvg('check')} ${this.formatElapsedTimer()}`;
       }, 1000);
       this.renderKanban();
       showToast?.('Cronômetro TimeSheet iniciado na tarefa!', 'success');
@@ -313,14 +314,14 @@ export function createTasksFeature({
         completionBarHtml = isV2() ? `
         <div class="task-completion-bar">
           <div><span>Situação da tarefa</span><strong class="task-completion-state ${isDone ? 'is-complete' : 'is-active'}">${isDone ? 'Concluída' : 'Em andamento'}</strong></div>
-          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask">Marcar como concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask">Reabrir tarefa</button>`}
+          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask">${iconSvg('check')}Marcar como concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask">${iconSvg('reopen')}Reabrir tarefa</button>`}
         </div>` : `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding:10px 14px; background:var(--panel-soft); border-radius:10px; border:1px solid var(--line);">
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="font-size:12px; color:var(--muted); font-weight:600;">Situação da Tarefa:</span>
             <span class="status-chip ${isDone ? 'connected' : 'warning'}">${isDone ? 'Concluída' : 'Em andamento'}</span>
           </div>
-          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask" style="padding:6px 14px; font-size:12px; font-weight:600;">✓ Marcar como Concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask" style="padding:6px 14px; font-size:12px;">↩ Reabrir Tarefa</button>`}
+          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask" style="padding:6px 14px; font-size:12px; font-weight:600;">${iconSvg('check')}Marcar como Concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask" style="padding:6px 14px; font-size:12px;">${iconSvg('reopen')}Reabrir Tarefa</button>`}
         </div>`;
       }
 
@@ -330,12 +331,12 @@ export function createTasksFeature({
           <div class="task-intimation-card ${isV2() ? 'is-v2' : ''}">
           <div class="task-intimation-header">
             <div class="task-intimation-title">
-              <svg class="nav-svg" style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              ${iconSvg('publications')}
               <span>Publicação / Texto da Intimação</span>
             </div>
             <div class="task-intimation-actions">
               <button type="button" class="task-btn-action" id="btnCopyTaskIntimation">Copiar texto</button>
-              <button type="button" class="task-btn-action" id="btnAiAnalyzeTask">✦ Analisar com IA</button>
+              <button type="button" class="task-btn-action" id="btnAiAnalyzeTask">${iconSvg('assistant')}Analisar com IA</button>
             </div>
           </div>
           <div class="task-intimation-body" id="taskIntimationBody">${escapeHtml(cleanDescription)}</div>

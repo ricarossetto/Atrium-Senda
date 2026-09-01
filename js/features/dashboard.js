@@ -1,5 +1,6 @@
 import { Store } from '../core/store.js';
 import { renderDashboardV2Summary } from '../views/ui-v2/dashboard.js';
+import { iconSvg } from '../views/ui-v2/icons.js';
 
 export function createDashboardFeature({
   store = Store,
@@ -127,7 +128,7 @@ export function createDashboardFeature({
       if (countEl) countEl.textContent = `${filtered.length} tarefas`;
 
       if (!filtered.length) {
-        listEl.innerHTML = '<div class="empty-column" style="padding:24px;text-align:center;"><p>✓ Nenhuma tarefa pendente neste filtro.</p></div>';
+        listEl.innerHTML = `<div class="empty-column" style="padding:24px;text-align:center;"><p>${iconSvg('check')}Nenhuma tarefa pendente neste filtro.</p></div>`;
         return;
       }
 
@@ -162,14 +163,14 @@ export function createDashboardFeature({
             <div class="dashboard-task-body">
               <div class="dashboard-task-title">${escapeHtml(task.title)}</div>
               <div class="dashboard-task-process" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0 6px 0;font-size:12px;">
-                <strong>👤 ${escapeHtml(clientName)}</strong>
-                ${processNumber ? `<span style="color:var(--muted)">· 📁 <b>${escapeHtml(processNumber)}</b></span>` : ''}
-                ${courtName ? `<span style="color:var(--muted)">· ⚖️ <em>${escapeHtml(courtName)}</em></span>` : ''}
+                <strong>${iconSvg('contacts')} ${escapeHtml(clientName)}</strong>
+                ${processNumber ? `<span style="color:var(--muted)">· ${iconSvg('processes')} <b>${escapeHtml(processNumber)}</b></span>` : ''}
+                ${courtName ? `<span style="color:var(--muted)">· ${iconSvg('court')} <em>${escapeHtml(courtName)}</em></span>` : ''}
               </div>
               <div class="dashboard-task-tags">
                 <span class="task-tag ${typeBadge}">${typeLabel}</span>
-                ${task.responsible ? `<span class="task-tag user">👤 ${escapeHtml(task.responsible)}</span>` : ''}
-                ${points ? `<span class="task-tag points" style="background:rgba(212,175,55,0.15);color:var(--gold);font-weight:600;">⚡ ${points} pts${difficultyText ? ` (${difficultyText})` : ''}</span>` : ''}
+                ${task.responsible ? `<span class="task-tag user">${iconSvg('contacts')} ${escapeHtml(task.responsible)}</span>` : ''}
+                ${points ? `<span class="task-tag points" style="background:rgba(212,175,55,0.15);color:var(--gold);font-weight:600;">${iconSvg('tasks')} ${points} pts${difficultyText ? ` (${difficultyText})` : ''}</span>` : ''}
                 ${task.priority === 'urgente' ? '<span class="task-tag" style="background:rgba(239,68,68,0.15);color:var(--danger);font-weight:700;">URGENTE</span>' : ''}
               </div>
             </div>

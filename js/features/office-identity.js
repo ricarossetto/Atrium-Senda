@@ -1,4 +1,5 @@
 import { Store } from '../core/store.js';
+import { iconSvg } from '../views/ui-v2/icons.js';
 
 export function createOfficeIdentityFeature({
   store = Store,
@@ -92,7 +93,7 @@ export function createOfficeIdentityFeature({
         preview.innerHTML = `<img src="${escapeHtml(tempOfficeLogo)}" alt="Prévia">`;
         removeButton?.classList.remove('hidden');
       } else {
-        preview.innerHTML = '<svg class="nav-svg" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10v2M15 10v2M9 15v2M15 15v2"/></svg><span class="office-logo-fallback-copy">Marca do escritório</span>';
+        preview.innerHTML = `${iconSvg('office', { className: 'nav-svg atrium-icon' })}<span class="office-logo-fallback-copy">Marca do escritório</span>`;
         removeButton?.classList.add('hidden');
       }
     },

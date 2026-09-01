@@ -5,6 +5,7 @@ import {
   renderPublicationEmpty,
   renderPublicationRow
 } from '../views/ui-v2/publications-presenter.js';
+import { iconSvg } from '../views/ui-v2/icons.js';
 
 export const ACT_RULES = [
   { regex: /\b(embargos?\s+de\s+declara[cç][aã]o|embargos?\s+declarat[oó]rios?)\b/i, category: 'Embargos de Declaração', priority: 'importante', label: 'Embargos', css: 'embargos' },
@@ -365,8 +366,8 @@ export function createPublicationsFeature({
       }
 
       const emptyMessage = (inboxFilter === 'untreated' || !inboxFilter)
-        ? '<div class="empty-detail"><span>✓</span><h3>Não há publicações pendentes de tratamento.</h3><p>Todas as publicações capturadas estão em análise, tratadas ou descartadas.</p></div>'
-        : '<div class="empty-detail"><span>✓</span><h3>Nenhuma publicação encontrada</h3><p>Não há publicações para o filtro ou ordenação selecionados.</p></div>';
+        ? `<div class="empty-detail"><span>${iconSvg('check')}</span><h3>Não há publicações pendentes de tratamento.</h3><p>Todas as publicações capturadas estão em análise, tratadas ou descartadas.</p></div>`
+        : `<div class="empty-detail"><span>${iconSvg('check')}</span><h3>Nenhuma publicação encontrada</h3><p>Não há publicações para o filtro ou ordenação selecionados.</p></div>`;
       const list = byId('inboxList');
       if (!list) return;
       if (isV2()) {
@@ -447,7 +448,7 @@ export function createPublicationsFeature({
       if (!container) return;
       if (!item) {
         getPresenter().closeDetail({ restoreFocus: false });
-        container.innerHTML = '<div class="empty-detail"><span>✦</span><h3>Selecione uma publicação</h3><p>O texto original, o processo, alertas de urgência e o fluxo de tratamento aparecerão aqui.</p></div>';
+        container.innerHTML = `<div class="empty-detail"><span>${iconSvg('publications')}</span><h3>Selecione uma publicação</h3><p>O texto original, o processo, alertas de urgência e o fluxo de tratamento aparecerão aqui.</p></div>`;
         return;
       }
 
@@ -457,7 +458,7 @@ export function createPublicationsFeature({
       const currentUser = windowRef?.KellerAuth?.currentUser;
       const privileged = currentUser?.role === 'master_admin' || currentUser?.role === 'admin';
       const emailAction = privileged
-        ? '<button type="button" class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail" title="Enviar publicação por e-mail">✉️ Enviar por e-mail</button>'
+        ? `<button type="button" class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail" title="Enviar publicação por e-mail">${iconSvg('email')} Enviar por e-mail</button>`
         : '';
 
       if (isV2()) {
@@ -492,7 +493,7 @@ export function createPublicationsFeature({
       if (treatmentStatus === 'treated') {
         treatmentInfo = `
         <div class="treatment-info-banner treated">
-          <div class="treatment-info-icon">✓</div>
+          <div class="treatment-info-icon">${iconSvg('check')}</div>
           <div class="treatment-info-text">
             <strong>Tratada por ${escapeHtml(item.treatedBy || 'Advogado')}</strong>
             <span>${item.treatedAt ? formatDateTime(item.treatedAt) : 'Data registrada'}</span>
@@ -502,7 +503,7 @@ export function createPublicationsFeature({
       } else if (treatmentStatus === 'discarded') {
         treatmentInfo = `
         <div class="treatment-info-banner discarded">
-          <div class="treatment-info-icon">✕</div>
+          <div class="treatment-info-icon">${iconSvg('close')}</div>
           <div class="treatment-info-text">
             <strong>Descartada por ${escapeHtml(item.discardedBy || 'Advogado')}</strong>
             <span>${item.discardedAt ? formatDateTime(item.discardedAt) : 'Data registrada'}</span>
@@ -512,7 +513,7 @@ export function createPublicationsFeature({
       } else if (treatmentStatus === 'in_review') {
         treatmentInfo = `
         <div class="treatment-info-banner in-review">
-          <div class="treatment-info-icon">🔍</div>
+          <div class="treatment-info-icon">${iconSvg('search')}</div>
           <div class="treatment-info-text">
             <strong>Em análise por ${escapeHtml(item.treatmentStartedBy || 'Advogado')}</strong>
             <span>Iniciada em ${item.treatmentStartedAt ? formatDateTime(item.treatmentStartedAt) : 'Hoje'}</span>
@@ -524,7 +525,7 @@ export function createPublicationsFeature({
       const linkedTasks = (store.state.tasks || []).filter(task => linkedTaskIds.includes(task.id) || task.intimationId === item.id || task.sourceIntimationId === item.id);
       const linkedTasksHtml = linkedTasks.length > 0 ? `
         <div class="linked-tasks-card">
-          <div class="linked-tasks-header"><span>📋 Providência criada (${linkedTasks.length})</span></div>
+          <div class="linked-tasks-header"><span>${iconSvg('tasks')} Providência criada (${linkedTasks.length})</span></div>
           <div class="linked-tasks-list">
             ${linkedTasks.map(task => `
               <div class="linked-task-item">
@@ -541,25 +542,25 @@ export function createPublicationsFeature({
       let actions = '';
       if (treatmentStatus === 'untreated') {
         actions = `
-          <button type="button" class="button gold" data-detail-action="start-review" id="btnStartReview">▶ Iniciar análise</button>
-          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>
-          <button type="button" class="button ghost btn-success-action" data-detail-action="treat" id="btnMarkTreated">✓ Marcar como tratada</button>
-          <button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">Descartar</button>
+          <button type="button" class="button gold" data-detail-action="start-review" id="btnStartReview">${iconSvg('search')} Iniciar análise</button>
+          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')} Criar tarefa</button>
+          <button type="button" class="button ghost btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')} Marcar como tratada</button>
+          <button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')} Descartar</button>
           ${emailAction}`;
       } else if (treatmentStatus === 'in_review') {
         actions = `
-          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>
-          <button type="button" class="button gold btn-success-action" data-detail-action="treat" id="btnMarkTreated">✓ Marcar como tratada</button>
-          <button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">Descartar</button>
+          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')} Criar tarefa</button>
+          <button type="button" class="button gold btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')} Marcar como tratada</button>
+          <button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')} Descartar</button>
           ${emailAction}`;
       } else if (treatmentStatus === 'treated') {
         actions = `
-          <button type="button" class="button ghost" data-detail-action="reopen" id="btnReopenPublication">↩ Reabrir</button>
-          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">Criar tarefa</button>
+          <button type="button" class="button ghost" data-detail-action="reopen" id="btnReopenPublication">${iconSvg('reopen')} Reabrir</button>
+          <button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')} Criar tarefa</button>
           ${emailAction}`;
       } else if (treatmentStatus === 'discarded') {
         actions = `
-          <button type="button" class="button ghost" data-detail-action="restore" id="btnRestorePublication">↩ Restaurar</button>
+          <button type="button" class="button ghost" data-detail-action="restore" id="btnRestorePublication">${iconSvg('reopen')} Restaurar</button>
           ${emailAction}`;
       }
 
@@ -748,7 +749,7 @@ export function createPublicationsFeature({
     openPublicationsEmailModal() {
       currentEmailBulletin = null;
       const preview = byId('emailPreviewContainer');
-      if (preview) preview.innerHTML = '<div style="padding:24px;text-align:center;color:#64748b;">✦ Informe o destinatário e confirme o envio manual para gerar o boletim com dados canônicos do servidor.</div>';
+      if (preview) preview.innerHTML = `<div style="padding:24px;text-align:center;color:#64748b;">${iconSvg('info')} Informe o destinatário e confirme o envio manual para gerar o boletim com dados canônicos do servidor.</div>`;
       if (!getPresenter().openOverlay('publicationsEmailModalBackdrop', 'emailTargetAddress')) {
         byId('publicationsEmailModalBackdrop')?.classList.remove('hidden');
       }
@@ -785,7 +786,7 @@ export function createPublicationsFeature({
       } finally {
         if (sendButton) {
           sendButton.disabled = false;
-          sendButton.textContent = '🚀 Enviar E-mail via Servidor';
+          sendButton.innerHTML = `${iconSvg('send')} Enviar E-mail via Servidor`;
         }
       }
     },
