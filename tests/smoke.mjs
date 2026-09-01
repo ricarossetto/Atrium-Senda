@@ -183,7 +183,7 @@ try {
   await page.locator('#portalTotpCode').fill(generateTotp(totpSecret));
   await page.locator('#portalTotpForm button[type="submit"]').click();
   await page.getByText('QR validado. O segundo fator desse portal está ativo.', { exact: true }).waitFor();
-  await page.locator('#portalCoverageList', { hasText: '2FA vinculado e verificado' }).waitFor();
+  await page.locator('#portalCoverageList', { hasText: /2FA protegido|2FA vinculado e verificado/ }).waitFor();
   await capture('judicial-setup');
   await page.locator('#judicialSetupClose').click();
 

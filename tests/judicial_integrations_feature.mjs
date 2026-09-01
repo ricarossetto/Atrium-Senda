@@ -21,14 +21,14 @@ assert.match(portalSource, /refreshJudicialStatus\(showError = false\) \{ return
 assert.match(portalSource, /saveCertificate\(event\) \{ return getJudicialIntegrationsFeature\(\)\.saveCertificate\(event\); \}/);
 assert.doesNotMatch(portalSource, /byId\('certificateGuideButton'\)|getElementById\('certificateGuideButton'\)/);
 assert.match(portalHtml, /id="savePortalCoverageButton"/);
-assert.doesNotMatch(moduleSource, /savePortalCoverageButton/);
+assert.match(moduleSource, /savePortalCoverageButton/);
 assert.doesNotMatch(portalHtml, /id="launchPortalLoginButton"/);
 assert.match(moduleSource, /launchPortalLoginButton/);
 
 const listenerIds = [
   'certificateGuideButton', 'judicialSetupClose', 'judicialSetupBackdrop', 'certificateFileInput',
   'certificateSetupForm', 'portalQrInput', 'portalTotpForm', 'removePortalTotpButton',
-  'resetJudicialConnectionsButton', 'syncJudicialNowButton', 'portalCoverageList'
+  'resetJudicialConnectionsButton', 'savePortalCoverageButton', 'syncJudicialNowButton', 'portalCoverageList'
 ];
 const listenerCounts = new Map();
 const listenerElements = new Map(listenerIds.map(id => [id, {

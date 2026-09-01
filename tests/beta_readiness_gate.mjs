@@ -59,17 +59,16 @@ assert.match(documents.readiness, /um [uú]nico App, Store e backend/i);
 assert.doesNotMatch(documents.readiness, /final production ready|produ[cç][aã]o certificada/i);
 
 const roadmapOrder = [
-  '## NEXT — Iconography & Visual Language Polish',
-  '## AFTER — Global Visual Polish',
-  '## THEN — Managed Judicial Connectivity'
+  '## NOW — Managed Judicial Connectivity',
+  '## NEXT — Canonical Product Specifications',
+  '## AFTER — Product Maturity / Document Intelligence'
 ].map(heading => documents.roadmap.indexOf(heading));
-assert.ok(roadmapOrder.every(index => index >= 0), 'O roadmap deve conter a sequência visual e judicial futura completa.');
-assert.ok(roadmapOrder[0] < roadmapOrder[1] && roadmapOrder[1] < roadmapOrder[2], 'A ordem NEXT → AFTER → THEN deve ser preservada.');
+assert.ok(roadmapOrder.every(index => index >= 0), 'O roadmap deve conter a conectividade judicial atual e a sequência futura do produto.');
+assert.ok(roadmapOrder[0] < roadmapOrder[1] && roadmapOrder[1] < roadmapOrder[2], 'A ordem NOW → NEXT → AFTER deve ser preservada.');
 assert.match(documents.roadmap, /Migra[cç][aã]o UI V2 conclu[ií]da nas 17 views can[oô]nicas/i);
-assert.match(documents.roadmap, /Esta capacidade est[aá] apenas planejada; n[aã]o foi implementada pelo Gate 22/i);
-assert.match(documents.roadmap, /read-only por padr[aã]o/i);
-assert.match(documents.roadmap, /(?:sem|n[aã]o realizar) ci[eê]ncia, assinatura ou protocolo autom[aá]tico/i);
-assert.doesNotMatch(documents.roadmap, /Managed Judicial Connectivity[^\n]*(?:entregue|implementada|conclu[ií]da)/i);
+assert.match(documents.roadmap, /cobertura read-only/i);
+assert.match(documents.decisions, /ci[eê]ncia, assinatura, peti[cç][aã]o, protocolo/i);
+assert.match(documents.decisions, /pausam retries e exigem reconex[aã]o humana/i);
 
 assert.match(documents.masterPlan, /arquitetura frontend foi modularizada/i);
 assert.match(documents.masterPlan, /composition shell/i);
@@ -79,6 +78,6 @@ assert.match(documents.decisions, /Planejamento hist[oó]rico da UI V2 em modo d
 assert.match(allDocs, /JSON cifrado/i);
 assert.match(allDocs, /SQLite [eé] possibilidade futura|SQLite permanece uma possibilidade/i);
 assert.doesNotMatch(allDocs, /SQLite\s+(?:est[aá]|foi|[eé])\s+(?:implementad[oa]|o padr[aã]o atual)/i);
-assert.doesNotMatch(currentStatusDocs, /Managed Judicial Connectivity[^\n]*(?:j[aá] implementada|entregue|conclu[ií]da)/i);
+assert.match(documents.decisions, /Conectividade judicial gerenciada e estritamente read-only/i);
 
 console.log('✓ Readiness documental aprovado: UI V2 concluída/default, Classic fallback, mesma autoridade e roadmap futuro supervisionado.');

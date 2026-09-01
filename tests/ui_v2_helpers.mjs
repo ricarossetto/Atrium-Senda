@@ -481,10 +481,18 @@ export const UI_V2_JUDICIAL_STATUS = Object.freeze({
   pjeOffice: { available: true },
   interactiveCollectorRunning: false,
   portals: [
-    { id: 'tj-sintetico', name: 'Tribunal de Justiça Sintético', group: 'Justiça Estadual', enabled: true, supportsTotp: true, totpConfigured: true, system: 'PJe', automationLevel: 'stable' },
-    { id: 'trf-sintetico', name: 'Tribunal Regional Sintético', group: 'Justiça Federal', enabled: true, supportsTotp: true, totpConfigured: false, system: 'eproc', automationLevel: 'experimental' },
-    { id: 'tst-sintetico', name: 'Tribunal Superior Sintético', group: 'Tribunais superiores', enabled: false, supportsTotp: false, certificateMode: 'windows', automationLevel: 'stable' }
-  ]
+    { id: 'tj-sintetico', name: 'Tribunal de Justiça Sintético', group: 'Justiça Estadual', enabled: true, supportsTotp: true, totpConfigured: true, system: 'PJe', automationLevel: 'stable', managed: { connectivityState: 'connected', verification: 'verified' } },
+    { id: 'trf-sintetico', name: 'Tribunal Regional Sintético', group: 'Justiça Federal', enabled: true, supportsTotp: true, totpConfigured: false, system: 'eproc', automationLevel: 'experimental', managed: { connectivityState: 'action_required', verification: 'experimental' } },
+    { id: 'tst-sintetico', name: 'Tribunal Superior Sintético', group: 'Tribunais superiores', enabled: false, supportsTotp: false, certificateMode: 'windows', automationLevel: 'stable', managed: { connectivityState: 'not_configured', verification: 'not_verified' } }
+  ],
+  managedCoverage: [
+    { id: 'djen-cnj', name: 'DJEN / Comunica PJe', system: 'Comunica PJe', authStrategy: 'public', verification: 'verified', configured: true, connectivityState: 'connected', lastSuccessfulSyncAt: '2026-09-01T09:45:00.000Z', lastAttemptAt: '2026-09-01T09:45:00.000Z', nextRefreshAt: '2026-09-01T10:15:00.000Z', lastError: null, humanAction: null, readOnly: true },
+    { id: 'datajud-cnj', name: 'DataJud / CNJ', system: 'API pública', authStrategy: 'public', verification: 'verified', configured: true, connectivityState: 'connected', lastSuccessfulSyncAt: '2026-09-01T09:46:00.000Z', lastAttemptAt: '2026-09-01T09:46:00.000Z', nextRefreshAt: '2026-09-01T10:16:00.000Z', lastError: null, humanAction: null, readOnly: true },
+    { id: 'tj-sintetico', name: 'Tribunal de Justiça Sintético', system: 'PJe', authStrategy: 'pjeoffice-local', verification: 'verified', configured: true, connectivityState: 'connected', lastSuccessfulSyncAt: '2026-09-01T09:42:00.000Z', lastAttemptAt: '2026-09-01T09:42:00.000Z', nextRefreshAt: '2026-09-01T10:12:00.000Z', lastError: null, humanAction: null, readOnly: true },
+    { id: 'trf-sintetico', name: 'Tribunal Regional Sintético', system: 'eproc', authStrategy: 'username-password-plus-totp', verification: 'experimental', configured: true, connectivityState: 'action_required', lastSuccessfulSyncAt: '2026-08-31T18:10:00.000Z', lastAttemptAt: '2026-09-01T09:30:00.000Z', nextRefreshAt: null, lastError: null, humanAction: 'Conclua o segundo fator no portal sintético.', readOnly: true },
+    { id: 'tst-sintetico', name: 'Tribunal Superior Sintético', system: 'Portal judicial', authStrategy: 'windows-store', verification: 'not_verified', configured: false, connectivityState: 'not_configured', lastSuccessfulSyncAt: null, lastAttemptAt: null, nextRefreshAt: null, lastError: null, humanAction: null, readOnly: true }
+  ],
+  managedPolicy: { readOnly: true, cadence: 'conservative-with-backoff', humanSupervision: true, forbiddenAutomaticActions: ['science', 'signature', 'petition', 'protocol', 'acknowledgment', 'deadline-confirmation'] }
 });
 
 export async function prepareUiV2JudicialFixture(page, status = UI_V2_JUDICIAL_STATUS) {
@@ -507,7 +515,11 @@ export async function prepareUiV2JudicialFixture(page, status = UI_V2_JUDICIAL_S
     window.Atrium.App.switchView('integrations');
   }, status);
   await page.locator('#view-integrations.active').waitFor();
-  await page.locator('#certificateIntegrationStatus').filter({ hasText: status.certificate.valid ? 'A1 Operacional' : 'Configuração necessária' }).waitFor();
+  const hasManagedAction = status.managedCoverage?.some(item => item.connectivityState === 'action_required');
+  const expectedStatus = hasManagedAction
+    ? /ação/
+    : status.certificate.valid ? /A1 Operacional|fonte/ : 'Configuração necessária';
+  await page.locator('#certificateIntegrationStatus').filter({ hasText: expectedStatus }).waitFor();
   return status;
 }
 

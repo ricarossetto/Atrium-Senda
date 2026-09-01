@@ -22,7 +22,7 @@ assert.doesNotMatch(featureSource, /\bStore\b|store\.state|localStorage|sessionS
 assert.doesNotMatch(presenterSource, /\bStore\b|store\.state|localStorage|sessionStorage|\bfetch\s*\(|secureFetch|setTimeout|setInterval|passphrase|pfxBase64|portalTotpSecret|qrData|\baudit\s*\(/i);
 
 const listeners = new Map();
-const ids = ['certificateGuideButton', 'judicialSetupClose', 'judicialSetupBackdrop', 'certificateFileInput', 'certificateSetupForm', 'portalQrInput', 'portalTotpForm', 'removePortalTotpButton', 'resetJudicialConnectionsButton', 'syncJudicialNowButton', 'portalCoverageList'];
+const ids = ['certificateGuideButton', 'judicialSetupClose', 'judicialSetupBackdrop', 'certificateFileInput', 'certificateSetupForm', 'portalQrInput', 'portalTotpForm', 'removePortalTotpButton', 'resetJudicialConnectionsButton', 'savePortalCoverageButton', 'syncJudicialNowButton', 'portalCoverageList'];
 const fakeElements = new Map(ids.map(id => [id, {
   id,
   addEventListener(type, handler) { listeners.set(`${id}:${type}`, [...(listeners.get(`${id}:${type}`) || []), handler]); },
@@ -40,7 +40,7 @@ assert.equal(unitFeature.init(), true);
 assert.equal(unitFeature.init(), false);
 assert.equal(requests, 0, 'init não pode consultar integração judicial.');
 assert.equal(presentationInit, 1);
-for (const key of ['certificateGuideButton:click', 'judicialSetupClose:click', 'judicialSetupBackdrop:click', 'certificateFileInput:change', 'certificateSetupForm:submit', 'portalQrInput:change', 'portalTotpForm:submit', 'removePortalTotpButton:click', 'resetJudicialConnectionsButton:click', 'syncJudicialNowButton:click', 'portalCoverageList:click']) {
+for (const key of ['certificateGuideButton:click', 'judicialSetupClose:click', 'judicialSetupBackdrop:click', 'certificateFileInput:change', 'certificateSetupForm:submit', 'portalQrInput:change', 'portalTotpForm:submit', 'removePortalTotpButton:click', 'resetJudicialConnectionsButton:click', 'savePortalCoverageButton:click', 'syncJudicialNowButton:click', 'portalCoverageList:click']) {
   assert.equal(listeners.get(key)?.length, 1, `${key} deve possuir um listener.`);
 }
 
@@ -58,7 +58,7 @@ try {
 
   assert.equal(await page.locator('.v2-integrations-header h2').textContent(), 'Integrações seguras');
   assert.equal(await page.locator('.judicial-integration-card').count(), 1);
-  assert.match(await page.locator('#certificateIntegrationStatus').textContent(), /A1 Operacional · 1 2FA/);
+  assert.match(await page.locator('#certificateIntegrationStatus').textContent(), /1 ação/);
   assert.match(await page.locator('#certificateIntegrationDetail').textContent(), /Titular Judicial Sintética/);
   await page.locator('#certificateGuideButton').click();
   await page.locator('#judicialSetupBackdrop:not(.hidden)').waitFor();
@@ -66,18 +66,21 @@ try {
   assert.equal(await page.locator('#setupPjeOfficeStatus').textContent(), 'Aplicativo oficial disponível');
   assert.equal(await page.locator('#setupTotpStatus').textContent(), '1 portal(is) vinculado(s)');
   assert.equal(await page.locator('#a1ActiveCard').isVisible(), true);
+  assert.equal(await page.locator('#managedCoverageList .managed-coverage-row').count(), 5);
+  assert.match(await page.locator('#managedCoverageSummary').textContent(), /3 conectada\(s\).*1 requer/);
+  assert.match(await page.locator('#managedReadOnlyNotice').textContent(), /nunca pratica ciência, assinatura, petição, protocolo/i);
   assert.match(await page.locator('#a1HolderName').textContent(), /Titular Judicial Sintética/);
   assert.match(await page.locator('#a1DocAndIssuer').textContent(), /\*\*\*\.123\.\*\*\*-\*\*/);
   assert.equal(await page.locator('.portal-coverage-group').count(), 3);
   assert.equal(await page.locator('[data-portal-enabled]').count(), 3);
   assert.equal(await page.locator('[data-configure-totp]').count(), 2);
   assert.deepEqual(await page.locator('.portal-coverage-row small').allTextContents(), [
-    '2FA vinculado e verificado',
-    'Cobertura experimental · primeiro acesso acompanhado',
-    'Sessão com certificado, sem TOTP local'
+    'Conectado · 2FA protegido · verificado',
+    'Ação necessária · 2FA não vinculado · experimental',
+    'Não configurado · sem TOTP local · não verificado em portal real'
   ]);
   assert.equal(await page.locator('#totpPortalSelect option').count(), 3);
-  assert.match(await page.locator('.judicial-setup-footer .v2-only').allTextContents().then(items => items.join(' ')), /conferência profissional/);
+  assert.match(await page.locator('.judicial-setup-footer .v2-only').allTextContents().then(items => items.join(' ')), /cadência, backoff e pausas para ação humana/);
 
   const after = await page.evaluate(() => ({
     state: JSON.stringify(window.Atrium.Store.state),
