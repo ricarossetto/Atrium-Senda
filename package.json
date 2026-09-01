@@ -25,6 +25,7 @@
     "test:collector": "node tests/collector.mjs",
     "test:judicial-discovery": "node tests/judicial_discovery.mjs",
     "test:managed-judicial": "node tests/managed_judicial_connectivity.mjs && node tests/judicial_integrations_feature.mjs && node tests/ui_v2_judicial_integrations.mjs && node tests/ui_v2_judicial_integrations_accessibility.mjs",
+    "test:spec-contracts": "node tests/spec_contracts.mjs",
     "test:email": "node tests/email_service.mjs",
     "test:backup-restore": "node tests/backup_restore.mjs",
     "test:visual": "node tests/visual_light_foundation.mjs",

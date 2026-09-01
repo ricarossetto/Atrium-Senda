@@ -1,5 +1,11 @@
 # ATRIUM — Registro de decisões arquiteturais
 
+## 2026-09-01 — Especificações canônicas antes da maturidade documental
+
+- **Decisão**: criar `specs/` como índice curto de contratos de produto, sempre ligado à autoridade executável e aos testes relevantes.
+- **Regra agentiva**: mudanças arquiteturais, de negócio, persistência, segurança ou integração exigem leitura prévia das specs afetadas; itens `FUTURE` não podem ser apresentados como capacidade atual.
+- **Limite atual de Documentos**: catálogo, gerador, preview, copy e Markdown são CURRENT; storage, upload, lixeira, owner e naming engine permanecem FUTURE até subgate próprio.
+
 ## 2026-09-01 — Conectividade judicial gerenciada e estritamente read-only
 
 - **Decisão**: reutilizar cofre, adapters, sessões persistentes e coletor existentes sob uma autoridade de cobertura por usuário, identidade e portal, com estratégia explícita, estado persistido, cadência conservadora e backoff.

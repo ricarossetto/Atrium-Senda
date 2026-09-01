@@ -18,7 +18,7 @@ Em caso de conflito entre uma tarefa e estas regras, pare e peça orientação e
 
 ## 2. Git, branches e checkpoints
 
-- A branch normal de desenvolvimento é `beta-hardening`.
+- A branch normal de desenvolvimento pós-migração é `ui-v2`.
 - Nunca altere `main` sem instrução explícita.
 - Nunca faça merge automático para `main`.
 - Nunca mova a branch `checkpoint-pre-modularization`.
@@ -33,7 +33,7 @@ Antes de iniciar feature, refactor ou mudança relevante, confirme:
 
 - working tree limpo;
 - branch correta;
-- HEAD local sincronizado com `origin/beta-hardening`;
+- HEAD local sincronizado com `origin/ui-v2`;
 - CI completo do commit anterior em estado verde.
 
 Se o CI estiver vermelho, pare e diagnostique antes de iniciar trabalho dependente.
@@ -248,7 +248,7 @@ O fluxo normal é:
 alteração
 → testes locais
 → commit
-→ push em beta-hardening
+→ push em ui-v2
 → GitHub Actions completo
 → próxima fase
 ```
@@ -256,6 +256,13 @@ alteração
 Não inicie a próxima fase antes do workflow anterior terminar com sucesso.
 
 ## 24. Documentação e contexto
+
+Antes de qualquer mudança arquitetural, de regra de negócio, persistência, segurança ou integração, leia o índice `specs/README.md` e todas as especificações canônicas relevantes ao domínio alterado.
+
+- A especificação descreve o contrato atual; o código e os testes apontados nela são a autoridade executável.
+- Não implemente comportamento marcado como `FUTURE` sem autorização explícita e uma missão própria.
+- Se código, teste e spec divergirem, não escolha silenciosamente um deles: audite a autoridade canônica, corrija a contradição no mesmo escopo ou pare e reporte.
+- Mudança funcional aprovada deve atualizar a spec relevante e seu teste de contrato.
 
 Quando relevantes para a missão, consulte:
 
