@@ -56,6 +56,7 @@ try {
   assert.equal(await page.locator('#configurationTabs [data-config-section]').count(), 12);
   assert.equal(await page.locator('#openOfficeIdentityFromConfiguration').count(), 1);
   assert.equal(await page.locator('#uiModeControl').count(), 1);
+  assert.equal(await page.locator('#uiModeControl').isHidden(), true);
   assert.equal(await page.locator('.configuration-metric').count(), 5);
   assert.equal(await page.locator('#configurationList .configuration-row').count(), 2);
   assert.equal(await page.locator('#configurationList .config-row-open').count(), 2);

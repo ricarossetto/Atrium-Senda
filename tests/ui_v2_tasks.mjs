@@ -125,8 +125,8 @@ try {
     assert.deepEqual(pageErrors, [], `Pageerrors: ${pageErrors.join(' | ')}`);
 
     await page.evaluate(() => window.Atrium.App.switchView('configuration'));
-    await page.locator('#view-configuration.active #uiModeControl').waitFor();
-    await page.locator('[data-ui-mode="classic"]').click();
+    await page.locator('#view-configuration.active #uiModeControl').waitFor({ state: 'attached' });
+    await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
     await page.locator('html[data-ui="classic"]').waitFor();
     await page.evaluate(() => window.Atrium.App.switchView('kanban'));
     assert.equal(await page.locator('.v2-task-heading').isVisible(), false);

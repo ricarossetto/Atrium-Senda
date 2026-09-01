@@ -108,7 +108,6 @@ assert.deepEqual(
   [...new Set(emojiHits.map(hit => hit.relativePath))].sort(),
   [
     'js/components/global-search.js',
-    'js/components/onboarding.js',
     'js/features/configuration.js',
     'js/features/email-integration.js',
     'js/features/importer.js',
@@ -118,7 +117,7 @@ assert.deepEqual(
   ],
   'A allowlist de emoji deve permanecer limitada aos fallbacks Classic aprovados.'
 );
-assert.equal(emojiHits.length, 31, 'Somente os 31 emojis Classic explicitamente preservados podem permanecer.');
+assert.equal(emojiHits.length, 30, 'Somente os 30 emojis Classic explicitamente preservados podem permanecer.');
 assert.match(read('js/components/global-search.js'), /classic-search-icon/);
 const importerPresenter = read('js/views/ui-v2/importer-presenter.js');
 assert.match(importerPresenter, /icon:\s*'processes'/);

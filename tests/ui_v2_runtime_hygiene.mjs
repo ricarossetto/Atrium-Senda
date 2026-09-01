@@ -41,9 +41,9 @@ try {
 
     await switchUiV2View(page, 'configuration');
     for (let cycle = 0; cycle < 3; cycle++) {
-      await page.locator('[data-ui-mode="classic"]').click();
+      await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
       await page.locator('html[data-ui="classic"]').waitFor({ state: 'attached' });
-      await page.locator('[data-ui-mode="v2"]').click();
+      await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
       await page.locator('html[data-ui="v2"]').waitFor({ state: 'attached' });
     }
 

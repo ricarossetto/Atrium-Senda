@@ -156,8 +156,8 @@ try {
     assert.ok(v2Heading && v2Heading.width > 0, 'A hierarquia V2 de Processos deve estar visível.'); assertions++;
 
     await page.evaluate(() => window.Atrium.App.switchView('configuration'));
-    await page.locator('#view-configuration.active #uiModeControl').waitFor();
-    await page.locator('[data-ui-mode="classic"]').click();
+    await page.locator('#view-configuration.active #uiModeControl').waitFor({ state: 'attached' });
+    await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
     await page.locator('html[data-ui="classic"]').waitFor();
     await page.evaluate(() => window.Atrium.App.switchView('processes'));
     assert.equal(await page.locator('.v2-process-heading').isVisible(), false); assertions++;
@@ -171,8 +171,8 @@ try {
     const classicGrayHash = recordScreenshot(classicGrayFile);
 
     await page.evaluate(() => window.Atrium.App.switchView('configuration'));
-    await page.locator('#view-configuration.active #uiModeControl').waitFor();
-    await page.locator('[data-ui-mode="v2"]').click();
+    await page.locator('#view-configuration.active #uiModeControl').waitFor({ state: 'attached' });
+    await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
     await page.locator('html[data-ui="v2"]').waitFor();
     await page.evaluate(() => window.Atrium.App.switchView('processes'));
     assert.equal(await page.locator('.v2-process-heading').isVisible(), true); assertions++;

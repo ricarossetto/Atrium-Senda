@@ -29,8 +29,9 @@ try {
   const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'light', probe: true });
   await page.locator('#systemStatusBar[data-status="saved"], #systemStatusBar[data-status="ready"]').waitFor();
   await page.evaluate(() => window.Atrium.App.switchView('configuration'));
-  await page.locator('#view-configuration.active #uiModeControl').waitFor();
-  await page.locator('[data-ui-mode="classic"]').click();
+  await page.locator('#view-configuration.active #uiModeControl').waitFor({ state: 'attached' });
+  assert.equal(await page.locator('#uiModeControl').isHidden(), true, 'O seletor Classic não pode ser exposto ao usuário.');
+  await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
   await page.locator('html[data-ui="classic"]').waitFor({ state: 'attached' });
 
   const baseline = await page.evaluate(() => {
@@ -54,11 +55,11 @@ try {
     };
   });
 
-  await page.locator('[data-ui-mode="v2"]').click();
+  await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
   await page.locator('html[data-ui="v2"]').waitFor({ state: 'attached' });
-  await page.locator('[data-ui-mode="classic"]').click();
+  await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
   await page.locator('html[data-ui="classic"]').waitFor({ state: 'attached' });
-  await page.locator('[data-ui-mode="v2"]').click();
+  await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
   await page.locator('html[data-ui="v2"]').waitFor({ state: 'attached' });
 
   const result = await page.evaluate(() => {

@@ -80,7 +80,7 @@ try {
   await assertSlide(1, 'Anterior deve voltar um slide.');
   await page.locator('#tourDots [data-slide-target="5"]').click();
   await assertSlide(5, 'Indicador deve navegar diretamente ao slide escolhido.');
-  assert.equal(await page.locator('#tourNextButton').textContent(), '🚀 Começar a usar o Atrium', 'Último passo deve preservar o texto de conclusão.');
+  assert.equal(await page.locator('#tourNextButton').textContent(), 'Começar a usar o Atrium', 'Último passo deve preservar o texto de conclusão sem emoji decorativo.');
 
   const finishSave = waitForStateSave();
   await page.locator('#tourNextButton').click();

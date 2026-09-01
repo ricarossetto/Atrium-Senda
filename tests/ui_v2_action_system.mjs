@@ -49,13 +49,14 @@ try {
   assert.equal(await page.locator('.topbar #uiModeControl').count(), 0);
   assert.equal(await page.locator('#view-configuration #uiModeControl').count(), 1);
   assert.deepEqual(await page.locator('#uiModeControl [data-ui-mode]').allTextContents(), ['Interface V2', 'Layout clássico']);
+  assert.equal(await page.locator('#uiModeControl').isHidden(), true, 'Classic deve permanecer apenas como compatibilidade interna invisível.');
   await page.evaluate(() => window.Atrium.App.switchView('configuration'));
   await page.locator('#view-configuration.active').waitFor();
   const baseline = await page.evaluate(() => ({ state: JSON.stringify(window.Atrium.Store.state), revision: window.Atrium.Store.revision, requests: window.__uiV2RuntimeProbe.mutationRequests.length }));
-  await page.getByRole('button', { name: 'Layout clássico' }).click();
+  await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
   assert.equal(await page.evaluate(() => document.documentElement.dataset.ui), 'classic');
   assert.equal(await page.evaluate(() => localStorage.getItem('atrium:ui:mode')), 'classic');
-  await page.getByRole('button', { name: 'Interface V2' }).click();
+  await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
   assert.equal(await page.evaluate(() => document.documentElement.dataset.ui), 'v2');
   const after = await page.evaluate(() => ({ state: JSON.stringify(window.Atrium.Store.state), revision: window.Atrium.Store.revision, requests: window.__uiV2RuntimeProbe.mutationRequests.length }));
   assert.deepEqual(after, baseline);

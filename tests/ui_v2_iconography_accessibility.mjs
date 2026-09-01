@@ -42,7 +42,7 @@ try {
 
     for (const [selector, name] of [
       ['#menuToggle', 'Abrir menu'], ['#sidebarToggleBtn', 'Recolher Menu'],
-      ['.notification-button', 'Ver intimações'], ['#dismissBanner', 'Fechar aviso'],
+      ['.notification-button', 'Abrir central de notificações'], ['#dismissBanner', 'Fechar aviso'],
       ['#modalClose', 'Fechar'], ['#processInspectorClose', 'Fechar detalhes do processo']
     ]) {
       const control = page.locator(selector).first();
