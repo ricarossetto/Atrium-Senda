@@ -2,6 +2,43 @@ import { chromium } from 'playwright';
 import { generateTotp } from '../lib/security.mjs';
 import { postJson, startTestServer } from './helpers.mjs';
 
+export const UI_V2_CANONICAL_VIEWS = Object.freeze([
+  'dashboard', 'processes', 'inbox', 'kanban', 'agenda', 'contacts', 'leads',
+  'financial', 'documents', 'assistant', 'prompts', 'monitoring', 'integrations',
+  'configuration', 'importer', 'audit', 'links'
+]);
+
+export const UI_V2_OVERLAY_SELECTORS = Object.freeze([
+  '#modalBackdrop:not(.hidden)', '#processInspectorBackdrop:not(.hidden)',
+  '#publicationInspectorBackdrop:not(.hidden)', '#taskInspectorBackdrop:not(.hidden)',
+  '#agendaInspectorBackdrop:not(.hidden)', '#contactInspectorBackdrop:not(.hidden)',
+  '#financialInspectorBackdrop:not(.hidden)', '#geminiKeyBackdrop:not(.hidden)'
+]);
+
+export async function switchUiV2View(page, view) {
+  await page.evaluate(selectedView => window.Atrium.App.switchView(selectedView), view);
+  await page.locator(`#view-${view}.active`).waitFor();
+  await page.waitForFunction(selectedView => {
+    const active = [...document.querySelectorAll('.view.active')];
+    return active.length === 1 && active[0]?.id === `view-${selectedView}`;
+  }, view);
+}
+
+export async function collectUiV2LayoutEvidence(page) {
+  return page.evaluate(overlaySelectors => {
+    const ids = [...document.querySelectorAll('[id]')].map(element => element.id);
+    const visibleOverlays = overlaySelectors.filter(selector => document.querySelector(selector)?.getClientRects().length);
+    return {
+      activeViews: [...document.querySelectorAll('.view.active')].map(element => element.id),
+      navItems: document.querySelectorAll('.nav-item[data-view]').length,
+      navGroups: document.querySelectorAll('nav[data-v2-nav-group]').length,
+      duplicateIds: ids.filter((id, index) => ids.indexOf(id) !== index),
+      globalOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
+      visibleOverlays
+    };
+  }, UI_V2_OVERLAY_SELECTORS);
+}
+
 export async function startUiV2Session({ viewport = { width: 1440, height: 900 } } = {}) {
   const server = await startTestServer();
   const browser = await chromium.launch({ headless: true });
