@@ -31,11 +31,11 @@ try {
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'processInspectorClose', 'O foco inicial deve entrar no inspector.');
     assert.equal(await page.locator('#appShell').getAttribute('inert'), '', 'A aplicação atrás do drawer deve ficar inerte.');
 
-    await page.locator('#processInspectorEdit').focus();
+    await page.locator('#processInspectorDelete').focus();
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'processInspectorClose', 'Tab no último controle deve retornar ao primeiro.');
     await page.keyboard.press('Shift+Tab');
-    assert.equal(await page.evaluate(() => document.activeElement?.id), 'processInspectorEdit', 'Shift+Tab no primeiro controle deve retornar ao último.');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'processInspectorDelete', 'Shift+Tab no primeiro controle deve retornar ao último.');
     await page.keyboard.press('Escape');
     await page.locator('#processInspectorBackdrop.hidden').waitFor({ state: 'attached' });
     assert.equal(await page.evaluate(() => document.activeElement?.dataset.processId), 'ui-v2-process-tjrs', 'Fechar deve devolver foco à linha de origem.');

@@ -67,7 +67,12 @@ try {
   assert.equal(await page.locator('#setupTotpStatus').textContent(), '1 portal(is) vinculado(s)');
   assert.equal(await page.locator('#a1ActiveCard').isVisible(), true);
   assert.equal(await page.locator('#managedCoverageList .managed-coverage-row').count(), 5);
-  assert.match(await page.locator('#managedCoverageSummary').textContent(), /3 conectada\(s\).*1 requer/);
+  assert.match(await page.locator('#managedCoverageSummary').textContent(), /2 fonte\(s\) pública\(s\) ativa\(s\).*1 portal\(is\) conectado\(s\).*1 requer/);
+  assert.equal(await page.locator('#managedCoverageList [data-coverage-kind="public"] .managed-coverage-row').count(), 2);
+  assert.equal(await page.locator('#managedCoverageList [data-coverage-kind="authenticated"] .managed-coverage-row').count(), 3);
+  assert.deepEqual(await page.locator('#managedCoverageList [data-coverage-kind="public"] .status-chip').allTextContents(), ['Ativo', 'Ativo']);
+  assert.deepEqual(await page.locator('#managedCoverageList [data-coverage-kind="public"] .managed-coverage-next > span').allTextContents(), ['API pública oficial', 'API pública oficial']);
+  assert.match(await page.locator('#managedCoverageList [data-coverage-kind="public"]').textContent(), /7 publicação.*3\/3 processo/s);
   assert.match(await page.locator('#managedReadOnlyNotice').textContent(), /nunca pratica ciência, assinatura, petição, protocolo/i);
   assert.match(await page.locator('#a1HolderName').textContent(), /Titular Judicial Sintética/);
   assert.match(await page.locator('#a1DocAndIssuer').textContent(), /\*\*\*\.123\.\*\*\*-\*\*/);

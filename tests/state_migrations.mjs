@@ -256,6 +256,27 @@ test('applySafeDefaults does NOT replace existing terms', () => {
   assert.equal(result.terms[0].name, 'Custom Term', 'should preserve custom term');
 });
 
+test('applySafeDefaults normalizes legacy notification responsibles defensively', () => {
+  const state = {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    configuration: {
+      notificationAssignments: [
+        { event: 'String', responsibles: ' Pessoa A, Pessoa B; Pessoa C ' },
+        { event: 'Array', responsibles: [' Pessoa D ', null, ''] },
+        { event: 'Null', responsibles: null },
+        { event: 'Malformed', responsibles: { unexpected: true } }
+      ]
+    }
+  };
+  const result = applySafeDefaults(state);
+  assert.deepEqual(result.configuration.notificationAssignments.map(item => item.responsibles), [
+    ['Pessoa A', 'Pessoa B', 'Pessoa C'],
+    ['Pessoa D'],
+    [],
+    []
+  ]);
+});
+
 // ─────────────────────────────────────────
 // TEST 9: Migration history
 // ─────────────────────────────────────────

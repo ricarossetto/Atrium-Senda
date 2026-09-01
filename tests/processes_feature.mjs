@@ -152,6 +152,49 @@ assert.equal(rejectedButton.disabled, false, 'Botão TJRS deve ser restaurado ap
 assert.deepEqual(rejectedExternalOpens, [], 'Rejeição TJRS não pode navegar.');
 assert.deepEqual(rejectedToasts.at(-1), { message: 'Falha na consulta ao tribunal: Rede TJRS indisponível', type: 'error' });
 
+const disposableNumber = '5009999-99.2026.8.21.0001';
+const disposableProcess = { id: 'process-disposable', externalId: 'datajud:process-disposable', number: disposableNumber, client: 'Cliente Descartável', source: 'DataJud / CNJ', movements: [{ code: '1', name: 'Movimento', at: '2026-09-01T00:00:00.000Z' }] };
+const lifecycleStore = {
+  state: {
+    processes: [structuredClone(disposableProcess)],
+    tasks: [{ id: 'task-linked', process: disposableNumber, title: 'Tarefa preservada' }],
+    intimations: [{ id: 'int-linked', process: disposableNumber, text: 'Publicação preservada' }],
+    documents: [{ id: 'doc-linked', ownerType: 'process', ownerId: disposableProcess.id, name: 'Documento preservado', secretToken: 'nao-exportar' }],
+    settings: {}, audit: [], configuration: { actionTypes: [], actionGroups: [] }
+  },
+  audit(action, detail) { this.state.audit.unshift({ action, detail }); },
+  async flush() { return true; },
+  upsert(collection, record) { this.state[collection].unshift(record); }
+};
+let exportedDossier;
+const lifecycleFeature = createProcessesFeature({
+  store: lifecycleStore,
+  documentRef: { getElementById: () => null, querySelectorAll: () => [], documentElement: { dataset: { ui: 'v2' } } },
+  normalizeText: value => String(value || '').toLowerCase(), escapeHtml: String, formatDate: String, formatMinutes: String,
+  totalTimeMinutes: () => 0, sortRecords: records => records, updateTableSortHeaders: () => {}, openModal: () => {},
+  showToast: () => {}, secureFetch: async () => ({ json: async () => ({}) }), getLinkedTasks: () => [], getLinkedIntimations: () => [], isTerminalStatus: () => false,
+  exportJson: dossier => { exportedDossier = dossier; }, confirmProcessDeletion: () => disposableNumber, requestProcessReenable: () => disposableNumber
+});
+lifecycleFeature.render = () => [];
+const dossier = lifecycleFeature.exportProcess(disposableProcess);
+assert.equal(dossier.scope.processNumber, disposableNumber);
+assert.equal(dossier.linked.tasks.length, 1);
+assert.equal(dossier.linked.intimations.length, 1);
+assert.equal(dossier.linked.documents.length, 1);
+assert.equal(JSON.stringify(exportedDossier).includes('nao-exportar'), false, 'Dossiê não pode exportar segredo presente em metadata desconhecida.');
+assert.equal(await lifecycleFeature.deleteProcess(disposableProcess), true);
+assert.equal(lifecycleStore.state.processes.length, 0);
+assert.equal(lifecycleStore.state.tasks[0].process, '');
+assert.equal(lifecycleStore.state.tasks[0].unlinkedProcessNumber, disposableNumber);
+assert.equal(lifecycleStore.state.intimations[0].process, '');
+assert.equal(lifecycleStore.state.documents[0].ownerId, undefined);
+assert.equal(lifecycleStore.state.documents[0].ownerType, undefined);
+assert.equal(lifecycleStore.state.settings.processDiscoverySuppressions[0].cnj, disposableNumber.replace(/\D/g, ''));
+assert.equal(lifecycleFeature.upsertExternalProcess(disposableProcess), null, 'Tombstone deve impedir ressurreição automática do processo excluído.');
+assert.equal(await lifecycleFeature.reenableProcessDiscovery(disposableNumber), true);
+assert.equal(lifecycleStore.state.settings.processDiscoverySuppressions.length, 0);
+assert.ok(lifecycleFeature.upsertExternalProcess(disposableProcess), 'Processo pode voltar somente depois de reativação explícita.');
+
 const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });
 

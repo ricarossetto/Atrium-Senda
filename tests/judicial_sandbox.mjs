@@ -12,6 +12,18 @@ import { runTotpSandbox, parseTotpUri, parseGoogleAuthMigration, TOTP_ERROR_CODE
 
 import { randomBytes, X509Certificate } from 'node:crypto';
 
+function windowsPowerShellEnvironment() {
+  if (process.platform !== 'win32') return process.env;
+  return {
+    ...process.env,
+    PSModulePath: [
+      path.join(process.env.USERPROFILE || '', 'Documents', 'WindowsPowerShell', 'Modules'),
+      path.join(process.env.ProgramFiles || 'C:\\Program Files', 'WindowsPowerShell', 'Modules'),
+      path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'Modules')
+    ].join(';')
+  };
+}
+
 function runCommand(cmd, args) {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
@@ -49,6 +61,7 @@ async function generateSyntheticCertCrossPlatform() {
     return new Promise((resolve, reject) => {
       const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', genSyntheticScript], {
         windowsHide: true,
+        env: windowsPowerShellEnvironment(),
         stdio: ['pipe', 'pipe', 'pipe']
       });
       let stdout = '';

@@ -116,6 +116,10 @@ assert.doesNotMatch(elements.configurationList.innerHTML, /Tarefa Sintética/);
 assert.match(feature.row('Seção Sintética', 3), /Seção da caixa de entrada[\s\S]*data-delete-config="3"/);
 assert.match(feature.row({ name: 'Objeto Sintético', phase: 'Execução', points: 17 }, 2), /Objeto Sintético[\s\S]*Execução[\s\S]*17 pontos/);
 assert.match(feature.row({ group: 'Equipe Sintética', monthlyClosings: null }, 4), /Meta não definida/);
+assert.match(feature.row({ event: 'Evento legado', responsibles: 'Pessoa A; Pessoa B' }, 5), /Pessoa A; Pessoa B/);
+assert.match(feature.row({ event: 'Evento sem responsáveis', responsibles: { malformed: true } }, 6), /Evento sem responsáveis[\s\S]*—/);
+feature.openModal({ event: 'Evento legado', responsibles: null }, 0);
+assert.equal(modalCalls.at(-1)[4].responsibles, '');
 
 await feature.loadAuthUsers();
 assert.equal(feature.users.length, 4);

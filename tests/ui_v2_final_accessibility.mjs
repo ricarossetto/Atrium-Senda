@@ -64,7 +64,7 @@ try {
     await page.keyboard.press('Enter');
     await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
     await page.waitForFunction(() => document.querySelector('#processInspector')?.contains(document.activeElement));
-    await page.locator('#processInspectorEdit').focus();
+    await page.locator('#processInspectorDelete').focus();
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'processInspectorClose');
     await page.keyboard.press('Escape');

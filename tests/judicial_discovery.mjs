@@ -215,6 +215,18 @@ assert.equal(ambiguousTarget.processes[0].client, undefined, 'sem vínculo inequ
 assert.equal(ambiguousTarget.processes[0].counterpart, undefined, 'sem polo representado inequívoco não deve haver contraparte escolhida');
 assert(ambiguousTarget.contacts.every(item => item.contactRole === 'outro'), 'partes ambíguas devem ficar pendentes de classificação');
 
+const selfPartyRecord = structuredClone(datajudRecord);
+selfPartyRecord.dadosBasicos.polo[0].partes[0].pessoa.nome = TERM_ALPHA.name;
+selfPartyRecord.dadosBasicos.polo[0].partes[0].advogados = [{ nome: TERM_ALPHA.name, inscricao: TERM_ALPHA.oabNumber, uf: TERM_ALPHA.oabUf }];
+const selfPartyTarget = { tasks: [], intimations: [], processes: [], contacts: [], terms: [TERM_ALPHA] };
+datajudInternals.mergeDatajudRecord(selfPartyRecord, PROCESS_NUMBER, 'tjrs', datajudPortal, { monitoredTerms: selfPartyTarget.terms }, selfPartyTarget);
+const selfContact = selfPartyTarget.contacts.find(item => item.name === TERM_ALPHA.name);
+assert.ok(selfContact, 'advogado monitorado que também é parte deve existir uma única vez como contato descoberto');
+assert.equal(selfContact.contactRole, 'outro', 'advogado monitorado que também é parte não pode ser inferido como cliente de si mesmo');
+assert.equal(selfContact.relationshipProvenance?.status, 'requires-human-confirmation');
+assert.equal(selfContact.relationshipProvenance?.reason, 'monitored-professional-is-party');
+assert.equal(selfPartyTarget.processes[0].client, undefined, 'caso de autor/advogado não pode corromper o cliente canônico');
+
 const frontendProcessStore = {
   state: { processes: [{ ...manualProcess, client: 'Cliente frontend manual', notes: 'Notas frontend manuais' }] }
 };
