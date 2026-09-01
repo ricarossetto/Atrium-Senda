@@ -44,7 +44,7 @@ Definir o contrato do gerador de minutas e do acervo documental vinculado a clie
 - Destruir bytes no soft delete; purgar sem confirmação explícita e sem registro de auditoria.
 - Enviar arquivo, página ou texto de cliente a OCR cloud/terceiro, iniciar OCR automático ou usar shell para montar comandos.
 - Exibir PDF original, HTML ou SVG como conteúdo ativo; confiar apenas em extensão/MIME; prometer conversão de Office ou qualquer formato arbitrário.
-- CURRENT: classificação automática, versionamento, assinatura, DOCX gerado ou edição colaborativa.
+- FUTURE: classificação automática, versionamento, assinatura, DOCX gerado ou edição colaborativa.
 
 ## State model
 

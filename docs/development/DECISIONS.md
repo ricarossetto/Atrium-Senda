@@ -1,5 +1,11 @@
 # ATRIUM — Registro de decisões arquiteturais
 
+## 2026-09-01 — Baseline de maturidade consolidado sem novo Gate
+
+- **Decisão**: encerrar a sequência 26D–26G com specs alinhadas ao comportamento executável e separar explicitamente CURRENT, EXPERIMENTAL e FUTURE.
+- **Segurança**: nenhuma licença, visibilidade, API pública, integração DAV de produção ou persistência canônica adicional é inferida pelo baseline.
+- **Próximo passo real**: revisão humana do produto e, somente depois, decisões comerciais ou novos subgates autorizados.
+
 ## 2026-09-01 — API interna evolui sem versionamento em massa
 
 - **Decisão**: preservar as rotas internas atuais e adicionar apenas metadata autenticada, headers de contrato e rejeição segura de prefixos desconhecidos.

@@ -1,19 +1,20 @@
 # ATRIUM — Roadmap pós-hardening técnico
 
-## NOW — Managed Judicial Connectivity
+## BASELINE ATUAL — CONCLUÍDO
 
-- Operar A1, PJeOffice, TOTP e sessões como estratégias independentes por portal.
-- Manter cobertura read-only com cadência conservadora, backoff, pausa por autenticação e reconexão supervisionada.
-- Expor somente estado e erros sanitizados; credenciais continuam cifradas no agente local.
-- Tratar portais autenticados sem evidência live como experimentais ou não verificados.
+- Managed Judicial Connectivity opera A1, PJeOffice, TOTP e sessões como estratégias independentes e read-only, com backoff e supervisão humana.
+- As especificações canônicas, maturidade documental, inteligência local, busca derivada, provider de storage, DAV experimental e foundation da API foram concluídas nos limites registrados.
+- Credenciais permanecem cifradas; conectividade sem evidência live continua experimental ou não verificada.
 
-## NEXT — Canonical Product Specifications
+## PRÓXIMO — VALIDAÇÃO HUMANA
 
-- Registrar contratos canônicos do produto para reduzir ambiguidades em mudanças futuras.
+- Executar teste humano guiado com advogados, registrar feedback local e aplicar correções finitas.
+- Validar empacotamento, atualização, backup e restauração no ambiente Windows alvo antes de release.
 
-## AFTER — Product Maturity / Document Intelligence
+## FUTURO — SOMENTE POR SUBGATE
 
-- Evoluir documentos, preview/OCR, busca, storage e adapters externos por subgates independentes e recuperáveis.
+- Backup portátil de blobs, providers remotos, protocolos DAV verificados e API pública/versionada exigem evidência, threat model e subgates independentes.
+- SQLite permanece hipótese de migração, não armazenamento atual.
 
 ## CHECKPOINTS VISUAIS CONCLUÍDOS
 
