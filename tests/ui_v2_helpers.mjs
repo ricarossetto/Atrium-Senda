@@ -65,7 +65,7 @@ export async function prepareUiV2Page(context, baseUrl, { theme = 'light', probe
     const nativeAddEventListener = EventTarget.prototype.addEventListener;
     EventTarget.prototype.addEventListener = function (type, listener, options) {
       const target = this === document ? 'document' : this === globalThis ? 'window' : this?.id;
-      if (target && ['document', 'window', 'uiModeControl', 'sidebarScrim', 'menuToggle'].includes(target)) {
+      if (target && ['document', 'window', 'uiModeControl', 'sidebarScrim', 'menuToggle', 'btnNewLink', 'customLinksGrid'].includes(target)) {
         const key = `${target}:${type}`;
         runtimeProbe.listeners[key] = (runtimeProbe.listeners[key] || 0) + 1;
       }
@@ -227,6 +227,82 @@ export async function prepareUiV2AuditFixture(page, { events = UI_V2_AUDIT_FIXTU
   await page.locator('#view-audit.active').waitFor();
   await page.waitForFunction(expected => document.querySelectorAll('#auditList tbody tr').length === expected, events.length);
   return structuredClone(events);
+}
+
+export const UI_V2_LINKS_FIXTURE = Object.freeze([
+  Object.freeze({
+    id: 'link-synthetic-office',
+    title: 'Pesquisa interna de legislação sintética',
+    url: 'https://www.example.test/referencias/legislacao',
+    category: 'Legislação',
+    description: 'Referência sintética adicionada pela equipe para consultas recorrentes.',
+    createdAt: '2026-08-31T08:00:00.000Z',
+    updatedAt: '2026-08-31T08:00:00.000Z'
+  }),
+  Object.freeze({
+    id: 'link-synthetic-long',
+    title: 'Repositório sintético com título deliberadamente extenso para validar contenção editorial e leitura responsiva',
+    url: 'https://www.reference-library.example.test/caminho/muito-longo/para/consulta',
+    category: 'Ferramentas IA & Pesquisa',
+    description: 'Descrição longa e inteiramente sintética para validar quebra de linha, domínio extenso e hierarquia sem ocultar conteúdo crítico do cartão personalizado.',
+    createdAt: '2026-08-31T09:00:00.000Z',
+    updatedAt: '2026-08-31T09:00:00.000Z'
+  }),
+  Object.freeze({
+    id: 'link-synthetic-invalid',
+    title: '<script>alert(1)</script>',
+    url: 'data:text/html,<img src=x onerror=alert(1)>',
+    category: 'Outros & <teste>',
+    description: '<img src=x onerror=alert(1)>',
+    createdAt: '2026-08-31T10:00:00.000Z',
+    updatedAt: '2026-08-31T10:00:00.000Z'
+  })
+]);
+
+export async function prepareUiV2LinksFixture(page, { links = UI_V2_LINKS_FIXTURE } = {}) {
+  await page.evaluate(fixture => {
+    const { App, Store } = window.Atrium;
+    const clone = value => structuredClone(value);
+    const originalToast = App.toast.bind(App);
+    const originalSave = Store.save.bind(Store);
+    const originalFlush = Store.flush.bind(Store);
+    const originalAudit = Store.audit.bind(Store);
+
+    Store.state.customLinks = clone(fixture);
+    Store.state.audit = [];
+    window.__uiV2LinksInitialState = clone(Store.state);
+    window.__uiV2LinksOps = [];
+    window.__uiV2LinksToasts = [];
+    window.__uiV2LinksFlushResult = true;
+
+    Store.save = () => { window.__uiV2LinksOps.push({ type: 'save' }); };
+    Store.flush = async () => {
+      window.__uiV2LinksOps.push({ type: 'flush' });
+      return window.__uiV2LinksFlushResult;
+    };
+    Store.audit = (action, detail, actor = 'Advogado') => {
+      const entry = { id: `audit-links-${Store.state.audit.length + 1}`, at: new Date().toISOString(), actor, action, detail };
+      Store.state.audit.unshift(entry);
+      window.__uiV2LinksOps.push({ type: 'audit', action, detail });
+      return entry;
+    };
+    App.toast = (message, type) => {
+      window.__uiV2LinksToasts.push({ message, type });
+      return originalToast(message, type);
+    };
+    window.__uiV2LinksRestore = () => {
+      Store.save = originalSave;
+      Store.flush = originalFlush;
+      Store.audit = originalAudit;
+    };
+
+    App.switchView('links');
+    App.renderLinks();
+  }, structuredClone(links));
+
+  await page.locator('#view-links.active').waitFor();
+  await page.waitForFunction(expected => document.querySelectorAll('#customLinksGrid .custom-link-card').length === expected, links.length);
+  return structuredClone(links);
 }
 
 export const UI_V2_CONFIGURATION_ADMIN_DIAGNOSTIC = Object.freeze({
