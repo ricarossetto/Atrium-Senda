@@ -244,7 +244,7 @@ try {
   await page.locator('#modalTitle', { hasText: 'Editar Atendimento' }).waitFor();
   await page.screenshot({ path: path.join(visualArtifactsDir, 'leads-modal-dark.png'), fullPage: true });
   assert.equal(await page.locator('#modalEyebrow').textContent(), 'CRM Jurídico');
-  assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)), ['client', 'serviceType', 'status', 'origin', 'estimatedFee', 'responsible', 'notes']);
+  assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)), ['client', 'contactId', 'serviceType', 'status', 'origin', 'estimatedFee', 'responsible', 'notes']);
   assert.deepEqual(await page.locator('#field-status option').evaluateAll(options => options.map(option => [option.value, option.textContent])), [
     ['novo', 'Novo Lead / Contato Inicial'], ['em_analise', 'Em Análise Documental'], ['proposta', 'Proposta de Honorários Enviada'], ['fechado', 'Contrato Fechado (Virou Cliente)'], ['declinado', 'Declinado / Não Viável']
   ]);

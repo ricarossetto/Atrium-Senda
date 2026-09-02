@@ -33,12 +33,12 @@ try {
 
     await page.locator('#sidebarToggleBtn').click();
     await page.locator('#sidebar.collapsed').waitFor();
-    const collision = await page.evaluate(() => {
-      const brand = document.querySelector('.brand')?.getBoundingClientRect();
+    const gap = await page.evaluate(() => {
+      const brand = document.querySelector('.brand-emblem')?.getBoundingClientRect();
       const toggle = document.getElementById('sidebarToggleBtn')?.getBoundingClientRect();
-      return brand && toggle ? Math.max(0, Math.min(brand.right, toggle.right) - Math.max(brand.left, toggle.left)) : 0;
+      return brand && toggle ? toggle.top - brand.bottom : 0;
     });
-    assert.ok(collision < 10, `Logo e controle recolhido não podem se sobrepor materialmente (${collision}px).`); assertions++;
+    assert.ok(gap >= 8, `Logo e controle recolhido precisam de separação visual (${gap}px).`); assertions++;
     await capture(page, '19-sidebar-collapsed.png');
 
     await page.evaluate(() => { window.Atrium.App.openGuidedTour(true); window.Atrium.App.showTourSlide(5); });
@@ -58,7 +58,11 @@ try {
     });
     await page.locator('#newLeadButton').click();
     assert.equal(await page.locator('#field-client').getAttribute('role'), 'combobox'); assertions++;
-    assert.equal(await page.locator('#field-client-suggestions option').count(), 1); assertions++;
+    await page.locator('#field-client').fill('Cliente Sintética');
+    await page.locator('.modal-combobox-listbox:not(.hidden)').waitFor();
+    assert.equal(await page.locator('[data-combobox-option]:visible').count(), 1); assertions++;
+    await page.locator('[data-combobox-option]:visible').click();
+    assert.equal(await page.locator('input[name="contactId"]').inputValue(), 'contact-review'); assertions++;
     await capture(page, '16-crm-new-opportunity.png');
     assert.deepEqual(pageErrors, []); assertions++;
   } finally { await crmContext.close(); }

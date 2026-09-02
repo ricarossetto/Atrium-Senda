@@ -22,13 +22,14 @@ assert.match(portalSource, /saveCertificate\(event\) \{ return getJudicialIntegr
 assert.doesNotMatch(portalSource, /byId\('certificateGuideButton'\)|getElementById\('certificateGuideButton'\)/);
 assert.match(portalHtml, /id="savePortalCoverageButton"/);
 assert.match(moduleSource, /savePortalCoverageButton/);
-assert.doesNotMatch(portalHtml, /id="launchPortalLoginButton"/);
+assert.match(portalHtml, /id="launchPortalLoginButton"/);
 assert.match(moduleSource, /launchPortalLoginButton/);
+assert.match(portalHtml, /certificado válido não significa sessão autenticada/i);
 
 const listenerIds = [
   'certificateGuideButton', 'judicialSetupClose', 'judicialSetupBackdrop', 'certificateFileInput',
   'certificateSetupForm', 'portalQrInput', 'portalTotpForm', 'removePortalTotpButton',
-  'resetJudicialConnectionsButton', 'savePortalCoverageButton', 'syncJudicialNowButton', 'portalCoverageList'
+  'resetJudicialConnectionsButton', 'savePortalCoverageButton', 'syncJudicialNowButton', 'launchPortalLoginButton', 'portalCoverageList'
 ];
 const listenerCounts = new Map();
 const listenerElements = new Map(listenerIds.map(id => [id, {
@@ -203,6 +204,7 @@ try {
     document.querySelector('[data-portal-enabled][value="portal-a"]').checked = false;
     document.querySelector('[data-portal-enabled][value="portal-b"]').checked = true;
     await app.savePortalCoverage();
+    await app.launchAssistedSession(document.getElementById('launchPortalLoginButton'));
     document.getElementById('totpPortalSelect').value = 'portal-a';
     document.getElementById('portalTotpSecret').value = 'SYNTHETIC_TOTP_SECRET_MARKER';
     document.getElementById('portalTotpCode').value = '123456';
@@ -298,6 +300,7 @@ try {
   assert.deepEqual(coverage.rendered.enabled, ['portal-a']);
   assert.deepEqual(coverage.cleanup, { secret: '', code: '', passphrase: '' });
   assert.deepEqual(coverage.requests.find(item => item.url.endsWith('/portals')).body, { enabledIds: ['portal-b'] });
+  assert.deepEqual(coverage.requests.find(item => item.url.endsWith('/connect')).body, { portalIds: ['portal-a'] });
   assert.deepEqual(coverage.requests.find(item => item.url.endsWith('/2fa') && !item.body.remove).body, { portalId: 'portal-a', secret: TOTP_MARKER, code: '123456' });
   assert.deepEqual(coverage.requests.find(item => item.url.endsWith('/2fa') && item.body.remove).body, { portalId: 'portal-a', remove: true });
   assert.equal(coverage.resetBeforeConfirm, 0);

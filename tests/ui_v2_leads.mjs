@@ -95,7 +95,7 @@ try {
 
   await page.locator('[data-lead-id="lead-v2-proposal"]').click();
   await page.locator('#modalTitle', { hasText: 'Editar Atendimento' }).waitFor();
-  assert.deepEqual((await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name))).sort(), ['client', 'estimatedFee', 'notes', 'origin', 'responsible', 'serviceType', 'status']);
+  assert.deepEqual((await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name))).sort(), ['client', 'contactId', 'estimatedFee', 'notes', 'origin', 'responsible', 'serviceType', 'status']);
   await page.locator('#field-client').fill('Carla Proposta Editada V2');
   await page.locator('#modalForm button[type="submit"]').click();
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
@@ -117,7 +117,14 @@ try {
   assert.equal(await page.locator('#field-status').inputValue(), 'novo');
   assert.equal(await page.locator('#field-origin').inputValue(), 'Indicação de Cliente');
   assert.equal(await page.locator('#field-responsible').inputValue(), 'Advogada Teste UI V2');
-  await page.locator('#modalCancel').click();
+  await page.locator('#field-client').fill('Contato Sintético');
+  await page.locator('[data-combobox-option]', { hasText: 'Contato Sintético Intacto' }).click();
+  assert.equal(await page.locator('[name="contactId"]').inputValue(), 'lead-contact-isolation');
+  await page.locator('#field-serviceType').fill('Consulta canônica sintética');
+  await page.locator('#modalForm button[type="submit"]').click();
+  await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
+  const canonicalLead = await page.evaluate(() => window.Atrium.Store.state.leads.find(lead => lead.contactId === 'lead-contact-isolation'));
+  assert.equal(canonicalLead.client, 'Contato Sintético Intacto');
 
   const after = await page.evaluate(() => ({
     contacts: JSON.stringify(window.Atrium.Store.state.contacts),

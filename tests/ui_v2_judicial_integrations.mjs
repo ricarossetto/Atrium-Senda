@@ -22,7 +22,7 @@ assert.doesNotMatch(featureSource, /\bStore\b|store\.state|localStorage|sessionS
 assert.doesNotMatch(presenterSource, /\bStore\b|store\.state|localStorage|sessionStorage|\bfetch\s*\(|secureFetch|setTimeout|setInterval|passphrase|pfxBase64|portalTotpSecret|qrData|\baudit\s*\(/i);
 
 const listeners = new Map();
-const ids = ['certificateGuideButton', 'judicialSetupClose', 'judicialSetupBackdrop', 'certificateFileInput', 'certificateSetupForm', 'portalQrInput', 'portalTotpForm', 'removePortalTotpButton', 'resetJudicialConnectionsButton', 'savePortalCoverageButton', 'syncJudicialNowButton', 'portalCoverageList'];
+const ids = ['certificateGuideButton', 'judicialSetupClose', 'judicialSetupBackdrop', 'certificateFileInput', 'certificateSetupForm', 'portalQrInput', 'portalTotpForm', 'removePortalTotpButton', 'resetJudicialConnectionsButton', 'savePortalCoverageButton', 'syncJudicialNowButton', 'launchPortalLoginButton', 'portalCoverageList'];
 const fakeElements = new Map(ids.map(id => [id, {
   id,
   addEventListener(type, handler) { listeners.set(`${id}:${type}`, [...(listeners.get(`${id}:${type}`) || []), handler]); },
@@ -40,7 +40,7 @@ assert.equal(unitFeature.init(), true);
 assert.equal(unitFeature.init(), false);
 assert.equal(requests, 0, 'init não pode consultar integração judicial.');
 assert.equal(presentationInit, 1);
-for (const key of ['certificateGuideButton:click', 'judicialSetupClose:click', 'judicialSetupBackdrop:click', 'certificateFileInput:change', 'certificateSetupForm:submit', 'portalQrInput:change', 'portalTotpForm:submit', 'removePortalTotpButton:click', 'resetJudicialConnectionsButton:click', 'savePortalCoverageButton:click', 'syncJudicialNowButton:click', 'portalCoverageList:click']) {
+for (const key of ['certificateGuideButton:click', 'judicialSetupClose:click', 'judicialSetupBackdrop:click', 'certificateFileInput:change', 'certificateSetupForm:submit', 'portalQrInput:change', 'portalTotpForm:submit', 'removePortalTotpButton:click', 'resetJudicialConnectionsButton:click', 'savePortalCoverageButton:click', 'syncJudicialNowButton:click', 'launchPortalLoginButton:click', 'portalCoverageList:click']) {
   assert.equal(listeners.get(key)?.length, 1, `${key} deve possuir um listener.`);
 }
 
@@ -86,6 +86,10 @@ try {
   ]);
   assert.equal(await page.locator('#totpPortalSelect option').count(), 3);
   assert.match(await page.locator('.judicial-setup-footer .v2-only').allTextContents().then(items => items.join(' ')), /cadência, backoff e pausas para ação humana/);
+  assert.match(await page.locator('.portal-auth-guide').textContent(), /certificado válido não significa sessão autenticada/i);
+  assert.equal(await page.locator('#launchPortalLoginButton').textContent(), 'Abrir sessão assistida');
+  await page.locator('#launchPortalLoginButton').click();
+  await page.waitForFunction(() => window.__uiV2JudicialRequests.some(request => request.url.endsWith('/connect')));
 
   const after = await page.evaluate(() => ({
     state: JSON.stringify(window.Atrium.Store.state),
@@ -98,7 +102,10 @@ try {
   assert.equal(after.revision, before.revision);
   assert.equal(after.mutations, before.mutations);
   assert.equal(after.intervals, before.intervals);
-  assert.ok(after.requests.every(request => request.method === 'GET' && request.url === '/api/integrations/judicial'));
+  const assistedRequest = after.requests.find(request => request.url.endsWith('/connect'));
+  assert.deepEqual(assistedRequest.body, { portalIds: ['tj-sintetico', 'trf-sintetico'] });
+  assert.equal(assistedRequest.method, 'POST');
+  assert.ok(after.requests.filter(request => !request.url.endsWith('/connect')).every(request => request.method === 'GET' && request.url === '/api/integrations/judicial'));
   assert.deepEqual(pageErrors, []);
   await context.close();
 } finally {

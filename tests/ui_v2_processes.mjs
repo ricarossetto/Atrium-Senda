@@ -78,8 +78,9 @@ try {
     for (const expected of [
       '5004321-12.2026.8.21.0001', 'Cliente Sintética Processos', 'Empresa Adversa Sintética', 'Segredo de justiça',
       'Tarefas abertas', '2', 'Intimações vinculadas', '1', '1h15m', '03/09/2026',
-      'Despacho sintético integral', 'Probabilidade informada', 'Possível', 'Honorários cadastrados'
+      'Despacho sintético integral', 'Responsabilidade contratual sintética', 'Probabilidade informada', 'Possível', 'Honorários cadastrados'
     ]) assert.ok(inspectorText.includes(expected), `Inspector deve preservar: ${expected}`);
+    assert.equal(await page.locator('[data-process-task]').count(), 3, 'Todas as tarefas vinculadas devem permanecer acessíveis no inspector.');
     assert.equal(await page.locator('#processInspectorTjrs').isVisible(), true);
     assert.equal(await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"]').getAttribute('aria-current'), 'true');
     assert.equal(requests.filter(request => /\/api\/tjrs\/consult/.test(request.url)).length, 0, 'Abrir inspector não consulta TJRS.');
@@ -122,6 +123,20 @@ try {
     assert.equal(tjrsRequests, 2, 'Cada ação explícita deve gerar uma operação TJRS.');
     assert.equal((await page.evaluate(() => window.__uiV2ProcessOpenCalls)).length, 1, 'Falha não pode navegar.');
     assert.equal(await page.locator('#processInspectorTjrs').isDisabled(), false, 'Botão deve ser restaurado após falha.');
+
+    await page.locator('[data-process-task="ui-v2-task-open"]').click();
+    await page.locator('#modalBackdrop[data-modal-mode="task"]:not(.hidden)').waitFor();
+    assert.equal(await page.locator('#field-title').inputValue(), 'Tarefa vinculada sintética', 'A tarefa exata deve abrir pelo inspector.');
+    await page.locator('#modalCancel').click();
+    await page.evaluate(() => { window.Atrium.App.switchView('processes'); window.Atrium.App.renderProcesses(''); });
+    await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"] [data-process-details]').click();
+    await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
+    await page.locator('[data-process-client]').click();
+    await page.locator('#view-contacts.active').waitFor();
+    assert.match(await page.locator('#contactInspector').textContent(), /Cliente Sintética Processos/, 'O nome do cliente deve abrir o contato canônico.');
+    await page.evaluate(() => { window.Atrium.App.switchView('processes'); window.Atrium.App.renderProcesses(''); });
+    await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"] [data-process-details]').click();
+    await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
 
     await page.locator('#processInspectorEdit').click();
     await page.locator('#modalBackdrop[data-modal-mode="process"]:not(.hidden)').waitFor();

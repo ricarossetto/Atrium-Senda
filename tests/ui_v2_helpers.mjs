@@ -618,11 +618,13 @@ export async function prepareUiV2ProcessesFixture(page) {
         number: '5004321-12.2026.8.21.0001',
         oldNumber: '029/1.26.0001234-5',
         nb: '123.456.789-0',
+        contactId: 'ui-v2-process-client',
         client: 'Cliente Sintética Processos',
         clientPosition: 'Autor(a)',
         opposingParty: 'Empresa Adversa Sintética',
         actionGroup: 'Cível',
         actionType: 'Obrigação de fazer',
+        subject: 'Responsabilidade contratual sintética',
         judicialPhase: 'Conhecimento',
         risk: 'possivel',
         stage: 'Instrução',
@@ -635,6 +637,11 @@ export async function prepareUiV2ProcessesFixture(page) {
         registeredAt: '2026-08-20',
         lastMovementAt: '2026-08-29',
         lastMovement: 'Despacho sintético integral para validar leitura rápida e conteúdo completo no inspector.',
+        movements: [
+          { date: '2026-08-29', text: 'Despacho sintético integral para validar leitura rápida e conteúdo completo no inspector.' },
+          { date: '2026-08-25', text: 'Juntada sintética de documento para demonstração do histórico processual.' },
+          { date: '2026-08-20', text: 'Distribuição sintética registrada no órgão de teste.' }
+        ],
         feeType: 'misto',
         feePercentage: 25,
         feeAmount: 1250,
@@ -668,6 +675,9 @@ export async function prepareUiV2ProcessesFixture(page) {
         source: 'DataJud sintético'
       }
     ],
+    contacts: [
+      { id: 'ui-v2-process-client', name: 'Cliente Sintética Processos', contactRole: 'cliente', mobile: '(00) 90000-0000', city: 'Cidade Sintética', state: 'RS' }
+    ],
     tasks: [
       { id: 'ui-v2-task-open', title: 'Tarefa vinculada sintética', process: '5004321-12.2026.8.21.0001', status: 'fazendo', deadline: '2026-09-05', fatalDeadline: '2026-09-03', timeLogs: [{ minutes: 75 }] },
       { id: 'ui-v2-task-text-only', title: 'Prazo textual não inferível em 15 dias', process: '5004321-12.2026.8.21.0001', status: 'triagem', timeLogs: [] },
@@ -681,6 +691,7 @@ export async function prepareUiV2ProcessesFixture(page) {
   await page.evaluate(data => {
     const { App, Store } = window.Atrium;
     Store.state.processes = data.processes;
+    Store.state.contacts = data.contacts;
     Store.state.documents = [];
     Store.state.tasks = data.tasks;
     Store.state.intimations = data.intimations;
@@ -1079,7 +1090,7 @@ export async function prepareUiV2LeadsFixture(page) {
       { id: 'lead-v2-long', client: 'Fundação Sintética de Assistência Jurídica e Relacionamento Institucional de Nome Extenso', serviceType: 'Análise jurídica multidisciplinar de alta complexidade com descrição extensa', status: 'novo', origin: 'Passante / Balcão', estimatedFee: 12000, responsible: 'Advogada Responsável de Nome Extenso', registeredAt: '2026-08-25' },
       { id: 'lead-v2-unknown', client: '', serviceType: '', status: 'status_historico', origin: '', estimatedFee: 0, responsible: '', registeredAt: '2026-08-26' }
     ],
-    contacts: [{ id: 'lead-contact-isolation', name: 'Contato Sintético Intacto', source: 'Fixture sintética' }],
+    contacts: [{ id: 'lead-contact-isolation', name: 'Contato Sintético Intacto', contactRole: 'cliente', mobile: '(00) 90000-0000', email: 'contato@synthetic.example.test', city: 'Cidade Sintética', source: 'Fixture sintética' }],
     processes: [{ id: 'lead-process-isolation', number: '0000000-00.2026.8.21.0000', client: 'Processo Sintético Intacto' }]
   };
 

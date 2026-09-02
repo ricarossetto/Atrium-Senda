@@ -233,6 +233,13 @@ try {
   });
   await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
+  await page.locator('#systemStatusBar[data-status="saved"]').waitFor({ state: 'attached' });
+  await page.waitForFunction(() => {
+    const syncButton = document.getElementById('syncButton');
+    const agendaSyncButton = document.getElementById('agendaSyncButton');
+    return syncButton?.disabled === false && agendaSyncButton?.disabled === false;
+  });
+  await page.waitForLoadState('networkidle');
 
   await page.evaluate(() => {
     const store = window.Atrium.Store;

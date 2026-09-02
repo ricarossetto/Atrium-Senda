@@ -41,7 +41,8 @@ const djenItem = {
   data_disponibilizacao: new Date().toISOString().slice(0, 10),
   texto: '<p>Publicação exclusivamente sintética para teste.</p>',
   link: 'https://pje.tjrs.jus.br/documento-sintetico',
-  destinatarios: [{ nome: 'Parte Destinatária Sintética' }]
+  destinatarios: [{ nome: 'Cliente Alpha Sintética', polo: 'A' }],
+  destinatarioadvogados: [{ advogado: { nome: TERM_ALPHA.name, numero_oab: TERM_ALPHA.oabNumber, uf_oab: TERM_ALPHA.oabUf } }]
 };
 
 const datajudRecord = {
@@ -141,6 +142,7 @@ assert.equal(target.processes[0].subject, 'Assunto Sintético');
 assert.equal(target.processes[0].lastMovement, 'Movimento oficial sintético mais novo');
 assert.equal(target.processes[0].lastMovementAt, NEW_MOVEMENT_AT);
 assert.equal(target.processes[0].client, 'Cliente Alpha Sintética');
+assert.equal(target.processes[0].contactId, target.contacts.find(item => item.name === 'Cliente Alpha Sintética')?.id, 'processo deve apontar para o contato canônico da parte representada');
 assert.equal(target.processes[0].counterpart, 'Empresa Adversa Sintética');
 assert.deepEqual([...target.processes[0].monitoredTermIds].sort(), [TERM_ALPHA.id, TERM_BETA.id].sort());
 assert.equal(target.contacts.length, 2, 'partes estruturadas devem gerar contatos individuais');

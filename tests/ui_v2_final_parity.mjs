@@ -51,7 +51,7 @@ try {
     const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'light', probe: true });
 
     for (const view of UI_V2_CANONICAL_VIEWS) await switchUiV2View(page, view);
-    await page.locator('#systemStatusBar[data-status="saved"], #systemStatusBar[data-status="ready"]').waitFor();
+    await page.locator('#systemStatusBar[data-status="saved"], #systemStatusBar[data-status="ready"]').waitFor({ state: 'attached' });
 
     const baseline = await page.evaluate(() => {
       const { App, Store } = window.Atrium;
