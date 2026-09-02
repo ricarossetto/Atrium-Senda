@@ -7,6 +7,7 @@ const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url
 const launcher = await readFile(new URL('../ATRIUM.bat', import.meta.url), 'utf8');
 const legacyWrapper = await readFile(new URL('../iniciar-atrium.bat', import.meta.url), 'utf8');
 const bootstrap = await readFile(new URL('../scripts/windows/atrium-bootstrap.ps1', import.meta.url), 'utf8');
+const serverLauncher = await readFile(new URL('../scripts/windows/atrium-server.ps1', import.meta.url), 'utf8');
 const installer = await readFile(new URL('../install.ps1', import.meta.url), 'utf8');
 const attributes = await readFile(new URL('../.gitattributes', import.meta.url), 'utf8');
 const workflow = await readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
@@ -34,23 +35,31 @@ assert.match(attributes, /^\*\.ps1 text eol=crlf$/m);
 
 assert.match(installer, /archive\/refs\/tags\/\$ReleaseTag\.zip/);
 assert.match(installer, /LocalApplicationData/);
-assert.match(installer, /preservando \.env e data/i);
+assert.match(installer, /preservando \.env, \.env\.collector e data/i);
 assert.match(installer, /scripts\\windows\\atrium-bootstrap\.ps1/i);
+assert.match(installer, /scripts\\windows\\atrium-server\.ps1/i);
+assert.match(installer, /archive\/refs\/heads\/\$SourceRef\.zip/);
+assert.match(installer, /WScript\.Shell/);
 
 assert.match(bootstrap, /process\.versions\.node/);
 assert.match(bootstrap, /\$RequiredNodeMajor\s*=\s*24/);
 assert.match(bootstrap, /\$RequiredPnpm\s*=\s*'11\.19\.0'/);
 assert.match(bootstrap, /OpenJS\.NodeJS\.LTS/);
+assert.match(bootstrap, /winget \$verb/);
+assert.match(bootstrap, /Refresh-ProcessPath/);
+assert.match(bootstrap, /corepack enable/);
+assert.match(bootstrap, /corepack prepare "pnpm@\$RequiredPnpm" --activate/);
 assert.match(bootstrap, /corepack --version/);
 assert.match(bootstrap, /corepack pnpm --version/);
 assert.match(bootstrap, /corepack pnpm install --frozen-lockfile/);
 assert.match(bootstrap, /chromium\.executablePath\(\)/);
 assert.match(bootstrap, /corepack pnpm exec playwright install chromium/);
 assert.match(bootstrap, /\/api\/auth\/status/);
-assert.match(bootstrap, /corepack pnpm start/);
+assert.match(serverLauncher, /corepack pnpm start/);
 assert.match(bootstrap, /Get-AtriumServerState/);
+assert.match(bootstrap, /Wait-AtriumHealthy/);
 
-for (const source of [launcher, legacyWrapper, bootstrap, installer]) {
+for (const source of [launcher, legacyWrapper, bootstrap, serverLauncher, installer]) {
   assert.doesNotMatch(source, /\brunas\b|net\s+session/i, 'O inicializador não pode exigir elevação administrativa própria.');
   assert.doesNotMatch(source, /\bnpm\s+install\b/i);
   assert.doesNotMatch(source, /\bpnpm\s+(?:add|update|up|remove)\b|--no-frozen-lockfile/i);

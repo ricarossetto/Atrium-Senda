@@ -11,6 +11,7 @@ const index = read('index.html');
 const server = read('server.mjs');
 const dockerfile = read('Dockerfile');
 const compose = read('docker-compose.yml');
+const installer = read('install.ps1');
 
 assert.equal(pkg.version, '2.0.0');
 assert.equal(pkg.license, 'MIT');
@@ -21,6 +22,11 @@ assert.match(server, /let APP_VERSION\s*=\s*'2\.0\.0'/);
 assert.match(server, /pkg\.version\) APP_VERSION = pkg\.version/);
 assert.doesNotMatch(index, /id="uiModeControl"|data-ui-mode=/);
 assert.match(index, /ATRIUM/);
+assert.match(installer, /\[string\]\$ReleaseTag\s*=\s*'v2\.0\.0'/);
+assert.match(installer, /\$Repository\s*=\s*'ricarossetto\/Atrium-Senda'/);
+assert.match(installer, /archive\/refs\/tags\/\$ReleaseTag\.zip/);
+assert.match(installer, /archive\/refs\/heads\/\$SourceRef\.zip/);
+assert.doesNotMatch(installer, /\$PSScriptRoot|\bexit\b/i);
 
 for (const heading of [
   'O que é o ATRIUM', 'Funcionalidades', 'Descoberta judicial', 'Inteligência cadastral brasileira',

@@ -46,24 +46,55 @@ function Get-NodeMajor {
     return [int]$Matches[1]
 }
 
-function Install-OfficialNodeLts {
+function Install-OfficialNodeLts([AllowNull()][object]$CurrentMajor = $null) {
     $winget = Get-Command winget -ErrorAction SilentlyContinue
     if (-not $winget) {
-        Stop-WithError 'O Node.js 24 ou superior não foi encontrado. Instale a versão LTS oficial em https://nodejs.org/ e execute o ATRIUM novamente.'
+        Stop-WithError 'O Node.js 24 ou superior não foi encontrado e o winget não está disponível. Instale o App Installer da Microsoft Store ou o Node.js LTS oficial em https://nodejs.org/ e execute o ATRIUM novamente.'
     }
 
-    Write-Warn 'O Node.js 24 ou superior não foi encontrado.'
-    $answer = Read-Host 'Deseja instalar o Node.js LTS oficial pelo Windows Package Manager (winget)? [S/n]'
+    $description = if ($null -eq $CurrentMajor) { 'não foi encontrado' } else { "major $CurrentMajor é anterior ao mínimo 24" }
+    Write-Warn "O Node.js $description."
+    $answer = Read-Host 'Deseja instalar ou atualizar para o Node.js LTS oficial pelo Windows Package Manager (winget)? [S/n]'
     if ($answer -and $answer -notmatch '^[sS]') {
         Stop-WithError 'Instalação cancelada. Obtenha o Node.js apenas em https://nodejs.org/ ou pelo pacote OpenJS.NodeJS.LTS do winget.'
     }
 
-    Write-Section 'Instalando Node.js LTS oficial'
-    & winget install --id OpenJS.NodeJS.LTS --exact --source winget --accept-package-agreements --accept-source-agreements
+    Write-Section 'Instalando ou atualizando Node.js LTS oficial'
+    $verb = if ($null -eq $CurrentMajor) { 'install' } else { 'upgrade' }
+    & winget $verb --id OpenJS.NodeJS.LTS --exact --source winget --accept-package-agreements --accept-source-agreements
+    if ($LASTEXITCODE -ne 0 -and $verb -eq 'upgrade') {
+        Write-Warn 'O upgrade direto não foi concluído; tentando a instalação oficial forçada do pacote LTS.'
+        & winget install --id OpenJS.NodeJS.LTS --exact --source winget --force --accept-package-agreements --accept-source-agreements
+    }
     if ($LASTEXITCODE -ne 0) {
-        Stop-WithError "O winget não concluiu a instalação do Node.js (código $LASTEXITCODE)."
+        Stop-WithError "O winget não concluiu a instalação/atualização do Node.js (código $LASTEXITCODE)."
     }
     Refresh-ProcessPath
+}
+
+function Get-DependencyFingerprint {
+    return (Get-FileHash -LiteralPath (Join-Path $AtriumRoot 'pnpm-lock.yaml') -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Test-DependenciesReady {
+    $modulesManifest = Join-Path $AtriumRoot 'node_modules\.modules.yaml'
+    $installStamp = Join-Path $AtriumRoot 'node_modules\.atrium-install.json'
+    if (-not (Test-Path -LiteralPath $modulesManifest) -or -not (Test-Path -LiteralPath $installStamp)) { return $false }
+    try {
+        $stamp = Get-Content -LiteralPath $installStamp -Raw | ConvertFrom-Json
+        return $stamp.lockfileSha256 -eq (Get-DependencyFingerprint) -and $stamp.pnpmVersion -eq $RequiredPnpm
+    } catch {
+        return $false
+    }
+}
+
+function Save-DependencyStamp {
+    $installStamp = Join-Path $AtriumRoot 'node_modules\.atrium-install.json'
+    [pscustomobject]@{
+        lockfileSha256 = Get-DependencyFingerprint
+        pnpmVersion = $RequiredPnpm
+        preparedAt = [DateTime]::UtcNow.ToString('o')
+    } | ConvertTo-Json | Set-Content -LiteralPath $installStamp -Encoding UTF8
 }
 
 function Get-AtriumServerState {
@@ -92,7 +123,7 @@ function Test-ChromiumReady {
 }
 
 function Assert-RequiredFiles {
-    $required = @('package.json', 'pnpm-lock.yaml', 'server.mjs', 'index.html')
+    $required = @('package.json', 'pnpm-lock.yaml', 'server.mjs', 'index.html', 'scripts\windows\atrium-server.ps1')
     $missing = @($required | Where-Object { -not (Test-Path -LiteralPath (Join-Path $AtriumRoot $_)) })
     if ($missing.Count -gt 0) {
         Stop-WithError ("Arquivos obrigatórios ausentes: " + ($missing -join ', ') + '. Extraia novamente o ZIP completo da release.')
@@ -102,41 +133,43 @@ function Assert-RequiredFiles {
 
 function Assert-Toolchain([switch]$AllowNodeInstall) {
     $nodeMajor = Get-NodeMajor
-    if ($null -eq $nodeMajor -and $AllowNodeInstall) {
-        Install-OfficialNodeLts
+    if (($null -eq $nodeMajor -or $nodeMajor -lt $RequiredNodeMajor) -and $AllowNodeInstall) {
+        Install-OfficialNodeLts -CurrentMajor $nodeMajor
         $nodeMajor = Get-NodeMajor
     }
     if ($null -eq $nodeMajor) {
         Stop-WithError 'Node.js não encontrado. O ATRIUM requer Node.js 24 ou superior.'
     }
     if ($nodeMajor -lt $RequiredNodeMajor) {
-        Stop-WithError "Node.js $nodeMajor detectado. Instale o Node.js 24 ou superior em https://nodejs.org/."
+        Stop-WithError "Node.js $nodeMajor detectado após a tentativa de atualização. O ATRIUM requer Node.js 24 ou superior."
     }
     Write-Ok "Node.js $(& node -p 'process.versions.node') detectado."
 
     if (-not (Get-Command corepack -ErrorAction SilentlyContinue)) {
         Stop-WithError 'Corepack não encontrado. Use a distribuição oficial do Node.js 24 e confirme que o comando corepack está no PATH.'
     }
-    Write-Ok "Corepack $(& corepack --version) detectado."
-
     $pnpmVersion = (& corepack pnpm --version 2>$null | Select-Object -First 1)
-    if ($pnpmVersion -ne $RequiredPnpm) {
-        Stop-WithError "Não foi possível preparar pnpm $RequiredPnpm pelo Corepack. Verifique a conexão e execute novamente."
+    if ($pnpmVersion -ne $RequiredPnpm -and $AllowNodeInstall) {
+        & corepack enable
+        if ($LASTEXITCODE -ne 0) { Stop-WithError 'Não foi possível habilitar o Corepack para esta instalação do Node.js.' }
+        & corepack prepare "pnpm@$RequiredPnpm" --activate
+        if ($LASTEXITCODE -ne 0) { Stop-WithError "Não foi possível preparar pnpm $RequiredPnpm pelo Corepack." }
+        $pnpmVersion = (& corepack pnpm --version 2>$null | Select-Object -First 1)
     }
+    if ($pnpmVersion -ne $RequiredPnpm) {
+        Stop-WithError "pnpm $RequiredPnpm não está preparado. Execute ATRIUM.bat --install-only para concluir a instalação."
+    }
+    Write-Ok "Corepack $(& corepack --version) detectado."
     Write-Ok "pnpm $RequiredPnpm preparado pelo Corepack."
 }
 
 function Install-AtriumDependencies {
-    $modulesManifest = Join-Path $AtriumRoot 'node_modules\.modules.yaml'
-    $lockfile = Join-Path $AtriumRoot 'pnpm-lock.yaml'
-    $needsInstall = -not (Test-Path -LiteralPath $modulesManifest)
-    if (-not $needsInstall) {
-        $needsInstall = (Get-Item -LiteralPath $lockfile).LastWriteTimeUtc -gt (Get-Item -LiteralPath $modulesManifest).LastWriteTimeUtc
-    }
+    $needsInstall = -not (Test-DependenciesReady)
     if ($needsInstall) {
         Write-Section 'Instalando dependências verificadas pelo lockfile'
         & corepack pnpm install --frozen-lockfile
         if ($LASTEXITCODE -ne 0) { Stop-WithError "Falha na instalação das dependências (código $LASTEXITCODE)." }
+        Save-DependencyStamp
         Write-Ok 'Dependências instaladas sem alterar o lockfile.'
     } else {
         Write-Ok 'Dependências já estão preparadas.'
@@ -150,6 +183,29 @@ function Install-AtriumDependencies {
     } else {
         Write-Ok 'Chromium local do Playwright já está disponível.'
     }
+}
+
+function Wait-AtriumHealthy([System.Diagnostics.Process]$ServerProcess, [int]$TimeoutSeconds = 90) {
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        if ((Get-AtriumServerState) -eq 'atrium') { return $true }
+        if ($ServerProcess.HasExited) {
+            Stop-WithError "O processo do ATRIUM terminou antes do health check (código $($ServerProcess.ExitCode))."
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    Stop-WithError "O ATRIUM não respondeu em $AtriumHealthUrl dentro de $TimeoutSeconds segundos. Revise a janela do servidor."
+}
+
+function Start-AtriumServerProcess {
+    $serverLauncher = Join-Path $PSScriptRoot 'atrium-server.ps1'
+    if (-not (Test-Path -LiteralPath $serverLauncher)) {
+        Stop-WithError 'O launcher interno do servidor não foi encontrado.'
+    }
+    $quotedLauncher = '"' + $serverLauncher.Replace('"', '""') + '"'
+    return Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+        '-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $quotedLauncher
+    ) -WorkingDirectory $AtriumRoot -WindowStyle Normal -PassThru
 }
 
 function Invoke-Doctor {
@@ -204,26 +260,9 @@ if ($serverState -eq 'other') {
 
 Write-Section 'Iniciando o ATRIUM'
 Write-Host 'Os segredos locais ausentes serão gerados pelo servidor sem sobrescrever o arquivo .env.'
-Write-Host 'Mantenha esta janela aberta. Para encerrar, pressione Ctrl+C.'
-
-$browserJob = Start-Job -ArgumentList $AtriumHealthUrl, $AtriumUrl -ScriptBlock {
-    param($HealthUrl, $AppUrl)
-    for ($attempt = 0; $attempt -lt 75; $attempt++) {
-        try {
-            $response = Invoke-RestMethod -Uri $HealthUrl -Method Get -TimeoutSec 1
-            if ($null -ne $response.configured -and $null -ne $response.authenticated) {
-                Start-Process $AppUrl
-                return
-            }
-        } catch {}
-        Start-Sleep -Milliseconds 400
-    }
-}
-
-try {
-    & corepack pnpm start
-    exit $LASTEXITCODE
-} finally {
-    Stop-Job -Job $browserJob -ErrorAction SilentlyContinue
-    Remove-Job -Job $browserJob -Force -ErrorAction SilentlyContinue
-}
+$serverProcess = Start-AtriumServerProcess
+Wait-AtriumHealthy -ServerProcess $serverProcess -TimeoutSeconds 90 | Out-Null
+Write-Ok 'Servidor saudável em http://127.0.0.1:4173/api/auth/status.'
+Start-Process $AtriumUrl
+Write-Ok 'Navegador aberto automaticamente. A janela do servidor deve permanecer aberta durante o uso.'
+exit 0
