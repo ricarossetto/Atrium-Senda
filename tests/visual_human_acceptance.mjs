@@ -76,7 +76,10 @@ try {
   }));
   assert.ok(metricAlignment.every(delta => delta <= 1), `Bolinhas das métricas fora do centro: ${metricAlignment.join(', ')}`); assertions++;
   const actionHeights = await page.locator('.publication-primary-actions > button').evaluateAll(buttons => buttons.map(button => button.getBoundingClientRect().height));
-  assert.ok(actionHeights.every(height => Math.abs(height - actionHeights[0]) <= .5 && height >= 44)); assertions++;
+  assert.ok(
+    actionHeights.every(height => Math.abs(height - actionHeights[0]) <= .5 && height >= 44),
+    `Ações primárias devem ter a mesma altura e no mínimo 44px: ${actionHeights.join(', ')}`
+  ); assertions++;
   await capture(page, 'B-publication-metrics-dots-closeup.png', page.locator('#publicationsMetrics'));
   await capture(page, 'C-publication-row-status-dot-closeup.png', page.locator('#inboxList [data-intimation-id="ui-v2-publication-review"]'));
   await capture(page, 'D-publication-workspace-fullscreen.png');
