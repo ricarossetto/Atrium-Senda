@@ -59,7 +59,7 @@ try {
         await page.locator('#field-name').fill('Cadastro atual sintético');
         await page.locator('#field-document').fill('12.ABC.345/01DE-35');
         await page.locator('[data-registry-action="document"]').click();
-        await page.locator('.registry-field-review', { hasText: 'Cadastro atual × dado encontrado' }).waitFor();
+        await page.locator('.registry-field-review', { hasText: 'Cadastro atual versus dado encontrado' }).waitFor();
       } else if (scenario.view === 'configuration') {
         await page.locator('[data-config-section="registry"]').click();
         await page.locator('.registry-provider-card').first().waitFor();
