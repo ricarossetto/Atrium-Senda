@@ -298,7 +298,13 @@ html[data-ui="v2"] .global-search kbd { color: var(--v2-color-foreground-seconda
 
 html[data-ui="v2"] #syncButton { order: 2; }
 html[data-ui="v2"] .notification-button { order: 3; color: var(--v2-color-foreground); }
-html[data-ui="v2"] .profile-button { order: 4; color: var(--v2-color-foreground); }
+html[data-ui="v2"] .profile-button { order: 0; color: var(--v2-color-foreground); }
+html[data-ui="v2"] .profile-button .logout-label {
+  order: -1;
+  margin-right: var(--v2-space-1);
+  color: var(--v2-color-foreground-secondary);
+  font-weight: 700;
+}
 html[data-ui="v2"] .topbar .ui-mode-control { order: 5; }
 html[data-ui="v2"] #themeToggleButton { order: 6; }
 html[data-ui="v2"] .v2-utilities-menu { order: 7; }

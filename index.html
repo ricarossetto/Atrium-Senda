@@ -211,7 +211,7 @@
         <nav class="main-nav secondary" aria-label="Sistema e configurações">
           <button class="nav-item" data-view="monitoring">
             <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-monitoring"></use></svg></span>
-            <span>Monitoramento</span>
+            <span>Fontes monitoradas</span>
           </button>
           <button class="nav-item" data-view="integrations">
             <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-integrations"></use></svg></span>
@@ -224,10 +224,6 @@
           <button class="nav-item" data-view="importer">
             <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-importer"></use></svg></span>
             <span>Importador</span>
-          </button>
-          <button class="nav-item" data-view="audit">
-            <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-audit"></use></svg></span>
-            <span>Alertas / Auditoria</span>
           </button>
           <button class="nav-item" data-view="links">
             <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-links"></use></svg></span>
@@ -298,7 +294,7 @@
           <button class="profile-button" id="logoutButton" aria-label="Encerrar sessão com segurança" title="Encerrar sessão">
             <span class="avatar">AT</span>
             <span class="profile-copy"><strong>Administrador</strong><small>Advogado(a) Titular</small></span>
-            <span>Sair</span>
+            <span class="logout-label">Sair</span>
           </button>
         </div>
       </header>
@@ -653,7 +649,7 @@
         </section>
       </section>
 
-      <section class="view" id="view-inbox" data-title="Publicações &amp; Intimações" data-eyebrow="Triagem e Tratamento">
+      <section class="view" id="view-inbox" data-title="Publicações e Intimações" data-eyebrow="Triagem e Tratamento">
         <div class="v2-publications-heading v2-only">
           <p>Triagem judicial supervisionada</p>
           <h2>Publicações</h2>
@@ -723,7 +719,7 @@
             </div>
             <div class="publication-primary-actions" aria-label="Ações de publicações">
               <button class="button ghost" id="btnEmailPublications" title="Enviar ou exportar boletim diário de publicações por email"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-email"></use></svg><span>Enviar por e-mail</span></button>
-              <button class="button ghost" id="importIntimationButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-upload"></use></svg><span>Importar JSON</span></button>
+              <button class="button ghost classic-only" id="importIntimationButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-upload"></use></svg><span>Importar JSON</span></button>
               <button class="button gold" id="newIntimationButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg><span>Nova intimação</span></button>
             </div>
           </div>
@@ -890,8 +886,8 @@
         <div class="section-toolbar">
           <div class="v2-monitoring-heading v2-only">
             <p>Sistema</p>
-            <h2>Monitoramento</h2>
-            <small>Acompanhamento das fontes e identidades utilizadas para coleta e integração jurídica.</small>
+            <h2>Fontes monitoradas</h2>
+            <small>Confira identidades, fontes públicas e o resultado das coletas. Credenciais e conexões são gerenciadas em Integrações &amp; A1.</small>
           </div>
           <div class="toolbar-copy"><p>Monitore nomes e inscrições profissionais. Reconexões com certificado sempre exigem validação humana.</p></div>
           <button class="button gold" id="newTermButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Adicionar termo</button>
@@ -910,15 +906,11 @@
           <div class="source-table-head"><span>Fonte</span><span>Método</span><span>Última verificação</span><span>Situação</span><span class="v2-only">Configuração</span></div>
           <div id="monitorSourceList"></div>
         </div>
-        <div class="security-note">
-          <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-security"></use></svg></span><div><strong>Certificado A1 fica no agente local</strong><p>O arquivo PFX e a senha nunca são expostos externamente ou enviados a terceiros.</p></div>
-        </div>
       </section>
 
       <section class="view" id="view-integrations" data-title="Integrações" data-eyebrow="Fontes e conexões">
         <div class="v2-integrations-header v2-only">
           <div><p>CONEXÕES SEGURAS</p><h2>Integrações seguras</h2><small>Tribunais, comunicação e agenda externa em uma superfície operacional com credenciais protegidas e ações explícitas.</small></div>
-          <span class="v2-integrations-safety"><b aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-security"></use></svg></b> Credenciais protegidas no agente local</span>
         </div>
         <div class="integration-grid">
           <article class="integration-card card connection-integration-card external-calendar-integration-card">
@@ -937,13 +929,13 @@
             <div class="integration-logo certificate-logo">
               <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-certificate"></use></svg>
             </div>
-            <div class="integration-copy"><span class="status-chip muted" id="certificateIntegrationStatus">Verificando cobertura</span><h3><span class="classic-only">Certificado Digital A1 &amp; PJe</span><span class="v2-only">Cobertura judicial gerenciada</span></h3><p id="certificateIntegrationDetail">Acompanhe credenciais, sessões e atualizações read-only por portal, com intervenção humana quando exigida.</p><button class="button gold" id="certificateGuideButton"><span class="classic-only">Gerenciar A1 e Tribunais</span><span class="v2-only">Gerenciar cobertura judicial</span></button></div>
+            <div class="integration-copy"><span class="status-chip muted" id="certificateIntegrationStatus">Verificando cobertura</span><h3><span class="classic-only">Certificado Digital A1 &amp; PJe</span><span class="v2-only">Cobertura judicial gerenciada</span></h3><p id="certificateIntegrationDetail">Acompanhe credenciais, sessões e atualizações read-only por portal, com intervenção humana quando exigida.</p><button class="button gold v2-connection-primary" id="certificateGuideButton"><span class="classic-only">Gerenciar A1 e Tribunais</span><span class="v2-only">Gerenciar cobertura judicial</span></button></div>
           </article>
           <article class="integration-card card importer-integration-card">
             <div class="integration-logo legal-logo">
               <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-importer"></use></svg>
             </div>
-            <div class="integration-copy"><span class="status-chip connected">Pronto</span><h3>Importador de Planilhas</h3><p>Importe processos, contatos e clientes em lote via planilhas XLSX ou relatórios XLS do eproc.</p><button class="button gold" data-view-link="importer">Abrir importador</button></div>
+            <div class="integration-copy"><span class="status-chip connected">Pronto</span><h3>Importador de Planilhas</h3><p>Importe processos, contatos e clientes em lote via planilhas XLSX ou relatórios XLS do eproc.</p><button class="button gold v2-connection-primary" data-view-link="importer">Abrir importador</button></div>
           </article>
           <article class="integration-card card email-integration-card">
             <div class="integration-logo email-logo">
@@ -954,7 +946,7 @@
               <h3>E-mail &amp; Notificações</h3>
               <p id="emailIntegrationDetail">Configure o transporte SMTP seguro para envio de comunicações e boletins do escritório.</p>
               <div class="email-integration-actions" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
-                <button class="button gold" id="btnConfigureEmail">Configurar SMTP</button>
+                <button class="button gold v2-connection-primary" id="btnConfigureEmail">Configurar SMTP</button>
                 <button class="button ghost hidden" id="btnTestEmail">Enviar e-mail de teste</button>
                 <button class="button ghost hidden" id="btnAddEmailReceiver"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Adicionar destinatário</button>
               </div>
@@ -1267,7 +1259,7 @@
           <div class="ai-quick-prompts">
             <span class="quick-prompts-label">Ações Rápidas:</span>
             <button class="quick-prompt-btn highlight-gold-btn" type="button" data-view-link="prompts">
-              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-prompts"></use></svg>Abrir Biblioteca de Prompts (230)
+              Abrir Biblioteca de Prompts (230)
             </button>
             <button class="quick-prompt-btn" type="button" data-prompt="Analise a última intimação judicial recebida no sistema, explique a determinação judicial em linguagem clara e aponte a peça processual cabível e o prazo aplicável do CPC.">
               Analisar Última Intimação (DJEN)
@@ -1625,6 +1617,20 @@
         <button type="button" class="button danger-outline process-delete-action" id="processInspectorDelete">Excluir processo</button>
       </footer>
     </aside>
+  </div>
+
+  <div class="prompt-preview-backdrop v2-only hidden" id="promptPreviewBackdrop">
+    <section class="prompt-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="promptPreviewTitle">
+      <header>
+        <div><p>Prompt jurídico</p><h2 id="promptPreviewTitle">Texto completo</h2></div>
+        <button type="button" class="icon-button" id="promptPreviewClose" aria-label="Fechar prompt completo"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
+      </header>
+      <div class="prompt-preview-body"><pre id="promptPreviewText"></pre></div>
+      <footer>
+        <button type="button" class="button ghost" id="promptPreviewCopy"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-copy"></use></svg>Copiar</button>
+        <button type="button" class="button gold" id="promptPreviewUse"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-assistant"></use></svg>Usar no Assistente</button>
+      </footer>
+    </section>
   </div>
 
   <div class="modal-backdrop hidden" id="modalBackdrop">

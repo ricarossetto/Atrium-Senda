@@ -34,9 +34,9 @@ export function renderPromptsV2Presentation({
               <p class="prompt-desc">${escapeHtml(prompt.description || 'Modelo especializado para aplicação prática jurídica.')}</p>
             </div>
             ${tagsHtml ? `<div class="prompt-tags-list" aria-label="Palavras-chave">${tagsHtml}</div>` : ''}
-            <section class="prompt-box" aria-label="Texto integral do prompt ${escapeHtml(prompt.title)}">
-              <pre class="prompt-text">${escapeHtml(prompt.prompt)}</pre>
-            </section>
+            <button type="button" class="prompt-box" data-view-prompt="${escapeHtml(prompt.id)}" aria-label="Abrir texto completo do prompt ${escapeHtml(prompt.title)}">
+              <span class="prompt-text">${escapeHtml(prompt.prompt)}</span>
+            </button>
             <footer class="prompt-card-actions">
               <button type="button" class="button ghost btn-use-prompt" data-use-prompt="${escapeHtml(prompt.id)}" aria-label="Usar prompt ${escapeHtml(prompt.title)} no Assistente">
                 ${iconSvg('assistant')}<span>Usar no Assistente</span>

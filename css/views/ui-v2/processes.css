@@ -306,7 +306,8 @@ html[data-ui="v2"] .process-cell-monitoring {
 html[data-ui="v2"] .process-cell-monitoring .v2-status-badge {
   width: 100%;
   max-width: 100%;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   padding: 3px 7px;
   font-size: 10px;
   line-height: 13px;
@@ -319,6 +320,7 @@ html[data-ui="v2"] .process-cell-monitoring .v2-status-badge.is-neutral {
 }
 
 html[data-ui="v2"] .process-details-button {
+  width: 100%;
   min-height: 30px !important;
   margin-top: var(--v2-space-2);
   padding: 4px 8px;
@@ -396,7 +398,8 @@ html[data-ui="v2"] .process-inspector > header {
 
 html[data-ui="v2"] .process-inspector > footer {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--v2-space-2);
   border-top: 1px solid var(--v2-color-border);
 }
 
@@ -406,6 +409,8 @@ html[data-ui="v2"] .process-inspector > footer .button {
   justify-content: center;
   white-space: nowrap;
 }
+
+html[data-ui="v2"] .process-inspector > footer .process-delete-action { grid-column: 1 / -1; }
 
 html[data-ui="v2"] .process-inspector > header p {
   margin: 0 0 2px;
@@ -516,7 +521,8 @@ html[data-ui="v2"] .process-inspector-metrics {
   gap: var(--v2-space-2);
 }
 
-html[data-ui="v2"] .process-inspector-metrics > div {
+html[data-ui="v2"] .process-inspector-metrics > div,
+html[data-ui="v2"] .process-inspector-metrics > button > div {
   min-width: 0;
   display: grid;
   gap: var(--v2-space-1);

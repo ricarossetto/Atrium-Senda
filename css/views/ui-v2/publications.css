@@ -206,7 +206,7 @@ html[data-ui="v2"] #view-inbox .publication-context-controls {
   border-right: 1px solid var(--v2-color-border);
 }
 
-html[data-ui="v2"] #view-inbox .publication-context-controls .inbox-sort-control:first-child { width: 144px; }
+html[data-ui="v2"] #view-inbox .publication-context-controls .inbox-sort-control:first-child { width: 184px; }
 html[data-ui="v2"] #view-inbox .publication-context-controls .inbox-sort-control:last-child { width: 176px; }
 
 html[data-ui="v2"] #view-inbox .publication-primary-actions .button {
@@ -1063,7 +1063,7 @@ html[data-ui="v2"] #view-inbox.publication-detail-open #intimationDetail {
 }
 
 html[data-ui="v2"] #intimationDetail .publication-original {
-  padding-inline: clamp(24px, 5vw, 72px);
+  padding-inline: var(--v2-space-5);
 }
 
 html[data-ui="v2"] #intimationDetail .original-text {
@@ -1075,7 +1075,7 @@ html[data-ui="v2"] #intimationDetail .original-text {
 
 html[data-ui="v2"] #intimationDetail .detail-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 html[data-ui="v2"] #intimationDetail .detail-actions .button {

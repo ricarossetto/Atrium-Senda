@@ -95,7 +95,7 @@ html[data-ui="v2"] #view-configuration .configuration-toolbar {
 
 html[data-ui="v2"] #configurationTabs {
   grid-column: 1;
-  grid-row: 3 / span 2;
+  grid-row: 2 / span 3;
   width: 100%;
   min-width: 0;
   display: flex;
@@ -498,6 +498,17 @@ html[data-ui="v2"] .registry-provider-card small { display: block; margin: var(-
 html[data-ui="v2"] .registry-provider-card .v2-button { min-height: 36px; padding: 7px 11px; font-size: 11px; }
 html[data-ui="v2"] .registry-policy-note { padding: var(--v2-space-4); border-left: 3px solid var(--v2-color-warning); border-radius: 0 var(--v2-radius-md) var(--v2-radius-md) 0; background: var(--v2-color-warning-soft); }
 html[data-ui="v2"] .registry-policy-note p { margin: 5px 0 0; color: var(--v2-color-foreground-secondary); }
+html[data-ui="v2"] .registry-cpf-validation { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(280px, 1fr); gap: var(--v2-space-5); padding: var(--v2-space-5); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-lg); background: var(--v2-color-surface); }
+html[data-ui="v2"] .registry-cpf-validation h4 { margin: 4px 0; font-size: 18px; }
+html[data-ui="v2"] .registry-cpf-validation p { margin: 0; color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] .registry-cpf-validation form label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; }
+html[data-ui="v2"] .registry-cpf-validation form > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--v2-space-2); }
+html[data-ui="v2"] .registry-cpf-validation input { min-height: 44px; padding: 0 var(--v2-space-3); color: var(--v2-color-foreground); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-md); background: var(--v2-color-surface-inset); }
+html[data-ui="v2"] #registryCpfResult { grid-column: 1 / -1; }
+html[data-ui="v2"] .registry-cpf-result { display: flex; align-items: center; gap: var(--v2-space-3); padding: var(--v2-space-3); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-md); background: var(--v2-color-surface-secondary); }
+html[data-ui="v2"] .registry-cpf-result.is-valid { border-color: color-mix(in srgb, var(--v2-color-success) 45%, var(--v2-color-border)); }
+html[data-ui="v2"] .registry-cpf-result.is-invalid { border-color: color-mix(in srgb, var(--v2-color-danger) 45%, var(--v2-color-border)); }
+html[data-ui="v2"] .registry-cpf-result span { color: var(--v2-color-foreground-secondary); }
 html[data-ui="v2"] .registry-bank-directory { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(280px, 1fr); gap: var(--v2-space-5); padding: var(--v2-space-5); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-lg); background: var(--v2-color-surface); }
 html[data-ui="v2"] .registry-bank-directory h4 { margin: 4px 0; font-size: 18px; }
 html[data-ui="v2"] .registry-bank-directory form label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; }
@@ -522,6 +533,7 @@ html[data-ui="v2"] .registry-config-error { color: var(--v2-color-danger); }
 @media (max-width: 900px) {
   html[data-ui="v2"] .registry-provider-grid { grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] .registry-bank-directory { grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .registry-cpf-validation { grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] .registry-bank-results { grid-column: auto; grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] #view-configuration.active { display: flex; flex-direction: column; gap: var(--v2-space-4); }
   html[data-ui="v2"] .configuration-v2-header { align-items: start; }
@@ -542,6 +554,8 @@ html[data-ui="v2"] .registry-config-error { color: var(--v2-color-danger); }
   html[data-ui="v2"] .registry-config-workspace > header { flex-direction: column; }
   html[data-ui="v2"] .registry-config-workspace > header .v2-button { width: 100%; min-height: 44px; }
   html[data-ui="v2"] .registry-bank-directory { padding: var(--v2-space-3); }
+  html[data-ui="v2"] .registry-cpf-validation { padding: var(--v2-space-3); }
+  html[data-ui="v2"] .registry-cpf-validation form > div { grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] .registry-bank-directory form > div { grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] .configuration-v2-header { padding: var(--v2-space-4); }
   html[data-ui="v2"] .configuration-v2-header h2 { font-size: 27px; }

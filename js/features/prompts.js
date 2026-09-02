@@ -21,6 +21,9 @@ export function createPromptsFeature({
 } = {}) {
   let filter = { search: '', category: 'all', type: 'all' };
   let initialized = false;
+  let previewPrompt = null;
+  let previewInvoker = null;
+  let previewBodyOverflow = '';
   const byId = id => documentRef.getElementById(id);
   const allPrompts = () => [...(store.state.customPrompts || []), ...getDefaultPrompts()];
 
@@ -78,6 +81,11 @@ export function createPromptsFeature({
       });
       byId('btnNewPrompt')?.addEventListener('click', () => feature.openNewPromptModal());
       byId('promptsGrid')?.addEventListener('click', event => {
+        const previewButton = event.target.closest('[data-view-prompt]');
+        if (previewButton) {
+          feature.openPreview(previewButton.dataset.viewPrompt, previewButton);
+          return;
+        }
         const copyButton = event.target.closest('[data-copy-prompt]');
         if (copyButton) {
           const prompt = allPrompts().find(item => item.id === copyButton.dataset.copyPrompt);
@@ -99,7 +107,62 @@ export function createPromptsFeature({
         const deleteButton = event.target.closest('[data-delete-prompt]');
         if (deleteButton) feature.deletePrompt(deleteButton.dataset.deletePrompt);
       });
+      byId('promptPreviewClose')?.addEventListener('click', () => feature.closePreview());
+      byId('promptPreviewBackdrop')?.addEventListener('click', event => {
+        if (event.target === byId('promptPreviewBackdrop')) feature.closePreview();
+      });
+      byId('promptPreviewBackdrop')?.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          feature.closePreview();
+          return;
+        }
+        if (event.key !== 'Tab') return;
+        const focusable = [...byId('promptPreviewBackdrop').querySelectorAll('button:not([disabled])')].filter(element => element.getClientRects().length > 0);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (event.shiftKey && documentRef.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && documentRef.activeElement === last) { event.preventDefault(); first.focus(); }
+      });
+      byId('promptPreviewCopy')?.addEventListener('click', event => {
+        if (previewPrompt) feature.copy(previewPrompt.prompt, event.currentTarget);
+      });
+      byId('promptPreviewUse')?.addEventListener('click', () => {
+        if (!previewPrompt) return;
+        const text = previewPrompt.prompt;
+        feature.closePreview({ restoreFocus: false });
+        feature.useInAssistant(text);
+      });
       return true;
+    },
+
+    openPreview(promptId, invoker = null) {
+      const prompt = allPrompts().find(item => String(item.id) === String(promptId));
+      const backdrop = byId('promptPreviewBackdrop');
+      if (!prompt || !backdrop) return false;
+      previewPrompt = prompt;
+      previewInvoker = invoker || documentRef.activeElement;
+      previewBodyOverflow = documentRef.body?.style?.overflow || '';
+      byId('promptPreviewTitle').textContent = prompt.title || 'Texto completo';
+      byId('promptPreviewText').textContent = prompt.prompt || '';
+      backdrop.classList.remove('hidden');
+      byId('appShell')?.setAttribute('inert', '');
+      if (documentRef.body) documentRef.body.style.overflow = 'hidden';
+      windowRef.setTimeout(() => byId('promptPreviewClose')?.focus(), 0);
+      return true;
+    },
+
+    closePreview({ restoreFocus = true } = {}) {
+      const backdrop = byId('promptPreviewBackdrop');
+      const wasOpen = Boolean(backdrop && !backdrop.classList.contains('hidden'));
+      backdrop?.classList.add('hidden');
+      byId('appShell')?.removeAttribute('inert');
+      if (wasOpen && documentRef.body) documentRef.body.style.overflow = previewBodyOverflow;
+      if (wasOpen && restoreFocus && previewInvoker?.isConnected && typeof previewInvoker.focus === 'function') previewInvoker.focus();
+      previewPrompt = null;
+      previewInvoker = null;
+      return wasOpen;
     },
 
     copy(promptText, buttonElement) {

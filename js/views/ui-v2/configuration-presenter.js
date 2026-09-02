@@ -74,6 +74,14 @@ export function createConfigurationAdminPresenter({
         button.setAttribute('aria-pressed', selected ? 'true' : 'false');
         container.append(button);
       }
+      if (group.label === 'Sistema') {
+        const auditButton = documentRef.createElement('button');
+        auditButton.type = 'button';
+        auditButton.dataset.viewLink = 'audit';
+        auditButton.className = 'configuration-audit-entry';
+        auditButton.textContent = 'Alertas e auditoria';
+        container.append(auditButton);
+      }
       navigation.append(container);
     }
     return true;

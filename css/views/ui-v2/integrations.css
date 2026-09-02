@@ -98,8 +98,8 @@ html[data-ui="v2"] #view-integrations .judicial-integration-card {
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr);
   align-items: start;
-  background: linear-gradient(120deg, color-mix(in srgb, var(--v2-color-gold-soft) 38%, var(--v2-color-surface)) 0%, var(--v2-color-surface) 54%);
-  border-color: color-mix(in srgb, var(--v2-color-gold) 34%, var(--v2-color-border));
+  background: var(--v2-color-surface);
+  border-color: var(--v2-color-border);
 }
 
 html[data-ui="v2"] #view-integrations .judicial-integration-card .integration-logo {

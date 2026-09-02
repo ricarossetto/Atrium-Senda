@@ -181,8 +181,12 @@ html[data-ui="v2"] #view-assistant .assistant-skills-card > div:first-child > di
 
 html[data-ui="v2"] #view-assistant .assistant-skills-card .gold-pill {
   justify-self: start;
+  padding: 0;
   color: var(--v2-color-gold);
-  background: var(--v2-color-gold-soft);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  text-shadow: none;
 }
 
 html[data-ui="v2"] #view-assistant .assistant-skills-card span:not(.gold-pill) {
