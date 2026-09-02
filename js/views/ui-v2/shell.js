@@ -23,7 +23,9 @@ const SYSTEM_ORDER = Object.freeze(['monitoring', 'links', 'importer', 'integrat
 
 export function createUiV2Shell({
   documentRef = globalThis.document,
-  windowRef = globalThis.window
+  windowRef = globalThis.window,
+  getNotifications = () => [],
+  onNotificationSelect
 } = {}) {
   let initialized = false;
   let navigationTrigger = null;
@@ -153,15 +155,10 @@ export function createUiV2Shell({
       if (wasOpen && restoreFocus) notificationButton?.focus();
     };
     const renderNotifications = () => {
-      const pending = Number(documentRef?.getElementById?.('inboxBadge')?.textContent || 0);
-      const overdue = Number(documentRef?.getElementById?.('v2AttentionOverdue')?.textContent || 0);
       const body = documentRef?.getElementById?.('notificationPanelBody');
       if (!body) return;
-      const items = [
-        pending > 0 ? `<button type="button" data-view-link="inbox"><strong>${pending} publicaç${pending === 1 ? 'ão pendente' : 'ões pendentes'}</strong><span>Revisar a triagem judicial</span></button>` : '',
-        overdue > 0 ? `<button type="button" data-view-link="kanban"><strong>${overdue} tarefa${overdue === 1 ? ' atrasada' : 's atrasadas'}</strong><span>Ver prioridades do escritório</span></button>` : ''
-      ].filter(Boolean);
-      body.innerHTML = items.length ? items.join('') : '<div class="notification-empty"><strong>Tudo acompanhado</strong><p>Não há publicações pendentes nem tarefas atrasadas neste momento.</p></div>';
+      const items = getNotifications().slice(0, 8);
+      body.innerHTML = items.length ? items.map(item => `<button type="button" data-notification-target="${escapeAttribute(item.target)}" data-notification-id="${escapeAttribute(item.id)}"><strong>${escapeText(item.title)}</strong><span>${escapeText(item.detail)}</span></button>`).join('') : '<div class="notification-empty"><strong>Tudo acompanhado</strong><p>Não há publicações pendentes nem tarefas atrasadas neste momento.</p></div>';
     };
     notificationButton?.addEventListener('click', () => {
       const open = notificationPanel?.classList.contains('hidden');
@@ -177,7 +174,10 @@ export function createUiV2Shell({
       if (event.key === 'Escape') { event.preventDefault(); closeNotifications(); }
     });
     notificationPanel?.addEventListener('click', event => {
+      const item = event.target.closest('[data-notification-target]');
+      if (item) onNotificationSelect?.({ target: item.dataset.notificationTarget, id: item.dataset.notificationId });
       if (event.target.closest('[data-view-link]')) closeNotifications({ restoreFocus: false });
+      if (item) closeNotifications({ restoreFocus: false });
     });
     documentRef?.addEventListener?.('click', event => {
       if (!notificationPanel?.classList.contains('hidden') && !event.target.closest('.notification-center')) closeNotifications({ restoreFocus: false });
@@ -187,4 +187,15 @@ export function createUiV2Shell({
   }
 
   return Object.freeze({ init, applyMode, toggleNavigation, closeNavigation, handleKeydown });
+}
+
+function escapeText(value) {
+  const element = globalThis.document?.createElement?.('span');
+  if (!element) return String(value || '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+  element.textContent = String(value || '');
+  return element.innerHTML;
+}
+
+function escapeAttribute(value) {
+  return escapeText(value).replace(/`/g, '&#96;');
 }

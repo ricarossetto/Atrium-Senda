@@ -479,6 +479,38 @@ html[data-ui="classic"] .office-identity-section { margin: 0; padding: 0; border
 html[data-ui="classic"] .office-identity-section legend { margin-bottom: 7px; color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 html[data-ui="classic"] .office-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+html[data-ui="v2"] .registry-config-workspace { display: grid; gap: var(--v2-space-5); padding: var(--v2-space-5); }
+html[data-ui="v2"] .registry-config-workspace > header { display: flex; align-items: start; justify-content: space-between; gap: var(--v2-space-4); }
+html[data-ui="v2"] .registry-config-workspace > header span,
+html[data-ui="v2"] .registry-bank-directory > div > span { color: var(--v2-color-gold); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+html[data-ui="v2"] .registry-config-workspace h3 { margin: 4px 0; font: 600 24px/1.2 var(--v2-font-editorial); }
+html[data-ui="v2"] .registry-config-workspace header p,
+html[data-ui="v2"] .registry-bank-directory p { max-width: 640px; margin: 0; color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] .registry-provider-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--v2-space-3); }
+html[data-ui="v2"] .registry-provider-card { min-height: 118px; padding: var(--v2-space-4); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-lg); background: var(--v2-color-surface-secondary); }
+html[data-ui="v2"] .registry-provider-card span { display: block; margin-bottom: var(--v2-space-4); color: var(--v2-color-success); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+html[data-ui="v2"] .registry-provider-card.is-not_configured span { color: var(--v2-color-warning); }
+html[data-ui="v2"] .registry-provider-card.is-temporarily_paused span { color: var(--v2-color-danger); }
+html[data-ui="v2"] .registry-provider-card strong,
+html[data-ui="v2"] .registry-provider-card p { display: block; }
+html[data-ui="v2"] .registry-provider-card p { margin: 5px 0 0; color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] .registry-provider-card small { display: block; margin: var(--v2-space-3) 0; color: var(--v2-color-muted-foreground); line-height: 1.45; }
+html[data-ui="v2"] .registry-provider-card .v2-button { min-height: 36px; padding: 7px 11px; font-size: 11px; }
+html[data-ui="v2"] .registry-policy-note { padding: var(--v2-space-4); border-left: 3px solid var(--v2-color-warning); border-radius: 0 var(--v2-radius-md) var(--v2-radius-md) 0; background: var(--v2-color-warning-soft); }
+html[data-ui="v2"] .registry-policy-note p { margin: 5px 0 0; color: var(--v2-color-foreground-secondary); }
+html[data-ui="v2"] .registry-bank-directory { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(280px, 1fr); gap: var(--v2-space-5); padding: var(--v2-space-5); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-lg); background: var(--v2-color-surface); }
+html[data-ui="v2"] .registry-bank-directory h4 { margin: 4px 0; font-size: 18px; }
+html[data-ui="v2"] .registry-bank-directory form label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; }
+html[data-ui="v2"] .registry-bank-directory form > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--v2-space-2); }
+html[data-ui="v2"] .registry-bank-directory input { min-height: 44px; padding: 0 var(--v2-space-3); color: var(--v2-color-foreground); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-md); background: var(--v2-color-surface-inset); }
+html[data-ui="v2"] .registry-bank-results { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--v2-space-2); }
+html[data-ui="v2"] .registry-bank-results article { padding: var(--v2-space-3); border: 1px solid var(--v2-color-border-subtle); border-radius: var(--v2-radius-md); background: var(--v2-color-surface-secondary); }
+html[data-ui="v2"] .registry-bank-results article span,
+html[data-ui="v2"] .registry-bank-results article small { display: block; margin-top: 3px; color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] .registry-config-loading,
+html[data-ui="v2"] .registry-config-error { grid-column: 1 / -1; margin: 0; padding: var(--v2-space-3); color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] .registry-config-error { color: var(--v2-color-danger); }
+
 @media (max-width: 1180px) {
   html[data-ui="v2"] #view-configuration.active { grid-template-columns: minmax(220px, 248px) minmax(0, 1fr); }
   html[data-ui="v2"] #configurationMetrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -488,6 +520,9 @@ html[data-ui="classic"] .office-field-grid { display: grid; grid-template-column
 }
 
 @media (max-width: 900px) {
+  html[data-ui="v2"] .registry-provider-grid { grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .registry-bank-directory { grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .registry-bank-results { grid-column: auto; grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] #view-configuration.active { display: flex; flex-direction: column; gap: var(--v2-space-4); }
   html[data-ui="v2"] .configuration-v2-header { align-items: start; }
   html[data-ui="v2"] .configuration-v2-header-mark { display: none; }
@@ -503,6 +538,11 @@ html[data-ui="classic"] .office-field-grid { display: grid; grid-template-column
 }
 
 @media (max-width: 700px) {
+  html[data-ui="v2"] .registry-config-workspace { padding: var(--v2-space-3); }
+  html[data-ui="v2"] .registry-config-workspace > header { flex-direction: column; }
+  html[data-ui="v2"] .registry-config-workspace > header .v2-button { width: 100%; min-height: 44px; }
+  html[data-ui="v2"] .registry-bank-directory { padding: var(--v2-space-3); }
+  html[data-ui="v2"] .registry-bank-directory form > div { grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] .configuration-v2-header { padding: var(--v2-space-4); }
   html[data-ui="v2"] .configuration-v2-header h2 { font-size: 27px; }
   html[data-ui="v2"] #configurationTabs { grid-template-columns: 1fr; }

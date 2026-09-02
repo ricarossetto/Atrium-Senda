@@ -4,7 +4,7 @@ const SECTION_GROUPS = Object.freeze([
   Object.freeze({ label: 'Estrutura', keys: Object.freeze(['taskDefinitions', 'actionGroups', 'actionTypes', 'stages', 'origins']) }),
   Object.freeze({ label: 'Equipe', keys: Object.freeze(['users', 'goals']) }),
   Object.freeze({ label: 'Fluxo', keys: Object.freeze(['inboxSections', 'notificationAssignments']) }),
-  Object.freeze({ label: 'Sistema', keys: Object.freeze(['integrations', 'diagnostic', 'backups']) })
+  Object.freeze({ label: 'Sistema', keys: Object.freeze(['integrations', 'registry', 'diagnostic', 'backups']) })
 ]);
 
 const FOCUSABLE_SELECTOR = [

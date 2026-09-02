@@ -10,7 +10,9 @@ export function createContactsFeature({
   sortRecords,
   updateTableSortHeaders,
   openModal,
-  openOwnerDocuments
+  openOwnerDocuments,
+  secureFetch,
+  showToast = () => {}
 } = {}) {
   let initialized = false;
   const sort = { field: 'name', direction: 'asc' };
@@ -217,6 +219,7 @@ export function createContactsFeature({
 
     openContactModal(defaults = {}) {
       const v2 = isV2();
+      const modalDefaults = { source: 'Interna', contactRole: 'cliente', leadOrigin: 'indicacao', ...defaults };
       openModal?.('contact', defaults.id ? (v2 ? 'Editar contato' : 'Detalhes do contato') : 'Novo contato', v2 ? 'Pessoas e relacionamentos' : 'Cadastro de pessoas', [
         { name: 'name', label: 'Nome completo / razão social', required: true, full: true },
         { name: 'contactRole', label: 'Papel do contato', type: 'select', options: [{value:'cliente',label:'Cliente / Outorgante'},{value:'testemunha',label:'Testemunha'},{value:'perito',label:'Perito Judicial / Assistente'},{value:'adverso',label:'Advogado Adverso / Parte Contrária'},{value:'correspondente',label:'Correspondente Jurídico'},{value:'preposto',label:'Preposto / Representante'},{value:'outro',label:'Outro Contato'}] },
@@ -227,21 +230,145 @@ export function createContactsFeature({
         { name: 'origin', label: 'Origem (texto livre)' }, { name: 'city', label: 'Cidade' }, { name: 'state', label: 'Estado' },
         { name: 'address', label: 'Endereço', full: true }, { name: 'district', label: 'Bairro' }, { name: 'zip', label: 'CEP' },
         { name: 'notes', label: 'Anotações gerais', type: 'textarea', full: true }
-      ], { source: 'Interna', contactRole: 'cliente', leadOrigin: 'indicacao', ...defaults });
+      ], modalDefaults, v2 ? registryReviewShell() : '');
+      if (v2) this.installRegistryReview(modalDefaults);
+    },
+
+    installRegistryReview(modalDefaults) {
+      const panel = byId('contactRegistryReview');
+      if (!panel || typeof secureFetch !== 'function') return false;
+      let currentResult = null;
+      let cepLookupActive = false;
+      const setStatus = (message, state = 'neutral') => {
+        const status = panel.querySelector('[data-registry-status]');
+        if (!status) return;
+        status.textContent = message;
+        status.dataset.state = state;
+      };
+      byId('field-zip')?.addEventListener('change', () => {
+        if (/^\d{8}$/.test(String(byId('field-zip')?.value || '').replace(/\D/g, ''))) panel.querySelector('[data-registry-action="cep"]')?.click();
+      });
+      panel.addEventListener('click', async event => {
+        const action = event.target.closest('[data-registry-action]')?.dataset.registryAction;
+        if (!action) return;
+        if (action === 'document') {
+          const documentInput = byId('field-document');
+          const value = documentInput?.value || '';
+          setStatus('Validando o documento informado…', 'loading');
+          try {
+            const validation = await registryRequest(secureFetch, `/api/registry/document/validate?value=${encodeURIComponent(value)}`);
+            if (validation.type === 'cpf') {
+              currentResult = null;
+              panel.querySelector('[data-registry-results]').innerHTML = registryCpfResult(validation, escapeHtml);
+              setStatus(validation.valid ? validation.message : 'CPF inválido. Revise os dígitos antes de salvar.', validation.valid ? 'attention' : 'error');
+              return;
+            }
+            if (validation.type !== 'cnpj' || !validation.valid) throw new Error('CNPJ inválido. Revise os caracteres e os dígitos verificadores.');
+            setStatus('Consultando a fonte pública de CNPJ…', 'loading');
+            store.audit('Consulta cadastral iniciada', 'CNPJ · fonte pública supervisionada');
+            currentResult = await registryRequest(secureFetch, `/api/registry/cnpj?value=${encodeURIComponent(validation.normalized)}`);
+            const candidates = registryDuplicateCandidates(store.state, currentResult, modalDefaults.id);
+            panel.querySelector('[data-registry-results]').innerHTML = registryCnpjResult(currentResult, candidates, registryCurrentValues(byId), escapeHtml);
+            setStatus(`Consulta ${currentResult.registry?.freshness === 'cached' ? 'em cache' : 'ao vivo'} concluída. Revise antes de aplicar.`, 'success');
+            return;
+          } catch (error) {
+            currentResult = null;
+            panel.querySelector('[data-registry-results]').innerHTML = '';
+            setStatus(error.message || 'Não foi possível consultar o cadastro.', 'error');
+            return;
+          }
+        }
+        if (action === 'cep') {
+          if (cepLookupActive) return;
+          cepLookupActive = true;
+          const value = byId('field-zip')?.value || '';
+          setStatus('Consultando o CEP informado…', 'loading');
+          try {
+            store.audit('Consulta cadastral iniciada', 'CEP · fonte pública supervisionada');
+            const result = await registryRequest(secureFetch, `/api/registry/cep?value=${encodeURIComponent(value)}`);
+            currentResult = { ...(currentResult || {}), ...result, registry: result.registry };
+            panel.querySelector('[data-registry-results]').innerHTML = registryAddressResult(result, escapeHtml);
+            setStatus(`Endereço ${result.registry?.freshness === 'cached' ? 'em cache' : 'consultado ao vivo'}. Revise antes de aplicar.`, 'success');
+          } catch (error) {
+            setStatus(error.message || 'Não foi possível consultar o CEP.', 'error');
+          } finally {
+            cepLookupActive = false;
+          }
+          return;
+        }
+        if (action === 'apply') {
+          const selected = [...panel.querySelectorAll('[data-registry-field]:checked')];
+          const appliedFields = [];
+          selected.forEach(input => {
+            const target = byId(`field-${input.dataset.registryField}`);
+            if (!target) return;
+            target.value = input.dataset.registryValue || '';
+            target.dispatchEvent(new Event('input', { bubbles: true }));
+            appliedFields.push(input.dataset.registryField);
+          });
+          if (!appliedFields.length) {
+            setStatus('Selecione ao menos um campo para aplicar.', 'attention');
+            return;
+          }
+          modalDefaults.registryProvenance = mergeRegistryProvenance(modalDefaults.registryProvenance, currentResult, appliedFields);
+          store.audit('Campos cadastrais revisados', `${appliedFields.join(', ')} · aplicação humana`);
+          setStatus(`${appliedFields.length} campo(s) aplicado(s). O salvamento continua sob sua confirmação.`, 'success');
+          return;
+        }
+        if (action === 'keep-current' || action === 'cancel-review') {
+          currentResult = null;
+          panel.querySelector('[data-registry-results]').innerHTML = '';
+          setStatus(action === 'keep-current' ? 'Cadastro atual mantido. Nenhum campo foi alterado.' : 'Revisão cancelada. Nenhum campo foi alterado.', 'neutral');
+          return;
+        }
+        if (action === 'qsa') {
+          const partnerIndex = Number(event.target.closest('[data-registry-partner-index]')?.dataset.registryPartnerIndex);
+          const partner = currentResult?.qsa?.[partnerIndex];
+          if (!partner?.name) return;
+          const match = registryPartnerMatch(store.state.contacts, partner.name);
+          if (match) {
+            setStatus(`Já existe contato com o mesmo nome: ${match.name}. Nenhuma mesclagem foi feita.`, 'attention');
+            return;
+          }
+          modalDefaults._registryQsaImports = Array.isArray(modalDefaults._registryQsaImports) ? modalDefaults._registryQsaImports : [];
+          if (!modalDefaults._registryQsaImports.some(item => normalizeIdentity(item.name) === normalizeIdentity(partner.name))) {
+            modalDefaults._registryQsaImports.push({ ...partner, sourceName: currentResult.legalName || currentResult.tradeName || 'Pessoa jurídica consultada' });
+          }
+          event.target.closest('[data-registry-partner-index]').disabled = true;
+          event.target.closest('[data-registry-partner-index]').textContent = 'Importação preparada';
+          setStatus('Sócio preparado como contato de papel “Outro”. A criação ocorrerá somente ao salvar.', 'success');
+        }
+      });
+      return true;
     },
 
     saveContact(data, defaults = {}) {
       const editing = Boolean(defaults.id);
+      const pendingQsaImports = Array.isArray(defaults._registryQsaImports) ? defaults._registryQsaImports : [];
+      const safeDefaults = { ...defaults };
+      delete safeDefaults._registryQsaImports;
       const record = {
-        id: defaults.id || uid('contact'),
-        externalId: defaults.externalId || null,
-        registeredAt: defaults.registeredAt || isoDate(),
-        ...defaults,
+        id: safeDefaults.id || uid('contact'),
+        externalId: safeDefaults.externalId || null,
+        registeredAt: safeDefaults.registeredAt || isoDate(),
+        ...safeDefaults,
         ...data,
         updatedAt: new Date().toISOString()
       };
       store.upsert('contacts', record);
       store.audit(editing ? 'Contato atualizado' : 'Contato cadastrado', record.name);
+      for (const partner of pendingQsaImports) {
+        if (!partner?.name || registryPartnerMatch(store.state.contacts, partner.name)) continue;
+        const related = {
+          id: uid('contact'), externalId: null, registeredAt: isoDate(), updatedAt: new Date().toISOString(),
+          name: partner.name, profession: partner.role || '', contactRole: 'outro', leadOrigin: 'outro',
+          origin: `Quadro societário de ${partner.sourceName}`, source: 'BrasilAPI · importação QSA supervisionada',
+          registryProvenance: [{ source: 'BrasilAPI · dados públicos de CNPJ', appliedFields: ['name', 'profession'], appliedAt: new Date().toISOString() }]
+        };
+        store.upsert('contacts', related);
+        store.audit('Contato cadastrado', related.name);
+      }
+      if (pendingQsaImports.length) showToast(`${pendingQsaImports.length} vínculo(s) societário(s) revisado(s) no cadastro.`, 'success');
       return record;
     }
   };
@@ -334,4 +461,95 @@ function mergeSources(left, right) {
 
 function uniqueStrings(values) {
   return [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
+}
+
+function registryReviewShell() {
+  return `<section class="contact-registry-review" id="contactRegistryReview" aria-labelledby="contactRegistryHeading">
+    <div class="contact-registry-heading"><div><span>INTELIGÊNCIA CADASTRAL</span><h3 id="contactRegistryHeading">Consultar antes de preencher</h3></div><p>Fontes públicas, com revisão humana antes de qualquer alteração.</p></div>
+    <div class="contact-registry-actions">
+      <button type="button" class="v2-button is-secondary" data-registry-action="document">Validar / consultar CPF ou CNPJ</button>
+      <button type="button" class="v2-button is-secondary" data-registry-action="cep">Consultar CEP</button>
+    </div>
+    <p class="contact-registry-status" data-registry-status data-state="neutral" role="status" aria-live="polite">Nenhum dado é aplicado automaticamente.</p>
+    <div class="contact-registry-results" data-registry-results></div>
+  </section>`;
+}
+
+async function registryRequest(secureFetch, url) {
+  const response = await secureFetch(url, { headers: { Accept: 'application/json' } });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || 'Consulta cadastral indisponível.');
+  return payload;
+}
+
+function registryCpfResult(validation, escapeHtml) {
+  return `<div class="registry-validation-card ${validation.valid ? 'is-valid' : 'is-invalid'}"><strong>${validation.valid ? 'CPF estruturalmente válido' : 'CPF inválido'}</strong><p>${escapeHtml(validation.message)}</p><small>A validação local não identifica a pessoa nem consulta situação cadastral.</small></div>`;
+}
+
+function registryCnpjResult(result, candidates, currentValues, escapeHtml) {
+  const fields = [
+    ['name', 'Razão social', result.legalName], ['email', 'E-mail', result.email], ['phone', 'Telefone', result.phone],
+    ['address', 'Endereço', result.address], ['district', 'Bairro', result.district], ['city', 'Cidade', result.city],
+    ['state', 'UF', result.state], ['zip', 'CEP', result.zip]
+  ];
+  const duplicates = candidates.length ? `<div class="registry-duplicate-hint"><strong>Possíveis registros ou relações a revisar</strong>${candidates.map(item => `<p><span>Nível ${escapeHtml(item.level)}</span>${escapeHtml(item.name)} · ${escapeHtml(item.reason)}</p>`).join('')}<small>É apenas um indício cadastral. Nenhuma mesclagem, vínculo ou conclusão de conflito foi realizada.</small></div>` : '';
+  const qsa = result.qsa?.length ? `<section class="registry-qsa"><h4>Quadro societário</h4>${result.qsa.map((partner, index) => `<div><span><strong>${escapeHtml(partner.name)}</strong><small>${escapeHtml(partner.role || 'Qualificação não informada')}</small></span><button type="button" class="v2-button is-secondary" data-registry-action="qsa" data-registry-partner-index="${index}">Preparar contato</button></div>`).join('')}<p>Sócios são importados como “Outro” após confirmação; nunca como cliente automático.</p></section>` : '';
+  const facts = [result.tradeName && `Nome fantasia: ${result.tradeName}`, result.primaryActivity && `CNAE principal: ${result.primaryActivity}`, result.statusDate && `Situação desde: ${result.statusDate}`, result.municipalityIbgeCode && `IBGE: ${result.municipalityIbgeCode}`, typeof result.simpleNational === 'boolean' && `Simples Nacional: ${result.simpleNational ? 'Sim' : 'Não'}`, typeof result.mei === 'boolean' && `MEI: ${result.mei ? 'Sim' : 'Não'}`].filter(Boolean);
+  const registryLabel = `${result.registry?.freshness === 'cached' ? 'CACHE' : 'LIVE'} · ${result.registry?.source || 'Fonte pública'} · consulta ${result.registry?.consultedAt || 'sem horário informado'}`;
+  return `<div class="registry-company-summary"><div><span>${escapeHtml(result.status || 'Situação não informada')}</span><strong>${escapeHtml(result.legalName || result.tradeName || 'Pessoa jurídica')}</strong><small>${escapeHtml(result.document)} · ${escapeHtml(registryLabel)}</small>${facts.length ? `<p>${facts.map(escapeHtml).join(' · ')}</p>` : ''}</div></div>${duplicates}<fieldset class="registry-field-review"><legend>Cadastro atual × dado encontrado</legend>${fields.filter(([, , value]) => value).map(([field, label, value]) => `<label><input type="checkbox" data-registry-field="${field}" data-registry-value="${escapeHtml(value)}"><span><strong>${label}</strong><small><b>Atual</b> ${escapeHtml(currentValues[field] || 'não informado')}</small><small><b>Encontrado</b> ${escapeHtml(value)}</small></span></label>`).join('')}</fieldset><div class="registry-review-actions"><button type="button" class="v2-button is-secondary" data-registry-action="cancel-review">Cancelar revisão</button><button type="button" class="v2-button is-secondary" data-registry-action="keep-current">Manter cadastro atual</button><button type="button" class="v2-button is-primary registry-apply" data-registry-action="apply">Aplicar campos selecionados</button></div>${qsa}`;
+}
+
+function registryAddressResult(result, escapeHtml) {
+  const fields = [['address', 'Endereço', result.address], ['district', 'Bairro', result.district], ['city', 'Cidade', result.city], ['state', 'UF', result.state], ['zip', 'CEP', result.zip]];
+  return `${result.ibgeCode ? `<p class="registry-address-context">Município IBGE ${escapeHtml(result.ibgeCode)} · Brasil</p>` : ''}<fieldset class="registry-field-review"><legend>Endereço encontrado — revise antes de aplicar</legend>${fields.filter(([, , value]) => value).map(([field, label, value]) => `<label><input type="checkbox" checked data-registry-field="${field}" data-registry-value="${escapeHtml(value)}"><span><strong>${label}</strong><small>${escapeHtml(value)}</small></span></label>`).join('')}</fieldset><div class="registry-review-actions"><button type="button" class="v2-button is-secondary" data-registry-action="cancel-review">Cancelar revisão</button><button type="button" class="v2-button is-primary registry-apply" data-registry-action="apply">Aplicar endereço selecionado</button></div>`;
+}
+
+function registryDuplicateCandidates(state, result, currentId) {
+  const contacts = state?.contacts || [];
+  const document = normalizeDocument(result.normalizedDocument || result.document);
+  const email = normalizeIdentity(result.email);
+  const phone = String(result.phone || '').replace(/\D/g, '');
+  const names = [result.legalName, result.tradeName].map(normalizeIdentity).filter(Boolean);
+  const contactCandidates = contacts.filter(item => String(item.id) !== String(currentId || '')).map(item => {
+    const itemName = normalizeIdentity(item.name);
+    const nameStrength = Math.max(...names.map(name => identitySimilarity(name, itemName)), 0);
+    const sameChannel = (email && normalizeIdentity(item.email) === email) || (phone && [item.mobile, item.phone].some(value => String(value || '').replace(/\D/g, '') === phone));
+    const sameLocation = Boolean(result.city && normalizeIdentity(item.city) === normalizeIdentity(result.city));
+    if ((document && normalizeDocument(item.document) === document) || (result.externalId && item.externalId === result.externalId)) return { level: 'A', name: item.name, reason: 'mesmo identificador forte' };
+    if (nameStrength >= 0.72 && (sameChannel || sameLocation)) return { level: 'B', name: item.name, reason: `nome compatível + ${sameChannel ? 'canal de contato' : 'localidade'}` };
+    if (nameStrength >= 0.72) return { level: 'C', name: item.name, reason: 'semelhança nominal; exige revisão humana' };
+    return null;
+  }).filter(Boolean);
+  const relatedNames = new Set([...names, ...(result.qsa || []).map(item => normalizeIdentity(item.name))].filter(Boolean));
+  const processCandidates = (state?.processes || []).flatMap(process => {
+    const parties = [process.client, process.opponent, process.opposingParty].filter(Boolean);
+    return parties.filter(party => [...relatedNames].some(name => identitySimilarity(name, normalizeIdentity(party)) >= 0.86)).map(party => ({ level: 'C', name: party, reason: `nome presente no processo ${process.number || 'sem número'}; vínculo não criado` }));
+  });
+  return [...contactCandidates, ...processCandidates].slice(0, 8);
+}
+
+function registryCurrentValues(byId) {
+  return Object.fromEntries(['name', 'email', 'phone', 'address', 'district', 'city', 'state', 'zip'].map(field => [field, byId(`field-${field}`)?.value || '']));
+}
+
+function identitySimilarity(left, right) {
+  const leftTokens = new Set(String(left || '').split(' ').filter(token => token.length > 1));
+  const rightTokens = new Set(String(right || '').split(' ').filter(token => token.length > 1));
+  if (!leftTokens.size || !rightTokens.size) return 0;
+  const intersection = [...leftTokens].filter(token => rightTokens.has(token)).length;
+  return (2 * intersection) / (leftTokens.size + rightTokens.size);
+}
+
+function registryPartnerMatch(contacts, name) {
+  const normalized = normalizeIdentity(name);
+  return (contacts || []).find(item => normalizeIdentity(item.name) === normalized) || null;
+}
+
+function mergeRegistryProvenance(current, result, appliedFields) {
+  const previous = Array.isArray(current) ? current : [];
+  const source = result?.registry?.source || 'Fonte pública cadastral';
+  return [...previous, {
+    source, freshness: result?.registry?.freshness || 'live', consultedAt: result?.registry?.consultedAt || new Date().toISOString(),
+    appliedAt: new Date().toISOString(), applicationMode: 'human_selected', appliedFields: [...new Set(appliedFields)]
+  }].slice(-10);
 }

@@ -21,6 +21,7 @@ Antes de alterar um domínio, leia a spec correspondente e as specs transversais
 - [Auditoria](audit-policy.md)
 - [Importação](import-policy.md)
 - [Relacionamento e CRM](relationship-crm.md)
+- [Inteligência cadastral brasileira](brazilian-registry-intelligence.md)
 
 ## Regra de precedência
 

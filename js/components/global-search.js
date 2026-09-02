@@ -3,6 +3,7 @@ import { iconSvg } from '../views/ui-v2/primitives.js';
 const GROUPS = Object.freeze({
   process: { label: 'Processos', icon: 'process', classic: '⚖️', target: 'process' },
   contact: { label: 'Contatos', icon: 'contact', classic: '👤', target: 'contact' },
+  lead: { label: 'Atendimentos / CRM', icon: 'leads', classic: 'CRM', target: 'lead' },
   publication: { label: 'Publicações & DJEN', icon: 'publication', classic: '📬', target: 'intimation' },
   task: { label: 'Tarefas & Prazos', icon: 'task', classic: '📋', target: 'task' },
   document: { label: 'Documentos & OCR', icon: 'documents', classic: 'DOC', target: 'document' },
@@ -152,6 +153,7 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     return [
       ...matches(state.processes, 'process', 'process', item => item.number || 'Processo S/N', item => `${item.client || 'Cliente'} · ${item.court || 'Tribunal'}`, item => `${item.number} ${item.client} ${item.court} ${item.actionType}`, 'Registro processual'),
       ...matches(state.contacts, 'contact', 'contact', item => item.name || 'Contato', item => item.document || item.email || item.phone || 'Sem documento', item => `${item.name} ${item.document} ${item.email} ${item.phone}`, 'Cadastro do contato'),
+      ...matches(state.leads, 'lead', 'lead', item => item.client || 'Atendimento', item => item.serviceType || item.status || 'CRM jurídico', item => `${item.client} ${item.serviceType} ${item.status} ${item.origin} ${item.responsible} ${item.notes}`, 'Atendimento / CRM'),
       ...matches(state.tasks, 'task', 'task', item => item.title || 'Tarefa', item => item.client || item.process || `Prazo: ${formatDate(item.deadline)}`, item => `${item.title} ${item.description} ${item.client} ${item.process} ${item.responsible}`, 'Tarefa'),
       ...matches(state.intimations, 'publication', 'intimation', item => item.title || 'Publicação', item => item.process || item.court || 'DataJud', item => `${item.title} ${item.text} ${item.client} ${item.process} ${item.court}`, 'Publicação'),
       ...matches((state.documents || []).filter(item => !item.deletedAt), 'document', 'document', item => item.name || item.originalName || 'Documento', item => `${item.documentType || 'Documento'} · ${item.documentDate || ''}`, item => `${item.name} ${item.originalName} ${item.documentType} ${item.documentDate}`, 'Metadata documental'),

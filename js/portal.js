@@ -333,7 +333,15 @@ import { createTasksFeature } from './features/tasks.js';
   }
 
   function getUiShellComponent() {
-    uiShellComponent ||= createUiV2Shell();
+    uiShellComponent ||= createUiV2Shell({
+      getNotifications: () => {
+        const today = isoDate();
+        const publications = (Store.state.intimations || []).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').map(item => ({ target: 'intimation', id: item.id, title: item.title || 'Publicação pendente', detail: `${item.process || 'Sem processo'} · revisar triagem` }));
+        const tasks = (Store.state.tasks || []).filter(item => !TERMINAL_STATUSES.includes(item.status) && (item.fatalDeadline || item.deadline) && (item.fatalDeadline || item.deadline) < today).map(item => ({ target: 'task', id: item.id, title: item.title || 'Tarefa atrasada', detail: `${item.process || item.client || 'Sem vínculo'} · prazo informado ${item.fatalDeadline || item.deadline}` }));
+        return [...publications, ...tasks];
+      },
+      onNotificationSelect: selection => App.handleGlobalSearchSelection(selection)
+    });
     return uiShellComponent;
   }
 
@@ -435,6 +443,21 @@ import { createTasksFeature } from './features/tasks.js';
       formatDateTime,
       showToast: (message, type) => App.toast(message, type),
       onOpenTask: task => App.openTaskModal(task),
+      onOpenProcess: process => {
+        if (!process?.id) return;
+        getPublicationsFeature().closeDetail({ restoreFocus: false });
+        App.switchView('processes');
+        App.renderProcesses('');
+        [...document.querySelectorAll('#processTableBody [data-process-id]')].find(row => row.dataset.processId === String(process.id))?.click();
+      },
+      onOpenContact: contact => {
+        if (!contact?.id) return;
+        getPublicationsFeature().closeDetail({ restoreFocus: false });
+        App.switchView('contacts');
+        getContactsFeature().setRoleFilter('all');
+        App.renderContacts('');
+        getContactsFeature().selectContact(contact.id);
+      },
       onOpenIntimation: () => App.openIntimationModal(),
       onImportJson: file => App.importJson(file),
       onRenderGlobalMetrics: () => App.renderMetrics(),
@@ -515,6 +538,10 @@ import { createTasksFeature } from './features/tasks.js';
         App.toast(`Tarefas vinculadas ao processo ${process?.number || process?.protocol || 'selecionado'} estão disponíveis no quadro.`, 'info');
       },
       openTask: task => App.openTaskModal(task),
+      openPublication: publication => {
+        App.switchView('inbox');
+        getPublicationsFeature().select(publication.id);
+      },
       exportJson: (data, filename) => App.exportJson(data, filename),
       confirmProcessDeletion: number => window.prompt(`Para excluir o processo ${number}, digite o número completo:`),
       requestProcessReenable: () => window.prompt('Digite o número CNJ cuja descoberta automática deve ser reativada:')
@@ -532,7 +559,9 @@ import { createTasksFeature } from './features/tasks.js';
       sortRecords,
       updateTableSortHeaders,
       openModal: (...args) => App.openModal(...args),
-      openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId)
+      openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId),
+      secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
+      showToast: (message, type) => App.toast(message, type)
     });
     return contactsFeature;
   }
@@ -1131,6 +1160,10 @@ import { createTasksFeature } from './features/tasks.js';
           if (input) input.value = contact.name || '';
           this.renderContacts(contact.name || '');
         }
+      } else if (target === 'lead') {
+        this.switchView('leads');
+        const lead = Store.state.leads.find(item => item.id === id);
+        if (lead) getLeadsFeature().openLeadModal(lead);
       } else if (target === 'task') {
         this.switchView('kanban');
         const task = Store.state.tasks.find(item => item.id === id);

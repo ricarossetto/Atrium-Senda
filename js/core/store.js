@@ -239,6 +239,10 @@ export const Store = {
     const seedConfigurationDefaults = !persisted;
     if (!persisted) {
       this.state = deepClone(sampleState);
+      if (this.stateStatus === 'NEW_INSTALL') {
+        for (const key of ['intimations', 'tasks', 'processes', 'agenda', 'audit']) this.state[key] = [];
+        this.state.settings.demoMode = false;
+      }
       const schemaVersion = Number(this.serverMeta?.schemaVersion);
       const dataVersion = Number(this.serverMeta?.dataVersion);
       if (Number.isInteger(schemaVersion) && schemaVersion > 0) {

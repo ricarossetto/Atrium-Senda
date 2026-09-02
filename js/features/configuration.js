@@ -15,6 +15,7 @@ const CONFIGURATION_SECTIONS = [
   ['inboxSections', 'Caixa de entrada'],
   ['notificationAssignments', 'Notificações'],
   ['integrations', 'Integrações'],
+  ['registry', 'Inteligência Cadastral'],
   ['diagnostic', 'Diagnóstico & Saúde'],
   ['backups', 'Backups & Restauração']
 ];
@@ -80,6 +81,14 @@ export function createConfigurationFeature({
       });
       byId('newConfigurationButton')?.addEventListener('click', () => feature.openModal());
       byId('configurationList')?.addEventListener('click', event => {
+        const registryAction = event.target.closest('[data-registry-config-action]')?.dataset.registryConfigAction;
+        if (registryAction) {
+          event.preventDefault();
+          if (registryAction === 'status') feature.loadRegistryStatus();
+          if (registryAction === 'banks') feature.searchRegistryBanks();
+          if (registryAction === 'test-provider') feature.testRegistryProvider(event.target.closest('[data-registry-provider]')?.dataset.registryProvider, event.target.closest('button'));
+          return;
+        }
         const deleteButton = event.target.closest('[data-delete-config]');
         if (deleteButton) {
           event.preventDefault();
@@ -100,6 +109,11 @@ export function createConfigurationFeature({
         const index = Number(row.dataset.configIndex);
         const records = Array.isArray(store.state.configuration?.[configurationSection]) ? store.state.configuration[configurationSection] : [];
         if (records[index] !== undefined) feature.openModal(records[index], index);
+      });
+      byId('configurationList')?.addEventListener('submit', event => {
+        if (!event.target.matches('[data-registry-bank-form]')) return;
+        event.preventDefault();
+        feature.searchRegistryBanks();
       });
       presentation?.init?.();
       return true;
@@ -176,7 +190,7 @@ export function createConfigurationFeature({
       }
       const label = CONFIGURATION_SECTIONS.find(([key]) => key === configurationSection)?.[1] || 'Configuração';
       const isAuthUsers = configurationSection === 'users';
-      const isSpecialSection = configurationSection === 'diagnostic' || configurationSection === 'backups';
+      const isSpecialSection = ['registry', 'diagnostic', 'backups'].includes(configurationSection);
       byId('newConfigurationButton')?.classList.toggle('hidden', isAuthUsers || isSpecialSection);
       byId('configurationSearch')?.closest('.table-search')?.classList.toggle('hidden', isSpecialSection);
 
@@ -194,6 +208,14 @@ export function createConfigurationFeature({
         presentation?.sync?.({ section: configurationSection, special: true });
         return;
       }
+      if (configurationSection === 'registry') {
+        if (byId('configurationHeading')) byId('configurationHeading').textContent = 'Inteligência Cadastral Brasileira';
+        if (byId('configurationCount')) byId('configurationCount').textContent = 'Fontes públicas supervisionadas';
+        if (byId('configurationList')) byId('configurationList').innerHTML = registryConfigurationShell();
+        presentation?.sync?.({ section: configurationSection, special: true });
+        feature.loadRegistryStatus();
+        return;
+      }
 
       const raw = isAuthUsers ? authUsers : (Array.isArray(config[configurationSection]) ? config[configurationSection] : []);
       const needle = normalizeText(query);
@@ -204,6 +226,60 @@ export function createConfigurationFeature({
       const emptyIcon = documentRef.documentElement?.dataset?.ui === 'v2' ? iconSvg('check') : '✓';
       if (list) list.innerHTML = records.length ? records.map(({ item, index }) => isAuthUsers ? feature.authUserRow(item) : feature.row(item, index)).join('') : `<div class="empty-detail"><span>${emptyIcon}</span><h3>Nenhum item</h3><p>Não há registros nesta seção ou neste filtro.</p></div>`;
       presentation?.sync?.({ section: configurationSection, authUsers: isAuthUsers });
+    },
+
+    async loadRegistryStatus() {
+      const target = byId('registryProviderStatus');
+      if (!target) return null;
+      target.innerHTML = '<p class="registry-config-loading" role="status">Verificando configuração local…</p>';
+      try {
+        const response = await secureFetch('/api/registry/status', { headers: { Accept: 'application/json' } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível verificar as fontes cadastrais.');
+        target.innerHTML = (payload.providers || []).map(provider => registryProviderCard(provider, escapeHtml)).join('');
+        return payload;
+      } catch (error) {
+        target.innerHTML = `<p class="registry-config-error" role="alert">${escapeHtml(error.message)}</p>`;
+        return null;
+      }
+    },
+
+    async searchRegistryBanks() {
+      const query = byId('registryBankQuery')?.value || '';
+      const target = byId('registryBankResults');
+      if (!target) return [];
+      target.innerHTML = '<p class="registry-config-loading" role="status">Consultando o diretório bancário…</p>';
+      try {
+        const response = await secureFetch(`/api/registry/banks?query=${encodeURIComponent(query)}`, { headers: { Accept: 'application/json' } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível consultar o diretório bancário.');
+        const records = Array.isArray(payload.records) ? payload.records : [];
+        target.innerHTML = records.length ? records.map(bank => `<article><strong>${escapeHtml(bank.code || '—')} · ${escapeHtml(bank.name)}</strong><span>ISPB ${escapeHtml(bank.ispb || 'não informado')}</span><small>${escapeHtml(bank.fullName || bank.name)}</small></article>`).join('') : '<p>Nenhuma instituição localizada.</p>';
+        return records;
+      } catch (error) {
+        target.innerHTML = `<p class="registry-config-error" role="alert">${escapeHtml(error.message)}</p>`;
+        return [];
+      }
+    },
+
+    async testRegistryProvider(providerId, button) {
+      if (!providerId || !button) return null;
+      const original = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Testando…';
+      try {
+        const response = await secureFetch(`/api/registry/providers/${encodeURIComponent(providerId)}/test`, { headers: { Accept: 'application/json' } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível testar esta fonte.');
+        showToast?.(`Conexão com ${providerId} confirmada em ${payload.latencyMs ?? '—'} ms.`, 'success');
+        await feature.loadRegistryStatus();
+        return payload;
+      } catch (error) {
+        showToast?.(error.message, 'error');
+        button.disabled = false;
+        button.textContent = original;
+        return null;
+      }
     },
 
     row(item, index) {
@@ -299,4 +375,21 @@ export function createConfigurationFeature({
   };
 
   return feature;
+}
+
+function registryConfigurationShell() {
+  return `<section class="registry-config-workspace" aria-labelledby="registryConfigHeading">
+    <header><div><span>INTELIGÊNCIA CADASTRAL</span><h3 id="registryConfigHeading">Fontes e política de uso</h3><p>Consultas públicas passam pelo backend do ATRIUM e exigem revisão antes de alterar um contato.</p></div><button type="button" class="v2-button is-secondary" data-registry-config-action="status">Atualizar estado</button></header>
+    <div class="registry-provider-grid" id="registryProviderStatus" aria-live="polite"></div>
+    <aside class="registry-policy-note"><strong>CPF: validação local somente</strong><p>Consulta externa de CPF não configurada. O ATRIUM não raspa bases não autorizadas e não conclui identidade ou situação cadastral.</p></aside>
+    <section class="registry-bank-directory"><div><span>DIRETÓRIO BANCÁRIO</span><h4>Normalizar instituição</h4><p>Busca por código, ISPB ou nome em diretório público cacheado.</p></div><form data-registry-bank-form><label for="registryBankQuery">Banco</label><div><input id="registryBankQuery" type="search" placeholder="Ex.: 001, ISPB ou nome"><button type="submit" class="v2-button is-primary" data-registry-config-action="banks">Buscar banco</button></div></form><div class="registry-bank-results" id="registryBankResults" aria-live="polite"></div></section>
+  </section>`;
+}
+
+function registryProviderCard(provider, escapeHtml) {
+  const stateLabels = { available: 'Disponível', temporarily_paused: 'Temporariamente pausada', not_configured: 'Não configurada' };
+  const state = provider.state || (provider.configured ? 'available' : 'not_configured');
+  const lastSuccess = provider.lastSuccessAt ? new Date(provider.lastSuccessAt).toLocaleString('pt-BR') : 'ainda não testada nesta execução';
+  const details = provider.configured ? `Prioridade ${provider.priority || '—'} · cache até ${provider.cacheTtlMs ? Math.round(provider.cacheTtlMs / 3_600_000) + 'h' : '—'} · última resposta ${lastSuccess}${provider.lastLatencyMs !== null && provider.lastLatencyMs !== undefined ? ` · ${provider.lastLatencyMs} ms` : ''}` : 'Integração externa desabilitada por política.';
+  return `<article class="registry-provider-card is-${escapeHtml(state)}"><span>${escapeHtml(stateLabels[state] || state)}</span><strong>${escapeHtml(provider.name)}</strong><p>${escapeHtml((provider.capabilities || []).join(' · '))}</p><small>${escapeHtml(details)}</small>${provider.configured ? `<button type="button" class="v2-button is-secondary" data-registry-config-action="test-provider" data-registry-provider="${escapeHtml(provider.id)}">Testar conexão</button>` : ''}</article>`;
 }

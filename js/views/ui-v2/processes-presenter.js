@@ -11,12 +11,14 @@ export function createProcessesV2Presenter({
   onClient,
   onTasks,
   onTask,
+  onPublication,
   onExport,
   onDelete
 } = {}) {
   let initialized = false;
   let selectedItem = null;
   let selectedTasks = [];
+  let selectedPublications = [];
   let lastFocusedElement = null;
   let previousBodyOverflow = '';
 
@@ -36,6 +38,9 @@ export function createProcessesV2Presenter({
       if (taskButton) {
         const task = selectedTasks.find(item => String(item.id) === taskButton.dataset.processTask);
         if (task) { close({ restoreFocus: false }); onTask?.(task); }
+      } else if (event.target.closest('[data-process-publication]')) {
+        const publication = selectedPublications.find(item => String(item.id) === event.target.closest('[data-process-publication]').dataset.processPublication);
+        if (publication) { close({ restoreFocus: false }); onPublication?.(publication); }
       } else if (event.target.closest('[data-process-client]')) {
         const item = selectedItem; close({ restoreFocus: false }); onClient?.(item);
       } else if (event.target.closest('[data-process-tasks]')) {
@@ -99,6 +104,7 @@ export function createProcessesV2Presenter({
     close({ restoreFocus: false });
     selectedItem = item;
     selectedTasks = summary.linkedTasks || [];
+    selectedPublications = summary.linkedIntimationRecords || [];
     lastFocusedElement = invoker || documentRef.activeElement;
     previousBodyOverflow = documentRef.body?.style.overflow || '';
 
@@ -136,6 +142,7 @@ export function createProcessesV2Presenter({
     });
     selectedItem = null;
     selectedTasks = [];
+    selectedPublications = [];
     if (wasOpen && documentRef.body) documentRef.body.style.overflow = previousBodyOverflow;
     if (wasOpen && restoreFocus && lastFocusedElement?.isConnected && typeof lastFocusedElement.focus === 'function') {
       lastFocusedElement.focus();
@@ -258,6 +265,11 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
     ${renderMovements(summary.movements || [], item, escapeHtml, formatDate)}
   </section>
 
+  <section class="process-inspector-section" aria-labelledby="processPublicationsHeading">
+    <h3 id="processPublicationsHeading">Publicações vinculadas</h3>
+    ${renderLinkedPublications(summary.linkedIntimationRecords || [], escapeHtml, formatDate)}
+  </section>
+
   <section class="process-inspector-section" aria-labelledby="processDataHeading">
     <h3 id="processDataHeading">Dados processuais</h3>
     <dl class="process-metadata-grid">
@@ -301,6 +313,11 @@ function metric(value, label, escapeHtml) {
 function renderLinkedTasks(tasks, escapeHtml, formatDate) {
   if (!tasks.length) return '<p class="process-inspector-empty">Nenhuma tarefa vinculada a este processo.</p>';
   return `<div class="process-linked-list">${tasks.map(task => `<button type="button" data-process-task="${escapeHtml(task.id)}" aria-label="Abrir tarefa ${escapeHtml(task.title || 'sem título')}"><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><span>${escapeHtml(task.status || 'Status não informado')}${task.fatalDeadline || task.deadline ? ` · ${escapeHtml(formatDate(task.fatalDeadline || task.deadline))}` : ''}${task.responsible ? ` · ${escapeHtml(task.responsible)}` : ''}</span></button>`).join('')}</div>`;
+}
+
+function renderLinkedPublications(publications, escapeHtml, formatDate) {
+  if (!publications.length) return '<p class="process-inspector-empty">Nenhuma publicação vinculada a este processo.</p>';
+  return `<div class="process-linked-list">${publications.map(item => `<button type="button" data-process-publication="${escapeHtml(item.id)}" aria-label="Abrir publicação ${escapeHtml(item.title || 'sem título')}"><strong>${escapeHtml(item.title || 'Publicação sem título')}</strong><span>${escapeHtml(item.treatmentStatus || 'untreated')} · ${escapeHtml(formatDate(item.publishedAt))}</span></button>`).join('')}</div>`;
 }
 
 function renderMovements(movements, item, escapeHtml, formatDate) {

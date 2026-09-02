@@ -24,6 +24,7 @@ export function createProcessesFeature({
   openClient,
   openLinkedTasks,
   openTask,
+  openPublication,
   exportJson,
   confirmProcessDeletion = number => globalThis.prompt?.(`Para excluir o processo ${number}, digite o número completo:`) || '',
   requestProcessReenable = () => globalThis.prompt?.('Digite o número CNJ cuja descoberta automática deve ser reativada:') || ''
@@ -46,6 +47,7 @@ export function createProcessesFeature({
       onClient: item => openClient?.(item),
       onTasks: item => openLinkedTasks?.(item),
       onTask: task => openTask?.(task),
+      onPublication: publication => openPublication?.(publication),
       onExport: item => feature.exportProcess(item),
       onDelete: item => feature.deleteProcess(item)
     });
@@ -68,6 +70,7 @@ export function createProcessesFeature({
       timeMinutes,
       nextDeadline,
       linkedTasks,
+      linkedIntimationRecords: linkedIntimations,
       movements: Array.isArray(item.movements) ? item.movements : [],
       canConsultTjrs: canConsultTjrs(item)
     });

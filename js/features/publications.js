@@ -127,6 +127,8 @@ export function createPublicationsFeature({
   formatDateTime,
   showToast,
   onOpenTask,
+  onOpenProcess,
+  onOpenContact,
   onOpenIntimation,
   onImportJson,
   onRenderGlobalMetrics,
@@ -464,11 +466,15 @@ export function createPublicationsFeature({
       if (isV2()) {
         const linkedTaskIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : (item.taskId ? [item.taskId] : []);
         const linkedTasks = (store.state.tasks || []).filter(task => linkedTaskIds.includes(task.id) || task.intimationId === item.id || task.sourceIntimationId === item.id);
+        const linkedProcess = resolvePublicationProcess(store.state, item);
+        const linkedContact = resolvePublicationContact(store.state, item);
         container.innerHTML = renderPublicationDetail({
           item,
           act,
           parties: this.intimationParties(item),
           linkedTasks,
+          linkedProcess,
+          linkedContact,
           privileged,
           escapeHtml,
           formatDate,
@@ -484,6 +490,8 @@ export function createPublicationsFeature({
             if (task) onOpenTask?.(task);
           });
         });
+        container.querySelector('[data-open-process-id]')?.addEventListener('click', () => onOpenProcess?.(linkedProcess));
+        container.querySelector('[data-open-contact-id]')?.addEventListener('click', () => onOpenContact?.(linkedContact));
         byId('publicationDetailClose')?.addEventListener('click', () => this.closeDetail());
         getPresenter().syncDetailOpen();
         return;
@@ -881,4 +889,22 @@ export function createPublicationsFeature({
   };
 
   return feature;
+}
+
+function resolvePublicationProcess(state, item) {
+  const direct = (state.processes || []).find(process => String(process.id) === String(item.processId || ''));
+  if (direct) return direct;
+  const cnj = String(item.process || '').replace(/\D/g, '');
+  return cnj ? (state.processes || []).find(process => String(process.number || '').replace(/\D/g, '') === cnj) || null : null;
+}
+
+function resolvePublicationContact(state, item) {
+  const directId = item.contactId || item.clientContactId;
+  const direct = (state.contacts || []).find(contact => String(contact.id) === String(directId || ''));
+  if (direct) return direct;
+  const normalized = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const name = normalized(item.client);
+  if (!name) return null;
+  const matches = (state.contacts || []).filter(contact => normalized(contact.name) === name);
+  return matches.length === 1 ? matches[0] : null;
 }

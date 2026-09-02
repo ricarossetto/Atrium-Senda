@@ -248,7 +248,7 @@ export function createDashboardFeature({
         activeLeads,
         feesPending,
         minutes30d,
-        documentCount: store.state.customDocs?.length || 5,
+        documentCount: Array.isArray(store.state.customDocs) ? store.state.customDocs.length : 0,
         reminders: (store.state.agenda || []).slice(0, 4)
       };
     },

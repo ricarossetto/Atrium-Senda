@@ -11,6 +11,13 @@
 - Executar teste humano guiado com advogados, registrar feedback local e aplicar correções finitas.
 - Validar empacotamento, atualização, backup e restauração no ambiente Windows alvo antes de release.
 
+## COMPLEMENTO DE PRODUTO — CONCLUÍDO
+
+- Primeiro uso parte de estado jurídico vazio, sem dados de demonstração no Store canônico.
+- Inteligência cadastral brasileira é CURRENT nos limites da spec: CNPJ/CEP/bancos por fontes públicas autorizadas, CPF local, aplicação supervisionada e QSA sem criação automática de clientes.
+- Busca Global inclui Atendimentos/CRM e abre o registro canônico exato.
+- Motion V2 usa tokens curtos, sem animação infinita e com redução obrigatória de movimento.
+
 ## FUTURO — SOMENTE POR SUBGATE
 
 - Backup portátil de blobs, providers remotos, protocolos DAV verificados e API pública/versionada exigem evidência, threat model e subgates independentes.

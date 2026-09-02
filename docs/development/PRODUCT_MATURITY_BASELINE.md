@@ -4,7 +4,8 @@ Status: **CURRENT** em 2026-09-01 para o HEAD aprovado da branch `ui-v2`.
 
 ## Capacidades atuais
 
-- Busca full-text derivada em memória, reconstruível e ligada à revision, sobre sete domínios autorizados.
+- Busca full-text derivada em memória, reconstruível e ligada à revision, sobre oito domínios autorizados, incluindo Atendimentos/CRM.
+- Inteligência cadastral brasileira supervisionada para CNPJ, CEP e bancos, com CPF limitado à validação estrutural local, revisão campo a campo e zero merge automático.
 - Acervo documental com provider canônico e adapter local AES-256-GCM, deduplicação SHA-256, lixeira, purge e derivados supervisionados.
 - Preview inerte, OCR local explícito e PDF derivado de texto nos limites documentados.
 - Foundation DAV executável e protegida, ainda **EXPERIMENTAL / UNVERIFIED**, sem UI, sync ou integração com Store/Agenda/Contatos/Documentos.
@@ -15,6 +16,7 @@ Status: **CURRENT** em 2026-09-01 para o HEAD aprovado da branch `ui-v2`.
 - O backup canônico protege o Store/revision. Portabilidade de blobs documentais para outro diretório/provedor ainda exige subgate próprio.
 - WebDAV, CalDAV e CardDAV não possuem compatibilidade de produção certificada.
 - Não existe API pública, SDK, OAuth externo ou cliente mobile/desktop certificado.
+- Consulta externa de CPF e provedores adicionais de pessoas não estão configurados.
 - Classificação documental automática, versionamento, assinatura, DOCX gerado e colaboração permanecem futuros.
 
 ## Evidência de segurança
@@ -29,6 +31,7 @@ A auditoria do baseline confirmou no conteúdo rastreado e nas autoridades execu
 - paths documentais derivados somente de checksum SHA-256 validado;
 - DAV sem rota HTTP/UI, com HTTPS, validação DNS/IP, bloqueio de redes privadas/reservadas, redirects same-origin, timeout e limite de resposta;
 - nenhuma execução de shell adicionada, conteúdo remoto ilimitado ou implementação AGPL incorporada.
+- rotas cadastrais autenticadas, GET-only, com allowlist rígida de provedores, timeout, cache, circuit breaker, rate limit e erros saneados.
 
 ## Clean-room
 

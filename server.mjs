@@ -27,6 +27,8 @@ import {
 } from './lib/documents/document-storage-provider.mjs';
 import { DocumentIntelligenceService } from './lib/documents/document-intelligence.mjs';
 import { SearchIndex, parseDefaultPromptsSource } from './lib/search-index.mjs';
+import { RegistryService } from './lib/registry/registry-service.mjs';
+import { createRegistryHttpHandler } from './lib/http/registry-routes.mjs';
 import {
   apiContractHeaders,
   buildApiMetadata,
@@ -113,6 +115,8 @@ const documentStorage = assertDocumentStorageProvider(
 );
 await documentStorage.init();
 const documentIntelligence = new DocumentIntelligenceService();
+const registryService = new RegistryService();
+const handleRegistryRequest = createRegistryHttpHandler({ service: registryService, assertAuthenticated, json });
 let defaultSearchPrompts = [];
 try {
   defaultSearchPrompts = parseDefaultPromptsSource(await readFile(path.join(ROOT, 'js', 'prompts-data.js'), 'utf8'));
@@ -2006,6 +2010,8 @@ const server = http.createServer(async (req, res) => {
       assertAuthenticated(req, true); const revoked = await security.revokeTrustedDevice(req);
       return json(res, 200, { ok: true, revoked }, { 'Set-Cookie': security.clearTrustedDeviceCookie() });
     }
+
+    if (await handleRegistryRequest(req, res, url)) return;
 
     if (req.method === 'POST' && url.pathname === '/api/tjrs/consult') {
       assertAuthenticated(req);

@@ -628,6 +628,8 @@ html[data-ui="v2"] #intimationDetail .publication-detail-meta {
 html[data-ui="v2"] #intimationDetail .publication-detail-meta > div { min-width: 0; }
 html[data-ui="v2"] #intimationDetail .publication-detail-meta dt { margin-bottom: 2px; color: var(--v2-color-foreground-secondary); font-size: 9px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
 html[data-ui="v2"] #intimationDetail .publication-detail-meta dd { margin: 0; overflow-wrap: anywhere; color: var(--v2-color-foreground); font-size: 12px; line-height: 17px; }
+html[data-ui="v2"] #intimationDetail .publication-entity-link { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: var(--v2-color-accent-strong); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+html[data-ui="v2"] #intimationDetail .publication-entity-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 html[data-ui="v2"] #intimationDetail .linked-tasks-card {
   margin: var(--v2-space-4) var(--v2-space-5) 0;

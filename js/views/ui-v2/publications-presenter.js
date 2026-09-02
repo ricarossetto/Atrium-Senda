@@ -196,6 +196,8 @@ export function renderPublicationDetail({
   act,
   parties,
   linkedTasks,
+  linkedProcess,
+  linkedContact,
   privileged,
   escapeHtml,
   formatDate,
@@ -221,7 +223,8 @@ export function renderPublicationDetail({
     </header>
     ${treatmentInfo}
     <dl class="detail-meta publication-detail-meta">
-      ${definition('Processo', item.process || 'Não identificado', escapeHtml)}
+      ${linkedDefinition('Processo', item.process || 'Não identificado', linkedProcess?.id, 'process', escapeHtml)}
+      ${linkedDefinition('Cliente / contato', linkedContact?.name || item.client || 'Não identificado', linkedContact?.id, 'contact', escapeHtml)}
       ${definition('Partes', parties || 'Ainda não identificadas', escapeHtml)}
       ${definition('Publicação', `${formatDate(item.publishedAt)} · ${formatAge(item.publishedAt)}`, escapeHtml)}
       ${definition('Origem', item.source || item.court || 'Não informada', escapeHtml)}
@@ -275,6 +278,11 @@ function treatmentPresentation(value) {
 
 function definition(label, value, escapeHtml) {
   return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`;
+}
+
+function linkedDefinition(label, value, id, type, escapeHtml) {
+  if (!id) return definition(label, value, escapeHtml);
+  return `<div><dt>${escapeHtml(label)}</dt><dd><button type="button" class="publication-entity-link" data-open-${type}-id="${escapeHtml(id)}">${escapeHtml(value)} <span aria-hidden="true">→</span></button></dd></div>`;
 }
 
 function firstFocusable(root) {

@@ -393,6 +393,79 @@ html[data-ui="v2"] .contact-form-section .field label { color: var(--v2-color-fo
 @keyframes contact-inspector-in { from { opacity: .35; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes contact-drawer-in { from { opacity: .4; clip-path: inset(0 0 0 100%); } to { opacity: 1; clip-path: inset(0); } }
 
+html[data-ui="v2"] .contact-registry-review {
+  margin: 0 0 var(--v2-space-4);
+  padding: var(--v2-space-4);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  background: linear-gradient(135deg, var(--v2-color-primary-subtle), var(--v2-color-surface-secondary));
+}
+
+html[data-ui="v2"] .contact-registry-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--v2-space-4);
+}
+
+html[data-ui="v2"] .contact-registry-heading span,
+html[data-ui="v2"] .contact-registry-heading p,
+html[data-ui="v2"] .contact-registry-status,
+html[data-ui="v2"] .registry-company-summary small,
+html[data-ui="v2"] .registry-qsa p {
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] .contact-registry-heading span { color: var(--v2-color-gold); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+html[data-ui="v2"] .contact-registry-heading h3 { margin: 3px 0 0; font: 600 18px/1.2 var(--v2-font-interface); }
+html[data-ui="v2"] .contact-registry-heading p { max-width: 250px; margin: 0; text-align: right; }
+html[data-ui="v2"] .contact-registry-actions { display: flex; flex-wrap: wrap; gap: var(--v2-space-2); margin-top: var(--v2-space-3); }
+html[data-ui="v2"] .contact-registry-status { min-height: 20px; margin: var(--v2-space-3) 0 0; }
+html[data-ui="v2"] .contact-registry-status[data-state="success"] { color: var(--v2-color-success); }
+html[data-ui="v2"] .contact-registry-status[data-state="attention"] { color: var(--v2-color-warning); }
+html[data-ui="v2"] .contact-registry-status[data-state="error"] { color: var(--v2-color-danger); }
+html[data-ui="v2"] .contact-registry-status[data-state="loading"] { color: var(--v2-color-primary); }
+html[data-ui="v2"] .contact-registry-results:not(:empty) { display: grid; gap: var(--v2-space-3); margin-top: var(--v2-space-3); }
+html[data-ui="v2"] .registry-company-summary,
+html[data-ui="v2"] .registry-validation-card,
+html[data-ui="v2"] .registry-duplicate-hint,
+html[data-ui="v2"] .registry-qsa {
+  padding: var(--v2-space-3);
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface);
+}
+
+html[data-ui="v2"] .registry-company-summary strong,
+html[data-ui="v2"] .registry-company-summary small,
+html[data-ui="v2"] .registry-validation-card strong,
+html[data-ui="v2"] .registry-validation-card small { display: block; }
+html[data-ui="v2"] .registry-company-summary span { color: var(--v2-color-success); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+html[data-ui="v2"] .registry-company-summary strong { margin: 4px 0; }
+html[data-ui="v2"] .registry-validation-card p { margin: 6px 0; }
+html[data-ui="v2"] .registry-validation-card.is-invalid { border-color: color-mix(in srgb, var(--v2-color-danger) 45%, var(--v2-color-border)); }
+html[data-ui="v2"] .registry-field-review { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--v2-space-2); margin: 0; padding: var(--v2-space-3); border: 1px solid var(--v2-color-border-subtle); border-radius: var(--v2-radius-md); }
+html[data-ui="v2"] .registry-field-review legend { padding: 0 var(--v2-space-2); color: var(--v2-color-foreground-secondary); font-size: 12px; font-weight: 700; }
+html[data-ui="v2"] .registry-field-review label { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: var(--v2-space-2); padding: var(--v2-space-2); border-radius: var(--v2-radius-sm); cursor: pointer; }
+html[data-ui="v2"] .registry-field-review label:hover { background: var(--v2-color-surface-hover); }
+html[data-ui="v2"] .registry-field-review input { width: 18px; height: 18px; margin: 1px 0 0; }
+html[data-ui="v2"] .registry-field-review strong,
+html[data-ui="v2"] .registry-field-review small { display: block; }
+html[data-ui="v2"] .registry-field-review small { margin-top: 2px; overflow-wrap: anywhere; color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] .registry-field-review small b { margin-right: 4px; color: var(--v2-color-foreground-secondary); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+html[data-ui="v2"] .registry-review-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--v2-space-2); }
+html[data-ui="v2"] .registry-apply { justify-self: start; }
+html[data-ui="v2"] .registry-duplicate-hint strong { display: block; margin-bottom: var(--v2-space-2); color: var(--v2-color-warning); }
+html[data-ui="v2"] .registry-duplicate-hint p { display: flex; gap: var(--v2-space-2); margin: 5px 0; font-size: 12px; }
+html[data-ui="v2"] .registry-duplicate-hint p span { color: var(--v2-color-warning); font-weight: 800; }
+html[data-ui="v2"] .registry-duplicate-hint small { display: block; margin-top: var(--v2-space-2); color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] .registry-qsa h4 { margin: 0 0 var(--v2-space-2); }
+html[data-ui="v2"] .registry-qsa > div { display: flex; align-items: center; justify-content: space-between; gap: var(--v2-space-3); padding: var(--v2-space-2) 0; border-top: 1px solid var(--v2-color-border-subtle); }
+html[data-ui="v2"] .registry-qsa > div span,
+html[data-ui="v2"] .registry-qsa > div small { display: block; }
+html[data-ui="v2"] .registry-qsa > div small { color: var(--v2-color-muted-foreground); }
+
 @media (max-width: 1180px) {
   html[data-ui="v2"] .contacts-workspace-layout { grid-template-columns: minmax(420px, 1fr) minmax(330px, .82fr); }
   html[data-ui="v2"] .contact-record { grid-template-columns: 3px minmax(150px, 1.2fr) minmax(130px, 1fr) minmax(110px, .85fr) 18px; }
@@ -456,6 +529,12 @@ html[data-ui="v2"] .contact-form-section .field label { color: var(--v2-color-fo
 }
 
 @media (max-width: 760px) {
+  html[data-ui="v2"] .contact-registry-heading { display: block; }
+  html[data-ui="v2"] .contact-registry-heading p { max-width: none; margin-top: var(--v2-space-2); text-align: left; }
+  html[data-ui="v2"] .contact-registry-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .registry-field-review { grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .registry-apply { width: 100%; }
+  html[data-ui="v2"] .registry-qsa > div { align-items: stretch; flex-direction: column; }
   html[data-ui="v2"] #view-contacts:has(.contacts-inspector.is-open) { animation: none !important; transform: none !important; }
   html[data-ui="v2"] #view-contacts > .section-toolbar { gap: var(--v2-space-4); }
   html[data-ui="v2"] .v2-contacts-heading h2 { font-size: 28px; }
