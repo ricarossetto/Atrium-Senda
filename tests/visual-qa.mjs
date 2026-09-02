@@ -485,3 +485,4 @@ await import('./visual_ui_v2_monitoring.mjs');
 await import('./visual_ui_v2_judicial_integrations.mjs');
 await import('./visual_ui_v2_email_calendar_integrations.mjs');
 await import('./visual_ui_v2_full_text_search.mjs');
+await import('./visual_product_completion_motion.mjs');

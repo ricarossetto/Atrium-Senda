@@ -22,6 +22,7 @@ const ocrReads = [];
 const unitState = {
   processes: [{ id: 'process-unit', number: '5001234-12.2026.4.04.0001', client: 'Cliente Aurora', court: 'TRF4', lastMovement: 'Sentença previdenciária disponibilizada' }],
   contacts: [{ id: 'contact-unit', name: 'Áurea Sintética', contactRole: 'cliente', email: 'aurea@example.test', city: 'Ijuí' }],
+  leads: [{ id: 'lead-unit', client: 'Áurea Sintética', serviceType: 'Planejamento previdenciário', status: 'novo', notes: 'Entrevista sintética inicial' }],
   intimations: [{ id: 'publication-unit', title: 'Intimação sobre benefício', process: '5001234-12.2026.4.04.0001', text: 'Manifestação expressa sem prazo inferido' }],
   tasks: [{ id: 'task-unit', title: 'Revisar cálculo previdenciário', description: 'Conferência humana obrigatória', responsible: 'Equipe' }],
   documents: [{ id: 'document-unit', name: 'laudo-aurora.pdf', ownerType: 'process', ownerId: 'process-unit', documentType: 'Laudo', checksum: 'a'.repeat(64), intelligence: { ocr: { checksum: 'b'.repeat(64) } } }],
@@ -45,7 +46,7 @@ let sync = await index.ensure({ state: unitState, revision: 'revision-1' });
 assert.equal(sync.rebuilt, true);
 assert.equal(sync.reason, 'corrupt');
 assert.equal(index.status.version, SEARCH_INDEX_VERSION);
-assert.equal(index.status.entryCount, 8);
+assert.equal(index.status.entryCount, 9);
 assert.equal(ocrReads.length, 1);
 assert.equal(index.search('ultrarraro')[0].entityType, 'document');
 assert.equal(index.search('ÁUREA')[0].id, 'contact-unit', 'Busca deve ser accent/case insensitive e ranquear título.');
@@ -61,7 +62,7 @@ changedState.tasks.push({ id: 'task-added', title: 'Protocolar manifestação su
 sync = await index.ensure({ state: changedState, revision: 'revision-2' });
 assert.equal(sync.synchronized, true);
 assert.equal(sync.changes.added, 1);
-assert.ok(sync.changes.reused >= 8);
+assert.ok(sync.changes.reused >= 9);
 assert.equal(ocrReads.length, 1, 'Checksum OCR estável deve reutilizar cache.');
 assert.equal(index.search('Protocolar manifestação')[0].id, 'task-added');
 

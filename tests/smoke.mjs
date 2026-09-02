@@ -199,6 +199,12 @@ try {
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   assert(await page.locator('#primaryTermName').textContent() === 'Advogada Monitorada Teste', 'Edição de termo com OAB/UF falhou.');
 
+  await page.evaluate(() => {
+    window.Atrium.Store.state.processes = [{ id: 'smoke-process', number: '5000000-00.2026.4.04.0000', client: 'Cliente Sintético Smoke', opposingParty: 'Parte Contrária Sintética', court: 'TRF Sintético', stage: 'Inicial', monitoring: 'active', registeredAt: '2026-08-01' }];
+    window.Atrium.Store.state.intimations = [{ id: 'smoke-intimation', processId: 'smoke-process', process: '5000000-00.2026.4.04.0000', client: 'Cliente Sintético Smoke', title: 'Decisão sintética para conferência', text: 'Decisão publicada para manifestação humana.', court: 'TRF Sintético', publishedAt: new Date().toISOString().slice(0, 10), unread: true, treatmentStatus: 'untreated' }];
+    window.Atrium.App.renderAll();
+  });
+
   // Teste 1: Classificador de Intimações e Estimador de Prazos
   await page.locator('button[data-view="inbox"]').click();
   await page.locator('#view-inbox.active').waitFor();

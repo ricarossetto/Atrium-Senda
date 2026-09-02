@@ -14,6 +14,7 @@ try {
       await page.evaluate(() => {
         const { Store } = window.Atrium;
         Store.state.contacts = [{ id: 'search-owner', name: 'Cliente Horizonte', contactRole: 'cliente' }];
+        Store.state.leads = [{ id: 'search-lead', client: 'Cliente Horizonte', serviceType: 'Planejamento Horizonte', status: 'novo', notes: 'Atendimento sintético' }];
         Store.state.documents = [{
           id: 'search-document',
           name: 'laudo-horizonte.md',
@@ -51,6 +52,7 @@ try {
               : [
                   common('process', 'process', 'search-process', 'Processo Horizonte', 'Número CNJ'),
                   common('contact', 'contact', 'search-owner', 'Cliente Horizonte', 'Nome'),
+                  common('lead', 'lead', 'search-lead', 'Atendimento Horizonte', 'Cliente ou interessado'),
                   common('publication', 'intimation', 'search-publication', 'Publicação Horizonte', 'Conteúdo da publicação'),
                   common('task', 'task', 'search-task', 'Tarefa Horizonte', 'Descrição'),
                   common('document', 'document', 'search-document', 'Laudo Horizonte', 'Texto extraído'),
@@ -66,11 +68,11 @@ try {
       assert.equal(await page.evaluate(() => document.activeElement?.id), 'globalSearch');
       assert.equal(await input.getAttribute('role'), 'combobox');
       await input.fill('Horizonte');
-      await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 7);
+      await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 8);
       await page.waitForFunction(() => document.getElementById('globalSearch')?.getAttribute('aria-busy') === 'false');
       assert.equal(await page.locator('#searchPaletteResults').getAttribute('role'), 'listbox');
-      assert.equal(await page.locator('#searchPaletteResults .search-palette-group').count(), 7);
-      assert.equal(await page.locator('#searchPaletteResults .search-palette-item').count(), 7);
+      assert.equal(await page.locator('#searchPaletteResults .search-palette-group').count(), 8);
+      assert.equal(await page.locator('#searchPaletteResults .search-palette-item').count(), 8);
       assert.equal(await page.locator('[data-search-id="search-audit"]').getAttribute('data-search-target'), 'audit', 'Destino deve vir do tipo fixo reconhecido, nunca do payload remoto.');
       assert.equal(await page.locator('#searchPaletteResults mark').count() > 0, true);
       assert.equal(await page.locator('#searchPaletteResults script').count(), 0);
@@ -104,7 +106,16 @@ try {
       if (viewport.width > 760) {
         await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
         await input.fill('Horizonte');
-        await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 7);
+        await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 8);
+        await page.locator('[data-search-target="lead"][data-search-id="search-lead"]').click();
+        await page.locator('#view-leads.active').waitFor();
+        await page.locator('#modalBackdrop:not(.hidden) #modalForm').waitFor();
+        assert.equal(await page.locator('#field-client').inputValue(), 'Cliente Horizonte');
+        await page.evaluate(() => window.Atrium.App.closeModal());
+
+        await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
+        await input.fill('Horizonte');
+        await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 8);
         await page.locator('[data-search-target="prompt"][data-search-id="search-prompt"]').click();
         await page.locator('#view-prompts.active').waitFor();
         assert.equal(await page.locator('#promptsSearchInput').inputValue(), 'Prompt Horizonte');
@@ -127,7 +138,7 @@ try {
     }
   }
 
-  console.log('✓ Busca global V2: sete grupos, highlight escapado, keyboard, seleção, race, mobile e zero mutação aprovados.');
+  console.log('✓ Busca global V2: oito grupos, CRM incluído, highlight escapado, keyboard, seleção, race, mobile e zero mutação aprovados.');
 } finally {
   await session.stop();
 }

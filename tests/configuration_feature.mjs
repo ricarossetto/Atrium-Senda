@@ -97,13 +97,13 @@ assert.deepEqual(feature.users, []);
 assert.equal(feature.role, 'collaborator');
 assert.equal(feature.init(), true);
 assert.equal(feature.init(), false);
-for (const [id, type] of [['configurationSearch', 'input'], ['configurationTabs', 'click'], ['newConfigurationButton', 'click'], ['configurationList', 'click']]) {
+for (const [id, type] of [['configurationSearch', 'input'], ['configurationTabs', 'click'], ['newConfigurationButton', 'click'], ['configurationList', 'click'], ['configurationList', 'submit']]) {
   assert.equal(elements[id].listeners.get(type)?.length, 1, `${id} deve possuir exatamente um listener ${type}.`);
 }
 
 feature.render();
 const tabKeys = [...elements.configurationTabs.innerHTML.matchAll(/data-config-section="([^"]+)"/g)].map(match => match[1]);
-assert.deepEqual(tabKeys, ['taskDefinitions', 'users', 'actionGroups', 'actionTypes', 'stages', 'origins', 'goals', 'inboxSections', 'notificationAssignments', 'integrations', 'diagnostic', 'backups']);
+assert.deepEqual(tabKeys, ['taskDefinitions', 'users', 'actionGroups', 'actionTypes', 'stages', 'origins', 'goals', 'inboxSections', 'notificationAssignments', 'integrations', 'registry', 'diagnostic', 'backups']);
 assert.match(elements.configurationMetrics.innerHTML, /2[\s\S]*Definições de tarefa/);
 assert.match(elements.configurationMetrics.innerHTML, /1[\s\S]*Tipos de ação/);
 assert.match(elements.configurationMetrics.innerHTML, /1[\s\S]*Etapas/);
