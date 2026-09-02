@@ -18,5 +18,11 @@ if not "%~1"=="" if not defined ATRIUM_MODE (
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\windows\atrium-bootstrap.ps1" %ATRIUM_MODE%
 set "ATRIUM_EXIT=%ERRORLEVEL%"
 
+if not "%ATRIUM_EXIT%"=="0" (
+  echo.
+  echo [ERRO] O ATRIUM não pôde concluir a operação. Revise a mensagem acima.
+  pause
+)
+
 popd >nul
 exit /b %ATRIUM_EXIT%
