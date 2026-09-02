@@ -4,7 +4,9 @@ import { readFile } from 'node:fs/promises';
 console.log('\n=== CONTRATO CANÔNICO DE TOOLCHAIN ===\n');
 
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-const starter = await readFile(new URL('../iniciar-atrium.bat', import.meta.url), 'utf8');
+const launcher = await readFile(new URL('../ATRIUM.bat', import.meta.url), 'utf8');
+const legacyWrapper = await readFile(new URL('../iniciar-atrium.bat', import.meta.url), 'utf8');
+const bootstrap = await readFile(new URL('../scripts/windows/atrium-bootstrap.ps1', import.meta.url), 'utf8');
 const workflow = await readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
 
 assert.match(pkg.engines?.node || '', /^>=24(?:\.0){0,2}$/);
@@ -15,20 +17,31 @@ assert.ok(setupNodeVersions.length >= 3 && setupNodeVersions.every(version => ve
 assert.match(workflow, /corepack prepare pnpm@11\.19\.0 --activate/);
 assert.ok((workflow.match(/pnpm install --frozen-lockfile/g) || []).length >= 3, 'Cada job deve instalar pelo lockfile congelado.');
 
-assert.match(starter, /process\.versions\.node/);
-assert.match(starter, /LSS 24/);
-assert.match(starter, /corepack --version/);
-assert.match(starter, /corepack pnpm --version/);
-assert.doesNotMatch(starter, /corepack enable/);
-assert.doesNotMatch(starter, /corepack prepare/);
-assert.match(starter, /corepack pnpm install --frozen-lockfile/);
-assert.match(starter, /chromium\.executablePath\(\)/);
-assert.match(starter, /corepack pnpm exec playwright install chromium/);
-assert.match(starter, /corepack pnpm start/);
-assert.doesNotMatch(starter, /call\s+pnpm\b/i);
-assert.doesNotMatch(starter, /\brunas\b|net\s+session/i, 'Starter não pode exigir elevação administrativa.');
-assert.doesNotMatch(starter, /Reinstale o Node/i, 'Falha do Corepack não pode acusar falsamente instalação quebrada do Node.');
-assert.doesNotMatch(starter, /\bnpm\s+install\b/i);
-assert.doesNotMatch(starter, /\bpnpm\s+(?:add|update|up|remove)\b|--no-frozen-lockfile/i);
+assert.match(launcher, /chcp 65001/i);
+assert.match(launcher, /pushd "%~dp0"/i);
+assert.match(launcher, /--doctor/i);
+assert.match(launcher, /--install-only/i);
+assert.match(launcher, /scripts\\windows\\atrium-bootstrap\.ps1/i);
+assert.match(legacyWrapper, /call "%~dp0ATRIUM\.bat" %\*/i);
 
-console.log('✓ Starter Windows usa Node 24 + corepack pnpm diretamente, frozen lock e Chromium idempotente sem elevação.');
+assert.match(bootstrap, /process\.versions\.node/);
+assert.match(bootstrap, /\$RequiredNodeMajor\s*=\s*24/);
+assert.match(bootstrap, /\$RequiredPnpm\s*=\s*'11\.19\.0'/);
+assert.match(bootstrap, /OpenJS\.NodeJS\.LTS/);
+assert.match(bootstrap, /corepack --version/);
+assert.match(bootstrap, /corepack pnpm --version/);
+assert.match(bootstrap, /corepack pnpm install --frozen-lockfile/);
+assert.match(bootstrap, /chromium\.executablePath\(\)/);
+assert.match(bootstrap, /corepack pnpm exec playwright install chromium/);
+assert.match(bootstrap, /\/api\/auth\/status/);
+assert.match(bootstrap, /corepack pnpm start/);
+assert.match(bootstrap, /Get-AtriumServerState/);
+
+for (const source of [launcher, legacyWrapper, bootstrap]) {
+  assert.doesNotMatch(source, /\brunas\b|net\s+session/i, 'O inicializador não pode exigir elevação administrativa própria.');
+  assert.doesNotMatch(source, /\bnpm\s+install\b/i);
+  assert.doesNotMatch(source, /\bpnpm\s+(?:add|update|up|remove)\b|--no-frozen-lockfile/i);
+  assert.doesNotMatch(source, /collector[\\/](?:agent|start)|pnpm\s+collector/i, 'O inicializador não pode ativar o coletor judicial automaticamente.');
+}
+
+console.log('✓ ATRIUM.bat usa Node 24 + Corepack/pnpm 11.19.0, lockfile congelado, Chromium idempotente e start único sem coletor.');
