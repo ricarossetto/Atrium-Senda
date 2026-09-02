@@ -79,12 +79,14 @@ html[data-ui="v2"] {
   --v2-shadow-warm: 0 20px 48px -36px rgba(151, 118, 68, .44);
   --v2-grain-opacity: .013;
 
-  --v2-duration-instant: 90ms;
-  --v2-duration-fast: 140ms;
+  --v2-duration-instant: 100ms;
+  --v2-duration-fast: 150ms;
   --v2-duration-base: 200ms;
   --v2-duration-slow: 280ms;
-  --v2-duration-max: 360ms;
+  --v2-duration-max: 340ms;
   --v2-ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --v2-ease-emphasized: cubic-bezier(.2, .8, .2, 1);
+  --v2-ease-exit: cubic-bezier(.4, 0, 1, 1);
 
   --v2-z-base: 0;
   --v2-z-sticky: 20;

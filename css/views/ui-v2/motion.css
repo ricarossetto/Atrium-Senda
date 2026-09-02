@@ -1,0 +1,58 @@
+html[data-ui="v2"] :where(.button, .v2-button, .icon-button, .nav-item, summary, [role="tab"], [role="option"]) {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: var(--v2-duration-fast);
+  transition-timing-function: var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  transition: border-color var(--v2-duration-fast) var(--v2-ease-standard),
+    box-shadow var(--v2-duration-fast) var(--v2-ease-standard),
+    background-color var(--v2-duration-fast) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] :where(.button, .v2-button, .icon-button):not(:disabled):active { transform: translateY(1px); }
+
+html[data-ui="v2"] :where(.contact-record, .lead-v2-record, .process-v2-record, .agenda-v2-record, .configuration-row, .audit-record, tbody tr) {
+  transition: background-color var(--v2-duration-fast) var(--v2-ease-standard),
+    border-color var(--v2-duration-fast) var(--v2-ease-standard),
+    box-shadow var(--v2-duration-base) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] :where(.modal-combobox-listbox, .global-search-palette, .notification-panel):not(.hidden) {
+  animation: v2-popover-enter var(--v2-duration-base) var(--v2-ease-emphasized) both;
+  transform-origin: top center;
+}
+
+html[data-ui="v2"] :where(.toast, .system-status-message:not(.is-idle)) {
+  animation: v2-feedback-enter var(--v2-duration-slow) var(--v2-ease-emphasized) both;
+}
+
+html[data-ui="v2"] :where(.metric-card, .dashboard-stat-card, .pub-metric-card) {
+  transition: border-color var(--v2-duration-base) var(--v2-ease-standard),
+    box-shadow var(--v2-duration-base) var(--v2-ease-standard),
+    background-color var(--v2-duration-base) var(--v2-ease-standard);
+}
+
+@keyframes v2-popover-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes v2-feedback-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="v2"],
+  html[data-ui="v2"] *,
+  html[data-ui="v2"] *::before,
+  html[data-ui="v2"] *::after {
+    scroll-behavior: auto !important;
+    animation-delay: 0s !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-delay: 0s !important;
+    transition-duration: .01ms !important;
+  }
+}
