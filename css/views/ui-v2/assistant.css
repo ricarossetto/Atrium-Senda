@@ -232,6 +232,15 @@ html[data-ui="v2"] #view-assistant .ai-onboarding-card {
   background: color-mix(in srgb, var(--v2-color-surface) 88%, var(--v2-color-gold-soft));
 }
 
+html[data-ui="v2"][data-theme="light"] #view-assistant .ai-onboarding-card {
+  background: color-mix(in srgb, var(--v2-color-surface) 94%, var(--v2-color-gold-soft)) !important;
+  border-color: var(--v2-color-border) !important;
+}
+
+html[data-ui="v2"][data-theme="light"] #view-assistant .ai-step-item {
+  background: var(--v2-color-surface-secondary) !important;
+}
+
 html[data-ui="v2"] #view-assistant .ai-onboarding-content h3 {
   margin: 0;
   color: var(--v2-color-foreground);

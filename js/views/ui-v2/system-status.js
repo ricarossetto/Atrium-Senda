@@ -35,7 +35,7 @@ export function createSystemStatusBar({
     if (label) label.textContent = definition.label;
     if (message) message.textContent = String(detail || definition.detail);
     if (['ready', 'saved'].includes(currentState)) {
-      dismissTimer = windowRef?.setTimeout?.(() => bar.classList.add('is-transient-hidden'), currentState === 'saved' ? 4200 : 2600);
+      dismissTimer = windowRef?.setTimeout?.(() => bar.classList.add('is-transient-hidden'), currentState === 'saved' ? 2200 : 1800);
     }
     return currentState;
   }

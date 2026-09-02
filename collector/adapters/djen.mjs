@@ -1,3 +1,5 @@
+import { mergeExternalContacts, mergeExternalProcesses } from './datajud.mjs';
+
 const DEFAULT_ENDPOINT = 'https://comunicaapi.pje.jus.br/api/v1/comunicacao';
 const PROCESS_DIGITS_RE = /\b\d{20}\b/;
 
@@ -122,9 +124,8 @@ function appendDjenItem(item, portal, config, target) {
   const externalId = `djen:${item.id}`;
   const canceledReason = normalizeText(item.motivo_cancelamento || item.motivoCancelamento || '');
   const text = htmlToText(item.texto || '').slice(0, 20_000);
-  const recipients = Array.isArray(item.destinatarios)
-    ? item.destinatarios.map(value => normalizeText(value?.nome)).filter(Boolean).join(' · ')
-    : '';
+  const recipientRecords = Array.isArray(item.destinatarios) ? item.destinatarios.filter(value => normalizeText(value?.nome)) : [];
+  const recipients = recipientRecords.map(value => normalizeText(value?.nome)).join(' · ');
   const publishedAt = String(item.data_disponibilizacao || item.dataDisponibilizacao || '').slice(0, 10);
   const communicationType = normalizeText(item.tipoComunicacao || 'Publicação judicial');
   const documentType = normalizeText(item.tipoDocumento || '');
@@ -134,6 +135,55 @@ function appendDjenItem(item, portal, config, target) {
   const term = `${config.monitoredTerm?.name || 'Advogado(a) Titular'} · ${config.monitoredTerm?.registration || 'OAB/UF 000000'}`;
   const monitoredTermId = termIdentity(config.monitoredTerm);
   const now = new Date().toISOString();
+  const monitoredTerms = [...(config.monitoredTerms || []), config.monitoredTerm].filter(Boolean);
+  const matchedTerms = monitoredTerms.filter(termItem => publicationMatchesTerm(item, termItem));
+  const recipientPoles = new Set(recipientRecords.map(recipient => normalizePole(recipient.polo)).filter(Boolean));
+  const singleRepresentedPole = matchedTerms.length > 0 && recipientPoles.size === 1;
+
+  const discoveredContacts = recipientRecords.map((recipient, index) => {
+    const name = normalizeText(recipient.nome);
+    const selfParty = monitoredTerms.some(termItem => normalizeIdentity(termItem.name) === normalizeIdentity(name));
+    const role = singleRepresentedPole && !selfParty ? 'cliente' : 'outro';
+    const slug = normalizeIdentity(name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || String(index + 1);
+    const localIdentity = `djen:${process.replace(/\D/g, '') || item.id}:recipient:${slug}`;
+    return {
+      id: `contact:${localIdentity}`,
+      name,
+      contactRole: role,
+      source: portal.name || 'DJEN/CNJ',
+      relatedProcessNumbers: process ? [process] : [],
+      monitoredTermIds: matchedTerms.map(termIdentity).filter(Boolean),
+      relationshipProvenance: {
+        status: role === 'cliente' ? 'inferred-from-authoritative-source' : 'requires-human-confirmation',
+        reason: selfParty ? 'monitored-professional-is-party' : role === 'cliente' ? 'djen-monitored-oab-single-recipient-pole' : 'djen-multiple-recipient-poles',
+        source: portal.name || 'DJEN/CNJ',
+        collectedAt: now
+      },
+      registeredAt: publishedAt || now.slice(0, 10),
+      collectedAt: now
+    };
+  });
+  target.contacts = mergeExternalContacts(target.contacts || [], discoveredContacts);
+  if (process) {
+    const representedContacts = discoveredContacts.filter(contact => contact.contactRole === 'cliente');
+    const canonicalClient = representedContacts.length === 1
+      ? target.contacts.find(contact => normalizeIdentity(contact.name) === normalizeIdentity(representedContacts[0].name)
+        && (contact.relatedProcessNumbers || []).some(number => number.replace(/\D/g, '') === process.replace(/\D/g, '')))
+      : null;
+    target.processes = mergeExternalProcesses(target.processes || [], [{
+      id: `djen:process:${process.replace(/\D/g, '')}`,
+      externalId: `djen:process:${process.replace(/\D/g, '')}`,
+      number: process,
+      source: portal.name || 'DJEN/CNJ',
+      monitoring: 'active',
+      ...(court ? { court } : {}),
+      ...(normalizeText(item.nomeClasse) ? { actionType: normalizeText(item.nomeClasse) } : {}),
+      ...(publishedAt ? { registeredAt: publishedAt, latestPublicationAt: publishedAt } : {}),
+      ...(title ? { latestPublicationTitle: decodeHtmlEntities(title) } : {}),
+      monitoredTermIds: uniqueStrings([monitoredTermId, ...matchedTerms.map(termIdentity)]),
+      ...(canonicalClient?.id ? { client: canonicalClient.name, contactId: canonicalClient.id } : {})
+    }]);
+  }
 
   const incoming = {
     id: externalId,
@@ -176,6 +226,37 @@ function termIdentity(term) {
   const number = String(term.oabNumber || registration).replace(/\D/g, '');
   if (uf && number) return `oab:${uf}:${number}`;
   return normalizeText(term.name || '').toLocaleLowerCase('pt-BR');
+}
+
+function publicationMatchesTerm(item, term) {
+  const termOab = String(term?.oabNumber || term?.registration || '').replace(/\D/g, '');
+  const registration = String(term?.registration || '');
+  const termUf = normalizeText(term?.oabUf || registration.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i)?.[1] || '').toUpperCase();
+  const termName = normalizeIdentity(term?.name);
+  const links = Array.isArray(item?.destinatarioadvogados) ? item.destinatarioadvogados : [];
+  return links.some(link => {
+    const lawyer = link?.advogado && typeof link.advogado === 'object' ? link.advogado : link;
+    const lawyerOab = String(lawyer?.numero_oab || lawyer?.numeroOab || lawyer?.oab || '').replace(/\D/g, '');
+    const lawyerUf = normalizeText(lawyer?.uf_oab || lawyer?.ufOab || lawyer?.uf || '').toUpperCase();
+    const lawyerName = normalizeIdentity(lawyer?.nome);
+    if (termOab && lawyerOab) return termOab === lawyerOab && (!termUf || !lawyerUf || termUf === lawyerUf);
+    return Boolean(termName && lawyerName && termName === lawyerName);
+  });
+}
+
+function normalizeIdentity(value) {
+  return normalizeText(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+}
+
+function normalizePole(value) {
+  const pole = normalizeText(value).toUpperCase();
+  return pole === 'A' || pole === 'AT' || pole === 'ATIVO' ? 'active'
+    : pole === 'P' || pole === 'PA' || pole === 'PASSIVO' ? 'passive'
+      : pole || '';
+}
+
+function uniqueStrings(values) {
+  return [...new Set((Array.isArray(values) ? values : []).map(value => String(value || '').trim()).filter(Boolean))];
 }
 
 function validDjenItem(item) {

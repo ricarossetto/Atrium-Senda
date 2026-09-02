@@ -120,7 +120,16 @@ export function createLeadsFeature({
     openLeadModal(defaults = {}) {
       const editing = Boolean(defaults.id);
       const fields = [
-        { name: 'client', label: 'Cliente / interessado', required: true, full: true, placeholder: 'Busque um contato ou informe um novo interessado', suggestions: getContacts().map(contact => ({ value: contact.name, label: [contact.mobile || contact.phone, contact.email].filter(Boolean).join(' · ') })), note: 'Selecione um contato existente quando aplicável; um nome novo não cria contato automaticamente.' },
+        {
+          name: 'client', identityName: 'contactId', type: 'combobox', label: 'Cliente / interessado', required: true, full: true,
+          placeholder: 'Busque um contato ou informe um novo interessado',
+          suggestions: getContacts().slice().sort((left, right) => Number(right.contactRole === 'cliente') - Number(left.contactRole === 'cliente') || String(left.name).localeCompare(String(right.name), 'pt-BR')).map(contact => ({
+            id: contact.id,
+            value: contact.name,
+            label: [contact.contactRole === 'cliente' ? 'Cliente' : contact.contactRole, contact.mobile || contact.phone, contact.email].filter(Boolean).join(' · ')
+          })),
+          note: 'A seleção preserva o vínculo com o contato canônico. Um nome digitado livremente não cria contato automaticamente.'
+        },
         { name: 'serviceType', label: 'Tipo de Ação / Serviço Jurídico', required: true, full: true, placeholder: 'Ex: Concessão de Aposentadoria Especial' },
         {
           name: 'status', label: 'Status do Atendimento', type: 'select',

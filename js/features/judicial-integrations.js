@@ -39,14 +39,19 @@ export function createJudicialIntegrationsFeature({
       byId('certificateFileInput')?.addEventListener('change', event => {
         const fileName = byId('certificateFileName');
         if (fileName) fileName.textContent = event.target.files[0]?.name || 'Selecionar certificado';
+        event.target.closest('.file-picker')?.classList.toggle('has-file', Boolean(event.target.files[0]));
       });
       byId('certificateSetupForm')?.addEventListener('submit', event => feature.saveCertificate(event));
-      byId('portalQrInput')?.addEventListener('change', event => feature.readPortalQr(event.target.files[0]));
+      byId('portalQrInput')?.addEventListener('change', event => {
+        event.target.closest('.file-picker')?.classList.toggle('has-file', Boolean(event.target.files[0]));
+        feature.readPortalQr(event.target.files[0]);
+      });
       byId('portalTotpForm')?.addEventListener('submit', event => feature.savePortalTotp(event));
       byId('removePortalTotpButton')?.addEventListener('click', () => feature.removePortalTotp());
       byId('resetJudicialConnectionsButton')?.addEventListener('click', () => feature.resetConnections());
       byId('savePortalCoverageButton')?.addEventListener('click', () => feature.savePortalCoverage());
       byId('syncJudicialNowButton')?.addEventListener('click', () => feature.syncNow());
+      byId('launchPortalLoginButton')?.addEventListener('click', event => feature.launchAssistedSession(event.currentTarget));
       byId('portalCoverageList')?.addEventListener('click', event => {
         const totpButton = event.target.closest('[data-configure-totp]');
         if (totpButton) {
@@ -82,6 +87,7 @@ export function createJudicialIntegrationsFeature({
       if (byId('portalTotpCode')) byId('portalTotpCode').value = '';
       if (byId('certificatePassphrase')) byId('certificatePassphrase').value = '';
       if (clearQr && byId('portalQrInput')) byId('portalQrInput').value = '';
+      if (clearQr) byId('portalQrInput')?.closest('.file-picker')?.classList.remove('has-file');
       pendingTotpAccounts = [];
       const accountField = byId('portalTotpAccountField');
       const accountSelect = byId('portalTotpAccountSelect');
@@ -211,7 +217,7 @@ export function createJudicialIntegrationsFeature({
       const launchButton = byId('launchPortalLoginButton');
       if (launchButton) {
         launchButton.disabled = Boolean(status.interactiveCollectorRunning);
-        launchButton.textContent = status.interactiveCollectorRunning ? 'Primeira conexão em andamento…' : 'Abrir primeira conexão';
+        launchButton.textContent = status.interactiveCollectorRunning ? 'Sessão assistida em andamento…' : 'Abrir sessão assistida';
       }
     },
 
@@ -281,6 +287,26 @@ export function createJudicialIntegrationsFeature({
       }
     },
 
+    async launchAssistedSession(button) {
+      const portalIds = [...documentRef.querySelectorAll('[data-portal-enabled]:checked')].map(input => input.value);
+      if (!portalIds.length) {
+        showToast('Habilite ao menos um portal autenticado antes de abrir a sessão assistida.', 'warning');
+        return false;
+      }
+      if (button) button.disabled = true;
+      try {
+        await feature.request('/api/integrations/judicial/connect', { portalIds });
+        showToast('Sessão assistida aberta. Conclua pessoalmente as etapas exigidas pelo portal.', 'success');
+        await feature.refreshStatus();
+        return true;
+      } catch (error) {
+        showToast(error.message, 'error');
+        return false;
+      } finally {
+        if (button && !judicialStatus?.interactiveCollectorRunning) button.disabled = false;
+      }
+    },
+
     async testA1Sandbox() {
       const button = byId('btnRunA1Sandbox');
       if (button) { button.disabled = true; button.innerHTML = `${presentation?.icon?.('certificate') || '🧪 '}Executando Sandbox...`; }
@@ -324,6 +350,7 @@ export function createJudicialIntegrationsFeature({
         const pfxBase64 = await feature.fileToBase64(file);
         await feature.request('/api/integrations/judicial/certificate', { fileName: file.name, pfxBase64, passphrase });
         form.reset();
+        byId('certificateFileInput')?.closest('.file-picker')?.classList.remove('has-file');
         const fileName = byId('certificateFileName');
         if (fileName) fileName.textContent = 'Selecionar certificado';
         audit('Certificado A1 configurado', 'Contêiner validado pelo Windows e armazenado cifrado no agente local.');

@@ -115,13 +115,6 @@ html[data-ui="v2"] #view-integrations .integration-copy h3 { color: var(--v2-col
 html[data-ui="v2"] #view-integrations .integration-copy p { color: var(--v2-color-muted-foreground); line-height: 1.55; }
 html[data-ui="v2"] #view-integrations .integration-copy .button { min-height: 44px; }
 
-html[data-ui="v2"] #view-integrations .architecture-card {
-  margin-top: var(--v2-space-4);
-  color: var(--v2-color-foreground);
-  background: var(--v2-color-surface-secondary);
-  border-color: var(--v2-color-border);
-}
-
 .interface-preference-card {
   display: flex;
   align-items: center;
@@ -343,6 +336,60 @@ html[data-ui="v2"] #judicialSetupBackdrop :where(input, select) {
 }
 html[data-ui="v2"] #judicialSetupBackdrop :where(.setup-form-row, .totp-actions) .button { min-height: 44px; }
 html[data-ui="v2"] #judicialSetupBackdrop .file-picker small { min-height: 44px; }
+html[data-ui="v2"] #judicialSetupBackdrop .file-picker small {
+  color: var(--v2-color-foreground-secondary) !important;
+  background: var(--v2-color-surface-secondary) !important;
+  border-color: var(--v2-color-border) !important;
+}
+html[data-ui="v2"] #judicialSetupBackdrop .file-picker:is(:hover, :focus-within) small {
+  color: var(--v2-color-foreground) !important;
+  background: var(--v2-color-surface-hover) !important;
+  border-color: var(--v2-color-primary) !important;
+}
+html[data-ui="v2"] #judicialSetupBackdrop .file-picker.has-file small {
+  color: var(--v2-color-foreground) !important;
+  background: var(--v2-color-primary-soft) !important;
+  border-style: solid;
+}
+html[data-ui="v2"] #judicialSetupBackdrop .file-picker input[type="file"] {
+  pointer-events: auto;
+}
+
+html[data-ui="v2"] .portal-auth-guide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--v2-space-5);
+  align-items: center;
+  padding: var(--v2-space-5);
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-xl);
+}
+
+html[data-ui="v2"] .portal-auth-guide h3 {
+  margin: 2px 0 10px;
+  color: var(--v2-color-foreground);
+  font-size: 17px;
+}
+
+html[data-ui="v2"] .portal-auth-guide ol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+  margin: 0 0 12px;
+  padding-left: 20px;
+  line-height: 1.45;
+}
+
+html[data-ui="v2"] .portal-auth-guide p:last-child { margin: 0; line-height: 1.5; }
+html[data-ui="v2"] .portal-auth-guide > .button { min-width: 188px; min-height: 44px; }
+
+@media (max-width: 760px) {
+  html[data-ui="v2"] .portal-auth-guide { grid-template-columns: 1fr; }
+  html[data-ui="v2"] .portal-auth-guide ol { grid-template-columns: 1fr; }
+  html[data-ui="v2"] .portal-auth-guide > .button { width: 100%; }
+}
 
 html[data-ui="v2"] .portal-coverage-group {
   overflow: hidden;

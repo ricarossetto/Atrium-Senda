@@ -20,6 +20,7 @@ Antes de alterar um domínio, leia a spec correspondente e as specs transversais
 - [Limites de segurança](security-boundaries.md)
 - [Auditoria](audit-policy.md)
 - [Importação](import-policy.md)
+- [Relacionamento e CRM](relationship-crm.md)
 
 ## Regra de precedência
 

@@ -23,6 +23,7 @@ export function createProcessesFeature({
   openOwnerDocuments,
   openClient,
   openLinkedTasks,
+  openTask,
   exportJson,
   confirmProcessDeletion = number => globalThis.prompt?.(`Para excluir o processo ${number}, digite o número completo:`) || '',
   requestProcessReenable = () => globalThis.prompt?.('Digite o número CNJ cuja descoberta automática deve ser reativada:') || ''
@@ -42,8 +43,9 @@ export function createProcessesFeature({
       onEdit: item => feature.openProcessModal(item),
       onConsult: button => feature.consultTjrs(button),
       onDocuments: item => openOwnerDocuments?.('process', item.id),
-      onClient: item => openClient?.(item.client),
-      onTasks: item => openLinkedTasks?.(item.number || item.protocol),
+      onClient: item => openClient?.(item),
+      onTasks: item => openLinkedTasks?.(item),
+      onTask: task => openTask?.(task),
       onExport: item => feature.exportProcess(item),
       onDelete: item => feature.deleteProcess(item)
     });

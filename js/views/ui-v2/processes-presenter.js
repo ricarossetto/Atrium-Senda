@@ -10,11 +10,13 @@ export function createProcessesV2Presenter({
   onDocuments,
   onClient,
   onTasks,
+  onTask,
   onExport,
   onDelete
 } = {}) {
   let initialized = false;
   let selectedItem = null;
+  let selectedTasks = [];
   let lastFocusedElement = null;
   let previousBodyOverflow = '';
 
@@ -30,7 +32,11 @@ export function createProcessesV2Presenter({
     byId('processInspectorBackdrop')?.addEventListener('keydown', handleInspectorKeydown);
     byId('processInspectorContent')?.addEventListener('click', event => {
       if (!selectedItem) return;
-      if (event.target.closest('[data-process-client]')) {
+      const taskButton = event.target.closest('[data-process-task]');
+      if (taskButton) {
+        const task = selectedTasks.find(item => String(item.id) === taskButton.dataset.processTask);
+        if (task) { close({ restoreFocus: false }); onTask?.(task); }
+      } else if (event.target.closest('[data-process-client]')) {
         const item = selectedItem; close({ restoreFocus: false }); onClient?.(item);
       } else if (event.target.closest('[data-process-tasks]')) {
         const item = selectedItem; close({ restoreFocus: false }); onTasks?.(item);
@@ -92,6 +98,7 @@ export function createProcessesV2Presenter({
     init();
     close({ restoreFocus: false });
     selectedItem = item;
+    selectedTasks = summary.linkedTasks || [];
     lastFocusedElement = invoker || documentRef.activeElement;
     previousBodyOverflow = documentRef.body?.style.overflow || '';
 
@@ -128,6 +135,7 @@ export function createProcessesV2Presenter({
       row.classList.remove('is-selected');
     });
     selectedItem = null;
+    selectedTasks = [];
     if (wasOpen && documentRef.body) documentRef.body.style.overflow = previousBodyOverflow;
     if (wasOpen && restoreFocus && lastFocusedElement?.isConnected && typeof lastFocusedElement.focus === 'function') {
       lastFocusedElement.focus();
@@ -257,6 +265,7 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
       ${definition('Comarca / seção', item.county, escapeHtml)}
       ${definition('Vara / unidade', item.courtUnit, escapeHtml)}
       ${definition('Tipo de ação', item.actionType, escapeHtml)}
+      ${definition('Assunto', item.subject, escapeHtml)}
       ${definition('Fase processual', item.judicialPhase, escapeHtml)}
       ${definition('Etapa', item.stage, escapeHtml)}
       ${definition('Responsável', item.responsible, escapeHtml)}
@@ -291,7 +300,7 @@ function metric(value, label, escapeHtml) {
 
 function renderLinkedTasks(tasks, escapeHtml, formatDate) {
   if (!tasks.length) return '<p class="process-inspector-empty">Nenhuma tarefa vinculada a este processo.</p>';
-  return `<div class="process-linked-list">${tasks.map(task => `<article><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><span>${escapeHtml(task.status || 'Status não informado')}${task.fatalDeadline || task.deadline ? ` · ${escapeHtml(formatDate(task.fatalDeadline || task.deadline))}` : ''}</span></article>`).join('')}</div>`;
+  return `<div class="process-linked-list">${tasks.map(task => `<button type="button" data-process-task="${escapeHtml(task.id)}" aria-label="Abrir tarefa ${escapeHtml(task.title || 'sem título')}"><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><span>${escapeHtml(task.status || 'Status não informado')}${task.fatalDeadline || task.deadline ? ` · ${escapeHtml(formatDate(task.fatalDeadline || task.deadline))}` : ''}${task.responsible ? ` · ${escapeHtml(task.responsible)}` : ''}</span></button>`).join('')}</div>`;
 }
 
 function renderMovements(movements, item, escapeHtml, formatDate) {

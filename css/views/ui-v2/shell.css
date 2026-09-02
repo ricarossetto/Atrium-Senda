@@ -19,10 +19,21 @@ html[data-ui="v2"] .sidebar.collapsed {
   width: var(--v2-sidebar-collapsed-width);
 }
 
-html[data-ui="v2"] .sidebar.collapsed .brand-wrapper { padding-inline: 0; }
+html[data-ui="v2"] .sidebar.collapsed .brand-wrapper {
+  min-height: 90px;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: var(--v2-space-2);
+  padding: 0 0 var(--v2-space-3);
+}
 html[data-ui="v2"] .sidebar.collapsed .brand { width: 42px; justify-content: center; overflow: hidden; }
 html[data-ui="v2"] .sidebar.collapsed .brand-logo { flex: 0 0 32px; }
-html[data-ui="v2"] .sidebar.collapsed .sidebar-collapse-btn { right: -14px; top: 10px; z-index: 2; }
+html[data-ui="v2"] .sidebar.collapsed .sidebar-collapse-btn {
+  position: static;
+  width: 36px;
+  height: 32px;
+  z-index: 2;
+}
 
 html[data-ui="v2"] .brand-wrapper {
   position: relative;
@@ -224,7 +235,7 @@ html[data-ui="v2"] .topbar-actions {
   box-shadow: var(--v2-shadow-subtle);
 }
 
-html[data-ui="v2"] .notification-center { position: relative; flex: 0 0 auto; }
+html[data-ui="v2"] .notification-center { position: relative; order: 3; flex: 0 0 auto; }
 html[data-ui="v2"] .notification-panel {
   position: absolute;
   top: calc(100% + 12px);

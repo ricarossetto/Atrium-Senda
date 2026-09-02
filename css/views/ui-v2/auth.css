@@ -201,6 +201,20 @@ html[data-theme="light"] .auth-gate .auth-logo-frame {
 
 .auth-gate .password-input-wrap { position: relative; display: block; }
 .auth-gate .password-input-wrap input { width: 100%; box-sizing: border-box; padding-right: 52px; }
+.auth-gate .password-input-wrap input[type="password"] {
+  height: 46px;
+  padding-top: 13px;
+  padding-bottom: 13px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 18px;
+  line-height: 18px;
+  letter-spacing: .12em;
+}
+.auth-gate .password-input-wrap input[type="password"]::placeholder {
+  font-family: var(--v2-font-interface);
+  font-size: 13px;
+  letter-spacing: normal;
+}
 .auth-gate .password-toggle {
   position: absolute;
   inset: 1px 1px 1px auto;

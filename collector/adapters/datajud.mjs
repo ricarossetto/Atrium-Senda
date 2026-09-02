@@ -178,7 +178,16 @@ function mergeDatajudRecord(record, number, alias, portal, config, target) {
   }).filter(Boolean);
   const clients = discoveredContacts.filter(contact => contact.contactRole === 'cliente');
   const opponents = discoveredContacts.filter(contact => contact.contactRole === 'adverso');
-  if (clients.length === 1) incomingProcess.client = clients[0].name;
+  target.contacts = mergeExternalContacts(target.contacts || [], discoveredContacts);
+  const relatedCanonicalClients = target.contacts.filter(contact => contact.contactRole === 'cliente'
+    && (contact.relatedProcessNumbers || []).some(processNumber => digits(processNumber) === digits(normalizedNumber)));
+  const canonicalClients = clients.length ? clients : relatedCanonicalClients;
+  if (canonicalClients.length === 1) {
+    incomingProcess.client = canonicalClients[0].name;
+    const canonicalClientIndex = contactMatchIndex(target.contacts, canonicalClients[0]);
+    const canonicalClient = canonicalClientIndex >= 0 ? target.contacts[canonicalClientIndex] : null;
+    if (canonicalClient?.id) incomingProcess.contactId = canonicalClient.id;
+  }
   if (opponents.length === 1) {
     incomingProcess.counterpart = opponents[0].name;
     incomingProcess.opposingParty = opponents[0].name;
@@ -188,7 +197,6 @@ function mergeDatajudRecord(record, number, alias, portal, config, target) {
   const processRecord = mergeExternalProcessRecord(existing, incomingProcess);
   if (existing) Object.assign(existing, processRecord);
   else target.processes.push(processRecord);
-  target.contacts = mergeExternalContacts(target.contacts || [], discoveredContacts);
 
   const isNewMovement = latestAt && (!previousAt || timestamp(latestAt) > timestamp(previousAt));
   const recentEnough = latestAt && Date.now() - timestamp(latestAt) <= Math.max(1, Number(portal.movementLookbackDays || 7)) * 86_400_000;
@@ -243,6 +251,8 @@ export function mergeExternalProcessRecord(existing, incoming) {
   const currentExternalAt = timestamp(current.datajudUpdatedAt || current.collectedAt);
   const incomingExternalAt = timestamp(external.datajudUpdatedAt || external.collectedAt);
   const currentIsDatajud = /DataJud|CNJ/i.test(String(current.source || '')) || Boolean(current.datajudAlias);
+  const currentIsJudicialDiscoveryOnly = /DataJud|DJEN|CNJ/i.test(String(current.source || '')) && !/Cadastro|Manual|Importa/i.test(String(current.source || ''));
+  const incomingIsDatajud = /DataJud|CNJ/i.test(String(external.source || '')) || Boolean(external.datajudAlias);
 
   for (const [field, value] of Object.entries(external)) {
     if (!meaningful(value) || ['lastMovement', 'lastMovementAt', 'movements', 'monitoredTermIds', 'source'].includes(field)) continue;
@@ -251,7 +261,7 @@ export function mergeExternalProcessRecord(existing, incoming) {
     } else if (field === 'datajudUpdatedAt') {
       if (!timestamp(merged[field]) || timestamp(value) >= timestamp(merged[field])) merged[field] = value;
     } else if (officialFields.has(field)) {
-      if (!meaningful(merged[field]) || (currentIsDatajud && incomingExternalAt && incomingExternalAt >= currentExternalAt)) merged[field] = value;
+      if (!meaningful(merged[field]) || (incomingIsDatajud && currentIsJudicialDiscoveryOnly) || (currentIsDatajud && incomingExternalAt && incomingExternalAt >= currentExternalAt)) merged[field] = value;
     } else if (!meaningful(merged[field])) {
       merged[field] = value;
     }
@@ -290,7 +300,7 @@ export function mergeExternalContactRecord(existing, incoming) {
     if (!meaningful(value) || ['source', 'relatedProcessNumbers', 'monitoredTermIds', 'contactRole'].includes(field)) continue;
     if (['datajudAlias', 'collectedAt'].includes(field) || !meaningful(merged[field])) merged[field] = value;
   }
-  const currentWasExternal = /DataJud/i.test(String(current.source || ''));
+  const currentWasExternal = /DataJud|DJEN/i.test(String(current.source || ''));
   if (!meaningful(current.contactRole) || (currentWasExternal && current.contactRole === 'outro')) {
     merged.contactRole = external.contactRole || current.contactRole || 'outro';
   }

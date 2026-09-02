@@ -498,17 +498,23 @@ import { createTasksFeature } from './features/tasks.js';
       getLinkedIntimations: processNumber => Store.state.intimations.filter(item => processNumber && String(item.process || '').trim() === processNumber),
       isTerminalStatus: status => TERMINAL_STATUSES.includes(status),
       openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId),
-      openClient: name => {
+      openClient: process => {
+        const contact = Store.state.contacts.find(item => String(item.id) === String(process?.contactId || ''))
+          || Store.state.contacts.filter(item => normalizeText(item.name) === normalizeText(process?.client)).at(0);
         App.switchView('contacts');
         const input = document.getElementById('contactSearch');
-        if (input) input.value = name || '';
-        App.renderContacts(name || '');
+        if (input) input.value = '';
+        getContactsFeature().setRoleFilter('all');
+        App.renderContacts('');
+        if (contact?.id) getContactsFeature().selectContact(contact.id);
+        else App.toast('O processo ainda não possui um cliente canônico vinculado.', 'info');
       },
-      openLinkedTasks: processNumber => {
+      openLinkedTasks: process => {
         App.switchView('kanban');
         App.renderKanban?.();
-        App.toast(`Tarefas vinculadas ao processo ${processNumber || 'selecionado'} estão destacadas pelos dados do cartão.`, 'info');
+        App.toast(`Tarefas vinculadas ao processo ${process?.number || process?.protocol || 'selecionado'} estão disponíveis no quadro.`, 'info');
       },
+      openTask: task => App.openTaskModal(task),
       exportJson: (data, filename) => App.exportJson(data, filename),
       confirmProcessDeletion: number => window.prompt(`Para excluir o processo ${number}, digite o número completo:`),
       requestProcessReenable: () => window.prompt('Digite o número CNJ cuja descoberta automática deve ser reativada:')
@@ -1216,6 +1222,7 @@ import { createTasksFeature } from './features/tasks.js';
     removePortalTotp() { return getJudicialIntegrationsFeature().removePortalTotp(); },
     savePortalCoverage() { return getJudicialIntegrationsFeature().savePortalCoverage(); },
     resetJudicialConnections() { return getJudicialIntegrationsFeature().resetConnections(); },
+    launchAssistedSession(button) { return getJudicialIntegrationsFeature().launchAssistedSession(button); },
     syncJudicialNow() { return getJudicialIntegrationsFeature().syncNow(); },
     judicialRequest(url, body) { return getJudicialIntegrationsFeature().request(url, body); },
     async forgetTrustedDevice() {

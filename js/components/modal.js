@@ -45,6 +45,13 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     document.getElementById('modalEyebrow').textContent = eyebrow;
     const renderField = field => {
       const value = defaults[field.name] ?? field.value ?? '';
+      if (field.type === 'combobox') {
+        const identityName = field.identityName || `${field.name}Id`;
+        const identityValue = defaults[identityName] ?? '';
+        const listId = `field-${field.name}-listbox`;
+        const options = (field.suggestions || []).map((option, index) => `<button type="button" role="option" id="${listId}-option-${index}" data-combobox-option data-value="${escapeHtml(option.value ?? '')}" data-identity="${escapeHtml(option.id ?? '')}" aria-selected="${String(option.id ?? '') === String(identityValue)}"><strong>${escapeHtml(option.value ?? '')}</strong>${option.label ? `<small>${escapeHtml(option.label)}</small>` : ''}</button>`).join('');
+        return `<div class="field ${field.full ? 'full' : ''}" data-modal-combobox-field><label for="field-${field.name}">${field.label}</label><div class="modal-combobox"><input id="field-${field.name}" name="${field.name}" type="text" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId}" data-modal-combobox><input type="hidden" name="${identityName}" value="${escapeHtml(identityValue)}" data-combobox-identity><div class="modal-combobox-listbox hidden" id="${listId}" role="listbox">${options || '<p>Nenhum contato cadastrado.</p>'}</div></div>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
+      }
       if (field.type === 'textarea') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><textarea id="field-${field.name}" name="${field.name}" ${field.required ? 'required' : ''}>${escapeHtml(value)}</textarea>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
       if (field.type === 'select') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><select id="field-${field.name}" name="${field.name}">${field.options.map(option => `<option value="${escapeHtml(option.value)}" ${String(value) === String(option.value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div>`;
       const suggestions = Array.isArray(field.suggestions) && field.suggestions.length
@@ -70,6 +77,7 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
           ? renderMonitoringSections(mode, fields, renderField)
       : `<div class="form-grid">${fields.map(renderField).join('')}</div>`;
     document.getElementById('modalFields').innerHTML = `${topHtml}${fieldsHtml}`;
+    installModalComboboxes(document.getElementById('modalFields'));
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
@@ -98,6 +106,62 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
   }
 
   return Object.freeze({ init, open, close });
+}
+
+function installModalComboboxes(root) {
+  root?.querySelectorAll('[data-modal-combobox-field]').forEach(field => {
+    const input = field.querySelector('[data-modal-combobox]');
+    const identity = field.querySelector('[data-combobox-identity]');
+    const listbox = field.querySelector('[role="listbox"]');
+    const options = [...field.querySelectorAll('[data-combobox-option]')];
+    if (!input || !identity || !listbox) return;
+    const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const setOpen = open => {
+      listbox.classList.toggle('hidden', !open);
+      input.setAttribute('aria-expanded', String(open));
+    };
+    const filter = () => {
+      const query = normalize(input.value);
+      let visible = 0;
+      options.forEach(option => {
+        const match = !query || normalize(option.textContent).includes(query);
+        option.classList.toggle('hidden', !match);
+        if (match) visible++;
+      });
+      setOpen(Boolean(options.length && visible));
+    };
+    const choose = option => {
+      input.value = option.dataset.value || '';
+      identity.value = option.dataset.identity || '';
+      options.forEach(item => item.setAttribute('aria-selected', String(item === option)));
+      setOpen(false);
+      input.focus();
+    };
+    input.addEventListener('focus', filter);
+    input.addEventListener('input', () => { identity.value = ''; filter(); });
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { setOpen(false); return; }
+      if (event.key !== 'ArrowDown') return;
+      const first = options.find(option => !option.classList.contains('hidden'));
+      if (first) { event.preventDefault(); first.focus(); }
+    });
+    options.forEach((option, index) => {
+      option.addEventListener('mousedown', event => event.preventDefault());
+      option.addEventListener('click', () => choose(option));
+      option.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); choose(option); return; }
+        if (event.key === 'Escape') { event.preventDefault(); setOpen(false); input.focus(); return; }
+        if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+        event.preventDefault();
+        const visible = options.filter(item => !item.classList.contains('hidden'));
+        const current = visible.indexOf(option);
+        visible[(current + (event.key === 'ArrowDown' ? 1 : -1) + visible.length) % visible.length]?.focus();
+      });
+    });
+    field.addEventListener('focusout', event => {
+      if (!field.contains(event.relatedTarget)) setOpen(false);
+    });
+  });
 }
 
 const PROCESS_FIELD_SECTIONS = Object.freeze({

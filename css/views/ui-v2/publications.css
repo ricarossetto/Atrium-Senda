@@ -110,26 +110,27 @@ html[data-ui="v2"] #publicationsMetrics .pub-metric-card.active {
 html[data-ui="v2"] #publicationsMetrics .pub-metric-icon {
   width: 30px;
   height: 30px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   color: transparent;
   background: var(--v2-color-surface-inset);
   border: 1px solid var(--v2-color-border-subtle);
   border-radius: var(--v2-radius-round);
-  font-size: 0;
 }
 
-html[data-ui="v2"] #publicationsMetrics .pub-metric-icon::after {
+html[data-ui="v2"] #publicationsMetrics .pub-metric-dot {
+  display: block;
   width: 8px;
   height: 8px;
+  flex: 0 0 8px;
   background: var(--v2-color-primary);
   border-radius: 50%;
-  content: "";
 }
 
-html[data-ui="v2"] #publicationsMetrics .pub-metric-card:nth-child(3) .pub-metric-icon::after { background: var(--v2-color-success); }
-html[data-ui="v2"] #publicationsMetrics .pub-metric-card:nth-child(4) .pub-metric-icon::after { background: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] #publicationsMetrics .pub-metric-card:nth-child(3) .pub-metric-dot { background: var(--v2-color-success); }
+html[data-ui="v2"] #publicationsMetrics .pub-metric-card:nth-child(4) .pub-metric-dot { background: var(--v2-color-muted-foreground); }
 
 html[data-ui="v2"] #publicationsMetrics .pub-metric-content {
   display: grid;
@@ -152,8 +153,8 @@ html[data-ui="v2"] #publicationsMetrics .pub-metric-content span {
 
 html[data-ui="v2"] #view-inbox > .section-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 620px;
-  align-items: start;
+  grid-template-columns: minmax(460px, 1fr) auto;
+  align-items: end;
   gap: var(--v2-space-3);
   margin: 0 0 var(--v2-space-3);
   padding: var(--v2-space-3);
@@ -187,10 +188,35 @@ html[data-ui="v2"] #inboxFilters button.active {
 
 html[data-ui="v2"] #view-inbox .toolbar-actions {
   min-width: 0;
-  display: grid;
-  grid-template-columns: 1.35fr 1.55fr repeat(3, minmax(0, 1fr));
-  justify-items: stretch;
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: var(--v2-space-3);
+}
+
+html[data-ui="v2"] #view-inbox .publication-context-controls,
+html[data-ui="v2"] #view-inbox .publication-primary-actions {
+  display: flex;
+  align-items: end;
   gap: var(--v2-space-2);
+}
+
+html[data-ui="v2"] #view-inbox .publication-context-controls {
+  padding-right: var(--v2-space-3);
+  border-right: 1px solid var(--v2-color-border);
+}
+
+html[data-ui="v2"] #view-inbox .publication-context-controls .inbox-sort-control:first-child { width: 144px; }
+html[data-ui="v2"] #view-inbox .publication-context-controls .inbox-sort-control:last-child { width: 176px; }
+
+html[data-ui="v2"] #view-inbox .publication-primary-actions .button {
+  min-width: max-content;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v2-space-2);
+  white-space: nowrap;
 }
 
 html[data-ui="v2"] #view-inbox .inbox-sort-control {
@@ -247,7 +273,11 @@ html[data-ui="v2"] #intimationDetail {
 
 html[data-ui="v2"] #view-inbox .inbox-list-card {
   max-height: none;
-  overflow: hidden;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 html[data-ui="v2"] #view-inbox .inbox-list { max-height: none; overflow: visible; }
@@ -337,6 +367,7 @@ html[data-ui="v2"] .publication-record-status .unread-dot {
   width: 7px;
   height: 7px;
   flex: 0 0 auto;
+  align-self: center;
   margin: 0;
   background: var(--v2-color-primary);
   border-radius: 50%;
@@ -519,6 +550,8 @@ html[data-ui="v2"] .publication-detail-kicker {
   flex-wrap: wrap;
   gap: var(--v2-space-2);
   margin-bottom: var(--v2-space-3);
+  padding: 0 var(--v2-space-3) var(--v2-space-2);
+  border-bottom: 1px solid var(--v2-color-border);
 }
 
 html[data-ui="v2"] .publication-read-state {
@@ -749,7 +782,7 @@ html[data-ui="v2"] #discardPublicationSubmitBtn {
 
 @media (max-width: 1300px) and (min-width: 768px) {
   html[data-ui="v2"] #view-inbox > .section-toolbar { grid-template-columns: 1fr; }
-  html[data-ui="v2"] #view-inbox .toolbar-actions { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  html[data-ui="v2"] #view-inbox .toolbar-actions { justify-content: space-between; }
   html[data-ui="v2"] #view-inbox .inbox-layout { grid-template-columns: minmax(330px, 40%) minmax(0, 60%); }
   html[data-ui="v2"] #view-inbox .inbox-list-card,
   html[data-ui="v2"] #intimationDetail { max-height: calc(100dvh - 455px); }
@@ -800,22 +833,29 @@ html[data-ui="v2"] #discardPublicationSubmitBtn {
   }
 
   html[data-ui="v2"] #view-inbox .toolbar-actions {
-    grid-template-columns: 1fr 1fr;
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
-  html[data-ui="v2"] #view-inbox .toolbar-actions > .inbox-sort-control {
-    grid-column: 1 / -1;
+  html[data-ui="v2"] #view-inbox .publication-context-controls,
+  html[data-ui="v2"] #view-inbox .publication-primary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
   }
 
-  html[data-ui="v2"] #view-inbox .toolbar-actions > #newIntimationButton {
-    grid-column: 1 / -1;
+  html[data-ui="v2"] #view-inbox .publication-context-controls {
+    padding: 0 0 var(--v2-space-3);
+    border-right: 0;
+    border-bottom: 1px solid var(--v2-color-border);
   }
 
-  html[data-ui="v2"] #view-inbox .toolbar-actions > :where(.inbox-sort-control, .button) {
-    min-width: 0;
-  }
+  html[data-ui="v2"] #view-inbox .publication-context-controls .inbox-sort-control { width: auto !important; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions #newIntimationButton { grid-column: 1 / -1; }
 
-  html[data-ui="v2"] #view-inbox .toolbar-actions > .button { min-height: 44px; white-space: normal; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions .button { min-width: 0; min-height: 44px; }
 
   html[data-ui="v2"] #view-inbox .inbox-layout { display: block; }
   html[data-ui="v2"] #view-inbox .inbox-list-card { max-height: none; }
@@ -996,4 +1036,57 @@ html[data-ui="v2"] #intimationDetail .publication-detail-shell > .detail-header 
 
 @media (prefers-reduced-motion: reduce) {
   html[data-ui="v2"] #intimationDetail { transition: none; }
+}
+
+/* Human visual acceptance: workspace surface and full-text reader. */
+html[data-ui="v2"] #view-inbox .inbox-list-card {
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+html[data-ui="v2"] #view-inbox .list-head {
+  margin-bottom: 0;
+  background: transparent;
+  border-top: 1px solid var(--v2-color-border);
+}
+
+html[data-ui="v2"] #inboxList .v2-publication-record { background: transparent; }
+
+html[data-ui="v2"] #intimationDetail,
+html[data-ui="v2"] #view-inbox.publication-detail-open #intimationDetail {
+  width: min(1120px, calc(100vw - 96px));
+}
+
+html[data-ui="v2"] #intimationDetail .publication-original {
+  padding-inline: clamp(24px, 5vw, 72px);
+}
+
+html[data-ui="v2"] #intimationDetail .original-text {
+  min-height: 52vh;
+  padding: clamp(20px, 3vw, 36px);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+html[data-ui="v2"] #intimationDetail .detail-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html[data-ui="v2"] #intimationDetail .detail-actions .button {
+  min-width: 0;
+  min-height: 44px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] #intimationDetail .btn-danger-action { margin-left: 0; }
+
+@media (max-width: 767px) {
+  html[data-ui="v2"] #intimationDetail,
+  html[data-ui="v2"] #view-inbox.publication-detail-open #intimationDetail { width: 100%; }
+  html[data-ui="v2"] #intimationDetail .detail-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

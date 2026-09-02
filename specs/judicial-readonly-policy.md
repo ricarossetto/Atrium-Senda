@@ -12,14 +12,16 @@ Delimitar toda integração judicial a consulta, descoberta e importação super
 
 ## Invariants
 
-- DJEN → CNJ → DataJud é discovery somente leitura.
+- DJEN → CNJ → DataJud é discovery somente leitura e, quando a fonte estruturada identifica inequivocamente uma única parte representada, vincula o processo ao contato canônico correspondente.
 - Portais podem autenticar e consultar acervo, movimentos e publicações.
 - Matching por CNJ/referência pode deduplicar; sinais fracos geram sugestão explicável.
 
 ## Allowed operations
 
 - Autenticar, verificar saúde, descobrir processos, ler movimentos/publicações e desconectar.
-- Upsert seguro preservando dados locais significativos e identidades estáveis.
+- Upsert seguro preservando dados locais significativos e identidades estáveis; partes estruturadas podem formar contatos canônicos e relações processo-cliente sem sobrescrever curadoria manual.
+- Todo CNJ estruturado do DJEN pode criar um processo-base; o DataJud enriquece esse mesmo registro com tribunal, classe, assunto e movimentos quando localizado.
+- Destinatários estruturados do DJEN viram contatos. A classificação automática como cliente exige OAB monitorada associada à comunicação e um único polo destinatário; polos múltiplos permanecem pendentes de confirmação humana.
 
 ## Forbidden operations
 

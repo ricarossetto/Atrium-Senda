@@ -21,6 +21,7 @@ Supervisionar cobertura judicial por identidade e portal, com estratégia explí
 
 - `authenticate`, `health`, `discoverCases`, `fetchMovements`, `fetchPublications`, `disconnect` em adapter declarado read-only.
 - Atualização manual explícita e agenda supervisionada de no mínimo 30 minutos.
+- Sessão assistida explícita para portais habilitados; o usuário conclui login, CAPTCHA, TOTP ou confirmação humana exigida pelo tribunal.
 
 ## Forbidden operations
 
@@ -37,7 +38,7 @@ Credenciais por identidade permanecem no cofre cifrado; cobertura pública cont�
 
 ## Failure semantics
 
-Erro transitório aplica backoff exponencial limitado; CAPTCHA/2FA interativo e expiração removem próxima tentativa até reconexão humana.
+Erro transitório aplica backoff exponencial limitado; CAPTCHA/2FA interativo e expiração removem próxima tentativa até reconexão humana. Certificado A1 válido ou Sandbox operacional não equivale a uma sessão autenticada no portal.
 
 ## Persistence semantics
 

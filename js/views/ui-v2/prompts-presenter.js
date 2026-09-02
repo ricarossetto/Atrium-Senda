@@ -38,7 +38,7 @@ export function renderPromptsV2Presentation({
               <pre class="prompt-text">${escapeHtml(prompt.prompt)}</pre>
             </section>
             <footer class="prompt-card-actions">
-              <button type="button" class="button gold btn-use-prompt" data-use-prompt="${escapeHtml(prompt.id)}" aria-label="Usar prompt ${escapeHtml(prompt.title)} no Assistente">
+              <button type="button" class="button ghost btn-use-prompt" data-use-prompt="${escapeHtml(prompt.id)}" aria-label="Usar prompt ${escapeHtml(prompt.title)} no Assistente">
                 ${iconSvg('assistant')}<span>Usar no Assistente</span>
               </button>
               <button type="button" class="button ghost btn-copy-prompt" data-copy-prompt="${escapeHtml(prompt.id)}" aria-label="Copiar texto integral do prompt ${escapeHtml(prompt.title)}">

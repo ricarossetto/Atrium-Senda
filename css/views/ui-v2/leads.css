@@ -468,3 +468,50 @@ html[data-ui="v2"] .lead-form-section textarea { min-height: 145px; resize: vert
   html[data-ui="v2"] .lead-v2-record,
   html[data-ui="v2"] #view-leads #leadStatusFilters button { transition: none; }
 }
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] .modal-combobox {
+  position: relative;
+}
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] .modal-combobox-listbox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: var(--v2-z-popover);
+  max-height: 260px;
+  display: grid;
+  padding: var(--v2-space-1);
+  overflow-y: auto;
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border-strong);
+  border-radius: var(--v2-radius-md);
+  box-shadow: var(--v2-shadow-elevated);
+}
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] .modal-combobox-listbox.hidden { display: none; }
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] [data-combobox-option] {
+  min-height: 48px;
+  display: grid;
+  gap: 2px;
+  padding: var(--v2-space-2) var(--v2-space-3);
+  color: var(--v2-color-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: var(--v2-radius-sm);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] [data-combobox-option]:is(:hover, :focus-visible),
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] [data-combobox-option][aria-selected="true"] {
+  background: var(--v2-color-primary-soft);
+  outline: 0;
+}
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] [data-combobox-option] strong { font-size: 13px; }
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] [data-combobox-option] small { color: var(--v2-color-muted-foreground); font-size: 11px; }
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] [data-combobox-option].hidden { display: none; }
