@@ -111,9 +111,13 @@ export function createConfigurationFeature({
         if (records[index] !== undefined) feature.openModal(records[index], index);
       });
       byId('configurationList')?.addEventListener('submit', event => {
-        if (!event.target.matches('[data-registry-bank-form]')) return;
-        event.preventDefault();
-        feature.searchRegistryBanks();
+        if (event.target.matches('[data-registry-bank-form]')) {
+          event.preventDefault();
+          feature.searchRegistryBanks();
+        } else if (event.target.matches('[data-registry-cpf-form]')) {
+          event.preventDefault();
+          feature.validateRegistryCpf();
+        }
       });
       presentation?.init?.();
       return true;
@@ -262,6 +266,24 @@ export function createConfigurationFeature({
       }
     },
 
+    async validateRegistryCpf() {
+      const value = byId('registryCpfQuery')?.value || '';
+      const target = byId('registryCpfResult');
+      if (!target) return null;
+      target.innerHTML = '<p class="registry-config-loading" role="status">Validando CPF…</p>';
+      try {
+        const response = await secureFetch(`/api/registry/document/validate?value=${encodeURIComponent(value)}`, { headers: { Accept: 'application/json' } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível validar o CPF.');
+        if (payload.type !== 'cpf') throw new Error('Informe um CPF com 11 dígitos.');
+        target.innerHTML = `<p class="registry-cpf-result ${payload.valid ? 'is-valid' : 'is-invalid'}" role="status"><strong>${escapeHtml(payload.formatted || value)}</strong><span>${escapeHtml(payload.message || (payload.valid ? 'CPF válido.' : 'CPF inválido.'))}</span></p>`;
+        return payload;
+      } catch (error) {
+        target.innerHTML = `<p class="registry-config-error" role="alert">${escapeHtml(error.message)}</p>`;
+        return null;
+      }
+    },
+
     async testRegistryProvider(providerId, button) {
       if (!providerId || !button) return null;
       const original = button.textContent;
@@ -381,7 +403,7 @@ function registryConfigurationShell() {
   return `<section class="registry-config-workspace" aria-labelledby="registryConfigHeading">
     <header><div><span>INTELIGÊNCIA CADASTRAL</span><h3 id="registryConfigHeading">Fontes e política de uso</h3><p>Consultas públicas passam pelo backend do ATRIUM e exigem revisão antes de alterar um contato.</p></div><button type="button" class="v2-button is-secondary" data-registry-config-action="status">Atualizar estado</button></header>
     <div class="registry-provider-grid" id="registryProviderStatus" aria-live="polite"></div>
-    <aside class="registry-policy-note"><strong>CPF: validação local somente</strong><p>Consulta externa de CPF não configurada. O ATRIUM não raspa bases não autorizadas e não conclui identidade ou situação cadastral.</p></aside>
+    <section class="registry-cpf-validation"><div><span>VALIDAÇÃO DOCUMENTAL</span><h4>Validar CPF</h4><p>Confere localmente o formato e os dígitos verificadores, sem transmitir o documento.</p></div><form data-registry-cpf-form><label for="registryCpfQuery">CPF</label><div><input id="registryCpfQuery" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00"><button type="submit" class="v2-button is-primary">Validar CPF</button></div></form><div id="registryCpfResult" aria-live="polite"></div></section>
     <section class="registry-bank-directory"><div><span>DIRETÓRIO BANCÁRIO</span><h4>Normalizar instituição</h4><p>Busca por código, ISPB ou nome em diretório público cacheado.</p></div><form data-registry-bank-form><label for="registryBankQuery">Banco</label><div><input id="registryBankQuery" type="search" placeholder="Ex.: 001, ISPB ou nome"><button type="submit" class="v2-button is-primary" data-registry-config-action="banks">Buscar banco</button></div></form><div class="registry-bank-results" id="registryBankResults" aria-live="polite"></div></section>
   </section>`;
 }
@@ -390,6 +412,8 @@ function registryProviderCard(provider, escapeHtml) {
   const stateLabels = { available: 'Disponível', temporarily_paused: 'Temporariamente pausada', not_configured: 'Não configurada' };
   const state = provider.state || (provider.configured ? 'available' : 'not_configured');
   const lastSuccess = provider.lastSuccessAt ? new Date(provider.lastSuccessAt).toLocaleString('pt-BR') : 'ainda não testada nesta execução';
-  const details = provider.configured ? `Prioridade ${provider.priority || '—'} · cache até ${provider.cacheTtlMs ? Math.round(provider.cacheTtlMs / 3_600_000) + 'h' : '—'} · última resposta ${lastSuccess}${provider.lastLatencyMs !== null && provider.lastLatencyMs !== undefined ? ` · ${provider.lastLatencyMs} ms` : ''}` : 'Integração externa desabilitada por política.';
+  const details = provider.id === 'cpf-local'
+    ? 'Execução local · nenhum dado transmitido · disponível imediatamente'
+    : provider.configured ? `Prioridade ${provider.priority || '—'} · cache até ${provider.cacheTtlMs ? Math.round(provider.cacheTtlMs / 3_600_000) + 'h' : '—'} · última resposta ${lastSuccess}${provider.lastLatencyMs !== null && provider.lastLatencyMs !== undefined ? ` · ${provider.lastLatencyMs} ms` : ''}` : 'Integração não configurada.';
   return `<article class="registry-provider-card is-${escapeHtml(state)}"><span>${escapeHtml(stateLabels[state] || state)}</span><strong>${escapeHtml(provider.name)}</strong><p>${escapeHtml((provider.capabilities || []).join(' · '))}</p><small>${escapeHtml(details)}</small>${provider.configured ? `<button type="button" class="v2-button is-secondary" data-registry-config-action="test-provider" data-registry-provider="${escapeHtml(provider.id)}">Testar conexão</button>` : ''}</article>`;
 }

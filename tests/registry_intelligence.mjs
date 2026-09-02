@@ -76,12 +76,12 @@ assert.equal(banks.records[0].code, '001');
 assert.equal((await service.searchBanks('cooperativa')).records[0].code, '999');
 assert.equal(requests.filter(url => url.endsWith('/api/banks/v1')).length, 1, 'Diretório bancário deve ser cacheado.');
 
-assert.equal(service.validateDocument('111.444.777-35').externalLookup, 'not_configured');
-assert.match(service.validateDocument('111.444.777-35').message, /não configurada/i);
+assert.equal(service.validateDocument('111.444.777-35').externalLookup, 'local_validation');
+assert.match(service.validateDocument('111.444.777-35').message, /dígitos verificadores/i);
 await assert.rejects(() => service.fetchJson('https://example.test/segredo', 'evil'), /não autorizada/i);
 
 const status = service.status();
-assert.equal(status.providers.find(item => item.id === 'cpf-external').configured, false);
+assert.equal(status.providers.find(item => item.id === 'cpf-local').configured, true);
 assert.equal(status.policy.applyMode, 'review_required');
 assert.equal(status.policy.arbitraryOutboundUrls, false);
 assert.equal(status.providers.find(item => item.id === 'brasilapi').priority, 1);
@@ -89,6 +89,7 @@ assert.equal(status.providers.find(item => item.id === 'brasilapi').enabled, tru
 const providerTest = await service.testProvider('brasilapi');
 assert.equal(providerTest.state, 'available');
 assert.ok(service.status().providers.find(item => item.id === 'brasilapi').lastSuccessAt);
+assert.equal((await service.testProvider('cpf-local')).mode, 'local');
 await assert.rejects(() => service.testProvider('unknown'), /não pode ser testado/i);
 
 const server = await startTestServer();
@@ -102,7 +103,7 @@ try {
   assert.equal(serverStatus.providers.length, 3);
   response = await fetch(`${server.baseUrl}/api/registry/document/validate?value=${encodeURIComponent('111.444.777-35')}`, { headers: { Cookie: session.cookie } });
   assert.equal(response.status, 200);
-  assert.equal((await response.json()).externalLookup, 'not_configured');
+  assert.equal((await response.json()).externalLookup, 'local_validation');
 } finally {
   await server.stop();
 }

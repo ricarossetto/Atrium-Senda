@@ -16,7 +16,9 @@ try {
       if (!value.startsWith('/api/registry/')) return original(url, options);
       window.__registryUiRequests.push({ url: value, method: options.method || 'GET' });
       let payload;
-      if (value.startsWith('/api/registry/document/validate')) payload = { type: 'cnpj', normalized: '12ABC34501DE35', formatted: '12.ABC.345/01DE-35', valid: true, externalLookup: 'available', message: 'Documento válido para consulta cadastral.' };
+      if (value.startsWith('/api/registry/document/validate')) payload = value.includes('111.444.777-35') || value.includes('111.444.777-35'.replaceAll('.', '%2E'))
+        ? { type: 'cpf', normalized: '11144477735', formatted: '111.444.777-35', valid: true, externalLookup: 'local_validation', message: 'CPF válido: formato e dígitos verificadores conferidos localmente.' }
+        : { type: 'cnpj', normalized: '12ABC34501DE35', formatted: '12.ABC.345/01DE-35', valid: true, externalLookup: 'available', message: 'Documento válido para consulta cadastral.' };
       else if (value.startsWith('/api/registry/cnpj')) payload = {
         document: '12.ABC.345/01DE-35', normalizedDocument: '12ABC34501DE35', legalName: 'SOCIEDADE MINERAL SINTÉTICA LTDA', tradeName: 'MINERAL SINTÉTICA',
         status: 'ATIVA', statusDate: '2026-08-02', primaryActivity: 'Serviços jurídicos sintéticos', municipalityIbgeCode: '4300000', simpleNational: true, mei: false, email: 'cadastro.registry@example.test', phone: '51900000000', address: 'RUA DOS TESTES, 100', district: 'CENTRO', city: 'CIDADE SINTÉTICA', state: 'RS', zip: '98765-000',
@@ -26,7 +28,7 @@ try {
       else if (value === '/api/registry/status') payload = { providers: [
         { id: 'brasilapi', name: 'BrasilAPI', capabilities: ['CNPJ', 'CEP', 'Bancos'], configured: true, priority: 1, cacheTtlMs: 43200000, lastSuccessAt: null, lastLatencyMs: null, state: 'available' },
         { id: 'viacep', name: 'ViaCEP', capabilities: ['CEP fallback'], configured: true, priority: 2, cacheTtlMs: 604800000, lastSuccessAt: null, lastLatencyMs: null, state: 'available' },
-        { id: 'cpf-external', name: 'Consulta externa de CPF', capabilities: ['CPF'], configured: false, state: 'not_configured' }
+        { id: 'cpf-local', name: 'Validação de CPF', capabilities: ['CPF · formato e dígitos verificadores'], configured: true, priority: 'local', cacheTtlMs: null, lastSuccessAt: null, lastLatencyMs: 0, state: 'available' }
       ] };
       else if (value.includes('/providers/') && value.endsWith('/test')) payload = { providerId: value.includes('brasilapi') ? 'brasilapi' : 'viacep', state: 'available', testedAt: '2026-09-02T12:00:00.000Z', latencyMs: 12 };
       else if (value.startsWith('/api/registry/banks')) payload = { records: [{ code: '001', ispb: '00000000', name: 'BCO SINTÉTICO S.A.', fullName: 'BANCO SINTÉTICO S.A.' }], registry: { freshness: 'cached' } };
@@ -75,10 +77,13 @@ try {
   await page.locator('[data-config-section="registry"]').click();
   await page.locator('.registry-provider-card').first().waitFor();
   assert.equal(await page.locator('.registry-provider-card').count(), 3);
-  assert.equal(await page.locator('[data-registry-config-action="test-provider"]').count(), 2);
+  assert.equal(await page.locator('[data-registry-config-action="test-provider"]').count(), 3);
   await page.locator('[data-registry-provider="brasilapi"]').click();
   await page.locator('[data-registry-provider="brasilapi"]').waitFor();
-  assert.match(await page.locator('.registry-policy-note').textContent(), /não raspa bases não autorizadas/i);
+  await page.locator('#registryCpfQuery').fill('111.444.777-35');
+  await page.locator('[data-registry-cpf-form] button[type="submit"]').click();
+  await page.locator('.registry-cpf-result.is-valid').waitFor();
+  assert.match(await page.locator('#registryCpfResult').textContent(), /dígitos verificadores/i);
   await page.locator('#registryBankQuery').fill('001');
   await page.locator('[data-registry-config-action="banks"]').click();
   await page.locator('#registryBankResults article', { hasText: 'BCO SINTÉTICO' }).waitFor();
