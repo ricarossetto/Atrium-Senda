@@ -330,6 +330,8 @@ try {
   await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
   await page.evaluate(() => {
+    // Exercita a compatibilidade interna legada sem reabrir uma preferência pública para o Classic.
+    document.documentElement.dataset.ui = 'classic';
     const publishedAt = new Date().toISOString().slice(0, 10);
     window.Atrium.Store.state.intimations = [
       { id: 'int-demo-1', title: 'Publicação sintética de caracterização', process: '5000000-00.2026.4.04.0000', client: 'Cliente Sintético', court: 'TRF Sintético', publishedAt, text: 'Conteúdo sintético para teste de tratamento.', unread: true, treatmentStatus: 'untreated' },
@@ -337,7 +339,7 @@ try {
     ];
     window.Atrium.App.renderAll();
   });
-  await page.click('.nav-item[data-view="inbox"]');
+  await page.evaluate(() => window.Atrium.App.switchView('inbox'));
   await page.locator('#view-inbox.active').waitFor();
   await page.locator('#inboxList .inbox-row').first().waitFor();
 

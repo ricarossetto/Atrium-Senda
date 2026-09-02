@@ -143,6 +143,8 @@ try {
   await page.locator('#appShell:not(.hidden)').waitFor();
 
   const today = await page.evaluate(async todayValue => {
+    // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
+    document.documentElement.dataset.ui = 'classic';
     const store = window.Atrium.Store;
     store.state.settings.demoMode = false;
     store.state.leads = [
@@ -165,10 +167,10 @@ try {
     processes: JSON.stringify(window.Atrium.Store.state.processes)
   }));
 
-  await page.click('button[data-view="dashboard"]');
+  await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
   assert.equal(await page.locator('#widgetActiveLeads').textContent(), '3', 'Dashboard deve contar apenas novo, em análise e proposta.');
 
-  await page.click('button[data-view="leads"]');
+  await page.evaluate(() => window.Atrium.App.switchView('leads'));
   await page.locator('#view-leads.active').waitFor();
   assert.equal(await page.locator('#leadCount').textContent(), '5 atendimentos');
   await page.waitForTimeout(350);

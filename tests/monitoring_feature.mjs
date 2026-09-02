@@ -87,6 +87,8 @@ try {
   await page.locator('#appShell:not(.hidden)').waitFor();
 
   const characterization = await page.evaluate(async () => {
+    // Exercita a compatibilidade interna legada sem reabrir uma preferência pública para o Classic.
+    document.documentElement.dataset.ui = 'classic';
     const app = window.portalApp;
     const store = window.Atrium.Store;
     store.state.terms = [
@@ -122,6 +124,7 @@ try {
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
   const records = await page.evaluate(async () => {
+    document.documentElement.dataset.ui = 'classic';
     const app = window.portalApp;
     const store = window.Atrium.Store;
     store.state.terms = [

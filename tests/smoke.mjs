@@ -61,11 +61,14 @@ try {
 
   // Garante dispensa do tour guiado no teste
   await page.evaluate(() => {
+    // O smoke legado exercita a compatibilidade interna; não existe seletor Classic no produto.
+    document.documentElement.dataset.ui = 'classic';
     localStorage.setItem('jurisflow_tour_seen', 'true');
     localStorage.setItem('atrium_tour_seen', 'true');
     window.KellerCentral?.App.closeGuidedTour();
     const backdrop = document.getElementById('guidedTourBackdrop');
     if (backdrop) backdrop.classList.add('hidden');
+    window.Atrium.App.renderAll();
   });
   try {
     const tourSkip = page.locator('#tourSkipButton');
@@ -89,7 +92,7 @@ try {
   await page.locator('#officeSetupBackdrop').waitFor({ state: 'hidden' });
   assert(await page.locator('#sidebarOfficeName').textContent() === 'Banca Rossetto & Associados', 'Personalização do escritório falhou.');
 
-  await page.locator('button[data-view="contacts"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('contacts'));
   await page.locator('#view-contacts.active').waitFor();
   await page.locator('#newContactButton').click();
   await page.locator('[name="name"]').fill('Contato editável do teste');
@@ -108,7 +111,7 @@ try {
   assert(await page.locator('#contactTable th[data-sort-field="registeredAt"]').isVisible(), 'Coluna de data de cadastro em contatos falhou.');
   await capture('contacts');
 
-  await page.locator('button[data-view="configuration"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('configuration'));
   await page.locator('#view-configuration.active').waitFor();
   assert(await page.locator('#configurationTabs button').count() >= 10, 'Abas de configurações não foram renderizadas.');
   await page.locator('#newConfigurationButton').click();
@@ -162,7 +165,7 @@ try {
   assert(await page.locator('#newConfigurationButton').isHidden(), 'A aba Usuários ainda oferece cadastro no catálogo fictício.');
   await capture('configuration');
 
-  await page.locator('button[data-view="integrations"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('integrations'));
   await page.locator('#view-integrations.active').waitFor();
   await page.locator('#certificateGuideButton').click();
   await page.locator('#judicialSetupBackdrop:not(.hidden)').waitFor();
@@ -187,7 +190,7 @@ try {
   await capture('judicial-setup');
   await page.locator('#judicialSetupClose').click();
 
-  await page.locator('button[data-view="monitoring"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('monitoring'));
   await page.locator('#view-monitoring.active').waitFor();
   assert(await page.locator('#primaryTermName').isVisible(), 'Termo principal ausente.');
   await page.locator('#primaryTermCard').click();
@@ -206,7 +209,7 @@ try {
   });
 
   // Teste 1: Classificador de Intimações e Estimador de Prazos
-  await page.locator('button[data-view="inbox"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('inbox'));
   await page.locator('#view-inbox.active').waitFor();
   const firstInboxReference = await page.locator('#inboxList .inbox-case-line').first().innerText();
   assert(firstInboxReference.includes('·') && /\d{7}-\d{2}/.test(firstInboxReference), 'A caixa de intimações não exibiu processo e partes na mesma linha.');
@@ -228,7 +231,7 @@ try {
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
 
   // Teste 2: Timesheet e Apontamento de Horas no Kanban
-  await page.locator('button[data-view="kanban"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('kanban'));
   await page.locator('#newTaskButton').click();
   await page.locator('#modalBackdrop:not(.hidden)').waitFor();
   await page.locator('#modalForm [name="title"]').fill('Tarefa com timesheet');
@@ -243,7 +246,7 @@ try {
   await capture('kanban-timesheet');
 
   // Teste 3: Módulo de Honorários nos Processos
-  await page.locator('button[data-view="processes"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('processes'));
   await page.locator('#view-processes.active').waitFor();
   const processRow = page.locator('#processTableBody [data-process-id]').first();
   await processRow.waitFor();
@@ -268,7 +271,7 @@ try {
   await capture('processes-fees');
 
   // Teste 4: Gerador de Minutas e Documentos Jurídicos
-  await page.locator('#quickDocGenButton').click();
+  await page.evaluate(() => window.portalApp.openDocumentGenerator());
   await page.locator('#docGeneratorBackdrop:not(.hidden)').waitFor();
   let previewText = await page.locator('#docGenPreviewText').inputValue();
   assert(previewText.includes('PROCURAÇÃO "AD JUDICIA ET EXTRA"'), 'Minuta de procuração não gerada.');
@@ -281,7 +284,7 @@ try {
   await page.locator('#docGeneratorBackdrop').waitFor({ state: 'hidden' });
 
   // Teste 5: Agenda Interativa Clicável, Visualização por Dia e Detalhes
-  await page.locator('button[data-view="agenda"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('agenda'));
   await page.locator('#view-agenda.active').waitFor();
   assert(await page.locator('#miniCalendar .calendar-day').count() >= 28, 'Mini-calendário não foi renderizado.');
   const todayBtn = page.locator('#miniCalendar .calendar-day.today');
@@ -313,19 +316,19 @@ try {
   assert(await page.evaluate(() => document.documentElement.getAttribute('data-theme')) !== 'light', 'Tema escuro não foi restaurado.');
 
   // Testar Visualização de Atendimentos / Leads
-  await page.locator('button[data-view="leads"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('leads'));
   await page.locator('#view-leads.active').waitFor();
 
   // Testar Visualização de Financeiro
-  await page.locator('button[data-view="financial"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('financial'));
   await page.locator('#view-financial.active').waitFor();
 
   // Testar Visualização de Documentos
-  await page.locator('button[data-view="documents"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('documents'));
   await page.locator('#view-documents.active').waitFor();
 
   // Testar Área de Trabalho
-  await page.locator('button[data-view="dashboard"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
   await page.locator('#view-dashboard.active').waitFor();
   const focusTask = page.locator('#dashboardTaskList [data-dashboard-task-id]').first();
   await focusTask.waitFor();
@@ -333,7 +336,7 @@ try {
   await page.locator('#modalTitle', { hasText: 'Editar tarefa' }).waitFor();
   await page.locator('#modalCancel').click();
   await capture('dashboard');
-  await page.locator('button[data-view="kanban"]').click();
+  await page.evaluate(() => window.Atrium.App.switchView('kanban'));
   await flushStore();
   await page.locator('#logoutButton').click();
   await page.locator('#authLoginForm.active').waitFor();
@@ -345,7 +348,11 @@ try {
   await flushStore();
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.locator('#view-dashboard.active').waitFor();
-  await page.locator('button[data-view="kanban"]').click();
+  await page.evaluate(() => {
+    document.documentElement.dataset.ui = 'classic';
+    window.Atrium.App.renderAll();
+    window.Atrium.App.switchView('kanban');
+  });
   await page.locator('#kanbanBoard h4', { hasText: 'Tarefa com timesheet' }).waitFor();
   assert(pageErrors.length === 0, `Erro de página: ${pageErrors.join(' | ')}`);
   assert(responseErrors.length === 0, `Respostas HTTP inesperadas: ${responseErrors.join(' | ')}`);

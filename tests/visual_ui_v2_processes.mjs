@@ -73,6 +73,7 @@ try {
         if (config.inspector) {
           await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"] [data-process-details]').click();
           await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
+          await page.waitForTimeout(260);
           const drawer = await page.locator('#processInspector').evaluate(element => {
             const rect = element.getBoundingClientRect();
             const content = document.getElementById('processInspectorContent').textContent;

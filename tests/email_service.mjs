@@ -878,14 +878,17 @@ try {
 
     // Desativa tour guiado no DOM do teste
     await page.evaluate(() => {
+      // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
+      document.documentElement.dataset.ui = 'classic';
       localStorage.setItem('jurisflow_tour_seen', 'true');
       localStorage.setItem('atrium_tour_seen', 'true');
       window.KellerCentral?.App?.closeGuidedTour?.();
       document.getElementById('guidedTourBackdrop')?.classList.add('hidden');
+      window.Atrium.App.renderAll();
     });
 
     // Abrir aba Publicações & DJEN
-    await page.locator('button[data-view="inbox"]').click();
+    await page.evaluate(() => window.Atrium.App.switchView('inbox'));
     await page.locator('#view-inbox.active').waitFor();
 
     // Clicar na publicação de teste
@@ -987,7 +990,7 @@ try {
     await page.locator('#appShell:not(.hidden)').waitFor();
 
     // Abrir aba Publicações e detalhe
-    await page.locator('button[data-view="inbox"]').click();
+    await page.evaluate(() => window.Atrium.App.switchView('inbox'));
     await page.locator('#view-inbox.active').waitFor();
     const adminPublicationRow = page.locator(`#view-inbox.active .inbox-row[data-intimation-id="${canonicalTestPublication.id}"]`);
     await adminPublicationRow.waitFor({ state: 'visible' });
@@ -1017,9 +1020,10 @@ try {
     await page.locator('#appShell:not(.hidden)').waitFor();
 
     // Abrir aba Publicações e detalhe
-    await page.locator('button[data-view="inbox"]').click();
+    await page.evaluate(() => window.Atrium.App.switchView('inbox'));
     await page.locator('#view-inbox.active').waitFor();
-    await page.locator(`.inbox-row[data-intimation-id="${canonicalTestPublication.id}"]`).click();
+    // O detalhe V2 pode permanecer aberto entre sessões; selecione pela API canônica sem clique obstruído.
+    await page.evaluate(id => window.Atrium.App.selectIntimation(id), canonicalTestPublication.id);
 
     // 5.4 E2E DESTINATÁRIOS DE PUBLICAÇÕES (ADMIN & COLLABORATOR & THEMES)
     // Master Admin faz login novamente
@@ -1032,7 +1036,7 @@ try {
     await page.locator('#appShell:not(.hidden)').waitFor();
 
     // Navegar para a aba de Integrações
-    await page.locator('button[data-view="integrations"]').click();
+    await page.evaluate(() => window.Atrium.App.switchView('integrations'));
     await page.locator('#view-integrations.active').waitFor();
 
     // Validar visibilidade da seção e do botão de adicionar destinatário
@@ -1107,7 +1111,7 @@ try {
     // Recarregar página (Reload) e verificar persistência dos destinatários
     await page.reload({ waitUntil: 'networkidle' });
     await page.locator('#appShell:not(.hidden)').waitFor();
-    await page.locator('button[data-view="integrations"]').click();
+    await page.evaluate(() => window.Atrium.App.switchView('integrations'));
     await page.locator('#view-integrations.active').waitFor();
     const persistedRow = page.locator('.email-receiver-item').first();
     await persistedRow.waitFor();
@@ -1147,7 +1151,7 @@ try {
     await page.locator('#authLoginForm button[type="submit"]').click();
     await page.locator('#appShell:not(.hidden)').waitFor();
 
-    await page.locator('button[data-view="integrations"]').click();
+    await page.evaluate(() => window.Atrium.App.switchView('integrations'));
     await page.locator('#view-integrations.active').waitFor();
     await page.locator('#emailReceiversSection').waitFor({ state: 'hidden' });
     await page.locator('#btnAddEmailReceiver').waitFor({ state: 'hidden' });

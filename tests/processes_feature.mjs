@@ -238,6 +238,8 @@ try {
   await page.locator('#appShell:not(.hidden)').waitFor();
 
   const fixture = await page.evaluate(async () => {
+    // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
+    document.documentElement.dataset.ui = 'classic';
     const store = window.Atrium.Store;
     const app = window.portalApp;
     const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -292,7 +294,7 @@ try {
     return { today, tomorrow, explicitDeadline };
   });
 
-  await page.click('button[data-view="processes"]');
+  await page.evaluate(() => window.Atrium.App.switchView('processes'));
   await page.locator('#view-processes.active').waitFor();
   assert.deepEqual(
     await page.locator('#processTableBody [data-process-id]').evaluateAll(rows => rows.map(row => row.dataset.processId)),
@@ -496,11 +498,11 @@ try {
   assert.equal(await page.locator('#processSearch').inputValue(), '5007777-00.2026.4.04.0001');
   assert.equal(await page.locator(`#processTableBody [data-process-id="${created.id}"]`).count(), 1);
 
-  await page.click('button[data-view="dashboard"]');
+  await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
   await page.locator('#view-dashboard.active').waitFor();
   assert.equal(await page.locator('#metricTasks').textContent(), '2', 'Métrica histórica deve contar monitoring diferente de inactive.');
 
-  await page.click('button[data-view="financial"]');
+  await page.evaluate(() => window.Atrium.App.switchView('financial'));
   await page.locator('#view-financial.active').waitFor();
   await page.click('#newFinancialEntryButton');
   await page.selectOption('#finProcessSelect', created.id);
@@ -516,14 +518,14 @@ try {
   assert.equal(financeMutation.feeAmount, null, 'Lançamento RPV não pode fabricar honorário fixo.');
   assert.equal(financeMutation.requisitionStatus, 'aguardando_deposito');
   assert.equal(financeMutation.feeType, 'misto', 'Lançamento RPV deve preservar enum canônico do contrato.');
-  await page.click('button[data-view="processes"]');
+  await page.evaluate(() => window.Atrium.App.switchView('processes'));
   await page.locator('#processSearch').fill('5007777-00.2026.4.04.0001');
   await page.locator(`#processTableBody [data-process-id="${created.id}"] .fee-chip`, { hasText: '35% êxito' }).waitFor();
 
   await page.evaluate(() => window.Atrium.Store.flush());
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
-  await page.click('button[data-view="processes"]');
+  await page.evaluate(() => window.Atrium.App.switchView('processes'));
   const persisted = await page.evaluate(id => window.Atrium.Store.state.processes.find(item => item.id === id), created.id);
   assert.equal(persisted.stage, 'Etapa editada Fase 9');
   assert.equal(persisted.requisitionAmount, 50000);

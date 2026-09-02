@@ -147,6 +147,8 @@ try {
   await page.locator('#appShell:not(.hidden)').waitFor();
 
   const fixture = await page.evaluate(async today => {
+    // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
+    document.documentElement.dataset.ui = 'classic';
     const store = window.Atrium.Store;
     const app = window.portalApp;
     store.state.settings.demoMode = false;
@@ -177,7 +179,7 @@ try {
   }, isoDate());
 
   const leadsBefore = await page.evaluate(() => JSON.stringify(window.Atrium.Store.state.leads));
-  await page.click('button[data-view="contacts"]');
+  await page.evaluate(() => window.Atrium.App.switchView('contacts'));
   await page.locator('#view-contacts.active').waitFor();
   assert.equal(await page.locator('#contactCount').textContent(), '2 contatos');
   assert.deepEqual(
@@ -350,14 +352,14 @@ try {
 
   const leadsAfterContacts = await page.evaluate(() => JSON.stringify(window.Atrium.Store.state.leads));
   assert.equal(leadsAfterContacts, leadsBefore, 'Render, CRUD e documentos de Contatos não podem mutar Leads.');
-  await page.click('button[data-view="leads"]');
+  await page.evaluate(() => window.Atrium.App.switchView('leads'));
   await page.locator('#view-leads.active').waitFor();
   await page.locator('#leadTableBody [data-lead-id="lead-isolation"]', { hasText: 'Lead Sintético Isolado' }).waitFor();
 
   await page.evaluate(() => window.Atrium.Store.flush());
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
-  await page.click('button[data-view="contacts"]');
+  await page.evaluate(() => window.Atrium.App.switchView('contacts'));
   const persisted = await page.evaluate(({ createdId }) => ({
     created: window.Atrium.Store.state.contacts.find(item => item.id === createdId),
     edited: window.Atrium.Store.state.contacts.find(item => item.id === 'contact-alpha'),

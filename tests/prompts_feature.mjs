@@ -80,6 +80,8 @@ try {
   await page.locator('#appShell:not(.hidden)').waitFor();
 
   const characterization = await page.evaluate(async () => {
+    // Exercita a compatibilidade interna legada sem reabrir uma preferência pública para o Classic.
+    document.documentElement.dataset.ui = 'classic';
     const app = window.portalApp;
     const store = window.Atrium.Store;
     const defaultPrompts = [

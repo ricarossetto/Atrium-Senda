@@ -188,6 +188,8 @@ try {
   await page.locator('#appShell:not(.hidden)').waitFor();
 
   const fixture = await page.evaluate(async () => {
+    // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
+    document.documentElement.dataset.ui = 'classic';
     const app = window.portalApp;
     const store = window.Atrium.Store;
     const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -222,7 +224,7 @@ try {
     }
   });
 
-  await page.click('button[data-view="agenda"]');
+  await page.evaluate(() => window.Atrium.App.switchView('agenda'));
   await page.locator('#view-agenda.active').waitFor();
   await page.locator('#agendaList [data-agenda-activity-id="agenda-seed"]').waitFor();
   assert.equal(await page.locator('#agendaList [data-agenda-activity-id="agenda-seed"] .agenda-date strong').textContent(), fixture.today.slice(-2), 'Date-only deve manter o dia local exibido.');
@@ -345,7 +347,7 @@ try {
 
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
-  await page.click('button[data-view="agenda"]');
+  await page.evaluate(() => window.Atrium.App.switchView('agenda'));
   await page.locator('#agendaList [data-agenda-activity-id="agenda-seed"]', { hasText: 'Audiência Agenda Modular Editada' }).waitFor();
   await page.locator('#agendaList .agenda-item', { hasText: 'Novo Compromisso Agenda Modular' }).waitFor();
   const reloaded = await page.evaluate(() => ({

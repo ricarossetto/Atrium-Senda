@@ -159,6 +159,8 @@ try {
   await page.locator('#appShell:not(.hidden)').waitFor();
 
   const fixture = await page.evaluate(async () => {
+    // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
+    document.documentElement.dataset.ui = 'classic';
     const store = window.Atrium.Store;
     const app = window.portalApp;
     const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -186,7 +188,7 @@ try {
     return { today, tomorrow };
   });
 
-  await page.click('button[data-view="kanban"]');
+  await page.evaluate(() => window.Atrium.App.switchView('kanban'));
   await page.locator('#view-kanban.active').waitFor();
   const columns = page.locator('#kanbanBoard .kanban-column');
   assert.equal(await columns.count(), 6, 'Board deve manter seis colunas.');
@@ -248,7 +250,7 @@ try {
   assert.equal(editedTask.timeLogs[0].minutes, 25);
   assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Tarefa atualizada' && item.detail.includes('Tarefa Editada Fase 8'))), true);
 
-  await page.click('button[data-view="agenda"]');
+  await page.evaluate(() => window.Atrium.App.switchView('agenda'));
   await page.locator('#view-agenda.active').waitFor();
   await page.click('#agendaFilterTabs button[data-agenda-filter="task"]');
   await page.locator(`#agendaList [data-agenda-activity-id="${createdTask.id}"]`, { hasText: 'Tarefa Editada Fase 8' }).waitFor();
@@ -274,7 +276,7 @@ try {
   assert.deepEqual(secondAuthResult, { openCount: 1, activeTimer: null, interval: null }, 'Segundo auth não pode duplicar init, listener ou timer.');
   await page.click('#modalCancel');
 
-  await page.click('button[data-view="dashboard"]');
+  await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
   await page.locator('#view-dashboard.active').waitFor();
   const dashboardCheckbox = page.locator(`[data-complete-task-id="${createdTask.id}"]`);
   await dashboardCheckbox.dispatchEvent('change');
@@ -320,7 +322,7 @@ try {
   assert.equal(publicationLink.intimation.treatmentStartedBy, 'Advogada Teste');
   assert.equal(publicationLink.linkedCount, 1, 'Fluxo publicação → tarefa não pode duplicar registro.');
 
-  await page.click('button[data-view="kanban"]');
+  await page.evaluate(() => window.Atrium.App.switchView('kanban'));
   await page.locator('#view-kanban.active').waitFor();
 
   card = page.locator('#kanbanBoard [data-task-id="task-characterization"]');
@@ -392,7 +394,7 @@ try {
   await page.evaluate(() => window.Atrium.Store.flush());
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
-  await page.click('button[data-view="kanban"]');
+  await page.evaluate(() => window.Atrium.App.switchView('kanban'));
   await page.locator('#kanbanBoard [data-column="triagem"] [data-task-id="task-characterization"]').waitFor();
   const reloaded = await page.evaluate(() => window.Atrium.Store.state.tasks.find(task => task.id === 'task-characterization'));
   assert.equal(reloaded.status, 'triagem');

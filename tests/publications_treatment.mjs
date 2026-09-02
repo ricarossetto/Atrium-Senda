@@ -544,16 +544,19 @@ try {
 
       // Fechar tour e configurar tema claro
       await page.evaluate(() => {
+        // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
+        document.documentElement.dataset.ui = 'classic';
         localStorage.setItem('jurisflow_tour_completed', 'true');
         localStorage.setItem('jurisflow_tour_seen', 'true');
         const tour = document.getElementById('guidedTourBackdrop');
         if (tour) tour.classList.add('hidden');
         document.documentElement.setAttribute('data-theme', 'light');
+        window.Atrium.App.renderAll();
       });
       await page.waitForTimeout(300);
 
       // Navegar para Publicações
-      await page.click('.nav-item[data-view="inbox"]');
+      await page.evaluate(() => window.Atrium.App.switchView('inbox'));
       await page.waitForSelector('#view-inbox.active', { state: 'visible' });
 
       // Validar contadores operacionais no cabeçalho
@@ -608,7 +611,7 @@ try {
 
       // ── TESTE BUG 1: Testar também publicação com "recurso especial" ──
       const secondRow = page.locator('.inbox-row[data-intimation-id="pub-test-2"]');
-      await secondRow.click();
+      await page.evaluate(() => window.Atrium.App.selectIntimation('pub-test-2'));
       await page.waitForTimeout(300);
       await page.click('#btnCreateTask');
       await page.locator('#modalBackdrop').waitFor({ state: 'visible' });
@@ -621,7 +624,7 @@ try {
       await page.waitForTimeout(300);
 
       // Voltar para pub-test-1
-      await firstRow.click();
+      await page.evaluate(() => window.Atrium.App.selectIntimation('pub-test-1'));
       await page.waitForTimeout(300);
 
       // ── TESTE BUG 6: Simular falha de rede/servidor durante applyTreatmentAction ──
@@ -661,7 +664,7 @@ try {
       await page.waitForTimeout(300);
 
       // Selecionar a publicação que agora está em análise
-      await page.locator('.inbox-row[data-intimation-id="pub-test-1"]').click();
+      await page.evaluate(() => window.Atrium.App.selectIntimation('pub-test-1'));
       await page.waitForTimeout(300);
 
       const inReviewBadge = await page.textContent('#intimationDetail .treatment-badge');
@@ -678,7 +681,7 @@ try {
       await page.waitForTimeout(300);
 
       // Selecionar pub-test-1 novamente em análise
-      await page.locator('.inbox-row[data-intimation-id="pub-test-1"]').click();
+      await page.evaluate(() => window.Atrium.App.selectIntimation('pub-test-1'));
       await page.waitForTimeout(300);
 
       // Verificar que providência vinculada aparece no detalhe da publicação
@@ -704,7 +707,7 @@ try {
       await page.waitForTimeout(300);
 
       // Selecionar a publicação tratada
-      await page.locator('.inbox-row[data-intimation-id="pub-test-1"]').click();
+      await page.evaluate(() => window.Atrium.App.selectIntimation('pub-test-1'));
       await page.waitForTimeout(300);
 
       const treatedBadge = await page.textContent('#intimationDetail .treatment-badge');
@@ -718,7 +721,7 @@ try {
       // Mudar filtro para "Em análise"
       await page.click('.pub-metric-card[data-filter="in_review"]');
       await page.waitForTimeout(300);
-      await page.locator('.inbox-row[data-intimation-id="pub-test-1"]').click();
+      await page.evaluate(() => window.Atrium.App.selectIntimation('pub-test-1'));
       await page.waitForTimeout(300);
 
       const reopenedBadge = await page.textContent('#intimationDetail .treatment-badge');
@@ -736,7 +739,7 @@ try {
       // Mudar filtro para "Descartadas" via abas
       await page.click('#inboxFilters button[data-filter="discarded"]');
       await page.waitForTimeout(300);
-      await page.locator('.inbox-row[data-intimation-id="pub-test-1"]').click();
+      await page.evaluate(() => window.Atrium.App.selectIntimation('pub-test-1'));
       await page.waitForTimeout(300);
 
       // Verificar que publicação agora está descartada
@@ -751,7 +754,7 @@ try {
       // Mudar filtro para "Não tratadas"
       await page.click('.pub-metric-card[data-filter="untreated"]');
       await page.waitForTimeout(300);
-      await page.locator('.inbox-row[data-intimation-id="pub-test-1"]').click();
+      await page.evaluate(() => window.Atrium.App.selectIntimation('pub-test-1'));
       await page.waitForTimeout(300);
 
       const restoredBadge = await page.textContent('#intimationDetail .treatment-badge');

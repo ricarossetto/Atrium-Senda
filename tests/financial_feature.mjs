@@ -227,6 +227,8 @@ try {
 
   const processIds = ['target-rpv', 'target-exito', 'target-fixo', 'target-mensal', 'target-custas'];
   await page.evaluate(ids => {
+    // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
+    document.documentElement.dataset.ui = 'classic';
     const store = window.Atrium.Store;
     store.state.settings.demoMode = false;
     store.state.tasks = [];
@@ -256,10 +258,10 @@ try {
     return store.flush();
   }, processIds);
 
-  await page.click('button[data-view="dashboard"]');
+  await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
   assert.equal(await page.locator('#widgetHonorariosPending').textContent(), 'R$\u00a03.400,00', 'Dashboard deve preservar seu cálculo histórico próprio.');
 
-  await page.click('button[data-view="financial"]');
+  await page.evaluate(() => window.Atrium.App.switchView('financial'));
   await page.locator('#view-financial.active').waitFor();
   assert.deepEqual(await page.locator('#financialFilters button').evaluateAll(buttons => buttons.map(button => [button.dataset.finFilter, button.textContent.trim()])), [
     ['all', 'Todos'], ['rpv', 'RPVs / Alvarás'], ['honorarios', 'Honorários']
@@ -436,13 +438,13 @@ try {
   assert.equal(await page.locator('#widgetHonorariosPending').textContent(), 'R$\u00a010.800,00', 'Dashboard deve ler os campos canônicos sem rótulos de UI persistidos.');
   assert.equal(await page.locator('#toastRegion .toast.success').last().textContent(), 'Lançamento financeiro salvo com sucesso!');
 
-  await page.click('button[data-view="processes"]');
+  await page.evaluate(() => window.Atrium.App.switchView('processes'));
   await page.locator('#view-processes.active').waitFor();
   const processRowText = await page.locator('#processTableBody [data-process-id="target-fixo"]').textContent();
   assert.ok(processRowText.includes('PROC-FIN-3'));
   assert.ok(processRowText.includes('3.000'));
 
-  await page.click('button[data-view="financial"]');
+  await page.evaluate(() => window.Atrium.App.switchView('financial'));
   const documentBridge = await page.evaluate(() => {
     const app = window.portalApp;
     const original = app.openDocumentGenerator;
