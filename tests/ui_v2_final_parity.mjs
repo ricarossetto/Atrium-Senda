@@ -8,7 +8,8 @@ import {
   prepareUiV2Page,
   startUiV2Session,
   switchUiV2View,
-  UI_V2_CANONICAL_VIEWS
+  UI_V2_CANONICAL_VIEWS,
+  UI_V2_PRIMARY_NAV_VIEWS
 } from './ui_v2_helpers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,10 +23,12 @@ console.log('  ATRIUM — UI V2 FINAL PARITY CERTIFICATION');
 console.log('===============================================================\n');
 
 const expectedViews = [...UI_V2_CANONICAL_VIEWS].sort();
+const expectedPrimaryNavigation = [...UI_V2_PRIMARY_NAV_VIEWS].sort();
 const navigationViews = [...indexSource.matchAll(/class="nav-item(?: active)?"[^>]*data-view="([^"]+)"/g)].map(match => match[1]).sort();
 const declaredViews = [...indexSource.matchAll(/id="view-([^"]+)"/g)].map(match => match[1]).sort();
-assert.deepEqual(navigationViews, expectedViews, 'A navegação deve listar exatamente as 17 views canônicas uma vez.');
+assert.deepEqual(navigationViews, expectedPrimaryNavigation, 'A sidebar deve listar exatamente os 16 destinos primários uma vez.');
 assert.deepEqual(declaredViews, expectedViews, 'O DOM deve declarar exatamente as 17 views canônicas uma vez.');
+assert.match(await readFile(path.join(ROOT, 'js/views/ui-v2/configuration-presenter.js'), 'utf8'), /dataset\.viewLink\s*=\s*'audit'/, 'Auditoria deve permanecer acessível por Configurações > Sistema.');
 assert.equal((portalSource.match(/const App\s*=\s*\{/g) || []).length, 1, 'Deve existir um único App canônico.');
 assert.equal((portalSource.match(/import\s*\{[\s\S]*?\bStore\b[\s\S]*?\}\s*from '\.\/core\/store\.js';/g) || []).length, 1, 'O Portal deve importar uma única autoridade de Store.');
 assert.doesNotMatch(portalSource, /create[A-Za-z]+V2Feature\s*\(/, 'Não pode existir feature funcional paralela V2.');
@@ -106,14 +109,14 @@ try {
     assert.equal(result.sameTimer, true);
     assert.equal(result.mode, 'v2');
     assert.equal(result.modeControls, 0);
-    assert.equal(layout.navItems, 17);
+    assert.equal(layout.navItems, UI_V2_PRIMARY_NAV_VIEWS.length);
     assert.equal(layout.navGroups, 6);
     assert.deepEqual(layout.duplicateIds, []);
     assert.deepEqual(layout.visibleOverlays, []);
     assert.equal(layout.activeViews.length, 1);
     assert.deepEqual(pageErrors, [], `Page errors: ${pageErrors.join(' | ')}`);
 
-    console.log('✓ 17/17 views, 1 App, 1 Store, 1 árvore operacional e V2 exclusiva preservados.');
+    console.log('✓ 17/17 capacidades, 16/16 destinos primários, 1 App, 1 Store e V2 exclusiva preservados.');
   } finally {
     await context.close();
   }

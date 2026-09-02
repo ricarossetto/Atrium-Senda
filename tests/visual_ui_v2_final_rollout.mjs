@@ -8,7 +8,8 @@ import {
   prepareUiV2Page,
   startUiV2Session,
   switchUiV2View,
-  UI_V2_CANONICAL_VIEWS
+  UI_V2_CANONICAL_VIEWS,
+  UI_V2_PRIMARY_NAV_VIEWS
 } from './ui_v2_helpers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -76,6 +77,16 @@ async function waitForStableView(page, view) {
   }), view);
 }
 
+async function openCanonicalView(page, view) {
+  if (view !== 'audit') {
+    await switchUiV2View(page, view);
+    return;
+  }
+  await switchUiV2View(page, 'configuration');
+  await page.locator('[data-view-link="audit"]').click();
+  await page.locator('#view-audit.active').waitFor();
+}
+
 console.log('\n===============================================================');
 console.log('  ATRIUM — UI V2 FINAL ROLLOUT VISUAL QA');
 console.log('===============================================================\n');
@@ -89,20 +100,20 @@ try {
     try {
       const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: matrix.theme });
       for (const view of UI_V2_CANONICAL_VIEWS) {
-        await switchUiV2View(page, view);
+        await openCanonicalView(page, view);
         const evidence = await collectUiV2LayoutEvidence(page);
         const active = page.locator(`#view-${view}`);
         const box = await active.boundingBox();
         assert.ok(box && box.width > 0 && box.height > 0, `${matrix.name}/${view}: view deve ser visível.`); assertions++;
         assert.equal(evidence.activeViews.length, 1, `${matrix.name}/${view}: uma view ativa.`); assertions++;
-        assert.equal(evidence.navItems, 17, `${matrix.name}/${view}: navegação canônica.`); assertions++;
+        assert.equal(evidence.navItems, UI_V2_PRIMARY_NAV_VIEWS.length, `${matrix.name}/${view}: destinos primários da sidebar.`); assertions++;
         assert.ok(evidence.globalOverflow <= 2, `${matrix.name}/${view}: overflow global ${evidence.globalOverflow}px.`); assertions++;
         assert.deepEqual(evidence.duplicateIds, [], `${matrix.name}/${view}: IDs duplicados.`); assertions++;
         assert.deepEqual(evidence.visibleOverlays, [], `${matrix.name}/${view}: overlay residual.`); assertions++;
       }
 
       for (const [filename, view, state] of matrix.shots) {
-        await switchUiV2View(page, view);
+        await openCanonicalView(page, view);
         if (state === 'menu') {
           await page.locator('#menuToggle').click();
           await page.locator('#sidebar.open').waitFor();
@@ -126,4 +137,4 @@ try {
 }
 
 assert.equal(hashes.size, 16, 'As 16 capturas finais devem produzir 16 hashes distintos.'); assertions++;
-console.log(`✓ Final rollout: 17/17 views em 6 matrizes, 16 screenshots, ${hashes.size}/16 hashes e ${assertions}/${assertions} assertions.`);
+console.log(`✓ Final rollout: 17/17 capacidades, 16 destinos primários em 6 matrizes, 16 screenshots, ${hashes.size}/16 hashes e ${assertions}/${assertions} assertions.`);

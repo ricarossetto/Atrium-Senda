@@ -107,10 +107,10 @@ try {
           verticallyCentered: iconRect ? Math.abs((itemRect.top + itemRect.height / 2) - (iconRect.top + iconRect.height / 2)) <= 2 : false
         };
       }));
-      assert.equal(mobileIcons.length, 17);
+      assert.equal(mobileIcons.length, 16);
       assert.ok(mobileIcons.every(icon => icon.href?.startsWith('assets/icons/atrium-ui-icons.svg#atrium-icon-')));
       assert.ok(mobileIcons.every(icon => icon.width >= 18 && icon.width <= 20 && icon.height >= 18 && icon.height <= 20), 'Containers óticos devem permanecer entre 18 e 20px.');
-      assert.ok(mobileIcons.every(icon => icon.glyphWidth > 0 && icon.glyphHeight > 0), 'Os 17 símbolos externos devem renderizar geometria visível.');
+      assert.ok(mobileIcons.every(icon => icon.glyphWidth > 0 && icon.glyphHeight > 0), 'Os 16 símbolos da navegação primária devem renderizar geometria visível.');
       assert.ok(mobileIcons.every(icon => icon.verticallyCentered), 'Ícones mobile devem permanecer centralizados verticalmente.');
 
       const layout = await collectUiV2LayoutEvidence(page);

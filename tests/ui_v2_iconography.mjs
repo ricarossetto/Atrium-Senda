@@ -58,13 +58,16 @@ const expectedNavigation = new Map([
   ['configuration', 'configuration'], ['importer', 'importer'], ['audit', 'audit'], ['links', 'links']
 ]);
 const navigationButtons = [...index.matchAll(/<button class="nav-item[^"]*" data-view="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g)];
-assert.equal(navigationButtons.length, 17, 'A navegação deve declarar exatamente 17 módulos canônicos.');
+assert.equal(navigationButtons.length, 16, 'A sidebar deve declarar exatamente os 16 destinos primários.');
 for (const [, view, markup] of navigationButtons) {
   const expectedIcon = expectedNavigation.get(view);
   assert.ok(expectedIcon, `View de navegação inesperada: ${view}.`);
   assert.match(markup, new RegExp(`href="assets/icons/atrium-ui-icons\\.svg#atrium-icon-${expectedIcon}"`), `${view} deve usar ${expectedIcon}.`);
   assert.doesNotMatch(markup, /<(?:path|circle|rect|line|polyline|polygon)\b/, `${view} não pode duplicar geometria SVG inline.`);
 }
+assert.match(index, /id="view-audit"/, 'A capacidade canônica de auditoria deve permanecer declarada.');
+assert.match(read('js/views/ui-v2/configuration-presenter.js'), /dataset\.viewLink\s*=\s*'audit'/, 'Auditoria deve continuar acessível por Configurações > Sistema.');
+assert.ok(symbolIds.includes('atrium-icon-audit'), 'O ícone semântico de auditoria deve permanecer disponível para a capacidade canônica.');
 
 const menuMarkup = index.match(/<button[^>]*id="menuToggle"[\s\S]*?<\/button>/)?.[0] || '';
 assert.match(menuMarkup, /aria-label="Abrir menu"/);
@@ -143,5 +146,5 @@ assert.match(read('js/features/system-admin.js'), /diagnosticV2Html\(d, runtime,
 assert.match(read('js/features/system-admin.js'), /backupsV2Html\(\)/);
 
 console.log(`✓ Sprite local: ${symbols.length} símbolos, IDs únicos, viewBox padronizado e currentColor.`);
-console.log('✓ 17/17 módulos mapeados sem geometria duplicada na navegação.');
+console.log('✓ 16/16 destinos primários mapeados; auditoria canônica preservada em Configurações > Sistema.');
 console.log('✓ Marca preservada, zero CDN/pacote de ícones e fallbacks Classic explicitamente isolados.');

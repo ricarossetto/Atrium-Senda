@@ -8,6 +8,10 @@ export const UI_V2_CANONICAL_VIEWS = Object.freeze([
   'configuration', 'importer', 'audit', 'links'
 ]);
 
+export const UI_V2_PRIMARY_NAV_VIEWS = Object.freeze(
+  UI_V2_CANONICAL_VIEWS.filter(view => view !== 'audit')
+);
+
 export const UI_V2_OVERLAY_SELECTORS = Object.freeze([
   '#modalBackdrop:not(.hidden)', '#processInspectorBackdrop:not(.hidden)',
   '#publicationInspectorBackdrop:not(.hidden)', '#taskInspectorBackdrop:not(.hidden)',

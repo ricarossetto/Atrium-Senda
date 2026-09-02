@@ -4,7 +4,8 @@ import {
   prepareUiV2Page,
   startUiV2Session,
   switchUiV2View,
-  UI_V2_CANONICAL_VIEWS
+  UI_V2_CANONICAL_VIEWS,
+  UI_V2_PRIMARY_NAV_VIEWS
 } from './ui_v2_helpers.mjs';
 
 console.log('\n===============================================================');
@@ -80,7 +81,7 @@ try {
     assert.equal(result.bodyLocked, false);
     assert.equal(result.mode, 'v2');
     assert.equal(result.modeControls, 0);
-    assert.equal(layout.navItems, 17);
+    assert.equal(layout.navItems, UI_V2_PRIMARY_NAV_VIEWS.length);
     assert.equal(layout.navGroups, 6);
     assert.equal(layout.activeViews.length, 1);
     assert.deepEqual(layout.duplicateIds, []);
@@ -89,7 +90,7 @@ try {
 
     console.log('Observational metrics:', JSON.stringify({
       cycles: 3,
-      viewsPerCycle: 17,
+      viewsPerCycle: UI_V2_CANONICAL_VIEWS.length,
       nodesBefore: baseline.nodes,
       nodesAfter: result.nodes,
       stylesheetsBefore: baseline.stylesheets,

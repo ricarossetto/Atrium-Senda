@@ -12,7 +12,7 @@ try {
   const page = desktopResult.page;
   await prepareUiV2MonitoringFixture(page);
 
-  assert.equal(await page.locator('.v2-monitoring-heading h2').textContent(), 'Monitoramento');
+  assert.equal(await page.locator('.v2-monitoring-heading h2').textContent(), 'Fontes monitoradas');
   assert.equal(await page.locator('#primaryTermCard').getAttribute('role'), 'button');
   assert.match(await page.locator('#primaryTermCard').getAttribute('aria-label'), /Editar termo principal Advogada Mineral Sintética/);
   assert.deepEqual(await page.locator('#primaryTermCard .monitor-stats .v2-only').allTextContents(), ['Fontes', 'Atenção', 'Novas publicações']);

@@ -7,7 +7,8 @@ import {
   collectUiV2LayoutEvidence,
   prepareUiV2Page,
   startUiV2Session,
-  switchUiV2View
+  switchUiV2View,
+  UI_V2_PRIMARY_NAV_VIEWS
 } from './ui_v2_helpers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -26,7 +27,7 @@ const SCENARIOS = [
   { file: '09-financial-documents-light.png', theme: 'light', viewport: { width: 1280, height: 800 }, view: 'financial', nav: 'financial' },
   { file: '10-assistant-prompts-dark.png', theme: 'dark', viewport: { width: 1280, height: 800 }, view: 'assistant', nav: 'assistant' },
   { file: '11-system-group-light.png', theme: 'light', viewport: { width: 1024, height: 768 }, view: 'integrations', nav: 'integrations' },
-  { file: '12-audit-links-dark.png', theme: 'dark', viewport: { width: 1024, height: 768 }, view: 'audit', nav: 'audit' },
+  { file: '12-audit-via-configuration-dark.png', theme: 'dark', viewport: { width: 1024, height: 768 }, view: 'configuration', targetView: 'audit', entry: '[data-view-link="audit"]' },
   { file: '13-mobile-navigation-light.png', theme: 'light', viewport: { width: 390, height: 844 }, view: 'dashboard', nav: 'dashboard', mobile: true },
   { file: '14-mobile-navigation-dark.png', theme: 'dark', viewport: { width: 390, height: 844 }, view: 'links', nav: 'links', mobile: true }
 ];
@@ -59,6 +60,10 @@ try {
     try {
       const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: scenario.theme });
       await switchUiV2View(page, scenario.view);
+      if (scenario.entry) {
+        await page.locator(scenario.entry).click();
+        await page.locator(`#view-${scenario.targetView}.active`).waitFor();
+      }
       if (scenario.collapsed) {
         await page.locator('#sidebarToggleBtn').click();
         await page.locator('#sidebar.collapsed').waitFor();
@@ -67,8 +72,8 @@ try {
         await page.locator('#menuToggle').click();
         await page.locator('#sidebar.open').waitFor();
       }
-      const activeNav = page.locator(`.nav-item[data-view="${scenario.nav}"]`);
-      await activeNav.scrollIntoViewIfNeeded();
+      const activeNav = scenario.nav ? page.locator(`.nav-item[data-view="${scenario.nav}"]`) : null;
+      if (activeNav) await activeNav.scrollIntoViewIfNeeded();
       if (scenario.focus) await page.locator(scenario.focus).focus();
       await waitForStableLayout(page);
 
@@ -94,6 +99,7 @@ try {
         }) : [];
         return {
           navCount: navItems.length,
+          activeView: document.querySelector('.view.active')?.id,
           iconRects,
           active: activeItem?.classList.contains('active'),
           activeColor: activeStyle?.color,
@@ -105,11 +111,16 @@ try {
         };
       }, { selectedNav: scenario.nav, isCollapsed: Boolean(scenario.collapsed), isMobile: Boolean(scenario.mobile) });
 
-      assert.equal(evidence.navCount, 17); assertions++;
+      assert.equal(evidence.navCount, UI_V2_PRIMARY_NAV_VIEWS.length); assertions++;
       assert.ok(evidence.iconRects.every(rect => rect.width >= 18 && rect.width <= 20 && rect.height >= 18 && rect.height <= 20)); assertions++;
       assert.ok(evidence.iconRects.every(rect => rect.within && rect.centered)); assertions++;
-      assert.equal(evidence.active, true); assertions++;
-      assert.ok(evidence.activeColor && evidence.activeColor !== 'rgba(0, 0, 0, 0)' && evidence.activeOpacity !== '0'); assertions++;
+      if (scenario.nav) {
+        assert.equal(evidence.active, true); assertions++;
+        assert.ok(evidence.activeColor && evidence.activeColor !== 'rgba(0, 0, 0, 0)' && evidence.activeOpacity !== '0'); assertions++;
+      } else {
+        assert.equal(evidence.active, undefined); assertions++;
+        assert.equal(evidence.activeView, `view-${scenario.targetView}`); assertions++;
+      }
       assert.equal(evidence.sidebarState, true); assertions++;
       assert.ok(evidence.mobileControls.every(rect => rect.width >= 43.5 && rect.height >= 43.5)); assertions++;
       assert.ok(evidence.globalOverflow <= 2, `${scenario.file}: overflow ${evidence.globalOverflow}px.`); assertions++;
