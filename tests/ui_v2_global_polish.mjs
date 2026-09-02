@@ -20,11 +20,11 @@ assert.equal(cssFiles.includes('final-fixes.css'), false, 'Gate 24 não cria fol
 assert.doesNotMatch(css, /radial-gradient\s*\(/i, 'A UI V2 não usa bolhas radiais no polish final.');
 assert.doesNotMatch(css, /translateY\(\s*-[12]px\s*\)/i, 'Hover elevado por translateY não integra o contrato final.');
 assert.doesNotMatch(css, /(?:neon|liquid-glass|chrome|glossy)/i, 'Materiais proibidos não entram na linguagem V2.');
-assert.match(tokens, /--v2-duration-instant:\s*90ms/);
-assert.match(tokens, /--v2-duration-fast:\s*140ms/);
+assert.match(tokens, /--v2-duration-instant:\s*100ms/);
+assert.match(tokens, /--v2-duration-fast:\s*150ms/);
 assert.match(tokens, /--v2-duration-base:\s*200ms/);
 assert.match(tokens, /--v2-duration-slow:\s*280ms/);
-assert.match(tokens, /--v2-duration-max:\s*360ms/);
+assert.match(tokens, /--v2-duration-max:\s*340ms/);
 assert.match(tokens, /--v2-shadow-xs:/);
 assert.match(tokens, /--v2-shadow-overlay:/);
 assert.match(tokens, /--v2-color-border-strong:/);

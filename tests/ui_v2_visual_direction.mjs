@@ -54,6 +54,12 @@ try {
   const navItem = badge.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " nav-item ")]');
   const geometries = [];
 
+  await badge.evaluate(element => {
+    element.hidden = false;
+    element.classList.remove('hidden');
+    element.style.display = 'inline-block';
+  });
+
   for (const value of ['1', '10', '999']) {
     await badge.evaluate((element, text) => { element.textContent = text; }, value);
     geometries.push(await badge.evaluate(element => {

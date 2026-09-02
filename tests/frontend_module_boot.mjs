@@ -90,7 +90,9 @@ try {
   await page.locator('#authTotpSetupForm [name="code"]').fill(generateTotp(secret));
   await page.locator('#authTotpSetupForm button[type="submit"]').click();
   await page.locator('#authRecoveryStep.active').waitFor();
+  const initialSyncRequest = page.waitForRequest(isInitialSyncRequest);
   await page.locator('#finishRecovery').click();
+  await initialSyncRequest;
 
   await assertApplicationReady();
   assert.equal(stateReads, 1, 'Store.load deve fazer uma única leitura inicial de estado.');
@@ -130,7 +132,9 @@ try {
   scriptRequests = [];
   stateReads = 0;
   syncRequests = 0;
+  const reloadSyncRequest = page.waitForRequest(isInitialSyncRequest);
   await page.reload({ waitUntil: 'networkidle' });
+  await reloadSyncRequest;
   await assertSingleScriptGraph();
   await assertApplicationReady();
   assert.equal(stateReads, 1, 'Reload deve inicializar um único Store.');
@@ -191,4 +195,8 @@ async function assertApplicationReady() {
 
 function readProbe() {
   return page.evaluate(() => structuredClone(globalThis.__atriumModuleBootProbe));
+}
+
+function isInitialSyncRequest(request) {
+  return request.method() === 'POST' && new URL(request.url()).pathname === '/api/sync';
 }

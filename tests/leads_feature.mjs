@@ -301,8 +301,9 @@ try {
   assert.deepEqual(isolationAfter, isolationBefore, 'Leads não pode criar/mutar Contatos, Processos ou lançamentos financeiros derivados.');
 
   await page.locator('#globalSearch').fill('Lead CRUD Fechado Sintético');
-  await page.waitForTimeout(250);
-  assert.equal(await page.locator('[data-search-target="lead"]').count(), 0, 'Global Search historicamente não indexa Leads.');
+  const leadSearchResult = page.locator('[data-search-target="lead"]');
+  await leadSearchResult.waitFor();
+  assert.equal(await leadSearchResult.count(), 1, 'Global Search deve localizar o atendimento canônico pelo novo domínio CRM.');
   await page.locator('#globalSearch').fill('');
 
   const duplicateOpenCount = await page.evaluate(() => {

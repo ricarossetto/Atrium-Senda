@@ -47,7 +47,7 @@ try {
   await page.locator('.registry-company-summary', { hasText: 'SOCIEDADE MINERAL SINTÉTICA LTDA' }).waitFor();
   assert.equal(await page.locator('#field-name').inputValue(), '', 'Consulta nunca pode preencher silenciosamente.');
   assert.equal(await page.locator('.registry-field-review [data-registry-field]').count(), 8);
-  assert.match(await page.locator('.registry-field-review').textContent(), /Cadastro atual × dado encontrado/);
+  assert.match(await page.locator('.registry-field-review').textContent(), /Cadastro atual versus dado encontrado/);
   assert.match(await page.locator('.registry-company-summary').textContent(), /Serviços jurídicos sintéticos/);
   await page.locator('[data-registry-field="name"]').check();
   await page.locator('[data-registry-field="email"]').check();

@@ -53,7 +53,7 @@ try {
 
   assert.equal(await page.locator('.configuration-v2-header h2').textContent(), 'Configurações do Escritório');
   assert.deepEqual(await page.locator('.configuration-nav-heading').allTextContents(), ['Estrutura', 'Equipe', 'Fluxo', 'Sistema']);
-  assert.equal(await page.locator('#configurationTabs [data-config-section]').count(), 12);
+  assert.equal(await page.locator('#configurationTabs [data-config-section]').count(), 13);
   assert.equal(await page.locator('#openOfficeIdentityFromConfiguration').count(), 1);
   assert.equal(await page.locator('#uiModeControl').count(), 1);
   assert.equal(await page.locator('#uiModeControl').isHidden(), true);
