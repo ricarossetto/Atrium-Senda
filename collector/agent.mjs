@@ -11,6 +11,7 @@ import { computeNextRefresh, isRefreshDue, sanitizeJudicialError } from '../lib/
 import { collectDjen } from './adapters/djen.mjs';
 import { collectDatajud } from './adapters/datajud.mjs';
 import { collectPje } from './adapters/pje.mjs';
+import { authStateRequiresHumanAction, classifyJudicialAuthState, JUDICIAL_AUTH_STATES } from './auth-state.mjs';
 
 const COLLECTOR_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(COLLECTOR_DIR);
@@ -28,7 +29,7 @@ await sessionManager.init();
 const CENTRAL_URL = process.env.CENTRAL_URL || 'http://127.0.0.1:4173';
 const headless = String(process.env.COLLECTOR_HEADLESS).toLowerCase() === 'true';
 const interactive = String(process.env.COLLECTOR_INTERACTIVE ?? 'true').toLowerCase() === 'true';
-const loginWaitMs = Math.max(0, Number(process.env.LOGIN_WAIT_SECONDS || 180)) * 1000;
+const loginWaitMs = Math.max(0, Number(process.env.LOGIN_WAIT_SECONDS || 900)) * 1000;
 const judicialIdentityId = String(process.env.JUDICIAL_IDENTITY_ID || 'office-primary').replace(/[^a-zA-Z0-9_-]/g, '_');
 const configFile = existsSync(path.join(COLLECTOR_DIR, 'portals.json')) ? path.join(COLLECTOR_DIR, 'portals.json') : path.join(COLLECTOR_DIR, 'portals.example.json');
 const config = JSON.parse(await readFile(configFile, 'utf8'));
@@ -255,7 +256,7 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
     await page.goto(portal.dataUrl || portal.url, { waitUntil: 'domcontentloaded', timeout: 90_000 });
     await page.waitForTimeout(2_000);
 
-    if (await needsHumanAuthentication(page)) {
+    if (await needsHumanAuthentication(page, portal)) {
       if (authAdapter && authAdapter.strategy === AUTH_STRATEGIES.CREDENTIALS_TOTP && credentials?.username) {
         try {
           await authAdapter.authenticate(context, page, portal, credentials);
@@ -265,11 +266,11 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
       }
 
       await page.waitForTimeout(2_000);
-      if (interactive && !headless && (await needsHumanAuthentication(page))) {
+      if (interactive && !headless && (await needsHumanAuthentication(page, portal))) {
         console.log(`${portal.name}: conclua login, QR code, CAPTCHA ou 2FA na janela aberta. Aguardando até ${Math.round(loginWaitMs / 1000)} segundos…`);
         await waitForHumanAuthentication(page, portal, loginWaitMs);
       }
-      if (await needsHumanAuthentication(page)) {
+      if (await needsHumanAuthentication(page, portal)) {
         target.sources.push(source(portal, 'attention', checkedAt, 'Autenticação manual necessária; nenhuma tentativa de contornar CAPTCHA ou 2FA foi feita.'));
         return { state: SESSION_STATUS.ACTION_REQUIRED, humanAction: 'Conclua o login, CAPTCHA ou segundo fator no portal.' };
       }
@@ -341,16 +342,22 @@ async function collectEproc(page, portal, target) {
 
 async function navigateToEprocProcessReport(page) {
   if (await hasEprocProcessTable(page)) return;
-  let href = await firstVisibleHref(page, 'a', value => /acao=relatorio_processo_procurador_listar/i.test(value) && !/ord_ultimas_movimentacoes=/i.test(value));
+  const isProcessReport = value => /acao=(?:relatorio_)?processo_(?:procurador_)?listar/i.test(value) && !/ord_ultimas_movimentacoes=/i.test(value);
+  let href = await firstVisibleHrefAcrossFrames(page, 'a', isProcessReport);
   if (!href) {
-    const reports = page.getByRole('link', { name: 'Relatórios', exact: true });
-    if (await reports.count()) {
-      await reports.first().click();
-      await page.waitForTimeout(250);
-      href = await firstVisibleHref(page, 'a', value => /acao=relatorio_processo_procurador_listar/i.test(value) && !/ord_ultimas_movimentacoes=/i.test(value));
+    for (const frame of page.frames()) {
+      const reports = frame.getByRole('link', { name: /relat[oó]rios/i }).first();
+      if (!(await reports.count().catch(() => 0)) || !(await reports.isVisible().catch(() => false))) continue;
+      await reports.click().catch(() => {});
+      await page.waitForTimeout(500);
+      href = await firstVisibleHrefAcrossFrames(page, 'a', isProcessReport);
+      if (href) break;
     }
   }
-  if (!href) throw new Error('O relatório "Relação de Processos" não foi localizado no eproc.');
+  if (!href) {
+    href = await firstVisibleHrefAcrossFrames(page, 'a', (_value, text) => /rela[cç][aã]o de processos|processos do procurador|meus processos/i.test(text));
+  }
+  if (!href) throw new Error('A sessão foi autenticada, mas o atalho para a relação de processos não foi localizado no menu atual do eproc.');
   await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 90_000 });
   if (!(await hasEprocProcessTable(page))) throw new Error('A tabela de processos do eproc não foi carregada.');
 }
@@ -451,9 +458,17 @@ function appendEprocNotifications(rows, portal, target, pending) {
 
 async function firstVisibleHref(page, selector, predicate = () => true) {
   const links = await page.locator(selector).evaluateAll(elements => elements.map(element => ({
-    href: element.href || '', visible: Boolean(element.offsetWidth || element.offsetHeight || element.getClientRects().length)
+    href: element.href || '', text: element.textContent?.replace(/\s+/g, ' ').trim() || '', visible: Boolean(element.offsetWidth || element.offsetHeight || element.getClientRects().length)
   })));
-  return links.find(link => link.visible && predicate(link.href))?.href || '';
+  return links.find(link => link.visible && predicate(link.href, link.text))?.href || '';
+}
+
+async function firstVisibleHrefAcrossFrames(page, selector, predicate = () => true) {
+  for (const frame of page.frames()) {
+    const href = await firstVisibleHref(frame, selector, predicate).catch(() => '');
+    if (href) return href;
+  }
+  return '';
 }
 
 async function linkVisibleText(page, href) {
@@ -518,23 +533,50 @@ function collectIntimations(lines, portal, target) {
   }
 }
 
-async function needsHumanAuthentication(page) {
-  const url = page.url().toLowerCase();
-  if (/login|signin|sign-in|autenticacao|authentication/.test(url)) return true;
-  const body = (await page.locator('body').innerText({ timeout: 10_000 }).catch(() => '')).slice(0, 12_000).toLowerCase();
-  const passwordField = await page.locator('input[type="password"]').count().catch(() => 0);
-  const loggedIn = /painel do advogado|rela[cç][aã]o de processos|n[uú]mero do processo/.test(body);
-  return !loggedIn && (passwordField > 0 || /entrar na conta|faça seu login|leia o qr code|captcha|código de verificação|acesso com certificado digital/.test(body));
+async function needsHumanAuthentication(page, portal = null) {
+  const state = await detectAuthenticationState(page, portal);
+  return authStateRequiresHumanAction(state, { accountScoped: portal?.accountScoped !== false });
+}
+
+async function detectAuthenticationState(page, portal = null) {
+  if (page.isClosed()) return JUDICIAL_AUTH_STATES.SESSION_EXPIRED;
+  const frames = page.frames();
+  const body = (await Promise.all(frames.map(frame => frame.locator('body').innerText({ timeout: 3_000 }).catch(() => '')))).join('\n').slice(0, 24_000);
+  const oneTimeCodeSelector = [
+    'input[autocomplete="one-time-code"]', 'input[maxlength="6"]',
+    'input[name*="otp" i]', 'input[id*="otp" i]', 'input[name*="token" i]', 'input[id*="token" i]',
+    'input[name*="codigo" i]', 'input[id*="codigo" i]', 'input[name*="2fa" i]', 'input[id*="2fa" i]'
+  ].join(',');
+  return classifyJudicialAuthState({
+    url: page.url(),
+    body,
+    hasPasswordField: await hasVisibleFieldAcrossFrames(frames, 'input[type="password"]'),
+    hasOneTimeCodeField: await hasVisibleFieldAcrossFrames(frames, oneTimeCodeSelector),
+    strategy: portal?.strategy || ''
+  });
+}
+
+async function hasVisibleFieldAcrossFrames(frames, selector) {
+  for (const frame of frames) {
+    const fields = frame.locator(selector);
+    const count = await fields.count().catch(() => 0);
+    for (let index = 0; index < count; index += 1) {
+      if (await fields.nth(index).isVisible().catch(() => false)) return true;
+    }
+  }
+  return false;
 }
 
 async function waitForHumanAuthentication(page, portal, timeout) {
   const started = Date.now();
   while (Date.now() - started < timeout) {
+    if (page.isClosed()) return false;
     await page.waitForTimeout(2_000);
     await tryAutomatedTotp(page, portal);
-    if (!(await needsHumanAuthentication(page))) return;
+    if (!(await needsHumanAuthentication(page, portal))) return true;
   }
   console.log(`${portal.name}: tempo de autenticação manual encerrado.`);
+  return false;
 }
 
 function matchesMonitoredTerm(text) {

@@ -1078,7 +1078,7 @@ async function startInteractiveCollector(portalIds) {
       CENTRAL_URL: centralUrl,
       COLLECTOR_HEADLESS: 'false',
       COLLECTOR_INTERACTIVE: 'true',
-      LOGIN_WAIT_SECONDS: '240',
+      LOGIN_WAIT_SECONDS: '900',
       COLLECTOR_PORTAL_IDS: selected.join(',')
     },
     windowsHide: false,
