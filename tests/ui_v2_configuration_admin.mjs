@@ -33,7 +33,7 @@ assert.doesNotMatch(officeSource, /\b(?:fetch|secureFetch|XMLHttpRequest)\b/);
 assert.doesNotMatch(systemAdminSource, /^\s*import\s/m);
 assert.match(systemAdminSource, /fetchFn\('\/api\/system\/diagnostic', \{ credentials: 'same-origin' \}\)/);
 assert.doesNotMatch(presenterSource, /\bStore\b|store\.state|secureFetch|\bfetch\s*\(|\.save\s*\(|\.flush\s*\(|\baudit\s*\(/);
-assert.equal((indexSource.match(/id="uiModeControl"/g) || []).length, 1);
+assert.equal((indexSource.match(/id="uiModeControl"|data-ui-mode=/g) || []).length, 0);
 
 const session = await startUiV2Session();
 try {
@@ -55,8 +55,7 @@ try {
   assert.deepEqual(await page.locator('.configuration-nav-heading').allTextContents(), ['Estrutura', 'Equipe', 'Fluxo', 'Sistema']);
   assert.equal(await page.locator('#configurationTabs [data-config-section]').count(), 13);
   assert.equal(await page.locator('#openOfficeIdentityFromConfiguration').count(), 1);
-  assert.equal(await page.locator('#uiModeControl').count(), 1);
-  assert.equal(await page.locator('#uiModeControl').isHidden(), true);
+  assert.equal(await page.locator('#uiModeControl, [data-ui-mode]').count(), 0);
   assert.equal(await page.locator('.configuration-metric').count(), 5);
   assert.equal(await page.locator('#configurationList .configuration-row').count(), 2);
   assert.equal(await page.locator('#configurationList .config-row-open').count(), 2);

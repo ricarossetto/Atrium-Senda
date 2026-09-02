@@ -123,9 +123,9 @@ await diagnosticPromise;
 assert.deepEqual(diagnosticRequest, { url: '/api/system/diagnostic', options: { credentials: 'same-origin' } });
 for (const heading of ['Banco de Dados & Estado', 'Criptografia & Sessão', 'Tribunais & Coleta', 'Higiene de Dados']) assert.match(elements.configurationList.innerHTML, new RegExp(heading.replace('&', '&amp;|&')));
 assert.match(elements.configurationList.innerHTML, /2\.0\.0-synthetic[\s\S]*build-synthetic[\s\S]*v9[\s\S]*READY/);
-assert.match(elements.configurationList.innerHTML, /Registrar Feedback Beta/);
+assert.match(elements.configurationList.innerHTML, /Registrar feedback local/);
 assert.match(elements.configurationList.innerHTML, /IA Gemini:[\s\S]*Não configurado/);
-assert.doesNotMatch(elements.configurationList.innerHTML, /Enviar Feedback Beta|Modelos Locais/);
+assert.doesNotMatch(elements.configurationList.innerHTML, /Enviar Feedback Beta|Registrar Feedback Beta|Modelos Locais/);
 for (const id of ['btnExportDiagnosticJson', 'btnOpenFeedbackModal', 'btnClearUiCache', 'btnResetVisualPrefs', 'btnRebuildRuntime', 'btnManagePortalSessions']) {
   assert.equal(elements[id].listeners.get('click')?.length, 1, `${id} deve receber listener dinâmico.`);
 }
@@ -197,8 +197,8 @@ assert.equal(reloads, 1);
 feature.openFeedbackModal();
 const feedbackModal = modalCalls.at(-1);
 assert.equal(feedbackModal[0], 'feedback');
-assert.equal(feedbackModal[1], 'Registrar Feedback do Beta');
-assert.equal(feedbackModal[2], 'Registro local neste ambiente');
+assert.equal(feedbackModal[1], 'Registrar feedback local');
+assert.equal(feedbackModal[2], 'Registro privado neste ambiente');
 assert.deepEqual(feedbackModal[3].map(field => field.name), ['type', 'component', 'message']);
 assert.deepEqual(feedbackModal[3][0].options.map(option => option.value), ['sugestao', 'bug', 'dificuldade', 'performance']);
 assert.deepEqual(feedbackModal[3][1].options.map(option => option.value), ['Geral', 'Área de Trabalho', 'Kanban', 'Intimações', 'Processos', 'Financeiro', 'Documentos', 'Configurações']);
@@ -209,7 +209,7 @@ const feedbackRequest = secureRequests.find(request => request.url.endsWith('/fe
 assert.deepEqual(feedbackRequest.body, { type: 'bug', component: 'Configurações', message: 'Mensagem sintética' });
 assert.equal(JSON.stringify(feedbackRequest.body).includes('PII-NOT-SENT'), false);
 assert.equal(closedModals, 1);
-assert.ok(toasts.some(item => item.message === 'Feedback do Beta registrado localmente com sucesso.' && item.type === 'success'));
+assert.ok(toasts.some(item => item.message === 'Feedback registrado localmente com sucesso.' && item.type === 'success'));
 secureResponses.set('/api/system/feedback', { ok: false, async json() { return { message: 'Feedback sintético rejeitado' }; } });
 assert.equal(await feature.submitFeedback({ type: 'bug', component: 'Geral', message: 'Falha sintética' }), false);
 assert.equal(closedModals, 1);

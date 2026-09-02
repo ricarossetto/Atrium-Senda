@@ -51,7 +51,7 @@ export function createSystemAdminFeature({
               </div>
               <div style="display: flex; gap: 8px;">
                 <button type="button" class="button ghost" id="btnExportDiagnosticJson">📥 Exportar Relatório Anonimizado (.json)</button>
-                <button type="button" class="button gold" id="btnOpenFeedbackModal">💬 Registrar Feedback Beta</button>
+                <button type="button" class="button gold" id="btnOpenFeedbackModal">💬 Registrar feedback local</button>
               </div>
             </div>
 
@@ -146,7 +146,7 @@ export function createSystemAdminFeature({
             </div>
             <div class="configuration-system-header-actions">
               <button type="button" class="button ghost" id="btnExportDiagnosticJson">${iconSvg('download')}Exportar relatório JSON</button>
-              <button type="button" class="button gold" id="btnOpenFeedbackModal">${iconSvg('edit')}Registrar feedback beta</button>
+              <button type="button" class="button gold" id="btnOpenFeedbackModal">${iconSvg('edit')}Registrar feedback local</button>
             </div>
           </header>
 
@@ -382,7 +382,7 @@ export function createSystemAdminFeature({
       const labels = isV2()
         ? ['Sugestão de Melhoria', 'Relato de Problema / Bug', 'Dificuldade de Uso', 'Desempenho / Lentidão']
         : ['💡 Sugestão de Melhoria', '🐛 Relato de Problema / Bug', '❓ Dificuldade de Uso', '⚡ Desempenho / Lentidão'];
-      openModal('feedback', 'Registrar Feedback do Beta', 'Registro local neste ambiente', [
+      openModal('feedback', 'Registrar feedback local', 'Registro privado neste ambiente', [
         { name: 'type', label: 'Tipo de Feedback', type: 'select', options: [
           { value: 'sugestao', label: labels[0] },
           { value: 'bug', label: labels[1] },
@@ -413,7 +413,7 @@ export function createSystemAdminFeature({
         });
         const responsePayload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(responsePayload.message || 'Falha ao registrar feedback.');
-        showToast('Feedback do Beta registrado localmente com sucesso.', 'success');
+        showToast('Feedback registrado localmente com sucesso.', 'success');
         closeModal();
         return true;
       } catch (error) {

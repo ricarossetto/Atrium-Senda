@@ -220,7 +220,7 @@ async function cmdMigrate() {
   await writeFile(path.join(MIGRATIONS_DIR, backupFile), JSON.stringify(envelope, null, 2), 'utf8');
   console.log(`📦 Backup pré-migração: ${backupFile}`);
 
-  const result = runStateMigrations(state, '2.0.0-beta');
+  const result = runStateMigrations(state, '2.0.0');
   console.log(`✅ Migrações aplicadas: ${result.migrationsApplied.join(', ')}`);
 
   // Salvar atomicamente

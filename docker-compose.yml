@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
-  jurisflow:
+  atrium:
     build: .
-    container_name: jurisflow-central
+    container_name: atrium
     restart: unless-stopped
     ports:
       - "4173:4173"
@@ -11,12 +9,15 @@ services:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=4173
-      - COOKIE_SECURE=false
-      - AUTH_SESSION_SECRET=minimo_32_caracteres_seguro_sessao_juris_flow_2026
-      - AUTH_ENCRYPTION_KEY=MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
+      - JURISFLOW_CLOUD_MODE=true
+      - JURISFLOW_DATA_DIR=/app/data
+      - AUTH_SESSION_SECRET=${AUTH_SESSION_SECRET:?Defina AUTH_SESSION_SECRET no arquivo .env}
+      - AUTH_ENCRYPTION_KEY=${AUTH_ENCRYPTION_KEY:?Defina AUTH_ENCRYPTION_KEY no arquivo .env}
+      - COLLECTOR_INGEST_TOKEN=${COLLECTOR_INGEST_TOKEN:?Defina COLLECTOR_INGEST_TOKEN no arquivo .env}
     volumes:
-      - jurisflow-data:/app/data
+      - atrium-data:/app/data
 
 volumes:
-  jurisflow-data:
+  atrium-data:
     driver: local

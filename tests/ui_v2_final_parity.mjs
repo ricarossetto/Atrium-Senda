@@ -40,7 +40,7 @@ for (const file of uiV2Files) {
 
 const storageFor = value => ({ getItem: () => value });
 assert.equal(resolveUiMode(storageFor(null)), 'v2');
-assert.equal(resolveUiMode(storageFor('classic')), 'classic');
+assert.equal(resolveUiMode(storageFor('classic')), 'v2');
 assert.equal(resolveUiMode(storageFor('v2')), 'v2');
 assert.equal(resolveUiMode({ getItem() { throw new Error('storage sintético indisponível'); } }), 'v2');
 
@@ -71,13 +71,10 @@ try {
     });
 
     for (const view of UI_V2_CANONICAL_VIEWS) await switchUiV2View(page, view);
-    await switchUiV2View(page, 'configuration');
     for (let cycle = 0; cycle < 2; cycle++) {
-      await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
-      await page.locator('html[data-ui="classic"]').waitFor({ state: 'attached' });
-      await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
-      await page.locator('html[data-ui="v2"]').waitFor({ state: 'attached' });
+      for (const view of UI_V2_CANONICAL_VIEWS) await switchUiV2View(page, view);
     }
+    await switchUiV2View(page, 'configuration');
 
     const result = await page.evaluate(() => {
       const { App, Store } = window.Atrium;
@@ -92,7 +89,7 @@ try {
         sameStore: Store === globalThis.__finalParityIdentity.Store,
         sameTimer: App.autoSyncTimer === globalThis.__finalParityIdentity.timer,
         mode: document.documentElement.dataset.ui,
-        savedMode: localStorage.getItem('atrium:ui:mode')
+        modeControls: document.querySelectorAll('#uiModeControl, [data-ui-mode]').length
       };
     });
     const layout = await collectUiV2LayoutEvidence(page);
@@ -108,7 +105,7 @@ try {
     assert.equal(result.sameStore, true);
     assert.equal(result.sameTimer, true);
     assert.equal(result.mode, 'v2');
-    assert.equal(result.savedMode, 'v2');
+    assert.equal(result.modeControls, 0);
     assert.equal(layout.navItems, 17);
     assert.equal(layout.navGroups, 6);
     assert.deepEqual(layout.duplicateIds, []);
@@ -116,7 +113,7 @@ try {
     assert.equal(layout.activeViews.length, 1);
     assert.deepEqual(pageErrors, [], `Page errors: ${pageErrors.join(' | ')}`);
 
-    console.log('✓ 17/17 views, 1 App, 1 Store, 1 árvore operacional e Classic fallback preservados.');
+    console.log('✓ 17/17 views, 1 App, 1 Store, 1 árvore operacional e V2 exclusiva preservados.');
   } finally {
     await context.close();
   }

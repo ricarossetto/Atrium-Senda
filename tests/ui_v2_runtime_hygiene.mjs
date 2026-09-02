@@ -39,13 +39,10 @@ try {
       for (const view of UI_V2_CANONICAL_VIEWS) await switchUiV2View(page, view);
     }
 
-    await switchUiV2View(page, 'configuration');
     for (let cycle = 0; cycle < 3; cycle++) {
-      await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
-      await page.locator('html[data-ui="classic"]').waitFor({ state: 'attached' });
-      await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
-      await page.locator('html[data-ui="v2"]').waitFor({ state: 'attached' });
+      for (const view of UI_V2_CANONICAL_VIEWS) await switchUiV2View(page, view);
     }
+    await switchUiV2View(page, 'configuration');
 
     const result = await page.evaluate(() => {
       const { App, Store } = window.Atrium;
@@ -64,7 +61,9 @@ try {
         sameApp: App === identity.App,
         sameStore: Store === identity.Store,
         sameTimer: App.autoSyncTimer === identity.timer,
-        bodyLocked: document.body.style.overflow === 'hidden' || document.body.classList.contains('modal-open')
+        bodyLocked: document.body.style.overflow === 'hidden' || document.body.classList.contains('modal-open'),
+        mode: document.documentElement.dataset.ui,
+        modeControls: document.querySelectorAll('#uiModeControl, [data-ui-mode]').length
       };
     });
     const layout = await collectUiV2LayoutEvidence(page);
@@ -79,6 +78,8 @@ try {
     assert.equal(result.sameStore, true);
     assert.equal(result.sameTimer, true);
     assert.equal(result.bodyLocked, false);
+    assert.equal(result.mode, 'v2');
+    assert.equal(result.modeControls, 0);
     assert.equal(layout.navItems, 17);
     assert.equal(layout.navGroups, 6);
     assert.equal(layout.activeViews.length, 1);
@@ -98,7 +99,7 @@ try {
       intervals: result.intervals,
       trackedListeners: Object.values(result.listeners).reduce((sum, count) => sum + count, 0)
     }));
-    console.log('✓ Repeated navigation and mode switches preserved App, Store, timer, state, listeners and overlays.');
+    console.log('✓ Repeated V2 navigation preserved App, Store, timer, state, listeners and overlays.');
   } finally {
     await context.close();
   }

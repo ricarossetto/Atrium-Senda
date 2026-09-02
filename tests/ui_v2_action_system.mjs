@@ -45,18 +45,15 @@ try {
 
   const context = await session.createContext({ viewport: { width: 1280, height: 800 } });
   const { page } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'light', probe: true });
-  assert.equal(await page.locator('#uiModeControl').count(), 1);
-  assert.equal(await page.locator('.topbar #uiModeControl').count(), 0);
-  assert.equal(await page.locator('#view-configuration #uiModeControl').count(), 1);
-  assert.deepEqual(await page.locator('#uiModeControl [data-ui-mode]').allTextContents(), ['Interface V2', 'Layout clássico']);
-  assert.equal(await page.locator('#uiModeControl').isHidden(), true, 'Classic deve permanecer apenas como compatibilidade interna invisível.');
+  assert.equal(await page.locator('#uiModeControl, [data-ui-mode]').count(), 0, 'A versão estável não pode expor controle para o Classic.');
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.ui), 'v2');
   await page.evaluate(() => window.Atrium.App.switchView('configuration'));
   await page.locator('#view-configuration.active').waitFor();
   const baseline = await page.evaluate(() => ({ state: JSON.stringify(window.Atrium.Store.state), revision: window.Atrium.Store.revision, requests: window.__uiV2RuntimeProbe.mutationRequests.length }));
-  await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
-  assert.equal(await page.evaluate(() => document.documentElement.dataset.ui), 'classic');
-  assert.equal(await page.evaluate(() => localStorage.getItem('atrium:ui:mode')), 'classic');
-  await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
+  await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
+  await page.locator('#view-dashboard.active').waitFor();
+  await page.evaluate(() => window.Atrium.App.switchView('configuration'));
+  await page.locator('#view-configuration.active').waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.dataset.ui), 'v2');
   const after = await page.evaluate(() => ({ state: JSON.stringify(window.Atrium.Store.state), revision: window.Atrium.Store.revision, requests: window.__uiV2RuntimeProbe.mutationRequests.length }));
   assert.deepEqual(after, baseline);
@@ -67,4 +64,4 @@ try {
   await session.stop();
 }
 
-console.log('✓ Action system Light/Dark, Auth/Classic firewalls e toggle único PASS.');
+console.log('✓ Action system Light/Dark, Auth firewall e V2 exclusiva PASS.');

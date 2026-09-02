@@ -84,7 +84,7 @@ const sampleState = {
     { id: 'agenda-demo-2', title: 'Prazo fatal para recurso', date: isoDate(4), time: '17:00', source: 'Demonstração', client: 'Processo de demonstração', process: '5000000-00.2026.4.04.0000' }
   ],
   audit: [
-    { id: 'audit-initial', at: new Date().toISOString(), action: 'Atrium Senda inicializado', detail: 'Ambiente pronto para uso com registros de demonstração.', actor: 'Sistema' }
+    { id: 'audit-initial', at: new Date().toISOString(), action: 'ATRIUM inicializado', detail: 'Ambiente pronto para uso com registros de demonstração.', actor: 'Sistema' }
   ],
   settings: {
     officeName: 'Meu Escritório',

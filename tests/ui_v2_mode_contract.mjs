@@ -5,6 +5,7 @@ import { resolveUiMode } from '../js/views/ui-v2/mode.js';
 import { prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
 
 const preferenceInitSource = await readFile(new URL('../js/views/ui-v2/preference-init.js', import.meta.url), 'utf8');
+const indexSource = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const resolvePrepaint = storage => {
   const documentElement = { dataset: {} };
   vm.runInNewContext(preferenceInitSource, { localStorage: storage, document: { documentElement } });
@@ -13,14 +14,11 @@ const resolvePrepaint = storage => {
 const storageFor = value => ({ getItem: () => value });
 const throwingStorage = { getItem() { throw new Error('Storage indisponível'); } };
 
-assert.equal(resolveUiMode(storageFor(null)), 'v2');
-assert.equal(resolveUiMode(storageFor('v2')), 'v2');
-assert.equal(resolveUiMode(storageFor('classic')), 'classic');
-assert.equal(resolveUiMode(throwingStorage), 'v2');
-assert.equal(resolvePrepaint(storageFor(null)), 'v2');
-assert.equal(resolvePrepaint(storageFor('v2')), 'v2');
-assert.equal(resolvePrepaint(storageFor('classic')), 'classic');
-assert.equal(resolvePrepaint(throwingStorage), 'v2');
+for (const storage of [storageFor(null), storageFor('v2'), storageFor('classic'), throwingStorage]) {
+  assert.equal(resolveUiMode(storage), 'v2', 'ATRIUM 2.0 deve resolver sempre para a interface V2.');
+  assert.equal(resolvePrepaint(storage), 'v2', 'O prepaint deve impedir qualquer flash ou retorno ao Classic.');
+}
+assert.doesNotMatch(indexSource, /id="uiModeControl"|data-ui-mode=/, 'A versão estável não pode expor seletor ou rota DOM para o Classic.');
 
 const session = await startUiV2Session();
 const context = await session.createContext();
@@ -28,11 +26,6 @@ const context = await session.createContext();
 try {
   const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'light', probe: true });
   await page.locator('#systemStatusBar[data-status="saved"], #systemStatusBar[data-status="ready"]').waitFor();
-  await page.evaluate(() => window.Atrium.App.switchView('configuration'));
-  await page.locator('#view-configuration.active #uiModeControl').waitFor({ state: 'attached' });
-  assert.equal(await page.locator('#uiModeControl').isHidden(), true, 'O seletor Classic não pode ser exposto ao usuário.');
-  await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
-  await page.locator('html[data-ui="classic"]').waitFor({ state: 'attached' });
 
   const baseline = await page.evaluate(() => {
     const store = window.Atrium.Store;
@@ -44,32 +37,24 @@ try {
     store.save = (...args) => { globalThis.__uiV2MutationSpies.save++; return nativeSave(...args); };
     store.flush = (...args) => { globalThis.__uiV2MutationSpies.flush++; return nativeFlush(...args); };
     return {
-      state: JSON.stringify(store.state),
-      revision: store.revision,
-      auditLength: store.state.audit.length,
+      state: JSON.stringify(store.state), revision: store.revision, auditLength: store.state.audit.length,
       mutationRequests: globalThis.__uiV2RuntimeProbe.mutationRequests.length,
       intervals: globalThis.__uiV2RuntimeProbe.intervals,
-      listeners: structuredClone(globalThis.__uiV2RuntimeProbe.listeners),
-      ids: [...document.querySelectorAll('[id]')].map(element => element.id),
-      storage: Object.fromEntries(Object.keys(localStorage).map(key => [key, localStorage.getItem(key)]))
+      listeners: structuredClone(globalThis.__uiV2RuntimeProbe.listeners)
     };
   });
 
-  await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
-  await page.locator('html[data-ui="v2"]').waitFor({ state: 'attached' });
-  await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
-  await page.locator('html[data-ui="classic"]').waitFor({ state: 'attached' });
-  await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
-  await page.locator('html[data-ui="v2"]').waitFor({ state: 'attached' });
+  for (const view of ['configuration', 'dashboard', 'processes', 'inbox', 'configuration']) {
+    await page.evaluate(target => window.Atrium.App.switchView(target), view);
+    await page.locator(`#view-${view}.active`).waitFor();
+  }
 
   const result = await page.evaluate(() => {
     const store = window.Atrium.Store;
     const app = window.Atrium.App;
     const ids = [...document.querySelectorAll('[id]')].map(element => element.id);
     return {
-      state: JSON.stringify(store.state),
-      revision: store.revision,
-      auditLength: store.state.audit.length,
+      state: JSON.stringify(store.state), revision: store.revision, auditLength: store.state.audit.length,
       mutationRequests: globalThis.__uiV2RuntimeProbe.mutationRequests.length,
       intervals: globalThis.__uiV2RuntimeProbe.intervals,
       listeners: structuredClone(globalThis.__uiV2RuntimeProbe.listeners),
@@ -79,31 +64,26 @@ try {
       sameTimer: app.autoSyncTimer === globalThis.__uiV2Identity.timer,
       duplicateIds: ids.filter((id, index) => ids.indexOf(id) !== index),
       mode: document.documentElement.dataset.ui,
-      savedMode: localStorage.getItem('atrium:ui:mode'),
-      storage: Object.fromEntries(Object.keys(localStorage).map(key => [key, localStorage.getItem(key)]))
+      modeControls: document.querySelectorAll('#uiModeControl, [data-ui-mode]').length
     };
   });
 
-  assert.equal(result.mode, 'v2', 'O modo Nova deve ficar ativo após a alternância final.');
-  assert.equal(result.savedMode, 'v2', 'A preferência deve existir somente no storage local aprovado.');
-  assert.equal(result.state, baseline.state, 'Alternar a apresentação não pode alterar o Store.');
-  assert.equal(result.revision, baseline.revision, 'Alternar a apresentação não pode alterar revision.');
-  assert.equal(result.auditLength, baseline.auditLength, 'Alternar a apresentação não pode gerar auditoria.');
-  assert.equal(result.spy.save, 0, 'Alternar a apresentação não pode chamar Store.save().');
-  assert.equal(result.spy.flush, 0, 'Alternar a apresentação não pode chamar Store.flush().');
-  assert.equal(result.mutationRequests, baseline.mutationRequests, 'Alternar a apresentação não pode criar request mutável.');
-  assert.equal(result.intervals, baseline.intervals, 'Alternar a apresentação não pode criar timer periódico.');
-  assert.deepEqual(result.listeners, baseline.listeners, 'Alternar a apresentação não pode adicionar listeners persistentes.');
-  assert.equal(result.sameStore, true, 'A V2 deve manter a mesma instância do Store.');
-  assert.equal(result.sameApp, true, 'A V2 deve manter a mesma instância do App.');
-  assert.equal(result.sameTimer, true, 'A V2 deve manter o mesmo timer de sincronização.');
-  assert.deepEqual(result.duplicateIds, [], 'A reorganização do shell não pode duplicar IDs.');
-  const storageChanges = new Set([...Object.keys(baseline.storage), ...Object.keys(result.storage)]);
-  const changedKeys = [...storageChanges].filter(key => baseline.storage[key] !== result.storage[key]);
-  assert.deepEqual(changedKeys, ['atrium:ui:mode'], 'Somente a preferência local da apresentação pode mudar.');
-  assert.deepEqual(pageErrors, [], `A alternância gerou pageerror: ${pageErrors.join(' | ')}`);
+  assert.equal(result.mode, 'v2');
+  assert.equal(result.modeControls, 0);
+  assert.equal(result.state, baseline.state, 'Navegar na V2 não pode alterar o Store.');
+  assert.equal(result.revision, baseline.revision);
+  assert.equal(result.auditLength, baseline.auditLength);
+  assert.deepEqual(result.spy, { save: 0, flush: 0 });
+  assert.equal(result.mutationRequests, baseline.mutationRequests);
+  assert.equal(result.intervals, baseline.intervals);
+  assert.deepEqual(result.listeners, baseline.listeners);
+  assert.equal(result.sameStore, true);
+  assert.equal(result.sameApp, true);
+  assert.equal(result.sameTimer, true);
+  assert.deepEqual(result.duplicateIds, []);
+  assert.deepEqual(pageErrors, [], `A V2 exclusiva gerou pageerror: ${pageErrors.join(' | ')}`);
 
-  console.log('✓ Contrato UI mode aprovado: Store/revision/save/flush/network/App/timer/listeners/IDs preservados.');
+  console.log('✓ Contrato estável aprovado: V2 exclusiva, sem seletor Classic e com Store/App/runtime preservados.');
 } finally {
   await context.close();
   await session.stop();

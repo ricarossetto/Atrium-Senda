@@ -2,13 +2,7 @@ export const UI_MODE_KEY = 'atrium:ui:mode';
 export const UI_MODE_CHANGE_EVENT = 'atrium:ui-mode-change';
 export const UI_MODES = Object.freeze(['classic', 'v2']);
 
-export function resolveUiMode(storage = globalThis.localStorage) {
-  try {
-    const savedMode = storage?.getItem?.(UI_MODE_KEY);
-    if (UI_MODES.includes(savedMode)) return savedMode;
-  } catch {
-    // V2 remains the product baseline when local presentation storage is unavailable.
-  }
+export function resolveUiMode() {
   return 'v2';
 }
 

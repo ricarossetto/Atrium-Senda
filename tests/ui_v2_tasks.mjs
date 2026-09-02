@@ -124,13 +124,9 @@ try {
     assert.equal(runtime.activeTimer, null);
     assert.deepEqual(pageErrors, [], `Pageerrors: ${pageErrors.join(' | ')}`);
 
-    await page.evaluate(() => window.Atrium.App.switchView('configuration'));
-    await page.locator('#view-configuration.active #uiModeControl').waitFor({ state: 'attached' });
-    await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
-    await page.locator('html[data-ui="classic"]').waitFor();
-    await page.evaluate(() => window.Atrium.App.switchView('kanban'));
-    assert.equal(await page.locator('.v2-task-heading').isVisible(), false);
-    assert.equal(await page.locator('#kanbanBoard .task-card [data-task-open]').count(), 0, 'Classic deve manter o markup canônico.');
+    assert.equal(await page.locator('#uiModeControl, [data-ui-mode]').count(), 0, 'Tarefas estáveis não podem expor retorno ao Classic.');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.ui), 'v2');
+    assert.equal(await page.locator('.v2-task-heading').isVisible(), true);
   } finally {
     await context.close();
   }

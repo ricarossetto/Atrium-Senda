@@ -93,23 +93,14 @@ try {
   assert.equal(await badge.isVisible(), false, 'O badge deve recolher junto com a sidebar sem colisão.');
   await page.locator('#sidebarToggleBtn').click();
 
-  await page.evaluate(() => window.Atrium.App.switchView('configuration'));
-  await page.locator('#view-configuration.active #uiModeControl').waitFor({ state: 'attached' });
-  await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
-  await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
-  assert.equal(await page.locator('html').getAttribute('data-ui'), 'classic');
-  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--v2-color-primary').trim()), '', 'Tokens V2 não podem vazar para o Classic.');
-  assert.equal(await page.locator('#v2DashboardOpening').isVisible(), false, 'A superfície editorial V2 deve permanecer ausente no Classic.');
-
-  await page.evaluate(() => window.Atrium.App.switchView('configuration'));
-  await page.locator('#view-configuration.active #uiModeControl').waitFor({ state: 'attached' });
-  await page.locator('[data-ui-mode="v2"]').evaluate(button => button.click());
   await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
   assert.equal(await page.locator('html').getAttribute('data-ui'), 'v2');
+  assert.equal(await page.locator('#uiModeControl, [data-ui-mode]').count(), 0);
+  assert.notEqual(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--v2-color-primary').trim()), '', 'Os tokens V2 devem estar ativos na interface estável.');
   assert.equal(await page.locator('#v2DashboardOpening').isVisible(), true);
   assert.deepEqual(pageErrors, [], `Direção visual gerou pageerror: ${pageErrors.join(' | ')}`);
 
-  console.log('✓ Direção Mineral Editorial aprovada: slate/charcoal/gold, grain local, motion reduzível, badge 1/10/999 e isolamento Classic.');
+  console.log('✓ Direção Mineral Editorial aprovada: slate/charcoal/gold, grain local, motion reduzível, badge 1/10/999 e V2 exclusiva.');
 } finally {
   await context.close();
   await session.stop();

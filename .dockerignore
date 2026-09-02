@@ -8,6 +8,7 @@ collector/portals.json
 node_modules
 test-results
 playwright-report
+artifacts
 research/vendor
 *.pfx
 *.p12

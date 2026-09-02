@@ -8,7 +8,7 @@
   <title>Atrium — Plataforma de Gestão Jurídica Inteligente</title>
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
   <script src="js/views/ui-v2/preference-init.js"></script>
-  <link rel="stylesheet" href="css/portal.css?v=5.0.0-beta">
+  <link rel="stylesheet" href="css/portal.css?v=2.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/tokens.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/primitives.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/motion.css?v=1.0.0">
@@ -1081,7 +1081,7 @@
             <div class="toolbar-actions">
               <button class="button ghost" id="importerCancelButton" type="button">Descartar</button>
               <button class="button gold" id="importerCommitButton" type="button">
-                <span class="classic-only">Confirmar e Importar para o Atrium Senda</span>
+                <span class="classic-only">Confirmar e importar para o ATRIUM</span>
                 <span class="v2-only">Confirmar importação</span>
               </button>
             </div>
@@ -1110,14 +1110,6 @@
           </div>
           <span class="configuration-v2-header-mark" aria-hidden="true">ATRIUM · ADMIN</span>
         </header>
-        <article class="card interface-preference-card" aria-labelledby="interfacePreferenceTitle">
-          <div class="interface-preference-copy"><p class="eyebrow">Aparência</p><h3 id="interfacePreferenceTitle">Modo de interface</h3><p>Escolha a apresentação do espaço de trabalho. A preferência fica somente neste navegador.</p></div>
-          <div class="ui-mode-control" id="uiModeControl" role="group" aria-label="Compatibilidade interna de interface" aria-hidden="true">
-            <span class="ui-mode-label">Modo de interface</span>
-            <button type="button" data-ui-mode="v2" aria-pressed="false">Interface V2</button>
-            <button type="button" data-ui-mode="classic" aria-pressed="true">Layout clássico</button>
-          </div>
-        </article>
         <div class="section-toolbar configuration-toolbar">
           <div class="filter-tabs config-tabs" id="configurationTabs"></div>
           <div class="toolbar-actions config-actions"><div class="table-search compact-search"><input id="configurationSearch" type="search" aria-label="Buscar nesta configuração" placeholder="Buscar nesta configuração"></div><button class="button ghost" id="btnOpenTourFromConfig" type="button" title="Ver apresentação do ATRIUM">Ver apresentação</button><button class="button gold" id="newConfigurationButton" type="button">Novo item</button></div>
@@ -1311,7 +1303,7 @@
                     </ul>
                     <p>Como posso auxiliá-lo(a) hoje?</p>
                   </div>
-                  <div class="message-meta">Assistente Atrium Senda</div>
+                  <div class="message-meta">Assistente ATRIUM</div>
                 </div>
               </div>
             </div>
@@ -2053,7 +2045,7 @@
       <form id="calendarConfigForm">
         <div class="modal-body connection-calendar-body">
           <p id="calendarConfigDescription" style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;">
-            Conecte o Atrium Senda com sua agenda externa favorita (Google Agenda, Microsoft Outlook, Apple Calendar ou qualquer servidor compatível com iCalendar / Webcal).
+            Conecte o ATRIUM com sua agenda externa favorita (Google Agenda, Microsoft Outlook, Apple Calendar ou qualquer servidor compatível com iCalendar / Webcal).
           </p>
           <div class="field full" style="margin-bottom:16px;">
             <label for="calendarInputUrl">URL do Link da Agenda (iCal / Webcal .ics)</label>
@@ -2253,7 +2245,7 @@
           <p class="connection-form-section v2-only">Remetente</p>
           <label style="display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Nome do Remetente</span>
-            <input id="emailFromNameInput" name="fromName" type="text" placeholder="ex: Atrium Senda Advocacia" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
+            <input id="emailFromNameInput" name="fromName" type="text" placeholder="ex: Nome do Escritório" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
           </label>
           <label style="display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">E-mail do Remetente (From) *</span>
@@ -2466,11 +2458,11 @@
 
   <input class="hidden" type="file" id="jsonImportInput" accept="application/json,.json">
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
-  <script src="js/jsqr.js?v=5.0.0-beta" defer></script>
-  <script src="js/prompts-data.js?v=5.0.0-beta" defer></script>
-  <script src="js/skills-data.js?v=5.0.0-beta" defer></script>
-  <script src="js/office-data.js?v=5.0.0-beta" defer></script>
-  <script src="js/auth.js?v=5.0.0-beta" defer></script>
-  <script type="module" src="js/app/bootstrap.js?v=5.0.0-beta"></script>
+  <script src="js/jsqr.js?v=2.0.0" defer></script>
+  <script src="js/prompts-data.js?v=2.0.0" defer></script>
+  <script src="js/skills-data.js?v=2.0.0" defer></script>
+  <script src="js/office-data.js?v=2.0.0" defer></script>
+  <script src="js/auth.js?v=2.0.0" defer></script>
+  <script type="module" src="js/app/bootstrap.js?v=2.0.0"></script>
 </body>
 </html>

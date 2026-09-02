@@ -162,13 +162,9 @@ try {
     assert.deepEqual(pageErrors, [], `Pageerrors: ${pageErrors.join(' | ')}`);
     assert.equal(fixture.intimations.length, 4);
 
-    await page.evaluate(() => window.Atrium.App.switchView('configuration'));
-    await page.locator('#view-configuration.active #uiModeControl').waitFor({ state: 'attached' });
-    await page.locator('[data-ui-mode="classic"]').evaluate(button => button.click());
-    await page.locator('html[data-ui="classic"]').waitFor();
-    await page.evaluate(() => window.Atrium.App.switchView('inbox'));
-    assert.equal(await page.locator('.v2-publications-heading').isVisible(), false);
-    assert.ok(await page.locator('#inboxList .inbox-primary').count() > 0, 'Classic deve manter seu markup canônico.');
+    assert.equal(await page.locator('#uiModeControl, [data-ui-mode]').count(), 0, 'Publicações estáveis não podem expor retorno ao Classic.');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.ui), 'v2');
+    assert.equal(await page.locator('.v2-publications-heading').isVisible(), true);
   } finally {
     await context.close();
   }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-console.log('\n=== BETA READINESS DOCUMENTATION GATE ===\n');
+console.log('\n=== STABLE RELEASE DOCUMENTATION COMPATIBILITY GATE ===\n');
 
 const documentUrls = {
   readme: new URL('../README.md', import.meta.url),
@@ -19,7 +19,7 @@ const currentStatusDocs = [documents.readme, documents.guide, documents.readines
 
 assert.doesNotMatch(allDocs, /Node(?:\.js)?\s*(?:>=|v(?:ers[aã]o)?)?\s*20(?:\.0\.0)?/i);
 assert.doesNotMatch(documents.readme, /\bnpm\s+(?:install|start|test|run)\b/i);
-assert.match(documents.readme, /Node\.js \*\*24\.x\*\*/);
+assert.match(documents.readme, /Node\.js 24\+/);
 assert.match(documents.readme, /pnpm install --frozen-lockfile/);
 
 assert.doesNotMatch(allDocs, /\b(?:9|10|11)\s*\/\s*(?:9|10|11)\b|\b(?:9|10|11)\s+su[ií]tes?\b/i);
@@ -49,11 +49,9 @@ assert.match(documents.guide, /Nada [eé] enviado automaticamente/i);
 
 assert.doesNotMatch(currentStatusDocs, /HUMAN BETA GATE 1 PASSED — PRE-UI-V2|TECHNICAL BETA READY — PRE-UI-V2|Modo atual:[^\n]*PRE-UI-V2|UI V2[^\n]*(?:futur|etapa futura)|UI Cl[aá]ssica[^\n]*(?:[uú]nica interface)|NEXT — UI V2|UI V2 n[aã]o faz parte/i);
 assert.doesNotMatch(currentStatusDocs, /\b55\s*\/\s*55\b|\b55\s+su[ií]tes?|Tests-55/i);
-assert.match(documents.readme, /UI V2 [eé] a interface visual padr[aã]o/i);
-assert.match(documents.readme, /UI Cl[aá]ssica permanece dispon[ií]vel como fallback/i);
-assert.match(documents.readme, /mesmo App, o mesmo Store, o mesmo backend e as mesmas regras de neg[oó]cio/i);
-assert.match(documents.guide, /UI V2 como interface padr[aã]o/i);
-assert.match(documents.guide, /UI Cl[aá]ssica como fallback visual/i);
+assert.match(documents.readme, /interface V2 [eé] a [uú]nica interface oferecida ao usu[aá]rio/i);
+assert.doesNotMatch(documents.readme, /UI Cl[aá]ssica permanece dispon[ií]vel|fallback visual/i);
+assert.match(documents.readme, /Fonte [uú]nica de verdade:[\s\S]*Store can[oô]nico/i);
 assert.match(documents.readiness, /UI V2 MIGRATION COMPLETE/);
 assert.match(documents.readiness, /um [uú]nico App, Store e backend/i);
 assert.doesNotMatch(documents.readiness, /final production ready|produ[cç][aã]o certificada/i);
@@ -81,4 +79,4 @@ assert.match(allDocs, /SQLite [eé] possibilidade futura|SQLite permanece uma po
 assert.doesNotMatch(allDocs, /SQLite\s+(?:est[aá]|foi|[eé])\s+(?:implementad[oa]|o padr[aã]o atual)/i);
 assert.match(documents.decisions, /Conectividade judicial gerenciada e estritamente read-only/i);
 
-console.log('✓ Readiness documental aprovado: UI V2 concluída/default, Classic fallback, mesma autoridade e roadmap futuro supervisionado.');
+console.log('✓ Compatibilidade documental aprovada: histórico preservado, README estável com V2 exclusiva e autoridade canônica.');

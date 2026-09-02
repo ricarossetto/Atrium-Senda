@@ -280,7 +280,7 @@ export function createAssistantFeature({
               <div class="message-text">
                 <p>Conversa reiniciada. Em que posso auxiliá-lo(a) agora com suas intimações, prazos ou minutas?</p>
               </div>
-              <div class="message-meta">Assistente Atrium Senda</div>
+              <div class="message-meta">Assistente ATRIUM</div>
             </div>
           </div>`;
       }

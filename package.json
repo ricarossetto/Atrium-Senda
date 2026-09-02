@@ -1,7 +1,7 @@
 {
   "name": "atrium",
   "version": "2.0.0",
-  "description": "Atrium Escritório Integrado (v2.0) — plataforma open-source de gestão jurídica com armazenamento cifrado, Kanban, triagem de publicações, e-mail manual e IA assistencial configurável.",
+  "description": "ATRIUM 2.0 — gestão jurídica local-first para escritórios brasileiros, com dados cifrados, fluxos supervisionados e integrações judiciais em modo de leitura.",
   "homepage": "https://github.com/ricarossetto/Atrium-Senda#readme",
   "author": "Ricardo de Luca Rossetto",
   "license": "MIT",

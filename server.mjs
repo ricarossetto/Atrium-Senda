@@ -58,7 +58,7 @@ await loadEnv(ENV_FILE);
 await ensureLocalSecrets(ENV_FILE);
 if (String(process.env.KELLER_SKIP_COLLECTOR_ENV).toLowerCase() !== 'true') await loadEnv(COLLECTOR_ENV_FILE);
 
-let APP_VERSION = '2.0.0-beta';
+let APP_VERSION = '2.0.0';
 try {
   const pkg = JSON.parse(await readFile(path.join(ROOT, 'package.json'), 'utf8'));
   if (pkg.version) APP_VERSION = pkg.version;
@@ -3161,8 +3161,8 @@ const server = http.createServer(async (req, res) => {
       const runtime = await readRuntime().catch(() => ({}));
       const relevantOfficeContext = buildRelevantOfficeContext(state, runtime, message, body.context || {});
 
-      const systemPrompt = `Você é o Assistente Jurídico Inteligente do Atrium Senda, plataforma de gestão jurídica inteligente.
-Escritório: ${office.officeName || 'Atrium Senda'} (${office.lawyerName || 'Dr(a). Advogado(a) Titular'} - ${office.lawyerOab || 'OAB'})
+      const systemPrompt = `Você é o Assistente Jurídico Inteligente do ATRIUM, plataforma de gestão jurídica inteligente.
+Escritório: ${office.officeName || 'ATRIUM'} (${office.lawyerName || 'Dr(a). Advogado(a) Titular'} - ${office.lawyerOab || 'OAB'})
 
 ${relevantOfficeContext}
 
@@ -3665,6 +3665,6 @@ await readRuntime();
 console.log(`[ATRIUM Runtime]: Estado derivado inicializado com status "${runtimeStateStatus}".`);
 
 server.listen(PORT, HOST, () => {
-  console.log(`Atrium Senda — Plataforma de Gestão Jurídica Inteligente: http://${HOST}:${PORT}`);
+  console.log(`ATRIUM 2.0.0 — Escritório Integrado: http://${HOST}:${PORT}`);
   console.log('Autenticação segura ativa (AES-256-GCM + TOTP 2FA).');
 });

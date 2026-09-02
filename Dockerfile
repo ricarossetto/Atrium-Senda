@@ -1,20 +1,21 @@
-FROM node:22-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
-# Instala dependencias
-COPY package.json package-lock.json* pnpm-lock.yaml* ./
-RUN npm install --omit=dev
+RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
 
-# Copia codigo da aplicacao
-COPY . .
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --prod --frozen-lockfile
 
-# Variaveis de ambiente padrao
+COPY --chown=node:node . .
+RUN mkdir -p /app/data && chown -R node:node /app/data
+
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4173
-ENV COOKIE_SECURE=true
+ENV JURISFLOW_DATA_DIR=/app/data
 
 EXPOSE 4173
 
+USER node
 CMD ["node", "server.mjs"]
