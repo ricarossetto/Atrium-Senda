@@ -288,6 +288,13 @@ export function createDashboardFeature({
 
       let feesPending = 0;
       processes.forEach(process => {
+        const installments = Array.isArray(process.feeInstallments) ? process.feeInstallments : [];
+        if (installments.length) {
+          feesPending += installments
+            .filter(installment => !['pago', 'paga', 'quitado', 'repassado', 'recebido'].includes(String(installment.status || '').toLowerCase()))
+            .reduce((total, installment) => total + Math.max(0, Number(installment.amount) || 0), 0);
+          return;
+        }
         const isPaid = process.feeStatus === 'pago' || process.feeStatus === 'quitado' || process.feeStatus === 'repassado' || process.requisitionStatus === 'repassado' || process.requisitionStatus === 'pago';
         if (isPaid) return;
         if (process.feeType === 'fixo' && process.feeAmount) {

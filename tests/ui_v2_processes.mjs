@@ -79,6 +79,7 @@ try {
       '5004321-12.2026.8.21.0001', 'Cliente Sintética Processos', 'Empresa Adversa Sintética', 'Segredo de justiça',
       'Tarefas abertas', '2', 'Intimações vinculadas', '1', '1h15m', '03/09/2026',
       'Despacho sintético integral', 'Responsabilidade contratual sintética', 'Probabilidade informada', 'Possível', 'Honorários cadastrados',
+      'Visão financeira do processo', 'Honorários parcelados', 'R$ 1.250,00', 'Recebido', 'R$ 750,00', 'Pendente', 'R$ 500,00', 'Despesas do processo', 'R$ 120,00',
       'Linha do tempo jurídica', 'Audiência sintética vinculada', 'peticao-sintetica.pdf', 'Custas sintéticas', 'Conferência sintética'
     ]) assert.ok(inspectorText.includes(expected), `Inspector deve preservar: ${expected}`);
     assert.ok(await page.locator('.legal-timeline [data-process-timeline]').count() >= 4, 'Entidades canônicas navegáveis devem aparecer na linha do tempo.');

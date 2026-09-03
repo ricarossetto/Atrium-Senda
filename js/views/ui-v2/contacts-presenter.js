@@ -153,6 +153,7 @@ function renderContactInspector({ item, context, escapeHtml, formatDate }) {
         definition('Registrado em', formatDate(item.registeredAt || item.createdAt), escapeHtml)
       ])}
       ${item.notes ? `<section class="contact-inspector-section contact-notes"><h4>Notas</h4><p>${escapeHtml(item.notes)}</p></section>` : ''}
+      ${renderClientFinancialSummary({ context, escapeHtml })}
       ${renderRelatedProcesses({ context, escapeHtml })}
       ${renderUpcomingWork({ context, escapeHtml, formatDate })}
       ${renderRelatedDocuments({ context, escapeHtml, formatDate })}
@@ -189,6 +190,25 @@ function renderLegalContextSummary({ item, context, escapeHtml, formatDate }) {
 
 function contextMetric(value, label) {
   return `<div><strong>${Number(value) || 0}</strong><span>${label}</span></div>`;
+}
+
+function renderClientFinancialSummary({ context, escapeHtml }) {
+  const summary = context?.financialSummary;
+  if (!summary || !context?.financialProcesses?.length) return '';
+  return `<section class="contact-inspector-section contact-financial-summary"><h4>Visão financeira do cliente</h4>
+    <dl>
+      ${definition('Honorários contratados / parcelados', formatMoney(summary.contracted), escapeHtml)}
+      ${definition('Recebido', formatMoney(summary.received), escapeHtml)}
+      ${definition('Pendente', formatMoney(summary.pending), escapeHtml)}
+      ${definition('Despesas processuais', formatMoney(summary.expenses), escapeHtml)}
+    </dl>
+    <p>${Number(summary.installments) || 0} parcela${summary.installments === 1 ? '' : 's'} · ${Number(summary.receipts) || 0} recebimento${summary.receipts === 1 ? '' : 's'} registrado${summary.receipts === 1 ? '' : 's'}. Valores informativos, sem escrituração fiscal.</p>
+  </section>`;
+}
+
+function formatMoney(value) {
+  const number = Number(value);
+  return `R$ ${(Number.isFinite(number) ? number : 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function renderRelatedProcesses({ context, escapeHtml }) {

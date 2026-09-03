@@ -1,7 +1,9 @@
 const TYPE_LABELS = Object.freeze({
   exito: 'Honorários de êxito',
   fixo: 'Honorários fixos',
-  mensal: 'Honorários mensais'
+  mensal: 'Honorários mensais',
+  misto: 'Honorários mistos',
+  horas: 'Honorários por hora'
 });
 
 export function renderFinancialV2Workspace({ records, query, filter, escapeHtml, formatCurrency }) {
@@ -32,7 +34,7 @@ function renderDesktopTable(records, escapeHtml, formatCurrency) {
       </tr></thead>
       <tbody>${records.map(record => `<tr data-financial-record="${escapeHtml(record.id)}">
         <td><strong>${escapeHtml(record.processNumber)}</strong><small>${escapeHtml(record.client)}</small></td>
-        <td><span class="financial-type is-${escapeHtml(record.kind)}">${escapeHtml(typeLabel(record))}</span></td>
+        <td><span class="financial-type is-${escapeHtml(record.kind)}">${escapeHtml(typeLabel(record))}</span>${record.date ? `<small>${escapeHtml(financialDate(record.date))}</small>` : ''}</td>
         <td class="financial-money">${formatCurrency(record.gross)}</td>
         <td class="financial-money is-fee">${record.feeAmount === null ? '—' : formatCurrency(record.feeAmount)}</td>
         <td class="financial-money">${record.netClient === null ? '—' : formatCurrency(record.netClient)}</td>
@@ -49,6 +51,7 @@ function renderMobileList(records, escapeHtml, formatCurrency) {
       <dl>
         <div><dt>Bruto</dt><dd>${formatCurrency(record.gross)}</dd></div>
         <div><dt>Honorários</dt><dd class="is-fee">${record.feeAmount === null ? '—' : formatCurrency(record.feeAmount)}</dd></div>
+        ${record.date ? `<div><dt>Data</dt><dd>${escapeHtml(financialDate(record.date))}</dd></div>` : ''}
         ${record.netClient === null ? '' : `<div><dt>Líquido cliente</dt><dd>${formatCurrency(record.netClient)}</dd></div>`}
       </dl>
     </article>`).join('')}
@@ -62,7 +65,14 @@ function statusMarkup(record, escapeHtml) {
 function typeLabel(record) {
   if (record.kind === 'rpv') return record.typeLabel;
   if (record.kind === 'despesa') return record.typeLabel || 'Despesa processual';
+  if (record.kind === 'parcela') return record.typeLabel || 'Parcela de honorários';
+  if (record.kind === 'recebimento') return record.typeLabel || 'Recebimento de honorários';
   return TYPE_LABELS[record.feeType] || record.typeLabel || 'Honorários contratuais';
+}
+
+function financialDate(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value || '');
 }
 
 function renderEmpty(hasQuery, filter) {

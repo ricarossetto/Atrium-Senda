@@ -279,6 +279,8 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
     <div class="process-last-movement"><span>Último andamento</span><strong>${escapeHtml(item.lastMovement || 'Ainda não informado.')}</strong><small>${formatDate(item.lastMovementAt)}</small></div>
   </section>
 
+  ${renderProcessFinance(item, escapeHtml, formatDate)}
+
   <section class="process-inspector-section" aria-labelledby="processTimelineHeading">
     <h3 id="processTimelineHeading">Linha do tempo jurídica</h3>
     ${renderLegalTimeline(summary.timeline || [], escapeHtml, formatDate)}
@@ -334,6 +336,60 @@ function definition(label, value, escapeHtml) {
 
 function metric(value, label, escapeHtml) {
   return `<div><strong>${escapeHtml(value ?? '—')}</strong><span>${escapeHtml(label)}</span></div>`;
+}
+
+function renderProcessFinance(item, escapeHtml, formatDate) {
+  const installments = Array.isArray(item.feeInstallments) ? item.feeInstallments : [];
+  const allReceipts = Array.isArray(item.receipts) ? item.receipts : [];
+  const receipts = allReceipts.filter(receipt => receipt.status !== 'estornado');
+  const expenses = Array.isArray(item.expenses) ? item.expenses : [];
+  const hasTerms = Boolean(feePresentation(item) || requisitionPresentation(item));
+  if (!hasTerms && !installments.length && !receipts.length && !expenses.length) return '';
+  const scheduled = installments.reduce((total, record) => total + financialNumber(record.amount), 0);
+  const received = receipts.reduce((total, record) => total + financialNumber(record.amount), 0);
+  const pending = installments.length
+    ? installments.filter(record => !isFinancialSettled(record.status)).reduce((total, record) => total + financialNumber(record.amount), 0)
+    : Math.max(0, contractedFee(item) - received);
+  const expenseTotal = expenses.reduce((total, record) => total + financialNumber(record.amount), 0);
+  const records = [
+    ...installments.map(record => ({ label: record.description || 'Parcela de honorários', value: record.amount, status: isFinancialSettled(record.status) ? 'Paga' : 'Pendente', date: record.dueDate })),
+    ...allReceipts.map(record => ({ label: record.description || 'Recebimento de honorários', value: record.amount, status: record.status === 'estornado' ? 'Estornado' : 'Recebido', date: record.date })),
+    ...expenses.map(record => ({ label: record.description || 'Despesa processual', value: record.amount, status: String(record.status || 'Pendente').replaceAll('_', ' '), date: record.date }))
+  ].sort((left, right) => String(right.date || '').localeCompare(String(left.date || ''))).slice(0, 8);
+
+  return `<section class="process-inspector-section" aria-labelledby="processFinancialHeading">
+    <div class="process-inspector-section-heading"><h3 id="processFinancialHeading">Visão financeira do processo</h3><span class="process-financial-scope">Sem contabilidade fiscal</span></div>
+    <div class="process-inspector-metrics process-financial-metrics">
+      ${metric(formatFinancialValue(installments.length ? scheduled : contractedFee(item)), installments.length ? 'Honorários parcelados' : 'Honorários contratados', escapeHtml)}
+      ${metric(formatFinancialValue(received), 'Recebido', escapeHtml)}
+      ${metric(formatFinancialValue(pending), 'Pendente', escapeHtml)}
+      ${metric(formatFinancialValue(expenseTotal), 'Despesas do processo', escapeHtml)}
+    </div>
+    ${records.length ? `<div class="process-financial-records">${records.map(record => `<div><span><strong>${escapeHtml(record.label)}</strong><small>${escapeHtml(record.status)}${record.date ? ` · ${escapeHtml(formatDate(record.date))}` : ''}</small></span><b>${escapeHtml(formatFinancialValue(record.value))}</b></div>`).join('')}</div>` : ''}
+    <p class="process-inspector-note">Valores jurídicos informativos, vinculados a este processo. Não substituem conciliação bancária ou escrituração fiscal.</p>
+  </section>`;
+}
+
+function contractedFee(item) {
+  if (item.feeType === 'misto') return financialNumber(item.feeAmount) + financialNumber(item.feeMonthly);
+  if (item.feeAmount !== '' && item.feeAmount !== null && item.feeAmount !== undefined) return financialNumber(item.feeAmount);
+  if (item.feeMonthly !== '' && item.feeMonthly !== null && item.feeMonthly !== undefined) return financialNumber(item.feeMonthly);
+  const base = financialNumber(item.requisitionAmount ?? item.rpvAmount ?? item.economicValue);
+  const percentage = financialNumber(item.feePercentage);
+  return base * percentage / 100;
+}
+
+function financialNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : 0;
+}
+
+function isFinancialSettled(value) {
+  return ['pago', 'paga', 'quitado', 'repassado', 'recebido', 'reembolsado'].includes(String(value || '').toLowerCase());
+}
+
+function formatFinancialValue(value) {
+  return `R$ ${financialNumber(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function renderLinkedTasks(tasks, escapeHtml, formatDate) {

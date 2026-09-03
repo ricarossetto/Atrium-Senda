@@ -554,6 +554,7 @@
             <button type="button" class="active" data-fin-filter="all" aria-pressed="true">Todos</button>
             <button type="button" data-fin-filter="rpv" aria-pressed="false">RPVs / Alvarás</button>
             <button type="button" data-fin-filter="honorarios" aria-pressed="false">Honorários</button>
+            <button type="button" data-fin-filter="recebimentos" aria-pressed="false">Recebimentos</button>
             <button type="button" data-fin-filter="despesas" aria-pressed="false">Despesas</button>
           </div>
           <div class="toolbar-actions">
@@ -575,7 +576,7 @@
           </article>
           <article class="metric-card info">
             <span class="metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-deadline"></use></svg></span>
-            <div><small>Horas Apontadas (TimeSheet)</small><strong id="finMetricTimesheet">0h 0m</strong><p>valor hora apurado</p></div>
+            <div><small>Recebimentos Registrados</small><strong id="finMetricReceipts">R$ 0,00</strong><p>honorários efetivamente recebidos</p></div>
           </article>
           <article class="metric-card danger">
             <span class="metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-documents"></use></svg></span>
@@ -2212,11 +2213,13 @@
               <option value="exito">Honorários de Êxito (Quota Litis)</option>
               <option value="fixo">Honorários Fixos / Iniciais</option>
               <option value="mensal">Honorários Mensais / Partido</option>
+              <option value="parcela">Parcela de Honorários</option>
+              <option value="recebimento">Recebimento de Honorários</option>
               <option value="despesa">Despesa, Custa ou Reembolso</option>
             </select>
           </label>
-          <label class="financial-expense-only" style="display:none; flex-direction:column; gap:4px;">
-            <span style="font-size:12px; font-weight:600; color:var(--muted);">Descrição da despesa</span>
+          <label class="financial-detail-only" style="display:none; flex-direction:column; gap:4px;">
+            <span id="finDescriptionLabel" style="font-size:12px; font-weight:600; color:var(--muted);">Descrição da despesa</span>
             <input id="finDescriptionInput" name="description" type="text" maxlength="160" placeholder="Ex: preparo recursal">
           </label>
           </div>
@@ -2231,9 +2234,9 @@
               <option value="repassado">Repassado ao Cliente &amp; Quitado</option>
             </select>
           </label>
-          <label class="financial-expense-only" style="display:none; flex-direction:column; gap:4px;">
-            <span style="font-size:12px; font-weight:600; color:var(--muted);">Data da despesa</span>
-            <input id="finDateInput" name="expenseDate" type="date">
+          <label class="financial-detail-only" style="display:none; flex-direction:column; gap:4px;">
+            <span id="finDateLabel" style="font-size:12px; font-weight:600; color:var(--muted);">Data da despesa</span>
+            <input id="finDateInput" name="entryDate" type="date">
           </label>
           <label style="display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Valor Bruto / Base (R$)</span>

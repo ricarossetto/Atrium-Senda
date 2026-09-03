@@ -332,6 +332,9 @@ html[data-ui="v2"] .contact-inspector-section dt { margin: 0 0 3px; color: var(-
 html[data-ui="v2"] .contact-inspector-section dd { margin: 0; overflow-wrap: anywhere; color: var(--v2-color-foreground); font-size: 12px; line-height: 1.45; }
 html[data-ui="v2"] .contact-inspector-section.is-sensitive dd { color: var(--v2-color-foreground-secondary); font-size: 11px; }
 html[data-ui="v2"] .contact-notes p { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 11px; line-height: 1.65; white-space: pre-wrap; }
+html[data-ui="v2"] .contact-financial-summary { padding: var(--v2-space-3); background: var(--v2-color-surface-secondary); border: 1px solid var(--v2-color-border-subtle); border-radius: var(--v2-radius-md); }
+html[data-ui="v2"] .contact-financial-summary dd { color: var(--v2-color-accent-strong); font-variant-numeric: tabular-nums; }
+html[data-ui="v2"] .contact-financial-summary p { margin: var(--v2-space-3) 0 0; color: var(--v2-color-muted-foreground); font-size: 9px; line-height: 1.45; }
 
 html[data-ui="v2"] .contact-legal-summary {
   display: grid;

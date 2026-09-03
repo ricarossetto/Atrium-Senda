@@ -9,7 +9,7 @@ const state = {
     { id: 'contact-adverse', name: 'Parte Adversa Sintética', contactRole: 'adverso' }
   ],
   processes: [
-    { id: 'process-canonical', number: '5000000-00.2026.8.21.0001', client: 'Cliente Sintética', contactId: 'contact-client', actionType: 'Ação sintética', createdAt: '2026-08-01', feeType: 'fixo', feeAmount: 1000 },
+    { id: 'process-canonical', number: '5000000-00.2026.8.21.0001', client: 'Cliente Sintética', contactId: 'contact-client', actionType: 'Ação sintética', createdAt: '2026-08-01', feeType: 'fixo', feeAmount: 1000, feeInstallments: [{ id: 'installment-paid', amount: 600, status: 'pago', dueDate: '2026-08-15' }, { id: 'installment-pending', amount: 400, status: 'pendente', dueDate: '2026-09-15' }], receipts: [{ id: 'receipt-one', amount: 600, status: 'recebido', date: '2026-08-15' }], expenses: [{ id: 'expense-one', amount: 125, status: 'pendente', date: '2026-08-12' }] },
     { id: 'process-registered', number: '5000000-00.2026.8.21.0002', client: 'Cliente ainda não vinculado', createdAt: '2026-08-02' },
     { id: 'process-name-only', number: '5000000-00.2026.8.21.0003', client: 'Cliente Sintética', createdAt: '2026-08-03' },
     { id: 'process-adverse', number: '5000000-00.2026.8.21.0004', client: 'Outra Pessoa', contactId: 'contact-adverse', createdAt: '2026-08-04' }
@@ -42,6 +42,7 @@ assert.deepEqual(context.appointments.map(item => item.id), ['agenda-linked']);
 assert.deepEqual(context.documents.map(item => item.id), ['doc-contact', 'doc-process']);
 assert.deepEqual(context.financialRecords.map(item => item.id), ['financial-linked']);
 assert.deepEqual(context.financialProcesses.map(item => item.id), ['process-canonical']);
+assert.deepEqual(context.financialSummary, { contracted: 1000, received: 600, pending: 400, expenses: 125, pendingExpenses: 125, installments: 2, receipts: 1 });
 assert.deepEqual(context.metrics, { processes: 2, openTasks: 1, publications: 1, appointments: 1, documents: 2, financial: 2 });
 assert.equal(context.nextDeadline, '2026-09-10');
 assert.ok(context.timeline.some(item => item.type === 'publication' && item.entityId === 'pub-linked'));

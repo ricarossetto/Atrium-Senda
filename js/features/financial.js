@@ -65,11 +65,22 @@ export function createFinancialFeature({
       let totalHonorariosAFaturar = 0;
       let rpvCount = 0;
       let pendingExpenses = 0;
+      let totalReceipts = 0;
 
       const rows = [];
       const presentationRecords = [];
       processes.forEach(proc => {
         const isPaid = proc.feeStatus === 'pago' || proc.feeStatus === 'quitado' || proc.feeStatus === 'repassado' || proc.requisitionStatus === 'repassado' || proc.requisitionStatus === 'pago';
+        const feeInstallments = Array.isArray(proc.feeInstallments) ? proc.feeInstallments : [];
+        const receipts = Array.isArray(proc.receipts) ? proc.receipts : [];
+        const pendingInstallmentTotal = feeInstallments
+          .filter(installment => !isSettledFinancialStatus(installment.status))
+          .reduce((total, installment) => total + finiteAmount(installment.amount), 0);
+        const hasInstallmentSchedule = feeInstallments.length > 0;
+        if (hasInstallmentSchedule) totalHonorariosAFaturar += pendingInstallmentTotal;
+        totalReceipts += receipts
+          .filter(receipt => receipt.status !== 'estornado')
+          .reduce((total, receipt) => total + finiteAmount(receipt.amount), 0);
         const hasRequisitionAmount = proc.requisitionAmount !== '' && proc.requisitionAmount !== null && proc.requisitionAmount !== undefined;
         const hasRpvAmount = proc.rpvAmount !== '' && proc.rpvAmount !== null && proc.rpvAmount !== undefined;
 
@@ -98,6 +109,50 @@ export function createFinancialFeature({
           });
         }
 
+        if (filter === 'all' || filter === 'honorarios') {
+          feeInstallments.forEach((installment, index) => {
+            const amount = finiteAmount(installment.amount);
+            const settled = isSettledFinancialStatus(installment.status);
+            const overdue = !settled && isPastDate(installment.dueDate);
+            if (!needle || normalizeText(`${proc.number} ${proc.client} ${installment.description} ${installment.status} ${installment.dueDate}`).includes(needle)) {
+              presentationRecords.push({
+                id: installment.id || `${proc.id}-installment-${index}`,
+                kind: 'parcela',
+                processNumber: proc.number || 'Processo sem número',
+                client: proc.client || 'Cliente',
+                typeLabel: installment.description || 'Parcela de honorários',
+                gross: amount,
+                feeAmount: amount,
+                netClient: null,
+                date: installment.dueDate || installment.createdAt || '',
+                statusLabel: settled ? 'Paga' : overdue ? 'Vencida' : 'Pendente',
+                statusTone: settled ? 'connected' : overdue ? 'disconnected' : 'warning'
+              });
+            }
+          });
+        }
+
+        if (filter === 'all' || filter === 'recebimentos') {
+          receipts.forEach((receipt, index) => {
+            const amount = finiteAmount(receipt.amount);
+            if (!needle || normalizeText(`${proc.number} ${proc.client} ${receipt.description} ${receipt.status} ${receipt.date}`).includes(needle)) {
+              presentationRecords.push({
+                id: receipt.id || `${proc.id}-receipt-${index}`,
+                kind: 'recebimento',
+                processNumber: proc.number || 'Processo sem número',
+                client: proc.client || 'Cliente',
+                typeLabel: receipt.description || 'Recebimento de honorários',
+                gross: amount,
+                feeAmount: amount,
+                netClient: null,
+                date: receipt.date || receipt.createdAt || '',
+                statusLabel: receipt.status === 'estornado' ? 'Estornado' : 'Recebido',
+                statusTone: receipt.status === 'estornado' ? 'disconnected' : 'connected'
+              });
+            }
+          });
+        }
+
         // Cálculo canônico do RPV / Precatório (BUG-003)
         if (proc.requisitionStatus || hasRequisitionAmount || hasRpvAmount) {
           rpvCount++;
@@ -108,7 +163,7 @@ export function createFinancialFeature({
           const netClient = Math.max(0, gross - feeAmount);
           const statusInfo = FINANCIAL_STATUS_MAP[proc.requisitionStatus] || { label: proc.requisitionStatus || 'Requisitado', chipClass: 'warning', isFinal: false };
 
-          if (!isPaid && !statusInfo.isFinal) {
+          if (!hasInstallmentSchedule && !isPaid && !statusInfo.isFinal) {
             totalHonorariosAFaturar += feeAmount;
           }
 
@@ -144,8 +199,10 @@ export function createFinancialFeature({
           const hasFeeAmount = proc.feeAmount !== '' && proc.feeAmount !== null && proc.feeAmount !== undefined;
           const hasFeeMonthly = proc.feeMonthly !== '' && proc.feeMonthly !== null && proc.feeMonthly !== undefined;
           if (hasFeeAmount || hasFeeMonthly) {
-            const feeVal = Number(hasFeeAmount ? proc.feeAmount : proc.feeMonthly);
-            if (!isPaid) totalHonorariosAFaturar += feeVal;
+            const feeVal = proc.feeType === 'misto'
+              ? finiteAmount(proc.feeAmount) + finiteAmount(proc.feeMonthly)
+              : Number(hasFeeAmount ? proc.feeAmount : proc.feeMonthly);
+            if (!hasInstallmentSchedule && !isPaid) totalHonorariosAFaturar += feeVal;
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.feeType}`).includes(needle)) {
               presentationRecords.push({
                 id: proc.id || proc.number,
@@ -179,9 +236,11 @@ export function createFinancialFeature({
       const honEl = byId('finMetricHonorarios');
       const rpvEl = byId('finMetricRpvCount');
       const expenseEl = byId('finMetricExpenses');
+      const receiptsEl = byId('finMetricReceipts');
       if (honEl) honEl.textContent = formatCurrency(totalHonorariosAFaturar);
       if (rpvEl) rpvEl.textContent = `${rpvCount} requisições`;
       if (expenseEl) expenseEl.textContent = formatCurrency(pendingExpenses);
+      if (receiptsEl) receiptsEl.textContent = formatCurrency(totalReceipts);
       byId('financialFilters')?.querySelectorAll('button[data-fin-filter]').forEach(button => {
         button.setAttribute?.('aria-pressed', String(button.dataset.finFilter === filter));
       });
@@ -260,31 +319,38 @@ export function createFinancialFeature({
     },
 
     updateModalSummary() {
-      const isExpense = byId('finTypeSelect')?.value === 'despesa';
-      documentRef.querySelectorAll?.('.financial-expense-only').forEach(element => {
-        element.style.display = isExpense ? 'flex' : 'none';
+      const entryType = byId('finTypeSelect')?.value || 'rpv';
+      const isExpense = entryType === 'despesa';
+      const isInstallment = entryType === 'parcela';
+      const isReceipt = entryType === 'recebimento';
+      const isDetailEntry = isExpense || isInstallment || isReceipt;
+      documentRef.querySelectorAll?.('.financial-detail-only').forEach(element => {
+        element.style.display = isDetailEntry ? 'flex' : 'none';
       });
       const statusSelect = byId('finStatusSelect');
       if (statusSelect) {
-        const wasExpense = statusSelect.dataset.expenseMode === 'true';
-        if (isExpense && !wasExpense) {
-          statusSelect.dataset.expenseMode = 'true';
-          statusSelect.innerHTML = '<option value="pendente">Pendente de pagamento</option><option value="pago">Paga pelo escritório</option><option value="reembolsado">Reembolsada pelo cliente</option>';
-        } else if (!isExpense && wasExpense) {
-          delete statusSelect.dataset.expenseMode;
-          statusSelect.innerHTML = '<option value="requisitado">Requisitado / Expedido</option><option value="aguardando_deposito">Aguardando Depósito Judicial</option><option value="disponivel_saque">Disponível para Saque / Levantamento</option><option value="repassado">Repassado ao Cliente &amp; Quitado</option>';
+        const mode = isExpense ? 'expense' : isInstallment ? 'installment' : isReceipt ? 'receipt' : entryType === 'rpv' ? 'requisition' : 'fee';
+        if (statusSelect.dataset.mode !== mode) {
+          statusSelect.dataset.mode = mode;
+          statusSelect.innerHTML = financialStatusOptions(mode);
         }
       }
+      const descriptionLabel = byId('finDescriptionLabel');
+      const descriptionInput = byId('finDescriptionInput');
+      const dateLabel = byId('finDateLabel');
+      if (descriptionLabel) descriptionLabel.textContent = isExpense ? 'Descrição da despesa' : isInstallment ? 'Identificação da parcela' : 'Identificação do recebimento';
+      if (descriptionInput) descriptionInput.placeholder = isExpense ? 'Ex: preparo recursal' : isInstallment ? 'Ex: parcela 2 de 6' : 'Ex: pagamento via PIX';
+      if (dateLabel) dateLabel.textContent = isInstallment ? 'Vencimento' : isReceipt ? 'Data do recebimento' : 'Data da despesa';
       const gross = parseFloat(byId('finGrossInput')?.value) || 0;
       const feePct = parseFloat(byId('finFeePctInput')?.value) || 0;
-      const fee = isExpense ? 0 : (gross * feePct) / 100;
-      const net = isExpense ? 0 : Math.max(0, gross - fee);
+      const fee = isDetailEntry ? 0 : (gross * feePct) / 100;
+      const net = isDetailEntry ? 0 : Math.max(0, gross - fee);
       const sumGross = byId('finSumGross');
       const sumFee = byId('finSumFee');
       const sumNet = byId('finSumNet');
       if (sumGross) sumGross.textContent = formatCurrency(gross);
-      if (sumFee) sumFee.textContent = isExpense ? 'Não se aplica' : formatCurrency(fee);
-      if (sumNet) sumNet.textContent = isExpense ? 'Não se aplica' : formatCurrency(net);
+      if (sumFee) sumFee.textContent = isDetailEntry ? (isExpense ? 'Não se aplica' : formatCurrency(gross)) : formatCurrency(fee);
+      if (sumNet) sumNet.textContent = isDetailEntry ? 'Não se aplica' : formatCurrency(net);
     },
 
     async handleEntrySubmit(event) {
@@ -304,7 +370,7 @@ export function createFinancialFeature({
       const rawFeePercentage = String(data.get('feePercentage') ?? '').trim();
       const feePercentage = rawFeePercentage === '' ? null : Number(rawFeePercentage);
       const description = String(data.get('description') || '').trim();
-      const expenseDate = String(data.get('expenseDate') || '').trim();
+      const entryDate = String(data.get('entryDate') || '').trim();
 
       if (!Number.isFinite(grossAmount) || grossAmount < 0) {
         showToast?.('Informe um valor financeiro válido e não negativo.', 'error');
@@ -320,6 +386,10 @@ export function createFinancialFeature({
         showToast?.('Selecione um processo válido para vincular o lançamento.', 'error');
         return;
       }
+      if (!allowedFinancialStatuses(entryType).includes(status)) {
+        showToast?.('Selecione uma situação compatível com o tipo de lançamento.', 'error');
+        return;
+      }
 
       if (entryType === 'rpv') {
         process.requisitionAmount = grossAmount;
@@ -332,12 +402,15 @@ export function createFinancialFeature({
         process.feeType = 'exito';
         process.feePercentage = feePercentage;
         process.feeAmount = grossAmount * feePercentage / 100;
+        process.feeStatus = status;
       } else if (entryType === 'fixo') {
         process.feeType = 'fixo';
         process.feeAmount = grossAmount;
+        process.feeStatus = status;
       } else if (entryType === 'mensal') {
         process.feeType = 'mensal';
         process.feeMonthly = grossAmount;
+        process.feeStatus = status;
       } else if (entryType === 'despesa') {
         if (!description) {
           showToast?.('Descreva a despesa para facilitar a prestação de contas.', 'error');
@@ -349,7 +422,32 @@ export function createFinancialFeature({
           description,
           amount: grossAmount,
           status,
-          date: expenseDate || new Date().toISOString().slice(0, 10),
+          date: entryDate || new Date().toISOString().slice(0, 10),
+          createdAt: new Date().toISOString()
+        });
+      } else if (entryType === 'parcela') {
+        if (!entryDate) {
+          showToast?.('Informe o vencimento da parcela de honorários.', 'error');
+          return;
+        }
+        process.feeInstallments = Array.isArray(process.feeInstallments) ? process.feeInstallments : [];
+        process.feeInstallments.push({
+          id: `installment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          description: description || `Parcela ${process.feeInstallments.length + 1}`,
+          amount: grossAmount,
+          status,
+          dueDate: entryDate,
+          paidAt: isSettledFinancialStatus(status) ? entryDate : '',
+          createdAt: new Date().toISOString()
+        });
+      } else if (entryType === 'recebimento') {
+        process.receipts = Array.isArray(process.receipts) ? process.receipts : [];
+        process.receipts.push({
+          id: `receipt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          description: description || 'Recebimento de honorários',
+          amount: grossAmount,
+          status: status || 'recebido',
+          date: entryDate || new Date().toISOString().slice(0, 10),
           createdAt: new Date().toISOString()
         });
       } else {
@@ -357,6 +455,7 @@ export function createFinancialFeature({
         return;
       }
       process.updatedAt = new Date().toISOString();
+      process.financialUpdatedAt = process.updatedAt;
 
       store.upsert('processes', process);
       store.audit('Lançamento financeiro registrado', `${process.number || process.client}: ${formatCurrency(grossAmount)} (${status})`);
@@ -378,4 +477,38 @@ export function createFinancialFeature({
   };
 
   return feature;
+}
+
+function financialStatusOptions(mode) {
+  if (mode === 'expense') return '<option value="pendente">Pendente de pagamento</option><option value="pago">Paga pelo escritório</option><option value="reembolsado">Reembolsada pelo cliente</option>';
+  if (mode === 'installment') return '<option value="pendente">Pendente</option><option value="pago">Paga</option>';
+  if (mode === 'receipt') return '<option value="recebido">Recebido</option><option value="estornado">Estornado</option>';
+  if (mode === 'fee') return '<option value="pendente">Pendente / a receber</option><option value="em_dia">Em dia / regular</option><option value="aguardando_exito">Aguardando êxito processual</option><option value="quitado">Quitado</option>';
+  return '<option value="requisitado">Requisitado / Expedido</option><option value="aguardando_deposito">Aguardando Depósito Judicial</option><option value="disponivel_saque">Disponível para Saque / Levantamento</option><option value="repassado">Repassado ao Cliente &amp; Quitado</option>';
+}
+
+function allowedFinancialStatuses(entryType) {
+  if (entryType === 'despesa') return ['pendente', 'pago', 'reembolsado'];
+  if (entryType === 'parcela') return ['pendente', 'pago'];
+  if (entryType === 'recebimento') return ['recebido', 'estornado'];
+  if (entryType === 'rpv') return ['requisitado', 'aguardando_deposito', 'disponivel_saque', 'repassado'];
+  if (['exito', 'fixo', 'mensal'].includes(entryType)) return ['pendente', 'em_dia', 'aguardando_exito', 'quitado'];
+  return [];
+}
+
+function isSettledFinancialStatus(status) {
+  return ['pago', 'paga', 'quitado', 'repassado', 'recebido', 'reembolsado'].includes(String(status || '').toLowerCase());
+}
+
+function finiteAmount(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? amount : 0;
+}
+
+function isPastDate(value) {
+  if (!value) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = new Date(`${value}T00:00:00`);
+  return Number.isFinite(dueDate.getTime()) && dueDate < today;
 }

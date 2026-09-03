@@ -20,7 +20,7 @@ assert.equal(defaultPrompts.length, 230, 'Catálogo padrão deve ser lido como J
 
 const ocrReads = [];
 const unitState = {
-  processes: [{ id: 'process-unit', number: '5001234-12.2026.4.04.0001', client: 'Cliente Aurora', court: 'TRF4', lastMovement: 'Sentença previdenciária disponibilizada', feeStatus: 'em_dia', movements: [{ id: 'movement-unit', description: 'Conclusão judicial rara para conferência' }], expenses: [{ id: 'expense-unit', description: 'Custas de diligência rara', amount: 125 }] }],
+  processes: [{ id: 'process-unit', number: '5001234-12.2026.4.04.0001', client: 'Cliente Aurora', court: 'TRF4', lastMovement: 'Sentença previdenciária disponibilizada', feeStatus: 'em_dia', movements: [{ id: 'movement-unit', description: 'Conclusão judicial rara para conferência' }], expenses: [{ id: 'expense-unit', description: 'Custas de diligência rara', amount: 125 }], feeInstallments: [{ id: 'installment-unit', description: 'Parcela turmalina', amount: 500, status: 'pendente', dueDate: '2026-09-20' }], receipts: [{ id: 'receipt-unit', description: 'Recebimento topázio', amount: 250, status: 'recebido', date: '2026-09-01' }] }],
   contacts: [{ id: 'contact-unit', name: 'Áurea Sintética', contactRole: 'cliente', cpf: '000.111.222-33', email: 'aurea@example.test', city: 'Ijuí' }],
   leads: [{ id: 'lead-unit', client: 'Áurea Sintética', serviceType: 'Planejamento previdenciário', status: 'novo', notes: 'Entrevista sintética inicial' }],
   intimations: [{ id: 'publication-unit', title: 'Intimação sobre benefício', process: '5001234-12.2026.4.04.0001', text: 'Manifestação expressa sem prazo inferido', workNotes: [{ id: 'note-unit', text: 'Estratégia interna rara e supervisionada' }] }],
@@ -47,7 +47,7 @@ let sync = await index.ensure({ state: unitState, revision: 'revision-1' });
 assert.equal(sync.rebuilt, true);
 assert.equal(sync.reason, 'corrupt');
 assert.equal(index.status.version, SEARCH_INDEX_VERSION);
-assert.equal(index.status.entryCount, 14);
+assert.equal(index.status.entryCount, 16);
 assert.equal(ocrReads.length, 1);
 assert.equal(index.search('ultrarraro')[0].entityType, 'document');
 assert.equal(index.search('ÁUREA')[0].id, 'contact-unit', 'Busca deve ser accent/case insensitive e ranquear título.');
@@ -57,6 +57,8 @@ assert.equal(index.search('Pauta sintética')[0].entityType, 'appointment');
 assert.equal(index.search('Estratégia interna rara')[0].entityType, 'note');
 assert.equal(index.search('Conclusão judicial rara')[0].entityType, 'movement');
 assert.equal(index.search('Custas diligência rara')[0].entityType, 'financial');
+assert.equal(index.search('Parcela turmalina')[0].entityType, 'financial');
+assert.equal(index.search('Recebimento topázio')[0].entityType, 'financial');
 assert.equal(index.search('Cliente Aurora').some(item => item.entityType === 'document'), true, 'Documento deve herdar contexto de processo e cliente sem duplicar cadastro.');
 for (const query of ['perícia rara', 'quartzo', 'âmbar', 'Entidade Jade', 'ID-JADE', 'Digitalização local']) {
   assert.equal(index.search(query).some(item => item.entityType === 'document'), true, `Metadado documental deve ser localizável por ${query}.`);
@@ -73,7 +75,7 @@ changedState.tasks.push({ id: 'task-added', title: 'Protocolar manifestação su
 sync = await index.ensure({ state: changedState, revision: 'revision-2' });
 assert.equal(sync.synchronized, true);
 assert.equal(sync.changes.added, 1);
-assert.ok(sync.changes.reused >= 14);
+assert.ok(sync.changes.reused >= 16);
 assert.equal(ocrReads.length, 1, 'Checksum OCR estável deve reutilizar cache.');
 assert.equal(index.search('Protocolar manifestação')[0].id, 'task-added');
 

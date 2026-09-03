@@ -64,7 +64,7 @@ try {
   await trigger.click();
   await page.waitForFunction(() => document.querySelector('#financialEntryBackdrop .financial-entry-modal')?.contains(document.activeElement));
   assert.equal(await page.locator('#appShell').getAttribute('inert'), '');
-  assert.deepEqual(await page.locator('#finTypeSelect option').evaluateAll(options => options.map(option => option.value)), ['rpv', 'exito', 'fixo', 'mensal', 'despesa']);
+  assert.deepEqual(await page.locator('#finTypeSelect option').evaluateAll(options => options.map(option => option.value)), ['rpv', 'exito', 'fixo', 'mensal', 'parcela', 'recebimento', 'despesa']);
   await page.locator('#finGrossInput').fill('1000');
   await page.locator('#finFeePctInput').fill('25');
   assert.deepEqual(await page.locator('#finSumGross, #finSumFee, #finSumNet').allTextContents(), ['R$\u00a01.000,00', 'R$\u00a0250,00', 'R$\u00a0750,00']);
@@ -91,11 +91,12 @@ try {
   });
   assert.deepEqual(bridge, [{ type: 'prestacao_contas_rpv' }]);
 
-  async function openAndFill({ process = 'fin-target-custas', type = 'despesa', gross = '500', percentage = '10', description = 'Preparo recursal sintético' } = {}) {
+  async function openAndFill({ process = 'fin-target-custas', type = 'despesa', gross = '500', percentage = '10', description = 'Preparo recursal sintético', date = '' } = {}) {
     await page.locator('#newFinancialEntryButton').click();
     await page.locator('#finProcessSelect').selectOption(process);
     await page.locator('#finTypeSelect').selectOption(type);
-    if (type === 'despesa') await page.locator('#finDescriptionInput').fill(description);
+    if (['despesa', 'parcela', 'recebimento'].includes(type)) await page.locator('#finDescriptionInput').fill(description);
+    if (date) await page.locator('#finDateInput').fill(date);
     await page.locator('#finGrossInput').fill(gross);
     await page.locator('#finFeePctInput').fill(percentage);
   }
@@ -112,6 +113,23 @@ try {
   assert.equal(expense.status, 'pendente');
   await page.locator('[data-fin-filter="despesas"]').click();
   assert.match(await page.locator('.financial-v2-table [data-financial-record]').first().textContent(), /Preparo recursal sintético/);
+
+  await openAndFill({ process: 'fin-target-fixo', type: 'parcela', gross: '900', description: 'Parcela 1 de 3', date: '2026-10-15' });
+  assert.deepEqual(await page.locator('#finStatusSelect option').evaluateAll(options => options.map(option => option.value)), ['pendente', 'pago']);
+  await page.locator('#financialEntryForm button[type="submit"]').click();
+  await page.locator('#financialEntryBackdrop').waitFor({ state: 'hidden' });
+  const installment = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.id === 'fin-target-fixo')?.feeInstallments?.at(-1));
+  assert.deepEqual({ description: installment.description, amount: installment.amount, status: installment.status, dueDate: installment.dueDate }, { description: 'Parcela 1 de 3', amount: 900, status: 'pendente', dueDate: '2026-10-15' });
+
+  await openAndFill({ process: 'fin-target-fixo', type: 'recebimento', gross: '450', description: 'Entrada via PIX', date: '2026-09-03' });
+  assert.deepEqual(await page.locator('#finStatusSelect option').evaluateAll(options => options.map(option => option.value)), ['recebido', 'estornado']);
+  await page.locator('#financialEntryForm button[type="submit"]').click();
+  await page.locator('#financialEntryBackdrop').waitFor({ state: 'hidden' });
+  const receipt = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.id === 'fin-target-fixo')?.receipts?.at(-1));
+  assert.deepEqual({ description: receipt.description, amount: receipt.amount, status: receipt.status, date: receipt.date }, { description: 'Entrada via PIX', amount: 450, status: 'recebido', date: '2026-09-03' });
+  assert.equal(await page.locator('#finMetricReceipts').textContent(), 'R$\u00a0450,00');
+  await page.locator('[data-fin-filter="recebimentos"]').click();
+  assert.match(await page.locator('.financial-v2-table [data-financial-record]').first().textContent(), /Entrada via PIX/);
 
   await openAndFill({ type: 'exito', gross: '1000', percentage: '' });
   await dispatchSubmit();
@@ -137,6 +155,16 @@ try {
   await page.locator('#finGrossInput').fill('100');
   await dispatchSubmit();
   assert.match(await page.locator('#toastRegion .toast.error').last().textContent(), /processo válido/);
+  await page.locator('#financialEntryCancel').click();
+
+  await openAndFill({ process: 'fin-target-fixo', type: 'fixo', gross: '100', percentage: '0' });
+  await page.locator('#finStatusSelect').evaluate(select => {
+    const option = new Option('Estado incompatível', 'estado_incompativel');
+    select.add(option);
+    select.value = option.value;
+  });
+  await dispatchSubmit();
+  assert.match(await page.locator('#toastRegion .toast.error').last().textContent(), /situação compatível/);
   await page.locator('#financialEntryCancel').click();
 
   await openAndFill({ process: 'fin-target-rollback', type: 'fixo', gross: '1234', percentage: '0' });

@@ -32,6 +32,7 @@ export function buildClientContext(state, contact, { timelineLimit = 80 } = {}) 
     || (document?.ownerType === 'contact' && String(document.ownerId || '') === contactId)));
   const financialRecords = uniqueById((state.financial || []).filter(linked));
   const financialProcesses = processes.filter(hasFinancialData);
+  const financialSummary = summarizeFinancialProcesses(financialProcesses);
   const timeline = processes.flatMap(process => buildLegalTimeline(state, process, { limit: timelineLimit }).map(event => Object.freeze({
     ...event,
     contextId: `${process.id || normalizeProcessNumber(process.number)}:${event.id}`,
@@ -54,6 +55,7 @@ export function buildClientContext(state, contact, { timelineLimit = 80 } = {}) 
     documents: Object.freeze(documents),
     financialRecords: Object.freeze(financialRecords),
     financialProcesses: Object.freeze(financialProcesses),
+    financialSummary: Object.freeze(financialSummary),
     timeline: Object.freeze(timeline),
     metrics: Object.freeze({
       processes: processes.length,
@@ -83,8 +85,46 @@ function uniqueById(records) {
 }
 
 function hasFinancialData(process) {
-  return ['feeType', 'feePercentage', 'feeAmount', 'feeMonthly', 'feeStatus', 'requisitionType', 'requisitionAmount', 'requisitionStatus', 'expenses']
+  return ['feeType', 'feePercentage', 'feeAmount', 'feeMonthly', 'feeStatus', 'requisitionType', 'requisitionAmount', 'requisitionStatus', 'expenses', 'feeInstallments', 'receipts']
     .some(key => Array.isArray(process?.[key]) ? process[key].length > 0 : process?.[key] !== undefined && process[key] !== null && String(process[key]).trim() !== '' && process[key] !== 'none');
+}
+
+function summarizeFinancialProcesses(processes) {
+  return processes.reduce((summary, process) => {
+    const installments = Array.isArray(process.feeInstallments) ? process.feeInstallments : [];
+    const receipts = (Array.isArray(process.receipts) ? process.receipts : []).filter(record => record.status !== 'estornado');
+    const expenses = Array.isArray(process.expenses) ? process.expenses : [];
+    const received = receipts.reduce((total, record) => total + financialNumber(record.amount), 0);
+    const contracted = contractedFee(process);
+    summary.contracted += installments.length
+      ? installments.reduce((total, record) => total + financialNumber(record.amount), 0)
+      : contracted;
+    summary.received += received;
+    summary.pending += installments.length
+      ? installments.filter(record => !isSettled(record.status)).reduce((total, record) => total + financialNumber(record.amount), 0)
+      : Math.max(0, contracted - received);
+    summary.expenses += expenses.reduce((total, record) => total + financialNumber(record.amount), 0);
+    summary.pendingExpenses += expenses.filter(record => !isSettled(record.status)).reduce((total, record) => total + financialNumber(record.amount), 0);
+    summary.installments += installments.length;
+    summary.receipts += receipts.length;
+    return summary;
+  }, { contracted: 0, received: 0, pending: 0, expenses: 0, pendingExpenses: 0, installments: 0, receipts: 0 });
+}
+
+function contractedFee(process) {
+  if (process.feeType === 'misto') return financialNumber(process.feeAmount) + financialNumber(process.feeMonthly);
+  if (process.feeAmount !== '' && process.feeAmount !== null && process.feeAmount !== undefined) return financialNumber(process.feeAmount);
+  if (process.feeMonthly !== '' && process.feeMonthly !== null && process.feeMonthly !== undefined) return financialNumber(process.feeMonthly);
+  return financialNumber(process.requisitionAmount ?? process.rpvAmount ?? process.economicValue) * financialNumber(process.feePercentage) / 100;
+}
+
+function financialNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : 0;
+}
+
+function isSettled(value) {
+  return ['pago', 'paga', 'quitado', 'repassado', 'recebido', 'reembolsado'].includes(String(value || '').toLowerCase());
 }
 
 function eventTimestamp(value) {
@@ -96,7 +136,7 @@ function emptyContext() {
   return Object.freeze({
     contactId: '', role: '', processes: Object.freeze([]), tasks: Object.freeze([]), publications: Object.freeze([]),
     appointments: Object.freeze([]), documents: Object.freeze([]), financialRecords: Object.freeze([]),
-    financialProcesses: Object.freeze([]), timeline: Object.freeze([]),
+    financialProcesses: Object.freeze([]), financialSummary: Object.freeze({ contracted: 0, received: 0, pending: 0, expenses: 0, pendingExpenses: 0, installments: 0, receipts: 0 }), timeline: Object.freeze([]),
     metrics: Object.freeze({ processes: 0, openTasks: 0, publications: 0, appointments: 0, documents: 0, financial: 0 }),
     nextDeadline: ''
   });

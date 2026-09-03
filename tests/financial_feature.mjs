@@ -70,7 +70,7 @@ const makeClassList = initial => {
     }
   };
 };
-const filterButtons = ['all', 'rpv', 'honorarios'].map((value, index) => ({
+const filterButtons = ['all', 'rpv', 'honorarios', 'recebimentos'].map((value, index) => ({
   dataset: { finFilter: value },
   classList: makeClassList(index === 0 ? ['active'] : [])
 }));
@@ -264,7 +264,7 @@ try {
   await page.evaluate(() => window.Atrium.App.switchView('financial'));
   await page.locator('#view-financial.active').waitFor();
   assert.deepEqual(await page.locator('#financialFilters button').evaluateAll(buttons => buttons.map(button => [button.dataset.finFilter, button.textContent.trim()])), [
-    ['all', 'Todos'], ['rpv', 'RPVs / Alvarás'], ['honorarios', 'Honorários'], ['despesas', 'Despesas']
+    ['all', 'Todos'], ['rpv', 'RPVs / Alvarás'], ['honorarios', 'Honorários'], ['recebimentos', 'Recebimentos'], ['despesas', 'Despesas']
   ]);
   assert.equal(await page.locator('#finMetricHonorarios').textContent(), 'R$\u00a02.900,00', 'Métrica financeira pode divergir historicamente do Dashboard.');
   assert.equal(await page.locator('#finMetricRpvCount').textContent(), '1 requisições');
@@ -367,9 +367,9 @@ try {
   })), processIds);
   const submitCases = [
     { id: 'target-rpv', type: 'rpv', gross: '1000', percentage: '10', status: 'requisitado' },
-    { id: 'target-exito', type: 'exito', gross: '2000', percentage: '20', status: 'aguardando_deposito' },
-    { id: 'target-fixo', type: 'fixo', gross: '3000', percentage: '0', status: 'disponivel_saque' },
-    { id: 'target-mensal', type: 'mensal', gross: '4000', percentage: '25', status: 'requisitado' }
+    { id: 'target-exito', type: 'exito', gross: '2000', percentage: '20', status: 'aguardando_exito' },
+    { id: 'target-fixo', type: 'fixo', gross: '3000', percentage: '0', status: 'pendente' },
+    { id: 'target-mensal', type: 'mensal', gross: '4000', percentage: '25', status: 'em_dia' }
   ];
   const requestsBeforeSaves = observedRequests.length;
   for (const item of submitCases) {
@@ -417,20 +417,23 @@ try {
   assert.equal(submittedState.processes['target-exito'].feeType, 'exito');
   assert.equal(submittedState.processes['target-exito'].feePercentage, 20);
   assert.equal(submittedState.processes['target-exito'].feeAmount, 400);
+  assert.equal(submittedState.processes['target-exito'].feeStatus, 'aguardando_exito');
   assert.equal(submittedState.processes['target-fixo'].feeType, 'fixo');
   assert.equal(submittedState.processes['target-fixo'].feePercentage, undefined, 'Honorário fixo não pode fabricar percentual padrão.');
   assert.equal(submittedState.processes['target-fixo'].feeAmount, 3000);
+  assert.equal(submittedState.processes['target-fixo'].feeStatus, 'pendente');
   assert.equal(submittedState.processes['target-mensal'].feeType, 'mensal');
   assert.equal(submittedState.processes['target-mensal'].feeMonthly, 4000);
+  assert.equal(submittedState.processes['target-mensal'].feeStatus, 'em_dia');
   assert.equal(submittedState.processes['target-custas'].expenses.length, 1);
   assert.equal(submittedState.processes['target-custas'].expenses[0].description, 'Preparo recursal');
   assert.equal(submittedState.processes['target-custas'].expenses[0].amount, 5000);
   assert.equal(submittedState.processes['target-custas'].expenses[0].status, 'pendente');
   assert.deepEqual(submittedState.audits.map(item => item.detail), [
     'PROC-FIN-5: R$\u00a05.000,00 (pendente)',
-    'PROC-FIN-4: R$\u00a04.000,00 (requisitado)',
-    'PROC-FIN-3: R$\u00a03.000,00 (disponivel_saque)',
-    'PROC-FIN-2: R$\u00a02.000,00 (aguardando_deposito)',
+    'PROC-FIN-4: R$\u00a04.000,00 (em_dia)',
+    'PROC-FIN-3: R$\u00a03.000,00 (pendente)',
+    'PROC-FIN-2: R$\u00a02.000,00 (aguardando_exito)',
     'PROC-FIN-1: R$\u00a01.000,00 (requisitado)'
   ]);
   assert.equal(JSON.stringify(submittedState.audits).includes('Tribunal Sintético'), false, 'Audit não deve incluir dado pessoal extra.');
@@ -471,7 +474,7 @@ try {
   await page.click('#newFinancialEntryButton');
   await page.selectOption('#finProcessSelect', 'target-custas');
   await page.selectOption('#finTypeSelect', 'fixo');
-  await page.selectOption('#finStatusSelect', 'requisitado');
+  await page.selectOption('#finStatusSelect', 'pendente');
   await page.fill('#finGrossInput', '5000');
   await page.fill('#finFeePctInput', '15');
   await page.click('#financialEntryForm button[type="submit"]');

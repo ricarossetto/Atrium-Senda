@@ -88,6 +88,16 @@ export function buildLegalTimeline(state, process, { limit = 120 } = {}) {
     title: expense.description || expense.title || 'Despesa processual', detail: financialAmount(expense.amount),
     source: 'Financeiro', target: 'financial', entityId: expense.id || processId
   }));
+  (Array.isArray(process.feeInstallments) ? process.feeInstallments : []).forEach((installment, index) => add({
+    id: `financial:${processId}:installment:${installment.id || index}`, type: 'financial', date: installment.dueDate || installment.createdAt,
+    title: installment.description || 'Parcela de honorários', detail: [financialAmount(installment.amount), financialStatus(installment.status)].filter(Boolean).join(' · '),
+    source: 'Financeiro', target: 'financial', entityId: installment.id || processId
+  }));
+  (Array.isArray(process.receipts) ? process.receipts : []).forEach((receipt, index) => add({
+    id: `financial:${processId}:receipt:${receipt.id || index}`, type: 'financial', date: receipt.date || receipt.createdAt,
+    title: receipt.description || 'Recebimento de honorários', detail: [financialAmount(receipt.amount), financialStatus(receipt.status || 'recebido')].filter(Boolean).join(' · '),
+    source: 'Financeiro', target: 'financial', entityId: receipt.id || processId
+  }));
   if (hasFinancialData(process) && (process.financialUpdatedAt || process.feeUpdatedAt || process.requisitionUpdatedAt || process.createdAt || process.registeredAt)) add({
     id: `financial:${processId}:terms`, type: 'financial', date: process.financialUpdatedAt || process.feeUpdatedAt || process.requisitionUpdatedAt || process.createdAt || process.registeredAt,
     title: 'Dados financeiros registrados', detail: financialSummary(process), source: 'Financeiro',
@@ -125,8 +135,8 @@ function auditMatches(entry, processId, processNumber) {
 }
 
 function hasFinancialData(process) {
-  return ['feeType', 'feePercentage', 'feeAmount', 'feeMonthly', 'feeStatus', 'requisitionType', 'requisitionAmount', 'requisitionStatus']
-    .some(key => process[key] !== undefined && process[key] !== null && String(process[key]).trim() !== '' && process[key] !== 'none');
+  return ['feeType', 'feePercentage', 'feeAmount', 'feeMonthly', 'feeStatus', 'requisitionType', 'requisitionAmount', 'requisitionStatus', 'feeInstallments', 'receipts']
+    .some(key => Array.isArray(process[key]) ? process[key].length > 0 : process[key] !== undefined && process[key] !== null && String(process[key]).trim() !== '' && process[key] !== 'none');
 }
 
 function financialSummary(process) {
@@ -136,4 +146,8 @@ function financialSummary(process) {
 function financialAmount(value) {
   const number = Number(value);
   return Number.isFinite(number) && number !== 0 ? `R$ ${number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
+}
+
+function financialStatus(value) {
+  return String(value || '').replaceAll('_', ' ').trim();
 }

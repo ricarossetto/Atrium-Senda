@@ -658,6 +658,11 @@ export async function prepareUiV2ProcessesFixture(page) {
         source: 'Cadastro sintético',
         updatedAt: '2026-08-30T09:00:00.000Z',
         expenses: [{ id: 'ui-v2-process-expense', date: '2026-08-27', description: 'Custas sintéticas', amount: 120 }],
+        feeInstallments: [
+          { id: 'ui-v2-installment-paid', description: 'Entrada contratual', amount: 750, status: 'pago', dueDate: '2026-08-21' },
+          { id: 'ui-v2-installment-pending', description: 'Saldo contratual', amount: 500, status: 'pendente', dueDate: '2026-09-21' }
+        ],
+        receipts: [{ id: 'ui-v2-receipt', description: 'Recebimento de entrada', amount: 750, status: 'recebido', date: '2026-08-21' }],
         unknownField: 'preservar'
       },
       {
