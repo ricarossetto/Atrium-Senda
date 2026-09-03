@@ -661,6 +661,7 @@ html[data-ui="v2"] #intimationDetail .linked-task-item:last-child { border-botto
 html[data-ui="v2"] #intimationDetail .linked-task-info { display: grid; gap: 2px; }
 html[data-ui="v2"] #intimationDetail .linked-task-info strong { color: var(--v2-color-foreground); font-size: 12px; }
 html[data-ui="v2"] #intimationDetail .linked-task-info small { color: var(--v2-color-foreground-secondary); font-size: 10px; }
+html[data-ui="v2"] #intimationDetail .publication-work-kind { color: var(--v2-color-gold); font-size: 9px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
 html[data-ui="v2"] #intimationDetail .linked-task-item .button { min-height: 34px; padding: 0 var(--v2-space-2); font-size: 11px; }
 
 html[data-ui="v2"] #intimationDetail .publication-original {
@@ -717,6 +718,25 @@ html[data-ui="v2"] #intimationDetail .detail-actions {
 html[data-ui="v2"] #intimationDetail .detail-actions .button { min-height: 38px; padding: 0 var(--v2-space-3); font-size: 11px; }
 html[data-ui="v2"] #intimationDetail .detail-actions .button.gold { color: var(--v2-color-on-primary) !important; background: var(--v2-color-primary); border-color: var(--v2-color-primary); }
 html[data-ui="v2"] #intimationDetail .btn-danger-action { margin-left: auto; color: var(--v2-color-danger); }
+html[data-ui="v2"] #intimationDetail .publication-work-menu { position: relative; }
+html[data-ui="v2"] #intimationDetail .publication-work-menu > summary { display: inline-flex; align-items: center; list-style: none; cursor: pointer; }
+html[data-ui="v2"] #intimationDetail .publication-work-menu > summary::-webkit-details-marker { display: none; }
+html[data-ui="v2"] #intimationDetail .publication-work-menu-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--v2-space-2));
+  z-index: 4;
+  display: grid;
+  width: 190px;
+  padding: var(--v2-space-2);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  box-shadow: var(--v2-shadow-elevated);
+}
+html[data-ui="v2"] #intimationDetail .publication-work-menu-popover button { min-height: 32px; padding: 0 var(--v2-space-2); color: var(--v2-color-foreground); background: transparent; border: 0; border-radius: var(--v2-radius-sm); font: 650 11px/1 var(--v2-font-interface); text-align: left; cursor: pointer; }
+html[data-ui="v2"] #intimationDetail .publication-work-menu-popover button:hover,
+html[data-ui="v2"] #intimationDetail .publication-work-menu-popover button:focus-visible { background: var(--v2-color-primary-subtle); outline: none; }
 
 html[data-ui="v2"] :where(#publicationsEmailModalBackdrop, #publicationEmailBackdrop, #discardPublicationBackdrop, #treatPublicationBackdrop) {
   z-index: var(--v2-z-overlay);

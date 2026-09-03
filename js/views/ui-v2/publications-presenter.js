@@ -217,6 +217,7 @@ export function renderPublicationDetail({
   linkedTasks,
   linkedProcess,
   linkedContact,
+  linkedWorkActions = [],
   privileged,
   escapeHtml,
   formatDate,
@@ -230,6 +231,7 @@ export function renderPublicationDetail({
   const priorityLabels = [urgent ? 'Urgente' : '', item.important ? 'Importante' : ''].filter(Boolean);
   const treatmentInfo = renderTreatmentInfo({ item, treatment, escapeHtml, formatDateTime });
   const tasks = renderLinkedTasks({ linkedTasks, escapeHtml, formatDate });
+  const workActions = renderLinkedWorkActions({ linkedWorkActions, escapeHtml, formatDate });
   const actions = renderActions({ status, privileged });
 
   return `<div class="publication-detail-shell">
@@ -251,6 +253,7 @@ export function renderPublicationDetail({
       ${definition('Estado de leitura', unreadLabel, escapeHtml)}
     </dl>
     ${tasks}
+    ${workActions}
     <section class="publication-original" aria-labelledby="publicationOriginalHeading">
       <div><p>Conteúdo oficial</p><h3 id="publicationOriginalHeading">Texto original preservado</h3></div>
       <div class="original-text">${escapeHtml(item.text || 'Sem texto original.')}</div>
@@ -278,11 +281,33 @@ function renderLinkedTasks({ linkedTasks, escapeHtml, formatDate }) {
   return `<section class="linked-tasks-card"><div class="linked-tasks-header"><span>Providências vinculadas</span><strong>${linkedTasks.length}</strong></div><div class="linked-tasks-list">${linkedTasks.map(task => `<article class="linked-task-item"><div class="linked-task-info"><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><small>${task.responsible ? `Responsável: ${escapeHtml(task.responsible)}` : 'Responsável não informado'}${task.deadline ? ` · Prazo informado: ${escapeHtml(formatDate(task.deadline))}` : ''}</small></div><button type="button" class="button ghost" data-open-task-id="${escapeHtml(task.id)}">Abrir tarefa</button></article>`).join('')}</div></section>`;
 }
 
+function renderLinkedWorkActions({ linkedWorkActions, escapeHtml, formatDate }) {
+  const actions = linkedWorkActions.filter(action => action?.entityType !== 'task');
+  if (!actions.length) return '';
+  const labels = { agenda: 'Compromisso', note: 'Nota interna', process: 'Processo vinculado' };
+  return `<section class="linked-tasks-card publication-linked-work"><div class="linked-tasks-header"><span>Outras providências</span><strong>${actions.length}</strong></div><div class="linked-tasks-list">${actions.map(action => {
+    const entity = action.entity || {};
+    const label = labels[action.entityType] || 'Providência';
+    const title = action.entityType === 'note' ? entity.text : action.entityType === 'process' ? entity.number : entity.title;
+    const detail = action.entityType === 'agenda'
+      ? `${entity.date ? formatDate(entity.date) : 'Data não informada'}${entity.time ? ` · ${entity.time}` : ''}`
+      : `Registrada por ${action.createdBy || 'usuário autenticado'}`;
+    const openAttribute = action.entityType === 'agenda'
+      ? `data-open-agenda-id="${escapeHtml(action.entityId)}"`
+      : action.entityType === 'process'
+        ? `data-open-process-id="${escapeHtml(action.entityId)}"`
+        : '';
+    return `<article class="linked-task-item"><div class="linked-task-info"><span class="publication-work-kind">${escapeHtml(label)}</span><strong>${escapeHtml(title || 'Sem descrição')}</strong><small>${escapeHtml(detail)}</small></div>${openAttribute ? `<button type="button" class="button ghost" ${openAttribute}>Abrir</button>` : ''}</article>`;
+  }).join('')}</div></section>`;
+}
+
 function renderActions({ status, privileged }) {
   const email = privileged ? `<button type="button" class="button ghost" data-detail-action="send-email" id="btnSendIntimationEmail">${iconSvg('email')}Enviar por e-mail</button>` : '';
-  if (status === 'untreated') return `<button type="button" class="button gold" data-detail-action="start-review" id="btnStartReview">${iconSvg('search')}Iniciar análise</button><button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')}Criar tarefa</button><button type="button" class="button ghost btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')}Marcar como tratada</button>${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')}Descartar</button>`;
-  if (status === 'in_review') return `<button type="button" class="button gold btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')}Marcar como tratada</button><button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')}Criar tarefa</button>${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')}Descartar</button>`;
-  if (status === 'treated') return `<button type="button" class="button ghost" data-detail-action="reopen" id="btnReopenPublication">${iconSvg('reopen')}Reabrir análise</button><button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')}Criar tarefa</button>${email}`;
+  const task = `<button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')}Criar tarefa</button>`;
+  const workMenu = `<details class="publication-work-menu"><summary class="button ghost">Outras providências</summary><div class="publication-work-menu-popover"><button type="button" data-detail-action="appointment">Compromisso</button><button type="button" data-detail-action="deadline">Prazo confirmado</button><button type="button" data-detail-action="note">Nota interna</button><button type="button" data-detail-action="link">Vincular processo</button></div></details>`;
+  if (status === 'untreated') return `<button type="button" class="button gold" data-detail-action="start-review" id="btnStartReview">${iconSvg('search')}Iniciar análise</button>${task}${workMenu}<button type="button" class="button ghost btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')}Marcar como tratada</button>${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')}Descartar</button>`;
+  if (status === 'in_review') return `<button type="button" class="button gold btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')}Marcar como tratada</button>${task}${workMenu}${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')}Descartar</button>`;
+  if (status === 'treated') return `<button type="button" class="button ghost" data-detail-action="reopen" id="btnReopenPublication">${iconSvg('reopen')}Reabrir análise</button>${task}${workMenu}${email}`;
   return `<button type="button" class="button gold" data-detail-action="restore" id="btnRestorePublication">${iconSvg('reopen')}Restaurar para triagem</button>${email}`;
 }
 

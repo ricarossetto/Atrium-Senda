@@ -32,6 +32,8 @@ assert.match(unitDetail, /Texto original preservado/);
 assert.match(unitDetail, /Texto oficial\ncom 15 dias sem prazo cadastrado\./);
 assert.match(unitDetail, /Aguardando triagem humana/);
 assert.match(unitDetail, /id="btnCreateTask"/);
+assert.match(unitDetail, /Outras providências/);
+assert.match(unitDetail, /data-detail-action="deadline"/);
 assert.match(unitDetail, /id="btnSendIntimationEmail"/);
 
 const presenterSource = readFileSync(new URL('../js/views/ui-v2/publications-presenter.js', import.meta.url), 'utf8');
@@ -96,6 +98,14 @@ try {
     await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
     await urgentRow.click();
     await page.locator('#view-inbox.publication-detail-open').waitFor();
+
+    await page.locator('.publication-work-menu > summary').click();
+    await page.locator('.publication-work-menu [data-detail-action="deadline"]').click();
+    await page.locator('#modalBackdrop[data-modal-mode="publicationWorkAction"]:not(.hidden)').waitFor();
+    assert.equal(await page.locator('#field-deadline').inputValue(), '', 'Prazo não pode ser inferido do texto da publicação.');
+    assert.equal(await page.locator('#field-fatalDeadline').inputValue(), '', 'Prazo fatal exige confirmação humana expressa.');
+    assert.match(await page.locator('#modalFields').textContent(), /Data não inferida/);
+    await page.locator('#modalCancel').click();
 
     await page.locator('#btnCreateTask').click();
     await page.locator('#modalBackdrop[data-modal-mode="task"]:not(.hidden)').waitFor();

@@ -1,4 +1,4 @@
-import { Store, isoDate } from '../core/store.js';
+import { Store, isoDate, uid } from '../core/store.js';
 import {
   createPublicationsV2Presenter,
   renderPublicationDetail,
@@ -126,7 +126,9 @@ export function createPublicationsFeature({
   formatDate,
   formatDateTime,
   showToast,
+  openModal,
   onOpenTask,
+  onOpenAgenda,
   onOpenProcess,
   onOpenContact,
   onOpenIntimation,
@@ -470,6 +472,16 @@ export function createPublicationsFeature({
         const linkedTasks = (store.state.tasks || []).filter(task => linkedTaskIds.includes(task.id) || task.intimationId === item.id || task.sourceIntimationId === item.id);
         const linkedProcess = resolvePublicationProcess(store.state, item);
         const linkedContact = resolvePublicationContact(store.state, item);
+        const linkedWorkActions = (Array.isArray(item.linkedWorkActions) ? item.linkedWorkActions : []).map(relation => ({
+          ...relation,
+          entity: relation.entityType === 'task'
+            ? (store.state.tasks || []).find(record => record.id === relation.entityId)
+            : relation.entityType === 'agenda'
+              ? (store.state.agenda || []).find(record => record.id === relation.entityId)
+              : relation.entityType === 'process'
+                ? (store.state.processes || []).find(record => record.id === relation.entityId)
+                : (item.workNotes || []).find(record => record.id === relation.entityId)
+        }));
         container.innerHTML = renderPublicationDetail({
           item,
           act,
@@ -477,6 +489,7 @@ export function createPublicationsFeature({
           linkedTasks,
           linkedProcess,
           linkedContact,
+          linkedWorkActions,
           privileged,
           escapeHtml,
           formatDate,
@@ -492,8 +505,15 @@ export function createPublicationsFeature({
             if (task) onOpenTask?.(task);
           });
         });
-        container.querySelector('[data-open-process-id]')?.addEventListener('click', () => onOpenProcess?.(linkedProcess));
+        container.querySelectorAll('[data-open-process-id]').forEach(button => button.addEventListener('click', () => {
+          const process = (store.state.processes || []).find(record => String(record.id) === button.dataset.openProcessId);
+          if (process) onOpenProcess?.(process);
+        }));
         container.querySelector('[data-open-contact-id]')?.addEventListener('click', () => onOpenContact?.(linkedContact));
+        container.querySelectorAll('[data-open-agenda-id]').forEach(button => button.addEventListener('click', () => {
+          const appointment = (store.state.agenda || []).find(record => record.id === button.dataset.openAgendaId);
+          if (appointment) onOpenAgenda?.(appointment);
+        }));
         byId('publicationDetailClose')?.addEventListener('click', () => this.closeDetail());
         getPresenter().syncDetailOpen();
         return;
@@ -626,11 +646,93 @@ export function createPublicationsFeature({
         });
         return;
       }
+      if (['appointment', 'deadline', 'note', 'link'].includes(action)) return this.openWorkActionModal(item, action);
       if (action === 'start-review') return this.applyTreatmentAction(item.id, 'start_review');
       if (action === 'treat') return this.openTreatModal(item);
       if (action === 'discard') return this.openDiscardModal(item);
       if (action === 'reopen') return this.applyTreatmentAction(item.id, 'reopen');
       if (action === 'restore') return this.applyTreatmentAction(item.id, 'restore');
+    },
+
+    openWorkActionModal(item, type) {
+      if (!item?.id || !['appointment', 'deadline', 'note', 'link'].includes(type)) return false;
+      const processes = (store.state.processes || []).slice().sort((a, b) => String(a.number || '').localeCompare(String(b.number || ''), 'pt-BR'));
+      const currentProcess = resolvePublicationProcess(store.state, item);
+      const processField = {
+        name: 'processId',
+        label: type === 'link' ? 'Processo canônico para vincular' : 'Processo relacionado',
+        type: 'select',
+        options: [{ value: '', label: type === 'link' ? 'Selecione um processo' : 'Usar vínculo atual da publicação' }, ...processes.map(process => ({ value: process.id, label: `${process.number || 'Sem número'} · ${process.client || 'Cliente não vinculado'}` }))]
+      };
+      const fields = type === 'appointment'
+        ? [
+            { name: 'title', label: 'Título do compromisso', required: true, full: true },
+            { name: 'date', label: 'Data confirmada', type: 'date', required: true },
+            { name: 'time', label: 'Horário', type: 'time' },
+            processField,
+            { name: 'notes', label: 'Observações internas', type: 'textarea', full: true }
+          ]
+        : type === 'deadline'
+          ? [
+              { name: 'title', label: 'Título do prazo', required: true, full: true },
+              { name: 'deadline', label: 'Data confirmada', type: 'date', required: true, note: 'A data será cadastrada somente após esta confirmação humana.' },
+              { name: 'fatalDeadline', label: 'Prazo fatal (opcional)', type: 'date', note: 'Preencha apenas quando houver conferência jurídica expressa.' },
+              processField,
+              { name: 'notes', label: 'Fundamento / orientação interna', type: 'textarea', full: true }
+            ]
+          : type === 'note'
+            ? [{ name: 'notes', label: 'Nota interna', type: 'textarea', required: true, full: true, note: 'A nota ficará vinculada à publicação e não será enviada ao tribunal.' }]
+            : [processField];
+      const labels = {
+        appointment: ['Novo compromisso', 'Agenda supervisionada'],
+        deadline: ['Cadastrar prazo', 'Confirmação humana obrigatória'],
+        note: ['Adicionar nota', 'Contexto interno da publicação'],
+        link: ['Vincular processo', 'Relação canônica supervisionada']
+      };
+      openModal?.('publicationWorkAction', labels[type][0], labels[type][1], fields, {
+        id: uid('pubwork'),
+        publicationId: item.id,
+        workActionType: type,
+        processId: currentProcess?.id || '',
+        title: type === 'appointment' ? `Compromisso: ${item.title || 'publicação'}` : type === 'deadline' ? `Prazo: ${item.title || 'publicação'}` : ''
+      }, type === 'deadline' ? '<p class="modal-supervision-notice"><strong>Data não inferida.</strong> Confirme pessoalmente a natureza e a contagem do prazo antes de salvar.</p>' : '');
+      return true;
+    },
+
+    async createWorkAction(publicationId, action) {
+      try {
+        const response = await windowRef.fetch(`/api/publications/${encodeURIComponent(publicationId)}/work-actions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': windowRef.KellerAuth?.csrfToken || '' },
+          body: JSON.stringify({ publicationId, revision: store.revision ?? store.state?.revision ?? undefined, action })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 409) {
+          toast(data.message || 'Esta publicação foi atualizada por outro usuário. Recarregue os dados.', 'warning');
+          await onSyncAppState?.();
+          return null;
+        }
+        if (!response.ok || !data.publication || !data.revision) {
+          toast(data.message || 'Não foi possível criar a providência vinculada.', 'error');
+          return null;
+        }
+        if (data.collection && data.entity && Array.isArray(store.state[data.collection])) {
+          const index = store.state[data.collection].findIndex(record => record.id === data.entity.id);
+          if (index >= 0) store.state[data.collection][index] = data.entity;
+          else store.state[data.collection].unshift(data.entity);
+        }
+        const publicationIndex = store.state.intimations.findIndex(record => record.id === data.publication.id || record.externalId === data.publication.id);
+        if (publicationIndex >= 0) store.state.intimations[publicationIndex] = data.publication;
+        store.revision = data.revision;
+        this.renderInbox();
+        this.renderMetrics();
+        onRenderGlobalMetrics?.();
+        this.renderDetail();
+        return data;
+      } catch {
+        toast('Não foi possível criar a providência vinculada.', 'error');
+        return null;
+      }
     },
 
     async createTaskFromPublication(publicationId, task) {

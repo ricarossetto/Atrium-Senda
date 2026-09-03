@@ -32,6 +32,7 @@ import { RegistryService } from './lib/registry/registry-service.mjs';
 import { createRegistryHttpHandler } from './lib/http/registry-routes.mjs';
 import { TjrsSidecarClient } from './lib/judicial/tjrs-sidecar-client.mjs';
 import { createTjrsSidecarHttpHandler } from './lib/http/tjrs-sidecar-routes.mjs';
+import { applyPublicationWorkAction } from './lib/publications/publication-workflow.mjs';
 import {
   apiContractHeaders,
   buildApiMetadata,
@@ -3089,6 +3090,47 @@ const server = http.createServer(async (req, res) => {
         intimation: item,
         revision: saved.revision,
         message: 'Tarefa criada e vinculada à publicação com sucesso.'
+      });
+    }
+
+    // Providências operacionais explícitas e rastreáveis originadas em publicação.
+    if (req.method === 'POST' && url.pathname.startsWith('/api/publications/') && url.pathname.endsWith('/work-actions')) {
+      const session = assertAuthenticated(req, true);
+      if (session.status === 'pending' || session.status === 'inactive') {
+        throw Object.assign(new Error('Usuário inativo ou com cadastro pendente.'), { statusCode: 403 });
+      }
+      const parts = url.pathname.split('/');
+      const publicationId = parts.length === 5 ? decodeURIComponent(parts[3] || '').trim() : '';
+      if (!publicationId) throw Object.assign(new Error('ID da publicação não informado.'), { statusCode: 400 });
+      const body = await readJson(req, 250_000);
+      if (body.publicationId && String(body.publicationId).trim() !== publicationId) {
+        throw Object.assign(new Error('ID da publicação divergente.'), { statusCode: 400 });
+      }
+      const envelope = await readAppStateEnvelope();
+      if (!body.revision || body.revision !== envelope.revision) {
+        throw Object.assign(new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'), { statusCode: 409 });
+      }
+      if (!envelope.state) throw Object.assign(new Error('O estado local ainda não foi inicializado.'), { statusCode: 409 });
+      const result = applyPublicationWorkAction(envelope.state, publicationId, body.action, {
+        actorName: session.displayName || session.username,
+        nowIso: new Date().toISOString()
+      });
+      if (result.idempotent) {
+        return json(res, 200, {
+          ok: true,
+          readOnlyJudicial: true,
+          ...result,
+          revision: envelope.revision,
+          message: 'Esta providência já está vinculada à publicação.'
+        });
+      }
+      const saved = await saveAppStateDirect(envelope.state, envelope.revision);
+      return json(res, 201, {
+        ok: true,
+        readOnlyJudicial: true,
+        ...result,
+        revision: saved.revision,
+        message: 'Providência criada e vinculada à publicação.'
       });
     }
 

@@ -474,7 +474,9 @@ import { createTasksFeature } from './features/tasks.js';
       formatDate,
       formatDateTime,
       showToast: (message, type) => App.toast(message, type),
+      openModal: (...args) => App.openModal(...args),
       onOpenTask: task => App.openTaskModal(task),
+      onOpenAgenda: appointment => App.openAgendaModal(appointment),
       onOpenProcess: process => {
         if (!process?.id) return;
         getPublicationsFeature().closeDetail({ restoreFocus: false });
@@ -1367,6 +1369,18 @@ import { createTasksFeature } from './features/tasks.js';
           return;
         }
         getTasksFeature().saveTask(data, this.modalMode.defaults);
+      } else if (this.modalMode.mode === 'publicationWorkAction') {
+        const defaults = this.modalMode.defaults;
+        const result = await getPublicationsFeature().createWorkAction(defaults.publicationId, {
+          ...data,
+          id: defaults.id,
+          type: defaults.workActionType
+        });
+        if (!result) return;
+        this.closeModal();
+        this.renderAll();
+        this.toast(result.message || 'Providência criada e vinculada à publicação.', 'success');
+        return;
       } else if (this.modalMode.mode === 'intimation') {
         const editing = Boolean(this.modalMode.defaults.id);
         const primaryTerm = Store.state.terms.find(term => term.primary) || Store.state.terms[0];
