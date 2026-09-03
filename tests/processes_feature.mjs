@@ -35,6 +35,7 @@ const fakeElements = {
 };
 const unitAudits = [];
 const unitStore = {
+  revision: 'unit-revision-1',
   state: {
     processes: [{ id: 'unit-process', number: '5000000-00.2026.8.21.0001', courtUnit: 'Vara Unitária' }],
     configuration: { actionTypes: [], actionGroups: [] }
@@ -50,8 +51,6 @@ const unitStore = {
 let unitOpenCount = 0;
 const unitRenders = [];
 const unitToasts = [];
-const unitCopies = [];
-const unitExternalOpens = [];
 const unitRequests = [];
 const unitFeature = createProcessesFeature({
   store: unitStore,
@@ -67,10 +66,16 @@ const unitFeature = createProcessesFeature({
   showToast: (message, type) => unitToasts.push({ message, type }),
   secureFetch: async (url, options) => {
     unitRequests.push({ url, options });
-    return { json: async () => ({ ok: true, buscaUrl: 'https://tjrs.example.test/busca', message: 'Busca unitária aberta.' }) };
+    return {
+      ok: true,
+      json: async () => ({
+        ok: true,
+        revision: 'unit-revision-2',
+        process: { ...unitStore.state.processes[0], lastMovement: 'Snapshot unitário' },
+        message: 'Snapshot unitário incorporado.'
+      })
+    };
   },
-  openExternalUrl: (...args) => unitExternalOpens.push(args),
-  copyToClipboard: async value => { unitCopies.push(value); },
   getLinkedTasks: () => [],
   getLinkedIntimations: () => [],
   isTerminalStatus: status => status === 'concluida'
@@ -114,19 +119,19 @@ assert.equal(unitEdited.feeMonthly, 400);
 assert.equal(unitEdited.secrecy, false);
 assert.deepEqual(unitAudits.at(-1), { action: 'Processo atualizado', detail: '5001111-00.2026.8.21.0001 · Cliente Unitário' });
 
-const unitButton = { dataset: { tjrsConsult: '5000000-00.2026.8.21.0001' }, disabled: false };
+const unitButton = { dataset: { tjrsConsult: '5000000-00.2026.8.21.0001' }, disabled: false, textContent: 'Atualizar TJRS' };
 await unitFeature.consultTjrs(unitButton);
-assert.deepEqual(unitCopies, ['5000000-00.2026.8.21.0001']);
 assert.equal(unitRequests.length, 1);
-assert.equal(unitRequests[0].url, '/api/tjrs/consult');
+assert.equal(unitRequests[0].url, '/api/integrations/tjrs-sidecar/processes/sync');
 assert.equal(unitRequests[0].options.method, 'POST');
-assert.deepEqual(JSON.parse(unitRequests[0].options.body), { processNumber: '5000000-00.2026.8.21.0001', courtUnit: 'Vara Unitária' });
-assert.deepEqual(unitExternalOpens, [['https://tjrs.example.test/busca', '_blank', 'noopener,noreferrer']]);
+assert.deepEqual(JSON.parse(unitRequests[0].options.body), { processId: 'unit-process', processNumber: '5000000-00.2026.8.21.0001', revision: 'unit-revision-1' });
+assert.equal(unitStore.revision, 'unit-revision-2');
+assert.equal(unitStore.state.processes[0].lastMovement, 'Snapshot unitário');
 assert.equal(unitButton.disabled, false);
-assert.deepEqual(unitToasts.at(-1), { message: 'Busca unitária aberta.', type: 'success' });
+assert.equal(unitButton.textContent, 'Atualizar TJRS');
+assert.deepEqual(unitToasts.at(-1), { message: 'Snapshot unitário incorporado.', type: 'success' });
 
 const rejectedToasts = [];
-const rejectedExternalOpens = [];
 const rejectedFeature = createProcessesFeature({
   store: unitStore,
   documentRef: { getElementById: () => null, querySelectorAll: () => [] },
@@ -140,17 +145,14 @@ const rejectedFeature = createProcessesFeature({
   openModal: () => {},
   showToast: (message, type) => rejectedToasts.push({ message, type }),
   secureFetch: async () => { throw new Error('Rede TJRS indisponível'); },
-  openExternalUrl: (...args) => rejectedExternalOpens.push(args),
-  copyToClipboard: async () => {},
   getLinkedTasks: () => [],
   getLinkedIntimations: () => [],
   isTerminalStatus: () => false
 });
-const rejectedButton = { dataset: { tjrsConsult: '5000000-00.2026.8.21.0001' }, disabled: false };
+const rejectedButton = { dataset: { tjrsConsult: '5000000-00.2026.8.21.0001' }, disabled: false, textContent: 'Atualizar TJRS' };
 await rejectedFeature.consultTjrs(rejectedButton);
 assert.equal(rejectedButton.disabled, false, 'Botão TJRS deve ser restaurado após rejeição de rede.');
-assert.deepEqual(rejectedExternalOpens, [], 'Rejeição TJRS não pode navegar.');
-assert.deepEqual(rejectedToasts.at(-1), { message: 'Falha na consulta ao tribunal: Rede TJRS indisponível', type: 'error' });
+assert.deepEqual(rejectedToasts.at(-1), { message: 'Falha ao consultar o coletor TJRS local: Rede TJRS indisponível', type: 'error' });
 
 const disposableNumber = '5009999-99.2026.8.21.0001';
 const disposableProcess = { id: 'process-disposable', externalId: 'datajud:process-disposable', number: disposableNumber, client: 'Cliente Descartável', source: 'DataJud / CNJ', movements: [{ code: '1', name: 'Movimento', at: '2026-09-01T00:00:00.000Z' }] };
@@ -309,7 +311,7 @@ try {
     '5001234-56.2026.8.21.0001', 'Segredo de justiça', 'PASTA-TESTE', 'NB 000.000.000-0',
     'Autor(a)', 'Cliente Processo Modular', 'Parte Contrária Sintética', '30% êxito', 'pendente',
     'TJRS', 'Ação Sintética', 'Conhecimento', 'Instrução', 'Risco Médio', 'eproc',
-    'Despacho sintético disponibilizado', 'Monitorando', 'Consultar TJRS'
+    'Despacho sintético disponibilizado', 'Monitorando', 'Atualizar TJRS'
   ]) assert.ok(tjrsText.includes(expected), `Tabela deve preservar semanticamente: ${expected}`);
   assert.equal(await page.locator('#processTableBody [data-process-id="process-federal"] [data-tjrs-consult]').count(), 0);
 
@@ -379,18 +381,35 @@ try {
   let releaseRequest;
   let requestStartedResolve;
   let requestStarted = new Promise(resolve => { requestStartedResolve = resolve; });
-  await page.route('**/api/tjrs/consult', async route => {
+  const tjrsRevision = await page.evaluate(() => window.Atrium.Store.revision);
+  await page.route('**/api/integrations/tjrs-sidecar/processes/sync', async route => {
     requestCount++;
     requestMethod = route.request().method();
     requestPayload = route.request().postDataJSON();
     requestStartedResolve();
     if (tjrsMode === 'success') await new Promise(resolve => { releaseRequest = resolve; });
     await route.fulfill({
-      status: 200,
+      status: tjrsMode === 'success' ? 200 : 503,
       contentType: 'application/json',
       body: JSON.stringify(tjrsMode === 'success'
-        ? { ok: true, directUrl: 'https://tjrs.example.test/consulta', message: 'Consulta sintética aberta.' }
-        : { ok: false, message: 'Falha sintética controlada.' })
+        ? {
+            ok: true,
+            revision: tjrsRevision,
+            message: 'Snapshot sintético incorporado.',
+            process: {
+              id: 'process-tjrs', number: '5001234-56.2026.8.21.0001', oldNumber: '001/1.26.0000001-0',
+              protocol: 'PROTOCOLO-TJRS', nb: '000.000.000-0', client: 'Cliente Processo Modular',
+              clientPosition: 'Autor(a)', opposingParty: 'Parte Contrária Sintética', court: 'TJRS',
+              county: 'Comarca Sintética', courtUnit: '1ª Vara Cível Sintética', actionGroup: 'Cível',
+              actionType: 'Ação Sintética', judicialPhase: 'Conhecimento', stage: 'Instrução', risk: 'possivel',
+              monitoring: 'active', responsible: 'Advogada Processos', caseFolder: 'PASTA-TESTE', secrecy: true,
+              feeType: 'exito', feePercentage: 30, feeStatus: 'pendente', source: 'eproc',
+              registeredAt: '2026-08-20', createdAt: '2026-08-20T10:00:00.000Z',
+              lastMovement: 'Snapshot sintético incorporado', lastMovementAt: '2026-09-03T10:00:00.000Z',
+              movements: [{ eventNumber: 10, date: '2026-09-03T10:00:00.000Z', description: 'Snapshot sintético incorporado', source: 'TJRS_PUBLIC' }]
+            }
+          }
+        : { ok: false, state: 'UNAVAILABLE', message: 'Falha sintética controlada.' })
     });
   });
   await page.evaluate(() => {
@@ -404,12 +423,13 @@ try {
   assert.equal(await consultButton.isDisabled(), true, 'Botão TJRS deve ficar desabilitado durante request.');
   releaseRequest();
   await successClick;
-  await page.locator('#toastRegion .toast.success', { hasText: 'Consulta sintética aberta.' }).waitFor();
+  await page.locator('#toastRegion .toast.success', { hasText: 'Snapshot sintético incorporado.' }).waitFor();
   assert.equal(requestCount, 1);
   assert.equal(requestMethod, 'POST');
-  assert.deepEqual(requestPayload, { processNumber: '5001234-56.2026.8.21.0001', courtUnit: '1ª Vara Cível Sintética' });
+  assert.deepEqual(requestPayload, { processId: 'process-tjrs', processNumber: '5001234-56.2026.8.21.0001', revision: tjrsRevision });
   assert.equal(await consultButton.isDisabled(), false, 'Botão TJRS deve ser restaurado após request.');
-  assert.deepEqual(await page.evaluate(() => window.__processOpenCalls), [['https://tjrs.example.test/consulta', '_blank', 'noopener,noreferrer']]);
+  assert.equal(await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.id === 'process-tjrs').lastMovement), 'Snapshot sintético incorporado');
+  assert.deepEqual(await page.evaluate(() => window.__processOpenCalls), []);
 
   tjrsMode = 'failure';
   requestStarted = new Promise(resolve => { requestStartedResolve = resolve; });
@@ -417,7 +437,7 @@ try {
   await page.locator('#toastRegion .toast.error', { hasText: 'Falha sintética controlada.' }).waitFor();
   assert.equal(requestCount, 2, 'Cada clique explícito deve gerar exatamente um request TJRS.');
   assert.equal(await consultButton.isDisabled(), false, 'Botão TJRS deve ser restaurado após resposta de falha.');
-  assert.equal((await page.evaluate(() => window.__processOpenCalls)).length, 1, 'Falha TJRS não pode navegar.');
+  assert.equal((await page.evaluate(() => window.__processOpenCalls)).length, 0, 'Falha TJRS não pode navegar.');
 
   const reauthenticatedOpenCount = await page.evaluate(() => {
     const app = window.portalApp;

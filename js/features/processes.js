@@ -15,8 +15,6 @@ export function createProcessesFeature({
   openModal,
   showToast,
   secureFetch,
-  openExternalUrl,
-  copyToClipboard,
   getLinkedTasks,
   getLinkedIntimations,
   isTerminalStatus,
@@ -150,7 +148,7 @@ export function createProcessesFeature({
 
         const nbChip = item.nb ? `<span class="nb-chip" title="Número do Benefício INSS">NB ${escapeHtml(item.nb)}</span>` : '';
         const riskChip = item.risk ? `<span class="risk-chip ${item.risk === 'remoto' ? 'remoto' : item.risk === 'possivel' ? 'possivel' : 'provavel'}" title="Probabilidade de Êxito">${item.risk === 'remoto' ? 'Risco Alto' : item.risk === 'possivel' ? 'Risco Médio' : 'Êxito Provável'}</span>` : '';
-        const tjrsButton = canConsultTjrs(item) ? `<button type="button" class="btn-tjrs-consult" data-tjrs-consult="${escapeHtml(item.number)}" title="Consultar andamentos no microserviço oficial do TJRS">${iconSvg('court')}Consultar TJRS</button>` : '';
+        const tjrsButton = canConsultTjrs(item) ? `<button type="button" class="btn-tjrs-consult" data-tjrs-consult="${escapeHtml(item.number)}" title="Importar o último snapshot disponível no coletor TJRS local">${iconSvg('court')}Atualizar TJRS</button>` : '';
 
         const clientPosition = item.clientPosition ? `<small style="color:var(--gold-soft);">${escapeHtml(item.clientPosition)}</small> ` : '';
         const opposingParty = item.opposingParty ? `<small> vs ${escapeHtml(item.opposingParty)}</small>` : '';
@@ -266,30 +264,43 @@ export function createProcessesFeature({
     async consultTjrs(button) {
       const processNumber = button.dataset.tjrsConsult;
       const process = store.state.processes.find(item => item.number === processNumber);
+      if (!process?.id) {
+        showToast?.('Processo local não encontrado para atualização.', 'error');
+        return false;
+      }
 
-      try {
-        await copyToClipboard?.(processNumber);
-      } catch {}
-
-      showToast?.(`Abrindo consulta oficial do processo ${processNumber}…`);
+      const originalLabel = button.textContent;
+      const inspectorWasOpen = Boolean(byId('processInspectorBackdrop') && !byId('processInspectorBackdrop').classList.contains('hidden'));
+      showToast?.(`Consultando o último snapshot local do TJRS para ${processNumber}…`);
       button.disabled = true;
+      button.textContent = 'Atualizando…';
       try {
-        const response = await secureFetch('/api/tjrs/consult', {
+        const response = await secureFetch('/api/integrations/tjrs-sidecar/processes/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ processNumber, courtUnit: process?.courtUnit })
+          body: JSON.stringify({ processId: process.id, processNumber, revision: store.revision })
         });
-        const result = await response.json();
-        if (result.ok && (result.directUrl || result.buscaUrl)) {
-          openExternalUrl?.(result.directUrl || result.buscaUrl, '_blank', 'noopener,noreferrer');
-          showToast?.(result.message || 'Consulta aberta no portal do tribunal.', 'success');
-        } else {
-          showToast?.(result.message || 'Não foi possível obter o link do tribunal.', 'error');
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok || !result.process) {
+          showToast?.(result.message || 'Não foi possível ler o snapshot local do TJRS.', 'error');
+          return false;
         }
+        const index = store.state.processes.findIndex(item => item.id === process.id);
+        if (index >= 0) store.state.processes[index] = result.process;
+        store.revision = result.revision || store.revision;
+        this.render(byId('processSearch')?.value || '');
+        if (inspectorWasOpen && index >= 0) {
+          const updated = store.state.processes[index];
+          getPresenter().open(updated, getProcessSummary(updated), null);
+        }
+        showToast?.(result.message || 'Snapshot local do TJRS incorporado ao processo.', 'success');
+        return true;
       } catch (error) {
-        showToast?.(`Falha na consulta ao tribunal: ${error.message}`, 'error');
+        showToast?.(`Falha ao consultar o coletor TJRS local: ${error.message}`, 'error');
+        return false;
       } finally {
         button.disabled = false;
+        button.textContent = originalLabel;
       }
     },
 

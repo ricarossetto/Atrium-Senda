@@ -30,6 +30,8 @@ import { DocumentIntelligenceService } from './lib/documents/document-intelligen
 import { SearchIndex, parseDefaultPromptsSource } from './lib/search-index.mjs';
 import { RegistryService } from './lib/registry/registry-service.mjs';
 import { createRegistryHttpHandler } from './lib/http/registry-routes.mjs';
+import { TjrsSidecarClient } from './lib/judicial/tjrs-sidecar-client.mjs';
+import { createTjrsSidecarHttpHandler } from './lib/http/tjrs-sidecar-routes.mjs';
 import {
   apiContractHeaders,
   buildApiMetadata,
@@ -118,6 +120,15 @@ await documentStorage.init();
 const documentIntelligence = new DocumentIntelligenceService();
 const registryService = new RegistryService();
 const handleRegistryRequest = createRegistryHttpHandler({ service: registryService, assertAuthenticated, json });
+const tjrsSidecarClient = new TjrsSidecarClient();
+const handleTjrsSidecarRequest = createTjrsSidecarHttpHandler({
+  client: tjrsSidecarClient,
+  assertAuthenticated,
+  readJson,
+  readStateEnvelope: readAppStateEnvelope,
+  saveState: saveAppStateDirect,
+  json
+});
 let defaultSearchPrompts = [];
 try {
   defaultSearchPrompts = parseDefaultPromptsSource(await readFile(path.join(ROOT, 'js', 'prompts-data.js'), 'utf8'));
@@ -2134,6 +2145,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (await handleRegistryRequest(req, res, url)) return;
+    if (await handleTjrsSidecarRequest(req, res, url)) return;
 
     if (req.method === 'POST' && url.pathname === '/api/tjrs/consult') {
       assertAuthenticated(req);

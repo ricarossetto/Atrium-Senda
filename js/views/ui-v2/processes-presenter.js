@@ -268,6 +268,8 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
     ${renderMovements(summary.movements || [], item, escapeHtml, formatDate)}
   </section>
 
+  ${renderJudicialContext(item, escapeHtml, formatDate)}
+
   <section class="process-inspector-section" aria-labelledby="processPublicationsHeading">
     <h3 id="processPublicationsHeading">Publicações vinculadas</h3>
     ${renderLinkedPublications(summary.linkedIntimationRecords || [], escapeHtml, formatDate)}
@@ -327,6 +329,38 @@ function renderMovements(movements, item, escapeHtml, formatDate) {
   const records = movements.length ? movements : (item.lastMovement ? [{ description: item.lastMovement, date: item.lastMovementAt }] : []);
   if (!records.length) return '<p class="process-inspector-empty">Nenhuma movimentação cadastrada.</p>';
   return `<ol class="process-movement-list">${records.slice().sort((a, b) => String(b.date || b.occurredAt || '').localeCompare(String(a.date || a.occurredAt || ''))).map(movement => `<li><time>${escapeHtml(formatDate(movement.date || movement.occurredAt || movement.createdAt))}</time><p>${escapeHtml(movement.description || movement.text || movement.name || 'Movimentação sem descrição')}</p></li>`).join('')}</ol>`;
+}
+
+function renderJudicialContext(item, escapeHtml, formatDate) {
+  const parties = Array.isArray(item.judicialParties) ? item.judicialParties : [];
+  const collector = item.tjrsCollector;
+  if (!parties.length && !collector) return '';
+  const partyList = parties.length
+    ? `<div class="process-linked-list process-judicial-parties">${parties.map(party => {
+        const lawyers = (Array.isArray(party.lawyers) ? party.lawyers : [])
+          .map(lawyer => unique([lawyer.name, lawyer.oabNumber ? `OAB ${lawyer.oabUf || ''} ${lawyer.oabNumber}` : '']).join(' · '))
+          .filter(Boolean)
+          .join('; ');
+        return `<div><strong>${escapeHtml(party.name || 'Parte sem nome')}</strong><span>${escapeHtml(unique([party.role, lawyers]).join(' · '))}</span></div>`;
+      }).join('')}</div>`
+    : '<p class="process-inspector-empty">O snapshot não contém partes identificadas.</p>';
+  const diff = collector?.diff;
+  const collectorMeta = collector
+    ? `<dl class="process-metadata-grid process-collector-metadata">
+        ${definition('Estado do conector', collector.status === 'AVAILABLE' ? 'Disponível' : collector.status, escapeHtml)}
+        ${definition('Sistema', collector.system, escapeHtml)}
+        ${definition('Última coleta', formatDate(collector.syncedAt), escapeHtml)}
+        ${definition('Versão do coletor', collector.collectorVersion, escapeHtml)}
+        ${definition('Snapshots locais', collector.snapshotsCount, escapeHtml)}
+        ${definition('Novos andamentos', diff?.newMovements, escapeHtml)}
+      </dl>`
+    : '';
+  return `<section class="process-inspector-section" aria-labelledby="processJudicialHeading">
+    <h3 id="processJudicialHeading">Contexto judicial coletado</h3>
+    ${collectorMeta}
+    ${partyList}
+    <p class="process-inspector-note">Leitura local e somente consulta. O vínculo do cliente continua sob controle do escritório.</p>
+  </section>`;
 }
 
 function riskPresentation(value) {

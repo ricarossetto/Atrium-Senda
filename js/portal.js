@@ -516,8 +516,6 @@ import { createTasksFeature } from './features/tasks.js';
       openModal: (...args) => App.openModal(...args),
       showToast: (message, type) => App.toast(message, type),
       secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
-      openExternalUrl: (...args) => window.open(...args),
-      copyToClipboard: value => navigator.clipboard.writeText(value),
       getLinkedTasks: processNumber => Store.state.tasks.filter(task => processNumber && String(task.process || '').trim() === processNumber),
       getLinkedIntimations: processNumber => Store.state.intimations.filter(item => processNumber && String(item.process || '').trim() === processNumber),
       isTerminalStatus: status => TERMINAL_STATUSES.includes(status),
