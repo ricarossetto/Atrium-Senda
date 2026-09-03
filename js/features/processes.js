@@ -36,6 +36,7 @@ export function createProcessesFeature({
   const byId = id => documentRef?.getElementById(id);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
   let processesPresenter;
+  let pendingTjrsDraft = null;
 
   const getPresenter = () => {
     processesPresenter ||= createProcessesV2Presenter({
@@ -318,6 +319,7 @@ export function createProcessesFeature({
     },
 
     openProcessModal(defaults = {}) {
+      pendingTjrsDraft = null;
       const actionTypes = (store.state.configuration?.actionTypes || []).map(item => ({ value: item.name, label: item.name }));
       const actionGroups = (store.state.configuration?.actionGroups || []).map(item => ({ value: item.name, label: item.name }));
       const summary = getProcessSummary(defaults);
@@ -331,6 +333,12 @@ export function createProcessesFeature({
         </div>
         <p><b>Último andamento:</b> ${escapeHtml(defaults.lastMovement || 'Ainda não informado.')} ${defaults.lastMovementAt ? `· ${formatDate(defaults.lastMovementAt)}` : ''}</p>
       </section>` : '';
+
+      const tjrsAssistHtml = defaults.id ? '' : `<section class="process-tjrs-assist" aria-labelledby="processTjrsAssistHeading">
+        <div><span>Cadastro assistido</span><strong id="processTjrsAssistHeading">Consultar snapshot local por CNJ</strong><p>Preenche somente dados judiciais disponíveis. Cliente e posição processual continuam sob sua revisão.</p></div>
+        <button type="button" class="button ghost" id="processTjrsPreview">Consultar dados locais</button>
+        <div class="process-tjrs-preview-status" id="processTjrsPreviewStatus" aria-live="polite">Informe um CNJ do TJRS no campo abaixo.</div>
+      </section>`;
 
       openModal?.('process', defaults.id ? 'Detalhes do processo' : 'Cadastrar processo', 'Carteira processual', [
         { name: 'number', label: 'Número CNJ', full: true, placeholder: '0000000-00.0000.8.21.0000' },
@@ -376,11 +384,58 @@ export function createProcessesFeature({
         registeredAt: defaults.registeredAt || (defaults.createdAt ? defaults.createdAt.slice(0, 10) : isoDate()),
         ...defaults,
         secrecy: String(Boolean(defaults.secrecy))
-      }, summaryHtml);
+      }, `${summaryHtml}${tjrsAssistHtml}`);
+      byId('processTjrsPreview')?.addEventListener('click', event => this.previewTjrsDraft(event.currentTarget));
+    },
+
+    async previewTjrsDraft(button) {
+      const processNumber = byId('field-number')?.value?.trim() || '';
+      const status = byId('processTjrsPreviewStatus');
+      if (!processNumber) {
+        if (status) status.textContent = 'Informe primeiro o número CNJ do processo.';
+        byId('field-number')?.focus();
+        return false;
+      }
+      const originalLabel = button?.textContent || 'Consultar dados locais';
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Consultando…';
+      }
+      if (status) status.textContent = 'Consultando o snapshot já disponível no collector local…';
+      try {
+        const response = await secureFetch('/api/integrations/tjrs-sidecar/processes/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ processNumber })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok || !result.draft) {
+          if (status) status.textContent = result.message || 'Nenhum snapshot local pôde ser carregado.';
+          return false;
+        }
+        pendingTjrsDraft = structuredClone(result.draft);
+        fillAssistedProcessFields(result.draft, { documentRef, today: isoDate() });
+        const parties = Array.isArray(result.draft.judicialParties) ? result.draft.judicialParties : [];
+        if (status) status.innerHTML = `<strong>Dados judiciais carregados para revisão.</strong><span>${escapeHtml(result.draft.court || 'TJRS')} · ${escapeHtml(result.draft.actionType || 'Classe não informada')} · ${escapeHtml(String(parties.length))} parte(s) · ${escapeHtml(String(result.summary?.movements || 0))} andamento(s).</span><small>Nenhuma parte foi definida automaticamente como cliente.</small>`;
+        if (button) button.textContent = 'Consultar novamente';
+        showToast?.(result.message || 'Dados judiciais carregados para revisão.', 'success');
+        return true;
+      } catch (error) {
+        if (status) status.textContent = `Collector local indisponível: ${error.message}`;
+        return false;
+      } finally {
+        if (button) {
+          button.disabled = false;
+          if (button.textContent === 'Consultando…') button.textContent = originalLabel;
+        }
+      }
     },
 
     saveProcess(data, defaults = {}) {
       const editing = Boolean(defaults.id);
+      const assistedDraft = !editing && pendingTjrsDraft && normalizeCnj(pendingTjrsDraft.number) === normalizeCnj(data.number)
+        ? structuredClone(pendingTjrsDraft)
+        : {};
       const parseOptionalNumber = (value, { percentage = false } = {}) => {
         if (value === '' || value === null || value === undefined) return null;
         const number = Number(value);
@@ -397,9 +452,10 @@ export function createProcessesFeature({
       }
       const record = {
         id: defaults.id || uid('proc'),
-        source: defaults.source || 'Interna',
+        source: defaults.source || assistedDraft.source || 'Interna',
         lastMovement: 'Cadastro manual',
         lastMovementAt: isoDate(),
+        ...assistedDraft,
         ...defaults,
         ...data,
         feePercentage,
@@ -411,11 +467,44 @@ export function createProcessesFeature({
       };
       store.upsert('processes', record);
       store.audit(editing ? 'Processo atualizado' : 'Processo cadastrado', `${record.number || record.protocol || 'sem número'} · ${record.client}${record.feeType ? ` · ${record.feeType}` : ''}`);
+      pendingTjrsDraft = null;
       return record;
     }
   };
 
   return feature;
+}
+
+export function fillAssistedProcessFields(draft, { documentRef = globalThis.document, today = isoDate() } = {}) {
+  if (!draft || !documentRef) return false;
+  const values = {
+    number: draft.number,
+    court: draft.court,
+    county: draft.county,
+    courtUnit: draft.courtUnit,
+    actionType: draft.actionType,
+    registeredAt: String(draft.registeredAt || '').slice(0, 10),
+    lastMovementAt: String(draft.lastMovementAt || '').slice(0, 10),
+    lastMovement: draft.lastMovement
+  };
+  for (const [name, value] of Object.entries(values)) {
+    if (value === undefined || value === null || String(value).trim() === '') continue;
+    const field = documentRef.getElementById(`field-${name}`);
+    if (!field) continue;
+    const mayReplace = !String(field.value || '').trim() || name === 'number' || (name === 'registeredAt' && field.value === today);
+    if (!mayReplace) continue;
+    if (field.tagName === 'SELECT' && ![...field.options].some(option => option.value === String(value))) {
+      const option = documentRef.createElement('option');
+      option.value = String(value);
+      option.textContent = String(value);
+      field.append(option);
+    }
+    field.value = String(value);
+    field.dispatchEvent?.(new Event('change', { bubbles: true }));
+  }
+  const secrecy = documentRef.getElementById('field-secrecy');
+  if (secrecy && draft.secrecy === true) secrecy.value = 'true';
+  return true;
 }
 
 function processSuppressions(state) {

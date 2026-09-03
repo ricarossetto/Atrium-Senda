@@ -691,6 +691,29 @@ html[data-ui="v2"] .process-summary-metrics div {
   border-color: var(--v2-color-border);
 }
 
+html[data-ui="v2"] .process-tjrs-assist {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--v2-space-3);
+  margin-bottom: var(--v2-space-4);
+  padding: var(--v2-space-4);
+  border: 1px solid var(--v2-color-border-strong);
+  border-radius: var(--v2-radius-lg);
+  background: color-mix(in srgb, var(--v2-color-primary-subtle) 48%, var(--v2-color-surface-elevated));
+}
+
+html[data-ui="v2"] .process-tjrs-assist span,
+html[data-ui="v2"] .process-tjrs-assist strong,
+html[data-ui="v2"] .process-tjrs-assist p,
+html[data-ui="v2"] .process-tjrs-preview-status > * { display: block; }
+html[data-ui="v2"] .process-tjrs-assist span { color: var(--v2-color-gold); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+html[data-ui="v2"] .process-tjrs-assist strong { margin-top: 2px; color: var(--v2-color-foreground); font-size: 13px; }
+html[data-ui="v2"] .process-tjrs-assist p { margin: 3px 0 0; color: var(--v2-color-foreground-secondary); font-size: 11px; }
+html[data-ui="v2"] .process-tjrs-preview-status { grid-column: 1 / -1; padding-top: var(--v2-space-2); border-top: 1px solid var(--v2-color-border); color: var(--v2-color-foreground-secondary); font-size: 11px; }
+html[data-ui="v2"] .process-tjrs-preview-status span { margin-top: 3px; color: var(--v2-color-foreground); letter-spacing: 0; text-transform: none; }
+html[data-ui="v2"] .process-tjrs-preview-status small { margin-top: 3px; color: var(--v2-color-success); font-weight: 700; }
+
 html[data-ui="v2"] .process-form-sections {
   display: grid;
   gap: var(--v2-space-4);
@@ -835,6 +858,11 @@ html[data-ui="v2"] .process-form-section .form-grid {
   html[data-ui="v2"] .process-empty-row td {
     display: block;
   }
+}
+
+@media (max-width: 600px) {
+  html[data-ui="v2"] .process-tjrs-assist { grid-template-columns: 1fr; }
+  html[data-ui="v2"] .process-tjrs-assist .button { width: 100%; }
 }
 
 @media (max-width: 620px) {

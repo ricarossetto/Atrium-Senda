@@ -1236,7 +1236,9 @@ import { createTasksFeature } from './features/tasks.js';
           const input = document.getElementById('processSearch');
           if (input) input.value = process.number || process.client || '';
           this.renderProcesses(process.number || process.client || '');
-          window.setTimeout(() => document.querySelector(`#processTableBody [data-process-id="${CSS.escape(String(process.id))}"]`)?.click(), 0);
+          if (document.documentElement.dataset.ui === 'v2') {
+            window.setTimeout(() => document.querySelector(`#processTableBody [data-process-id="${CSS.escape(String(process.id))}"]`)?.click(), 0);
+          }
         }
       } else if (target === 'contact') {
         this.switchView('contacts');

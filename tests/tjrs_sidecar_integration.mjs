@@ -156,6 +156,15 @@ const route = createTjrsSidecarHttpHandler({
   json: (res, status, payload) => Object.assign(res, { status, payload })
 });
 const routeResponse = {};
+const previewResponse = {};
+assert.equal(await route({ method: 'POST', body: { processNumber: FORMATTED_CNJ } }, previewResponse, new URL('http://localhost/api/integrations/tjrs-sidecar/processes/preview')), true);
+assert.equal(previewResponse.status, 200);
+assert.equal(previewResponse.payload.readOnly, true);
+assert.equal(previewResponse.payload.draft.number, FORMATTED_CNJ);
+assert.equal(previewResponse.payload.draft.client, '', 'Preview não pode escolher o cliente.');
+assert.equal(previewResponse.payload.draft.source, 'TJRS_PUBLIC');
+assert.equal(previewResponse.payload.draft.judicialParties.length, 2);
+assert.equal(savedState, null, 'Preview não pode persistir estado.');
 assert.equal(await route({ method: 'POST', body: { processId: 'process-1', processNumber: FORMATTED_CNJ, revision: 'revision-1' } }, routeResponse, new URL('http://localhost/api/integrations/tjrs-sidecar/processes/sync')), true);
 assert.equal(routeResponse.status, 200);
 assert.equal(routeResponse.payload.revision, 'revision-2');
@@ -201,6 +210,15 @@ try {
   response = await fetch(`${appServer.baseUrl}/api/integrations/tjrs-sidecar/status`, { headers: { Cookie: auth.cookie } });
   assert.equal(response.status, 200);
   assert.equal((await response.json()).state, 'AVAILABLE');
+
+  response = await postJson(`${appServer.baseUrl}/api/integrations/tjrs-sidecar/processes/preview`, {
+    processNumber: FORMATTED_CNJ
+  }, auth.headers);
+  assert.equal(response.status, 200);
+  const preview = await response.json();
+  assert.equal(preview.draft.client, '');
+  assert.equal(preview.draft.actionType, snapshotPayload.metadata.processClass);
+  assert.equal(preview.draft.judicialParties.some(party => party.role === 'REU'), true);
 
   response = await postJson(`${appServer.baseUrl}/api/integrations/tjrs-sidecar/processes/sync`, {
     processId: manualProcess.id,

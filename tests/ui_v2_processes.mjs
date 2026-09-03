@@ -181,6 +181,62 @@ try {
     assert.match(await page.locator('#processTableBody').textContent(), /Nenhum processo cadastrado/);
     assert.equal(await page.locator('[data-process-create]').isVisible(), true);
 
+    let previewPayload;
+    await page.route('**/api/integrations/tjrs-sidecar/processes/preview', async route => {
+      previewPayload = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          readOnly: true,
+          state: 'AVAILABLE',
+          draft: {
+            number: '5003280-32.2026.8.21.0404',
+            client: '',
+            court: 'TJRS',
+            county: 'Bento Gonçalves',
+            courtUnit: '1ª Vara Federal de Bento Gonçalves',
+            actionType: 'PROCEDIMENTO DO JUIZADO ESPECIAL CÍVEL',
+            registeredAt: '2026-08-12T00:00:00.000Z',
+            lastMovement: 'Intimação eletrônica expedida',
+            lastMovementAt: '2026-09-03T10:00:00.000Z',
+            secrecy: false,
+            monitoring: 'active',
+            source: 'TJRS_PUBLIC',
+            judicialParties: [
+              { name: 'PARTE AUTORA SINTÉTICA', role: 'AUTOR', lawyers: [] },
+              { name: 'PARTE ADVERSA SINTÉTICA', role: 'REU', lawyers: [] }
+            ],
+            movements: [{ eventNumber: 12, date: '2026-09-03T10:00:00.000Z', description: 'Intimação eletrônica expedida', source: 'TJRS_PUBLIC' }],
+            tjrsCollector: { status: 'AVAILABLE', cnj: '50032803220268210404', source: 'TJRS_PUBLIC' }
+          },
+          summary: { parties: 2, movements: 1 },
+          message: 'Snapshot local encontrado. Revise os dados antes de cadastrar o processo.'
+        })
+      });
+    });
+    await page.locator('[data-process-create]').click();
+    await page.locator('#modalBackdrop[data-modal-mode="process"]:not(.hidden)').waitFor();
+    assert.equal(await page.locator('#processTjrsPreview').isVisible(), true);
+    await page.locator('#field-number').fill('5003280-32.2026.8.21.0404');
+    await page.locator('#processTjrsPreview').click();
+    await page.locator('#processTjrsPreviewStatus', { hasText: 'Dados judiciais carregados para revisão.' }).waitFor();
+    assert.deepEqual(previewPayload, { processNumber: '5003280-32.2026.8.21.0404' });
+    assert.equal(await page.locator('#field-court').inputValue(), 'TJRS');
+    assert.equal(await page.locator('#field-actionType').inputValue(), 'PROCEDIMENTO DO JUIZADO ESPECIAL CÍVEL');
+    assert.equal(await page.locator('#field-client').inputValue(), '', 'Parte judicial não pode virar cliente automaticamente.');
+    assert.equal(await page.locator('#field-opposingParty').inputValue(), '', 'Parte adversa não pode ser inferida sem posição humana.');
+    assert.match(await page.locator('#processTjrsPreviewStatus').textContent(), /Nenhuma parte foi definida automaticamente como cliente/);
+    await page.locator('#field-client').fill('Cliente definido após revisão humana');
+    await page.locator('#modalForm button[type="submit"]').click();
+    await page.locator('#modalBackdrop.hidden').waitFor({ state: 'attached' });
+    const assisted = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.number === '5003280-32.2026.8.21.0404'));
+    assert.equal(assisted.client, 'Cliente definido após revisão humana');
+    assert.equal(assisted.source, 'TJRS_PUBLIC');
+    assert.equal(assisted.judicialParties.length, 2);
+    assert.equal(assisted.movements.length, 1);
+
     const probe = await page.evaluate(() => window.__uiV2RuntimeProbe);
     assert.equal(probe.intervals, runtimeBaseline.intervals, 'Processos V2 não pode adicionar timer ao runtime existente.');
     assert.equal(requests.filter(request => request.method === 'GET' && /\/api\/tjrs\/consult/.test(request.url)).length, 0);
