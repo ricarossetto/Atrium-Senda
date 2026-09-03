@@ -12,6 +12,7 @@ As mudanças relevantes do ATRIUM são registradas neste arquivo. O formato segu
 ### Added
 
 - Dashboard operacional, contatos/clientes, CRM, processos, publicações, Kanban, agenda, financeiro, documentos, prompts, assistência por IA, auditoria, notificações, monitoramento, links e configurações.
+- Lançamentos de despesas, custas e reembolsos vinculáveis aos registros financeiros e processuais.
 - Busca global e full-text derivada sobre entidades, documentos/OCR e conteúdo autorizado.
 - Importador de planilhas com prévia e aplicação supervisionada.
 - Temas claro/escuro, layouts responsivos, acessibilidade por teclado e motion reduzível.
@@ -21,6 +22,8 @@ As mudanças relevantes do ATRIUM são registradas neste arquivo. O formato segu
 - Identidade pública e labels correntes consolidados como ATRIUM 2.0.0 Stable.
 - Bootstrap e imagem Docker alinhados a Node.js 24, pnpm 11.19.0 e lockfile congelado.
 - Documentação de instalação, uso, arquitetura, segurança e limitações consolidada para a release.
+- Painéis laterais fecham por clique externo quando não há alterações e pedem confirmação antes de descartar edição pendente.
+- Biblioteca de prompts compactada para quatro cartões por linha em telas amplas, com ações de altura reduzida.
 
 ### Security
 
@@ -32,7 +35,8 @@ As mudanças relevantes do ATRIUM são registradas neste arquivo. O formato segu
 ### Judicial
 
 - Discovery conservador DJEN → CNJ → processo → DataJud → contatos/relação de cliente quando autorizado por dados estruturados.
-- Sessões A1, PJeOffice e TOTP supervisionadas e separadas por portal.
+- Reconciliação de clientes idempotente, com prioridade ao vínculo manual, confiança mínima de 90% e Gemini opcional; advogado e parte contrária não são promovidos a cliente.
+- Sessões A1, PJeOffice e TOTP supervisionadas e separadas por portal, com suporte a múltiplas abas e confirmação somente por evidência positiva de autenticação.
 - Política read-only explícita: sem ciência, assinatura, peticionamento, protocolo, bypass ou confirmação automática de prazo.
 
 ### Documents

@@ -49,12 +49,12 @@ Todas as imagens públicas foram produzidas em runtime isolado com dados fictíc
 | Dashboard | Visão operacional, indicadores, agenda, publicações e prioridades do escritório |
 | Processos | Cadastro CNJ, partes, classe, assunto, órgão, movimentos e navegação cruzada |
 | Publicações e intimações | Leitura integral, não lida/lida, triagem, tratamento e criação explícita de tarefa |
-| Contatos e clientes | Cadastro único por papéis, relacionamento, enriquecimento supervisionado e vínculos |
+| Contatos e clientes | Cadastro único por papéis, vínculos manuais prioritários e reconciliação supervisionada opcional |
 | CRM e oportunidades | Atendimento, etapas, responsável, origem e associação a contato canônico |
 | Tarefas e Kanban | Fluxo visual, responsáveis, datas, apontamentos e vínculo com processo/publicação |
 | Agenda | Compromissos, tarefas, prazos confirmados e calendário externo opcional |
 | Documentos | Minutas, acervo privado, upload/download, preview, OCR local e extração de texto |
-| Financeiro | Honorários, RPV/alvarás, valores, status e vínculos processuais |
+| Financeiro | Honorários, despesas/custas, reembolsos, RPV/alvarás, status e vínculos processuais |
 | Busca global | `Ctrl+K`/`Cmd+K` sobre entidades e conteúdo textual indexável |
 | Notificações | Pendências reais do workspace e navegação para o item de origem |
 | Auditoria | Registro de ações relevantes, filtros e exportação local |
@@ -70,7 +70,7 @@ Todas as imagens públicas foram produzidas em runtime isolado com dados fictíc
 
 O número CNJ identifica o processo canônico quando disponível. O registro pode reunir classe, assunto, tribunal, comarca, unidade, partes, cliente/contato, movimentos, tarefas, publicações e documentos. A navegação cruzada abre a mesma entidade relacionada: o cliente exibido leva ao contato canônico, e tarefas e movimentos permanecem associados ao processo.
 
-Dados locais curados têm precedência sobre enriquecimentos externos. Sincronizações não devem apagar silenciosamente informações significativas registradas pelo usuário.
+Dados locais curados têm precedência sobre enriquecimentos externos. Sincronizações não devem apagar silenciosamente informações significativas registradas pelo usuário. Vínculos manuais de cliente sempre prevalecem; a reconciliação assistida só propõe vínculo com confiança mínima de 90%, não transforma advogado ou parte contrária em cliente e funciona sem Gemini, encaminhando ambiguidades para revisão humana.
 
 ## Publicações e intimações
 
@@ -91,7 +91,7 @@ Se o DataJud não localizar um processo, os dados básicos provenientes do DJEN 
 
 ## Integrações judiciais supervisionadas
 
-O ATRIUM suporta certificado A1, PJeOffice, TOTP, sessões interativas/supervisionadas e conectividade gerenciada. As operações admitidas são autenticação, verificação de saúde, descoberta, leitura de publicações e consulta de movimentos.
+O ATRIUM suporta certificado A1, PJeOffice, TOTP, sessões interativas/supervisionadas e conectividade gerenciada. A sessão assistida acompanha múltiplas abas e somente considera o login concluído diante de evidência positiva fornecida pelo portal; a janela visível continua sob controle humano. As operações admitidas são autenticação, verificação de saúde, descoberta, leitura de publicações e consulta de movimentos.
 
 O ATRIUM **não** dá ciência, assina, peticiona, protocola, confirma prazo jurídico automaticamente, contorna CAPTCHA ou contorna 2FA. Portais podem exigir login, consentimento, TOTP, CAPTCHA ou outra ação humana. Consulte [Instalação — integrações judiciais](docs/INSTALLATION.md#11-a1-pjeoffice-e-totp) e [Política judicial read-only](specs/judicial-readonly-policy.md).
 

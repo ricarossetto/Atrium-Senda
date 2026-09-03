@@ -43,14 +43,15 @@ try {
 
   await page.locator('#newFinancialEntryButton').click();
   await page.locator('#finProcessSelect').selectOption('fin-target-custas');
-  await page.locator('#finTypeSelect').selectOption('custas');
+  await page.locator('#finTypeSelect').selectOption('despesa');
   await page.locator('#finGrossInput').fill('100');
+  await page.locator('#finDescriptionInput').fill('Custa processual sintética');
   await page.locator('#financialEntryForm button[type="submit"]').click();
-  const errorToast = page.locator('#toastRegion .toast.error').last();
-  await errorToast.waitFor();
-  assert.match(await errorToast.textContent(), /Nenhum dado foi alterado/);
+  await page.locator('#financialEntryBackdrop').waitFor({ state: 'hidden' });
+  const successToast = page.locator('#toastRegion .toast.success').last();
+  await successToast.waitFor();
+  assert.match(await successToast.textContent(), /salvo com sucesso/i);
   assert.ok(['polite', 'assertive'].includes(await page.locator('#toastRegion').getAttribute('aria-live')));
-  await page.locator('#financialEntryCancel').click();
   assert.deepEqual(pageErrors, []);
   await desktop.close();
 

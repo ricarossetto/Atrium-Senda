@@ -47,6 +47,10 @@ try {
   assert.equal(await page.locator('#field-oabNumber').isVisible(), false);
   assert.equal(await page.locator('#field-oabUf').isVisible(), false);
   assert.equal(await page.locator('#field-document').isVisible(), false);
+  page.once('dialog', async dialog => {
+    assert.match(dialog.message(), /alterações não salvas/i);
+    await dialog.accept();
+  });
   await page.keyboard.press('Escape');
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'primaryTermCard');

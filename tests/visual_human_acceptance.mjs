@@ -105,7 +105,8 @@ try {
     const action = card.querySelector('[data-use-prompt]')?.getBoundingClientRect();
     return { textHeight: text?.height || 0, actionHeight: action?.height || 0 };
   });
-  assert.ok(promptPriority.textHeight >= promptPriority.actionHeight * 3); assertions++;
+  assert.ok(promptPriority.actionHeight <= 33, `Ações de prompt devem permanecer compactas: ${promptPriority.actionHeight}px.`); assertions++;
+  assert.ok(promptPriority.textHeight > promptPriority.actionHeight, `O resumo do prompt deve continuar visualmente prioritário: ${promptPriority.textHeight}px.`); assertions++;
   const promptSearchAlignment = await page.locator('.prompts-search-box').evaluate(box => {
     const input = box.querySelector('#promptsSearchInput').getBoundingClientRect();
     const icon = box.querySelector('.search-icon').getBoundingClientRect();

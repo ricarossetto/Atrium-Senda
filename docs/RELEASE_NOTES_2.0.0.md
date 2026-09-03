@@ -7,11 +7,14 @@ ATRIUM 2.0.0 é a primeira versão estável do workspace jurídico local-first p
 - Interface V2 Mineral Editorial, responsiva, clara/escura, acessível por teclado e compatível com redução de movimento.
 - Operação local-first com estado AES-256-GCM, revisão otimista, gravação atômica, recovery e backups cifrados.
 - Relações canônicas entre processos, contatos/clientes, publicações, tarefas, documentos, CRM e financeiro.
-- Descoberta DJEN/DataJud conservadora, preservando dados-base e criando relações somente quando há suporte estruturado.
-- Integrações A1, PJeOffice, TOTP e portais em modo supervisionado e somente de leitura.
+- Reconciliação idempotente de clientes, preservando vínculos manuais e exigindo confiança mínima de 90%; Gemini é opcional e ambiguidades seguem para revisão humana.
+- Descoberta DJEN/DataJud conservadora, preservando dados-base e impedindo que advogado ou parte contrária sejam classificados como cliente.
+- Integrações A1, PJeOffice, TOTP e portais em modo supervisionado e somente de leitura, com múltiplas abas e confirmação positiva de autenticação.
+- Fluxos financeiros para honorários, despesas/custas, reembolsos e RPV/alvarás vinculados às entidades canônicas.
 - Acervo documental privado com upload/download, preview seguro, lixeira, checksum, OCR local opcional e busca full-text.
 - Inteligência cadastral para CNPJ, CEP e bancos, com validação local de CPF e revisão seletiva de dados encontrados.
 - Assistente Gemini opcional, biblioteca de prompts, contexto minimizado e revisão profissional obrigatória.
+- Painéis laterais preservam o trabalho em edição e só pedem confirmação ao fechar quando há alterações pendentes.
 - Instalação Windows por duplo clique em `ATRIUM.bat`.
 
 ## Instalação
