@@ -139,8 +139,9 @@ function linkedProcess(record, byId, byNumber) {
 }
 function isTreatedPublication(item) { return ['treated', 'tratada', 'discarded', 'descartada'].includes(normalized(item?.treatmentStatus)); }
 function needsDocumentReview(item) {
-  const classification = normalized(item.classificationStatus || item.reviewStatus);
-  return classification === 'pending' || classification === 'pendente' || !String(item.documentType || '').trim();
+  const classification = normalized(item.metadata?.classificationStatus || item.classificationStatus || item.reviewStatus);
+  return ['pending', 'pendente', 'unclassified', 'nao classificado'].includes(classification)
+    || !String(item.documentType || '').trim();
 }
 function reconciliationSuggestions(state) {
   if (Array.isArray(state.clientReconciliationSuggestions)) return state.clientReconciliationSuggestions;

@@ -32,6 +32,7 @@ const state = {
   agenda: [{ id: 'agenda-near', title: 'Audiência sintética', date: '2026-09-06', processId: 'process-synthetic' }],
   documents: [
     { id: 'doc-review', originalName: 'documento-sintetico.pdf', ownerType: 'process', ownerId: 'process-synthetic', documentType: '', createdAt: '2026-09-02' },
+    { id: 'doc-metadata-review', originalName: 'metadata-pendente.pdf', documentType: 'Contrato', metadata: { classificationStatus: 'unclassified' }, createdAt: '2026-09-02' },
     { id: 'doc-ready', originalName: 'classificado.pdf', documentType: 'Petição', createdAt: '2026-09-02' }
   ],
   clientReconciliationSuggestions: [{ id: 'suggestion-1', processId: 'process-synthetic', clientName: 'Contato sintético', confidence: 0.93, status: 'pending', source: 'Regra sintética', createdAt: '2026-09-02' }],
@@ -50,6 +51,7 @@ assert.equal(items.find(item => item.key === 'task:task-overdue').priority, 3);
 assert.equal(items.find(item => item.key === 'task:task-upcoming').origin, 'Publicação vinculada');
 assert.equal(items.some(item => item.key === 'agenda:agenda-near'), true);
 assert.equal(items.some(item => item.key === 'document:doc-review'), true);
+assert.equal(items.some(item => item.key === 'document:doc-metadata-review'), true, 'Classificação canônica aninhada deve alimentar a mesma caixa de atividades.');
 assert.equal(items.some(item => item.key === 'document:doc-ready'), false);
 assert.equal(items.some(item => item.key === 'reconciliation:suggestion-1'), true);
 assert.equal(items.some(item => item.key === 'collector:process-synthetic'), true);

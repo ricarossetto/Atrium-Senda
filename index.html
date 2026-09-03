@@ -329,7 +329,7 @@
               <small>Triagem humana necessária</small>
             </article>
             <article class="v2-attention-item is-info">
-              <span>Compromissos em 7 dias</span>
+              <span>Prazos em 7 dias</span>
               <strong id="v2AttentionDeadlines">0</strong>
               <small>Confirme datas críticas</small>
             </article>
@@ -389,6 +389,14 @@
             <div><span class="v2-status-badge is-neutral" id="activityInboxCount">0 itens</span><div class="filter-tabs" id="activityInboxFilters" aria-label="Filtrar caixa de atividades"><button class="active" data-activity-filter="all">Tudo</button><button data-activity-filter="work">Trabalho</button><button data-activity-filter="judicial">Judicial</button><button data-activity-filter="system">Sistema</button></div></div>
           </header>
           <div class="activity-inbox-list" id="activityInboxList"></div>
+        </section>
+
+        <section class="dashboard-actionable-insights v2-only" aria-labelledby="dashboardInsightsHeading">
+          <header class="dashboard-actionable-insights-header">
+            <div><p class="v2-kicker">Indicadores para decisão</p><h3 id="dashboardInsightsHeading">Panorama acionável</h3></div>
+            <span>Somente dados registrados no ATRIUM</span>
+          </header>
+          <div class="dashboard-actionable-insights-grid" id="dashboardActionableInsights"></div>
         </section>
 
         <!-- Layout da Área de Trabalho: 2 Colunas (Tarefas e Prazos à Esquerda / Widgets à Direita) -->

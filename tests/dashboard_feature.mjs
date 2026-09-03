@@ -63,24 +63,24 @@ const ids = [
   'metricInbox', 'metricDeadlines', 'metricTasks', 'metricSources', 'inboxBadge', 'notificationDot',
   'widgetCompletedTasks', 'widgetLateTasks', 'widgetPendingTasks', 'widgetProcActive', 'widgetProcInactive',
   'widgetActiveLeads', 'widgetHonorariosPending', 'widgetTimesheetHours', 'widgetDocsCount', 'dashboardRemindersList',
-  'activityInboxFilters', 'activityInboxList', 'activityInboxCount'
+  'activityInboxFilters', 'activityInboxList', 'activityInboxCount', 'dashboardActionableInsights'
 ];
 const elements = Object.fromEntries(ids.map(id => [id, makeElement()]));
 const documentRef = { getElementById: id => elements[id] || null };
 const days = { '-1': -1, 1: 1, 2: 2, 5: 5, 9: 9, '': Infinity };
 const tasks = [
-  { id: 'task-prazo', title: 'Prazo de decisão', type: 'Judicial', status: 'triagem', deadline: '2', points: 20, client: 'Cliente B' },
-  { id: 'task-audiencia', title: 'Audiência de julgamento', type: '', status: 'andamento', deadline: '5', points: 50, client: 'Cliente C' },
+  { id: 'task-prazo', title: 'Prazo de decisão', type: 'Judicial', status: 'triagem', deadline: '2', points: 20, client: 'Cliente B', responsible: 'Ricardo' },
+  { id: 'task-audiencia', title: 'Audiência de julgamento', type: '', status: 'andamento', deadline: '5', points: 50, client: 'Cliente C', responsible: 'Ricardo' },
   { id: 'task-reuniao', title: 'Reunião de atendimento', type: '', status: 'prioridade', deadline: '9', points: 10, client: 'Cliente D' },
-  { id: 'task-generic', title: 'Conferir documento', type: 'Tarefa', status: 'triagem', deadline: '1', points: 5, processId: 'linked-process', priority: 'urgente', timeLogs: [{ minutes: 30 }] },
+  { id: 'task-generic', title: 'Conferir documento', type: 'Tarefa', status: 'triagem', deadline: '1', points: 5, processId: 'linked-process', priority: 'urgente', responsible: 'Equipe', timeLogs: [{ minutes: 30 }] },
   { id: 'task-late', title: 'Recurso extraordinário', type: '', status: 'andamento', deadline: '-1', points: 30, client: 'Cliente E' },
   { id: 'task-done', title: 'Tarefa concluída', status: 'concluida', deadline: '1', timeLogs: [{ minutes: 15, date: '2000-01-01' }] }
 ];
 const processes = [
-  { id: 'linked-process', number: '5000000-00.2026.8.21.0001', client: 'Cliente A', actionType: 'Indenização por danos morais', monitoring: 'active' },
-  { id: 'fixed', feeType: 'fixo', feeAmount: 100, monitoring: 'active' },
+  { id: 'linked-process', number: '5000000-00.2026.8.21.0001', client: 'Cliente A', actionType: 'Indenização por danos morais', stage: 'Conhecimento', monitoring: 'active' },
+  { id: 'fixed', feeType: 'fixo', feeAmount: 100, monitoring: 'active', receipts: [{ amount: 999, status: 'estornado' }] },
   { id: 'monthly', feeType: 'mensal', feeMonthly: 200, monitoring: 'inactive', archived: true },
-  { id: 'mixed', feeType: 'misto', feeAmount: 300, feeMonthly: 50, monitoring: 'active' },
+  { id: 'mixed', feeType: 'misto', feeAmount: 300, feeMonthly: 50, stage: 'Execução', monitoring: 'active', receipts: [{ amount: 150, status: 'recebido' }] },
   { id: 'percentage', feePercentage: 10, requisitionAmount: 1000, monitoring: 'active' },
   { id: 'percentage-fallback', feePercentage: 20, economicValue: 0, feeAmount: 80, monitoring: 'active' },
   { id: 'paid', feeType: 'fixo', feeAmount: 999, feeStatus: 'pago', monitoring: 'active' },
@@ -91,11 +91,19 @@ const store = {
   state: {
     tasks,
     processes,
-    sources: [{ id: 'source-ok-1', status: 'ok' }, { id: 'source-attention', status: 'attention', name: 'Fonte em atenção' }, { id: 'source-ok-2', status: 'ok' }],
-    intimations: [{ id: 'publication-pending', title: 'Publicação pendente', treatmentStatus: 'untreated', unread: true, publishedAt: '2026-09-03' }],
+    sources: [{ id: 'source-ok-1', status: 'ok', lastCheck: '2026-09-03T11:00:00.000Z' }, { id: 'source-attention', status: 'attention', name: 'Fonte em atenção', lastCheck: '2026-09-03T10:00:00.000Z' }, { id: 'source-ok-2', status: 'ok' }],
+    intimations: [
+      { id: 'publication-pending', title: 'Publicação pendente', treatmentStatus: 'untreated', unread: true, publishedAt: '2026-09-03' },
+      { id: 'publication-treated', title: 'Publicação tratada', treatmentStatus: 'treated', treatmentStartedAt: '2026-09-02T10:00:00.000Z', treatedAt: '2026-09-02T11:00:00.000Z' },
+      { id: 'publication-discarded', title: 'Publicação descartada', treatmentStatus: 'discarded', treatmentStartedAt: '2026-09-01T10:00:00.000Z', discardedAt: '2026-09-01T12:00:00.000Z' }
+    ],
     leads: [{ status: 'novo' }, { status: 'fechado' }, { status: 'declinado' }, { status: 'qualificado' }],
     agenda: reminders,
-    customDocs: [{}, {}]
+    customDocs: [{}, {}],
+    documents: [
+      { id: 'document-pending', name: 'Sem classificação.pdf', documentType: '', metadata: { classificationStatus: 'unclassified' } },
+      { id: 'document-ready', name: 'Classificado.pdf', documentType: 'Petição', metadata: { classificationStatus: 'reviewed' } }
+    ]
   }
 };
 const openedTasks = [];
@@ -199,6 +207,27 @@ const reminderNode = elements.dashboardRemindersList.dynamic.get('[data-agenda-i
 reminderNode.listeners.get('click')[0]();
 assert.equal(openedAgenda.at(-1).id, reminderNode.dataset.agendaId);
 
+const insights = feature.actionableValues();
+assert.deepEqual(insights.tasksByResponsible.slice(0, 3), [
+  { label: 'Ricardo', count: 2 },
+  { label: 'Sem responsável', count: 2 },
+  { label: 'Equipe', count: 1 }
+]);
+assert.equal(insights.averageTreatmentMinutes, 90);
+assert.equal(insights.treatmentSampleSize, 2);
+assert.equal(insights.pendingPublications, 1);
+assert.equal(insights.latestCollectorCheck, '2026-09-03T11:00:00.000Z');
+assert.equal(insights.pendingSyncs, 1);
+assert.equal(insights.unclassifiedDocuments, 1);
+assert.equal(insights.receiptsTotal, 150);
+assert.equal(insights.receiptsCount, 1);
+assert.deepEqual(insights.processesByStatus.slice(0, 3), [
+  { label: 'Etapa não informada', count: 5 },
+  { label: 'Conhecimento', count: 1 },
+  { label: 'Execução', count: 1 }
+]);
+
 feature.render();
 assert.equal(officeRenders, 1);
-console.log('✓ Dashboard modular aprovado: filtros, sort, métricas, interações, widgets, finanças, timesheet e lembretes.');
+assert.match(elements.dashboardActionableInsights.innerHTML, /Carga de trabalho|Tempo médio de tratamento|Documentos sem classificação|BRL:150/);
+console.log('✓ Dashboard modular aprovado: filtros, métricas, indicadores acionáveis, interações, widgets, finanças, timesheet e lembretes.');

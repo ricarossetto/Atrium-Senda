@@ -40,7 +40,7 @@ try {
           const topbar = document.querySelector('.topbar')?.getBoundingClientRect();
           const search = document.querySelector('.global-search')?.getBoundingClientRect();
           const status = document.getElementById('systemStatusBar')?.getBoundingClientRect();
-          const cards = [...document.querySelectorAll('#view-dashboard :is(.v2-attention-item, .metric-card, .dashboard-widget)')];
+          const cards = [...document.querySelectorAll('#view-dashboard :is(.v2-attention-item, .metric-card, .dashboard-insight-card, .dashboard-widget)')];
           return {
             ui: document.documentElement.dataset.ui,
             theme: document.documentElement.getAttribute('data-theme') || 'dark',
@@ -51,6 +51,7 @@ try {
             searchVisible: Boolean(search && search.width > 0 && search.height >= 40),
             statusVisible: Boolean(status && status.width > 0 && status.height > 0),
             clippedCards: cards.filter(card => card.scrollWidth > card.clientWidth + 2).length,
+            insightCards: document.querySelectorAll('#dashboardActionableInsights .dashboard-insight-card').length,
             duplicateIds: (() => {
               const ids = [...document.querySelectorAll('[id]')].map(element => element.id);
               return ids.filter((id, index) => ids.indexOf(id) !== index);
@@ -68,6 +69,7 @@ try {
         assert.equal(layout.searchVisible, true, `Busca deve permanecer visível em ${theme} ${config.name}.`); assertions++;
         assert.equal(layout.statusVisible, true, `Status persistente deve estar visível em ${theme} ${config.name}.`); assertions++;
         assert.equal(layout.clippedCards, 0, `Cards com conteúdo cortado em ${theme} ${config.name}.`); assertions++;
+        assert.equal(layout.insightCards, 4, `Panorama acionável incompleto em ${theme} ${config.name}.`); assertions++;
         assert.deepEqual(layout.duplicateIds, []); assertions++;
         assert.equal(layout.unexpectedOverlay, 0); assertions++;
         assert.deepEqual(pageErrors, [], `Pageerror em ${theme} ${config.name}: ${pageErrors.join(' | ')}`); assertions++;

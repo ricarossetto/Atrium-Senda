@@ -110,8 +110,9 @@ export function createDashboardFeature({
       const activities = this.renderActivityInbox();
       this.renderTasks();
       const widgets = this.renderWidgets();
-      renderDashboardV2Summary({ documentRef, metrics, widgets, formatDate });
-      return { metrics, widgets, activities };
+      const insights = this.actionableValues();
+      renderDashboardV2Summary({ documentRef, metrics, widgets, insights, formatDate, formatCurrency, escapeHtml });
+      return { metrics, widgets, activities, insights };
     },
 
     activities() {
@@ -336,6 +337,78 @@ export function createDashboardFeature({
         documentCount: Array.isArray(store.state.customDocs) ? store.state.customDocs.length : 0,
         reminders: (store.state.agenda || []).slice(0, 4)
       };
+    },
+
+    actionableValues() {
+      const state = store.state || {};
+      const tasks = state.tasks || [];
+      const processes = state.processes || [];
+      const publications = state.intimations || [];
+      const sources = state.sources || [];
+      const documents = state.documents || [];
+      const openTasks = tasks.filter(task => !isTerminalStatus(task.status));
+      const normalized = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+      const groupCounts = (items, labelFor) => {
+        const counts = new Map();
+        items.forEach(item => {
+          const label = String(labelFor(item) || '').trim() || 'Não informado';
+          counts.set(label, (counts.get(label) || 0) + 1);
+        });
+        return [...counts.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'pt-BR'));
+      };
+
+      const tasksByResponsible = groupCounts(openTasks, task => task.responsible || 'Sem responsável').slice(0, 5);
+      const processesByStatus = groupCounts(
+        processes.filter(process => !process.archived),
+        process => process.stage || process.judicialPhase || process.status || 'Etapa não informada'
+      ).slice(0, 5);
+
+      const treatmentDurations = publications.map(publication => {
+        const endValue = publication.treatedAt || publication.discardedAt;
+        const startValue = publication.treatmentStartedAt;
+        const start = Date.parse(startValue || '');
+        const end = Date.parse(endValue || '');
+        return Number.isFinite(start) && Number.isFinite(end) && end >= start ? Math.round((end - start) / 60000) : null;
+      }).filter(Number.isFinite);
+      const averageTreatmentMinutes = treatmentDurations.length
+        ? Math.round(treatmentDurations.reduce((total, value) => total + value, 0) / treatmentDurations.length)
+        : null;
+
+      const sourceChecks = [
+        ...sources.map(source => source.lastCheck),
+        ...processes.map(process => process.tjrsCollector?.syncedAt)
+      ].filter(value => Number.isFinite(Date.parse(value || '')));
+      sourceChecks.sort((left, right) => Date.parse(right) - Date.parse(left));
+      const sourceProblems = new Set(['error', 'erro', 'attention', 'atencao', 'unavailable', 'indisponivel', 'stale']);
+      const collectorProblems = new Set(['error', 'stale']);
+      const pendingSyncs = sources.filter(source => sourceProblems.has(normalized(source.status))).length
+        + processes.filter(process => collectorProblems.has(normalized(process.tjrsCollector?.status))).length;
+      const unclassifiedDocuments = documents.filter(document => {
+        if (!document?.id || document.deletedAt) return false;
+        const status = normalized(document.metadata?.classificationStatus || document.classificationStatus || document.reviewStatus);
+        return ['pending', 'pendente', 'unclassified', 'nao classificado'].includes(status)
+          || !String(document.documentType || '').trim();
+      }).length;
+
+      const receipts = processes.flatMap(process => Array.isArray(process.receipts) ? process.receipts : []);
+      const validReceipts = receipts.filter(receipt => normalized(receipt.status) !== 'estornado');
+      const receiptsTotal = validReceipts.reduce((total, receipt) => total + Math.max(0, Number(receipt.amount) || 0), 0);
+
+      return Object.freeze({
+        tasksByResponsible,
+        processesByStatus,
+        averageTreatmentMinutes,
+        treatmentSampleSize: treatmentDurations.length,
+        pendingPublications: publications.filter(publication => !['treated', 'tratada', 'discarded', 'descartada'].includes(normalized(publication.treatmentStatus))).length,
+        recentActivityCount: buildActivityInbox(state).length,
+        latestCollectorCheck: sourceChecks[0] || '',
+        pendingSyncs,
+        unclassifiedDocuments,
+        receiptsTotal,
+        receiptsCount: validReceipts.length
+      });
     },
 
     renderWidgets() {
