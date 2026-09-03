@@ -1190,6 +1190,7 @@ import { createTasksFeature } from './features/tasks.js';
           const input = document.getElementById('processSearch');
           if (input) input.value = process.number || process.client || '';
           this.renderProcesses(process.number || process.client || '');
+          window.setTimeout(() => document.querySelector(`#processTableBody [data-process-id="${CSS.escape(String(process.id))}"]`)?.click(), 0);
         }
       } else if (target === 'contact') {
         this.switchView('contacts');
@@ -1213,6 +1214,16 @@ import { createTasksFeature } from './features/tasks.js';
       } else if (target === 'document') {
         this.switchView('documents');
         getDocumentsFeature().focusDocument(id);
+      } else if (target === 'agenda') {
+        const appointment = (Store.state.agenda || []).find(item => item.id === id);
+        if (appointment) this.openAgendaModal(appointment);
+      } else if (target === 'financial') {
+        const process = (Store.state.processes || []).find(item => item.id === id);
+        this.switchView('financial');
+        const query = process?.number || process?.client || '';
+        const input = document.getElementById('financialSearch');
+        if (input) input.value = query;
+        this.renderFinancial(query);
       } else if (target === 'prompt') {
         this.switchView('prompts');
         const prompt = [...(Store.state.customPrompts || []), ...(window.PROMPTS_DATA || [])].find(item => item.id === id);

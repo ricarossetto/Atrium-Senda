@@ -20,11 +20,12 @@ assert.equal(defaultPrompts.length, 230, 'Catálogo padrão deve ser lido como J
 
 const ocrReads = [];
 const unitState = {
-  processes: [{ id: 'process-unit', number: '5001234-12.2026.4.04.0001', client: 'Cliente Aurora', court: 'TRF4', lastMovement: 'Sentença previdenciária disponibilizada' }],
-  contacts: [{ id: 'contact-unit', name: 'Áurea Sintética', contactRole: 'cliente', email: 'aurea@example.test', city: 'Ijuí' }],
+  processes: [{ id: 'process-unit', number: '5001234-12.2026.4.04.0001', client: 'Cliente Aurora', court: 'TRF4', lastMovement: 'Sentença previdenciária disponibilizada', feeStatus: 'em_dia', movements: [{ id: 'movement-unit', description: 'Conclusão judicial rara para conferência' }], expenses: [{ id: 'expense-unit', description: 'Custas de diligência rara', amount: 125 }] }],
+  contacts: [{ id: 'contact-unit', name: 'Áurea Sintética', contactRole: 'cliente', cpf: '000.111.222-33', email: 'aurea@example.test', city: 'Ijuí' }],
   leads: [{ id: 'lead-unit', client: 'Áurea Sintética', serviceType: 'Planejamento previdenciário', status: 'novo', notes: 'Entrevista sintética inicial' }],
-  intimations: [{ id: 'publication-unit', title: 'Intimação sobre benefício', process: '5001234-12.2026.4.04.0001', text: 'Manifestação expressa sem prazo inferido' }],
+  intimations: [{ id: 'publication-unit', title: 'Intimação sobre benefício', process: '5001234-12.2026.4.04.0001', text: 'Manifestação expressa sem prazo inferido', workNotes: [{ id: 'note-unit', text: 'Estratégia interna rara e supervisionada' }] }],
   tasks: [{ id: 'task-unit', title: 'Revisar cálculo previdenciário', description: 'Conferência humana obrigatória', responsible: 'Equipe' }],
+  agenda: [{ id: 'appointment-unit', processId: 'process-unit', title: 'Pauta sintética de conferência', date: '2026-09-08', time: '14:00' }],
   documents: [{ id: 'document-unit', name: 'laudo-aurora.pdf', ownerType: 'process', ownerId: 'process-unit', documentType: 'Laudo', checksum: 'a'.repeat(64), intelligence: { ocr: { checksum: 'b'.repeat(64) } } }],
   customPrompts: [{ id: 'prompt-unit', title: 'Síntese previdenciária supervisionada', category: 'Previdenciário', prompt: 'Organize o relatório sem inventar fatos.' }],
   audit: [
@@ -46,10 +47,17 @@ let sync = await index.ensure({ state: unitState, revision: 'revision-1' });
 assert.equal(sync.rebuilt, true);
 assert.equal(sync.reason, 'corrupt');
 assert.equal(index.status.version, SEARCH_INDEX_VERSION);
-assert.equal(index.status.entryCount, 9);
+assert.equal(index.status.entryCount, 14);
 assert.equal(ocrReads.length, 1);
 assert.equal(index.search('ultrarraro')[0].entityType, 'document');
 assert.equal(index.search('ÁUREA')[0].id, 'contact-unit', 'Busca deve ser accent/case insensitive e ranquear título.');
+assert.equal(index.search('50012341220264040001').some(item => item.entityType === 'process'), true, 'CNJ sem pontuação deve localizar o processo.');
+assert.equal(index.search('00011122233')[0].entityType, 'contact', 'CPF sem pontuação deve localizar o contato.');
+assert.equal(index.search('Pauta sintética')[0].entityType, 'appointment');
+assert.equal(index.search('Estratégia interna rara')[0].entityType, 'note');
+assert.equal(index.search('Conclusão judicial rara')[0].entityType, 'movement');
+assert.equal(index.search('Custas diligência rara')[0].entityType, 'financial');
+assert.equal(index.search('Cliente Aurora').some(item => item.entityType === 'document'), true, 'Documento deve herdar contexto de processo e cliente sem duplicar cadastro.');
 assert.equal(index.search('AIzaSyntheticSecretMustNeverBeIndexed123456').length, 0, 'Segredo explícito deve ser descartado do índice.');
 assert.deepEqual(index.search('previdenciária').map(item => item.relevance), [...index.search('previdenciária').map(item => item.relevance)].sort((a, b) => b - a));
 
@@ -62,7 +70,7 @@ changedState.tasks.push({ id: 'task-added', title: 'Protocolar manifestação su
 sync = await index.ensure({ state: changedState, revision: 'revision-2' });
 assert.equal(sync.synchronized, true);
 assert.equal(sync.changes.added, 1);
-assert.ok(sync.changes.reused >= 9);
+assert.ok(sync.changes.reused >= 14);
 assert.equal(ocrReads.length, 1, 'Checksum OCR estável deve reutilizar cache.');
 assert.equal(index.search('Protocolar manifestação')[0].id, 'task-added');
 
@@ -170,7 +178,7 @@ try {
   assert.equal(payload.index.synchronized, true);
   assert.equal(payload.results[0].id, 'task-search-new');
 
-  console.log('✓ Busca full-text: sete domínios, OCR, ranking, segredo omitido, sync incremental e rebuild sem autoridade aprovados.');
+  console.log('✓ Busca full-text: doze domínios jurídicos, OCR, contexto, ranking, segredo omitido e sync incremental aprovados.');
 } finally {
   await server.stop();
 }

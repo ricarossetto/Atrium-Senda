@@ -13,8 +13,12 @@ try {
       const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl);
       await page.evaluate(() => {
         const { Store } = window.Atrium;
+        Store.state.processes = [{ id: 'search-process', number: '5009999-11.2026.4.04.0001', client: 'Cliente Horizonte', court: 'TRF4', movements: [{ id: 'search-movement', description: 'Movimentação Horizonte' }], expenses: [{ id: 'search-expense', description: 'Despesa Horizonte', amount: 120 }] }];
         Store.state.contacts = [{ id: 'search-owner', name: 'Cliente Horizonte', contactRole: 'cliente' }];
         Store.state.leads = [{ id: 'search-lead', client: 'Cliente Horizonte', serviceType: 'Planejamento Horizonte', status: 'novo', notes: 'Atendimento sintético' }];
+        Store.state.tasks = [{ id: 'search-task', title: 'Tarefa Horizonte', processId: 'search-process', status: 'triagem' }];
+        Store.state.intimations = [{ id: 'search-publication', title: 'Publicação Horizonte', processId: 'search-process', workNotes: [{ id: 'search-note', text: 'Nota Horizonte' }] }];
+        Store.state.agenda = [{ id: 'search-appointment', title: 'Compromisso Horizonte', processId: 'search-process', date: '2026-09-08' }];
         Store.state.documents = [{
           id: 'search-document',
           name: 'laudo-horizonte.md',
@@ -56,6 +60,10 @@ try {
                   common('publication', 'intimation', 'search-publication', 'Publicação Horizonte', 'Conteúdo da publicação'),
                   common('task', 'task', 'search-task', 'Tarefa Horizonte', 'Descrição'),
                   common('document', 'document', 'search-document', 'Laudo Horizonte', 'Texto extraído'),
+                  common('appointment', 'agenda', 'search-appointment', 'Compromisso Horizonte', 'Agenda'),
+                  common('note', 'intimation', 'search-publication', 'Nota Horizonte', 'Nota interna'),
+                  common('movement', 'process', 'search-process', 'Movimentação Horizonte', 'Movimentação judicial'),
+                  common('financial', 'financial', 'search-process', 'Despesa Horizonte', 'Lançamento financeiro'),
                   common('prompt', 'prompt', 'search-prompt', 'Prompt Horizonte', 'Conteúdo do prompt'),
                   common('audit', 'arbitrary-view-from-response', 'search-audit', 'Auditoria Horizonte', 'Detalhe minimizado')
                 ];
@@ -68,11 +76,11 @@ try {
       assert.equal(await page.evaluate(() => document.activeElement?.id), 'globalSearch');
       assert.equal(await input.getAttribute('role'), 'combobox');
       await input.fill('Horizonte');
-      await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 8);
+      await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 12);
       await page.waitForFunction(() => document.getElementById('globalSearch')?.getAttribute('aria-busy') === 'false');
       assert.equal(await page.locator('#searchPaletteResults').getAttribute('role'), 'listbox');
-      assert.equal(await page.locator('#searchPaletteResults .search-palette-group').count(), 8);
-      assert.equal(await page.locator('#searchPaletteResults .search-palette-item').count(), 8);
+      assert.equal(await page.locator('#searchPaletteResults .search-palette-group').count(), 12);
+      assert.equal(await page.locator('#searchPaletteResults .search-palette-item').count(), 12);
       assert.equal(await page.locator('[data-search-id="search-audit"]').getAttribute('data-search-target'), 'audit', 'Destino deve vir do tipo fixo reconhecido, nunca do payload remoto.');
       assert.equal(await page.locator('#searchPaletteResults mark').count() > 0, true);
       assert.equal(await page.locator('#searchPaletteResults script').count(), 0);
@@ -106,7 +114,22 @@ try {
       if (viewport.width > 760) {
         await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
         await input.fill('Horizonte');
-        await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 8);
+        await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 12);
+        await page.locator('[data-search-target="agenda"][data-search-id="search-appointment"]').click();
+        await page.locator('#modalBackdrop[data-modal-mode="agenda"]:not(.hidden)').waitFor();
+        assert.equal(await page.locator('#field-title').inputValue(), 'Compromisso Horizonte');
+        await page.evaluate(() => window.Atrium.App.closeModal());
+
+        await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
+        await input.fill('Horizonte');
+        await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 12);
+        await page.locator('[data-search-target="financial"][data-search-id="search-process"]').click();
+        await page.locator('#view-financial.active').waitFor();
+        assert.equal(await page.locator('#financialSearch').inputValue(), '5009999-11.2026.4.04.0001');
+
+        await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
+        await input.fill('Horizonte');
+        await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 12);
         await page.locator('[data-search-target="lead"][data-search-id="search-lead"]').click();
         await page.locator('#view-leads.active').waitFor();
         await page.locator('#modalBackdrop:not(.hidden) #modalForm').waitFor();
@@ -115,7 +138,7 @@ try {
 
         await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
         await input.fill('Horizonte');
-        await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 8);
+        await page.waitForFunction(() => document.querySelectorAll('#searchPaletteResults .search-palette-item').length === 12);
         await page.locator('[data-search-target="prompt"][data-search-id="search-prompt"]').click();
         await page.locator('#view-prompts.active').waitFor();
         assert.equal(await page.locator('#promptsSearchInput').inputValue(), 'Prompt Horizonte');
@@ -138,7 +161,7 @@ try {
     }
   }
 
-  console.log('✓ Busca global V2: oito grupos, CRM incluído, highlight escapado, keyboard, seleção, race, mobile e zero mutação aprovados.');
+  console.log('✓ Busca global V2: doze grupos jurídicos, contexto, navegação, race, mobile e zero mutação aprovados.');
 } finally {
   await session.stop();
 }
