@@ -656,6 +656,8 @@ export async function prepareUiV2ProcessesFixture(page) {
         secrecy: true,
         monitoring: 'active',
         source: 'Cadastro sintético',
+        updatedAt: '2026-08-30T09:00:00.000Z',
+        expenses: [{ id: 'ui-v2-process-expense', date: '2026-08-27', description: 'Custas sintéticas', amount: 120 }],
         unknownField: 'preservar'
       },
       {
@@ -689,16 +691,21 @@ export async function prepareUiV2ProcessesFixture(page) {
     ],
     intimations: [
       { id: 'ui-v2-intimation', process: '5004321-12.2026.8.21.0001', title: 'Intimação vinculada sintética', status: 'nova', text: 'Texto sintético menciona cinco dias sem criar deadline.' }
-    ]
+    ],
+    agenda: [{ id: 'ui-v2-process-agenda', processId: 'ui-v2-process-tjrs', title: 'Audiência sintética vinculada', date: '2026-09-08', time: '14:00' }],
+    documents: [{ id: 'ui-v2-process-document', ownerType: 'process', ownerId: 'ui-v2-process-tjrs', name: 'peticao-sintetica.pdf', documentType: 'Petição', createdAt: '2026-08-28' }],
+    audit: [{ id: 'ui-v2-process-audit', processId: 'ui-v2-process-tjrs', at: '2026-08-26', action: 'Conferência sintética', actor: 'Pessoa Teste' }]
   };
 
   await page.evaluate(data => {
     const { App, Store } = window.Atrium;
     Store.state.processes = data.processes;
     Store.state.contacts = data.contacts;
-    Store.state.documents = [];
+    Store.state.documents = data.documents;
     Store.state.tasks = data.tasks;
     Store.state.intimations = data.intimations;
+    Store.state.agenda = data.agenda;
+    Store.state.audit = data.audit;
     App.renderAll();
     App.switchView('processes');
   }, fixture);

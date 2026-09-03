@@ -13,12 +13,15 @@ export function createProcessesV2Presenter({
   onTask,
   onPublication,
   onExport,
+  onAgenda,
+  onFinancial,
   onDelete
 } = {}) {
   let initialized = false;
   let selectedItem = null;
   let selectedTasks = [];
   let selectedPublications = [];
+  let selectedTimeline = [];
   let lastFocusedElement = null;
   let previousBodyOverflow = '';
 
@@ -41,6 +44,22 @@ export function createProcessesV2Presenter({
       } else if (event.target.closest('[data-process-publication]')) {
         const publication = selectedPublications.find(item => String(item.id) === event.target.closest('[data-process-publication]').dataset.processPublication);
         if (publication) { close({ restoreFocus: false }); onPublication?.(publication); }
+      } else if (event.target.closest('[data-process-timeline]')) {
+        const timelineEvent = selectedTimeline.find(item => String(item.id) === event.target.closest('[data-process-timeline]').dataset.processTimeline);
+        if (!timelineEvent) return;
+        if (timelineEvent.target === 'task') {
+          const task = selectedTasks.find(item => String(item.id) === timelineEvent.entityId);
+          if (task) { close({ restoreFocus: false }); onTask?.(task); }
+        } else if (timelineEvent.target === 'publication') {
+          const publication = selectedPublications.find(item => String(item.id) === timelineEvent.entityId);
+          if (publication) { close({ restoreFocus: false }); onPublication?.(publication); }
+        } else if (timelineEvent.target === 'agenda') {
+          close({ restoreFocus: false }); onAgenda?.(timelineEvent);
+        } else if (timelineEvent.target === 'document') {
+          const item = selectedItem; close({ restoreFocus: false }); onDocuments?.(item, timelineEvent.entityId);
+        } else if (timelineEvent.target === 'financial') {
+          const item = selectedItem; close({ restoreFocus: false }); onFinancial?.(item);
+        }
       } else if (event.target.closest('[data-process-client]')) {
         const item = selectedItem; close({ restoreFocus: false }); onClient?.(item);
       } else if (event.target.closest('[data-process-tasks]')) {
@@ -105,6 +124,7 @@ export function createProcessesV2Presenter({
     selectedItem = item;
     selectedTasks = summary.linkedTasks || [];
     selectedPublications = summary.linkedIntimationRecords || [];
+    selectedTimeline = summary.timeline || [];
     lastFocusedElement = invoker || documentRef.activeElement;
     previousBodyOverflow = documentRef.body?.style.overflow || '';
 
@@ -143,6 +163,7 @@ export function createProcessesV2Presenter({
     selectedItem = null;
     selectedTasks = [];
     selectedPublications = [];
+    selectedTimeline = [];
     if (wasOpen && documentRef.body) documentRef.body.style.overflow = previousBodyOverflow;
     if (wasOpen && restoreFocus && lastFocusedElement?.isConnected && typeof lastFocusedElement.focus === 'function') {
       lastFocusedElement.focus();
@@ -258,14 +279,14 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
     <div class="process-last-movement"><span>Último andamento</span><strong>${escapeHtml(item.lastMovement || 'Ainda não informado.')}</strong><small>${formatDate(item.lastMovementAt)}</small></div>
   </section>
 
+  <section class="process-inspector-section" aria-labelledby="processTimelineHeading">
+    <h3 id="processTimelineHeading">Linha do tempo jurídica</h3>
+    ${renderLegalTimeline(summary.timeline || [], escapeHtml, formatDate)}
+  </section>
+
   <section class="process-inspector-section" aria-labelledby="processTasksHeading">
     <div class="process-inspector-section-heading"><h3 id="processTasksHeading">Tarefas vinculadas</h3><button type="button" class="button ghost" data-process-tasks>Abrir em Tarefas</button></div>
     ${renderLinkedTasks(summary.linkedTasks || [], escapeHtml, formatDate)}
-  </section>
-
-  <section class="process-inspector-section" aria-labelledby="processMovementsHeading">
-    <h3 id="processMovementsHeading">Movimentações</h3>
-    ${renderMovements(summary.movements || [], item, escapeHtml, formatDate)}
   </section>
 
   ${renderJudicialContext(item, escapeHtml, formatDate)}
@@ -323,6 +344,18 @@ function renderLinkedTasks(tasks, escapeHtml, formatDate) {
 function renderLinkedPublications(publications, escapeHtml, formatDate) {
   if (!publications.length) return '<p class="process-inspector-empty">Nenhuma publicação vinculada a este processo.</p>';
   return `<div class="process-linked-list">${publications.map(item => `<button type="button" data-process-publication="${escapeHtml(item.id)}" aria-label="Abrir publicação ${escapeHtml(item.title || 'sem título')}"><strong>${escapeHtml(item.title || 'Publicação sem título')}</strong><span>${escapeHtml(item.treatmentStatus || 'untreated')} · ${escapeHtml(formatDate(item.publishedAt))}</span></button>`).join('')}</div>`;
+}
+
+function renderLegalTimeline(events, escapeHtml, formatDate) {
+  if (!events.length) return '<p class="process-inspector-empty">Nenhum evento relacionado foi encontrado.</p>';
+  const labels = {
+    movement: 'Andamento', publication: 'Publicação', task: 'Tarefa', deadline: 'Prazo', appointment: 'Agenda',
+    document: 'Documento', financial: 'Financeiro', audit: 'Auditoria', process: 'Processo'
+  };
+  return `<ol class="legal-timeline">${events.map(event => {
+    const content = `<span class="legal-timeline-marker" aria-hidden="true"></span><div class="legal-timeline-date"><time>${escapeHtml(event.date ? formatDate(event.date) : 'Sem data')}</time><span>${escapeHtml(labels[event.type] || 'Evento')}</span></div><div class="legal-timeline-copy"><strong>${escapeHtml(event.title)}</strong>${event.detail ? `<small>${escapeHtml(event.detail)}</small>` : ''}${event.source ? `<em>${escapeHtml(event.source)}</em>` : ''}</div>`;
+    return `<li class="is-${escapeHtml(event.type)}">${event.target ? `<button type="button" data-process-timeline="${escapeHtml(event.id)}" aria-label="Abrir ${escapeHtml(labels[event.type] || 'evento')}: ${escapeHtml(event.title)}">${content}<span class="legal-timeline-open" aria-hidden="true">→</span></button>` : `<div>${content}</div>`}</li>`;
+  }).join('')}</ol>`;
 }
 
 function renderMovements(movements, item, escapeHtml, formatDate) {

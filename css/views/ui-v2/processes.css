@@ -587,6 +587,28 @@ html[data-ui="v2"] .process-movement-list li { position: relative; display: grid
 html[data-ui="v2"] .process-movement-list time { color: var(--v2-color-muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
 html[data-ui="v2"] .process-movement-list p { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 12px; line-height: 1.55; }
 
+html[data-ui="v2"] .legal-timeline { display: grid; margin: 0; padding: 0; list-style: none; }
+html[data-ui="v2"] .legal-timeline li { position: relative; min-width: 0; }
+html[data-ui="v2"] .legal-timeline li::before { position: absolute; top: 0; bottom: 0; left: 7px; width: 1px; background: var(--v2-color-border); content: ""; }
+html[data-ui="v2"] .legal-timeline li:first-child::before { top: 18px; }
+html[data-ui="v2"] .legal-timeline li:last-child::before { bottom: calc(100% - 18px); }
+html[data-ui="v2"] .legal-timeline li > :is(button, div) { position: relative; width: 100%; display: grid; grid-template-columns: 16px 92px minmax(0, 1fr) 18px; gap: var(--v2-space-2); align-items: start; min-height: 54px; padding: var(--v2-space-2) 0; color: inherit; background: transparent; border: 0; font: inherit; text-align: left; }
+html[data-ui="v2"] .legal-timeline li > button { cursor: pointer; border-radius: var(--v2-radius-sm); }
+html[data-ui="v2"] .legal-timeline li > button:is(:hover, :focus-visible) { background: var(--v2-color-surface-hover); outline: none; }
+html[data-ui="v2"] .legal-timeline-marker { z-index: 1; width: 9px; height: 9px; margin: 5px 0 0 3px; background: var(--v2-color-surface-elevated); border: 2px solid var(--v2-color-primary); border-radius: 50%; }
+html[data-ui="v2"] .legal-timeline .is-deadline .legal-timeline-marker { border-color: var(--v2-color-danger); }
+html[data-ui="v2"] .legal-timeline .is-publication .legal-timeline-marker,
+html[data-ui="v2"] .legal-timeline .is-document .legal-timeline-marker { border-color: var(--v2-color-gold); }
+html[data-ui="v2"] .legal-timeline-date { display: grid; gap: 2px; padding-top: 1px; }
+html[data-ui="v2"] .legal-timeline-date time { color: var(--v2-color-foreground-secondary); font-size: 10px; font-variant-numeric: tabular-nums; }
+html[data-ui="v2"] .legal-timeline-date span { color: var(--v2-color-muted-foreground); font-size: 9px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+html[data-ui="v2"] .legal-timeline-copy { min-width: 0; display: grid; gap: 2px; }
+html[data-ui="v2"] .legal-timeline-copy strong { color: var(--v2-color-foreground); font-size: 12px; line-height: 17px; overflow-wrap: anywhere; }
+html[data-ui="v2"] .legal-timeline-copy small,
+html[data-ui="v2"] .legal-timeline-copy em { color: var(--v2-color-foreground-secondary); font-size: 10px; font-style: normal; line-height: 14px; }
+html[data-ui="v2"] .legal-timeline-copy em { color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] .legal-timeline-open { align-self: center; color: var(--v2-color-accent-strong); font-size: 14px; }
+
 html[data-ui="v2"] .process-last-movement span,
 html[data-ui="v2"] .process-last-movement small {
   color: var(--v2-color-foreground-secondary);
@@ -865,6 +887,11 @@ html[data-ui="v2"] .process-form-section .form-grid {
   html[data-ui="v2"] .process-inspector-metrics,
   html[data-ui="v2"] .process-metadata-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  html[data-ui="v2"] .legal-timeline li > :is(button, div) {
+    grid-template-columns: 16px 72px minmax(0, 1fr) 14px;
+    gap: var(--v2-space-1);
   }
 
   html[data-ui="v2"] #modalBackdrop[data-modal-mode="process"] {

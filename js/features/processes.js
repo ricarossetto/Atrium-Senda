@@ -1,6 +1,7 @@
 import { Store, isoDate, uid } from '../core/store.js';
 import { createProcessesV2Presenter } from '../views/ui-v2/processes-presenter.js';
 import { iconSvg } from '../views/ui-v2/icons.js';
+import { buildLegalTimeline } from '../core/legal-timeline.js';
 
 export function createProcessesFeature({
   store = Store,
@@ -23,6 +24,8 @@ export function createProcessesFeature({
   openLinkedTasks,
   openTask,
   openPublication,
+  openAgenda,
+  openFinancial,
   exportJson,
   confirmProcessDeletion = number => globalThis.prompt?.(`Para excluir o processo ${number}, digite o número completo:`) || '',
   requestProcessReenable = () => globalThis.prompt?.('Digite o número CNJ cuja descoberta automática deve ser reativada:') || ''
@@ -46,6 +49,11 @@ export function createProcessesFeature({
       onTasks: item => openLinkedTasks?.(item),
       onTask: task => openTask?.(task),
       onPublication: publication => openPublication?.(publication),
+      onAgenda: event => {
+        const appointment = (store.state.agenda || []).find(item => String(item.id) === String(event?.entityId || ''));
+        if (appointment) openAgenda?.(appointment);
+      },
+      onFinancial: item => openFinancial?.(item),
       onExport: item => feature.exportProcess(item),
       onDelete: item => feature.deleteProcess(item)
     });
@@ -56,8 +64,10 @@ export function createProcessesFeature({
 
   const getProcessSummary = item => {
     const processNumber = String(item?.number || item?.protocol || '').trim();
-    const linkedTasks = item?.id ? getLinkedTasks?.(processNumber) || [] : [];
-    const linkedIntimations = item?.id ? getLinkedIntimations?.(processNumber) || [] : [];
+    const directLinks = records => (records || []).filter(record => String(record?.processId || '') === String(item?.id || ''));
+    const uniqueLinks = records => [...new Map(records.filter(Boolean).map(record => [String(record.id || ''), record])).values()];
+    const linkedTasks = item?.id ? uniqueLinks([...(getLinkedTasks?.(processNumber) || []), ...directLinks(store.state.tasks)]) : [];
+    const linkedIntimations = item?.id ? uniqueLinks([...(getLinkedIntimations?.(processNumber) || []), ...directLinks(store.state.intimations)]) : [];
     const openTasks = linkedTasks.filter(task => !isTerminalStatus(task.status));
     const timeMinutes = linkedTasks.reduce((total, task) => total + totalTimeMinutes(task.timeLogs), 0);
     const nextDeadline = openTasks.map(task => task.fatalDeadline || task.deadline).filter(Boolean).sort()[0];
@@ -70,6 +80,7 @@ export function createProcessesFeature({
       linkedTasks,
       linkedIntimationRecords: linkedIntimations,
       movements: Array.isArray(item.movements) ? item.movements : [],
+      timeline: buildLegalTimeline(store.state, item),
       canConsultTjrs: canConsultTjrs(item)
     });
   };

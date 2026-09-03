@@ -574,6 +574,13 @@ import { createTasksFeature } from './features/tasks.js';
         App.switchView('inbox');
         getPublicationsFeature().select(publication.id);
       },
+      openAgenda: appointment => App.openAgendaModal(appointment),
+      openFinancial: process => {
+        App.switchView('financial');
+        const input = document.getElementById('financialSearch');
+        if (input) input.value = process?.number || process?.protocol || '';
+        App.renderFinancial(input?.value || '');
+      },
       exportJson: (data, filename) => App.exportJson(data, filename),
       confirmProcessDeletion: number => window.prompt(`Para excluir o processo ${number}, digite o número completo:`),
       requestProcessReenable: () => window.prompt('Digite o número CNJ cuja descoberta automática deve ser reativada:')

@@ -78,8 +78,10 @@ try {
     for (const expected of [
       '5004321-12.2026.8.21.0001', 'Cliente Sintética Processos', 'Empresa Adversa Sintética', 'Segredo de justiça',
       'Tarefas abertas', '2', 'Intimações vinculadas', '1', '1h15m', '03/09/2026',
-      'Despacho sintético integral', 'Responsabilidade contratual sintética', 'Probabilidade informada', 'Possível', 'Honorários cadastrados'
+      'Despacho sintético integral', 'Responsabilidade contratual sintética', 'Probabilidade informada', 'Possível', 'Honorários cadastrados',
+      'Linha do tempo jurídica', 'Audiência sintética vinculada', 'peticao-sintetica.pdf', 'Custas sintéticas', 'Conferência sintética'
     ]) assert.ok(inspectorText.includes(expected), `Inspector deve preservar: ${expected}`);
+    assert.ok(await page.locator('.legal-timeline [data-process-timeline]').count() >= 4, 'Entidades canônicas navegáveis devem aparecer na linha do tempo.');
     assert.equal(await page.locator('[data-process-task]').count(), 3, 'Todas as tarefas vinculadas devem permanecer acessíveis no inspector.');
     assert.equal(await page.locator('#processInspectorTjrs').isVisible(), true);
     assert.equal(await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"]').getAttribute('aria-current'), 'true');
@@ -100,38 +102,39 @@ try {
     let tjrsRequests = 0;
     let requestPayload;
     let tjrsMode = 'success';
-    await page.route('**/api/tjrs/consult', async route => {
+    await page.route('**/api/integrations/tjrs-sidecar/processes/sync', async route => {
       tjrsRequests++;
       requestPayload = route.request().postDataJSON();
       await route.fulfill({
-        status: 200,
+        status: tjrsMode === 'success' ? 200 : 503,
         contentType: 'application/json',
         body: JSON.stringify(tjrsMode === 'success'
-          ? { ok: true, directUrl: 'https://tjrs.example.test/processo', message: 'Consulta sintética aberta.' }
+          ? {
+              ok: true,
+              revision: requestPayload.revision,
+              process: { ...fixture.processes[0], lastMovement: 'Snapshot local sintético incorporado', lastMovementAt: '2026-09-03' },
+              message: 'Snapshot local sintético incorporado.'
+            }
           : { ok: false, message: 'Falha sintética controlada.' })
       });
     });
-    await page.evaluate(() => {
-      window.__uiV2ProcessOpenCalls = [];
-      window.open = (...args) => { window.__uiV2ProcessOpenCalls.push(args); return null; };
-    });
     await page.locator('#processInspectorTjrs').click();
-    await page.locator('#toastRegion .toast.success', { hasText: 'Consulta sintética aberta.' }).waitFor();
+    await page.locator('#toastRegion .toast.success', { hasText: 'Snapshot local sintético incorporado.' }).waitFor();
     assert.equal(tjrsRequests, 1);
-    assert.deepEqual(requestPayload, { processNumber: '5004321-12.2026.8.21.0001', courtUnit: '1ª Vara Cível Sintética' });
-    assert.deepEqual(await page.evaluate(() => window.__uiV2ProcessOpenCalls), [['https://tjrs.example.test/processo', '_blank', 'noopener,noreferrer']]);
+    assert.equal(requestPayload.processId, 'ui-v2-process-tjrs');
+    assert.equal(requestPayload.processNumber, '5004321-12.2026.8.21.0001');
+    assert.ok(requestPayload.revision, 'Atualização do snapshot deve carregar a revisão canônica.');
     assert.equal(await page.locator('#processInspectorTjrs').isDisabled(), false);
 
     tjrsMode = 'failure';
     await page.locator('#processInspectorTjrs').click();
     await page.locator('#toastRegion .toast.error', { hasText: 'Falha sintética controlada.' }).waitFor();
     assert.equal(tjrsRequests, 2, 'Cada ação explícita deve gerar uma operação TJRS.');
-    assert.equal((await page.evaluate(() => window.__uiV2ProcessOpenCalls)).length, 1, 'Falha não pode navegar.');
     assert.equal(await page.locator('#processInspectorTjrs').isDisabled(), false, 'Botão deve ser restaurado após falha.');
 
-    await page.locator('[data-process-task="ui-v2-task-open"]').click();
+    await page.locator('[data-process-timeline="task:ui-v2-task-open:created"]').click();
     await page.locator('#modalBackdrop[data-modal-mode="task"]:not(.hidden)').waitFor();
-    assert.equal(await page.locator('#field-title').inputValue(), 'Tarefa vinculada sintética', 'A tarefa exata deve abrir pelo inspector.');
+    assert.equal(await page.locator('#field-title').inputValue(), 'Tarefa vinculada sintética', 'O evento da linha do tempo deve abrir a tarefa exata.');
     await page.locator('#modalCancel').click();
     await page.evaluate(() => { window.Atrium.App.switchView('processes'); window.Atrium.App.renderProcesses(''); });
     await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"] [data-process-details]').click();
