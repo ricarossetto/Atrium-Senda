@@ -264,7 +264,7 @@ try {
   await page.evaluate(() => window.Atrium.App.switchView('financial'));
   await page.locator('#view-financial.active').waitFor();
   assert.deepEqual(await page.locator('#financialFilters button').evaluateAll(buttons => buttons.map(button => [button.dataset.finFilter, button.textContent.trim()])), [
-    ['all', 'Todos'], ['rpv', 'RPVs / Alvarás'], ['honorarios', 'Honorários']
+    ['all', 'Todos'], ['rpv', 'RPVs / Alvarás'], ['honorarios', 'Honorários'], ['despesas', 'Despesas']
   ]);
   assert.equal(await page.locator('#finMetricHonorarios').textContent(), 'R$\u00a02.900,00', 'Métrica financeira pode divergir historicamente do Dashboard.');
   assert.equal(await page.locator('#finMetricRpvCount').textContent(), '1 requisições');
@@ -384,13 +384,13 @@ try {
   }
   await page.click('#newFinancialEntryButton');
   await page.selectOption('#finProcessSelect', 'target-custas');
-  await page.selectOption('#finTypeSelect', 'custas');
+  await page.selectOption('#finTypeSelect', 'despesa');
+  await page.selectOption('#finStatusSelect', 'pendente');
+  await page.fill('#finDescriptionInput', 'Preparo recursal');
   await page.fill('#finGrossInput', '5000');
   await page.fill('#finFeePctInput', '15');
   await page.click('#financialEntryForm button[type="submit"]');
-  assert.equal(await page.locator('#financialEntryBackdrop').evaluate(element => element.classList.contains('hidden')), false, 'Custas sem campo canônico não podem confirmar mutação destrutiva.');
-  assert.equal(await page.locator('#toastRegion .toast.error').last().textContent(), 'Custas e reembolsos não possuem campo contábil próprio neste modelo. Nenhum dado foi alterado.');
-  await page.click('#financialEntryCancel');
+  await page.locator('#financialEntryBackdrop').waitFor({ state: 'hidden' });
   await page.evaluate(() => window.Atrium.Store.flush());
 
   const submittedState = await page.evaluate(ids => ({
@@ -400,7 +400,7 @@ try {
     })),
     audits: window.Atrium.Store.state.audit.filter(item => item.action === 'Lançamento financeiro registrado')
   }), processIds);
-  assert.equal(submittedState.audits.length, 4, 'Quatro lançamentos canônicos devem produzir quatro audits; custas rejeitadas não auditam mutação inexistente.');
+  assert.equal(submittedState.audits.length, 5, 'Cinco lançamentos canônicos devem produzir cinco audits, incluindo a despesa processual.');
   for (const item of submitCases) {
     const before = initialTargets[item.id];
     const after = submittedState.processes[item.id];
@@ -422,8 +422,12 @@ try {
   assert.equal(submittedState.processes['target-fixo'].feeAmount, 3000);
   assert.equal(submittedState.processes['target-mensal'].feeType, 'mensal');
   assert.equal(submittedState.processes['target-mensal'].feeMonthly, 4000);
-  assert.deepEqual(submittedState.processes['target-custas'], initialTargets['target-custas']);
+  assert.equal(submittedState.processes['target-custas'].expenses.length, 1);
+  assert.equal(submittedState.processes['target-custas'].expenses[0].description, 'Preparo recursal');
+  assert.equal(submittedState.processes['target-custas'].expenses[0].amount, 5000);
+  assert.equal(submittedState.processes['target-custas'].expenses[0].status, 'pendente');
   assert.deepEqual(submittedState.audits.map(item => item.detail), [
+    'PROC-FIN-5: R$\u00a05.000,00 (pendente)',
     'PROC-FIN-4: R$\u00a04.000,00 (requisitado)',
     'PROC-FIN-3: R$\u00a03.000,00 (disponivel_saque)',
     'PROC-FIN-2: R$\u00a02.000,00 (aguardando_deposito)',
@@ -435,6 +439,7 @@ try {
   assert.equal(saveRequests.every(request => new URL(request.url).pathname === '/api/state'), true, 'Save financeiro só pode usar /api/state.');
   assert.equal(await page.locator('#finMetricHonorarios').textContent(), 'R$\u00a010.600,00');
   assert.equal(await page.locator('#finMetricRpvCount').textContent(), '2 requisições');
+  assert.equal(await page.locator('#finMetricExpenses').textContent(), 'R$\u00a05.000,00');
   assert.equal(await page.locator('#widgetHonorariosPending').textContent(), 'R$\u00a010.800,00', 'Dashboard deve ler os campos canônicos sem rótulos de UI persistidos.');
   assert.equal(await page.locator('#toastRegion .toast.success').last().textContent(), 'Lançamento financeiro salvo com sucesso!');
 

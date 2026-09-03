@@ -92,6 +92,11 @@ try {
     assert.match(detailText, /Aguardando triagem humana/);
     assert.equal(await urgentRow.getAttribute('aria-pressed'), 'true');
 
+    await page.evaluate(() => document.getElementById('publicationInspectorBackdrop').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
+    await urgentRow.click();
+    await page.locator('#view-inbox.publication-detail-open').waitFor();
+
     await page.locator('#btnCreateTask').click();
     await page.locator('#modalBackdrop[data-modal-mode="task"]:not(.hidden)').waitFor();
     assert.equal(await page.locator('#field-deadline').inputValue(), '', 'Texto “15 dias” não pode preencher deadline.');

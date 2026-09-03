@@ -15,6 +15,8 @@ export function createEmailIntegrationFeature({
 } = {}) {
   let initialized = false;
   let emailReceivers = [];
+  let smtpGuideDismissed = false;
+  const initialSnapshots = new Map();
   const byId = id => documentRef?.getElementById(id);
   const logError = (...args) => windowRef?.console?.error?.(...args);
 
@@ -28,26 +30,31 @@ export function createEmailIntegrationFeature({
       presentation?.init?.();
 
       byId('btnConfigureEmail')?.addEventListener('click', () => this.openConfigModal());
-      byId('emailConfigClose')?.addEventListener('click', () => this.closeConfigModal());
-      byId('emailConfigCancel')?.addEventListener('click', () => this.closeConfigModal());
+      byId('emailConfigClose')?.addEventListener('click', () => this.requestClose('config'));
+      byId('emailConfigCancel')?.addEventListener('click', () => this.requestClose('config'));
       byId('emailConfigBackdrop')?.addEventListener('click', event => {
-        if (event.target === byId('emailConfigBackdrop')) this.closeConfigModal();
+        if (event.target === byId('emailConfigBackdrop')) this.requestClose('config');
       });
       byId('emailConfigForm')?.addEventListener('submit', event => this.submitConfig(event));
+      byId('dismissSmtpGuide')?.addEventListener('click', () => {
+        byId('smtpFirstUseGuide')?.classList.add('hidden');
+        smtpGuideDismissed = true;
+        byId('emailHostInput')?.focus();
+      });
 
       byId('btnTestEmail')?.addEventListener('click', () => this.openTestModal());
-      byId('emailTestClose')?.addEventListener('click', () => this.closeTestModal());
-      byId('emailTestCancel')?.addEventListener('click', () => this.closeTestModal());
+      byId('emailTestClose')?.addEventListener('click', () => this.requestClose('test'));
+      byId('emailTestCancel')?.addEventListener('click', () => this.requestClose('test'));
       byId('emailTestBackdrop')?.addEventListener('click', event => {
-        if (event.target === byId('emailTestBackdrop')) this.closeTestModal();
+        if (event.target === byId('emailTestBackdrop')) this.requestClose('test');
       });
       byId('emailTestForm')?.addEventListener('submit', event => this.submitTest(event));
 
       byId('btnAddEmailReceiver')?.addEventListener('click', () => this.openReceiverModal());
-      byId('emailReceiverModalClose')?.addEventListener('click', () => this.closeReceiverModal());
-      byId('receiverCancelBtn')?.addEventListener('click', () => this.closeReceiverModal());
+      byId('emailReceiverModalClose')?.addEventListener('click', () => this.requestClose('receiver'));
+      byId('receiverCancelBtn')?.addEventListener('click', () => this.requestClose('receiver'));
       byId('emailReceiverModalBackdrop')?.addEventListener('click', event => {
-        if (event.target === byId('emailReceiverModalBackdrop')) this.closeReceiverModal();
+        if (event.target === byId('emailReceiverModalBackdrop')) this.requestClose('receiver');
       });
       byId('receiverTypeInternal')?.addEventListener('change', () => {
         byId('receiverInternalFields')?.classList.remove('hidden');
@@ -73,6 +80,37 @@ export function createEmailIntegrationFeature({
         const deleteButton = event.target.closest('[data-receiver-action="delete"]');
         if (deleteButton) this.deleteReceiver(deleteButton.dataset.receiverId);
       });
+      return true;
+    },
+
+    formSnapshot(key) {
+      const ids = key === 'config'
+        ? ['emailHostInput', 'emailPortInput', 'emailSecureInput', 'emailUserInput', 'emailPasswordInput', 'emailFromNameInput', 'emailFromAddressInput']
+        : key === 'test'
+          ? ['emailTestRecipientInput']
+          : ['receiverIdInput', 'receiverEditTypeInput', 'receiverTypeInternal', 'receiverTypeExternal', 'receiverUserSelect', 'receiverNameInput', 'receiverEmailInput', 'receiverEnabledInput'];
+      return JSON.stringify(ids.map(id => {
+        const element = byId(id);
+        return { id, value: element?.value || '', checked: Boolean(element?.checked) };
+      }));
+    },
+
+    rememberSnapshot(key) {
+      initialSnapshots.set(key, this.formSnapshot(key));
+    },
+
+    hasUnsavedChanges(key) {
+      const initial = initialSnapshots.get(key);
+      return Boolean(initial && initial !== this.formSnapshot(key));
+    },
+
+    requestClose(key) {
+      const labels = { config: 'configuração de e-mail', test: 'teste de e-mail', receiver: 'destinatário' };
+      if (this.hasUnsavedChanges(key)
+        && !confirmFn(`Há alterações não salvas em ${labels[key]}. Deseja realmente fechar e descartá-las?`)) return false;
+      if (key === 'config') this.closeConfigModal();
+      else if (key === 'test') this.closeTestModal();
+      else this.closeReceiverModal();
       return true;
     },
 
@@ -140,6 +178,9 @@ export function createEmailIntegrationFeature({
         }
         if (byId('emailFromNameInput')) byId('emailFromNameInput').value = status.fromName || getOfficeName() || '';
         if (byId('emailFromAddressInput')) byId('emailFromAddressInput').value = status.fromAddress || '';
+        const firstUseGuide = byId('smtpFirstUseGuide');
+        if (firstUseGuide) firstUseGuide.classList.toggle('hidden', status.configured || smtpGuideDismissed);
+        this.rememberSnapshot('config');
         backdrop.classList.remove('hidden');
         presentation?.open?.('emailConfig');
         return true;
@@ -151,6 +192,7 @@ export function createEmailIntegrationFeature({
 
     closeConfigModal() {
       byId('emailConfigBackdrop')?.classList.add('hidden');
+      initialSnapshots.delete('config');
       const passwordInput = byId('emailPasswordInput');
       if (passwordInput) passwordInput.value = '';
       presentation?.close?.('emailConfig');
@@ -202,6 +244,7 @@ export function createEmailIntegrationFeature({
       if (!backdrop) return false;
       const recipientInput = byId('emailTestRecipientInput');
       if (recipientInput) recipientInput.value = '';
+      this.rememberSnapshot('test');
       backdrop.classList.remove('hidden');
       presentation?.open?.('emailTest');
       return true;
@@ -209,6 +252,7 @@ export function createEmailIntegrationFeature({
 
     closeTestModal() {
       byId('emailTestBackdrop')?.classList.add('hidden');
+      initialSnapshots.delete('test');
       presentation?.close?.('emailTest');
     },
 
@@ -368,6 +412,7 @@ export function createEmailIntegrationFeature({
         if (byId('receiverEmailInput')) byId('receiverEmailInput').value = '';
         if (byId('receiverEnabledInput')) byId('receiverEnabledInput').checked = true;
       }
+      this.rememberSnapshot('receiver');
       backdrop.classList.remove('hidden');
       if (documentRef?.body) documentRef.body.style.overflow = 'hidden';
       presentation?.open?.('emailReceiver');
@@ -376,6 +421,7 @@ export function createEmailIntegrationFeature({
 
     closeReceiverModal() {
       byId('emailReceiverModalBackdrop')?.classList.add('hidden');
+      initialSnapshots.delete('receiver');
       if (byId('modalBackdrop')?.classList.contains('hidden') && documentRef?.body) documentRef.body.style.overflow = '';
       presentation?.close?.('emailReceiver');
     },

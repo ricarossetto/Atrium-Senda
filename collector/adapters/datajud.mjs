@@ -430,7 +430,7 @@ function safeRecord(record) {
 
 function meaningful(value) {
   if (value === null || value === undefined) return false;
-  if (typeof value === 'string') return value.trim() !== '';
+  if (typeof value === 'string') return value.trim() !== '' && !/^cliente n[aã]o informado$/i.test(value.trim());
   if (Array.isArray(value)) return value.length > 0;
   return true;
 }

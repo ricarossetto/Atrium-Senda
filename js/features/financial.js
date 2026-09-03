@@ -64,6 +64,7 @@ export function createFinancialFeature({
 
       let totalHonorariosAFaturar = 0;
       let rpvCount = 0;
+      let pendingExpenses = 0;
 
       const rows = [];
       const presentationRecords = [];
@@ -71,6 +72,31 @@ export function createFinancialFeature({
         const isPaid = proc.feeStatus === 'pago' || proc.feeStatus === 'quitado' || proc.feeStatus === 'repassado' || proc.requisitionStatus === 'repassado' || proc.requisitionStatus === 'pago';
         const hasRequisitionAmount = proc.requisitionAmount !== '' && proc.requisitionAmount !== null && proc.requisitionAmount !== undefined;
         const hasRpvAmount = proc.rpvAmount !== '' && proc.rpvAmount !== null && proc.rpvAmount !== undefined;
+
+        const processExpenses = Array.isArray(proc.expenses) ? proc.expenses : [];
+        pendingExpenses += processExpenses
+          .filter(expense => (expense.status || 'pendente') === 'pendente')
+          .reduce((total, expense) => total + Number(expense.amount || 0), 0);
+        if (filter === 'all' || filter === 'despesas') {
+          processExpenses.forEach(expense => {
+            const amount = Number(expense.amount || 0);
+            const status = expense.status || 'pendente';
+            if (!needle || normalizeText(`${proc.number} ${proc.client} ${expense.description} ${status}`).includes(needle)) {
+              presentationRecords.push({
+                id: expense.id || `${proc.id}-expense`,
+                kind: 'despesa',
+                processNumber: proc.number || 'Processo sem número',
+                client: proc.client || 'Cliente',
+                typeLabel: expense.description || 'Despesa processual',
+                gross: amount,
+                feeAmount: null,
+                netClient: null,
+                statusLabel: status === 'reembolsado' ? 'Reembolsada' : status === 'pago' ? 'Paga' : 'Pendente',
+                statusTone: status === 'pendente' ? 'warning' : 'connected'
+              });
+            }
+          });
+        }
 
         // Cálculo canônico do RPV / Precatório (BUG-003)
         if (proc.requisitionStatus || hasRequisitionAmount || hasRpvAmount) {
@@ -152,8 +178,10 @@ export function createFinancialFeature({
 
       const honEl = byId('finMetricHonorarios');
       const rpvEl = byId('finMetricRpvCount');
+      const expenseEl = byId('finMetricExpenses');
       if (honEl) honEl.textContent = formatCurrency(totalHonorariosAFaturar);
       if (rpvEl) rpvEl.textContent = `${rpvCount} requisições`;
+      if (expenseEl) expenseEl.textContent = formatCurrency(pendingExpenses);
       byId('financialFilters')?.querySelectorAll('button[data-fin-filter]').forEach(button => {
         button.setAttribute?.('aria-pressed', String(button.dataset.finFilter === filter));
       });
@@ -184,6 +212,7 @@ export function createFinancialFeature({
       }
       const form = byId('financialEntryForm');
       if (form) form.reset();
+      if (byId('finDateInput')) byId('finDateInput').value = new Date().toISOString().slice(0, 10);
       this.updateModalSummary();
       if (isV2()) {
         lastFocusedElement = documentRef.activeElement;
@@ -231,16 +260,31 @@ export function createFinancialFeature({
     },
 
     updateModalSummary() {
+      const isExpense = byId('finTypeSelect')?.value === 'despesa';
+      documentRef.querySelectorAll?.('.financial-expense-only').forEach(element => {
+        element.style.display = isExpense ? 'flex' : 'none';
+      });
+      const statusSelect = byId('finStatusSelect');
+      if (statusSelect) {
+        const wasExpense = statusSelect.dataset.expenseMode === 'true';
+        if (isExpense && !wasExpense) {
+          statusSelect.dataset.expenseMode = 'true';
+          statusSelect.innerHTML = '<option value="pendente">Pendente de pagamento</option><option value="pago">Paga pelo escritório</option><option value="reembolsado">Reembolsada pelo cliente</option>';
+        } else if (!isExpense && wasExpense) {
+          delete statusSelect.dataset.expenseMode;
+          statusSelect.innerHTML = '<option value="requisitado">Requisitado / Expedido</option><option value="aguardando_deposito">Aguardando Depósito Judicial</option><option value="disponivel_saque">Disponível para Saque / Levantamento</option><option value="repassado">Repassado ao Cliente &amp; Quitado</option>';
+        }
+      }
       const gross = parseFloat(byId('finGrossInput')?.value) || 0;
       const feePct = parseFloat(byId('finFeePctInput')?.value) || 0;
-      const fee = (gross * feePct) / 100;
-      const net = Math.max(0, gross - fee);
+      const fee = isExpense ? 0 : (gross * feePct) / 100;
+      const net = isExpense ? 0 : Math.max(0, gross - fee);
       const sumGross = byId('finSumGross');
       const sumFee = byId('finSumFee');
       const sumNet = byId('finSumNet');
       if (sumGross) sumGross.textContent = formatCurrency(gross);
-      if (sumFee) sumFee.textContent = formatCurrency(fee);
-      if (sumNet) sumNet.textContent = formatCurrency(net);
+      if (sumFee) sumFee.textContent = isExpense ? 'Não se aplica' : formatCurrency(fee);
+      if (sumNet) sumNet.textContent = isExpense ? 'Não se aplica' : formatCurrency(net);
     },
 
     async handleEntrySubmit(event) {
@@ -259,6 +303,8 @@ export function createFinancialFeature({
       const grossAmount = Number(data.get('grossAmount'));
       const rawFeePercentage = String(data.get('feePercentage') ?? '').trim();
       const feePercentage = rawFeePercentage === '' ? null : Number(rawFeePercentage);
+      const description = String(data.get('description') || '').trim();
+      const expenseDate = String(data.get('expenseDate') || '').trim();
 
       if (!Number.isFinite(grossAmount) || grossAmount < 0) {
         showToast?.('Informe um valor financeiro válido e não negativo.', 'error');
@@ -292,8 +338,22 @@ export function createFinancialFeature({
       } else if (entryType === 'mensal') {
         process.feeType = 'mensal';
         process.feeMonthly = grossAmount;
+      } else if (entryType === 'despesa') {
+        if (!description) {
+          showToast?.('Descreva a despesa para facilitar a prestação de contas.', 'error');
+          return;
+        }
+        process.expenses = Array.isArray(process.expenses) ? process.expenses : [];
+        process.expenses.push({
+          id: `expense-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          description,
+          amount: grossAmount,
+          status,
+          date: expenseDate || new Date().toISOString().slice(0, 10),
+          createdAt: new Date().toISOString()
+        });
       } else {
-        showToast?.('Custas e reembolsos não possuem campo contábil próprio neste modelo. Nenhum dado foi alterado.', 'error');
+        showToast?.('Tipo de lançamento financeiro não reconhecido.', 'error');
         return;
       }
       process.updatedAt = new Date().toISOString();

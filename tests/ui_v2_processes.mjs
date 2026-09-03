@@ -85,6 +85,11 @@ try {
     assert.equal(await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"]').getAttribute('aria-current'), 'true');
     assert.equal(requests.filter(request => /\/api\/tjrs\/consult/.test(request.url)).length, 0, 'Abrir inspector não consulta TJRS.');
 
+    await page.evaluate(() => document.getElementById('processInspectorBackdrop').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    await page.locator('#processInspectorBackdrop.hidden').waitFor({ state: 'attached' });
+    await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"] [data-process-details]').click();
+    await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
+
     const deadlineShape = await page.evaluate(() => ({
       textOnlyDeadline: Object.hasOwn(window.Atrium.Store.state.tasks.find(item => item.id === 'ui-v2-task-text-only'), 'deadline'),
       textOnlyFatal: Object.hasOwn(window.Atrium.Store.state.tasks.find(item => item.id === 'ui-v2-task-text-only'), 'fatalDeadline'),

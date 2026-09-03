@@ -10,6 +10,7 @@ const OUTPUT = path.join(ROOT, 'artifacts', 'visual-qa', 'ui-v2-prompts');
 fs.mkdirSync(OUTPUT, { recursive: true });
 
 const SCENARIOS = [
+  { file: '00-light-1920x1080-four-columns.png', theme: 'light', viewport: { width: 1920, height: 1080 }, state: 'all' },
   { file: '01-light-1440x900-library.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'all' },
   { file: '02-dark-1440x900-library.png', theme: 'dark', viewport: { width: 1440, height: 900 }, state: 'all' },
   { file: '03-light-1440x900-search.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'search' },
@@ -61,6 +62,8 @@ try {
           overflow: document.documentElement.scrollWidth - innerWidth,
           duplicates: ids.filter((id, index) => ids.indexOf(id) !== index),
           cardOverflow: cards.filter(card => card.scrollWidth - card.clientWidth > 2).length,
+          cardColumns: new Set(cards.slice(0, 8).map(card => Math.round(card.getBoundingClientRect().left))).size,
+          actionButtonMaxHeight: Math.max(0, ...cards.flatMap(card => [...card.querySelectorAll('.prompt-card-actions .button')]).map(button => button.getBoundingClientRect().height)),
           sheet: sheetRect ? {
             left: sheetRect.left,
             right: sheetRect.right,
@@ -83,6 +86,10 @@ try {
       assert.deepEqual(layout.duplicates, []); assertions++;
       assert.deepEqual(layout.undersized, []); assertions++;
       assert.deepEqual(pageErrors, []); assertions++;
+      if (scenario.viewport.width >= 1600 && scenario.state === 'all') {
+        assert.equal(layout.cardColumns, 4, `${scenario.file}: a biblioteca deve exibir quatro prompts por linha.`); assertions++;
+        assert.ok(layout.actionButtonMaxHeight <= 33, `${scenario.file}: botões de ação estão altos demais (${layout.actionButtonMaxHeight}px).`); assertions++;
+      }
       if (layout.sheet) {
         assert.ok(layout.sheet.left >= -2 && layout.sheet.right <= layout.sheet.width + 2, `${scenario.file}: sheet horizontal.`); assertions++;
         assert.ok(layout.sheet.top >= -2 && layout.sheet.bottom <= layout.sheet.height + 2, `${scenario.file}: sheet vertical.`); assertions++;
@@ -97,7 +104,7 @@ try {
     }
   }
 
-  assert.equal(hashes.size, SCENARIOS.length, 'Os doze estados visuais devem produzir hashes distintos.');
+  assert.equal(hashes.size, SCENARIOS.length, 'Todos os estados visuais devem produzir hashes distintos.');
   console.log('======================================================');
   console.log('✓ UI V2 PROMPTS VISUAL QA CONCLUÍDO!');
   console.log(`- Screenshots: ${SCENARIOS.length}`);

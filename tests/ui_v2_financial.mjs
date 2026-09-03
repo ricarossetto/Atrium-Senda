@@ -64,7 +64,7 @@ try {
   await trigger.click();
   await page.waitForFunction(() => document.querySelector('#financialEntryBackdrop .financial-entry-modal')?.contains(document.activeElement));
   assert.equal(await page.locator('#appShell').getAttribute('inert'), '');
-  assert.deepEqual(await page.locator('#finTypeSelect option').evaluateAll(options => options.map(option => option.value)), ['rpv', 'exito', 'fixo', 'mensal', 'custas']);
+  assert.deepEqual(await page.locator('#finTypeSelect option').evaluateAll(options => options.map(option => option.value)), ['rpv', 'exito', 'fixo', 'mensal', 'despesa']);
   await page.locator('#finGrossInput').fill('1000');
   await page.locator('#finFeePctInput').fill('25');
   assert.deepEqual(await page.locator('#finSumGross, #finSumFee, #finSumNet').allTextContents(), ['R$\u00a01.000,00', 'R$\u00a0250,00', 'R$\u00a0750,00']);
@@ -91,10 +91,11 @@ try {
   });
   assert.deepEqual(bridge, [{ type: 'prestacao_contas_rpv' }]);
 
-  async function openAndFill({ process = 'fin-target-custas', type = 'custas', gross = '500', percentage = '10' } = {}) {
+  async function openAndFill({ process = 'fin-target-custas', type = 'despesa', gross = '500', percentage = '10', description = 'Preparo recursal sintético' } = {}) {
     await page.locator('#newFinancialEntryButton').click();
     await page.locator('#finProcessSelect').selectOption(process);
     await page.locator('#finTypeSelect').selectOption(type);
+    if (type === 'despesa') await page.locator('#finDescriptionInput').fill(description);
     await page.locator('#finGrossInput').fill(gross);
     await page.locator('#finFeePctInput').fill(percentage);
   }
@@ -103,12 +104,14 @@ try {
   }
 
   await openAndFill();
-  const custasBefore = await page.evaluate(() => JSON.stringify(window.Atrium.Store.state));
   await page.locator('#financialEntryForm button[type="submit"]').click();
-  assert.equal(await page.locator('#financialEntryBackdrop').isVisible(), true);
-  assert.equal(await page.evaluate(() => JSON.stringify(window.Atrium.Store.state)), custasBefore);
-  assert.match(await page.locator('#toastRegion .toast.error').last().textContent(), /Nenhum dado foi alterado/);
-  await page.locator('#financialEntryCancel').click();
+  await page.locator('#financialEntryBackdrop').waitFor({ state: 'hidden' });
+  const expense = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.id === 'fin-target-custas')?.expenses?.at(-1));
+  assert.equal(expense.description, 'Preparo recursal sintético');
+  assert.equal(expense.amount, 500);
+  assert.equal(expense.status, 'pendente');
+  await page.locator('[data-fin-filter="despesas"]').click();
+  assert.match(await page.locator('.financial-v2-table [data-financial-record]').first().textContent(), /Preparo recursal sintético/);
 
   await openAndFill({ type: 'exito', gross: '1000', percentage: '' });
   await dispatchSubmit();

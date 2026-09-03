@@ -206,7 +206,7 @@ html[data-ui="v2"] #view-inbox .publication-context-controls {
   border-right: 1px solid var(--v2-color-border);
 }
 
-html[data-ui="v2"] #view-inbox .publication-context-controls .inbox-sort-control:first-child { width: 184px; }
+html[data-ui="v2"] #view-inbox .publication-context-controls .inbox-sort-control:first-child { width: 220px; }
 html[data-ui="v2"] #view-inbox .publication-context-controls .inbox-sort-control:last-child { width: 176px; }
 
 html[data-ui="v2"] #view-inbox .publication-primary-actions .button {
@@ -971,6 +971,15 @@ html[data-ui="v2"] #publicationInspectorBackdrop {
   display: block;
   background: rgba(9, 12, 14, .54);
   backdrop-filter: blur(3px);
+}
+
+html[data-ui="v2"] #publicationInspectorBackdrop,
+html[data-ui="v2"] #intimationDetail {
+  overscroll-behavior: contain;
+}
+
+html[data-ui="v2"] #view-inbox.publication-detail-open #intimationDetail {
+  touch-action: pan-y;
 }
 
 html[data-ui="v2"][data-theme="light"] #publicationInspectorBackdrop { background: rgba(42, 51, 57, .30); }

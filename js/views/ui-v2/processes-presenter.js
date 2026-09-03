@@ -187,7 +187,10 @@ export function renderRow({ item, escapeHtml, formatDate }) {
     item.caseFolder ? `Pasta ${item.caseFolder}` : '',
     item.nb ? `NB ${item.nb}` : ''
   ]).join(' · ');
-  const partyMeta = unique([item.clientPosition, item.opposingParty ? `vs. ${item.opposingParty}` : '']).join(' · ') || 'Posição processual não informada';
+  const displayedClient = item.resolvedClient || (/^cliente n[aã]o informado$/i.test(String(item.client || '').trim()) ? '' : item.client);
+  const partyMeta = displayedClient
+    ? (unique([item.clientPosition, item.opposingParty ? `vs. ${item.opposingParty}` : '']).join(' · ') || 'Vínculo confirmado na carteira')
+    : 'A fonte não identificou com segurança a parte representada';
   const monitoringActive = item.monitoring === 'active';
   const monitoringLabel = monitoringActive ? 'Monitorando' : 'Monitoramento inativo';
   const riskLabel = riskPresentation(item.risk);
@@ -202,7 +205,7 @@ export function renderRow({ item, escapeHtml, formatDate }) {
       ${secrecy}
     </td>
     <td class="process-cell-parties" data-label="Cliente e partes">
-      <strong>${escapeHtml(item.client || 'Cliente não informado')}</strong>
+      <strong>${escapeHtml(displayedClient || 'Cliente ainda não vinculado')}</strong>
       <small>${escapeHtml(partyMeta)}</small>
     </td>
     <td class="process-cell-court" data-label="Tribunal e fase">

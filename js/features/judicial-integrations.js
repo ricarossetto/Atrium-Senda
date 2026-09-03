@@ -7,11 +7,14 @@ export function createJudicialIntegrationsFeature({
   audit = () => {},
   onSyncAll = async () => {},
   warn = () => {},
+  confirmFn = message => windowRef?.confirm?.(message) ?? false,
   presentation = null
 } = {}) {
   let judicialStatus = null;
   let initialized = false;
   let pendingTotpAccounts = [];
+  let assistedSessionCheckTimer = null;
+  let initialFormSnapshot = '';
   const byId = id => documentRef.getElementById(id);
 
   const feature = {
@@ -32,9 +35,9 @@ export function createJudicialIntegrationsFeature({
       initialized = true;
       presentation?.init?.();
       byId('certificateGuideButton')?.addEventListener('click', () => feature.open());
-      byId('judicialSetupClose')?.addEventListener('click', () => feature.close());
+      byId('judicialSetupClose')?.addEventListener('click', () => feature.requestClose());
       byId('judicialSetupBackdrop')?.addEventListener('click', event => {
-        if (event.target === byId('judicialSetupBackdrop')) feature.close();
+        if (event.target === byId('judicialSetupBackdrop')) feature.requestClose();
       });
       byId('certificateFileInput')?.addEventListener('change', event => {
         const fileName = byId('certificateFileName');
@@ -71,14 +74,46 @@ export function createJudicialIntegrationsFeature({
       documentRef.body.style.overflow = 'hidden';
       presentation?.open?.();
       await feature.refreshStatus(true);
+      feature.rememberSnapshot();
+    },
+
+    formSnapshot() {
+      const fieldIds = [
+        'certificateFileInput', 'certificatePassphrase', 'portalQrInput', 'totpPortalSelect',
+        'portalTotpSecret', 'portalTotpCode', 'portalTotpAccountSelect'
+      ];
+      const fields = fieldIds.map(id => ({ id, value: byId(id)?.value || '' }));
+      const portals = [...(documentRef.querySelectorAll?.('[data-portal-enabled]') || [])]
+        .map(input => ({ value: input.value || '', checked: Boolean(input.checked) }));
+      return JSON.stringify({ fields, portals });
+    },
+
+    rememberSnapshot() {
+      initialFormSnapshot = feature.formSnapshot();
+    },
+
+    hasUnsavedChanges() {
+      return Boolean(initialFormSnapshot && feature.formSnapshot() !== initialFormSnapshot);
+    },
+
+    requestClose() {
+      const backdrop = byId('judicialSetupBackdrop');
+      if (!backdrop || backdrop.classList.contains('hidden')) return true;
+      if (feature.hasUnsavedChanges()
+        && !confirmFn('Há alterações judiciais não salvas. Deseja realmente fechar e descartá-las?')) return false;
+      feature.close();
+      return true;
     },
 
     close() {
       const backdrop = byId('judicialSetupBackdrop');
       if (!backdrop || backdrop.classList.contains('hidden')) return;
+      windowRef.clearTimeout(assistedSessionCheckTimer);
+      assistedSessionCheckTimer = null;
       backdrop.classList.add('hidden');
       if (byId('modalBackdrop')?.classList.contains('hidden')) documentRef.body.style.overflow = '';
       feature.clearSecrets();
+      initialFormSnapshot = '';
       presentation?.close?.();
     },
 
@@ -216,8 +251,8 @@ export function createJudicialIntegrationsFeature({
 
       const launchButton = byId('launchPortalLoginButton');
       if (launchButton) {
-        launchButton.disabled = Boolean(status.interactiveCollectorRunning);
-        launchButton.textContent = status.interactiveCollectorRunning ? 'Sessão assistida em andamento…' : 'Abrir sessão assistida';
+        launchButton.disabled = false;
+        launchButton.textContent = status.interactiveCollectorRunning ? 'Verificar conclusão do login' : 'Abrir sessão assistida';
       }
     },
 
@@ -288,6 +323,7 @@ export function createJudicialIntegrationsFeature({
     },
 
     async launchAssistedSession(button) {
+      if (judicialStatus?.interactiveCollectorRunning) return feature.verifyAssistedSession();
       const portalIds = [...documentRef.querySelectorAll('[data-portal-enabled]:checked')].map(input => input.value);
       if (!portalIds.length) {
         showToast('Habilite ao menos um portal autenticado antes de abrir a sessão assistida.', 'warning');
@@ -296,8 +332,11 @@ export function createJudicialIntegrationsFeature({
       if (button) button.disabled = true;
       try {
         await feature.request('/api/integrations/judicial/connect', { portalIds });
+        feature.setAssistedSessionFeedback('A janela do tribunal foi aberta. Conclua o login; o ATRIUM reconhecerá a autenticação e atualizará os dados automaticamente.', 'working');
         showToast('Sessão assistida aberta. Conclua pessoalmente as etapas exigidas pelo portal.', 'success');
         await feature.refreshStatus();
+        windowRef.clearTimeout(assistedSessionCheckTimer);
+        assistedSessionCheckTimer = windowRef.setTimeout(() => feature.verifyAssistedSession({ automatic: true }), 6_000);
         return true;
       } catch (error) {
         showToast(error.message, 'error');
@@ -305,6 +344,48 @@ export function createJudicialIntegrationsFeature({
       } finally {
         if (button && !judicialStatus?.interactiveCollectorRunning) button.disabled = false;
       }
+    },
+
+    setAssistedSessionFeedback(message, state = '') {
+      const feedback = byId('assistedSessionFeedback');
+      if (!feedback) return;
+      feedback.textContent = message || '';
+      feedback.className = `assisted-session-feedback ${message ? '' : 'hidden'} ${state}`.trim();
+    },
+
+    scheduleAssistedSessionCheck(delay = 3_000) {
+      windowRef.clearTimeout(assistedSessionCheckTimer);
+      assistedSessionCheckTimer = windowRef.setTimeout(() => feature.verifyAssistedSession({ automatic: true }), delay);
+    },
+
+    async verifyAssistedSession({ automatic = false } = {}) {
+      const status = await feature.refreshStatus(false);
+      if (status?.interactiveCollectorRunning) {
+        feature.setAssistedSessionFeedback('Aguardando o portal concluir o login. Assim que a sessão for reconhecida, os dados serão atualizados automaticamente.', automatic ? 'working' : 'warning');
+        feature.scheduleAssistedSessionCheck();
+        return false;
+      }
+      windowRef.clearTimeout(assistedSessionCheckTimer);
+      assistedSessionCheckTimer = null;
+      if (status?.interactiveCollectorState?.status === 'failed') {
+        feature.setAssistedSessionFeedback(`A coleta encerrou com falha: ${status.interactiveCollectorState.lastError || 'não foi possível confirmar a sessão do portal.'}`, 'warning');
+        showToast('A sessão judicial não foi confirmada. Verifique o aviso exibido no assistente.', 'error');
+        return false;
+      }
+      const attemptedPortals = new Set(status?.interactiveCollectorState?.portalIds || []);
+      const pendingPortal = (status?.managedCoverage || []).find(item => attemptedPortals.has(item.id)
+        && ['action_required', 'human_action_required', 'expired', 'error'].includes(item.connectivityState));
+      if (pendingPortal) {
+        feature.setAssistedSessionFeedback(`${pendingPortal.name || 'O portal'} ainda requer ação: ${pendingPortal.humanAction || pendingPortal.lastError || 'conclua a autenticação e abra uma nova sessão assistida.'}`, 'warning');
+        return false;
+      }
+      feature.setAssistedSessionFeedback('Login concluído. Atualizando os dados judiciais em modo somente leitura…', 'working');
+      const synchronized = await onSyncAll({ silent: true });
+      feature.setAssistedSessionFeedback(synchronized
+        ? 'Sessão validada e dados judiciais atualizados com sucesso.'
+        : 'A sessão terminou, mas a atualização não foi confirmada. Use Sincronizar para tentar novamente.', synchronized ? 'success' : 'warning');
+      if (synchronized) showToast('Sessão judicial validada e dados atualizados.', 'success');
+      return synchronized;
     },
 
     async testA1Sandbox() {
@@ -356,6 +437,7 @@ export function createJudicialIntegrationsFeature({
         audit('Certificado A1 configurado', 'Contêiner validado pelo Windows e armazenado cifrado no agente local.');
         showToast('Certificado validado com sucesso! Sincronizando dados judiciais...', 'success');
         await feature.refreshStatus();
+        feature.rememberSnapshot();
         await onSyncAll({ silent: true });
       } catch (error) {
         showToast(error.message, 'error');
@@ -455,6 +537,7 @@ export function createJudicialIntegrationsFeature({
         audit('Segundo fator judicial ativado', `${judicialStatus?.portals?.find(portal => portal.id === portalId)?.name || portalId} · código TOTP validado.`);
         showToast('QR validado. O segundo fator desse portal está ativo.', 'success');
         await feature.refreshStatus();
+        feature.rememberSnapshot();
       } catch (error) {
         showToast(error.message, 'error');
       } finally {
@@ -471,6 +554,7 @@ export function createJudicialIntegrationsFeature({
         audit('Segundo fator judicial removido', `${judicialStatus?.portals?.find(portal => portal.id === portalId)?.name || portalId} · segredo local removido.`);
         showToast('Vínculo local removido. Isso não desativa o 2FA no portal.', 'success');
         await feature.refreshStatus();
+        feature.rememberSnapshot();
       } catch (error) {
         showToast(error.message, 'error');
       }
@@ -483,6 +567,7 @@ export function createJudicialIntegrationsFeature({
         audit('Cobertura judicial atualizada', `${enabledIds.length} portal(is) com certificado habilitado(s).`);
         showToast('Cobertura dos tribunais salva.', 'success');
         await feature.refreshStatus();
+        feature.rememberSnapshot();
       } catch (error) {
         showToast(error.message, 'error');
       }
@@ -499,6 +584,7 @@ export function createJudicialIntegrationsFeature({
         audit('Acessos judiciais zerados', `QR/2FA, cobertura e sessões locais removidos. Certificado A1 ${result.certificatePreserved ? 'preservado' : 'não estava configurado'}.`);
         showToast(result.certificatePreserved ? 'Acessos zerados. O certificado A1 foi preservado.' : 'Acessos zerados; nenhum certificado estava configurado.', 'success');
         await feature.refreshStatus();
+        feature.rememberSnapshot();
       } catch (error) {
         showToast(error.message, 'error');
       } finally {
@@ -516,6 +602,7 @@ export function createJudicialIntegrationsFeature({
         showToast('Sincronização com DJEN e tribunais concluída com sucesso!', 'success');
         audit('Atualização judicial supervisionada', 'Leitura de acervo, movimentos e publicações iniciada sem ciência, assinatura ou protocolo.');
         await feature.refreshStatus();
+        feature.rememberSnapshot();
         return true;
       } catch (error) {
         showToast(error.message || 'Falha ao sincronizar.', 'error');

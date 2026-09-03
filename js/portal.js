@@ -6,6 +6,7 @@ import {
   isoDate,
   uid
 } from './core/store.js';
+import { applyClientReconciliation } from './core/client-reconciliation.js';
 import { searchContent } from './core/api.js';
 import { createGlobalSearch } from './components/global-search.js';
 import { createModal } from './components/modal.js';
@@ -1446,13 +1447,16 @@ import { createTasksFeature } from './features/tasks.js';
         (data.processes || []).forEach(item => getProcessesFeature().upsertExternalProcess(item));
         (data.contacts || []).forEach(item => getContactsFeature().upsertExternalContact(item));
         (data.sources || []).forEach(source => Store.upsert('sources', source, 'id'));
+        const clientReconciliation = applyClientReconciliation(Store.state, data.clientLinks || []);
         if (Number(data.imported) > 0 || (data.intimations && data.intimations.length > 0)) Store.state.settings.demoMode = false;
-        Store.audit('Sincronização concluída', `${data.imported || (data.intimations?.length || 0)} registro(s) processado(s).`, 'Sistema');
+        Store.audit('Sincronização concluída', `${data.imported || (data.intimations?.length || 0)} registro(s) processado(s).${clientReconciliation.linkedProcesses ? ` ${clientReconciliation.linkedProcesses} cliente(s) vinculado(s) com evidência.` : ''}`, 'Sistema');
         Store.save();
         if (!await Store.flush()) throw new Error('A sincronização foi recebida, mas não pôde ser persistida localmente. Tente novamente.');
         this.renderAll();
         getSystemStatusComponent().setState('saved', `Sincronização confirmada às ${new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date())}.`);
-        if (!silent) this.toast('Sincronização concluída com sucesso.', 'success');
+        if (!silent) this.toast(clientReconciliation.linkedProcesses
+          ? `Sincronização concluída. ${clientReconciliation.linkedProcesses} cliente(s) vinculado(s) com evidência.`
+          : 'Sincronização concluída com sucesso.', 'success');
         return true;
       } catch (error) {
         const message = error.message || 'Não foi possível sincronizar.';

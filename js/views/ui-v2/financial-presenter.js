@@ -34,7 +34,7 @@ function renderDesktopTable(records, escapeHtml, formatCurrency) {
         <td><strong>${escapeHtml(record.processNumber)}</strong><small>${escapeHtml(record.client)}</small></td>
         <td><span class="financial-type is-${escapeHtml(record.kind)}">${escapeHtml(typeLabel(record))}</span></td>
         <td class="financial-money">${formatCurrency(record.gross)}</td>
-        <td class="financial-money is-fee">${formatCurrency(record.feeAmount)}</td>
+        <td class="financial-money is-fee">${record.feeAmount === null ? '—' : formatCurrency(record.feeAmount)}</td>
         <td class="financial-money">${record.netClient === null ? '—' : formatCurrency(record.netClient)}</td>
         <td>${statusMarkup(record, escapeHtml)}</td>
       </tr>`).join('')}</tbody>
@@ -48,7 +48,7 @@ function renderMobileList(records, escapeHtml, formatCurrency) {
       <header><div><span class="financial-type is-${escapeHtml(record.kind)}">${escapeHtml(typeLabel(record))}</span><strong>${escapeHtml(record.processNumber)}</strong><small>${escapeHtml(record.client)}</small></div>${statusMarkup(record, escapeHtml)}</header>
       <dl>
         <div><dt>Bruto</dt><dd>${formatCurrency(record.gross)}</dd></div>
-        <div><dt>Honorários</dt><dd class="is-fee">${formatCurrency(record.feeAmount)}</dd></div>
+        <div><dt>Honorários</dt><dd class="is-fee">${record.feeAmount === null ? '—' : formatCurrency(record.feeAmount)}</dd></div>
         ${record.netClient === null ? '' : `<div><dt>Líquido cliente</dt><dd>${formatCurrency(record.netClient)}</dd></div>`}
       </dl>
     </article>`).join('')}
@@ -61,6 +61,7 @@ function statusMarkup(record, escapeHtml) {
 
 function typeLabel(record) {
   if (record.kind === 'rpv') return record.typeLabel;
+  if (record.kind === 'despesa') return record.typeLabel || 'Despesa processual';
   return TYPE_LABELS[record.feeType] || record.typeLabel || 'Honorários contratuais';
 }
 

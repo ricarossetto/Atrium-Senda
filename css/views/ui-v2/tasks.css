@@ -171,6 +171,11 @@ html[data-ui="v2"] .empty-column strong {
 
 html[data-ui="v2"] .task-card {
   position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   padding: var(--v2-space-3);
   color: var(--v2-color-foreground);
   background: var(--v2-color-surface-elevated);
@@ -209,6 +214,7 @@ html[data-ui="v2"] .task-card.timer-active {
 }
 
 html[data-ui="v2"] .task-top {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -226,6 +232,8 @@ html[data-ui="v2"] .task-source {
 }
 
 html[data-ui="v2"] .task-badges {
+  min-width: 0;
+  flex: 0 1 auto;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -262,6 +270,7 @@ html[data-ui="v2"] .task-card-open {
 html[data-ui="v2"] .task-card-open strong {
   color: var(--v2-color-foreground);
   font: 750 13px/18px var(--v2-font-interface);
+  overflow-wrap: anywhere;
 }
 
 html[data-ui="v2"] .task-card-open > span:not(.task-card-action) {
@@ -353,6 +362,7 @@ html[data-ui="v2"] .timesheet-btn.active {
 }
 
 html[data-ui="v2"] .task-footer {
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
@@ -518,6 +528,13 @@ html[data-ui="v2"] .task-form-section .form-grid { gap: var(--v2-space-3); }
 html[data-ui="v2"] .task-form-section .field label { color: var(--v2-color-foreground-secondary); font-size: 10px; }
 html[data-ui="v2"] .task-form-section .field-note { color: var(--v2-color-muted-foreground); font-size: 10px; }
 
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] #field-description {
+  min-height: 148px;
+  overflow-y: hidden;
+  resize: vertical;
+  line-height: 1.55;
+}
+
 html[data-ui="v2"] .task-intimation-card.is-v2 {
   margin-bottom: var(--v2-space-4);
   color: var(--v2-color-foreground);
@@ -529,11 +546,41 @@ html[data-ui="v2"] .task-intimation-card.is-v2 {
 
 html[data-ui="v2"] .task-intimation-card.is-v2 .task-intimation-header { border-color: var(--v2-color-border-subtle); }
 html[data-ui="v2"] .task-intimation-card.is-v2 .task-intimation-body { color: var(--v2-color-foreground-secondary); background: var(--v2-color-surface-inset); white-space: pre-wrap; }
+html[data-ui="v2"] .task-intimation-card.is-v2 .task-btn-action {
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-elevated);
+  border-color: var(--v2-color-border);
+  font-weight: 750;
+}
+html[data-ui="v2"] .task-intimation-card.is-v2 .task-btn-action .atrium-icon { color: currentColor; }
+html[data-ui="v2"] .task-intimation-card.is-v2 .task-btn-action:hover {
+  color: var(--v2-color-primary);
+  background: var(--v2-color-primary-subtle);
+  border-color: color-mix(in srgb, var(--v2-color-primary) 52%, var(--v2-color-border));
+}
 
 @keyframes task-drawer-in {
   from { opacity: .65; clip-path: inset(0 0 0 28px); }
   to { opacity: 1; clip-path: inset(0); }
 }
+
+html[data-ui="v2"] #kanbanColumnsBackdrop { place-items: center; padding: var(--v2-space-5); }
+html[data-ui="v2"] .kanban-columns-modal { width: min(720px, calc(100vw - 32px)); max-height: min(780px, calc(100dvh - 32px)); overflow: hidden; color: var(--v2-color-foreground); background: var(--v2-color-surface-elevated); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-xl); box-shadow: var(--v2-shadow-elevated); }
+html[data-ui="v2"] .kanban-columns-modal > header { padding: var(--v2-space-5); background: linear-gradient(110deg, var(--v2-color-primary-subtle), transparent 65%); border-bottom: 1px solid var(--v2-color-border); }
+html[data-ui="v2"] .kanban-columns-modal > header p:last-child { margin: 4px 0 0; color: var(--v2-color-foreground-secondary); }
+html[data-ui="v2"] #kanbanColumnsForm { display: grid; gap: var(--v2-space-3); padding: var(--v2-space-5); overflow: auto; }
+html[data-ui="v2"] .kanban-columns-list { display: grid; gap: var(--v2-space-2); }
+html[data-ui="v2"] .kanban-column-editor-row { display: grid; grid-template-columns: 28px 8px minmax(0, 1fr) auto 36px; align-items: center; gap: var(--v2-space-3); padding: var(--v2-space-3); background: var(--v2-color-surface-secondary); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-md); }
+html[data-ui="v2"] .kanban-column-editor-index { color: var(--v2-color-muted-foreground); font-weight: 800; text-align: center; }
+html[data-ui="v2"] .kanban-column-editor-row > i { width: 8px; height: 34px; background: var(--column-editor-color); border-radius: var(--v2-radius-round); }
+html[data-ui="v2"] .kanban-column-editor-row label { display: grid; gap: 4px; }
+html[data-ui="v2"] .kanban-column-editor-row label span { color: var(--v2-color-muted-foreground); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+html[data-ui="v2"] .kanban-column-editor-row input { width: 100%; min-height: 38px; color: var(--v2-color-foreground); background: var(--v2-color-surface-inset); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-sm); font-weight: 750; }
+html[data-ui="v2"] .kanban-column-editor-count { color: var(--v2-color-foreground-secondary); font-size: 10px; white-space: nowrap; }
+html[data-ui="v2"] .kanban-column-add { justify-self: start; font-weight: 800; }
+html[data-ui="v2"] .kanban-columns-note { margin: 0; color: var(--v2-color-muted-foreground); font-size: 11px; line-height: 1.5; }
+html[data-ui="v2"] #kanbanColumnsForm > footer { display: flex; justify-content: flex-end; gap: var(--v2-space-2); margin: var(--v2-space-2) 0 0; padding-top: var(--v2-space-4); border-top: 1px solid var(--v2-color-border); }
+body.kanban-columns-open { overflow: hidden; }
 
 @media (max-width: 1023px) and (min-width: 768px) {
   html[data-ui="v2"] #view-kanban { padding: var(--v2-space-4); }

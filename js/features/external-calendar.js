@@ -5,10 +5,12 @@ export function createExternalCalendarFeature({
   secureFetch = (...args) => windowRef?.KellerAuth?.secureFetch(...args),
   showToast = () => {},
   onSyncAll = () => {},
+  confirmFn = message => windowRef?.confirm?.(message) ?? false,
   schedule = (callback, delay) => windowRef?.setTimeout?.(callback, delay) ?? globalThis.setTimeout(callback, delay),
   presentation = null
 } = {}) {
   let initialized = false;
+  let initialUrl = '';
   const byId = id => documentRef?.getElementById(id);
 
   const feature = {
@@ -17,10 +19,10 @@ export function createExternalCalendarFeature({
       initialized = true;
       presentation?.init?.();
       byId('configureCalendarButton')?.addEventListener('click', () => this.open());
-      byId('calendarConfigClose')?.addEventListener('click', () => this.close());
-      byId('calendarConfigCancel')?.addEventListener('click', () => this.close());
+      byId('calendarConfigClose')?.addEventListener('click', () => this.requestClose());
+      byId('calendarConfigCancel')?.addEventListener('click', () => this.requestClose());
       byId('calendarConfigBackdrop')?.addEventListener('click', event => {
-        if (event.target === byId('calendarConfigBackdrop')) this.close();
+        if (event.target === byId('calendarConfigBackdrop')) this.requestClose();
       });
       byId('calendarConfigForm')?.addEventListener('submit', event => this.submit(event));
       return true;
@@ -30,6 +32,7 @@ export function createExternalCalendarFeature({
       const input = byId('calendarInputUrl');
       const url = store?.state?.settings?.calendarUrl || store?.state?.settings?.externalCalendarUrl || '';
       if (input) input.value = url;
+      initialUrl = url;
       const status = byId('calendarConfigStatus');
       if (status) {
         status.className = 'calendar-sync-status hidden';
@@ -42,10 +45,23 @@ export function createExternalCalendarFeature({
       return url;
     },
 
+    hasUnsavedChanges() {
+      return Boolean(initialUrl !== (byId('calendarInputUrl')?.value || ''));
+    },
+
+    requestClose() {
+      const backdrop = byId('calendarConfigBackdrop');
+      if (!backdrop || backdrop.classList.contains('hidden')) return true;
+      if (this.hasUnsavedChanges()
+        && !confirmFn('Há alterações não salvas na agenda externa. Deseja realmente fechar e descartá-las?')) return false;
+      return this.close();
+    },
+
     close() {
       const backdrop = byId('calendarConfigBackdrop');
       if (!backdrop || backdrop.classList.contains('hidden')) return false;
       backdrop.classList.add('hidden');
+      initialUrl = '';
       if (byId('modalBackdrop')?.classList.contains('hidden') && documentRef?.body) documentRef.body.style.overflow = '';
       presentation?.close?.('externalCalendar');
       return true;

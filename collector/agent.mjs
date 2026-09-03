@@ -11,7 +11,7 @@ import { computeNextRefresh, isRefreshDue, sanitizeJudicialError } from '../lib/
 import { collectDjen } from './adapters/djen.mjs';
 import { collectDatajud } from './adapters/datajud.mjs';
 import { collectPje } from './adapters/pje.mjs';
-import { authStateRequiresHumanAction, classifyJudicialAuthState, JUDICIAL_AUTH_STATES } from './auth-state.mjs';
+import { authStateRequiresHumanAction, classifyJudicialAuthState, findAuthenticatedJudicialPage, JUDICIAL_AUTH_STATES } from './auth-state.mjs';
 
 const COLLECTOR_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(COLLECTOR_DIR);
@@ -243,6 +243,7 @@ async function collectPublicPortal(portal, target) {
 async function collectPortal(context, portal, target, authAdapter = null, credentials = null) {
   const checkedAt = new Date().toISOString();
   const page = await context.newPage();
+  let activePage = page;
   try {
     console.log(`Verificando ${portal.name}…`);
     if (authAdapter && authAdapter.strategy === AUTH_STRATEGIES.PJEOFFICE_LOCAL) {
@@ -256,45 +257,47 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
     await page.goto(portal.dataUrl || portal.url, { waitUntil: 'domcontentloaded', timeout: 90_000 });
     await page.waitForTimeout(2_000);
 
-    if (await needsHumanAuthentication(page, portal)) {
+    if (await needsHumanAuthentication(activePage, portal)) {
       if (authAdapter && authAdapter.strategy === AUTH_STRATEGIES.CREDENTIALS_TOTP && credentials?.username) {
         try {
-          await authAdapter.authenticate(context, page, portal, credentials);
+          await authAdapter.authenticate(context, activePage, portal, credentials);
         } catch (authErr) {
           console.warn(`[AuthAdapter] Tentativa automatizada em ${portal.name}:`, authErr.message);
         }
       }
 
-      await page.waitForTimeout(2_000);
-      if (interactive && !headless && (await needsHumanAuthentication(page, portal))) {
+      await activePage.waitForTimeout(2_000).catch(() => {});
+      activePage = await findAuthenticatedPortalPage(context, portal, activePage) || activePage;
+      if (interactive && !headless && (await needsHumanAuthentication(activePage, portal))) {
         console.log(`${portal.name}: conclua login, QR code, CAPTCHA ou 2FA na janela aberta. Aguardando até ${Math.round(loginWaitMs / 1000)} segundos…`);
-        await waitForHumanAuthentication(page, portal, loginWaitMs);
+        activePage = await waitForHumanAuthentication(context, activePage, portal, loginWaitMs) || activePage;
       }
-      if (await needsHumanAuthentication(page, portal)) {
+      activePage = await findAuthenticatedPortalPage(context, portal, activePage) || activePage;
+      if (await needsHumanAuthentication(activePage, portal)) {
         target.sources.push(source(portal, 'attention', checkedAt, 'Autenticação manual necessária; nenhuma tentativa de contornar CAPTCHA ou 2FA foi feita.'));
         return { state: SESSION_STATUS.ACTION_REQUIRED, humanAction: 'Conclua o login, CAPTCHA ou segundo fator no portal.' };
       }
     }
 
-    if (portal.dataUrl && page.url() !== portal.dataUrl) {
-      await page.goto(portal.dataUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
-      await page.waitForTimeout(2_000);
+    if (portal.dataUrl && activePage.url() !== portal.dataUrl) {
+      await activePage.goto(portal.dataUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+      await activePage.waitForTimeout(2_000);
     }
 
     if (portal.strategy === 'eproc') {
-      const result = await collectEproc(page, portal, target);
+      const result = await collectEproc(activePage, portal, target);
       target.sources.push(source(portal, 'ok', checkedAt, `${result.processes} processo(s) · ${result.deadlines} prazo(s) · ${result.pending} intimação(ões) pendente(s).`));
       return { state: SESSION_STATUS.CONNECTED, counts: result };
     }
 
     if (portal.strategy === 'pje') {
-      const result = await collectPje(page, portal, config, target);
+      const result = await collectPje(activePage, portal, config, target);
       target.sources.push(source(portal, 'ok', checkedAt, `${result.processes} processo(s) · ${result.intimations} expediente(s), em modo somente leitura.`));
       return { state: SESSION_STATUS.CONNECTED, counts: result };
     }
 
     const selector = portal.itemSelector || 'table tbody tr';
-    const items = await page.locator(selector).allInnerTexts();
+    const items = await activePage.locator(selector).allInnerTexts();
     const unique = [...new Set(items.map(normalizeLine).filter(text => text.length > 5))].slice(0, Number(portal.maxItems || 500));
     if (portal.strategy === 'processes') collectProcesses(unique, portal, target);
     else if (portal.strategy === 'intimations') collectIntimations(unique, portal, target);
@@ -307,7 +310,7 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
     console.error(`${portal.name}: ${safeError}`);
     return { state: SESSION_STATUS.ERROR, error: safeError };
   } finally {
-    await page.close();
+    await page.close().catch(() => {});
   }
 }
 
@@ -540,6 +543,12 @@ async function needsHumanAuthentication(page, portal = null) {
 
 async function detectAuthenticationState(page, portal = null) {
   if (page.isClosed()) return JUDICIAL_AUTH_STATES.SESSION_EXPIRED;
+  if (portal?.strategy === 'eproc') {
+    const authenticatedNavigation = await firstVisibleHrefAcrossFrames(page, 'a', (href, text) =>
+      /acao=(?:relatorio_)?processo_(?:procurador_)?listar|acao=citacao_intimacao_(?:prazo_aberto|pendente)_listar/i.test(href)
+      || /rela[cç][aã]o de processos|processos do procurador|intima[cç][oõ]es pendentes/i.test(text));
+    if (authenticatedNavigation) return JUDICIAL_AUTH_STATES.AUTHENTICATED_SESSION;
+  }
   const frames = page.frames();
   const body = (await Promise.all(frames.map(frame => frame.locator('body').innerText({ timeout: 3_000 }).catch(() => '')))).join('\n').slice(0, 24_000);
   const oneTimeCodeSelector = [
@@ -567,16 +576,32 @@ async function hasVisibleFieldAcrossFrames(frames, selector) {
   return false;
 }
 
-async function waitForHumanAuthentication(page, portal, timeout) {
+async function findAuthenticatedPortalPage(context, portal, preferredPage = null) {
+  const openPages = context.pages().filter(candidate => !candidate.isClosed());
+  const candidates = preferredPage && openPages.includes(preferredPage)
+    ? [preferredPage, ...openPages.filter(candidate => candidate !== preferredPage).reverse()]
+    : [...openPages].reverse();
+  return findAuthenticatedJudicialPage(candidates, candidate => detectAuthenticationState(candidate, portal));
+}
+
+async function waitForHumanAuthentication(context, page, portal, timeout) {
   const started = Date.now();
   while (Date.now() - started < timeout) {
-    if (page.isClosed()) return false;
-    await page.waitForTimeout(2_000);
-    await tryAutomatedTotp(page, portal);
-    if (!(await needsHumanAuthentication(page, portal))) return true;
+    const openPages = context.pages().filter(candidate => !candidate.isClosed());
+    if (!openPages.length) return null;
+    const timerPage = openPages.includes(page) ? page : openPages.at(-1);
+    await timerPage.waitForTimeout(2_000).catch(() => {});
+    for (const candidate of context.pages().filter(item => !item.isClosed())) {
+      await tryAutomatedTotp(candidate, portal).catch(() => false);
+    }
+    const authenticatedPage = await findAuthenticatedPortalPage(context, portal, page);
+    if (authenticatedPage) {
+      console.log(`${portal.name}: sessão autenticada reconhecida em ${authenticatedPage === page ? 'sua aba original' : 'uma nova aba'}; iniciando coleta.`);
+      return authenticatedPage;
+    }
   }
   console.log(`${portal.name}: tempo de autenticação manual encerrado.`);
-  return false;
+  return null;
 }
 
 function matchesMonitoredTerm(text) {

@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, registrationSetupToken: null, pendingUser: null, user: null };
+  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, registrationSetupToken: null, pendingUser: null, user: null, profileAvatarDraft: '', profileSnapshot: '' };
   const byId = id => document.getElementById(id);
 
   const Auth = {
@@ -69,6 +69,18 @@
       });
       byId('finishRecovery').addEventListener('click', () => this.enter(state.pendingUser));
       byId('logoutButton').addEventListener('click', () => this.logout());
+      byId('profileButton')?.addEventListener('click', () => this.openProfile());
+      byId('profileSettingsClose')?.addEventListener('click', () => this.closeProfile());
+      byId('profileSettingsCancel')?.addEventListener('click', () => this.closeProfile());
+      byId('profileSettingsBackdrop')?.addEventListener('click', event => {
+        if (event.target === byId('profileSettingsBackdrop')) this.closeProfile();
+      });
+      byId('profileSettingsForm')?.addEventListener('submit', event => this.saveProfile(event));
+      byId('profilePhotoInput')?.addEventListener('change', event => this.readProfilePhoto(event));
+      byId('profilePhotoRemove')?.addEventListener('click', () => {
+        state.profileAvatarDraft = '';
+        this.renderProfileAvatar('', byId('profileSettingsPreviewImage'), byId('profileSettingsPreviewInitials'));
+      });
     },
     show(id) {
       document.querySelectorAll('.auth-step').forEach(element => element.classList.toggle('active', element.id === id));
@@ -159,13 +171,116 @@
     enter(user) {
       state.authenticated = true; state.pendingUser = null; state.user = user;
       byId('authGate').classList.add('hidden'); byId('appShell').classList.remove('hidden'); this.feedback('');
-      if (user?.displayName) {
-        const strong = document.querySelector('.profile-copy strong');
-        if (strong) strong.textContent = user.displayName;
-        const avatar = document.querySelector('.profile-avatar');
-        if (avatar) avatar.textContent = user.displayName.split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
-      }
+      this.applyProfile(user);
       window.dispatchEvent(new CustomEvent('keller:authenticated', { detail: user }));
+    },
+    applyProfile(user) {
+      if (!user) return;
+      state.user = { ...(state.user || {}), ...user };
+      const strong = document.querySelector('.profile-copy strong');
+      if (strong) strong.textContent = user.displayName || user.username || 'Usuário';
+      const small = document.querySelector('.profile-copy small');
+      if (small) small.textContent = ({ master_admin: 'Advogado(a) Titular', admin: 'Administrador(a)', collaborator: 'Colaborador(a)' })[user.role] || 'Usuário(a)';
+      this.renderProfileAvatar(user.avatar || '', byId('profileAvatarImage'), document.querySelector('.profile-initials'));
+    },
+    initials(name = state.user?.displayName || state.user?.username || 'AT') {
+      return String(name).trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'AT';
+    },
+    renderProfileAvatar(source, image, initialsElement) {
+      const hasPhoto = /^data:image\/(?:png|jpeg|webp);base64,/i.test(String(source || ''));
+      if (image) {
+        image.hidden = !hasPhoto;
+        if (hasPhoto) image.src = source;
+        else image.removeAttribute('src');
+      }
+      if (initialsElement) {
+        initialsElement.hidden = hasPhoto;
+        initialsElement.textContent = this.initials();
+      }
+    },
+    openProfile() {
+      const user = state.user || {};
+      byId('profileDisplayName').value = user.displayName || '';
+      byId('profileEmail').value = user.email || '';
+      byId('profilePhone').value = user.phone || '';
+      state.profileAvatarDraft = user.avatar || '';
+      this.renderProfileAvatar(state.profileAvatarDraft, byId('profileSettingsPreviewImage'), byId('profileSettingsPreviewInitials'));
+      state.profileSnapshot = this.profileFormSnapshot();
+      byId('profileSettingsFeedback')?.classList.add('hidden');
+      byId('profileSettingsBackdrop')?.classList.remove('hidden');
+      document.body.classList.add('profile-settings-open');
+      queueMicrotask(() => byId('profileDisplayName')?.focus());
+    },
+    profileFormSnapshot() {
+      return JSON.stringify({
+        displayName: byId('profileDisplayName')?.value || '',
+        email: byId('profileEmail')?.value || '',
+        phone: byId('profilePhone')?.value || '',
+        avatar: state.profileAvatarDraft || ''
+      });
+    },
+    closeProfile({ force = false } = {}) {
+      const backdrop = byId('profileSettingsBackdrop');
+      if (!backdrop || backdrop.classList.contains('hidden')) return true;
+      if (!force && state.profileSnapshot && this.profileFormSnapshot() !== state.profileSnapshot
+        && !window.confirm('Há alterações não salvas no perfil. Deseja realmente fechar?')) return false;
+      backdrop.classList.add('hidden');
+      document.body.classList.remove('profile-settings-open');
+      byId('profileButton')?.focus();
+      return true;
+    },
+    async readProfilePhoto(event) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 512 * 1024) {
+        return this.profileFeedback('Use uma imagem PNG, JPEG ou WebP de até 512 KB.', 'error');
+      }
+      const source = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('Não foi possível ler a imagem.'));
+        reader.readAsDataURL(file);
+      }).catch(error => { this.profileFeedback(error.message, 'error'); return ''; });
+      if (!source) return;
+      state.profileAvatarDraft = source;
+      this.renderProfileAvatar(source, byId('profileSettingsPreviewImage'), byId('profileSettingsPreviewInitials'));
+      this.profileFeedback('Foto pronta para ser salva.', 'success');
+    },
+    async saveProfile(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      this.busy(form, true);
+      this.profileFeedback('Salvando…');
+      try {
+        const response = await this.secureFetch('/api/auth/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            displayName: byId('profileDisplayName').value,
+            email: byId('profileEmail').value,
+            phone: byId('profilePhone').value,
+            avatar: state.profileAvatarDraft
+          })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível salvar o perfil.');
+        this.applyProfile(payload.user);
+        state.profileSnapshot = this.profileFormSnapshot();
+        this.profileFeedback('Perfil atualizado com sucesso.', 'success');
+        window.dispatchEvent(new CustomEvent('keller:profile-updated', { detail: payload.user }));
+        window.setTimeout(() => this.closeProfile({ force: true }), 450);
+      } catch (error) {
+        this.profileFeedback(error.message, 'error');
+      } finally {
+        this.busy(form, false);
+      }
+    },
+    profileFeedback(message, type = '') {
+      const element = byId('profileSettingsFeedback');
+      if (!element) return;
+      element.textContent = message || '';
+      element.className = `profile-settings-feedback ${message ? '' : 'hidden'} ${type}`.trim();
     },
     async logout() {
       if (window.KellerCentral?.Store?.flush) await window.KellerCentral.Store.flush();

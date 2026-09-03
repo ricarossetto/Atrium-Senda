@@ -121,7 +121,9 @@ export function createProcessesFeature({
         suppressionButton.classList.toggle('hidden', suppressions.length === 0);
         suppressionButton.textContent = `Reativar descoberta (${suppressions.length})`;
       }
-      let records = allProcesses.filter(item => !needle || normalizeText(`${item.number} ${item.client} ${item.court} ${item.county || ''} ${item.nb || ''} ${item.opposingParty || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
+      let records = allProcesses
+        .map(item => ({ ...item, resolvedClient: resolveProcessClient(item, store.state.contacts) }))
+        .filter(item => !needle || normalizeText(`${item.number} ${item.resolvedClient || item.client} ${item.court} ${item.county || ''} ${item.nb || ''} ${item.opposingParty || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
       records = sortRecords(records, sort);
       updateTableSortHeaders('processTable', sort);
       const presenter = getPresenter();
@@ -566,9 +568,21 @@ function safeExternalRecord(record) {
 
 function meaningful(value) {
   if (value === null || value === undefined) return false;
-  if (typeof value === 'string') return value.trim() !== '';
+  if (typeof value === 'string') return value.trim() !== '' && !/^cliente n[aã]o informado$/i.test(value.trim());
   if (Array.isArray(value)) return value.length > 0;
   return true;
+}
+
+function resolveProcessClient(process, contacts = []) {
+  if (meaningful(process?.client)) return String(process.client).trim();
+  if (process?.contactId) {
+    const linked = contacts.find(contact => contact?.id === process.contactId && contact.contactRole === 'cliente');
+    if (linked?.name) return linked.name;
+  }
+  const number = String(process?.number || process?.protocol || '').replace(/\D/g, '');
+  if (!number) return '';
+  const linked = contacts.filter(contact => contact?.contactRole === 'cliente' && (contact.relatedProcessNumbers || []).some(value => String(value || '').replace(/\D/g, '') === number));
+  return linked.length === 1 ? String(linked[0].name || '').trim() : '';
 }
 
 function mergeSources(left, right) {

@@ -24,6 +24,33 @@ try {
   assert.equal(await page.locator('[data-prompt-id="prompt-v2-redacao"] [data-edit-prompt], [data-prompt-id="prompt-v2-redacao"] [data-delete-prompt]').count(), 0);
   assert.equal(await page.locator('[data-prompt-id="prompt-v2-custom"] [data-edit-prompt], [data-prompt-id="prompt-v2-custom"] [data-delete-prompt]').count(), 2);
 
+  const compactCard = await page.locator('[data-prompt-id="prompt-v2-redacao"]').evaluate(card => {
+    const footer = card.querySelector('.prompt-card-actions');
+    const text = card.querySelector('.prompt-box');
+    return {
+      height: card.getBoundingClientRect().height,
+      footerHeight: footer.getBoundingClientRect().height,
+      textHeight: text.getBoundingClientRect().height,
+      reservedSpace: card.getBoundingClientRect().bottom - footer.getBoundingClientRect().bottom
+    };
+  });
+  assert.ok(compactCard.height < 390, `O card deve ficar abaixo da antiga altura fixa: ${compactCard.height}px.`);
+  assert.ok(compactCard.footerHeight <= 48, `O rodapé deve permanecer compacto: ${compactCard.footerHeight}px.`);
+  assert.ok(compactCard.textHeight < 150, `O resumo não deve reservar os antigos 150px: ${compactCard.textHeight}px.`);
+  assert.ok(compactCard.reservedSpace <= 24, `Não deve sobrar uma área vazia depois dos botões: ${compactCard.reservedSpace}px.`);
+
+  await page.locator('[data-prompt-id="prompt-v2-redacao"] .prompt-box').click();
+  await page.locator('#promptPreviewBackdrop:not(.hidden)').waitFor();
+  const previewPrimary = await page.evaluate(() => {
+    const read = element => {
+      const style = getComputedStyle(element);
+      return { color: style.color, background: style.backgroundColor, border: style.borderColor };
+    };
+    return { preview: read(document.getElementById('promptPreviewUse')), canonical: read(document.getElementById('btnNewPrompt')) };
+  });
+  assert.deepEqual(previewPrimary.preview, previewPrimary.canonical, 'Usar no Assistente deve adotar o botão primário azul atual.');
+  await page.locator('#promptPreviewClose').click();
+
   const duplicateIds = await page.locator('[id]').evaluateAll(nodes => {
     const ids = nodes.map(node => node.id);
     return ids.filter((id, index) => ids.indexOf(id) !== index);

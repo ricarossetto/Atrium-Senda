@@ -71,11 +71,12 @@ const tasks = [
   { id: 'task-prazo', title: 'Prazo de decisão', type: 'Judicial', status: 'triagem', deadline: '2', points: 20, client: 'Cliente B' },
   { id: 'task-audiencia', title: 'Audiência de julgamento', type: '', status: 'andamento', deadline: '5', points: 50, client: 'Cliente C' },
   { id: 'task-reuniao', title: 'Reunião de atendimento', type: '', status: 'prioridade', deadline: '9', points: 10, client: 'Cliente D' },
-  { id: 'task-generic', title: 'Conferir documento', type: 'Tarefa', status: 'triagem', deadline: '1', points: 5, client: 'Cliente A', priority: 'urgente', timeLogs: [{ minutes: 30 }] },
+  { id: 'task-generic', title: 'Conferir documento', type: 'Tarefa', status: 'triagem', deadline: '1', points: 5, processId: 'linked-process', priority: 'urgente', timeLogs: [{ minutes: 30 }] },
   { id: 'task-late', title: 'Recurso extraordinário', type: '', status: 'andamento', deadline: '-1', points: 30, client: 'Cliente E' },
   { id: 'task-done', title: 'Tarefa concluída', status: 'concluida', deadline: '1', timeLogs: [{ minutes: 15, date: '2000-01-01' }] }
 ];
 const processes = [
+  { id: 'linked-process', number: '5000000-00.2026.8.21.0001', client: 'Cliente A', actionType: 'Indenização por danos morais', monitoring: 'active' },
   { id: 'fixed', feeType: 'fixo', feeAmount: 100, monitoring: 'active' },
   { id: 'monthly', feeType: 'mensal', feeMonthly: 200, monitoring: 'inactive', archived: true },
   { id: 'mixed', feeType: 'misto', feeAmount: 300, feeMonthly: 50, monitoring: 'active' },
@@ -145,10 +146,10 @@ for (const [sort, expectedFirst] of [
 }
 
 const metrics = feature.renderMetrics();
-assert.deepEqual(metrics, { untreatedIntimations: 3, deadlines: 3, activeProcesses: 6, activeSources: 2, sourceCount: 3 });
+assert.deepEqual(metrics, { untreatedIntimations: 3, deadlines: 3, activeProcesses: 7, activeSources: 2, sourceCount: 3 });
 assert.equal(elements.metricInbox.textContent, 3);
 assert.equal(elements.metricDeadlines.textContent, 3);
-assert.equal(elements.metricTasks.textContent, 6);
+assert.equal(elements.metricTasks.textContent, 7);
 assert.equal(elements.metricSources.textContent, '2/3');
 assert.equal(elements.inboxBadge.style.display, 'inline-block');
 assert.equal(elements.notificationDot.style.display, '');
@@ -162,6 +163,9 @@ assert.match(elements.dashboardTaskList.innerHTML, /Audiência/);
 assert.match(elements.dashboardTaskList.innerHTML, /Reunião/);
 assert.match(elements.dashboardTaskList.innerHTML, /Tarefa/);
 assert.match(elements.dashboardTaskList.innerHTML, /Cliente A/);
+assert.match(elements.dashboardTaskList.innerHTML, /5000000-00\.2026\.8\.21\.0001/);
+assert.match(elements.dashboardTaskList.innerHTML, /Indenização por danos morais/);
+assert.match(elements.dashboardTaskList.innerHTML, /Processo não vinculado/);
 const taskNode = elements.dashboardTaskList.dynamic.get('[data-dashboard-task-id]')[0];
 taskNode.listeners.get('click')[0]({ target: { closest: () => null } });
 assert.equal(openedTasks.at(-1).id, taskNode.dataset.dashboardTaskId);
@@ -175,7 +179,7 @@ const widgets = feature.renderWidgets();
 assert.equal(widgets.completed, 1);
 assert.equal(widgets.late, 1);
 assert.equal(widgets.pending, 4);
-assert.equal(widgets.processActive, 6);
+assert.equal(widgets.processActive, 7);
 assert.equal(widgets.processInactive, 1);
 assert.equal(widgets.activeLeads, 2);
 assert.equal(widgets.feesPending, 830, 'Fórmula financeira do dashboard mudou.');

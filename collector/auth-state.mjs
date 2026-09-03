@@ -39,3 +39,12 @@ export function authStateRequiresHumanAction(state, { accountScoped = true } = {
   if (state === JUDICIAL_AUTH_STATES.UNKNOWN_STATE) return Boolean(accountScoped);
   return true;
 }
+
+export async function findAuthenticatedJudicialPage(pages = [], resolveState) {
+  if (typeof resolveState !== 'function') return null;
+  for (const page of pages) {
+    if (!page || page.isClosed?.()) continue;
+    if (await resolveState(page).catch(() => JUDICIAL_AUTH_STATES.UNKNOWN_STATE) === JUDICIAL_AUTH_STATES.AUTHENTICATED_SESSION) return page;
+  }
+  return null;
+}

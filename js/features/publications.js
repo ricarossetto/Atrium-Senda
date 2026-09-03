@@ -431,6 +431,8 @@ export function createPublicationsFeature({
 
     closeDetail() {
       if (!isV2()) return false;
+      if (getPresenter().hasUnsavedDetailChanges?.()
+        && !windowRef.confirm('Há alterações não salvas nesta publicação. Deseja realmente fechar?')) return false;
       const selectedId = selectedIntimation;
       selectedIntimation = null;
       getPresenter().closeDetail({ restoreFocus: false });

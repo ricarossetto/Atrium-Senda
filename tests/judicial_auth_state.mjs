@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { authStateRequiresHumanAction, classifyJudicialAuthState, JUDICIAL_AUTH_STATES } from '../collector/auth-state.mjs';
+import { authStateRequiresHumanAction, classifyJudicialAuthState, findAuthenticatedJudicialPage, JUDICIAL_AUTH_STATES } from '../collector/auth-state.mjs';
 
 console.log('\nATRIUM — ESTADOS DE AUTENTICAÇÃO JUDICIAL');
 
@@ -16,4 +16,11 @@ assert.equal(authStateRequiresHumanAction(JUDICIAL_AUTH_STATES.HUMAN_2FA_REQUIRE
 assert.equal(authStateRequiresHumanAction(JUDICIAL_AUTH_STATES.UNKNOWN_STATE, { accountScoped: true }), true);
 assert.equal(authStateRequiresHumanAction(JUDICIAL_AUTH_STATES.UNKNOWN_STATE, { accountScoped: false }), false);
 
-console.log('✓ Login, 2FA, sessão positiva, expiração e estado desconhecido são distintos e conservadores.');
+const blankPage = { id: 'about-blank', isClosed: () => false };
+const reportPage = { id: 'eproc-report', isClosed: () => false };
+const authenticatedPage = await findAuthenticatedJudicialPage([blankPage, reportPage], async page => page.id === 'eproc-report'
+  ? JUDICIAL_AUTH_STATES.AUTHENTICATED_SESSION
+  : JUDICIAL_AUTH_STATES.UNKNOWN_STATE);
+assert.equal(authenticatedPage, reportPage, 'A aba autenticada deve ser selecionada mesmo quando não é a aba original.');
+
+console.log('✓ Login, 2FA, sessão positiva, expiração, estado desconhecido e troca de aba são tratados de modo conservador.');

@@ -24,7 +24,7 @@ const unitRoutes = [];
 const unitStore = {
   state: {
     terms: [{ id: 'term-primary', name: 'Titular Sintética', registration: 'OAB/RS 000000' }],
-    sources: [{ id: 'generic-source', name: 'Fonte Sintética', status: 'off' }],
+    sources: [{ id: 'generic-source', name: 'Fonte Sintética', status: 'off' }, { id: 'eproc-tjrs-1g', name: 'TJRS · eproc 1º grau', method: 'Sessão local', status: 'attention' }],
     settings: {},
     intimations: []
   }
@@ -43,8 +43,8 @@ const unitFeature = createMonitoringFeature({
 assert.equal(unitFeature.init(), true);
 assert.equal(unitFeature.init(), false);
 for (const id of ['newTermButton:click', 'primaryTermCard:click', 'monitorSourceList:click']) assert.equal(listenerCounts.get(id), 1);
-for (const id of ['a1', 'external-calendar', 'djen-cnj', 'datajud-cnj', 'generic-source']) unitFeature.routeSource(id);
-assert.deepEqual(unitRoutes, ['judicial', 'calendar', 'term:term-primary', 'datajud', 'source:generic-source']);
+for (const id of ['a1', 'external-calendar', 'djen-cnj', 'datajud-cnj', 'generic-source', 'eproc-tjrs-1g']) unitFeature.routeSource(id);
+assert.deepEqual(unitRoutes, ['judicial', 'calendar', 'term:term-primary', 'datajud', 'source:generic-source', 'judicial']);
 
 const failureToasts = [];
 let failureClosed = false;

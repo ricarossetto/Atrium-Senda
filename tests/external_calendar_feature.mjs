@@ -49,6 +49,8 @@ const requests = [];
 const toasts = [];
 const scheduled = [];
 let syncCalls = 0;
+let closeConfirmResult = false;
+const closeConfirmMessages = [];
 let responsePayload = { imported: 3, message: 'Agenda sintética sincronizada.' };
 let responseOk = true;
 const secureFetch = async (url, options = {}) => {
@@ -62,6 +64,7 @@ const feature = createExternalCalendarFeature({
   secureFetch,
   showToast: (message, type) => toasts.push({ message, type }),
   onSyncAll: async () => { syncCalls++; },
+  confirmFn: message => { closeConfirmMessages.push(message); return closeConfirmResult; },
   schedule: (callback, delay) => { scheduled.push({ callback, delay }); return scheduled.length; }
 });
 
@@ -82,6 +85,14 @@ feature.close();
 store.state.settings.calendarUrl = '';
 assert.equal(feature.open(), 'webcal://fallback.example.test/calendar');
 assert.equal(elements.calendarInputUrl.value, 'webcal://fallback.example.test/calendar');
+elements.calendarInputUrl.value = 'webcal://edited.example.test/calendar';
+assert.equal(feature.requestClose(), false);
+assert.equal(elements.calendarConfigBackdrop.classList.contains('hidden'), false, 'URL editada deve impedir descarte silencioso.');
+assert.match(closeConfirmMessages.at(-1), /alterações não salvas/i);
+closeConfirmResult = true;
+assert.equal(feature.requestClose(), true);
+assert.equal(elements.calendarConfigBackdrop.classList.contains('hidden'), true);
+feature.open();
 
 elements.calendarInputUrl.value = '   ';
 const requestsBeforeEmpty = requests.length;

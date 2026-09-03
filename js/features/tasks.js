@@ -54,9 +54,22 @@ export function createTasksFeature({
   let timeSheetStartedAt = null;
   let timeSheetInterval = null;
   let tasksPresenter;
+  let kanbanColumnsDraft = [];
 
   const byId = id => documentRef?.getElementById(id);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
+  const getColumns = () => {
+    const saved = store.state.settings?.kanbanColumns;
+    if (!Array.isArray(saved) || saved.length < 2) return TASK_COLUMNS.map(column => ({ ...column }));
+    const normalized = saved.filter(column => column && column.id && String(column.title || '').trim()).map((column, index) => ({
+      id: String(column.id),
+      title: String(column.title).trim().slice(0, 48),
+      color: String(column.color || TASK_COLUMNS[index % TASK_COLUMNS.length].color)
+    }));
+    return normalized.some(column => column.id === 'triagem') && normalized.some(column => column.id === 'concluida')
+      ? normalized
+      : TASK_COLUMNS.map(column => ({ ...column }));
+  };
   const getPresenter = () => {
     tasksPresenter ||= createTasksV2Presenter({
       documentRef,
@@ -80,6 +93,75 @@ export function createTasksFeature({
       if (initialized) return false;
       initialized = true;
       byId('newTaskButton')?.addEventListener('click', () => this.openTaskModal());
+      byId('editKanbanColumnsButton')?.addEventListener('click', () => this.openColumnsEditor());
+      byId('kanbanColumnsClose')?.addEventListener('click', () => this.closeColumnsEditor());
+      byId('kanbanColumnsCancel')?.addEventListener('click', () => this.closeColumnsEditor());
+      byId('kanbanColumnAdd')?.addEventListener('click', () => {
+        const index = kanbanColumnsDraft.length;
+        kanbanColumnsDraft.push({ id: uid('kanban'), title: `Nova etapa ${index + 1}`, color: TASK_COLUMNS[index % TASK_COLUMNS.length].color });
+        this.renderColumnsEditor();
+      });
+      byId('kanbanColumnsList')?.addEventListener('click', event => {
+        const removeButton = event.target.closest('[data-remove-kanban-column]');
+        if (!removeButton || removeButton.disabled) return;
+        kanbanColumnsDraft = kanbanColumnsDraft.filter(column => column.id !== removeButton.dataset.removeKanbanColumn);
+        this.renderColumnsEditor();
+      });
+      byId('kanbanColumnsList')?.addEventListener('input', event => {
+        const input = event.target.closest('[data-kanban-column-title]');
+        const column = input && kanbanColumnsDraft.find(item => item.id === input.dataset.kanbanColumnTitle);
+        if (column) column.title = input.value;
+      });
+      byId('kanbanColumnsForm')?.addEventListener('submit', event => this.saveColumns(event));
+      return true;
+    },
+
+    openColumnsEditor() {
+      kanbanColumnsDraft = getColumns().map(column => ({ ...column }));
+      this.renderColumnsEditor();
+      byId('kanbanColumnsBackdrop')?.classList.remove('hidden');
+      documentRef.body?.classList.add('kanban-columns-open');
+      queueMicrotask(() => byId('kanbanColumnsList')?.querySelector('input')?.focus());
+    },
+
+    closeColumnsEditor() {
+      byId('kanbanColumnsBackdrop')?.classList.add('hidden');
+      documentRef.body?.classList.remove('kanban-columns-open');
+      byId('editKanbanColumnsButton')?.focus();
+    },
+
+    renderColumnsEditor() {
+      const list = byId('kanbanColumnsList');
+      if (!list) return;
+      list.innerHTML = kanbanColumnsDraft.map((column, index) => {
+        const taskCount = store.state.tasks.filter(task => task.status === column.id).length;
+        const structural = column.id === 'triagem' || column.id === 'concluida';
+        const removable = !structural && taskCount === 0 && kanbanColumnsDraft.length > 2;
+        const reason = structural ? 'Etapa estrutural' : taskCount ? `${taskCount} tarefa${taskCount === 1 ? '' : 's'} nesta coluna` : 'Remover coluna';
+        return `<div class="kanban-column-editor-row" data-column-editor-id="${escapeHtml(column.id)}"><span class="kanban-column-editor-index">${index + 1}</span><i style="--column-editor-color:${escapeHtml(column.color)}"></i><label><span>Nome da coluna</span><input data-kanban-column-title="${escapeHtml(column.id)}" maxlength="48" required value="${escapeHtml(column.title)}"></label><span class="kanban-column-editor-count">${taskCount} tarefa${taskCount === 1 ? '' : 's'}</span><button class="icon-button" type="button" data-remove-kanban-column="${escapeHtml(column.id)}" aria-label="${escapeHtml(reason)}" title="${escapeHtml(reason)}" ${removable ? '' : 'disabled'}>×</button></div>`;
+      }).join('');
+    },
+
+    async saveColumns(event) {
+      event.preventDefault();
+      const columns = kanbanColumnsDraft.map(column => ({ ...column, title: String(column.title || '').trim() }));
+      const normalizedTitles = columns.map(column => column.title.toLocaleLowerCase('pt-BR'));
+      if (columns.some(column => !column.title) || new Set(normalizedTitles).size !== normalizedTitles.length) {
+        showToast?.('Use nomes preenchidos e diferentes para cada coluna.', 'warning');
+        return false;
+      }
+      const previousState = JSON.parse(JSON.stringify(store.state));
+      store.state.settings ||= {};
+      store.state.settings.kanbanColumns = columns;
+      store.audit('Colunas do Kanban atualizadas', `${columns.length} etapas configuradas.`);
+      if (!await store.flush()) {
+        store.state = previousState;
+        showToast?.('Não foi possível salvar as colunas do Kanban.', 'error');
+        return false;
+      }
+      this.closeColumnsEditor();
+      this.renderKanban();
+      showToast?.('Colunas do Kanban atualizadas.', 'success');
       return true;
     },
 
@@ -90,12 +172,12 @@ export function createTasksFeature({
         getPresenter().render({
           board,
           tasks: store.state.tasks,
-          columns: TASK_COLUMNS,
+          columns: getColumns(),
           activeTaskId: activeTimeSheetTaskId,
           elapsedLabel: this.formatElapsedTimer(),
           sourceLabel: taskSourceLabel
         });
-      } else board.innerHTML = TASK_COLUMNS.map(column => {
+      } else board.innerHTML = getColumns().map(column => {
         const tasks = store.state.tasks.filter(task => task.status === column.id);
         return `<section class="kanban-column" data-column="${column.id}"><header class="column-header"><div class="column-title"><i class="column-dot" style="background:${column.color}"></i>${escapeHtml(column.title)}<span class="column-count">${tasks.length}</span></div><span>···</span></header><div class="column-cards">${tasks.length ? tasks.map(task => this.renderCard(task)).join('') : '<div class="empty-column">Arraste tarefas para cá</div>'}</div></section>`;
       }).join('');
@@ -260,7 +342,7 @@ export function createTasksFeature({
       }
       onRenderAll?.();
       showToast?.('Tarefa movimentada com sucesso.', 'success');
-      if (isV2()) getPresenter().announce(`${task.title} movida para ${TASK_COLUMNS.find(column => column.id === status)?.title || status}.`);
+      if (isV2()) getPresenter().announce(`${task.title} movida para ${getColumns().find(column => column.id === status)?.title || status}.`);
       return task;
     },
 
@@ -354,7 +436,7 @@ export function createTasksFeature({
         { name: 'time', label: 'Horário', type: 'time' },
         { name: 'responsible', label: 'Responsável principal', value: defaults.responsible || getCurrentUserName?.() || 'Advogado(a)' },
         { name: 'responsibles', label: 'Outros responsáveis', placeholder: 'Separe os nomes por vírgula' },
-        { name: 'status', label: 'Coluna (Quadro Kanban)', type: 'select', options: TASK_COLUMNS.map(column => ({ value: column.id, label: column.title })) },
+        { name: 'status', label: 'Coluna (Quadro Kanban)', type: 'select', options: getColumns().map(column => ({ value: column.id, label: column.title })) },
         { name: 'priority', label: 'Prioridade', type: 'select', options: [{value:'normal',label:'Normal'},{value:'importante',label:'Importante'},{value:'urgente',label:'Urgente'}] },
         { name: 'points', label: 'Pontuação', type: 'number', value: defaults.points || 0 },
         { name: 'addMinutes', label: 'Apontar tempo (minutos)', type: 'number', placeholder: 'Ex: 45', note: timeNote },
@@ -396,6 +478,15 @@ export function createTasksFeature({
         if (byId('field-title')) byId('field-title').value = definition.name;
         if (byId('field-points')) byId('field-points').value = definition.points;
       });
+
+      const descriptionField = byId('field-description');
+      const resizeDescriptionField = () => {
+        if (!descriptionField) return;
+        descriptionField.style.height = 'auto';
+        descriptionField.style.height = `${Math.max(148, descriptionField.scrollHeight + 2)}px`;
+      };
+      resizeDescriptionField();
+      descriptionField?.addEventListener('input', resizeDescriptionField);
 
       byId('btnCopyTaskIntimation')?.addEventListener('click', async () => {
         try {

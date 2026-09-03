@@ -216,6 +216,10 @@ html[data-ui="v2"] #processTable tbody tr {
   cursor: pointer;
 }
 
+html[data-ui="v2"] #processTable tbody tr:not(:last-child) td {
+  border-bottom-color: color-mix(in srgb, var(--v2-color-border-strong) 72%, var(--v2-color-border));
+}
+
 html[data-ui="v2"] #processTable tbody tr:is(:hover, :focus-within) td {
   background: var(--v2-color-surface-hover);
 }
@@ -300,7 +304,7 @@ html[data-ui="v2"] #processTable .process-cell-movement > strong {
 }
 
 html[data-ui="v2"] .process-cell-monitoring {
-  text-align: left;
+  text-align: center;
 }
 
 html[data-ui="v2"] .process-cell-monitoring .v2-status-badge {
@@ -312,6 +316,7 @@ html[data-ui="v2"] .process-cell-monitoring .v2-status-badge {
   font-size: 10px;
   line-height: 13px;
   white-space: normal;
+  margin-inline: auto;
 }
 
 html[data-ui="v2"] .process-cell-monitoring .v2-status-badge.is-neutral {
@@ -323,6 +328,7 @@ html[data-ui="v2"] .process-details-button {
   width: 100%;
   min-height: 30px !important;
   margin-top: var(--v2-space-2);
+  margin-inline: auto;
   padding: 4px 8px;
   font-size: 11px !important;
 }
@@ -348,6 +354,7 @@ html[data-ui="v2"] .process-inspector-backdrop {
   padding: 0;
   background: color-mix(in srgb, var(--v2-color-background) 78%, transparent);
   backdrop-filter: blur(3px);
+  overscroll-behavior: contain;
   animation: v2-overlay-in var(--v2-duration-base) var(--v2-ease-standard) both;
 }
 
@@ -362,6 +369,7 @@ html[data-ui="v2"] .process-inspector {
   box-shadow: var(--v2-shadow-elevated);
   transform-origin: right center;
   animation: v2-drawer-in var(--v2-duration-slow) var(--v2-ease-standard) both;
+  overscroll-behavior: contain;
 }
 
 html[data-ui="v2"] .process-inspector > header,
@@ -398,19 +406,22 @@ html[data-ui="v2"] .process-inspector > header {
 
 html[data-ui="v2"] .process-inspector > footer {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--v2-space-2);
+  padding: var(--v2-space-3);
   border-top: 1px solid var(--v2-color-border);
 }
 
 html[data-ui="v2"] .process-inspector > footer .button {
   min-width: 0;
-  min-height: 44px;
+  min-height: 36px;
+  padding: 6px 7px;
+  font-size: 10px;
   justify-content: center;
   white-space: nowrap;
 }
 
-html[data-ui="v2"] .process-inspector > footer .process-delete-action { grid-column: 1 / -1; }
+html[data-ui="v2"] .process-inspector > footer .process-delete-action { grid-column: auto; }
 
 html[data-ui="v2"] .process-inspector > header p {
   margin: 0 0 2px;
@@ -845,7 +856,7 @@ html[data-ui="v2"] .process-form-section .form-grid {
     min-height: 44px;
   }
 
-  html[data-ui="v2"] .process-inspector > footer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-ui="v2"] .process-inspector > footer { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
   html[data-ui="v2"] .process-inspector-metrics,
   html[data-ui="v2"] .process-metadata-grid {

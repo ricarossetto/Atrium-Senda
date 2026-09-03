@@ -8,10 +8,12 @@ export function createOfficeIdentityFeature({
   escapeHtml,
   showToast,
   onRenderMonitoring,
+  confirmFn = message => globalThis.window?.confirm?.(message) ?? false,
   presentation = null
 } = {}) {
   let initialized = false;
   let tempOfficeLogo = null;
+  let initialFormSnapshot = '';
   const byId = id => documentRef?.getElementById(id);
 
   const feature = {
@@ -23,10 +25,10 @@ export function createOfficeIdentityFeature({
       if (initialized) return false;
       initialized = true;
       documentRef?.querySelector('.sidebar-office')?.addEventListener('click', () => this.open());
-      byId('officeSetupClose')?.addEventListener('click', () => this.close());
-      byId('officeSetupCancel')?.addEventListener('click', () => this.close());
+      byId('officeSetupClose')?.addEventListener('click', () => this.requestClose());
+      byId('officeSetupCancel')?.addEventListener('click', () => this.requestClose());
       byId('officeSetupBackdrop')?.addEventListener('click', event => {
-        if (event.target === byId('officeSetupBackdrop')) this.close();
+        if (event.target === byId('officeSetupBackdrop')) this.requestClose();
       });
       byId('btnChooseOfficeLogo')?.addEventListener('click', () => byId('officeLogoInput')?.click());
       byId('officeLogoInput')?.addEventListener('change', event => this.handleLogoUpload(event.target.files?.[0]));
@@ -74,14 +76,41 @@ export function createOfficeIdentityFeature({
       byId('officeInputCity').value = settings.city || '';
       tempOfficeLogo = settings.officeLogo || null;
       this.updateLogoPreview();
+      initialFormSnapshot = this.formSnapshot();
       byId('officeSetupBackdrop').classList.remove('hidden');
       presentation?.openOfficeIdentity?.();
+    },
+
+    formSnapshot() {
+      return JSON.stringify({
+        name: byId('officeInputName')?.value || '',
+        slogan: byId('officeInputSlogan')?.value || '',
+        lawyer: byId('officeInputLawyer')?.value || '',
+        oab: byId('officeInputOab')?.value || '',
+        address: byId('officeInputAddress')?.value || '',
+        city: byId('officeInputCity')?.value || '',
+        logo: tempOfficeLogo || ''
+      });
+    },
+
+    hasUnsavedChanges() {
+      return Boolean(initialFormSnapshot && this.formSnapshot() !== initialFormSnapshot);
+    },
+
+    requestClose() {
+      const backdrop = byId('officeSetupBackdrop');
+      if (!backdrop || backdrop.classList.contains('hidden')) return true;
+      if (this.hasUnsavedChanges()
+        && !confirmFn('Há alterações não salvas na identidade do escritório. Deseja realmente fechar e descartá-las?')) return false;
+      this.close();
+      return true;
     },
 
     close() {
       const backdrop = byId('officeSetupBackdrop');
       const wasOpen = backdrop && !backdrop.classList.contains('hidden');
       backdrop?.classList.add('hidden');
+      initialFormSnapshot = '';
       if (wasOpen) presentation?.closeOfficeIdentity?.();
     },
 

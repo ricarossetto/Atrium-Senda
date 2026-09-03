@@ -17,6 +17,7 @@ export function createPublicationsV2Presenter({
   let detailReturnId = null;
   let detailBodyOverflow = '';
   let detailFocusPending = false;
+  let detailSnapshot = '';
 
   const byId = id => documentRef?.getElementById(id);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
@@ -24,7 +25,9 @@ export function createPublicationsV2Presenter({
     if (initialized) return false;
     initialized = true;
     byId('intimationDetail')?.addEventListener('keydown', handleDetailKeydown);
-    byId('publicationInspectorBackdrop')?.addEventListener('click', () => onCloseDetail?.());
+    byId('publicationInspectorBackdrop')?.addEventListener('click', event => {
+      if (event.target === byId('publicationInspectorBackdrop')) onCloseDetail?.();
+    });
     for (const id of OWNED_OVERLAYS) {
       byId(id)?.addEventListener('keydown', event => handleOverlayKeydown(event, id));
     }
@@ -61,7 +64,22 @@ export function createPublicationsV2Presenter({
       if (typeof requestFrame === 'function') requestFrame.call(documentRef.defaultView, focusClose);
       else queueMicrotask(focusClose);
     }
+    detailSnapshot = detailFormSnapshot();
     detailFocusPending = false;
+  }
+
+  function detailFormSnapshot() {
+    const detail = byId('intimationDetail');
+    if (!detail) return '';
+    return JSON.stringify([...detail.querySelectorAll('input, textarea, select, [contenteditable="true"]')].map(element => ({
+      name: element.name || element.id || '',
+      value: element.isContentEditable ? element.textContent : element.value,
+      checked: 'checked' in element ? element.checked : undefined
+    })));
+  }
+
+  function hasUnsavedDetailChanges() {
+    return Boolean(detailSnapshot && detailSnapshot !== detailFormSnapshot());
   }
 
   function closeDetail({ restoreFocus = true } = {}) {
@@ -74,6 +92,7 @@ export function createPublicationsV2Presenter({
     const detail = byId('intimationDetail');
     detail?.setAttribute('role', 'region');
     detail?.removeAttribute('aria-modal');
+    detailSnapshot = '';
     if (wasOpen && documentRef.body) documentRef.body.style.overflow = detailBodyOverflow;
     if (restoreFocus && detailReturnId) {
       const returnTarget = [...(byId('inboxList')?.querySelectorAll('[data-intimation-id]') || [])]
@@ -151,7 +170,7 @@ export function createPublicationsV2Presenter({
     }
   }
 
-  return Object.freeze({ init, updateCount, prepareDetailOpen, syncDetailOpen, closeDetail, openOverlay, closeOverlay });
+  return Object.freeze({ init, updateCount, prepareDetailOpen, syncDetailOpen, closeDetail, hasUnsavedDetailChanges, openOverlay, closeOverlay });
 }
 
 export function renderPublicationRow({ item, act, parties, selected, escapeHtml, formatDate, formatAge }) {

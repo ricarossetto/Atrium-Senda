@@ -604,3 +604,14 @@ html[data-ui="v2"] .registry-qsa > div small { color: var(--v2-color-muted-foreg
     transform: none !important;
   }
 }
+
+html[data-ui="v2"] #contactCount {
+  min-width: 44px;
+  min-height: 40px;
+  display: inline-grid;
+  place-items: center;
+  padding: 6px 10px;
+  border-radius: var(--v2-radius-md);
+  line-height: 1.1;
+  text-align: center;
+}

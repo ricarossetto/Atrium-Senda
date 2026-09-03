@@ -98,6 +98,33 @@ try {
     assert.equal(await page.locator('.task-form-section').count(), 5);
     assert.equal(await page.locator('#field-deadline').inputValue(), '', 'Texto de 15 dias não pode inferir prazo.');
     assert.equal(await page.locator('#field-fatalDeadline').inputValue(), '');
+    const publicationEditor = await page.evaluate(() => {
+      const textarea = document.getElementById('field-description');
+      const contrastRatio = element => {
+        const parse = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+        const luminance = value => {
+          const channels = parse(value).map(channel => {
+            const normalized = channel / 255;
+            return normalized <= .04045 ? normalized / 12.92 : ((normalized + .055) / 1.055) ** 2.4;
+          });
+          return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+        };
+        const style = getComputedStyle(element);
+        const foreground = luminance(style.color);
+        const background = luminance(style.backgroundColor);
+        return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+      };
+      return {
+        textareaHeight: textarea.getBoundingClientRect().height,
+        textareaFitsContent: textarea.scrollHeight <= textarea.clientHeight + 2,
+        copyContrast: contrastRatio(document.getElementById('btnCopyTaskIntimation')),
+        aiContrast: contrastRatio(document.getElementById('btnAiAnalyzeTask'))
+      };
+    });
+    assert.ok(publicationEditor.textareaHeight >= 148, `A descrição deve abrir expandida: ${publicationEditor.textareaHeight}px.`);
+    assert.equal(publicationEditor.textareaFitsContent, true, 'A descrição inicial deve caber sem barra de rolagem interna.');
+    assert.ok(publicationEditor.copyContrast >= 4.5, `Contraste de Copiar texto insuficiente: ${publicationEditor.copyContrast}.`);
+    assert.ok(publicationEditor.aiContrast >= 4.5, `Contraste de Analisar com IA insuficiente: ${publicationEditor.aiContrast}.`);
     await page.fill('#field-title', 'Publicação vinculada editada na V2');
     await page.locator('#modalForm button[type="submit"]').click();
     await page.locator('#modalBackdrop.hidden').waitFor({ state: 'attached' });

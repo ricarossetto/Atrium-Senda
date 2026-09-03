@@ -32,7 +32,7 @@ const unitFeature = createMonitoringFeature({
   store: {
     state: {
       terms: [{ id: 'unit-primary', name: 'Titular Unitária', registration: 'OAB/RS 1' }],
-      sources: [{ id: 'generic-source', name: 'Fonte Unitária', status: 'off' }],
+      sources: [{ id: 'generic-source', name: 'Fonte Unitária', status: 'off' }, { id: 'eproc-tjrs-1g', name: 'TJRS · eproc 1º grau', method: 'Sessão local', status: 'attention' }],
       settings: {}, intimations: []
     }
   },
@@ -46,8 +46,8 @@ assert.equal(unitFeature.init(), false);
 for (const key of ['newTermButton:click', 'primaryTermCard:click', 'primaryTermCard:keydown', 'monitorSourceList:click', 'monitorSourceList:keydown']) {
   assert.equal(listeners.get(key)?.length, 1, `${key} deve possuir exatamente um listener.`);
 }
-for (const id of ['a1', 'pje', 'external-calendar', 'djen-cnj', 'djen', 'datajud-cnj', 'datajud', 'generic-source', 'missing-source']) unitFeature.routeSource(id);
-assert.deepEqual(routes, ['judicial', 'judicial', 'calendar', 'term:unit-primary', 'term:unit-primary', 'datajud', 'datajud', 'source:generic-source']);
+for (const id of ['a1', 'pje', 'external-calendar', 'djen-cnj', 'djen', 'datajud-cnj', 'datajud', 'generic-source', 'eproc-tjrs-1g', 'missing-source']) unitFeature.routeSource(id);
+assert.deepEqual(routes, ['judicial', 'judicial', 'calendar', 'term:unit-primary', 'term:unit-primary', 'datajud', 'datajud', 'source:generic-source', 'judicial']);
 
 const session = await startUiV2Session();
 try {

@@ -87,18 +87,31 @@ export function createMonitoringFeature({
     },
 
     routeSource(sourceId) {
-      if (sourceId === 'a1' || sourceId === 'pje') {
+      const source = store.state.sources.find(item => item.id === sourceId) || { id: sourceId };
+      const routeKind = feature.sourceRouteKind(source);
+      if (routeKind === 'judicial') {
         onOpenJudicialSetup();
-      } else if (sourceId === 'external-calendar') {
+      } else if (routeKind === 'calendar') {
         onOpenCalendarConfig();
-      } else if (sourceId === 'djen-cnj' || sourceId === 'djen') {
+      } else if (routeKind === 'term') {
         feature.openTermModal(store.state.terms[0] || {});
-      } else if (sourceId === 'datajud-cnj' || sourceId === 'datajud') {
+      } else if (routeKind === 'datajud') {
         feature.openDataJudConfigModal();
       } else {
-        const source = store.state.sources.find(item => item.id === sourceId);
-        if (source) feature.openSourceModal(source);
+        if (store.state.sources.some(item => item.id === sourceId)) feature.openSourceModal(source);
       }
+    },
+
+    sourceRouteKind(source = {}) {
+      const sourceId = String(source.id || '').toLowerCase();
+      const haystack = [source.id, source.name, source.short, source.method, source.detail]
+        .map(value => String(value || '').toLowerCase()).join(' ');
+      if (sourceId === 'external-calendar' || /\b(?:webcal|ical)\b|agenda externa/.test(haystack)) return 'calendar';
+      if (sourceId === 'datajud-cnj' || sourceId === 'datajud' || /\bdatajud\b/.test(haystack)) return 'datajud';
+      if (sourceId === 'djen-cnj' || sourceId === 'djen' || /\bdjen\b|comunica pje/.test(haystack)) return 'term';
+      if (sourceId === 'a1' || sourceId === 'pje'
+        || /\beproc\b|pjeoffice|certificado|sess[aã]o local|portal judicial/.test(haystack)) return 'judicial';
+      return 'details';
     },
 
     openDataJudConfigModal() {

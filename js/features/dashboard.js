@@ -24,6 +24,36 @@ export function createDashboardFeature({
   let dashboardTaskFilter = 'all';
   let dashboardTaskSort = 'date-asc';
   const byId = id => documentRef?.getElementById(id);
+  const normalizedProcessNumber = value => String(value || '').replace(/\D/g, '');
+  const normalizedName = value => String(value || '').trim().toLocaleLowerCase('pt-BR');
+
+  const taskContext = (task, processes = store.state.processes || [], intimations = store.state.intimations || []) => {
+    const intimation = intimations.find(item => [task.intimationId, task.sourceIntimationId]
+      .filter(Boolean)
+      .includes(item.id));
+    const processId = task.processId || intimation?.processId || '';
+    const processNumber = task.process || intimation?.process || '';
+    const normalizedNumber = normalizedProcessNumber(processNumber);
+    let process = processId
+      ? processes.find(item => item.id === processId || item.externalId === processId)
+      : null;
+
+    if (!process && normalizedNumber) {
+      process = processes.find(item => normalizedProcessNumber(item.number) === normalizedNumber) || null;
+    }
+
+    if (!process && task.client) {
+      const clientMatches = processes.filter(item => normalizedName(item.client) === normalizedName(task.client));
+      if (clientMatches.length === 1) process = clientMatches[0];
+    }
+
+    return {
+      process,
+      clientName: task.client || intimation?.client || process?.client || '',
+      processNumber: processNumber || process?.number || '',
+      actionType: task.actionType || process?.actionType || process?.subject || intimation?.actionType || ''
+    };
+  };
 
   const feature = {
     get initialized() { return initialized; },
@@ -98,10 +128,10 @@ export function createDashboardFeature({
       });
 
       filtered.sort((a, b) => {
-        const procA = processes.find(process => (a.process && process.number === a.process) || (a.client && process.client === a.client));
-        const procB = processes.find(process => (b.process && process.number === b.process) || (b.client && process.client === b.client));
-        const clientA = a.client || procA?.client || a.title || '';
-        const clientB = b.client || procB?.client || b.title || '';
+        const contextA = taskContext(a, processes);
+        const contextB = taskContext(b, processes);
+        const clientA = contextA.clientName || a.title || '';
+        const clientB = contextB.clientName || b.title || '';
         const pointsA = Number(a.points) || 0;
         const pointsB = Number(b.points) || 0;
 
@@ -133,10 +163,7 @@ export function createDashboardFeature({
       }
 
       listEl.innerHTML = filtered.map(task => {
-        const process = processes.find(item => (task.process && item.number === task.process) || (task.client && item.client === task.client));
-        const clientName = task.client || process?.client || 'Atividade interna';
-        const processNumber = task.process || process?.number || '';
-        const courtName = process?.court || process?.county || task.court || '';
+        const { clientName, processNumber, actionType } = taskContext(task, processes);
         const points = Number(task.points) || 0;
         const titleLower = String(task.title || '').toLowerCase();
         let typeBadge = 'tarefa';
@@ -162,10 +189,10 @@ export function createDashboardFeature({
             <input type="checkbox" class="dashboard-task-check" data-complete-task-id="${escapeHtml(task.id)}" title="Concluir tarefa">
             <div class="dashboard-task-body">
               <div class="dashboard-task-title">${escapeHtml(task.title)}</div>
-              <div class="dashboard-task-process" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0 6px 0;font-size:12px;">
-                <strong>${iconSvg('contacts')} ${escapeHtml(clientName)}</strong>
-                ${processNumber ? `<span style="color:var(--muted)">· ${iconSvg('processes')} <b>${escapeHtml(processNumber)}</b></span>` : ''}
-                ${courtName ? `<span style="color:var(--muted)">· ${iconSvg('court')} <em>${escapeHtml(courtName)}</em></span>` : ''}
+              <div class="dashboard-task-process">
+                ${clientName ? `<strong>${iconSvg('contacts')} ${escapeHtml(clientName)}</strong>` : '<span class="dashboard-task-context-empty">Cliente não vinculado</span>'}
+                ${processNumber ? `<span>${iconSvg('processes')} <b>${escapeHtml(processNumber)}</b></span>` : '<span class="dashboard-task-context-empty">Processo não vinculado</span>'}
+                ${actionType ? `<span class="dashboard-task-action-type">${iconSvg('court')} <b>${escapeHtml(actionType)}</b></span>` : '<span class="dashboard-task-context-empty">Tipo da ação não informado</span>'}
               </div>
               <div class="dashboard-task-tags">
                 <span class="task-tag ${typeBadge}">${typeLabel}</span>

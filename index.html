@@ -277,7 +277,12 @@
           </button>
           <details class="v2-utilities-menu v2-only" id="v2UtilitiesMenu">
             <summary class="icon-button" aria-label="Abrir ferramentas adicionais" title="Mais ferramentas"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-more"></use></svg></summary>
-            <div class="v2-utilities-menu-panel" id="v2UtilitiesMenuPanel"></div>
+            <div class="v2-utilities-menu-panel" id="v2UtilitiesMenuPanel">
+              <button type="button" class="button ghost" id="v2UtilitiesConfiguration" data-view-link="configuration">
+                <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-configuration"></use></svg>
+                <span>Configurações</span>
+              </button>
+            </div>
           </details>
           <button class="button ghost" id="syncButton">
             <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-sync"></use></svg>
@@ -291,11 +296,11 @@
               <footer><button type="button" class="button ghost" data-view-link="inbox">Abrir Publicações</button><button type="button" class="button ghost" data-view-link="kanban">Abrir Tarefas</button></footer>
             </section>
           </div>
-          <button class="profile-button" id="logoutButton" aria-label="Encerrar sessão com segurança" title="Encerrar sessão">
-            <span class="avatar">AT</span>
+          <button class="profile-button" id="profileButton" type="button" aria-label="Abrir configurações do meu perfil" title="Meu perfil">
+            <span class="avatar profile-avatar"><img id="profileAvatarImage" alt="" hidden><span class="profile-initials">AT</span></span>
             <span class="profile-copy"><strong>Administrador</strong><small>Advogado(a) Titular</small></span>
-            <span class="logout-label">Sair</span>
           </button>
+          <button class="button ghost logout-button" id="logoutButton" type="button" aria-label="Encerrar sessão com segurança" title="Encerrar sessão"><span>Sair</span></button>
         </div>
       </header>
 
@@ -541,6 +546,7 @@
             <button type="button" class="active" data-fin-filter="all" aria-pressed="true">Todos</button>
             <button type="button" data-fin-filter="rpv" aria-pressed="false">RPVs / Alvarás</button>
             <button type="button" data-fin-filter="honorarios" aria-pressed="false">Honorários</button>
+            <button type="button" data-fin-filter="despesas" aria-pressed="false">Despesas</button>
           </div>
           <div class="toolbar-actions">
             <button type="button" class="button ghost" id="btnGenDocPrestacao">
@@ -562,6 +568,10 @@
           <article class="metric-card info">
             <span class="metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-deadline"></use></svg></span>
             <div><small>Horas Apontadas (TimeSheet)</small><strong id="finMetricTimesheet">0h 0m</strong><p>valor hora apurado</p></div>
+          </article>
+          <article class="metric-card danger">
+            <span class="metric-icon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-documents"></use></svg></span>
+            <div><small>Despesas Pendentes</small><strong id="finMetricExpenses">R$ 0,00</strong><p>custas e reembolsos vinculados</p></div>
           </article>
         </div>
         <article class="card table-card financial-data-card">
@@ -719,7 +729,6 @@
             </div>
             <div class="publication-primary-actions" aria-label="Ações de publicações">
               <button class="button ghost" id="btnEmailPublications" title="Enviar ou exportar boletim diário de publicações por email"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-email"></use></svg><span>Enviar por e-mail</span></button>
-              <button class="button ghost" id="importIntimationButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-upload"></use></svg><span>Importar JSON</span></button>
               <button class="button gold" id="newIntimationButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg><span>Nova intimação</span></button>
             </div>
           </div>
@@ -746,6 +755,7 @@
           <div class="toolbar-copy classic-only"><p>Organize o trabalho interno sem alterar silenciosamente a fonte oficial.</p></div>
           <div class="v2-task-heading v2-only"><p>Gestão do trabalho</p><h2>Tarefas</h2><span id="taskResultCount" aria-live="polite">0 tarefas</span><small>Seis etapas canônicas, uma única fila operacional.</small></div>
           <div class="toolbar-actions">
+            <button class="button ghost" id="editKanbanColumnsButton" type="button">Editar colunas</button>
             <button class="button ghost" id="kanbanFilterButton">Minhas tarefas</button>
             <button class="button gold" id="newTaskButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Nova tarefa</button>
           </div>
@@ -923,7 +933,7 @@
             <div class="integration-logo cnj-logo">
               <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-monitoring"></use></svg>
             </div>
-            <div class="integration-copy"><span class="status-chip planned">Oficial</span><h3>DJEN e DataJud (CNJ)</h3><p>Camada de conferência de publicações e andamentos do Diário de Justiça Eletrônico Nacional.</p><button class="button ghost" data-view-link="monitoring">Ver fontes</button></div>
+            <div class="integration-copy"><span class="status-chip planned">Oficial</span><h3>DJEN e DataJud (CNJ)</h3><p>Camada de conferência de publicações e andamentos do Diário de Justiça Eletrônico Nacional.</p><button class="button ghost v2-connection-primary" data-view-link="monitoring">Ver fontes</button></div>
           </article>
           <article class="integration-card card judicial-integration-card">
             <div class="integration-logo certificate-logo">
@@ -1205,15 +1215,15 @@
               <div style="display:flex; align-items:center; gap:8px;">
                 <label class="assistant-field-label" for="codexSkillSelect">Especialidade jurídica</label>
                 <select id="codexSkillSelect" aria-describedby="codexSkillDescription" style="padding:6px 12px; font-size:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel-soft); color:var(--text);">
-                  <option value="legal-agent">$legal-agent — Orquestrador Geral (Análise, Pesquisa e Redação)</option>
-                  <option value="legal-ingest">$legal-ingest — Ingestão dos Autos, Fatos &amp; Cronologia (D#)</option>
-                  <option value="legal-planner">$legal-planner — Planejador Estratégico &amp; Estrutura de Peça</option>
-                  <option value="legal-research-br">$legal-research-br — Pesquisa Jurisprudencial STF / STJ (J#)</option>
-                  <option value="legal-draft-br">$legal-draft-br — Redator Jurídico Técnico Brasileiro (L#)</option>
-                  <option value="legal-audit">$legal-audit — Auditor Adversarial (Revisão Crítica de Petição)</option>
-                  <option value="prescricao-intercorrente">$prescricao-intercorrente — Prescrição Intercorrente (Art. 921 CPC)</option>
-                  <option value="fazenda-publica-cumprimento">$fazenda-publica-cumprimento — Cumprimento contra Fazenda &amp; RPV</option>
-                  <option value="previdenciario-incapacidade">$previdenciario-incapacidade — Perícias &amp; Benefícios por Incapacidade</option>
+                  <option value="legal-agent">Análise jurídica completa — pesquisa e redação</option>
+                  <option value="legal-ingest">Leitura dos autos — fatos e cronologia</option>
+                  <option value="legal-planner">Estratégia processual — planejamento da peça</option>
+                  <option value="legal-research-br">Pesquisa de jurisprudência — STF e STJ</option>
+                  <option value="legal-draft-br">Redação jurídica brasileira</option>
+                  <option value="legal-audit">Revisão crítica da peça</option>
+                  <option value="prescricao-intercorrente">Prescrição intercorrente — art. 921 do CPC</option>
+                  <option value="fazenda-publica-cumprimento">Cumprimento contra a Fazenda Pública e RPV</option>
+                  <option value="previdenciario-incapacidade">Benefícios por incapacidade e perícias</option>
                 </select>
                 <button type="button" class="button gold" id="btnApplyCodexSkill" style="padding:6px 12px; font-size:12px;">Carregar Skill</button>
               </div>
@@ -1619,6 +1629,32 @@
     </aside>
   </div>
 
+  <div class="modal-backdrop hidden" id="kanbanColumnsBackdrop">
+    <section class="modal kanban-columns-modal" role="dialog" aria-modal="true" aria-labelledby="kanbanColumnsTitle">
+      <header><div><p class="eyebrow">Quadro de trabalho</p><h2 id="kanbanColumnsTitle">Editar colunas do Kanban</h2><p>Renomeie etapas, adicione novas colunas ou remova as que estiverem vazias.</p></div><button class="icon-button" id="kanbanColumnsClose" type="button" aria-label="Fechar editor de colunas"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button></header>
+      <form id="kanbanColumnsForm"><div class="kanban-columns-list" id="kanbanColumnsList"></div><button class="button ghost kanban-column-add" id="kanbanColumnAdd" type="button"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Adicionar coluna</button><p class="kanban-columns-note">Entrada &amp; triagem e Concluída são etapas estruturais. Colunas com tarefas devem ser esvaziadas antes da remoção.</p><footer><button class="button ghost" id="kanbanColumnsCancel" type="button">Cancelar</button><button class="button gold" type="submit">Salvar colunas</button></footer></form>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="profileSettingsBackdrop">
+    <section class="modal profile-settings-modal" role="dialog" aria-modal="true" aria-labelledby="profileSettingsTitle">
+      <header><div><p class="eyebrow">Conta pessoal</p><h2 id="profileSettingsTitle">Meu perfil</h2><p>Atualize os dados exibidos no ATRIUM.</p></div><button class="icon-button" id="profileSettingsClose" type="button" aria-label="Fechar configurações do perfil"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button></header>
+      <form id="profileSettingsForm">
+        <div class="profile-photo-editor">
+          <span class="avatar profile-settings-preview"><img id="profileSettingsPreviewImage" alt="Prévia da foto do perfil" hidden><span id="profileSettingsPreviewInitials">AT</span></span>
+          <div><strong>Foto do perfil</strong><small>PNG, JPEG ou WebP de até 512 KB.</small><label class="button ghost" for="profilePhotoInput">Escolher foto</label><input id="profilePhotoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden><button class="button ghost" id="profilePhotoRemove" type="button">Remover foto</button></div>
+        </div>
+        <div class="form-grid">
+          <label class="field full" for="profileDisplayName"><span>Nome completo</span><input id="profileDisplayName" name="displayName" minlength="3" maxlength="100" required></label>
+          <label class="field" for="profileEmail"><span>E-mail</span><input id="profileEmail" name="email" type="email" maxlength="160" autocomplete="email"></label>
+          <label class="field" for="profilePhone"><span>Telefone de contato</span><input id="profilePhone" name="phone" type="tel" maxlength="32" autocomplete="tel" placeholder="(51) 99999-9999"></label>
+        </div>
+        <p class="profile-settings-feedback hidden" id="profileSettingsFeedback" role="status" aria-live="polite"></p>
+        <footer><button class="button ghost" id="profileSettingsCancel" type="button">Cancelar</button><button class="button gold" type="submit">Salvar perfil</button></footer>
+      </form>
+    </section>
+  </div>
+
   <div class="prompt-preview-backdrop v2-only hidden" id="promptPreviewBackdrop">
     <section class="prompt-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="promptPreviewTitle">
       <header>
@@ -1670,7 +1706,7 @@
             </ol>
             <p><strong>Importante:</strong> certificado válido não significa sessão autenticada. O ATRIUM somente consulta dados depois que o portal confirmar a sessão.</p>
           </div>
-          <button class="button gold" id="launchPortalLoginButton" type="button">Abrir sessão assistida</button>
+          <div class="assisted-session-action"><button class="button gold" id="launchPortalLoginButton" type="button">Abrir sessão assistida</button><p class="hidden" id="assistedSessionFeedback" role="status" aria-live="polite"></p></div>
         </section>
 
         <section class="setup-section" id="a1SetupSection">
@@ -2168,8 +2204,12 @@
               <option value="exito">Honorários de Êxito (Quota Litis)</option>
               <option value="fixo">Honorários Fixos / Iniciais</option>
               <option value="mensal">Honorários Mensais / Partido</option>
-              <option value="custas">Custas e Reembolsos</option>
+              <option value="despesa">Despesa, Custa ou Reembolso</option>
             </select>
+          </label>
+          <label class="financial-expense-only" style="display:none; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Descrição da despesa</span>
+            <input id="finDescriptionInput" name="description" type="text" maxlength="160" placeholder="Ex: preparo recursal">
           </label>
           </div>
           <div class="financial-entry-section is-values" role="group" aria-labelledby="finSectionValues" style="display:contents;">
@@ -2182,6 +2222,10 @@
               <option value="disponivel_saque">Disponível para Saque / Levantamento</option>
               <option value="repassado">Repassado ao Cliente &amp; Quitado</option>
             </select>
+          </label>
+          <label class="financial-expense-only" style="display:none; flex-direction:column; gap:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--muted);">Data da despesa</span>
+            <input id="finDateInput" name="expenseDate" type="date">
           </label>
           <label style="display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Valor Bruto / Base (R$)</span>
@@ -2222,6 +2266,11 @@
       <form id="emailConfigForm">
         <div class="modal-body form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:20px;">
           <p class="connection-sheet-description v2-only" id="emailConfigDescription">Configure a conexão, a autenticação e o remetente. A senha é transitória e nunca volta a ser exibida.</p>
+          <aside class="smtp-first-use-guide v2-only hidden" id="smtpFirstUseGuide" style="grid-column:1 / -1;">
+            <div><p class="eyebrow">Primeira configuração</p><h4>Onde encontrar estes dados?</h4></div>
+            <ol><li>Abra as configurações do provedor do seu e-mail ou peça os dados ao responsável de TI.</li><li>Copie o endereço SMTP e a porta. Em geral, a porta 465 usa SSL/TLS e a 587 usa STARTTLS.</li><li>Informe o usuário completo e uma <strong>senha de aplicativo</strong> quando o provedor exigir autenticação em duas etapas.</li><li>Use como remetente um endereço autorizado pelo mesmo servidor. Ao salvar, o ATRIUM fará um teste seguro antes de ativar.</li></ol>
+            <button class="button ghost" id="dismissSmtpGuide" type="button">Entendi, continuar</button>
+          </aside>
           <p class="connection-form-section v2-only">Conexão</p>
           <label class="connection-field-wide" style="grid-column:span 2; display:flex; flex-direction:column; gap:4px;">
             <span style="font-size:12px; font-weight:600; color:var(--muted);">Servidor SMTP (Host) *</span>

@@ -2,22 +2,23 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
   let initialized = false;
   let lastFocusedElement = null;
   let previousBodyOverflow = '';
+  let initialFormSnapshot = '';
 
   const focusableSelector = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
   function init() {
     if (initialized) return;
     initialized = true;
-    document.getElementById('modalClose')?.addEventListener('click', close);
-    document.getElementById('modalCancel')?.addEventListener('click', close);
+    document.getElementById('modalClose')?.addEventListener('click', requestClose);
+    document.getElementById('modalCancel')?.addEventListener('click', requestClose);
     document.getElementById('modalBackdrop')?.addEventListener('click', event => {
-      if (event.target === document.getElementById('modalBackdrop')) close();
+      if (event.target === document.getElementById('modalBackdrop')) requestClose();
     });
     document.getElementById('modalBackdrop')?.addEventListener('keydown', event => {
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
-        close();
+        requestClose();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -81,6 +82,7 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
+    initialFormSnapshot = formSnapshot();
     if (['task', 'agenda', 'contact', 'lead', 'prompt', 'term', 'source', 'datajud', 'configuration', 'feedback'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
@@ -91,6 +93,31 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     }, 20);
   }
 
+  function formSnapshot() {
+    const form = document.getElementById('modalForm');
+    if (!form) return '';
+    return JSON.stringify([...form.querySelectorAll('input, textarea, select, [contenteditable="true"]')].map(element => ({
+      name: element.name || element.id || '',
+      value: element.isContentEditable ? element.textContent : element.value,
+      checked: 'checked' in element ? element.checked : undefined
+    })));
+  }
+
+  function hasUnsavedChanges() {
+    return Boolean(initialFormSnapshot && initialFormSnapshot !== formSnapshot());
+  }
+
+  function requestClose() {
+    const backdrop = document.getElementById('modalBackdrop');
+    if (!backdrop || backdrop.classList.contains('hidden')) return false;
+    const confirmClose = document.defaultView?.confirm || globalThis.confirm;
+    if (hasUnsavedChanges()
+      && typeof confirmClose === 'function'
+      && !confirmClose('Há alterações não salvas. Deseja realmente fechar e descartá-las?')) return false;
+    close();
+    return true;
+  }
+
   function close() {
     const backdrop = document.getElementById('modalBackdrop');
     const wasOpen = backdrop && !backdrop.classList.contains('hidden');
@@ -99,13 +126,14 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     document.getElementById('appShell')?.removeAttribute('inert');
     onModeChange?.(null);
     document.getElementById('modalForm').reset();
+    initialFormSnapshot = '';
     if (wasOpen) {
       document.body.style.overflow = previousBodyOverflow;
       if (lastFocusedElement?.isConnected && typeof lastFocusedElement.focus === 'function') lastFocusedElement.focus();
     }
   }
 
-  return Object.freeze({ init, open, close });
+  return Object.freeze({ init, open, close, requestClose, hasUnsavedChanges });
 }
 
 function installModalComboboxes(root) {

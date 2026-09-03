@@ -129,6 +129,15 @@ async function assertModalBehavior() {
   await page.evaluate(() => document.getElementById('modalBackdrop').dispatchEvent(new MouseEvent('click', { bubbles: true })));
   await assertModalClosed('Um clique no backdrop deve encerrar o modal.');
   await openSyntheticModal();
+  await page.locator('#modalForm [name="value"]').fill('alterado e não salvo');
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.evaluate(() => document.getElementById('modalBackdrop').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+  assert.equal(await page.locator('#modalBackdrop').isVisible(), true, 'Recusar o descarte deve manter o formulário lateral aberto.');
+  assert.equal(await page.locator('#modalForm [name="value"]').inputValue(), 'alterado e não salvo');
+  page.once('dialog', dialog => dialog.accept());
+  await page.evaluate(() => document.getElementById('modalBackdrop').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+  await assertModalClosed('Confirmar o descarte deve fechar o formulário lateral.');
+  await openSyntheticModal();
   await page.keyboard.press('Escape');
   await assertModalClosed('Escape deve encerrar o modal.');
 }

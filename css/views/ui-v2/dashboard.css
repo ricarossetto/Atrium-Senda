@@ -320,6 +320,51 @@ html[data-ui="v2"] #view-dashboard .dashboard-task-item:hover {
   box-shadow: none;
 }
 
+html[data-ui="v2"] #view-dashboard .dashboard-task-process {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  margin: 5px 0 7px;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+html[data-ui="v2"] #view-dashboard .dashboard-task-process > :where(strong, span) {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+html[data-ui="v2"] #view-dashboard .dashboard-task-process .atrium-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+}
+
+html[data-ui="v2"] #view-dashboard .dashboard-task-process strong {
+  color: var(--v2-color-foreground);
+  font-weight: 750;
+}
+
+html[data-ui="v2"] #view-dashboard .dashboard-task-process b {
+  overflow: hidden;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] #view-dashboard .dashboard-task-action-type {
+  max-width: min(360px, 100%);
+}
+
+html[data-ui="v2"] #view-dashboard .dashboard-task-context-empty {
+  color: var(--v2-color-muted-foreground);
+  font-style: italic;
+}
+
 html[data-ui="v2"] #view-dashboard .dashboard-task-check {
   width: 20px;
   height: 20px;

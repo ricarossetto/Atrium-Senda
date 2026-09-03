@@ -12,7 +12,7 @@ const authSource = fs.readFileSync(path.join(ROOT, 'js', 'auth.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const expectedEndpoints = [
   '/api/auth/status', '/api/auth/setup', '/api/auth/setup/verify', '/api/auth/register',
-  '/api/auth/register/verify', '/api/auth/login', '/api/auth/logout'
+  '/api/auth/register/verify', '/api/auth/login', '/api/auth/logout', '/api/auth/profile'
 ];
 const endpoints = [...new Set(authSource.match(/\/api\/auth\/[a-z/]+/g) || [])].sort();
 assert.deepEqual(endpoints, expectedEndpoints.toSorted());
@@ -145,6 +145,47 @@ try {
     return names;
   })();
   assert.deepEqual(fieldNames, ['code', 'confirmPassword', 'displayName', 'email', 'oab', 'password', 'trustBrowser', 'username']);
+
+  const avatarVisibility = await (async () => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.route('**/api/auth/status', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"configured":true,"authenticated":false}' }));
+    await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
+    const visibility = await page.evaluate(() => {
+      const image = document.getElementById('profileAvatarImage');
+      const initials = document.querySelector('.profile-initials');
+      const photo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+      window.KellerAuth.renderProfileAvatar(photo, image, initials);
+      const withPhoto = {
+        imageHidden: image.hidden,
+        initialsHidden: initials.hidden,
+        imageDisplay: getComputedStyle(image).display,
+        initialsDisplay: getComputedStyle(initials).display
+      };
+      window.KellerAuth.renderProfileAvatar('', image, initials);
+      const withoutPhoto = {
+        imageHidden: image.hidden,
+        initialsHidden: initials.hidden,
+        imageDisplay: getComputedStyle(image).display,
+        initialsDisplay: getComputedStyle(initials).display
+      };
+      return { withPhoto, withoutPhoto };
+    });
+    await context.close();
+    return visibility;
+  })();
+  assert.deepEqual(avatarVisibility.withPhoto, {
+    imageHidden: false,
+    initialsHidden: true,
+    imageDisplay: 'block',
+    initialsDisplay: 'none'
+  });
+  assert.deepEqual(avatarVisibility.withoutPhoto, {
+    imageHidden: true,
+    initialsHidden: false,
+    imageDisplay: 'none',
+    initialsDisplay: 'grid'
+  });
   assert.equal(hashes.size, SCENARIOS.length);
   console.log('======================================================');
   console.log('✓ UI V2 AUTH SHELL CONCLUÍDO!');

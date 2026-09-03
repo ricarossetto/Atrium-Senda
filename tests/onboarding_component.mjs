@@ -102,6 +102,12 @@ try {
   assertSingleListeners((await readProbe()).listeners);
 
   await page.locator('#v2UtilitiesMenu > summary').click();
+  assert.equal(await page.locator('#v2UtilitiesConfiguration').isVisible(), true, 'O menu de utilidades deve oferecer acesso às Configurações.');
+  await page.locator('#v2UtilitiesConfiguration').click();
+  await page.locator('#view-configuration.active').waitFor();
+  assert.equal(await page.locator('#v2UtilitiesMenu').getAttribute('open'), null, 'O menu deve fechar depois da navegação.');
+  await page.locator('button[data-view="dashboard"]').click();
+  await page.locator('#v2UtilitiesMenu > summary').click();
   await page.locator('#tourButton').click();
   await page.locator('#guidedTourBackdrop:not(.hidden)').waitFor();
   await assertSlide(0, 'Abertura manual pelo cabeçalho deve ignorar a flag de visto.');

@@ -66,6 +66,8 @@ let statusPayload = {
 let statusFailure = false;
 let receiversPayload = [{ id: 'receiver-1', type: 'external', name: 'Destinatária Sintética', email: 'receiver@example.test', enabled: true }];
 let confirmResult = true;
+let closeConfirmResult = false;
+const confirmMessages = [];
 const requests = [];
 const toasts = [];
 const response = (body = {}, ok = true) => ({ ok, async json() { return structuredClone(body); } });
@@ -95,8 +97,8 @@ const feature = createEmailIntegrationFeature({
   getCurrentUser: () => currentUser,
   getOfficeName: () => 'Escritório Local Sintético',
   confirmFn: message => {
-    assert.equal(message, 'Remover este destinatário das notificações de publicações?');
-    return confirmResult;
+    confirmMessages.push(message);
+    return message === 'Remover este destinatário das notificações de publicações?' ? confirmResult : closeConfirmResult;
   }
 });
 
@@ -150,6 +152,9 @@ assert.equal(elements.emailFromNameInput.value, 'Escritório Local Sintético');
 assert.equal(elements.emailConfigBackdrop.classList.contains('hidden'), false);
 
 Object.assign(elements.emailHostInput, { value: 'smtp.submit.example.test' });
+assert.equal(feature.requestClose('config'), false);
+assert.equal(elements.emailConfigBackdrop.classList.contains('hidden'), false, 'SMTP alterado deve manter o painel aberto sem confirmação de descarte.');
+assert.match(confirmMessages.at(-1), /alterações não salvas/i);
 Object.assign(elements.emailPortInput, { value: '465' });
 Object.assign(elements.emailSecureInput, { checked: true });
 Object.assign(elements.emailUserInput, { value: 'smtp-user@example.test' });
@@ -172,6 +177,13 @@ assert.equal(elements.emailConfigSubmitBtn.textContent, 'Salvar e Validar Conex�
 elements.emailTestRecipientInput.value = '';
 feature.openTestModal();
 assert.equal(elements.emailTestRecipientInput.value, '', 'Modal de teste não pode preencher endereço pessoal automaticamente.');
+elements.emailTestRecipientInput.value = 'explicit-recipient@example.test';
+assert.equal(feature.requestClose('test'), false);
+assert.equal(elements.emailTestBackdrop.classList.contains('hidden'), false);
+closeConfirmResult = true;
+assert.equal(feature.requestClose('test'), true);
+assert.equal(elements.emailTestBackdrop.classList.contains('hidden'), true);
+feature.openTestModal();
 elements.emailTestRecipientInput.value = 'explicit-recipient@example.test';
 assert.equal(await feature.submitTest({ preventDefault() {} }), true);
 assert.deepEqual(requests.find(request => request.url === '/api/integrations/email/test').body, { recipient: 'explicit-recipient@example.test' });

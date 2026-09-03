@@ -76,7 +76,7 @@ html[data-ui="v2"] #view-assistant .ai-header-actions .status-chip {
 
 html[data-ui="v2"] .assistant-workspace-layout {
   display: grid;
-  grid-template-columns: minmax(260px, 31%) minmax(0, 1fr);
+  grid-template-columns: minmax(250px, 340px) minmax(0, 1fr);
   gap: var(--v2-space-5);
   align-items: start;
   min-width: 0;

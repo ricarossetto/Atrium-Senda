@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SecurityManager, verifyTotp } from './lib/security.mjs';
 import { buildRelevantOfficeContext } from './lib/ai-context.mjs';
+import { applyClientReconciliation, isKnownClientName, normalizeProcessNumber } from './js/core/client-reconciliation.js';
 import { collectDjen } from './collector/adapters/djen.mjs';
 import { collectDatajud, mergeExternalContacts, mergeExternalProcesses } from './collector/adapters/datajud.mjs';
 import { JudicialOrchestrator } from './lib/judicial/orchestrator.mjs';
@@ -148,6 +149,7 @@ const privateStaticFiles = new Set(['.env', 'package.json', 'pnpm-lock.yaml', 'p
 const privateStaticExtensions = new Set(['.key', '.pem', '.pfx', '.p12', '.crt']);
 const emptyRuntime = () => ({ events: [], tasks: [], intimations: [], processes: [], contacts: [], sources: [], updatedAt: null });
 let interactiveCollector = null;
+let interactiveCollectorState = { status: 'idle', portalIds: [], startedAt: null, completedAt: null, exitCode: null, lastMessage: '', lastError: '' };
 let managedCollector = null;
 let appStateMutationTail = Promise.resolve();
 let runtimeMutationTail = Promise.resolve();
@@ -846,7 +848,8 @@ async function judicialIntegrationStatus() {
     pjeOffice: await pjeOfficeStatus(),
     automatedTotpEnabled: Boolean(secrets.allowAutomatedTotp),
     portals: publicCertificatePortals(config, secrets),
-    interactiveCollectorRunning: Boolean(interactiveCollector && interactiveCollector.exitCode === null)
+    interactiveCollectorRunning: Boolean(interactiveCollector && interactiveCollector.exitCode === null),
+    interactiveCollectorState
   };
 }
 
@@ -1084,10 +1087,26 @@ async function startInteractiveCollector(portalIds) {
     windowsHide: false,
     stdio: 'pipe'
   });
-  interactiveCollector.stdout?.on('data', chunk => { console.log('[Coletor]:', chunk.toString().trim()); });
-  interactiveCollector.stderr?.on('data', chunk => { console.error('[Coletor Erro]:', chunk.toString().trim()); });
-  interactiveCollector.once('exit', () => { interactiveCollector = null; });
-  interactiveCollector.once('error', (err) => { console.error('[Coletor Falha]:', err); interactiveCollector = null; });
+  interactiveCollectorState = { status: 'running', portalIds: selected, startedAt: new Date().toISOString(), completedAt: null, exitCode: null, lastMessage: '', lastError: '' };
+  interactiveCollector.stdout?.on('data', chunk => {
+    const message = chunk.toString().trim().slice(-500);
+    if (message) interactiveCollectorState = { ...interactiveCollectorState, lastMessage: message };
+    console.log('[Coletor]:', message);
+  });
+  interactiveCollector.stderr?.on('data', chunk => {
+    const lastError = chunk.toString().trim().slice(-500);
+    if (lastError) interactiveCollectorState = { ...interactiveCollectorState, lastError };
+    console.error('[Coletor Erro]:', lastError);
+  });
+  interactiveCollector.once('exit', code => {
+    interactiveCollectorState = { ...interactiveCollectorState, status: code === 0 ? 'completed' : 'failed', completedAt: new Date().toISOString(), exitCode: code };
+    interactiveCollector = null;
+  });
+  interactiveCollector.once('error', err => {
+    console.error('[Coletor Falha]:', err);
+    interactiveCollectorState = { ...interactiveCollectorState, status: 'failed', completedAt: new Date().toISOString(), exitCode: null, lastError: String(err.message || err).slice(0, 500) };
+    interactiveCollector = null;
+  });
   return { started: true, portalCount: selected.length };
 }
 
@@ -1408,7 +1427,7 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
       processes.push({
         id: `proc-${randomBytes(6).toString('hex')}`,
         number: procNumber,
-        client: author || 'Cliente não informado',
+        client: author,
         opposingParty: defendant,
         court: locality ? (locality.toLowerCase().startsWith('tj') || locality.toLowerCase().startsWith('trf') ? locality : `TJRS · ${locality}`) : 'eproc',
         caseFolder: unitCode,
@@ -1698,6 +1717,104 @@ function assertAdmin(req, requireCsrf = false, customMessage = 'Você não possu
   return session;
 }
 
+function parseAiJsonArray(text) {
+  const raw = String(text || '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  const first = raw.indexOf('[');
+  const last = raw.lastIndexOf(']');
+  if (first < 0 || last <= first) return [];
+  try {
+    const parsed = JSON.parse(raw.slice(first, last + 1));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizedIdentity(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, ' ').trim().toLowerCase();
+}
+
+function clientReconciliationCases({ appState = {}, processes = [], intimations = [], tasks = [], contacts = [] } = {}) {
+  const stateProcesses = sanitizeArray(appState.processes);
+  const allProcesses = mergeExternalProcesses(processes, stateProcesses);
+  const allIntimations = mergeExternalIntimations(intimations, sanitizeArray(appState.intimations));
+  const allTasks = mergeBy(tasks, sanitizeArray(appState.tasks));
+  const allContacts = mergeExternalContacts(contacts, sanitizeArray(appState.contacts));
+  return allProcesses.filter(process => normalizeProcessNumber(process.number).length === 20 && !isKnownClientName(process.client)).slice(0, 48).map(process => {
+    const processNumber = normalizeProcessNumber(process.number);
+    const publications = allIntimations.filter(item => normalizeProcessNumber(item.process) === processNumber).slice(0, 6);
+    const linkedTasks = allTasks.filter(item => normalizeProcessNumber(item.process) === processNumber).slice(0, 6);
+    const relatedContacts = allContacts.filter(contact => (contact.relatedProcessNumbers || []).some(number => normalizeProcessNumber(number) === processNumber)).slice(0, 12);
+    const evidenceParts = [
+      process.number, process.court, process.courtUnit, process.actionType, process.subject,
+      process.lastMovement, process.opposingParty, process.counterpart,
+      ...publications.flatMap(item => [item.term, item.title, item.text, item.client, item.parties]),
+      ...linkedTasks.flatMap(item => [item.title, item.description, item.client]),
+      ...relatedContacts.flatMap(item => [item.name, item.contactRole, item.relationshipProvenance?.reason])
+    ].filter(Boolean).map(value => String(value).slice(0, 2_000));
+    return {
+      processNumber: process.number,
+      opposingParty: process.opposingParty || process.counterpart || '',
+      court: process.court || '',
+      actionType: process.actionType || process.subject || '',
+      evidence: evidenceParts.join('\n').slice(0, 10_000),
+      relatedContacts: relatedContacts.map(contact => ({ id: contact.id, name: contact.name, role: contact.contactRole || '' }))
+    };
+  });
+}
+
+async function inferGroundedClientLinks({ appState = {}, processes = [], intimations = [], tasks = [], contacts = [] } = {}) {
+  const cases = clientReconciliationCases({ appState, processes, intimations, tasks, contacts });
+  if (!cases.length) return { links: [], attempted: 0, status: 'nothing-to-reconcile' };
+  const apiKey = await readAiApiKey();
+  if (!apiKey) return { links: [], attempted: cases.length, status: 'ai-not-configured' };
+  const monitoredProfessionals = [...sanitizeArray(appState.terms), {
+    name: appState.settings?.lawyerName,
+    registration: appState.settings?.lawyerOab
+  }].filter(item => item?.name || item?.registration);
+  const excludedNames = new Set(monitoredProfessionals.map(item => normalizedIdentity(item.name)).filter(Boolean));
+  const contactsByName = new Map(mergeExternalContacts(contacts, sanitizeArray(appState.contacts))
+    .filter(contact => contact?.name).map(contact => [normalizedIdentity(contact.name), contact]));
+  const links = [];
+  let model = '';
+
+  const systemInstruction = `Você reconcilia clientes em um sistema jurídico brasileiro usando somente as evidências fornecidas. Identifique a parte efetivamente representada pelo advogado ou OAB monitorada, nunca o próprio advogado e nunca a parte contrária. Não presuma que autor ou réu é cliente sem vínculo explícito com o profissional monitorado. Quando a prova for ambígua, omita o processo. Responda somente com um array JSON. Cada item deve conter processNumber, clientName, confidence entre 0 e 1, basis exatamente "represented-by-monitored-lawyer" e evidence com um trecho curto existente nas evidências. Use confiança igual ou superior a 0.90 somente quando o vínculo estiver explicitamente sustentado.`;
+
+  for (let offset = 0; offset < cases.length; offset += 12) {
+    const batch = cases.slice(offset, offset + 12);
+    try {
+      const response = await callGeminiApi(apiKey, systemInstruction, [{ role: 'user', parts: [{ text: JSON.stringify({ monitoredProfessionals, cases: batch }) }] }]);
+      model ||= response.model;
+      for (const suggestion of parseAiJsonArray(response.text)) {
+        const targetCase = batch.find(item => normalizeProcessNumber(item.processNumber) === normalizeProcessNumber(suggestion?.processNumber));
+        const clientName = String(suggestion?.clientName || '').replace(/\s+/g, ' ').trim();
+        const normalizedClient = normalizedIdentity(clientName);
+        const confidence = Number(suggestion?.confidence);
+        const grounded = normalizedClient && normalizedIdentity(targetCase?.evidence).includes(normalizedClient);
+        const isOpponent = normalizedClient && normalizedClient === normalizedIdentity(targetCase?.opposingParty);
+        if (!targetCase || !isKnownClientName(clientName) || confidence < 0.9
+          || suggestion?.basis !== 'represented-by-monitored-lawyer' || !grounded || isOpponent || excludedNames.has(normalizedClient)) continue;
+        const contact = contactsByName.get(normalizedClient);
+        links.push({
+          processNumber: targetCase.processNumber,
+          clientName: contact?.name || clientName,
+          ...(contact?.id ? { contactId: contact.id } : {}),
+          confidence,
+          evidence: String(suggestion.evidence || '').slice(0, 280),
+          method: 'ai-grounded',
+          model: response.model,
+          linkedAt: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.warn('[Reconciliação de clientes]:', String(error.message || error).slice(0, 240));
+    }
+  }
+
+  const uniqueLinks = [...new Map(links.map(link => [normalizeProcessNumber(link.processNumber), link])).values()];
+  return { links: uniqueLinks, attempted: cases.length, status: uniqueLinks.length ? 'linked' : 'no-grounded-match', model };
+}
+
 function processDiscoverySuppressionSet(state) {
   return new Set((Array.isArray(state?.settings?.processDiscoverySuppressions) ? state.settings.processDiscoverySuppressions : [])
     .map(item => String(item?.cnj || item || '').replace(/\D/g, ''))
@@ -1944,6 +2061,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
       const session = assertAuthenticated(req, true); await security.logout(req);
       return json(res, 200, { ok: true, user: session.username }, { 'Set-Cookie': [security.clearCookie(), security.clearTrustedDeviceCookie()] });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/profile') {
+      const session = assertAuthenticated(req, true);
+      const user = await security.updateCurrentUserProfile(session.username, await readJson(req));
+      return json(res, 200, { ok: true, user });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/register') {
       const result = await security.registerUser(await readJson(req));
@@ -3479,6 +3601,7 @@ Diretrizes essenciais:
       let contacts = sanitizeArray(runtime.contacts);
       let calendarImported = 0;
       let judicialImported = 0;
+      let clientReconciliation = { links: [], attempted: 0, status: 'not-run' };
       let sources = sanitizeArray(runtime.sources);
       let appState = null;
       try {
@@ -3623,6 +3746,14 @@ Diretrizes essenciais:
         }
       }
 
+      // 3. Reconciliação assistida: somente vínculos sustentados por evidência explícita.
+      try {
+        clientReconciliation = await inferGroundedClientLinks({ appState: appState || {}, processes, intimations, tasks, contacts });
+      } catch (error) {
+        clientReconciliation = { links: [], attempted: 0, status: 'error' };
+        console.warn('[Reconciliação de clientes]:', String(error.message || error).slice(0, 240));
+      }
+
       const updatedRuntime = {
         events,
         tasks,
@@ -3632,6 +3763,7 @@ Diretrizes essenciais:
         sources: mergeBy([], sources, 'id'),
         updatedAt: new Date().toISOString()
       };
+      applyClientReconciliation(updatedRuntime, clientReconciliation.links);
       await mutateRuntime(current => ({
         ...current,
         events: mergeBy(current.events, updatedRuntime.events),
@@ -3645,6 +3777,13 @@ Diretrizes essenciais:
 
       return json(res, 200, {
         ...updatedRuntime,
+        clientLinks: clientReconciliation.links,
+        clientReconciliation: {
+          status: clientReconciliation.status,
+          attempted: clientReconciliation.attempted,
+          linked: clientReconciliation.links.length,
+          model: clientReconciliation.model || ''
+        },
         imported: calendarImported + judicialImported
       });
     }

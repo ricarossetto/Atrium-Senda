@@ -44,6 +44,8 @@ const toasts = [];
 let saveCalls = 0;
 let flushResult = true;
 let monitoringRenders = 0;
+let closeConfirmResult = false;
+const closeConfirmMessages = [];
 const store = {
   state: {
     settings: {},
@@ -65,7 +67,8 @@ const feature = createOfficeIdentityFeature({
   }),
   escapeHtml: value => String(value ?? '').replaceAll('<', '&lt;'),
   showToast: (message, type) => toasts.push({ message, type }),
-  onRenderMonitoring: () => { monitoringRenders++; }
+  onRenderMonitoring: () => { monitoringRenders++; },
+  confirmFn: message => { closeConfirmMessages.push(message); return closeConfirmResult; }
 });
 
 assert.equal(feature.init(), true);
@@ -94,6 +97,15 @@ assert.equal(elements.officeInputLawyer.value === store.state.terms[1].name, fal
 assert.equal(elements.officeSetupBackdrop.classList.contains('hidden'), false);
 feature.close();
 assert.equal(elements.officeSetupBackdrop.classList.contains('hidden'), true);
+
+feature.open();
+elements.officeInputName.value = 'Edição ainda não salva';
+assert.equal(feature.requestClose(), false);
+assert.equal(elements.officeSetupBackdrop.classList.contains('hidden'), false, 'Edição pendente deve manter o painel aberto quando o descarte for recusado.');
+assert.match(closeConfirmMessages.at(-1), /alterações não salvas/i);
+closeConfirmResult = true;
+assert.equal(feature.requestClose(), true);
+assert.equal(elements.officeSetupBackdrop.classList.contains('hidden'), true, 'Confirmação explícita deve permitir descartar e fechar.');
 
 assert.equal(feature.handleLogoUpload({ size: 2 * 1024 * 1024, data: 'data:image/png;base64,VALIDA' }), true);
 assert.ok(reader);

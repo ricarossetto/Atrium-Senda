@@ -369,7 +369,7 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] {
   backdrop-filter: blur(5px);
 }
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] .modal {
-  width: min(520px, 100vw);
+  width: min(640px, 100vw);
   max-height: 100vh;
   height: 100vh;
   margin: 0;
@@ -386,24 +386,34 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] .modal > footer {
   border-color: var(--v2-color-border);
 }
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] #modalFields { padding: var(--v2-space-5); }
-html[data-ui="v2"] .agenda-form-sections { display: grid; gap: var(--v2-space-4); }
+html[data-ui="v2"] .agenda-form-sections {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+}
 html[data-ui="v2"] .agenda-form-section {
   min-width: 0;
   margin: 0;
-  padding: var(--v2-space-3);
-  background: var(--v2-color-surface-secondary);
-  border: 1px solid var(--v2-color-border-subtle);
-  border-radius: var(--v2-radius-md);
+  padding: var(--v2-space-4);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+  border-radius: 0;
 }
+html[data-ui="v2"] .agenda-form-section:last-child { border-bottom: 0; }
 html[data-ui="v2"] .agenda-form-section legend {
-  padding: 0 7px;
-  color: var(--v2-color-gold);
+  padding: 0;
+  color: var(--v2-color-primary);
   font-size: 10px;
   font-weight: 850;
   letter-spacing: .09em;
   text-transform: uppercase;
 }
 html[data-ui="v2"] .agenda-form-section .form-grid { gap: var(--v2-space-3); }
+html[data-ui="v2"] .agenda-form-section :where(input, select, textarea) { background: var(--v2-color-surface-inset); }
 @keyframes agenda-drawer-enter { from { opacity: .35; clip-path: inset(0 0 0 100%); } to { opacity: 1; clip-path: inset(0); } }
 
 @media (max-width: 1180px) {
