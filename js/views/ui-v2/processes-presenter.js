@@ -15,6 +15,7 @@ export function createProcessesV2Presenter({
   onExport,
   onAgenda,
   onFinancial,
+  onAssistant,
   onDelete
 } = {}) {
   let initialized = false;
@@ -82,6 +83,12 @@ export function createProcessesV2Presenter({
       const item = selectedItem;
       close({ restoreFocus: false });
       onDocuments?.(item);
+    });
+    byId('processInspectorAssistant')?.addEventListener('click', () => {
+      if (!selectedItem) return;
+      const item = selectedItem;
+      close({ restoreFocus: false });
+      onAssistant?.(item);
     });
     byId('processInspectorExport')?.addEventListener('click', () => {
       if (selectedItem) onExport?.(selectedItem);

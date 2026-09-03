@@ -492,6 +492,7 @@ import { createTasksFeature } from './features/tasks.js';
         App.renderContacts('');
         getContactsFeature().selectContact(contact.id);
       },
+      onOpenAssistant: publication => openAssistantContext('intimation', publication?.id),
       onOpenIntimation: () => App.openIntimationModal(),
       onImportJson: file => App.importJson(file),
       onRenderGlobalMetrics: () => App.renderMetrics(),
@@ -581,6 +582,7 @@ import { createTasksFeature } from './features/tasks.js';
         if (input) input.value = process?.number || process?.protocol || '';
         App.renderFinancial(input?.value || '');
       },
+      openAssistant: process => openAssistantContext('process', process?.id),
       exportJson: (data, filename) => App.exportJson(data, filename),
       confirmProcessDeletion: number => window.prompt(`Para excluir o processo ${number}, digite o número completo:`),
       requestProcessReenable: () => window.prompt('Digite o número CNJ cuja descoberta automática deve ser reativada:')
@@ -624,6 +626,7 @@ import { createTasksFeature } from './features/tasks.js';
         if (input) input.value = query;
         App.renderFinancial(query);
       },
+      openAssistant: contact => openAssistantContext('contact', contact?.id),
       secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
       showToast: (message, type) => App.toast(message, type)
     });
@@ -642,6 +645,7 @@ import { createTasksFeature } from './features/tasks.js';
       getCurrentUser: () => window.KellerAuth?.currentUser,
       getIsoDate: () => isoDate(),
       onOpenGenerator: options => App.openDocumentGenerator(options),
+      onOpenAssistant: documentRecord => openAssistantContext('document', documentRecord?.id),
       renderV2Catalog: renderDocumentsV2Catalog,
       secureFetch: (...args) => window.KellerAuth.secureFetch(...args)
     });
@@ -717,6 +721,14 @@ import { createTasksFeature } from './features/tasks.js';
       renderV2Presentation: renderAssistantV2Presentation
     });
     return assistantFeature;
+  }
+
+  function openAssistantContext(type, id) {
+    if (!type || !id) return false;
+    getAssistantFeature().selectContext(`${type}:${id}`);
+    App.switchView('assistant');
+    document.getElementById('aiChatInput')?.focus();
+    return true;
   }
 
   function getPromptsFeature() {

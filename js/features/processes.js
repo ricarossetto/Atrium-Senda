@@ -26,6 +26,7 @@ export function createProcessesFeature({
   openPublication,
   openAgenda,
   openFinancial,
+  openAssistant,
   exportJson,
   confirmProcessDeletion = number => globalThis.prompt?.(`Para excluir o processo ${number}, digite o número completo:`) || '',
   requestProcessReenable = () => globalThis.prompt?.('Digite o número CNJ cuja descoberta automática deve ser reativada:') || ''
@@ -54,6 +55,7 @@ export function createProcessesFeature({
         if (appointment) openAgenda?.(appointment);
       },
       onFinancial: item => openFinancial?.(item),
+      onAssistant: item => openAssistant?.(item),
       onExport: item => feature.exportProcess(item),
       onDelete: item => feature.deleteProcess(item)
     });

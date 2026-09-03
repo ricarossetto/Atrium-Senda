@@ -18,6 +18,7 @@ export function createContactsFeature({
   openAgenda,
   openDocument,
   openFinancial,
+  openAssistant,
   secureFetch,
   showToast = () => {}
 } = {}) {
@@ -184,6 +185,11 @@ export function createContactsFeature({
       }
       if (target.hasAttribute('data-contact-archive')) {
         if (selectedContactId) openOwnerDocuments?.('contact', selectedContactId);
+        return;
+      }
+      if (target.hasAttribute('data-contact-assistant')) {
+        const item = store.state.contacts.find(record => String(record.id) === String(selectedContactId));
+        if (item) openAssistant?.(item);
         return;
       }
       const context = buildClientContext(store.state, store.state.contacts.find(item => String(item.id) === String(selectedContactId || '')));

@@ -131,6 +131,7 @@ export function createPublicationsFeature({
   onOpenAgenda,
   onOpenProcess,
   onOpenContact,
+  onOpenAssistant,
   onOpenIntimation,
   onImportJson,
   onRenderGlobalMetrics,
@@ -630,6 +631,7 @@ export function createPublicationsFeature({
 
     async handleAction(item, action) {
       if (!item) return;
+      if (action === 'assistant') return onOpenAssistant?.(item);
       if (action === 'send-email') return this.openPublicationEmailModal(item);
       if (action === 'task') {
         const urgent = Boolean(item.urgent || item.priority === 'urgente');

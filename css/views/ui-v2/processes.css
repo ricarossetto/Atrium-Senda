@@ -406,7 +406,7 @@ html[data-ui="v2"] .process-inspector > header {
 
 html[data-ui="v2"] .process-inspector > footer {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--v2-space-2);
   padding: var(--v2-space-3);
   border-top: 1px solid var(--v2-color-border);
