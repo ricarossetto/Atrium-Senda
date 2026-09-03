@@ -535,12 +535,16 @@ ${id.lawyerOab} - ${id.officeName}`;
           <strong>${escapeHtml(document.name)}</strong>
           <span>${escapeHtml(documentOwnerName(document))}</span>
           <small>${escapeHtml(document.documentType || 'Documento')} · ${escapeHtml(document.documentDate || '')} · ${escapeHtml(formatDocumentSize(document.size))}</small>
+          ${document.metadata?.origin ? `<small>Origem: ${escapeHtml(document.metadata.origin)}</small>` : ''}
+          ${document.metadata?.tags?.length ? `<div class="document-metadata-tags" aria-label="Tags">${document.metadata.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
+          ${document.metadata?.summary ? `<p class="document-metadata-summary">${escapeHtml(document.metadata.summary)}</p>` : ''}
+          ${document.metadata?.relatedDocumentIds?.length ? `<small>${escapeHtml(String(document.metadata.relatedDocumentIds.length))} documento(s) relacionado(s)</small>` : ''}
           ${document.intelligence?.ocr ? `<small class="document-intelligence-status">Texto extraído sob supervisão · ${escapeHtml(String(document.intelligence.ocr.characterCount || 0))} caracteres</small>` : ''}
         </div>
         <div class="document-record-actions">
           ${document.deletedAt
             ? `<button class="button ghost" type="button" data-document-action="restore">Restaurar</button><button class="button danger" type="button" data-document-action="purge">Excluir definitivamente</button>`
-            : `<button class="button ghost" type="button" data-document-action="preview">Preview</button><button class="button ghost" type="button" data-document-action="${document.intelligence?.ocr ? 'read-ocr' : 'ocr'}">${document.intelligence?.ocr ? 'Ver extração' : 'Extrair texto'}</button>${canConvertDocumentToPdf(document) ? '<button class="button ghost" type="button" data-document-action="pdf">Gerar PDF</button>' : ''}<button class="button ghost" type="button" data-document-action="download">Baixar</button><button class="button ghost" type="button" data-document-action="delete">Mover para lixeira</button>`}
+            : `<button class="button ghost" type="button" data-document-action="metadata">Organizar</button><button class="button ghost" type="button" data-document-action="preview">Preview</button><button class="button ghost" type="button" data-document-action="${document.intelligence?.ocr ? 'read-ocr' : 'ocr'}">${document.intelligence?.ocr ? 'Ver extração' : 'Extrair texto'}</button>${canConvertDocumentToPdf(document) ? '<button class="button ghost" type="button" data-document-action="pdf">Gerar PDF</button>' : ''}<button class="button ghost" type="button" data-document-action="download">Baixar</button><button class="button ghost" type="button" data-document-action="delete">Mover para lixeira</button>`}
         </div>
       </article>`).join('')
       : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.'}</span></div>`;
@@ -721,6 +725,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       if (!secureFetch) return false;
       const document = (store.state.documents || []).find(item => item.id === id);
       if (!document) return false;
+      if (action === 'metadata') return feature.openDocumentMetadata(document);
       if (action === 'preview') return feature.showDocumentPreview(document);
       if (action === 'read-ocr') return feature.showExtractedText(document);
       if (action === 'ocr') return feature.extractDocumentText(document);
@@ -757,6 +762,72 @@ ${id.lawyerOab} - ${id.officeName}`;
       } catch (error) {
         showToast(error.message, 'error');
         return false;
+      }
+    },
+
+    openDocumentMetadata(document) {
+      const body = openIntelligencePanel(document, 'Organização documental', `${document.name} · metadados revisados por ação humana`);
+      if (!body) return false;
+      const metadata = document.metadata || {};
+      const related = (store.state.documents || []).filter(item => item && !item.deletedAt && item.id !== document.id
+        && item.ownerType === document.ownerType && item.ownerId === document.ownerId);
+      const entityLines = (metadata.entities || []).map(entity => [entity.type || 'other', entity.label || '', entity.identifier || ''].join(' | ')).join('\n');
+      body.innerHTML = `<form class="document-metadata-form" id="documentMetadataForm">
+        <div class="document-metadata-grid">
+          <label><span>Tipo documental</span><input name="documentType" maxlength="100" value="${escapeHtml(document.documentType || '')}" placeholder="Ex: contrato, sentença, laudo"></label>
+          <label><span>Origem</span><input name="origin" maxlength="120" value="${escapeHtml(metadata.origin || '')}" placeholder="Ex: upload local, cliente, tribunal"></label>
+        </div>
+        <label><span>Tags</span><input name="tags" maxlength="600" value="${escapeHtml((metadata.tags || []).join(', '))}" placeholder="Separe por vírgulas"></label>
+        <label><span>Resumo revisado</span><textarea name="summary" maxlength="1200" rows="4" placeholder="Síntese conferida por uma pessoa">${escapeHtml(metadata.summary || '')}</textarea></label>
+        <label><span>Contexto jurídico</span><textarea name="context" maxlength="1500" rows="4" placeholder="Finalidade, fase ou observações úteis">${escapeHtml(metadata.context || '')}</textarea></label>
+        <label><span>Entidades</span><textarea name="entities" maxlength="2600" rows="4" placeholder="Uma por linha: tipo | nome | identificador">${escapeHtml(entityLines)}</textarea><small>Tipos aceitos: person, organization, process, court, law, other.</small></label>
+        <label><span>Documentos relacionados do mesmo proprietário</span><select name="relatedDocumentIds" multiple size="${Math.max(2, Math.min(5, related.length || 2))}">${related.map(item => `<option value="${escapeHtml(item.id)}" ${(metadata.relatedDocumentIds || []).includes(item.id) ? 'selected' : ''}>${escapeHtml(item.name || 'Documento sem nome')}</option>`).join('')}</select><small>Use Ctrl/Cmd para selecionar mais de um. Relações externas a este proprietário são rejeitadas pelo servidor.</small></label>
+        <div class="document-metadata-form-actions"><button type="button" class="button ghost" data-document-metadata-cancel>Cancelar</button><button type="submit" class="button gold">Salvar metadados</button></div>
+      </form>`;
+      body.setAttribute('aria-busy', 'false');
+      const form = body.querySelector('#documentMetadataForm');
+      form?.querySelector('[data-document-metadata-cancel]')?.addEventListener('click', closeIntelligencePanel);
+      form?.addEventListener('submit', event => feature.saveDocumentMetadata(event, document));
+      form?.querySelector('[name="documentType"]')?.focus();
+      return true;
+    },
+
+    async saveDocumentMetadata(event, document) {
+      event?.preventDefault?.();
+      const form = event?.currentTarget;
+      if (!form || !secureFetch) return false;
+      const submit = form.querySelector('button[type="submit"]');
+      if (submit) submit.disabled = true;
+      const entities = String(form.elements.entities?.value || '').split(/\r?\n/).map(line => {
+        const [type, label, identifier] = line.split('|').map(value => value.trim());
+        return { type, label, identifier };
+      }).filter(entity => entity.label);
+      const relatedDocumentIds = [...(form.elements.relatedDocumentIds?.selectedOptions || [])].map(option => option.value);
+      try {
+        const payload = await responsePayload(await secureFetch(`/api/documents/${encodeURIComponent(document.id)}/metadata`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ revision: store.revision, metadata: {
+            documentType: form.elements.documentType?.value || '',
+            origin: form.elements.origin?.value || '',
+            tags: form.elements.tags?.value || '',
+            summary: form.elements.summary?.value || '',
+            context: form.elements.context?.value || '',
+            entities,
+            relatedDocumentIds,
+            classificationStatus: 'reviewed'
+          } })
+        }));
+        syncDocumentState(payload);
+        renderArchive();
+        closeIntelligencePanel();
+        showToast('Metadados documentais revisados e salvos.', 'success');
+        return true;
+      } catch (error) {
+        showToast(error.message, 'error');
+        return false;
+      } finally {
+        if (submit?.isConnected) submit.disabled = false;
       }
     },
 

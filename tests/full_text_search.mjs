@@ -26,7 +26,7 @@ const unitState = {
   intimations: [{ id: 'publication-unit', title: 'Intimação sobre benefício', process: '5001234-12.2026.4.04.0001', text: 'Manifestação expressa sem prazo inferido', workNotes: [{ id: 'note-unit', text: 'Estratégia interna rara e supervisionada' }] }],
   tasks: [{ id: 'task-unit', title: 'Revisar cálculo previdenciário', description: 'Conferência humana obrigatória', responsible: 'Equipe' }],
   agenda: [{ id: 'appointment-unit', processId: 'process-unit', title: 'Pauta sintética de conferência', date: '2026-09-08', time: '14:00' }],
-  documents: [{ id: 'document-unit', name: 'laudo-aurora.pdf', ownerType: 'process', ownerId: 'process-unit', documentType: 'Laudo', checksum: 'a'.repeat(64), intelligence: { ocr: { checksum: 'b'.repeat(64) } } }],
+  documents: [{ id: 'document-unit', name: 'laudo-aurora.pdf', ownerType: 'process', ownerId: 'process-unit', documentType: 'Laudo', checksum: 'a'.repeat(64), metadata: { origin: 'Digitalização local', tags: ['perícia rara'], summary: 'Resumo documental quartzo.', context: 'Contexto supervisionado âmbar.', entities: [{ type: 'organization', label: 'Entidade Jade', identifier: 'ID-JADE' }] }, intelligence: { ocr: { checksum: 'b'.repeat(64) } } }],
   customPrompts: [{ id: 'prompt-unit', title: 'Síntese previdenciária supervisionada', category: 'Previdenciário', prompt: 'Organize o relatório sem inventar fatos.' }],
   audit: [
     { id: 'audit-unit', at: '2026-09-01T12:00:00.000Z', actor: 'Advogada Teste', action: 'Documento revisado', detail: 'Revisão supervisionada concluída.' },
@@ -58,6 +58,9 @@ assert.equal(index.search('Estratégia interna rara')[0].entityType, 'note');
 assert.equal(index.search('Conclusão judicial rara')[0].entityType, 'movement');
 assert.equal(index.search('Custas diligência rara')[0].entityType, 'financial');
 assert.equal(index.search('Cliente Aurora').some(item => item.entityType === 'document'), true, 'Documento deve herdar contexto de processo e cliente sem duplicar cadastro.');
+for (const query of ['perícia rara', 'quartzo', 'âmbar', 'Entidade Jade', 'ID-JADE', 'Digitalização local']) {
+  assert.equal(index.search(query).some(item => item.entityType === 'document'), true, `Metadado documental deve ser localizável por ${query}.`);
+}
 assert.equal(index.search('AIzaSyntheticSecretMustNeverBeIndexed123456').length, 0, 'Segredo explícito deve ser descartado do índice.');
 assert.deepEqual(index.search('previdenciária').map(item => item.relevance), [...index.search('previdenciária').map(item => item.relevance)].sort((a, b) => b - a));
 

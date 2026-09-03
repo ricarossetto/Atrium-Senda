@@ -27,6 +27,7 @@ import {
   assertDocumentStorageProvider
 } from './lib/documents/document-storage-provider.mjs';
 import { DocumentIntelligenceService } from './lib/documents/document-intelligence.mjs';
+import { normalizeDocumentMetadata } from './lib/documents/document-metadata.mjs';
 import { SearchIndex, parseDefaultPromptsSource } from './lib/search-index.mjs';
 import { RegistryService } from './lib/registry/registry-service.mjs';
 import { createRegistryHttpHandler } from './lib/http/registry-routes.mjs';
@@ -2475,6 +2476,10 @@ const server = http.createServer(async (req, res) => {
           ownerType,
           ownerId,
           documentType: String(body.documentType || '').trim().slice(0, 100),
+          metadata: {
+            origin: 'Upload local', tags: [], summary: '', context: '', entities: [], relatedDocumentIds: [],
+            classificationStatus: body.documentType ? 'reviewed' : 'unclassified'
+          },
           deletedAt: null,
           deletedBy: null,
           checksum
@@ -2504,6 +2509,42 @@ const server = http.createServer(async (req, res) => {
         return { state, saved };
       });
       return json(res, 200, { ok: true, template, revision: result.saved.revision, settings: result.state.settings });
+    }
+
+    if (req.method === 'PATCH' && /^\/api\/documents\/[^/]+\/metadata$/.test(url.pathname)) {
+      const session = assertAuthenticated(req, true);
+      const id = documentIdFromPath(url.pathname, 'metadata');
+      const body = await readJson(req, 40_000);
+      const result = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        assertDocumentRevision(envelope, body.revision);
+        const state = envelope.state || {};
+        const document = activeDocumentFromState(state, id);
+        const metadata = normalizeDocumentMetadata(body.metadata || {}, {
+          documents: state.documents,
+          documentId: document.id,
+          ownerType: document.ownerType,
+          ownerId: document.ownerId
+        });
+        const nowIso = new Date().toISOString();
+        document.documentType = metadata.documentType;
+        document.metadata = {
+          origin: metadata.origin,
+          tags: [...metadata.tags],
+          summary: metadata.summary,
+          context: metadata.context,
+          entities: metadata.entities.map(entity => ({ ...entity })),
+          relatedDocumentIds: [...metadata.relatedDocumentIds],
+          classificationStatus: metadata.classificationStatus,
+          reviewedAt: nowIso,
+          reviewedBy: documentActor(session)
+        };
+        document.updatedAt = nowIso;
+        appendDocumentAudit(state, 'Metadados documentais revisados', document.name, session);
+        const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
+        return { document, state, saved };
+      });
+      return json(res, 200, { ok: true, document: result.document, ...documentResponseState(result.state, result.saved) });
     }
 
     if (req.method === 'GET' && /^\/api\/documents\/[^/]+\/content$/.test(url.pathname)) {
@@ -2658,6 +2699,10 @@ const server = http.createServer(async (req, res) => {
             ownerType: currentSource.ownerType,
             ownerId: currentSource.ownerId,
             documentType: 'PDF derivado',
+            metadata: {
+              origin: 'Derivação local supervisionada', tags: ['PDF derivado'], summary: '', context: '', entities: [],
+              relatedDocumentIds: [currentSource.id], classificationStatus: 'reviewed', reviewedAt: nowIso, reviewedBy: documentActor(session)
+            },
             deletedAt: null,
             deletedBy: null,
             checksum: stored.checksum,
