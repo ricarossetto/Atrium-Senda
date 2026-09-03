@@ -1217,8 +1217,13 @@
             </div>
             <div class="assistant-v2-context" id="assistantV2Context" hidden>
               <strong id="assistantV2ContextTitle"></strong>
+              <label class="assistant-field-label" for="assistantContextSelect">Registro selecionado</label>
+              <select id="assistantContextSelect" aria-describedby="assistantV2ContextMeta assistantV2ContextHint">
+                <option value="">Sem contexto selecionado</option>
+              </select>
               <span id="assistantV2ContextMeta"></span>
-              <small>Somente esta publicação integra o contexto canônico do envio.</small>
+              <div class="assistant-v2-context-sources" id="assistantV2ContextSources" aria-label="Origens do contexto"></div>
+              <small id="assistantV2ContextHint">Escolha um registro quando a pergunta depender do acervo.</small>
             </div>
           </section>
 

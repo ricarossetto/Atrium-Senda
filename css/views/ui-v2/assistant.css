@@ -156,19 +156,48 @@ html[data-ui="v2"] .assistant-v2-context strong {
   font-size: 11px;
 }
 
-html[data-ui="v2"] .assistant-v2-context span {
+html[data-ui="v2"] .assistant-v2-context > span {
   overflow: hidden;
   color: var(--v2-color-foreground);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
 }
 
 html[data-ui="v2"] .assistant-v2-context small {
   color: var(--v2-color-muted-foreground);
   font-size: 10px;
   line-height: 1.45;
+}
+
+html[data-ui="v2"] #assistantContextSelect {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 10px;
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-inset);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  font: 12px/1.35 var(--v2-font-interface);
+}
+
+html[data-ui="v2"] .assistant-v2-context-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+html[data-ui="v2"] .assistant-v2-context-sources span {
+  padding: 3px 7px;
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-round);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .03em;
+  text-transform: uppercase;
 }
 
 html[data-ui="v2"] #view-assistant .assistant-skills-card > div:first-child,

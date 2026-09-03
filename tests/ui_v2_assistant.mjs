@@ -21,7 +21,7 @@ assert.doesNotMatch(featureSource, /^\s*import\s/m);
 assert.doesNotMatch(featureSource, /\bfetch\s*\(|\bStore\b|store\.state|localStorage|sessionStorage/);
 assert.doesNotMatch(presenterSource, /\bStore\b|\bfetch\s*\(|secureFetch|chatHistory|isTyping|localStorage|sessionStorage|\/api\/ai\//);
 assert.match(featureSource, /history:\s*chatHistory\.slice\(-12\)/);
-assert.match(featureSource, /if \(selectedIntimation\) context\.intimation = selectedIntimation/);
+assert.match(featureSource, /selected \? \{ \[selected\.type\]: \{ id: selected\.id \} \} : \{\}/, 'O navegador deve enviar somente tipo e ID do contexto explícito.');
 
 const MARKDOWN_FIXTURE = `# Título Sintético
 
@@ -108,6 +108,24 @@ try {
     const chatRequest = requests.findLast(item => item.url === '/api/ai/chat');
     const assistantMessage = document.querySelector('#aiChatMessages .assistant-message:last-child');
     const markdownHtml = assistantMessage.querySelector('.message-text').innerHTML;
+    const initialContextText = document.getElementById('assistantV2ContextMeta').textContent;
+
+    Store.state.processes = [{ id: 'assistant-process-v2', number: '5000000-00.2026.8.21.0001', client: 'Cliente Contextual', actionType: 'Obrigação de fazer' }];
+    Store.state.documents = [{ id: 'assistant-document-v2', name: 'laudo-contextual.pdf', documentType: 'Laudo', intelligence: { ocr: { checksum: 'ocr-contextual' } } }];
+    Store.state.contacts = [{ id: 'assistant-contact-v2', name: 'Cliente Contextual', contactRole: 'Cliente' }];
+    App.renderAssistant();
+    const contextSelect = document.getElementById('assistantContextSelect');
+    const contextOptionLabels = [...contextSelect.options].map(option => option.textContent);
+    const selectAndSend = async (key, message) => {
+      contextSelect.value = key;
+      contextSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      const sources = [...document.querySelectorAll('#assistantV2ContextSources span')].map(element => element.textContent);
+      await App.sendAiMessage(message);
+      return { payload: requests.findLast(item => item.url === '/api/ai/chat').body.context, sources };
+    };
+    const processContext = await selectAndSend('process:assistant-process-v2', 'Analise o processo selecionado.');
+    const documentContext = await selectAndSend('document:assistant-document-v2', 'Analise o documento selecionado.');
+    const contactContext = await selectAndSend('contact:assistant-contact-v2', 'Resuma o contexto do cliente selecionado.');
 
     const prompt = 'PROMPT EXTERNO SINTÉTICO — NÃO ENVIAR';
     const chatCountBeforePrompt = requests.filter(item => item.url === '/api/ai/chat').length;
@@ -130,8 +148,12 @@ try {
       scripts: assistantMessage.querySelectorAll('script').length,
       historyTail: App.aiChatHistory.slice(-2),
       promptBridge,
-      contextText: document.getElementById('assistantV2ContextMeta').textContent,
+      contextText: initialContextText,
       contextHidden: document.getElementById('assistantV2Context').hidden,
+      contextOptionLabels,
+      processContext,
+      documentContext,
+      contactContext,
       endpoints: [...new Set(requests.map(item => item.url).filter(url => url.startsWith('/api/ai/')))]
     };
   }, MARKDOWN_FIXTURE);
@@ -154,6 +176,13 @@ try {
   assert.equal(result.chatPayload.context.intimation.id, 'assistant-intimation-v2');
   assert.equal(result.contextHidden, false);
   assert.match(result.contextText, /0000000-00\.2026\.8\.21\.0000/);
+  assert.ok(result.contextOptionLabels.some(label => /5000000-00\.2026\.8\.21\.0001/.test(label)));
+  assert.ok(result.contextOptionLabels.includes('laudo-contextual.pdf'));
+  assert.ok(result.contextOptionLabels.includes('Cliente Contextual'));
+  assert.deepEqual(result.processContext.payload, { process: { id: 'assistant-process-v2' } });
+  assert.deepEqual(result.documentContext.payload, { document: { id: 'assistant-document-v2' } });
+  assert.ok(result.documentContext.sources.includes('Dados do sistema') && result.documentContext.sources.includes('Texto extraído'));
+  assert.deepEqual(result.contactContext.payload, { contact: { id: 'assistant-contact-v2' } });
   assert.equal(createHash('sha256').update(result.markdownHtml, 'utf8').digest('hex'), '3f130f88bb3dcdc97af83a4056377cf8fd6b95ba75167ad58f7398157a73e640');
   assert.equal(result.scripts, 0);
   assert.deepEqual(result.historyTail.map(item => item.role), ['user', 'assistant']);

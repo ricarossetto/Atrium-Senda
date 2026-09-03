@@ -16,6 +16,8 @@ try {
   assert.match(await page.locator('#aiChatMessages').getAttribute('aria-label'), /Assistente jurídico/);
   assert.equal(await page.locator('label[for="aiChatInput"]').count(), 1);
   assert.equal(await page.locator('label[for="codexSkillSelect"]').count(), 1);
+  assert.equal(await page.locator('label[for="assistantContextSelect"]').count(), 1);
+  assert.equal(await page.locator('#assistantContextSelect').getAttribute('aria-describedby'), 'assistantV2ContextMeta assistantV2ContextHint');
   assert.equal(await page.locator('#btnSendAiMessage').getAttribute('aria-label'), 'Enviar mensagem ao Assistente jurídico');
   assert.match(await page.locator('#btnClearAiConversation').getAttribute('aria-label'), /Limpar conversa/);
 

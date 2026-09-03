@@ -32,7 +32,7 @@ function makeElement() {
   };
 }
 
-const listenerIds = ['btnOpenGeminiKeyModal', 'geminiKeyClose', 'geminiKeyCancel', 'geminiKeyBackdrop', 'geminiKeyForm', 'btnSaveQuickAiKey', 'btnClearAiConversation', 'aiChatForm', 'aiChatInput', 'btnApplyCodexSkill'];
+const listenerIds = ['btnOpenGeminiKeyModal', 'geminiKeyClose', 'geminiKeyCancel', 'geminiKeyBackdrop', 'geminiKeyForm', 'btnSaveQuickAiKey', 'btnClearAiConversation', 'assistantContextSelect', 'aiChatForm', 'aiChatInput', 'btnApplyCodexSkill'];
 const listenerElements = Object.fromEntries(listenerIds.map(id => [id, makeElement()]));
 const quickPrompt = makeElement();
 quickPrompt.dataset.prompt = 'PROMPT RÁPIDO SINTÉTICO';

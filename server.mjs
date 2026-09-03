@@ -8,7 +8,7 @@ import { isIP } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SecurityManager, verifyTotp } from './lib/security.mjs';
-import { buildRelevantOfficeContext } from './lib/ai-context.mjs';
+import { buildRelevantOfficeContext, buildSelectedAssistantContextMessage, resolveSelectedAssistantContext } from './lib/ai-context.mjs';
 import { applyClientReconciliation, isKnownClientName, normalizeProcessNumber } from './js/core/client-reconciliation.js';
 import { collectDjen } from './collector/adapters/djen.mjs';
 import { collectDatajud, mergeExternalContacts, mergeExternalProcesses } from './collector/adapters/datajud.mjs';
@@ -3380,7 +3380,10 @@ const server = http.createServer(async (req, res) => {
 
       const office = state.settings || {};
       const runtime = await readRuntime().catch(() => ({}));
-      const relevantOfficeContext = buildRelevantOfficeContext(state, runtime, message, body.context || {});
+      const selectedContext = await resolveSelectedAssistantContext(state, body.context || {}, {
+        loadOcrText: async checksum => (await documentStorage.get(checksum)).toString('utf8')
+      });
+      const relevantOfficeContext = buildRelevantOfficeContext(state, runtime, message, selectedContext);
 
       const systemPrompt = `Você é o Assistente Jurídico Inteligente do ATRIUM, plataforma de gestão jurídica inteligente.
 Escritório: ${office.officeName || 'ATRIUM'} (${office.lawyerName || 'Dr(a). Advogado(a) Titular'} - ${office.lawyerOab || 'OAB'})
@@ -3389,7 +3392,7 @@ ${relevantOfficeContext}
 
 Diretrizes essenciais:
 1. Especialista em Direito Brasileiro: CPC/2015, CPP, CLT, Legislação Previdenciária, Tributária, Consumidor e Direito Público.
-2. Contexto interno limitado: use somente os registros relevantes listados acima e o contexto explicitamente selecionado. Não alegue acesso a cadastros ou fatos que não estejam presentes nesta solicitação.
+2. Contexto interno limitado: use somente os registros relevantes listados acima e o contexto explicitamente selecionado. Diferencie dados do sistema, texto original e texto extraído conforme os rótulos recebidos. Não alegue acesso a cadastros ou fatos que não estejam presentes nesta solicitação.
 3. Contagem e Estratégia de Prazos: trate todo cálculo como estimativa preliminar. Explique termo a quo, calendário e hipóteses adotadas, mas nunca declare um prazo fatal como definitivo; exija conferência humana no processo e no calendário oficial do tribunal.
 4. Análise de Intimações do DJEN / DJe / eproc: Sintetize o que o juízo/tribunal determinou, identifique o tipo de ato (despacho, decisão, sentença, acórdão) e a medida cabível (ex: agravo, apelação, embargos, réplica).
 5. Produção de Peças e Minutas: Redija petições, manifestações, cláusulas contratuais e procurações em Markdown. Não invente número, teor ou precedente; toda referência jurisprudencial não fornecida deve ser marcada para pesquisa e validação em fonte oficial.
@@ -3398,27 +3401,15 @@ Diretrizes essenciais:
       const history = Array.isArray(body.history) ? body.history : [];
       const contents = [];
 
-      if (body.context?.intimation) {
-        const it = body.context.intimation;
+      const selectedContextMessage = buildSelectedAssistantContextMessage(selectedContext);
+      if (selectedContextMessage) {
         contents.push({
           role: 'user',
-          parts: [{ text: `[Contexto da Intimação Selecionada no Sistema]\nProcesso: ${it.process || 'N/I'}\nCliente: ${it.client || 'N/I'}\nTribunal: ${it.court || 'N/I'}\nData da Publicação: ${it.publishedAt || 'N/I'}\nTexto Original do Diário:\n${it.text || ''}` }]
+          parts: [{ text: selectedContextMessage }]
         });
         contents.push({
           role: 'model',
-          parts: [{ text: 'Entendido. Tenho o contexto completo da intimação judicial carregado e pronto para análise.' }]
-        });
-      }
-
-      if (body.context?.process) {
-        const pr = body.context.process;
-        contents.push({
-          role: 'user',
-          parts: [{ text: `[Contexto do Processo Selecionado no Sistema]\nNúmero CNJ: ${pr.number || 'N/I'}\nCliente: ${pr.client || 'N/I'}\nParte Contrária: ${pr.opposingParty || 'N/I'}\nTribunal/Comarca: ${pr.court || 'N/I'}\nAção/Fase: ${pr.actionType || ''} (${pr.stage || ''})\nÚltimo Andamento: ${pr.lastMovement || ''}` }]
-        });
-        contents.push({
-          role: 'model',
-          parts: [{ text: 'Entendido. Tenho o contexto do processo judicial carregado.' }]
+          parts: [{ text: 'Entendido. Usarei somente o contexto explicitamente selecionado e manterei separadas as origens das informações.' }]
         });
       }
 

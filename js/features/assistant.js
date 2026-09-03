@@ -6,6 +6,7 @@ export function createAssistantFeature({
   showToast = () => {},
   audit = () => {},
   getSelectedIntimation = () => null,
+  getContextCandidates = () => ({}),
   getLegalSkills = () => [],
   renderV2Presentation = () => false
 } = {}) {
@@ -13,7 +14,42 @@ export function createAssistantFeature({
   let chatHistory = [];
   let isTyping = false;
   let initialized = false;
+  let selectedContextKey = '';
+  let manualContextSelection = false;
   const byId = id => documentRef.getElementById(id);
+  const compact = value => String(value || '').replace(/\s+/g, ' ').trim();
+
+  function contextDescriptors() {
+    const records = getContextCandidates() || {};
+    const descriptors = [];
+    const append = (type, group, items, labelFor, metaFor, sourcesFor) => {
+      (Array.isArray(items) ? items : []).filter(item => item?.id).slice(0, 500).forEach(item => descriptors.push({
+        key: `${type}:${item.id}`,
+        type,
+        id: String(item.id),
+        group,
+        label: compact(labelFor(item)) || `${group} sem identificação`,
+        meta: compact(metaFor(item)),
+        sources: sourcesFor(item)
+      }));
+    };
+    append('process', 'Processos', records.processes, item => item.number || item.protocol || item.client, item => [item.client, item.actionType || item.subject, item.court].filter(Boolean).join(' · '), () => ['Dados do sistema']);
+    append('document', 'Documentos', records.documents?.filter(item => !item.deletedAt), item => item.name || item.originalName, item => [item.documentType, item.documentDate].filter(Boolean).join(' · '), item => ['Dados do sistema', ...(item.intelligence?.ocr?.checksum ? ['Texto extraído'] : [])]);
+    append('intimation', 'Publicações', records.intimations, item => item.process || item.number || item.title, item => [item.title, item.court, item.publishedAt].filter(Boolean).join(' · '), item => ['Dados do sistema', ...((item.text || item.summary) ? ['Texto original'] : [])]);
+    append('contact', 'Clientes e contatos', records.contacts, item => item.name, item => [item.contactRole, item.city, item.state].filter(Boolean).join(' · '), () => ['Dados do sistema']);
+    return descriptors.sort((left, right) => left.group.localeCompare(right.group, 'pt-BR') || left.label.localeCompare(right.label, 'pt-BR'));
+  }
+
+  function activeContextDescriptor() {
+    const descriptors = contextDescriptors();
+    if (!manualContextSelection) {
+      const selectedIntimation = getSelectedIntimation();
+      selectedContextKey = selectedIntimation?.id ? `intimation:${selectedIntimation.id}` : '';
+    }
+    const selected = descriptors.find(item => item.key === selectedContextKey) || null;
+    if (selectedContextKey && !selected) selectedContextKey = '';
+    return { descriptors, selected };
+  }
 
   function formatMarkdown(text) {
     if (!text) return '';
@@ -114,6 +150,7 @@ export function createAssistantFeature({
       byId('geminiKeyForm')?.addEventListener('submit', event => feature.handleKeySubmit(event));
       byId('btnSaveQuickAiKey')?.addEventListener('click', () => feature.handleQuickKeySubmit());
       byId('btnClearAiConversation')?.addEventListener('click', () => feature.clearConversation());
+      byId('assistantContextSelect')?.addEventListener('change', event => feature.selectContext(event.target.value));
       documentRef.querySelectorAll('.quick-prompt-btn').forEach(button => {
         button.addEventListener('click', () => feature.sendQuickPrompt(button.dataset.prompt));
       });
@@ -136,11 +173,30 @@ export function createAssistantFeature({
     },
 
     syncPresentation() {
+      const { descriptors, selected } = activeContextDescriptor();
       return renderV2Presentation({
         documentRef,
         configured,
-        selectedIntimation: getSelectedIntimation()
+        contexts: descriptors,
+        selectedContext: selected,
+        escapeHtml
       });
+    },
+
+    contextOptions() {
+      return contextDescriptors();
+    },
+
+    selectedContext() {
+      const { selected } = activeContextDescriptor();
+      return selected ? { [selected.type]: { id: selected.id } } : {};
+    },
+
+    selectContext(key) {
+      selectedContextKey = String(key || '');
+      manualContextSelection = true;
+      feature.syncPresentation();
+      return feature.selectedContext();
     },
 
     async checkStatus() {
@@ -341,9 +397,7 @@ export function createAssistantFeature({
       container.appendChild(typingDiv);
       container.scrollTop = container.scrollHeight;
 
-      const context = {};
-      const selectedIntimation = getSelectedIntimation();
-      if (selectedIntimation) context.intimation = selectedIntimation;
+      const context = feature.selectedContext();
 
       try {
         const response = await secureFetch('/api/ai/chat', {

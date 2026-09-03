@@ -707,6 +707,12 @@ import { createTasksFeature } from './features/tasks.js';
         const selectedId = getPublicationsFeature().selectedIntimation;
         return Store.state.intimations.find(item => item.id === selectedId) || null;
       },
+      getContextCandidates: () => ({
+        processes: Store.state.processes || [],
+        documents: Store.state.documents || [],
+        intimations: Store.state.intimations || [],
+        contacts: Store.state.contacts || []
+      }),
       getLegalSkills: () => window.CODEX_LEGAL_SKILLS || [],
       renderV2Presentation: renderAssistantV2Presentation
     });
@@ -1096,6 +1102,9 @@ import { createTasksFeature } from './features/tasks.js';
     },
     renderAssistant() {
       return getAssistantFeature().syncPresentation();
+    },
+    selectAssistantContext(type, id) {
+      return getAssistantFeature().selectContext(type && id ? `${type}:${id}` : '');
     },
     filteredIntimations() {
       return getPublicationsFeature().filteredItems();
