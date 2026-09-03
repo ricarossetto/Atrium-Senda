@@ -1,4 +1,5 @@
 import { Store, isoDate, uid } from '../core/store.js';
+import { buildClientContext } from '../core/client-context.js';
 import { renderContactsV2Workspace } from '../views/ui-v2/contacts-presenter.js';
 
 export function createContactsFeature({
@@ -11,6 +12,12 @@ export function createContactsFeature({
   updateTableSortHeaders,
   openModal,
   openOwnerDocuments,
+  openProcess,
+  openTask,
+  openPublication,
+  openAgenda,
+  openDocument,
+  openFinancial,
   secureFetch,
   showToast = () => {}
 } = {}) {
@@ -110,6 +117,7 @@ export function createContactsFeature({
           records: visibleRecords,
           allRecords: store.state.contacts,
           selectedId: selectedContactId,
+          selectedContext: buildClientContext(store.state, store.state.contacts.find(item => String(item.id) === String(selectedContactId || ''))),
           roleFilter,
           query,
           sort,
@@ -176,6 +184,58 @@ export function createContactsFeature({
       }
       if (target.hasAttribute('data-contact-archive')) {
         if (selectedContactId) openOwnerDocuments?.('contact', selectedContactId);
+        return;
+      }
+      const context = buildClientContext(store.state, store.state.contacts.find(item => String(item.id) === String(selectedContactId || '')));
+      if (target.dataset.contactProcess) {
+        const process = context.processes.find(item => String(item.id) === target.dataset.contactProcess);
+        if (process) openProcess?.(process);
+        return;
+      }
+      if (target.dataset.contactTask) {
+        const task = context.tasks.find(item => String(item.id) === target.dataset.contactTask);
+        if (task) openTask?.(task);
+        return;
+      }
+      if (target.dataset.contactPublication) {
+        const publication = context.publications.find(item => String(item.id) === target.dataset.contactPublication);
+        if (publication) openPublication?.(publication);
+        return;
+      }
+      if (target.dataset.contactAgenda) {
+        const appointment = context.appointments.find(item => String(item.id) === target.dataset.contactAgenda);
+        if (appointment) openAgenda?.(appointment);
+        return;
+      }
+      if (target.dataset.contactDocument) {
+        const document = context.documents.find(item => String(item.id) === target.dataset.contactDocument);
+        if (document) openDocument?.(document);
+        return;
+      }
+      if (target.dataset.contactFinancial) {
+        const process = context.processes.find(item => String(item.id) === target.dataset.contactFinancial);
+        if (process) openFinancial?.(process);
+        return;
+      }
+      if (target.dataset.contactContextEvent) {
+        const timelineEvent = context.timeline.find(item => item.contextId === target.dataset.contactContextEvent);
+        if (!timelineEvent) return;
+        if (timelineEvent.target === 'task') {
+          const task = context.tasks.find(item => String(item.id) === timelineEvent.entityId);
+          if (task) openTask?.(task);
+        } else if (timelineEvent.target === 'publication') {
+          const publication = context.publications.find(item => String(item.id) === timelineEvent.entityId);
+          if (publication) openPublication?.(publication);
+        } else if (timelineEvent.target === 'agenda') {
+          const appointment = context.appointments.find(item => String(item.id) === timelineEvent.entityId);
+          if (appointment) openAgenda?.(appointment);
+        } else if (timelineEvent.target === 'document') {
+          const document = context.documents.find(item => String(item.id) === timelineEvent.entityId);
+          if (document) openDocument?.(document);
+        } else if (timelineEvent.target === 'financial') {
+          const process = context.processes.find(item => String(item.id) === timelineEvent.processId);
+          if (process) openFinancial?.(process);
+        }
         return;
       }
       if (target.hasAttribute('data-contact-create')) this.openContactModal();

@@ -989,13 +989,52 @@ export async function prepareUiV2ContactsFixture(page) {
       { id: 'ui-v2-contact-historical', name: 'Helena Histórica Sem Papel', origin: 'Arquivo histórico sintético', mobile: '(51) 90000-0008', city: 'Caxias do Sul', state: 'RS', createdAt: '2026-08-17', source: 'Legado sintético' },
       { id: 'ui-v2-contact-long', name: 'Instituto Sintético de Estudos Jurídicos e Relações Profissionais de Nome Extenso', contactRole: 'cliente', leadOrigin: 'indicacao', mobile: '(51) 90000-0009', email: 'contato.longo@example.test', city: 'Porto Alegre', state: 'RS', registeredAt: '2026-08-18', source: 'Interna' }
     ],
-    leads: [{ id: 'ui-v2-lead-isolated', name: 'Lead Sintético Isolado', status: 'novo' }]
+    leads: [{ id: 'ui-v2-lead-isolated', name: 'Lead Sintético Isolado', status: 'novo' }],
+    processes: [
+      {
+        id: 'ui-v2-contact-process', number: '5000000-00.2026.8.21.0001', client: 'Marina Duarte Sintética',
+        contactId: 'ui-v2-contact-client', actionType: 'Procedimento sintético de vínculo canônico', court: 'TJRS sintético',
+        stage: 'Em andamento', registeredAt: '2026-08-01', feeType: 'fixo', feeAmount: 1200,
+        movements: [{ id: 'ui-v2-contact-movement', date: '2026-08-18', description: 'Movimentação sintética do processo vinculado' }]
+      },
+      {
+        id: 'ui-v2-contact-related-process', number: '5000001-11.2026.8.21.0001', client: 'Cliente ainda não vinculado',
+        actionType: 'Relação processual sintética registrada', court: 'TJRS sintético', registeredAt: '2026-08-02'
+      },
+      {
+        id: 'ui-v2-contact-name-only-process', number: '5000002-22.2026.8.21.0001', client: 'Marina Duarte Sintética',
+        actionType: 'Processo sem vínculo explícito', registeredAt: '2026-08-03'
+      }
+    ],
+    tasks: [{
+      id: 'ui-v2-contact-task', processId: 'ui-v2-contact-process', process: '5000000-00.2026.8.21.0001',
+      title: 'Providência sintética do cliente', status: 'andamento', deadline: '2026-09-12', createdAt: '2026-08-19'
+    }],
+    intimations: [{
+      id: 'ui-v2-contact-publication', processId: 'ui-v2-contact-process', process: '5000000-00.2026.8.21.0001',
+      title: 'Publicação sintética vinculada', text: 'Conteúdo exclusivamente sintético.', publishedAt: '2026-08-17', treatmentStatus: 'untreated'
+    }],
+    agenda: [{
+      id: 'ui-v2-contact-appointment', processId: 'ui-v2-contact-process', process: '5000000-00.2026.8.21.0001',
+      title: 'Audiência sintética vinculada', type: 'audiencia', date: '2026-09-20', time: '14:00'
+    }],
+    documents: [{
+      id: 'ui-v2-contact-document', ownerType: 'process', ownerId: 'ui-v2-contact-process', processId: 'ui-v2-contact-process',
+      name: 'Documento sintético vinculado.pdf', documentType: 'Petição sintética', createdAt: '2026-08-16', status: 'active'
+    }],
+    financial: [{ id: 'ui-v2-contact-financial', processId: 'ui-v2-contact-related-process', title: 'Lançamento sintético relacionado' }]
   };
 
   await page.evaluate(data => {
     const { App, Store } = window.Atrium;
     Store.state.contacts = data.contacts;
     Store.state.leads = data.leads;
+    Store.state.processes = data.processes;
+    Store.state.tasks = data.tasks;
+    Store.state.intimations = data.intimations;
+    Store.state.agenda = data.agenda;
+    Store.state.documents = data.documents;
+    Store.state.financial = data.financial;
     Store.state.audit = [];
     App.renderAll();
     App.switchView('contacts');

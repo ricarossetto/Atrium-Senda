@@ -333,6 +333,73 @@ html[data-ui="v2"] .contact-inspector-section dd { margin: 0; overflow-wrap: any
 html[data-ui="v2"] .contact-inspector-section.is-sensitive dd { color: var(--v2-color-foreground-secondary); font-size: 11px; }
 html[data-ui="v2"] .contact-notes p { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 11px; line-height: 1.65; white-space: pre-wrap; }
 
+html[data-ui="v2"] .contact-legal-summary {
+  display: grid;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-4);
+  background: linear-gradient(145deg, var(--v2-color-primary-subtle), var(--v2-color-surface-secondary));
+  border: 1px solid color-mix(in srgb, var(--v2-color-primary) 30%, var(--v2-color-border));
+  border-radius: var(--v2-radius-lg);
+}
+
+html[data-ui="v2"] .contact-context-heading { display: flex; justify-content: space-between; gap: var(--v2-space-3); align-items: end; }
+html[data-ui="v2"] .contact-context-heading :where(p, h4) { margin: 0; }
+html[data-ui="v2"] .contact-context-heading p { color: var(--v2-color-gold); font-size: 8px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+html[data-ui="v2"] .contact-context-heading h4 { margin-top: 2px; color: var(--v2-color-foreground); font: 600 18px/1.15 var(--v2-font-editorial); }
+html[data-ui="v2"] .contact-context-heading > span { color: var(--v2-color-primary); font-size: 9px; font-weight: 800; text-align: right; }
+
+html[data-ui="v2"] .contact-context-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; background: var(--v2-color-border-subtle); border: 1px solid var(--v2-color-border-subtle); border-radius: var(--v2-radius-md); }
+html[data-ui="v2"] .contact-context-metrics > div { min-width: 0; display: grid; gap: 1px; padding: var(--v2-space-2) var(--v2-space-3); background: var(--v2-color-surface-elevated); }
+html[data-ui="v2"] .contact-context-metrics strong { color: var(--v2-color-foreground); font-size: 15px; font-variant-numeric: tabular-nums; }
+html[data-ui="v2"] .contact-context-metrics span { overflow: hidden; color: var(--v2-color-muted-foreground); font-size: 8px; font-weight: 750; text-overflow: ellipsis; text-transform: uppercase; }
+html[data-ui="v2"] .contact-context-integrity { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 9px; line-height: 1.45; }
+
+html[data-ui="v2"] .contact-context-section { display: grid; gap: var(--v2-space-2); }
+html[data-ui="v2"] .contact-context-section > h4 { margin-bottom: var(--v2-space-1); }
+html[data-ui="v2"] .contact-context-empty { margin: 0; color: var(--v2-color-muted-foreground); font-size: 10px; line-height: 1.5; }
+html[data-ui="v2"] .contact-context-list { display: grid; gap: var(--v2-space-1-5); }
+html[data-ui="v2"] .contact-context-list > button {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--v2-space-3);
+  align-items: center;
+  padding: var(--v2-space-2) var(--v2-space-3);
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-md);
+  text-align: left;
+  cursor: pointer;
+}
+html[data-ui="v2"] .contact-context-list > button:hover { background: var(--v2-color-surface-hover); border-color: var(--v2-color-border); }
+html[data-ui="v2"] .contact-context-list > button > span:first-child { min-width: 0; display: grid; gap: 2px; }
+html[data-ui="v2"] .contact-context-list strong,
+html[data-ui="v2"] .contact-context-list small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-ui="v2"] .contact-context-list strong { font-size: 10px; font-weight: 780; }
+html[data-ui="v2"] .contact-context-list small { color: var(--v2-color-muted-foreground); font-size: 8px; }
+html[data-ui="v2"] .contact-context-link-meta { display: inline-flex; gap: var(--v2-space-2); align-items: center; color: var(--v2-color-primary); font-size: 8px; font-weight: 750; white-space: nowrap; }
+html[data-ui="v2"] .contact-context-link-meta b { font-size: 13px; }
+
+html[data-ui="v2"] .contact-context-timeline { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+html[data-ui="v2"] .contact-context-timeline li { position: relative; min-width: 0; }
+html[data-ui="v2"] .contact-context-timeline :where(button, li > div) { width: 100%; min-width: 0; display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: var(--v2-space-2); align-items: start; padding: var(--v2-space-2) 0; color: var(--v2-color-foreground); background: transparent; border: 0; border-bottom: 1px solid var(--v2-color-border-subtle); text-align: left; }
+html[data-ui="v2"] .contact-context-timeline button { cursor: pointer; }
+html[data-ui="v2"] .contact-context-timeline li:last-child :where(button, div) { border-bottom: 0; }
+html[data-ui="v2"] .contact-context-timeline :where(button, li > div) > span:nth-child(2) { min-width: 0; display: grid; gap: 2px; }
+html[data-ui="v2"] .contact-context-timeline small { overflow: hidden; color: var(--v2-color-muted-foreground); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+html[data-ui="v2"] .contact-context-timeline strong { font-size: 10px; line-height: 1.35; }
+html[data-ui="v2"] .contact-context-timeline em { overflow: hidden; color: var(--v2-color-foreground-secondary); font-size: 8px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+html[data-ui="v2"] .contact-context-timeline b { color: var(--v2-color-primary); font-size: 13px; }
+html[data-ui="v2"] .contact-timeline-marker { width: 7px; height: 7px; margin-top: 3px; background: var(--v2-color-muted-foreground); border-radius: var(--v2-radius-round); }
+html[data-ui="v2"] .contact-timeline-marker.is-deadline,
+html[data-ui="v2"] .contact-timeline-marker.is-publication { background: var(--v2-color-warm); }
+html[data-ui="v2"] .contact-timeline-marker.is-task,
+html[data-ui="v2"] .contact-timeline-marker.is-appointment { background: var(--v2-color-primary); }
+html[data-ui="v2"] .contact-timeline-marker.is-financial { background: var(--v2-color-gold); }
+
 html[data-ui="v2"] .contact-inspector-actions {
   display: flex;
   justify-content: flex-end;

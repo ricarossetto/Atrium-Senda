@@ -599,6 +599,31 @@ import { createTasksFeature } from './features/tasks.js';
       updateTableSortHeaders,
       openModal: (...args) => App.openModal(...args),
       openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId),
+      openProcess: process => {
+        App.switchView('processes');
+        const input = document.getElementById('processSearch');
+        const query = process?.number || process?.protocol || '';
+        if (input) input.value = query;
+        App.renderProcesses(query);
+        window.setTimeout(() => document.querySelector(`#processTableBody [data-process-id="${CSS.escape(String(process.id))}"]`)?.click(), 0);
+      },
+      openTask: task => App.openTaskModal(task),
+      openPublication: publication => {
+        App.switchView('inbox');
+        getPublicationsFeature().select(publication.id);
+      },
+      openAgenda: appointment => App.openAgendaModal(appointment),
+      openDocument: documentRecord => {
+        App.switchView('documents');
+        getDocumentsFeature().focusDocument(documentRecord.id);
+      },
+      openFinancial: process => {
+        App.switchView('financial');
+        const input = document.getElementById('financialSearch');
+        const query = process?.number || process?.protocol || '';
+        if (input) input.value = query;
+        App.renderFinancial(query);
+      },
       secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
       showToast: (message, type) => App.toast(message, type)
     });
