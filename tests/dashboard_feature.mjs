@@ -62,7 +62,8 @@ const ids = [
   'btnDashboardNewTask', 'dashboardTaskSortSelect', 'dashboardTaskFilters', 'dashboardTaskList', 'dashboardTaskCount',
   'metricInbox', 'metricDeadlines', 'metricTasks', 'metricSources', 'inboxBadge', 'notificationDot',
   'widgetCompletedTasks', 'widgetLateTasks', 'widgetPendingTasks', 'widgetProcActive', 'widgetProcInactive',
-  'widgetActiveLeads', 'widgetHonorariosPending', 'widgetTimesheetHours', 'widgetDocsCount', 'dashboardRemindersList'
+  'widgetActiveLeads', 'widgetHonorariosPending', 'widgetTimesheetHours', 'widgetDocsCount', 'dashboardRemindersList',
+  'activityInboxFilters', 'activityInboxList', 'activityInboxCount'
 ];
 const elements = Object.fromEntries(ids.map(id => [id, makeElement()]));
 const documentRef = { getElementById: id => elements[id] || null };
@@ -90,7 +91,8 @@ const store = {
   state: {
     tasks,
     processes,
-    sources: [{ status: 'ok' }, { status: 'attention' }, { status: 'ok' }],
+    sources: [{ id: 'source-ok-1', status: 'ok' }, { id: 'source-attention', status: 'attention', name: 'Fonte em atenção' }, { id: 'source-ok-2', status: 'ok' }],
+    intimations: [{ id: 'publication-pending', title: 'Publicação pendente', treatmentStatus: 'untreated', unread: true, publishedAt: '2026-09-03' }],
     leads: [{ status: 'novo' }, { status: 'fechado' }, { status: 'declinado' }, { status: 'qualificado' }],
     agenda: reminders,
     customDocs: [{}, {}]
@@ -124,7 +126,7 @@ const feature = createDashboardFeature({
 
 assert.equal(feature.init(), true);
 assert.equal(feature.init(), false);
-for (const [id, type] of [['btnDashboardNewTask', 'click'], ['dashboardTaskSortSelect', 'change'], ['dashboardTaskFilters', 'click']]) {
+for (const [id, type] of [['btnDashboardNewTask', 'click'], ['dashboardTaskSortSelect', 'change'], ['dashboardTaskFilters', 'click'], ['activityInboxFilters', 'click'], ['activityInboxList', 'click']]) {
   assert.equal(elements[id].listeners.get(type)?.length, 1, `${id} deve ter um único listener.`);
 }
 elements.btnDashboardNewTask.listeners.get('click')[0]();
@@ -154,6 +156,11 @@ assert.equal(elements.metricSources.textContent, '2/3');
 assert.equal(elements.inboxBadge.style.display, 'inline-block');
 assert.equal(elements.notificationDot.style.display, '');
 assert.equal(publicationMetricRenders, 1);
+
+const activities = feature.renderActivityInbox();
+assert.equal(activities.some(item => item.key === 'publication:publication-pending'), true);
+assert.equal(activities.some(item => item.key === 'source:source-attention'), true);
+assert.match(elements.activityInboxList.innerHTML, /Caixa|Publicação|Fonte requer verificação/);
 
 feature.taskSort = 'date-asc';
 feature.renderTasks();

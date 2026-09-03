@@ -1,4 +1,5 @@
 import { Store } from '../core/store.js';
+import { buildActivityInbox } from '../core/activity-inbox.js';
 import { renderDashboardV2Summary } from '../views/ui-v2/dashboard.js';
 import { iconSvg } from '../views/ui-v2/icons.js';
 
@@ -18,11 +19,15 @@ export function createDashboardFeature({
   onCompleteTask,
   onRenderAll,
   onOpenAgenda,
+  onOpenActivity,
+  onAcknowledgeActivity,
   showToast
 } = {}) {
   let initialized = false;
   let dashboardTaskFilter = 'all';
   let dashboardTaskSort = 'date-asc';
+  let activityFilter = 'all';
+  let currentActivities = [];
   const byId = id => documentRef?.getElementById(id);
   const normalizedProcessNumber = value => String(value || '').replace(/\D/g, '');
   const normalizedName = value => String(value || '').trim().toLocaleLowerCase('pt-BR');
@@ -77,16 +82,62 @@ export function createDashboardFeature({
         byId('dashboardTaskFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
         this.renderTasks();
       });
+      byId('activityInboxFilters')?.addEventListener('click', event => {
+        const button = event.target.closest('button[data-activity-filter]');
+        if (!button) return;
+        activityFilter = button.dataset.activityFilter || 'all';
+        byId('activityInboxFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
+        this.renderActivityInbox();
+      });
+      byId('activityInboxList')?.addEventListener('click', async event => {
+        const row = event.target.closest('[data-activity-key]');
+        const item = currentActivities.find(candidate => candidate.key === row?.dataset.activityKey);
+        if (!item) return;
+        if (event.target.closest('[data-activity-acknowledge]')) {
+          event.stopPropagation();
+          if (!await onAcknowledgeActivity?.(item)) return;
+          this.renderActivityInbox();
+          return;
+        }
+        onOpenActivity?.(item);
+      });
       return true;
     },
 
     render() {
       renderOfficeIdentity?.();
       const metrics = this.renderMetrics();
+      const activities = this.renderActivityInbox();
       this.renderTasks();
       const widgets = this.renderWidgets();
       renderDashboardV2Summary({ documentRef, metrics, widgets, formatDate });
-      return { metrics, widgets };
+      return { metrics, widgets, activities };
+    },
+
+    activities() {
+      const all = buildActivityInbox(store.state || {});
+      if (activityFilter === 'work') return all.filter(item => ['overdue-task', 'upcoming-task', 'appointment'].includes(item.type));
+      if (activityFilter === 'judicial') return all.filter(item => ['publication', 'judicial-event', 'reconciliation'].includes(item.type));
+      if (activityFilter === 'system') return all.filter(item => ['document-review', 'sync-problem'].includes(item.type));
+      return all;
+    },
+
+    renderActivityInbox() {
+      const list = byId('activityInboxList');
+      currentActivities = this.activities();
+      const count = byId('activityInboxCount');
+      if (count) count.textContent = `${currentActivities.length} item${currentActivities.length === 1 ? '' : 's'}`;
+      if (!list) return currentActivities;
+      if (!currentActivities.length) {
+        list.innerHTML = '<div class="activity-inbox-empty"><strong>Nenhuma atividade neste filtro.</strong><span>Os itens reaparecem quando houver um fato operacional novo.</span></div>';
+        return currentActivities;
+      }
+      list.innerHTML = currentActivities.map(item => `<article class="activity-inbox-item priority-${item.priority}" data-activity-key="${escapeHtml(item.key)}" tabindex="0">
+        <span class="activity-inbox-marker" aria-hidden="true"></span>
+        <div class="activity-inbox-copy"><div><span>${escapeHtml(activityTypeLabel(item.type))}</span><time>${escapeHtml(formatDate(item.date))}</time></div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.context)}</p><small>${escapeHtml(item.origin)}</small></div>
+        <div class="activity-inbox-actions"><button type="button" class="v2-button is-secondary" data-activity-open>${escapeHtml(item.actionLabel)}</button>${item.acknowledgeable ? '<button type="button" class="v2-button is-ghost" data-activity-acknowledge>Marcar visto</button>' : ''}</div>
+      </article>`).join('');
+      return currentActivities;
     },
 
     renderMetrics() {
@@ -321,4 +372,17 @@ export function createDashboardFeature({
   };
 
   return feature;
+}
+
+function activityTypeLabel(type) {
+  return ({
+    publication: 'Publicação',
+    'overdue-task': 'Tarefa atrasada',
+    'upcoming-task': 'Tarefa próxima',
+    appointment: 'Compromisso',
+    'document-review': 'Documento',
+    reconciliation: 'Reconciliação',
+    'judicial-event': 'Evento judicial',
+    'sync-problem': 'Sincronização'
+  })[type] || 'Atividade';
 }

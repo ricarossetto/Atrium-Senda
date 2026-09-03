@@ -7,6 +7,7 @@ import {
   uid
 } from './core/store.js';
 import { applyClientReconciliation } from './core/client-reconciliation.js';
+import { acknowledgeActivity } from './core/activity-inbox.js';
 import { searchContent } from './core/api.js';
 import { createGlobalSearch } from './components/global-search.js';
 import { createModal } from './components/modal.js';
@@ -380,6 +381,36 @@ import { createTasksFeature } from './features/tasks.js';
       onCompleteTask: taskId => getTasksFeature().completeTask(taskId),
       onRenderAll: () => App.renderAll(),
       onOpenAgenda: item => App.openAgendaModal(item),
+      onOpenActivity: item => {
+        if (item.target === 'agenda') {
+          const appointment = Store.state.agenda.find(candidate => candidate.id === item.entityId);
+          if (appointment) App.openAgendaModal(appointment);
+          return;
+        }
+        if (item.target === 'source') {
+          App.switchView('monitoring');
+          return;
+        }
+        App.handleGlobalSearchSelection({ target: item.target, id: item.entityId });
+        if (item.target === 'process') {
+          window.setTimeout(() => document.querySelector(`#processTableBody [data-process-id="${CSS.escape(String(item.entityId || ''))}"]`)?.click(), 0);
+        }
+      },
+      onAcknowledgeActivity: async item => {
+        const acknowledgements = Store.state.settings?.activityInboxAcknowledged || {};
+        const hadPrevious = Object.hasOwn(acknowledgements, item.key);
+        const previous = acknowledgements[item.key];
+        if (!acknowledgeActivity(Store.state, item)) return false;
+        const auditEntry = Store.audit('Atividade revisada', `${item.type} · ${item.entityType}`);
+        const persisted = await Store.flush();
+        if (!persisted) {
+          if (hadPrevious) Store.state.settings.activityInboxAcknowledged[item.key] = previous;
+          else delete Store.state.settings.activityInboxAcknowledged[item.key];
+          Store.state.audit = Store.state.audit.filter(entry => entry.id !== auditEntry.id);
+          App.toast('Não foi possível salvar a revisão da atividade.', 'error');
+        }
+        return persisted;
+      },
       showToast: (message, type) => App.toast(message, type)
     });
     return dashboardFeature;
