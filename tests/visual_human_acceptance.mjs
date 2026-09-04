@@ -233,10 +233,10 @@ try {
   await settle(processPage);
   assert.equal(await processPage.locator('[data-process-client]').getAttribute('type'), 'button'); assertions++;
   assert.equal(await processPage.locator('[data-process-task]').count(), 3); assertions++;
-  assert.ok(await processPage.locator('.process-movement-list li, .process-movement-list article').count() >= 3); assertions++;
+  assert.ok(await processPage.locator('.legal-timeline li').count() >= 3); assertions++;
   await capture(processPage, 'R-process-inspector-client.png', processPage.locator('#processInspectorContent .process-inspector-identity'));
   await capture(processPage, 'S-process-tasks.png', processPage.locator('[aria-labelledby="processTasksHeading"]'));
-  await capture(processPage, 'T-process-movements.png', processPage.locator('[aria-labelledby="processMovementsHeading"]'));
+  await capture(processPage, 'T-process-timeline.png', processPage.locator('[aria-labelledby="processTimelineHeading"]'));
   assert.deepEqual(processErrors, []); assertions++;
   await processContext.close();
 
