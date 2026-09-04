@@ -35,7 +35,10 @@ const state = {
     { id: 'doc-metadata-review', originalName: 'metadata-pendente.pdf', documentType: 'Contrato', metadata: { classificationStatus: 'unclassified' }, createdAt: '2026-09-02' },
     { id: 'doc-ready', originalName: 'classificado.pdf', documentType: 'Petição', createdAt: '2026-09-02' }
   ],
-  clientReconciliationSuggestions: [{ id: 'suggestion-1', processId: 'process-synthetic', clientName: 'Contato sintético', confidence: 0.93, status: 'pending', source: 'Regra sintética', createdAt: '2026-09-02' }],
+  clientReconciliationSuggestions: [
+    { id: 'suggestion-1', processId: 'process-synthetic', clientName: 'Contato sintético', confidence: 0.93, status: 'pending', source: 'Regra sintética', createdAt: '2026-09-02' },
+    { id: 'suggestion-orphan', processId: 'process-removed', clientName: 'Contato órfão', confidence: 0.95, status: 'pending', source: 'Regra sintética', createdAt: '2026-09-02' }
+  ],
   sources: [
     { id: 'source-error', name: 'Fonte sintética', method: 'Sidecar local', status: 'error', detail: 'Sem resposta', lastCheck: '2026-09-03T11:00:00.000Z' },
     { id: 'source-ok', name: 'Fonte saudável', status: 'ok', lastCheck: '2026-09-03T11:00:00.000Z' }
@@ -54,6 +57,7 @@ assert.equal(items.some(item => item.key === 'document:doc-review'), true);
 assert.equal(items.some(item => item.key === 'document:doc-metadata-review'), true, 'Classificação canônica aninhada deve alimentar a mesma caixa de atividades.');
 assert.equal(items.some(item => item.key === 'document:doc-ready'), false);
 assert.equal(items.some(item => item.key === 'reconciliation:suggestion-1'), true);
+assert.equal(items.some(item => item.key === 'reconciliation:suggestion-orphan'), false, 'Sugestão sem processo canônico não pode gerar atividade sem destino.');
 assert.equal(items.some(item => item.key === 'collector:process-synthetic'), true);
 assert.equal(items.some(item => item.key === 'source:source-error'), true);
 assert.equal(items.some(item => item.key === 'source:source-ok'), false);

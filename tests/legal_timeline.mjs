@@ -11,8 +11,8 @@ const process = {
 };
 const state = {
   processes: [process],
-  intimations: [{ id: 'publication-one', processId: process.id, publishedAt: '2026-09-01', title: 'Publicação sintética', treatmentStatus: 'in_review' }],
-  tasks: [{ id: 'task-one', process: process.number, createdAt: '2026-08-28', deadline: '2026-09-05', title: 'Tarefa sintética', status: 'triagem' }],
+  intimations: [{ id: 'publication-one', processId: process.id, publishedAt: '2026-09-01', treatmentStartedAt: '2026-09-01T14:00:00.000Z', title: 'Publicação sintética', treatmentStatus: 'in_review', workNotes: [{ id: 'note-one', text: 'Orientação interna sintética', createdAt: '2026-09-01T15:00:00.000Z' }] }],
+  tasks: [{ id: 'task-one', process: process.number, createdAt: '2026-08-28', deadline: '2026-09-05', title: 'Tarefa sintética', status: 'triagem', history: [{ id: 'history-one', at: '2026-08-29T09:00:00.000Z', action: 'Responsável alterado', actor: 'Pessoa Teste' }] }],
   agenda: [{ id: 'agenda-one', processNumber: process.number, date: '2026-09-04', time: '15:00', title: 'Compromisso sintético' }],
   documents: [{ id: 'document-one', ownerType: 'process', ownerId: process.id, createdAt: '2026-08-27', name: 'documento-sintetico.pdf', documentType: 'Petição' }],
   audit: [
@@ -25,7 +25,10 @@ const timeline = buildLegalTimeline(state, process);
 assert.deepEqual(new Set(timeline.map(event => event.type)), new Set(['process', 'movement', 'publication', 'task', 'deadline', 'appointment', 'document', 'financial', 'audit']));
 assert.equal(timeline[0].id, 'deadline:task-one', 'Eventos devem ser ordenados pela data mais recente.');
 assert.equal(timeline.find(event => event.id === 'publication:publication-one').target, 'publication');
+assert.equal(timeline.find(event => event.id === 'publication:publication-one:treatment:in_review').target, 'publication');
+assert.equal(timeline.find(event => event.id === 'publication:publication-one:note:note-one').detail, 'Orientação interna sintética');
 assert.equal(timeline.find(event => event.id === 'task:task-one:created').target, 'task');
+assert.equal(timeline.find(event => event.id === 'task:task-one:history:history-one').title, 'Responsável alterado');
 assert.equal(timeline.find(event => event.id === 'appointment:agenda-one').target, 'agenda');
 assert.equal(timeline.find(event => event.id === 'document:document-one').target, 'document');
 assert.equal(timeline.find(event => event.id === 'financial:process-timeline:expense:expense-one').detail, 'R$ 125,50');

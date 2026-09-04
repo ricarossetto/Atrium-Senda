@@ -278,7 +278,7 @@ function renderLinkedTasks({ linkedTasks, escapeHtml, formatDate }) {
   if (!linkedTasks.length) {
     return '<section class="linked-tasks-card is-empty"><div class="linked-tasks-header"><span>Providências vinculadas</span><strong>0</strong></div><p>Nenhuma tarefa foi criada para esta publicação.</p></section>';
   }
-  return `<section class="linked-tasks-card"><div class="linked-tasks-header"><span>Providências vinculadas</span><strong>${linkedTasks.length}</strong></div><div class="linked-tasks-list">${linkedTasks.map(task => `<article class="linked-task-item"><div class="linked-task-info"><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><small>${task.responsible ? `Responsável: ${escapeHtml(task.responsible)}` : 'Responsável não informado'}${task.deadline ? ` · Prazo informado: ${escapeHtml(formatDate(task.deadline))}` : ''}</small></div><button type="button" class="button ghost" data-open-task-id="${escapeHtml(task.id)}">Abrir tarefa</button></article>`).join('')}</div></section>`;
+  return `<section class="linked-tasks-card"><div class="linked-tasks-header"><span>Providências vinculadas</span><strong>${linkedTasks.length}</strong></div><div class="linked-tasks-list">${linkedTasks.map(task => `<article class="linked-task-item"><div class="linked-task-info"><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><small>${escapeHtml(task.status || 'Status não informado')} · ${task.responsible ? `Responsável: ${escapeHtml(task.responsible)}` : 'Responsável não informado'}${task.deadline ? ` · Prazo informado: ${escapeHtml(formatDate(task.deadline))}` : ''}</small></div><button type="button" class="button ghost" data-open-task-id="${escapeHtml(task.id)}">Abrir tarefa</button></article>`).join('')}</div></section>`;
 }
 
 function renderLinkedWorkActions({ linkedWorkActions, escapeHtml, formatDate }) {
@@ -290,7 +290,7 @@ function renderLinkedWorkActions({ linkedWorkActions, escapeHtml, formatDate }) 
     const label = labels[action.entityType] || 'Providência';
     const title = action.entityType === 'note' ? entity.text : action.entityType === 'process' ? entity.number : entity.title;
     const detail = action.entityType === 'agenda'
-      ? `${entity.date ? formatDate(entity.date) : 'Data não informada'}${entity.time ? ` · ${entity.time}` : ''}`
+      ? `${entity.status || 'Status não informado'} · ${entity.date ? formatDate(entity.date) : 'Data não informada'}${entity.time ? ` · ${entity.time}` : ''}`
       : `Registrada por ${action.createdBy || 'usuário autenticado'}`;
     const openAttribute = action.entityType === 'agenda'
       ? `data-open-agenda-id="${escapeHtml(action.entityId)}"`

@@ -71,13 +71,14 @@ export function buildActivityInbox(state = {}, { now = new Date(), maxItems = 80
   for (const suggestion of reconciliationSuggestions(state)) {
     if (!suggestion?.id || ['dismissed', 'accepted'].includes(suggestion.status)) continue;
     const process = processById.get(String(suggestion.processId || '')) || processByNumber.get(digits(suggestion.processNumber));
+    if (!process?.id) continue;
     items.push(activity({
       key: `reconciliation:${suggestion.id}`, type: 'reconciliation', priority: 1,
       title: 'Sugestão de vínculo aguarda confirmação humana',
       context: join(process?.number || suggestion.processNumber, suggestion.clientName, confidenceLabel(suggestion.confidence)),
       origin: suggestion.source || 'Reconciliação', date: suggestion.createdAt || suggestion.updatedAt,
-      entityType: 'process', entityId: process?.id || suggestion.processId, processId: process?.id,
-      processNumber: process?.number || suggestion.processNumber, actionLabel: 'Revisar processo', target: 'process'
+      entityType: 'process', entityId: process.id, processId: process.id,
+      processNumber: process.number || suggestion.processNumber, actionLabel: 'Revisar processo', target: 'process'
     }));
   }
 

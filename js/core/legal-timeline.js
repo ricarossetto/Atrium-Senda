@@ -49,12 +49,25 @@ export function buildLegalTimeline(state, process, { limit = 120 } = {}) {
     source: movement.source || process.source || 'Processo'
   }));
 
-  (state.intimations || []).filter(linked).forEach(publication => add({
-    id: `publication:${publication.id}`, type: 'publication', date: publication.publishedAt || publication.createdAt,
-    title: publication.title || 'Publicação recebida',
-    detail: treatmentLabel(publication.treatmentStatus), source: publication.source || publication.court || 'Publicação',
-    target: 'publication', entityId: publication.id
-  }));
+  (state.intimations || []).filter(linked).forEach(publication => {
+    add({
+      id: `publication:${publication.id}`, type: 'publication', date: publication.publishedAt || publication.createdAt,
+      title: publication.title || 'Publicação recebida',
+      detail: treatmentLabel(publication.treatmentStatus), source: publication.source || publication.court || 'Publicação',
+      target: 'publication', entityId: publication.id
+    });
+    const treatmentAt = publication.treatedAt || publication.discardedAt || publication.treatmentStartedAt;
+    if (treatmentAt && String(treatmentAt) !== String(publication.publishedAt || publication.createdAt || '')) add({
+      id: `publication:${publication.id}:treatment:${publication.treatmentStatus || 'in_review'}`,
+      type: 'publication', date: treatmentAt, title: publicationTreatmentTitle(publication.treatmentStatus),
+      detail: publication.treatmentNote || '', source: 'Fluxo de publicações', target: 'publication', entityId: publication.id
+    });
+    (Array.isArray(publication.workNotes) ? publication.workNotes : []).forEach((note, index) => add({
+      id: `publication:${publication.id}:note:${note.id || index}`, type: 'publication', date: note.createdAt,
+      title: 'Nota interna registrada', detail: note.text || '', source: note.source || 'Publicação',
+      target: 'publication', entityId: publication.id
+    }));
+  });
 
   (state.tasks || []).filter(linked).forEach(task => {
     add({
@@ -67,6 +80,16 @@ export function buildLegalTimeline(state, process, { limit = 120 } = {}) {
       id: `deadline:${task.id}`, type: 'deadline', date: deadline,
       title: task.fatalDeadline ? 'Prazo fatal confirmado' : 'Prazo informado',
       detail: task.title || '', source: 'Tarefa', target: 'task', entityId: task.id
+    });
+    (Array.isArray(task.history) ? task.history : []).forEach((entry, index) => add({
+      id: `task:${task.id}:history:${entry.id || index}`, type: 'task', date: entry.at || entry.createdAt,
+      title: entry.action || 'Tarefa atualizada', detail: entry.actor || '', source: 'Histórico da tarefa',
+      target: 'task', entityId: task.id
+    }));
+    if (task.completedAt) add({
+      id: `task:${task.id}:completed`, type: 'task', date: task.completedAt,
+      title: 'Tarefa concluída', detail: task.completedBy || task.responsible || '', source: 'Tarefa',
+      target: 'task', entityId: task.id
     });
   });
 
@@ -127,6 +150,10 @@ function eventTimestamp(value) {
 
 function treatmentLabel(value) {
   return ({ untreated: 'Aguardando triagem', in_review: 'Em análise', treated: 'Tratada', discarded: 'Descartada' })[value || 'untreated'] || String(value || '');
+}
+
+function publicationTreatmentTitle(value) {
+  return ({ in_review: 'Análise da publicação iniciada', treated: 'Publicação tratada', discarded: 'Publicação descartada' })[value] || 'Tratamento da publicação atualizado';
 }
 
 function auditMatches(entry, processId, processNumber) {
