@@ -228,11 +228,26 @@ try {
     assert.equal(await page.locator('#field-client').inputValue(), '', 'Parte judicial não pode virar cliente automaticamente.');
     assert.equal(await page.locator('#field-opposingParty').inputValue(), '', 'Parte adversa não pode ser inferida sem posição humana.');
     assert.match(await page.locator('#processTjrsPreviewStatus').textContent(), /Nenhuma parte foi definida automaticamente como cliente/);
+    await Promise.all([
+      page.waitForResponse(response => response.url().includes('/api/integrations/tjrs-sidecar/processes/preview')),
+      page.locator('#processTjrsPreview').click()
+    ]);
+    await page.locator('#field-court').fill('Órgão revisado manualmente');
+    await page.locator('#field-number').fill('5001111-00.2026.8.21.0001');
+    assert.equal(await page.locator('#field-court').inputValue(), 'Órgão revisado manualmente', 'Campo alterado pelo usuário deve sobreviver à invalidação do draft.');
+    assert.equal(await page.locator('#field-actionType').inputValue(), '', 'Sugestão judicial antiga deve ser removida quando o CNJ muda.');
+    assert.equal(await page.locator('#field-lastMovement').inputValue(), '', 'Andamento do CNJ anterior não pode permanecer no formulário.');
+    assert.match(await page.locator('#processTjrsPreviewStatus').textContent(), /CNJ foi alterado/);
+    await page.locator('#field-number').fill('5003280-32.2026.8.21.0404');
+    await page.locator('#processTjrsPreview').click();
+    await page.locator('#processTjrsPreviewStatus', { hasText: 'Dados judiciais carregados para revisão.' }).waitFor();
+    assert.equal(await page.locator('#field-court').inputValue(), 'Órgão revisado manualmente', 'Nova consulta não deve sobrescrever campo manual não vazio.');
     await page.locator('#field-client').fill('Cliente definido após revisão humana');
     await page.locator('#modalForm button[type="submit"]').click();
     await page.locator('#modalBackdrop.hidden').waitFor({ state: 'attached' });
     const assisted = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.number === '5003280-32.2026.8.21.0404'));
     assert.equal(assisted.client, 'Cliente definido após revisão humana');
+    assert.equal(assisted.court, 'Órgão revisado manualmente');
     assert.equal(assisted.source, 'TJRS_PUBLIC');
     assert.equal(assisted.judicialParties.length, 2);
     assert.equal(assisted.movements.length, 1);

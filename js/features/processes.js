@@ -37,6 +37,7 @@ export function createProcessesFeature({
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
   let processesPresenter;
   let pendingTjrsDraft = null;
+  let pendingTjrsAppliedFields = new Map();
 
   const getPresenter = () => {
     processesPresenter ||= createProcessesV2Presenter({
@@ -320,6 +321,7 @@ export function createProcessesFeature({
 
     openProcessModal(defaults = {}) {
       pendingTjrsDraft = null;
+      pendingTjrsAppliedFields = new Map();
       const actionTypes = (store.state.configuration?.actionTypes || []).map(item => ({ value: item.name, label: item.name }));
       const actionGroups = (store.state.configuration?.actionGroups || []).map(item => ({ value: item.name, label: item.name }));
       const summary = getProcessSummary(defaults);
@@ -386,6 +388,21 @@ export function createProcessesFeature({
         secrecy: String(Boolean(defaults.secrecy))
       }, `${summaryHtml}${tjrsAssistHtml}`);
       byId('processTjrsPreview')?.addEventListener('click', event => this.previewTjrsDraft(event.currentTarget));
+      byId('field-number')?.addEventListener('input', event => {
+        if (!pendingTjrsDraft || normalizeCnj(event.currentTarget.value) === normalizeCnj(pendingTjrsDraft.number)) return;
+        for (const [name, applied] of pendingTjrsAppliedFields) {
+          const field = byId(`field-${name}`);
+          if (!field || String(field.value) !== applied.value) continue;
+          field.value = applied.previous;
+          field.dispatchEvent?.(new Event('change', { bubbles: true }));
+        }
+        pendingTjrsDraft = null;
+        pendingTjrsAppliedFields = new Map();
+        const status = byId('processTjrsPreviewStatus');
+        if (status) status.textContent = 'O CNJ foi alterado. Consulte novamente para carregar dados judiciais compatíveis.';
+        const previewButton = byId('processTjrsPreview');
+        if (previewButton) previewButton.textContent = 'Consultar dados locais';
+      });
     },
 
     async previewTjrsDraft(button) {
@@ -413,8 +430,18 @@ export function createProcessesFeature({
           if (status) status.textContent = result.message || 'Nenhum snapshot local pôde ser carregado.';
           return false;
         }
+        const assistedFieldNames = ['court', 'county', 'courtUnit', 'actionType', 'registeredAt', 'lastMovementAt', 'lastMovement'];
+        const previousValues = new Map(assistedFieldNames.map(name => [name, String(byId(`field-${name}`)?.value || '')]));
+        const sameDraft = normalizeCnj(pendingTjrsDraft?.number) === normalizeCnj(result.draft.number);
+        const previouslyApplied = sameDraft ? pendingTjrsAppliedFields : new Map();
         pendingTjrsDraft = structuredClone(result.draft);
         fillAssistedProcessFields(result.draft, { documentRef, today: isoDate() });
+        pendingTjrsAppliedFields = new Map(previouslyApplied);
+        for (const name of assistedFieldNames) {
+          const value = String(byId(`field-${name}`)?.value || '');
+          const previous = previousValues.get(name) || '';
+          if (value !== previous) pendingTjrsAppliedFields.set(name, { previous, value });
+        }
         const parties = Array.isArray(result.draft.judicialParties) ? result.draft.judicialParties : [];
         if (status) status.innerHTML = `<strong>Dados judiciais carregados para revisão.</strong><span>${escapeHtml(result.draft.court || 'TJRS')} · ${escapeHtml(result.draft.actionType || 'Classe não informada')} · ${escapeHtml(String(parties.length))} parte(s) · ${escapeHtml(String(result.summary?.movements || 0))} andamento(s).</span><small>Nenhuma parte foi definida automaticamente como cliente.</small>`;
         if (button) button.textContent = 'Consultar novamente';
@@ -468,6 +495,7 @@ export function createProcessesFeature({
       store.upsert('processes', record);
       store.audit(editing ? 'Processo atualizado' : 'Processo cadastrado', `${record.number || record.protocol || 'sem número'} · ${record.client}${record.feeType ? ` · ${record.feeType}` : ''}`);
       pendingTjrsDraft = null;
+      pendingTjrsAppliedFields = new Map();
       return record;
     }
   };
