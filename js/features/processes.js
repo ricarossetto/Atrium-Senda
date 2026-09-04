@@ -47,7 +47,7 @@ export function createProcessesFeature({
       formatMinutes,
       onEdit: item => feature.openProcessModal(item),
       onConsult: button => feature.consultTjrs(button),
-      onDocuments: item => openOwnerDocuments?.('process', item.id),
+      onDocuments: (item, documentId) => openOwnerDocuments?.('process', item.id, documentId),
       onClient: item => openClient?.(item),
       onTasks: item => openLinkedTasks?.(item),
       onTask: task => openTask?.(task),
@@ -69,9 +69,13 @@ export function createProcessesFeature({
   const getProcessSummary = item => {
     const processNumber = String(item?.number || item?.protocol || '').trim();
     const directLinks = records => (records || []).filter(record => String(record?.processId || '') === String(item?.id || ''));
+    const ownerLinks = records => (records || []).filter(record => record?.ownerType === 'process' && String(record?.ownerId || '') === String(item?.id || ''));
+    const numberLinks = records => (records || []).filter(record => processNumber && String(record?.process || record?.processNumber || '').trim() === processNumber);
     const uniqueLinks = records => [...new Map(records.filter(Boolean).map(record => [String(record.id || ''), record])).values()];
     const linkedTasks = item?.id ? uniqueLinks([...(getLinkedTasks?.(processNumber) || []), ...directLinks(store.state.tasks)]) : [];
     const linkedIntimations = item?.id ? uniqueLinks([...(getLinkedIntimations?.(processNumber) || []), ...directLinks(store.state.intimations)]) : [];
+    const linkedAppointments = item?.id ? uniqueLinks([...directLinks(store.state.agenda), ...numberLinks(store.state.agenda)]) : [];
+    const linkedDocuments = item?.id ? uniqueLinks([...ownerLinks(store.state.documents), ...directLinks(store.state.documents), ...numberLinks(store.state.documents)]).filter(record => !record.deletedAt) : [];
     const openTasks = linkedTasks.filter(task => !isTerminalStatus(task.status));
     const timeMinutes = linkedTasks.reduce((total, task) => total + totalTimeMinutes(task.timeLogs), 0);
     const nextDeadline = openTasks.map(task => task.fatalDeadline || task.deadline).filter(Boolean).sort()[0];
@@ -83,6 +87,8 @@ export function createProcessesFeature({
       nextDeadline,
       linkedTasks,
       linkedIntimationRecords: linkedIntimations,
+      linkedAppointments,
+      linkedDocuments,
       movements: Array.isArray(item.movements) ? item.movements : [],
       timeline: buildLegalTimeline(store.state, item),
       canConsultTjrs: canConsultTjrs(item)

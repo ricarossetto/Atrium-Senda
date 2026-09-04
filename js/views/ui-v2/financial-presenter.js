@@ -33,7 +33,7 @@ function renderDesktopTable(records, escapeHtml, formatCurrency) {
         <th scope="col">Status</th>
       </tr></thead>
       <tbody>${records.map(record => `<tr data-financial-record="${escapeHtml(record.id)}">
-        <td><strong>${escapeHtml(record.processNumber)}</strong><small>${escapeHtml(record.client)}</small></td>
+        <td><button type="button" class="financial-process-link" data-financial-process-id="${escapeHtml(record.processId)}"><strong>${escapeHtml(record.processNumber)}</strong><small>${escapeHtml(record.client)}</small><span aria-hidden="true">→</span></button></td>
         <td><span class="financial-type is-${escapeHtml(record.kind)}">${escapeHtml(typeLabel(record))}</span>${record.date ? `<small>${escapeHtml(financialDate(record.date))}</small>` : ''}</td>
         <td class="financial-money">${formatCurrency(record.gross)}</td>
         <td class="financial-money is-fee">${record.feeAmount === null ? '—' : formatCurrency(record.feeAmount)}</td>
@@ -47,7 +47,7 @@ function renderDesktopTable(records, escapeHtml, formatCurrency) {
 function renderMobileList(records, escapeHtml, formatCurrency) {
   return `<div class="financial-v2-record-list" role="list" aria-label="Operações financeiras">
     ${records.map(record => `<article class="financial-v2-record" role="listitem" data-financial-record="${escapeHtml(record.id)}" aria-label="${escapeHtml(`${record.processNumber}, ${record.client}, ${typeLabel(record)}, ${record.statusLabel}`)}">
-      <header><div><span class="financial-type is-${escapeHtml(record.kind)}">${escapeHtml(typeLabel(record))}</span><strong>${escapeHtml(record.processNumber)}</strong><small>${escapeHtml(record.client)}</small></div>${statusMarkup(record, escapeHtml)}</header>
+      <header><div><span class="financial-type is-${escapeHtml(record.kind)}">${escapeHtml(typeLabel(record))}</span><button type="button" class="financial-process-link" data-financial-process-id="${escapeHtml(record.processId)}"><strong>${escapeHtml(record.processNumber)}</strong><small>${escapeHtml(record.client)}</small><span aria-hidden="true">→</span></button></div>${statusMarkup(record, escapeHtml)}</header>
       <dl>
         <div><dt>Bruto</dt><dd>${formatCurrency(record.gross)}</dd></div>
         <div><dt>Honorários</dt><dd class="is-fee">${record.feeAmount === null ? '—' : formatCurrency(record.feeAmount)}</dd></div>

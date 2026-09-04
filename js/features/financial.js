@@ -8,7 +8,8 @@ export function createFinancialFeature({
   formatCurrency,
   showToast,
   renderDashboardFinancialWidgets,
-  renderV2Workspace
+  renderV2Workspace,
+  onOpenProcess
 } = {}) {
   let initialized = false;
   let financialFilter = 'all';
@@ -32,6 +33,12 @@ export function createFinancialFeature({
         this.render();
       });
       byId('financialSearch')?.addEventListener('input', event => this.render(event.target.value));
+      byId('financialV2Workspace')?.addEventListener('click', event => {
+        const button = event.target.closest('[data-financial-process-id]');
+        if (!button) return;
+        const process = (store.state.processes || []).find(item => String(item.id) === button.dataset.financialProcessId);
+        if (process) onOpenProcess?.(process);
+      });
       byId('newFinancialEntryButton')?.addEventListener('click', () => this.openEntryModal());
       byId('financialEntryClose')?.addEventListener('click', () => this.closeEntryModal());
       byId('financialEntryCancel')?.addEventListener('click', () => this.closeEntryModal());
@@ -95,6 +102,7 @@ export function createFinancialFeature({
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${expense.description} ${status}`).includes(needle)) {
               presentationRecords.push({
                 id: expense.id || `${proc.id}-expense`,
+                processId: proc.id,
                 kind: 'despesa',
                 processNumber: proc.number || 'Processo sem número',
                 client: proc.client || 'Cliente',
@@ -117,6 +125,7 @@ export function createFinancialFeature({
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${installment.description} ${installment.status} ${installment.dueDate}`).includes(needle)) {
               presentationRecords.push({
                 id: installment.id || `${proc.id}-installment-${index}`,
+                processId: proc.id,
                 kind: 'parcela',
                 processNumber: proc.number || 'Processo sem número',
                 client: proc.client || 'Cliente',
@@ -138,6 +147,7 @@ export function createFinancialFeature({
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${receipt.description} ${receipt.status} ${receipt.date}`).includes(needle)) {
               presentationRecords.push({
                 id: receipt.id || `${proc.id}-receipt-${index}`,
+                processId: proc.id,
                 kind: 'recebimento',
                 processNumber: proc.number || 'Processo sem número',
                 client: proc.client || 'Cliente',
@@ -171,6 +181,7 @@ export function createFinancialFeature({
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${statusInfo.label}`).includes(needle)) {
               presentationRecords.push({
                 id: proc.id || proc.number,
+                processId: proc.id,
                 kind: 'rpv',
                 processNumber: proc.number || 'Processo sem número',
                 client: proc.client || 'Cliente',
@@ -206,6 +217,7 @@ export function createFinancialFeature({
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.feeType}`).includes(needle)) {
               presentationRecords.push({
                 id: proc.id || proc.number,
+                processId: proc.id,
                 kind: 'honorarios',
                 processNumber: proc.number || 'Contrato',
                 client: proc.client || 'Cliente',

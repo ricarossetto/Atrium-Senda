@@ -145,6 +145,10 @@ html[data-ui="v2"] .financial-v2-table tbody tr:hover { background: var(--v2-col
 html[data-ui="v2"] .financial-v2-table td strong, html[data-ui="v2"] .financial-v2-table td small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html[data-ui="v2"] .financial-v2-table td strong { color: var(--v2-color-foreground); font-weight: 760; font-variant-numeric: tabular-nums; }
 html[data-ui="v2"] .financial-v2-table td small { margin-top: 3px; color: var(--v2-color-muted-foreground); font-size: 10px; }
+html[data-ui="v2"] .financial-process-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; width: 100%; padding: 0; color: inherit; background: transparent; border: 0; text-align: left; cursor: pointer; }
+html[data-ui="v2"] .financial-process-link strong, html[data-ui="v2"] .financial-process-link small { grid-column: 1; }
+html[data-ui="v2"] .financial-process-link > span { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--v2-color-primary); font-weight: 800; }
+html[data-ui="v2"] .financial-process-link:hover strong, html[data-ui="v2"] .financial-process-link:focus-visible strong { color: var(--v2-color-primary); }
 html[data-ui="v2"] .financial-money { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 html[data-ui="v2"] .financial-money.is-fee { color: var(--v2-color-gold); font-weight: 720; }
 html[data-ui="v2"] .financial-type { display: inline-block; color: var(--v2-color-foreground-secondary); font-size: 10px; font-weight: 750; line-height: 1.35; }

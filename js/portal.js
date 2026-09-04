@@ -553,7 +553,7 @@ import { createTasksFeature } from './features/tasks.js';
       getLinkedTasks: processNumber => Store.state.tasks.filter(task => processNumber && String(task.process || '').trim() === processNumber),
       getLinkedIntimations: processNumber => Store.state.intimations.filter(item => processNumber && String(item.process || '').trim() === processNumber),
       isTerminalStatus: status => TERMINAL_STATUSES.includes(status),
-      openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId),
+      openOwnerDocuments: (ownerType, ownerId, documentId) => App.openOwnerDocuments(ownerType, ownerId, documentId),
       openClient: process => {
         const contact = Store.state.contacts.find(item => String(item.id) === String(process?.contactId || ''))
           || Store.state.contacts.filter(item => normalizeText(item.name) === normalizeText(process?.client)).at(0);
@@ -646,6 +646,7 @@ import { createTasksFeature } from './features/tasks.js';
       getIsoDate: () => isoDate(),
       onOpenGenerator: options => App.openDocumentGenerator(options),
       onOpenAssistant: documentRecord => openAssistantContext('document', documentRecord?.id),
+      onOpenOwner: (ownerType, ownerId) => App.handleGlobalSearchSelection({ target: ownerType === 'process' ? 'process' : 'contact', id: ownerId }),
       renderV2Catalog: renderDocumentsV2Catalog,
       secureFetch: (...args) => window.KellerAuth.secureFetch(...args)
     });
@@ -677,7 +678,8 @@ import { createTasksFeature } from './features/tasks.js';
       formatCurrency,
       showToast: (message, type) => App.toast(message, type),
       renderDashboardFinancialWidgets: () => App.renderDashboardWidgets(),
-      renderV2Workspace: renderFinancialV2Workspace
+      renderV2Workspace: renderFinancialV2Workspace,
+      onOpenProcess: process => App.handleGlobalSearchSelection({ target: 'process', id: process?.id })
     });
     return financialFeature;
   }
@@ -1108,9 +1110,11 @@ import { createTasksFeature } from './features/tasks.js';
     renderDocuments() {
       return getDocumentsFeature().render();
     },
-    openOwnerDocuments(ownerType, ownerId) {
+    openOwnerDocuments(ownerType, ownerId, documentId = '') {
       this.switchView('documents');
-      return getDocumentsFeature().openOwnerDocuments(ownerType, ownerId);
+      const opened = getDocumentsFeature().openOwnerDocuments(ownerType, ownerId);
+      if (documentId) getDocumentsFeature().focusDocument(documentId);
+      return opened;
     },
     renderAssistant() {
       return getAssistantFeature().syncPresentation();
@@ -1245,8 +1249,10 @@ import { createTasksFeature } from './features/tasks.js';
         const contact = Store.state.contacts.find(item => item.id === id);
         if (contact) {
           const input = document.getElementById('contactSearch');
-          if (input) input.value = contact.name || '';
-          this.renderContacts(contact.name || '');
+          if (input) input.value = '';
+          getContactsFeature().setRoleFilter('all');
+          this.renderContacts('');
+          getContactsFeature().selectContact(contact.id);
         }
       } else if (target === 'lead') {
         this.switchView('leads');

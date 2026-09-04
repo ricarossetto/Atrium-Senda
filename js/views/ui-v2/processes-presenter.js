@@ -22,6 +22,8 @@ export function createProcessesV2Presenter({
   let selectedItem = null;
   let selectedTasks = [];
   let selectedPublications = [];
+  let selectedAppointments = [];
+  let selectedDocuments = [];
   let selectedTimeline = [];
   let lastFocusedElement = null;
   let previousBodyOverflow = '';
@@ -45,6 +47,12 @@ export function createProcessesV2Presenter({
       } else if (event.target.closest('[data-process-publication]')) {
         const publication = selectedPublications.find(item => String(item.id) === event.target.closest('[data-process-publication]').dataset.processPublication);
         if (publication) { close({ restoreFocus: false }); onPublication?.(publication); }
+      } else if (event.target.closest('[data-process-agenda]')) {
+        const appointment = selectedAppointments.find(item => String(item.id) === event.target.closest('[data-process-agenda]').dataset.processAgenda);
+        if (appointment) { close({ restoreFocus: false }); onAgenda?.({ entityId: appointment.id }); }
+      } else if (event.target.closest('[data-process-document]')) {
+        const document = selectedDocuments.find(item => String(item.id) === event.target.closest('[data-process-document]').dataset.processDocument);
+        if (document) { const item = selectedItem; close({ restoreFocus: false }); onDocuments?.(item, document.id); }
       } else if (event.target.closest('[data-process-timeline]')) {
         const timelineEvent = selectedTimeline.find(item => String(item.id) === event.target.closest('[data-process-timeline]').dataset.processTimeline);
         if (!timelineEvent) return;
@@ -65,6 +73,8 @@ export function createProcessesV2Presenter({
         const item = selectedItem; close({ restoreFocus: false }); onClient?.(item);
       } else if (event.target.closest('[data-process-tasks]')) {
         const item = selectedItem; close({ restoreFocus: false }); onTasks?.(item);
+      } else if (event.target.closest('[data-process-financial]')) {
+        const item = selectedItem; close({ restoreFocus: false }); onFinancial?.(item);
       }
     });
     byId('processInspectorEdit')?.addEventListener('click', () => {
@@ -131,6 +141,8 @@ export function createProcessesV2Presenter({
     selectedItem = item;
     selectedTasks = summary.linkedTasks || [];
     selectedPublications = summary.linkedIntimationRecords || [];
+    selectedAppointments = summary.linkedAppointments || [];
+    selectedDocuments = summary.linkedDocuments || [];
     selectedTimeline = summary.timeline || [];
     lastFocusedElement = invoker || documentRef.activeElement;
     previousBodyOverflow = documentRef.body?.style.overflow || '';
@@ -170,6 +182,8 @@ export function createProcessesV2Presenter({
     selectedItem = null;
     selectedTasks = [];
     selectedPublications = [];
+    selectedAppointments = [];
+    selectedDocuments = [];
     selectedTimeline = [];
     if (wasOpen && documentRef.body) documentRef.body.style.overflow = previousBodyOverflow;
     if (wasOpen && restoreFocus && lastFocusedElement?.isConnected && typeof lastFocusedElement.focus === 'function') {
@@ -298,6 +312,8 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
     ${renderLinkedTasks(summary.linkedTasks || [], escapeHtml, formatDate)}
   </section>
 
+  ${renderOperationalLinks(summary.linkedAppointments || [], summary.linkedDocuments || [], escapeHtml, formatDate)}
+
   ${renderJudicialContext(item, escapeHtml, formatDate)}
 
   <section class="process-inspector-section" aria-labelledby="processPublicationsHeading">
@@ -319,6 +335,7 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
       ${definition('Distribuição / cadastro', formatDate(item.registeredAt || item.createdAt), escapeHtml)}
       ${definition('Fonte', item.source, escapeHtml)}
       ${definition('Monitoramento', monitoring, escapeHtml)}
+      ${definition('Notas / contexto', item.notes, escapeHtml)}
     </dl>
   </section>
 
@@ -365,7 +382,7 @@ function renderProcessFinance(item, escapeHtml, formatDate) {
   ].sort((left, right) => String(right.date || '').localeCompare(String(left.date || ''))).slice(0, 8);
 
   return `<section class="process-inspector-section" aria-labelledby="processFinancialHeading">
-    <div class="process-inspector-section-heading"><h3 id="processFinancialHeading">Visão financeira do processo</h3><span class="process-financial-scope">Sem contabilidade fiscal</span></div>
+    <div class="process-inspector-section-heading"><h3 id="processFinancialHeading">Visão financeira do processo</h3><button type="button" class="button ghost" data-process-financial>Abrir Financeiro</button></div>
     <div class="process-inspector-metrics process-financial-metrics">
       ${metric(formatFinancialValue(installments.length ? scheduled : contractedFee(item)), installments.length ? 'Honorários parcelados' : 'Honorários contratados', escapeHtml)}
       ${metric(formatFinancialValue(received), 'Recebido', escapeHtml)}
@@ -402,6 +419,13 @@ function formatFinancialValue(value) {
 function renderLinkedTasks(tasks, escapeHtml, formatDate) {
   if (!tasks.length) return '<p class="process-inspector-empty">Nenhuma tarefa vinculada a este processo.</p>';
   return `<div class="process-linked-list">${tasks.map(task => `<button type="button" data-process-task="${escapeHtml(task.id)}" aria-label="Abrir tarefa ${escapeHtml(task.title || 'sem título')}"><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><span>${escapeHtml(task.status || 'Status não informado')}${task.fatalDeadline || task.deadline ? ` · ${escapeHtml(formatDate(task.fatalDeadline || task.deadline))}` : ''}${task.responsible ? ` · ${escapeHtml(task.responsible)}` : ''}</span></button>`).join('')}</div>`;
+}
+
+function renderOperationalLinks(appointments, documents, escapeHtml, formatDate) {
+  if (!appointments.length && !documents.length) return '';
+  const appointmentItems = appointments.map(item => `<button type="button" data-process-agenda="${escapeHtml(item.id)}" aria-label="Abrir compromisso ${escapeHtml(item.title || 'sem título')}"><strong>${escapeHtml(item.title || 'Compromisso sem título')}</strong><span>${escapeHtml(formatDate(item.date || item.startAt))}${item.time ? ` · ${escapeHtml(item.time)}` : ''}</span></button>`).join('');
+  const documentItems = documents.map(item => `<button type="button" data-process-document="${escapeHtml(item.id)}" aria-label="Abrir documento ${escapeHtml(item.name || item.originalName || 'sem nome')}"><strong>${escapeHtml(item.name || item.originalName || 'Documento sem nome')}</strong><span>${escapeHtml(item.documentType || item.type || 'Documento')} · ${escapeHtml(formatDate(item.documentDate || item.createdAt))}</span></button>`).join('');
+  return `<section class="process-inspector-section" aria-labelledby="processRelationsHeading"><h3 id="processRelationsHeading">Compromissos e documentos</h3><div class="process-linked-list">${appointmentItems}${documentItems}</div></section>`;
 }
 
 function renderLinkedPublications(publications, escapeHtml, formatDate) {

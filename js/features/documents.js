@@ -62,6 +62,7 @@ export function createDocumentsFeature({
   getIsoDate = () => new Date().toISOString().slice(0, 10),
   onOpenGenerator = null,
   onOpenAssistant = null,
+  onOpenOwner = null,
   renderV2Catalog = null,
   secureFetch = null,
   confirmAction = message => windowRef?.confirm?.(message) === true
@@ -545,7 +546,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         <div class="document-record-actions">
           ${document.deletedAt
             ? `<button class="button ghost" type="button" data-document-action="restore">Restaurar</button><button class="button danger" type="button" data-document-action="purge">Excluir definitivamente</button>`
-            : `<button class="button ghost" type="button" data-document-action="assistant">Usar no Assistente</button><button class="button ghost" type="button" data-document-action="metadata">Organizar</button><button class="button ghost" type="button" data-document-action="preview">Preview</button><button class="button ghost" type="button" data-document-action="${document.intelligence?.ocr ? 'read-ocr' : 'ocr'}">${document.intelligence?.ocr ? 'Ver extração' : 'Extrair texto'}</button>${canConvertDocumentToPdf(document) ? '<button class="button ghost" type="button" data-document-action="pdf">Gerar PDF</button>' : ''}<button class="button ghost" type="button" data-document-action="download">Baixar</button><button class="button ghost" type="button" data-document-action="delete">Mover para lixeira</button>`}
+            : `${document.ownerId ? `<button class="button ghost" type="button" data-document-action="owner">Abrir ${document.ownerType === 'process' ? 'processo' : 'contato'}</button>` : ''}<button class="button ghost" type="button" data-document-action="assistant">Usar no Assistente</button><button class="button ghost" type="button" data-document-action="metadata">Organizar</button><button class="button ghost" type="button" data-document-action="preview">Preview</button><button class="button ghost" type="button" data-document-action="${document.intelligence?.ocr ? 'read-ocr' : 'ocr'}">${document.intelligence?.ocr ? 'Ver extração' : 'Extrair texto'}</button>${canConvertDocumentToPdf(document) ? '<button class="button ghost" type="button" data-document-action="pdf">Gerar PDF</button>' : ''}<button class="button ghost" type="button" data-document-action="download">Baixar</button><button class="button ghost" type="button" data-document-action="delete">Mover para lixeira</button>`}
         </div>
       </article>`).join('')
       : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.'}</span></div>`;
@@ -726,6 +727,7 @@ ${id.lawyerOab} - ${id.officeName}`;
       const document = (store.state.documents || []).find(item => item.id === id);
       if (!document) return false;
       if (action === 'assistant') return onOpenAssistant?.(document) ?? false;
+      if (action === 'owner') return document.ownerId ? (onOpenOwner?.(document.ownerType, document.ownerId) ?? false) : false;
       if (!secureFetch) return false;
       if (action === 'metadata') return feature.openDocumentMetadata(document);
       if (action === 'preview') return feature.showDocumentPreview(document);
