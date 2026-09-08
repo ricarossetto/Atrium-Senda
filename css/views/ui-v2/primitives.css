@@ -417,9 +417,9 @@ html[data-ui="classic"] .search-palette-icon .v2-search-icon { display: none; }
   width: min(440px, calc(100vw - 32px));
   box-sizing: border-box;
   padding: 24px;
-  color: var(--v2-color-foreground, #eee);
-  background: var(--v2-color-surface-elevated, #252b30);
-  border: 1px solid var(--v2-color-border, #45505a);
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-lg, 12px);
   box-shadow: var(--v2-shadow-elevated);
 }
