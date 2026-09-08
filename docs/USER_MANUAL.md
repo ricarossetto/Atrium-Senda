@@ -1,4 +1,4 @@
-# Manual do usuário — ATRIUM 2.0.0
+# Manual do usuário — ATRIUM 2.1.0
 
 O ATRIUM organiza o trabalho do escritório em uma interface V2 responsiva. Este manual descreve os fluxos atuais e os limites de supervisão. Para preparar o ambiente, veja [Instalação](INSTALLATION.md).
 

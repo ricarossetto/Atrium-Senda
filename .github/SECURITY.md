@@ -2,7 +2,7 @@
 
 ## Versão suportada
 
-A linha estável suportada é a 2.0.x. Correções de segurança são publicadas no repositório e nas releases oficiais.
+A linha estável suportada é a 2.1.x. Correções de segurança são publicadas no repositório e nas releases oficiais.
 
 ## Divulgação responsável
 

@@ -20,6 +20,22 @@ O ATRIUM é um workspace jurídico open source e local-first para escritórios b
 
 A aplicação roda no computador ou na infraestrutura controlada pelo escritório. A interface V2 é a única interface oferecida ao usuário na versão estável. Decisões jurídicas, confirmação de prazos e atos oficiais continuam sob responsabilidade humana.
 
+## Comece aqui — primeiro uso
+
+Para testar o ATRIUM no Windows, baixe o código da [release v2.1.0](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.0), extraia o ZIP e dê duplo clique em **`ATRIUM.bat`**. O inicializador confere Node.js 24, Corepack, pnpm e Chromium, instala o que faltar e abre `http://127.0.0.1:4173`. Se o Windows ainda não tiver Node.js, o próprio inicializador oferece a instalação oficial pelo `winget`.
+
+No primeiro acesso:
+
+1. crie o administrador do escritório e conclua o segundo fator quando a tela solicitar;
+2. abra **Configurações** e informe a identidade do escritório, equipe e preferências;
+3. cadastre um contato e um processo pelo número CNJ, ou importe uma planilha pela prévia supervisionada;
+4. abra o processo para conferir publicações, tarefas, documentos e o botão **Adicionar tarefa** no painel lateral;
+5. para monitoramento judicial, informe somente os códigos solicitados pela própria tela (por exemplo, OAB/UF, credencial/TOTP do portal ou chave de acesso do processo). Eles ficam no cofre local cifrado e nunca devem ser colados no GitHub, em screenshots ou no README.
+
+O caminho de teste mais curto é: cadastrar um contato → cadastrar um processo → abrir **Publicações** → pesquisar pelo cliente ou CNJ → criar uma tarefa vinculada → conferir a mesma tarefa em **Gestão de tarefas**. O servidor precisa permanecer em execução; `Ctrl+C` encerra o processo.
+
+Se algo não estiver respondendo, execute `ATRIUM.bat --doctor`. O diagnóstico não altera dados. O manual completo explica atualização, backup, integrações e recuperação em [docs/INSTALLATION.md](docs/INSTALLATION.md).
+
 ## Princípios do produto
 
 - **Local-first:** o ambiente local é o modo principal; o diretório de dados pertence ao escritório.
@@ -144,6 +160,12 @@ O inicializador valida Node.js 24+, Corepack, pnpm 11.19.0, dependências e Chro
 
 Consulte o [manual completo de instalação](docs/INSTALLATION.md).
 
+## Se aparecer um aviso de integração judicial
+
+O aviso **“O coletor TJRS local está indisponível. Os dados atuais foram preservados.”** significa que a consulta que depende do sidecar TJRS não conseguiu alcançar a interface local `127.0.0.1:3100`. O Store principal continua sendo a fonte dos dados já salvos; o aviso não apaga processos, clientes ou publicações.
+
+DJEN e DataJud públicos continuam sendo configurados pela tela de **Integrações**. Consultas TJRS que usam chave de acesso ou geração de autos dependem do sidecar local fornecido pelo ambiente do escritório. Verifique o serviço e `ATRIUM_TJRS_SIDECAR_URL` somente em endereço de loopback; não exponha essa porta na rede. A sincronização geral pode ser iniciada na abertura, no horário diário configurado ou pelo botão manual, mas nunca deve registrar a chave em log.
+
 ## Instalação manual
 
 ```powershell
@@ -194,6 +216,15 @@ A contagem de suítes pertence a cada execução do CI e não é fixada aqui. Te
 - [Changelog](docs/CHANGELOG.md)
 - [Notas da release 2.1.0](docs/RELEASE_NOTES_2.1.0.md)
 - [Como contribuir](.github/CONTRIBUTING.md)
+
+## Organização do repositório
+
+- **Raiz:** somente o runtime e os arquivos que alguém precisa para instalar ou iniciar (`ATRIUM.bat`, `install.ps1`, `package.json`, lockfile, `server.mjs`, `index.html` e configurações de execução).
+- **`js/`, `css/`, `lib/`, `collector/`, `scripts/`:** código da aplicação e inicializadores auxiliares.
+- **`docs/`:** instalação, manual, arquitetura, changelog, screenshots sintéticos, guias judiciais e registros de desenvolvimento.
+- **`specs/`:** contratos canônicos que orientam código e testes.
+- **`tests/`:** verificações locais e do CI.
+- **`data/`, `.env`, `.env.collector`, perfis judiciais e `artifacts/`:** dados ou saídas locais; são ignorados pelo Git e não entram no pacote para terceiros.
 
 ## Licença
 
