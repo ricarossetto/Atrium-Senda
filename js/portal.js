@@ -1240,10 +1240,12 @@ import { createTasksFeature } from './features/tasks.js';
         const contact = Store.state.contacts.find(item => item.id === id);
         if (contact) {
           const input = document.getElementById('contactSearch');
-          if (input) input.value = '';
+          const isV2 = document.documentElement.dataset.ui === 'v2';
+          const search = isV2 ? '' : contact.name || '';
+          if (input) input.value = search;
           getContactsFeature().setRoleFilter('all');
-          this.renderContacts('');
-          getContactsFeature().selectContact(contact.id);
+          this.renderContacts(search);
+          if (isV2) getContactsFeature().selectContact(contact.id);
         }
       } else if (target === 'lead') {
         this.switchView('leads');
