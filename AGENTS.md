@@ -18,9 +18,9 @@ Em caso de conflito entre uma tarefa e estas regras, pare e peça orientação e
 
 ## 2. Git, branches e checkpoints
 
-- A branch normal de desenvolvimento pós-migração é `ui-v2`.
+- A branch de desenvolvimento da versão 2.1 é `v2.1-dev`; `ui-v2` permanece como referência da migração anterior.
 - Nunca altere `main` sem instrução explícita.
-- Nunca faça merge automático para `main`.
+- Promova para `main` somente mediante autorização explícita de publicação e após o workflow completo verde do commit candidato. Não faça merge automático durante desenvolvimento.
 - Nunca mova a branch `checkpoint-pre-modularization`.
 - Nunca mova a tag `pre-modularization-beta-1`.
 - Esses checkpoints são referências imutáveis de recuperação.
@@ -33,10 +33,10 @@ Antes de iniciar feature, refactor ou mudança relevante, confirme:
 
 - working tree limpo;
 - branch correta;
-- HEAD local sincronizado com `origin/ui-v2`;
+- HEAD local e upstream auditados, sem divergências não identificadas;
 - CI completo do commit anterior em estado verde.
 
-Se o CI estiver vermelho, pare e diagnostique antes de iniciar trabalho dependente.
+Se o CI estiver vermelho, diagnostique e corrija a falha antes de iniciar trabalho dependente. Uma missão autorizada de correção do CI pode prosseguir com essa correção, preservando as assertions e proteções.
 Não acumule refactors sobre um commit vermelho.
 Um job isolado verde não equivale ao workflow completo verde.
 
@@ -248,7 +248,7 @@ O fluxo normal é:
 alteração
 → testes locais
 → commit
-→ push em ui-v2
+→ push na branch de desenvolvimento
 → GitHub Actions completo
 → próxima fase
 ```
@@ -266,7 +266,7 @@ Antes de qualquer mudança arquitetural, de regra de negócio, persistência, se
 
 Quando relevantes para a missão, consulte:
 
-- `DEVELOPMENT_MASTER_PLAN.md`;
+- `docs/development/DEVELOPMENT_MASTER_PLAN.md`;
 - `docs/development/ROADMAP.md`;
 - `docs/development/DECISIONS.md`;
 - `docs/development/BETA_READINESS.md`.
@@ -286,3 +286,11 @@ CI vermelho, premissa incorreta, risco de perda de dados, migration conflitante,
 necessidade de mudança fora do escopo ou dúvida sobre material sensível.
 
 Não contorne uma condição de parada com reset, remoção de teste ou mudança incidental.
+
+## 27. Publicação autorizada
+
+- Audite todo o lote local autorizado antes de publicar; preserve alterações não identificadas e exclua dados privados do pacote.
+- Mantenha versão, instalador e notas de release coerentes.
+- O workflow deve cobrir a branch candidata e concluir todos os jobs, incluindo Windows A1 e Visual QA.
+- Após o candidato verde e autorização de publicação, promova sem force push, confira o CI de `main` e crie a tag e a release correspondentes ao commit validado.
+- Diferencie release no GitHub de serviço implantado em produção. Não declare hospedagem ativa sem verificar o destino real.
