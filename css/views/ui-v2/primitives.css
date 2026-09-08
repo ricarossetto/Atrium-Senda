@@ -262,7 +262,7 @@ html[data-ui="v2"] .system-status-bar {
 html[data-ui="v2"] #systemStatusDetail { min-width: 0; overflow-wrap: anywhere; }
 html[data-ui="v2"] .system-status-bar[data-status="syncing"] .system-status-icon svg,
 html[data-ui="v2"] #syncButton[aria-busy="true"] svg {
-  animation: v2-sync-spin 2.4s linear infinite;
+  animation: v2-sync-spin 1.2s linear 1;
   transform-origin: center;
   overflow: visible;
 }
