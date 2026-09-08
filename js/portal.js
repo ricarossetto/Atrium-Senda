@@ -1241,7 +1241,10 @@ import { createTasksFeature } from './features/tasks.js';
         if (contact) {
           const input = document.getElementById('contactSearch');
           const isV2 = document.documentElement.dataset.ui === 'v2';
-          const search = contact.name || '';
+          // V2 keeps the full relationship list visible while opening the
+          // selected contact in its lateral inspector. Classic retains its
+          // historical filtered-list navigation contract.
+          const search = isV2 ? '' : (contact.name || '');
           if (input) input.value = search;
           getContactsFeature().setRoleFilter('all');
           this.renderContacts(search);

@@ -21,6 +21,10 @@ try {
   }));
 
   const openClient = async () => {
+    if (await page.locator('#contactInspector.is-open').count()) {
+      await page.locator('[data-contact-inspector-close]').click();
+      await page.locator('#contactInspector.is-open').waitFor({ state: 'detached' });
+    }
     await page.evaluate(() => {
       const input = document.getElementById('contactSearch');
       if (input) input.value = '';
@@ -45,8 +49,9 @@ try {
   assert.match(await page.locator('#contactInspector').textContent(), /Movimentação sintética do processo vinculado/);
 
   await page.locator('[data-contact-process="ui-v2-contact-process"]').click();
-  await page.locator('#view-processes.active').waitFor();
   await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
+  assert.equal(await page.locator('#view-contacts.active').count(), 1, 'O processo relacionado deve abrir no painel lateral sem trocar a área de trabalho.');
+  assert.equal(await page.locator('#contactInspector.is-open').count(), 1, 'O contexto do cliente deve permanecer aberto sob o inspetor processual.');
   assert.match(await page.locator('#processInspectorContent').textContent(), /5000000-00\.2026\.8\.21\.0001/);
   await page.locator('#processInspectorClose').click();
 
@@ -64,9 +69,11 @@ try {
 
   await openClient();
   await page.locator('[data-contact-context-event]', { hasText: 'Publicação sintética vinculada' }).click();
-  await page.locator('#view-inbox.active').waitFor();
-  await page.locator('#intimationDetail:not(.hidden)').waitFor();
-  assert.match(await page.locator('#intimationDetail').textContent(), /Publicação sintética vinculada/);
+  await page.locator('#linkedPublicationReader[open]').waitFor();
+  assert.equal(await page.locator('#view-contacts.active').count(), 1, 'A publicação vinculada deve abrir no leitor lateral sem trocar a área de trabalho.');
+  assert.match(await page.locator('#linkedPublicationReader').textContent(), /Publicação sintética vinculada/);
+  await page.keyboard.press('Escape');
+  await page.locator('#linkedPublicationReader').waitFor({ state: 'detached' });
 
   await openClient();
   await page.locator('[data-contact-document="ui-v2-contact-document"]').click();

@@ -203,7 +203,8 @@ async function assertGlobalSearchBehavior() {
   await result.waitFor();
   await result.click();
   await page.locator('#view-contacts.active').waitFor();
-  assert.equal(await page.locator('#contactSearch').inputValue(), 'Contato Busca Compartilhada', 'A seleção deve manter a navegação específica do domínio.');
+  const uiMode = await page.locator('html').getAttribute('data-ui');
+  assert.equal(await page.locator('#contactSearch').inputValue(), uiMode === 'v2' ? '' : 'Contato Busca Compartilhada', 'A seleção deve respeitar a navegação contextual do domínio.');
   await page.locator('#globalSearchPalette.hidden').waitFor({ state: 'attached' });
   assert.equal(await page.locator('#globalSearch').inputValue(), '', 'A seleção deve limpar a busca global.');
 
