@@ -126,7 +126,7 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     onSelect?.(selection);
   }
 
-  function prepareResults() {
+  function prepareResults(previousSelection = '') {
     const input = document.getElementById('globalSearch');
     const items = getItems();
     items.forEach((item, index) => {
@@ -138,6 +138,10 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     activeIndex = -1;
     input?.setAttribute('aria-expanded', 'true');
     input?.removeAttribute('aria-activedescendant');
+    if (previousSelection) {
+      const nextIndex = items.findIndex(item => `${item.dataset.searchTarget}:${item.dataset.searchId}` === previousSelection);
+      if (nextIndex >= 0) setActive(nextIndex);
+    }
   }
 
   function localResults(state, query) {
@@ -214,10 +218,14 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     const palette = document.getElementById('globalSearchPalette');
     const resultsEl = document.getElementById('searchPaletteResults');
     if (!palette || !resultsEl) return;
+    const activeItem = getItems()[activeIndex] || resultsEl.querySelector('.search-palette-item.active');
+    const previousSelection = activeItem
+      ? `${activeItem.dataset.searchTarget}:${activeItem.dataset.searchId}`
+      : '';
     if (!results.length) {
       resultsEl.innerHTML = `<div class="search-palette-empty">Nenhum resultado localizado para <strong>"${escapeHtml(query)}"</strong>.</div>`;
       palette.classList.remove('hidden');
-      prepareResults();
+      prepareResults(previousSelection);
       return;
     }
     const groups = [];
@@ -238,7 +246,7 @@ export function createGlobalSearch({ getState, normalizeText, escapeHtml, format
     }
     resultsEl.innerHTML = groups.join('');
     palette.classList.remove('hidden');
-    prepareResults();
+    prepareResults(previousSelection);
   }
 
   async function perform(query) {
