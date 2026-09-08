@@ -285,7 +285,7 @@ export function createContactsFeature({
         if (!shell?.contains(inspector)) return;
         for (let branch = inspector; branch && branch !== shell; branch = branch.parentElement) {
           for (const sibling of branch.parentElement.children) {
-            if (sibling === branch || sibling.hasAttribute('data-contact-backdrop') || sibling.hasAttribute('inert')) continue;
+            if (sibling === branch || sibling.hasAttribute('data-contact-backdrop') || sibling.hasAttribute('inert') || sibling.classList.contains('topbar')) continue;
             sibling.setAttribute('inert', '');
             inspectorInertElements.add(sibling);
           }

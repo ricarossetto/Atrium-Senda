@@ -47,11 +47,12 @@ try {
   assert.equal(await page.locator('#field-oabNumber').isVisible(), false);
   assert.equal(await page.locator('#field-oabUf').isVisible(), false);
   assert.equal(await page.locator('#field-document').isVisible(), false);
-  page.once('dialog', async dialog => {
-    assert.match(dialog.message(), /alterações não salvas/i);
-    await dialog.accept();
-  });
   await page.keyboard.press('Escape');
+  await page.locator('.unsaved-changes-dialog[open]').waitFor();
+  assert.match(await page.locator('.unsaved-changes-dialog').textContent(), /alterações não salvas/i);
+  assert.equal(await page.locator('.unsaved-changes-dialog [data-keep-editing]').count(), 1);
+  assert.equal(await page.locator('.unsaved-changes-dialog [data-discard-changes]').count(), 1);
+  await page.locator('.unsaved-changes-dialog [data-discard-changes]').click();
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'primaryTermCard');
   assert.equal(await page.locator('#appShell').getAttribute('inert'), null);

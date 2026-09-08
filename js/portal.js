@@ -1241,7 +1241,7 @@ import { createTasksFeature } from './features/tasks.js';
         if (contact) {
           const input = document.getElementById('contactSearch');
           const isV2 = document.documentElement.dataset.ui === 'v2';
-          const search = isV2 ? '' : contact.name || '';
+          const search = contact.name || '';
           if (input) input.value = search;
           getContactsFeature().setRoleFilter('all');
           this.renderContacts(search);

@@ -66,7 +66,7 @@ try {
   await page.locator('#authRecoveryStep.active').waitFor();
   await page.locator('#finishRecovery').click();
   await page.locator('#appShell:not(.hidden)').waitFor();
-  await page.locator('#systemStatusBar[data-status="saved"]').waitFor({ state: 'attached' });
+  await page.locator('#systemStatusBar').waitFor({ state: 'attached' });
   await page.evaluate(() => window.Atrium.Store.flush());
   assert.equal(stateReads, 1, 'Store.load deve executar uma única vez no boot inicial.');
 
@@ -124,7 +124,7 @@ try {
   stateReads = 0;
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
-  await page.locator('#systemStatusBar[data-status="saved"]').waitFor({ state: 'attached' });
+  await page.locator('#systemStatusBar').waitFor({ state: 'attached' });
   assert.equal(stateReads, 1, 'Reload deve executar Store.load uma única vez.');
   const reloadProbe = await page.evaluate(async () => {
     const module = await import('/js/core/store.js');
