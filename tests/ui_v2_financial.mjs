@@ -93,7 +93,8 @@ try {
 
   async function openAndFill({ process = 'fin-target-custas', type = 'despesa', gross = '500', percentage = '10', description = 'Preparo recursal sintético', date = '' } = {}) {
     await page.locator('#newFinancialEntryButton').click();
-    await page.locator('#finProcessSelect').selectOption(process);
+    await page.locator('#finLinkSearch').click();
+    await page.locator(`#finLinkResults [data-identity="${process}"]`).click();
     await page.locator('#finTypeSelect').selectOption(type);
     if (['despesa', 'parcela', 'recebimento'].includes(type)) await page.locator('#finDescriptionInput').fill(description);
     if (date) await page.locator('#finDateInput').fill(date);
@@ -148,9 +149,7 @@ try {
 
   await page.locator('#newFinancialEntryButton').click();
   await page.locator('#finProcessSelect').evaluate(select => {
-    const option = new Option('Processo inexistente', 'missing-process');
-    select.add(option);
-    select.value = option.value;
+    select.value = 'missing-process';
   });
   await page.locator('#finGrossInput').fill('100');
   await dispatchSubmit();

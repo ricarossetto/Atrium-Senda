@@ -42,7 +42,8 @@ try {
   assert.equal(await page.locator('#appShell').getAttribute('inert'), null);
 
   await page.locator('#newFinancialEntryButton').click();
-  await page.locator('#finProcessSelect').selectOption('fin-target-custas');
+  await page.locator('#finLinkSearch').click();
+    await page.locator(`#finLinkResults [data-identity="${'fin-target-custas'}"]`).click();
   await page.locator('#finTypeSelect').selectOption('despesa');
   await page.locator('#finGrossInput').fill('100');
   await page.locator('#finDescriptionInput').fill('Custa processual sintética');

@@ -109,7 +109,8 @@ try {
   await page.evaluate(() => window.Atrium.App.switchView('financial'));
   await page.locator('#newFinancialEntryButton').click();
   await page.locator('#financialEntryBackdrop:not(.hidden)').waitFor();
-  await page.locator('#finProcessSelect').selectOption(processId);
+  await page.locator('#finLinkSearch').click();
+    await page.locator(`#finLinkResults [data-identity="${processId}"]`).click();
   await page.locator('#finTypeSelect').selectOption('fixo');
   await page.locator('#finGrossInput').fill('1500');
   const financialSave = page.waitForResponse(item => item.url().endsWith('/api/state') && item.request().method() === 'POST' && item.status() === 200);

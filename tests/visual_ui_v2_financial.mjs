@@ -42,7 +42,8 @@ try {
         await page.waitForFunction(() => document.querySelector('#financialEntryBackdrop .financial-entry-modal')?.contains(document.activeElement));
       }
       if (scenario.state === 'preview') {
-        await page.locator('#finProcessSelect').selectOption('fin-target-exito');
+        await page.locator('#finLinkSearch').click();
+    await page.locator(`#finLinkResults [data-identity="${'fin-target-exito'}"]`).click();
         await page.locator('#finTypeSelect').selectOption('exito');
         await page.locator('#finGrossInput').fill('12500');
         await page.locator('#finFeePctInput').fill('25');

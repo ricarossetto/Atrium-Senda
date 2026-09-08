@@ -58,6 +58,7 @@ try {
   assert((await page.locator('#authRecoveryCodes').textContent()).split('\n').length === 8, 'Códigos de recuperação ausentes.');
   await page.locator('#finishRecovery').click();
   await page.locator('#appShell:not(.hidden)').waitFor();
+  await page.waitForFunction(() => Boolean(window.Atrium?.Store?.state?.settings));
 
   // Garante dispensa do tour guiado no teste
   await page.evaluate(() => {
@@ -347,6 +348,7 @@ try {
   await page.locator('#view-kanban.active').waitFor();
   await flushStore();
   await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => Boolean(window.Atrium?.Store?.state?.settings));
   await page.locator('#view-dashboard.active').waitFor();
   await page.evaluate(() => {
     document.documentElement.dataset.ui = 'classic';
