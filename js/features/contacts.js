@@ -27,6 +27,7 @@ export function createContactsFeature({
   let roleFilter = 'all';
   let selectedContactId = null;
   let restoreContactId = null;
+  const inspectorInertElements = new Set();
   const byId = id => documentRef?.getElementById(id);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
 
@@ -59,9 +60,7 @@ export function createContactsFeature({
       restoreContactId = item.id;
       this.render(byId('contactSearch')?.value || '');
       if (focusInspector) queueMicrotask(() => {
-        const target = this.isMobileViewport()
-          ? byId('contactInspector')?.querySelector('[data-contact-inspector-close]')
-          : byId('contactInspectorHeading');
+        const target = byId('contactInspector')?.querySelector('[data-contact-inspector-close]');
         target?.focus();
       });
       return item;
@@ -156,6 +155,7 @@ export function createContactsFeature({
     },
 
     handleWorkspaceClick(event) {
+      if (event.target.hasAttribute?.('data-contact-backdrop')) { this.closeInspector(); return; }
       const target = event.target.closest('button');
       if (!target) return;
       if (target.dataset.contactRoleFilter) {
@@ -254,7 +254,7 @@ export function createContactsFeature({
         this.closeInspector();
         return;
       }
-      if (event.key !== 'Tab' || !selectedContactId || !this.isMobileViewport()) return;
+      if (event.key !== 'Tab' || !selectedContactId) return;
       const inspector = byId('contactInspector');
       const focusable = [...(inspector?.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || [])]
         .filter(element => element.getClientRects().length > 0);
@@ -271,12 +271,26 @@ export function createContactsFeature({
     },
 
     syncInspectorSemantics() {
+      for (const element of inspectorInertElements) element.removeAttribute('inert');
+      inspectorInertElements.clear();
       const inspector = byId('contactInspector');
       if (!inspector) return;
-      const mobile = this.isMobileViewport();
-      inspector.setAttribute('role', mobile && selectedContactId ? 'dialog' : 'region');
-      if (mobile && selectedContactId) inspector.setAttribute('aria-modal', 'true');
+      inspector.setAttribute('role', selectedContactId ? 'dialog' : 'region');
+      if (selectedContactId) inspector.setAttribute('aria-modal', 'true');
       else inspector.removeAttribute('aria-modal');
+      if (selectedContactId) {
+        // Isolate only the application behind this nested drawer. Body-level
+        // editors and document dialogs remain available above it.
+        const shell = byId('appShell');
+        if (!shell?.contains(inspector)) return;
+        for (let branch = inspector; branch && branch !== shell; branch = branch.parentElement) {
+          for (const sibling of branch.parentElement.children) {
+            if (sibling === branch || sibling.hasAttribute('data-contact-backdrop') || sibling.hasAttribute('inert')) continue;
+            sibling.setAttribute('inert', '');
+            inspectorInertElements.add(sibling);
+          }
+        }
+      }
     },
 
     isMobileViewport() {

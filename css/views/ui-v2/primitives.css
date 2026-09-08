@@ -243,7 +243,7 @@ html[data-ui="v2"] .v2-error-state { border-color: var(--v2-color-danger); backg
 html[data-ui="v2"] .system-status-bar {
   min-height: 38px;
   display: grid;
-  grid-template-columns: 22px max-content minmax(0, 1fr);
+  grid-template-columns: 22px max-content minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--v2-space-2);
   margin: var(--v2-space-3) var(--v2-space-6) 0;
@@ -257,6 +257,38 @@ html[data-ui="v2"] .system-status-bar {
   font-size: 12px;
   line-height: 1.35;
   transition: opacity var(--v2-duration-base) var(--v2-ease-standard), transform var(--v2-duration-base) var(--v2-ease-standard), max-height var(--v2-duration-base) var(--v2-ease-standard), margin var(--v2-duration-base) var(--v2-ease-standard), padding var(--v2-duration-base) var(--v2-ease-standard), border-width var(--v2-duration-base) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] #systemStatusDetail { min-width: 0; overflow-wrap: anywhere; }
+html[data-ui="v2"] .system-status-bar[data-status="syncing"] .system-status-icon svg,
+html[data-ui="v2"] #syncButton[aria-busy="true"] svg {
+  animation: v2-sync-spin 2.4s linear infinite;
+  transform-origin: center;
+  overflow: visible;
+}
+@keyframes v2-sync-spin { to { transform: rotate(360deg); } }
+
+html[data-ui="v2"] .system-status-progress-track {
+  width: 140px;
+  height: 6px;
+  background: color-mix(in srgb, var(--v2-color-surface-inset) 80%, var(--v2-color-border));
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+html[data-ui="v2"] .system-status-progress-track.hidden {
+  display: none !important;
+}
+
+html[data-ui="v2"] .system-status-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--v2-color-gold);
+  border-radius: 999px;
+  transition: width var(--v2-duration-base) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] .system-status-bar.is-transient-hidden {
@@ -361,9 +393,38 @@ html[data-ui="classic"] .search-palette-icon .v2-search-icon { display: none; }
   }
 }
 
+@media (max-width: 767px) {
+  html[data-ui="v2"] .system-status-bar {
+    grid-template-columns: 22px minmax(0, 1fr);
+    margin-inline: var(--v2-space-3);
+    max-height: 220px;
+  }
+  html[data-ui="v2"] #systemStatusDetail { grid-column: 2; }
+  html[data-ui="v2"] .system-status-progress-track {
+    grid-column: 2; width: 100%; margin: 0 0 var(--v2-space-1);
+  }
+  html[data-ui="v2"] .system-status-bar.is-transient-hidden { max-height: 0; }
+}
+
 @media (max-width: 860px) {
   html[data-ui="v2"] .view.active > .section-toolbar {
     gap: var(--v2-space-3);
     padding-bottom: var(--v2-space-3);
   }
 }
+
+.unsaved-changes-dialog {
+  width: min(440px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 24px;
+  color: var(--v2-color-foreground, #eee);
+  background: var(--v2-color-surface-elevated, #252b30);
+  border: 1px solid var(--v2-color-border, #45505a);
+  border-radius: var(--v2-radius-lg, 12px);
+  box-shadow: var(--v2-shadow-elevated);
+}
+.unsaved-changes-dialog::backdrop { background: rgb(0 0 0 / 55%); backdrop-filter: blur(3px); }
+.unsaved-changes-dialog h2 { margin: 0 0 12px; font: 600 24px/1.2 var(--v2-font-editorial, serif); }
+.unsaved-changes-dialog p { margin: 0; color: var(--v2-color-foreground-secondary); font: 14px/1.5 var(--v2-font-interface, sans-serif); }
+.unsaved-changes-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.unsaved-changes-actions .button { flex: 1; min-height: 44px; white-space: normal; }

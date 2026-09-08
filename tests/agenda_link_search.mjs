@@ -1,0 +1,46 @@
+import './fixtures/omni-network.mjs';
+import assert from 'node:assert/strict';
+import { startUiV2Session, prepareUiV2Page } from './ui_v2_helpers.mjs';
+const session = await startUiV2Session();
+try {
+  const context = await session.createContext();
+  const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl);
+  await page.evaluate(async () => {
+    const { Store, App } = window.Atrium;
+    Store.state.contacts.push({ id: 'agenda-contact-test', name: 'Cliente Busca Sintético', contactRole: 'cliente' });
+    Store.state.processes.push({ id: 'agenda-process-test', number: 'PROCESSO-SINTETICO', client: 'Cliente Busca Sintético' });
+    Store.save();
+    if (!await Store.flush()) throw Error('Fixture save failed');
+    App.openAgendaModal();
+  });
+  await page.locator('#field-title').fill('Compromisso vinculado sintético');
+  await page.locator('#field-client').fill('Busca Sintético');
+  await page.locator('#field-client').press('Enter');
+  assert.equal(await page.locator('[name="contactId"]').inputValue(), 'agenda-contact-test');
+  await page.locator('#field-process').fill('Busca Sintético');
+  await page.locator('#field-process').press('ArrowDown');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#modalForm [name="processId"]').inputValue(), 'agenda-process-test');
+  await page.locator('#modalForm button[type="submit"]').click();
+  await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
+  await page.reload();
+  await page.waitForFunction(() => window.Atrium?.Store?.state?.agenda?.some(a => a.title === 'Compromisso vinculado sintético'));
+  const record = await page.evaluate(() => window.Atrium.Store.state.agenda.find(a => a.title === 'Compromisso vinculado sintético'));
+  assert.equal(record.contactId, 'agenda-contact-test');
+  assert.equal(record.processId, 'agenda-process-test');
+  await page.evaluate(record => window.Atrium.App.openAgendaModal(record), record);
+  assert.equal(await page.locator('#field-client').inputValue(), 'Cliente Busca Sintético');
+  await page.locator('#field-client').fill('Parte sem cadastro');
+  assert.equal(await page.locator('[name="contactId"]').inputValue(), '');
+  await page.locator('#modalForm button[type="submit"]').click();
+  await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
+  await page.reload();
+  await page.waitForFunction(() => window.Atrium?.Store?.state?.agenda?.some(a => a.client === 'Parte sem cadastro'));
+  const edited = await page.evaluate(() => window.Atrium.Store.state.agenda.find(a => a.title === 'Compromisso vinculado sintético'));
+  assert.equal(edited.id, record.id);
+  assert.equal(edited.contactId, '');
+  assert.equal(edited.processId, 'agenda-process-test');
+  assert.deepEqual(pageErrors, []);
+  await context.close();
+  console.log('PASS Agenda search, canonical links, backend reload and free-text editing');
+} finally { await session.stop(); }

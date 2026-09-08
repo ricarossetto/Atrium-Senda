@@ -255,11 +255,17 @@ export function renderPublicationDetail({
     ${tasks}
     ${workActions}
     <section class="publication-original" aria-labelledby="publicationOriginalHeading">
-      <div><p>Conteúdo oficial</p><h3 id="publicationOriginalHeading">Texto original preservado</h3></div>
+      <div class="publication-original-header"><div><p>Conteúdo oficial</p><h3 id="publicationOriginalHeading">Texto original preservado</h3></div>${renderDecisionToolbar({ item, escapeHtml })}</div>
       <div class="original-text">${escapeHtml(item.text || 'Sem texto original.')}</div>
     </section>
     <footer class="detail-actions">${actions}</footer>
   </div>`;
+}
+
+export function renderDecisionToolbar({ item, escapeHtml }) {
+  if (!item?.hasHtml || !String(item.rawHtml || '').trim()) return '';
+  const label = escapeHtml(item.title || 'publicação');
+  return `<div class="publication-decision-toolbar" aria-label="Documento HTML de ${label}"><button type="button" class="button ghost publication-doc-btn" data-detail-action="view-decision-html">Decisão completa (HTML)</button><button type="button" class="button ghost publication-doc-btn" data-detail-action="download-decision-html">Baixar (.html)</button></div>`;
 }
 
 function renderTreatmentInfo({ item, treatment, escapeHtml, formatDateTime }) {
@@ -306,7 +312,7 @@ function renderActions({ status, privileged }) {
   const task = `<button type="button" class="button ghost" data-detail-action="task" id="btnCreateTask">${iconSvg('add')}Criar tarefa</button>`;
   const assistant = '<button type="button" class="button ghost" data-detail-action="assistant">Usar no Assistente</button>';
   const workMenu = `<details class="publication-work-menu"><summary class="button ghost">Outras providências</summary><div class="publication-work-menu-popover"><button type="button" data-detail-action="appointment">Compromisso</button><button type="button" data-detail-action="deadline">Prazo confirmado</button><button type="button" data-detail-action="note">Nota interna</button><button type="button" data-detail-action="link">Vincular processo</button></div></details>`;
-  if (status === 'untreated') return `<button type="button" class="button gold" data-detail-action="start-review" id="btnStartReview">${iconSvg('search')}Iniciar análise</button>${assistant}${task}${workMenu}<button type="button" class="button ghost btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')}Marcar como tratada</button>${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')}Descartar</button>`;
+  if (status === 'untreated') return `<button type="button" class="button gold" data-detail-action="start-review" id="btnStartReview">${iconSvg('search')}Iniciar análise</button><button type="button" class="button gold btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')}Marcar como tratada</button>${assistant}${task}${workMenu}${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')}Descartar</button>`;
   if (status === 'in_review') return `<button type="button" class="button gold btn-success-action" data-detail-action="treat" id="btnMarkTreated">${iconSvg('check')}Marcar como tratada</button>${assistant}${task}${workMenu}${email}<button type="button" class="button ghost btn-danger-action" data-detail-action="discard" id="btnDiscardPublication">${iconSvg('delete')}Descartar</button>`;
   if (status === 'treated') return `<button type="button" class="button ghost" data-detail-action="reopen" id="btnReopenPublication">${iconSvg('reopen')}Reabrir análise</button>${assistant}${task}${workMenu}${email}`;
   return `<button type="button" class="button gold" data-detail-action="restore" id="btnRestorePublication">${iconSvg('reopen')}Restaurar para triagem</button>${assistant}${email}`;

@@ -75,6 +75,24 @@ try {
     assert.deepEqual(layout.duplicates, []);
     for (const target of layout.targets) assert.ok(target.width + 0.01 >= 44 && target.height + 0.01 >= 44, `Alvo abaixo de 44px: ${JSON.stringify(target)}`);
 
+    await page.locator('#taskListViewButton').click();
+    const listLayout = await page.locator('#taskListPanel').evaluate(panel => {
+      const targets = [...panel.querySelectorAll('input, select, button')]
+        .filter(element => element.getClientRects().length > 0)
+        .map(element => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height, name: element.getAttribute('aria-label') || element.textContent.trim() }));
+      return {
+        overflow: document.documentElement.scrollWidth - innerWidth,
+        panelOverflow: panel.scrollWidth - panel.clientWidth,
+        rows: panel.querySelectorAll('[data-task-list-id]').length,
+        targets
+      };
+    });
+    assert.ok(listLayout.overflow <= 2, `Overflow global da Lista mobile: ${listLayout.overflow}px.`);
+    assert.ok(listLayout.panelOverflow <= 2, `Lista mobile não pode depender de scroll horizontal: ${listLayout.panelOverflow}px.`);
+    assert.equal(listLayout.rows, 6);
+    for (const target of listLayout.targets) assert.ok(target.width + 0.01 >= 44 && target.height + 0.01 >= 44, `Alvo da Lista abaixo de 44px: ${JSON.stringify(target)}`);
+    await page.locator('#taskKanbanViewButton').click();
+
     const recordText = await page.locator('[data-task-id="ui-v2-task-fatal"]').textContent();
     for (const expected of ['Preparar recurso', 'Cliente Recursal Sintético', '5012345-67.2026.4.04.7100', 'Prazo fatal', 'Advogada Recursal Sintética']) {
       assert.ok(recordText.includes(expected), `RecordList deve expor: ${expected}`);

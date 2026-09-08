@@ -25,7 +25,7 @@ assert.equal(portalSource.includes("secureFetch('/api/tjrs/consult'"), false, 'T
 assert.equal(portalSource.includes('data-tjrs-consult'), false, 'Markup e listener TJRS concretos não podem permanecer no portal.');
 assert.match(portalSource, /renderProcesses\(query = ''\) \{\s*return getProcessesFeature\(\)\.render\(query\);\s*\}/);
 assert.match(portalSource, /openProcessModal\(defaults = \{\}\) \{\s*return getProcessesFeature\(\)\.openProcessModal\(defaults\);\s*\}/);
-assert.match(portalSource, /modalMode\.mode === 'process'\) \{\s*if \(!getProcessesFeature\(\)\.saveProcess\(data, this\.modalMode\.defaults\)\) return;/);
+assert.match(portalSource, /modalMode\.mode === 'process'\) \{\s*const savedProcess = getProcessesFeature\(\)\.saveProcess\(data, this\.modalMode\.defaults\);\s*if \(!savedProcess\) return;\s*if \(!await getProcessesFeature\(\)\.persistAccessKey\(savedProcess\)\) return;/);
 assert.match(portalSource, /secureFetch: \(\.\.\.args\) => window\.KellerAuth\.secureFetch\(\.\.\.args\)/, 'Wiring deve preservar KellerAuth.secureFetch com contexto seguro.');
 
 const listenerMap = { newProcessButton: [], processSearch: [] };
@@ -119,12 +119,28 @@ assert.equal(unitEdited.feeMonthly, 400);
 assert.equal(unitEdited.secrecy, false);
 assert.deepEqual(unitAudits.at(-1), { action: 'Processo atualizado', detail: '5001111-00.2026.8.21.0001 · Cliente Unitário' });
 
+fakeElements['field-accessKey'] = { value: 'CHAVE-PROCESSUAL-SINTETICA' };
+const keyedProcess = unitFeature.saveProcess({
+  number: unitCreated.number, client: unitCreated.client, feePercentage: '', feeAmount: '', feeMonthly: '', secrecy: 'true'
+}, unitCreated);
+assert.equal(Object.hasOwn(keyedProcess, 'accessKey'), false, 'Chave não pode integrar o registro processual.');
+assert.equal(await unitFeature.persistAccessKey(keyedProcess), true);
+const keyRequest = unitRequests.at(-1);
+assert.equal(keyRequest.url, '/api/integrations/tjrs-sidecar/processes/access-key');
+assert.deepEqual(JSON.parse(keyRequest.options.body), {
+  processId: keyedProcess.id,
+  processNumber: keyedProcess.number,
+  accessKey: 'CHAVE-PROCESSUAL-SINTETICA',
+  chaveAcesso: 'CHAVE-PROCESSUAL-SINTETICA'
+});
+delete fakeElements['field-accessKey'];
+
 const unitButton = { dataset: { tjrsConsult: '5000000-00.2026.8.21.0001' }, disabled: false, textContent: 'Atualizar TJRS' };
 await unitFeature.consultTjrs(unitButton);
-assert.equal(unitRequests.length, 1);
-assert.equal(unitRequests[0].url, '/api/integrations/tjrs-sidecar/processes/sync');
-assert.equal(unitRequests[0].options.method, 'POST');
-assert.deepEqual(JSON.parse(unitRequests[0].options.body), { processId: 'unit-process', processNumber: '5000000-00.2026.8.21.0001', revision: 'unit-revision-1' });
+assert.equal(unitRequests.length, 2);
+assert.equal(unitRequests[1].url, '/api/integrations/tjrs-sidecar/processes/sync');
+assert.equal(unitRequests[1].options.method, 'POST');
+assert.deepEqual(JSON.parse(unitRequests[1].options.body), { processId: 'unit-process', processNumber: '5000000-00.2026.8.21.0001', revision: 'unit-revision-1' });
 assert.equal(unitStore.revision, 'unit-revision-2');
 assert.equal(unitStore.state.processes[0].lastMovement, 'Snapshot unitário');
 assert.equal(unitButton.disabled, false);

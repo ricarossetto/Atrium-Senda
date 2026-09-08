@@ -55,6 +55,10 @@ export function createTasksFeature({
   let timeSheetInterval = null;
   let tasksPresenter;
   let kanbanColumnsDraft = [];
+  let taskViewMode = 'kanban';
+  let taskListQuery = '';
+  let taskListFilter = 'all';
+  let taskListSort = 'deadline';
 
   const byId = id => documentRef?.getElementById(id);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
@@ -92,8 +96,50 @@ export function createTasksFeature({
     init() {
       if (initialized) return false;
       initialized = true;
+      try {
+        const savedMode = windowRef?.localStorage?.getItem('atrium:tasks:view');
+        if (['list', 'kanban'].includes(savedMode)) taskViewMode = savedMode;
+      } catch {}
       byId('newTaskButton')?.addEventListener('click', () => this.openTaskModal());
       byId('editKanbanColumnsButton')?.addEventListener('click', () => this.openColumnsEditor());
+      byId('taskListViewButton')?.addEventListener('click', () => this.setTaskViewMode('list'));
+      byId('taskKanbanViewButton')?.addEventListener('click', () => this.setTaskViewMode('kanban'));
+      byId('taskListSearch')?.addEventListener('input', event => {
+        taskListQuery = event.target.value || '';
+        this.renderTaskList();
+      });
+      byId('taskListStatusFilter')?.addEventListener('change', event => {
+        taskListFilter = event.target.value || 'all';
+        this.renderTaskList();
+      });
+      byId('taskListSort')?.addEventListener('change', event => {
+        taskListSort = event.target.value || 'deadline';
+        this.renderTaskList();
+      });
+      byId('taskList')?.addEventListener('click', event => {
+        const openButton = event.target.closest('[data-task-list-open]');
+        if (openButton) {
+          const task = store.state.tasks.find(item => String(item.id) === String(openButton.dataset.taskListOpen));
+          if (task) this.openTaskModal(task);
+          return;
+        }
+        const startButton = event.target.closest('[data-task-list-timesheet-start]');
+        if (startButton) { this.startTimeSheet(startButton.dataset.taskListTimesheetStart); return; }
+        if (event.target.closest('[data-task-list-timesheet-stop]')) this.stopTimeSheet();
+      });
+      byId('taskList')?.addEventListener('change', async event => {
+        const select = event.target.closest('[data-task-list-move]');
+        if (!select) return;
+        const task = store.state.tasks.find(item => String(item.id) === String(select.dataset.taskListMove));
+        const previous = task?.status;
+        if (!task || previous === select.value) return;
+        select.disabled = true;
+        const moved = await this.moveTask(task.id, select.value);
+        if (!moved && select.isConnected) {
+          select.disabled = false;
+          select.value = previous;
+        }
+      });
       byId('kanbanColumnsClose')?.addEventListener('click', () => this.closeColumnsEditor());
       byId('kanbanColumnsCancel')?.addEventListener('click', () => this.closeColumnsEditor());
       byId('kanbanColumnAdd')?.addEventListener('click', () => {
@@ -113,6 +159,7 @@ export function createTasksFeature({
         if (column) column.title = input.value;
       });
       byId('kanbanColumnsForm')?.addEventListener('submit', event => this.saveColumns(event));
+      this.applyTaskViewMode();
       return true;
     },
 
@@ -165,6 +212,68 @@ export function createTasksFeature({
       return true;
     },
 
+    setTaskViewMode(mode) {
+      if (!['list', 'kanban'].includes(mode)) return false;
+      taskViewMode = mode;
+      try { windowRef?.localStorage?.setItem('atrium:tasks:view', mode); } catch {}
+      if (mode === 'list') this.renderTaskList();
+      this.applyTaskViewMode();
+      return true;
+    },
+
+    applyTaskViewMode() {
+      if (!isV2()) return;
+      const listMode = taskViewMode === 'list';
+      byId('view-kanban')?.setAttribute('data-task-view', taskViewMode);
+      byId('taskListPanel')?.classList.toggle('hidden', !listMode);
+      byId('kanbanBoard')?.classList.toggle('hidden', listMode);
+      byId('taskBoardInstructions')?.classList.toggle('hidden', listMode);
+      byId('editKanbanColumnsButton')?.classList.toggle('hidden', listMode);
+      for (const button of documentRef.querySelectorAll('[data-task-view-mode]')) {
+        const active = button.dataset.taskViewMode === taskViewMode;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      }
+    },
+
+    getTaskListRecords() {
+      const needle = String(taskListQuery || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+      const today = isoDate();
+      const records = (store.state.tasks || []).filter(task => {
+        const deadline = task.fatalDeadline || task.deadline;
+        const terminal = isTerminalStatus(task.status);
+        if (taskListFilter === 'active' && terminal) return false;
+        if (taskListFilter === 'completed' && !terminal) return false;
+        if (taskListFilter === 'overdue' && (!deadline || deadline >= today || terminal)) return false;
+        if (!needle) return true;
+        return String([task.title, task.description, task.client, task.process, task.actionType, task.responsible, task.status].filter(Boolean).join(' '))
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').includes(needle);
+      });
+      const priorityRank = { urgente: 0, importante: 1, normal: 2 };
+      return records.slice().sort((left, right) => {
+        if (taskListSort === 'title') return String(left.title || '').localeCompare(String(right.title || ''), 'pt-BR');
+        if (taskListSort === 'priority') return (priorityRank[left.priority] ?? 3) - (priorityRank[right.priority] ?? 3) || String(left.title || '').localeCompare(String(right.title || ''), 'pt-BR');
+        if (taskListSort === 'updated') return (Date.parse(right.updatedAt || right.createdAt || 0) || 0) - (Date.parse(left.updatedAt || left.createdAt || 0) || 0);
+        const leftDeadline = left.fatalDeadline || left.deadline || '9999-12-31';
+        const rightDeadline = right.fatalDeadline || right.deadline || '9999-12-31';
+        return leftDeadline.localeCompare(rightDeadline) || String(left.title || '').localeCompare(String(right.title || ''), 'pt-BR');
+      });
+    },
+
+    renderTaskList() {
+      if (!isV2()) return;
+      getPresenter().renderList({
+        container: byId('taskList'),
+        summary: byId('taskListSummary'),
+        tasks: this.getTaskListRecords(),
+        allTasks: store.state.tasks || [],
+        columns: getColumns(),
+        activeTaskId: activeTimeSheetTaskId,
+        elapsedLabel: this.formatElapsedTimer(),
+        sourceLabel: taskSourceLabel
+      });
+    },
+
     renderKanban() {
       const board = byId('kanbanBoard');
       if (!board) return;
@@ -177,6 +286,8 @@ export function createTasksFeature({
           elapsedLabel: this.formatElapsedTimer(),
           sourceLabel: taskSourceLabel
         });
+        this.renderTaskList();
+        this.applyTaskViewMode();
       } else board.innerHTML = getColumns().map(column => {
         const tasks = store.state.tasks.filter(task => task.status === column.id);
         return `<section class="kanban-column" data-column="${column.id}"><header class="column-header"><div class="column-title"><i class="column-dot" style="background:${column.color}"></i>${escapeHtml(column.title)}<span class="column-count">${tasks.length}</span></div><span>···</span></header><div class="column-cards">${tasks.length ? tasks.map(task => this.renderCard(task)).join('') : '<div class="empty-column">Arraste tarefas para cá</div>'}</div></section>`;
@@ -279,8 +390,9 @@ export function createTasksFeature({
       timeSheetStartedAt = now();
       windowRef.clearInterval(timeSheetInterval);
       timeSheetInterval = windowRef.setInterval(() => {
-        const liveButton = documentRef.querySelector(`.timesheet-live[data-timesheet-stop="${activeTimeSheetTaskId}"]`);
-        if (liveButton) liveButton.innerHTML = `${iconSvg('check')} ${this.formatElapsedTimer()}`;
+        const elapsed = this.formatElapsedTimer();
+        documentRef.querySelectorAll(`.timesheet-live[data-timesheet-stop="${activeTimeSheetTaskId}"], .task-list-timesheet-live[data-task-list-timesheet-stop="${activeTimeSheetTaskId}"]`)
+          .forEach(liveButton => { liveButton.innerHTML = `${iconSvg('check')} ${elapsed}`; });
       }, 1000);
       this.renderKanban();
       showToast?.('Cronômetro TimeSheet iniciado na tarefa!', 'success');
@@ -384,6 +496,8 @@ export function createTasksFeature({
 
     openTaskModal(defaults = {}) {
       const definitions = store.state.configuration?.taskDefinitions || [];
+      const processes = store.state.processes || [];
+      const contacts = store.state.contacts || [];
       const totalTime = totalTimeMinutes(defaults.timeLogs);
       const timeNote = totalTime > 0 ? `Tempo total acumulado nesta tarefa: ${formatMinutes(totalTime)}.` : '';
       const cleanDescription = decodeHtmlEntities(defaults.description || defaults.text || '');
@@ -428,8 +542,30 @@ export function createTasksFeature({
       openModal?.('task', defaults.id ? 'Editar tarefa' : 'Nova tarefa', 'Fluxo interno', [
         { name: 'title', label: 'Título da tarefa', required: true, full: true, placeholder: 'Ex: Manifestação sobre despacho do DJEN' },
         { name: 'taskDefinition', label: 'Definição de modelo', type: 'select', options: [{ value: '', label: 'Selecione um modelo de tarefa' }, ...definitions.map(item => ({ value: item.name, label: `${item.name} (${item.points} pts)` }))] },
-        { name: 'process', label: 'Número do processo', placeholder: 'Ex: 5002086-73.2022.4.04.7133' },
-        { name: 'client', label: 'Cliente', placeholder: 'Ex: Roberto Roque Junges' },
+        {
+          name: 'process',
+          label: 'Número do processo',
+          type: 'combobox',
+          identityName: 'processId',
+          placeholder: 'Pesquisar número, cliente, ação ou tribunal',
+          suggestions: processes.map(process => ({
+            id: process.id,
+            value: process.number || process.protocol || process.client || 'Processo sem número',
+            label: [process.client, process.actionType || process.subject, process.court || process.county].filter(Boolean).join(' · ') || 'Processo cadastrado'
+          }))
+        },
+        {
+          name: 'client',
+          label: 'Cliente',
+          type: 'combobox',
+          identityName: 'contactId',
+          placeholder: 'Pesquisar nome, documento, telefone, e-mail ou cidade',
+          suggestions: contacts.map(contact => ({
+            id: contact.id,
+            value: contact.name || 'Contato sem nome',
+            label: [contact.contactRole === 'cliente' ? 'Cliente' : (contact.contactRole || 'Contato'), contact.document, contact.mobile || contact.phone, contact.email, contact.city].filter(Boolean).join(' · ')
+          }))
+        },
         { name: 'fatalDeadline', label: 'Prazo fatal', type: 'date', note: 'Prazo peremptório (sujeito à conferência humana).' },
         { name: 'deadline', label: 'Prazo interno', type: 'date' },
         { name: 'date', label: 'Data da atividade', type: 'date' },
@@ -454,6 +590,20 @@ export function createTasksFeature({
         taskDefinition: defaults.taskDefinition || (definitions.some(item => item.name === cleanTitle) ? cleanTitle : ''),
         responsibles: Array.isArray(defaults.responsibles) ? defaults.responsibles.join(', ') : (defaults.responsibles || '')
       }, topHtml);
+
+      const processField = byId('field-process')?.closest('[data-modal-combobox-field]');
+      processField?.addEventListener('atrium:combobox-select', event => {
+        const process = processes.find(item => String(item.id) === String(event.detail?.identity));
+        if (!process) return;
+        const linkedContact = contacts.find(contact => String(contact.id) === String(process.contactId))
+          || contacts.find(contact => String(contact.name || '').trim().toLocaleLowerCase('pt-BR') === String(process.client || '').trim().toLocaleLowerCase('pt-BR'));
+        const clientInput = byId('field-client');
+        const clientIdentity = clientInput?.closest('[data-modal-combobox-field]')?.querySelector('[data-combobox-identity]');
+        const actionTypeInput = byId('field-actionType');
+        if (clientInput) clientInput.value = linkedContact?.name || process.client || '';
+        if (clientIdentity) clientIdentity.value = linkedContact?.id || process.contactId || '';
+        if (actionTypeInput) actionTypeInput.value = process.actionType || process.subject || '';
+      });
 
       byId('btnDirectCompleteTask')?.addEventListener('click', async () => {
         const task = await this.completeTask(defaults.id);

@@ -16,11 +16,12 @@ Supervisionar cobertura judicial por identidade e portal, com estratégia explí
 - Estado é isolado por usuário + identidade + portal.
 - “Verificado” exige fonte pública canônica ou evidência explícita; demais portais ficam `experimental` ou `not_verified`.
 - Um único coletor gerenciado executa por vez no servidor.
+- Recarregar, abrir outra aba ou repetir a autenticação não repete a sincronização da mesma inicialização nem a execução diária já reivindicada.
 
 ## Allowed operations
 
 - `authenticate`, `health`, `discoverCases`, `fetchMovements`, `fetchPublications`, `disconnect` em adapter declarado read-only.
-- Atualização manual explícita e agenda supervisionada de no mínimo 30 minutos.
+- Atualização manual explícita, uma sincronização por inicialização do servidor e uma execução diária às 10h no fuso `America/Sao_Paulo` enquanto o portal estiver aberto.
 - Sessão assistida explícita para portais habilitados; o usuário conclui login, CAPTCHA, TOTP ou confirmação humana exigida pelo tribunal.
 
 ## Forbidden operations
@@ -44,6 +45,20 @@ Erro transitório aplica backoff exponencial limitado; CAPTCHA/2FA interativo e 
 
 Estado de sessão é persistido separadamente do Store jurídico; coleta bem-sucedida usa o ingest canônico.
 
+## Omni-Collector integrado (v2.1-dev)
+
+- O listener do ATRIUM registra `/api/integrations/omni/*`; não exige um daemon adicional. O sidecar TJRS existente mantém prioridade; indisponibilidade permite fallback interno, reutilizando o JSON já lido e seus limites de tamanho.
+- Status do motor interno significa capacidade local disponível. Provedores permanecem `NOT_VERIFIED` até evidência de consulta; não equivale a autenticação ou certificação live.
+- Preview é dry-run (`persist: false`): não grava Store, snapshots, diffs ou watchlist. O cliente não é inferido.
+- Sync exige sessão, CSRF, revisão atual e igualdade estrita entre CNJ solicitado, processo local e resposta do provedor. Campos manuais de cadastro prevalecem. Repetição do mesmo snapshot mantém a revisão.
+- Importação confirmada usa o Store canônico, com auditoria; o cache do coletor não é autoridade para o acervo. Falha de cache após salvar o Store é informada como aviso, nunca como perda do salvamento confirmado.
+- Cache operacional usa `omni-cache-v1.sqlite`, payloads AES-256-GCM pelo SecurityManager e índices CNJ com HMAC. Nenhum banco do laboratório é copiado/migrado; o schema antigo não é lido. Backups canônicos continuam cobrindo o Store, não o cache reconstruível.
+- Watchlist e execução de consulta da lista são manuais e exigem CSRF. Não há agendamento automático, ciência, protocolo ou prazo inferido. A CLI OAB é somente diagnóstico, não um segundo importador.
+- Processos TJRS podem receber uma chave de acesso eproc. A chave é validada pelo sidecar loopback, armazenada somente no cofre judicial cifrado e isolada por usuário + CNJ; nunca integra o Store jurídico nem retorna ao frontend. Preview usa a chave informada apenas naquela requisição. A atualização individual, a geração do caderno e os ciclos gerais de sincronização na abertura, às 10h e por comando manual reutilizam automaticamente a chave já guardada para monitorar o processo.
+- O inspetor pode gerar, por ação explícita, um caderno processual em PDFs determinísticos a partir dos andamentos do snapshot. Esses PDFs são derivados de consulta, não peças originais nem certidões do tribunal, e entram no acervo documental canônico cifrado com checksum, owner processual, revisão e auditoria.
+- Adaptadores mantêm fila serial e espaçamento/backoff. Os provedores portados são TJRS, TJDFT, TJSP, DataJud e DJEN; TRF4 usa fallback DataJud, não um novo adaptador autenticado.
+- Testes Omni usam transporte sintético sob `tests/fixtures/omni-network.mjs`, injetado pelo processo de teste. Não há flag de mock, credencial de teste ou endpoint de injeção no servidor de produção.
+
 ## Relevant tests
 
-`tests/managed_judicial_connectivity.mjs`, `tests/judicial_integrations_feature.mjs`, `tests/ui_v2_judicial_integrations.mjs`, `tests/ui_v2_judicial_integrations_accessibility.mjs`.
+`tests/omni_collector_comprehensive.mjs`, `tests/omni_server_e2e.mjs`, `tests/sync_progress_bar_e2e.mjs`, `tests/omni_ui_v2.mjs`, `tests/managed_judicial_connectivity.mjs`, `tests/decision_html_and_access_key.mjs`, `tests/judicial_integrations_feature.mjs`, `tests/ui_v2_judicial_integrations.mjs`, `tests/ui_v2_judicial_integrations_accessibility.mjs`.

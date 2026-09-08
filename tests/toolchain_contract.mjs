@@ -5,7 +5,7 @@ console.log('\n=== CONTRATO CANÔNICO DE TOOLCHAIN ===\n');
 
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const launcher = await readFile(new URL('../ATRIUM.bat', import.meta.url), 'utf8');
-const legacyWrapper = await readFile(new URL('../iniciar-atrium.bat', import.meta.url), 'utf8');
+const legacyWrapper = await readFile(new URL('../scripts/windows/iniciar-atrium.bat', import.meta.url), 'utf8');
 const bootstrap = await readFile(new URL('../scripts/windows/atrium-bootstrap.ps1', import.meta.url), 'utf8');
 const serverLauncher = await readFile(new URL('../scripts/windows/atrium-server.ps1', import.meta.url), 'utf8');
 const installer = await readFile(new URL('../install.ps1', import.meta.url), 'utf8');
@@ -27,7 +27,7 @@ assert.match(launcher, /--install-only/i);
 assert.match(launcher, /scripts\\windows\\atrium-bootstrap\.ps1/i);
 assert.match(launcher, /if not "%ATRIUM_EXIT%"=="0"/i);
 assert.match(launcher, /\bpause\b/i);
-assert.match(legacyWrapper, /call "%~dp0ATRIUM\.bat" %\*/i);
+assert.match(legacyWrapper, /call "%~dp0\.\.\\\.\.\\ATRIUM\.bat" %\*/i);
 
 assert.match(attributes, /^\*\.bat text eol=crlf$/m);
 assert.match(attributes, /^\*\.cmd text eol=crlf$/m);

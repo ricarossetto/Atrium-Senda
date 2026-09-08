@@ -120,13 +120,17 @@ try {
   await page.locator('[data-agenda-activity-id="ui-v2-agenda-hearing"]').click();
   await page.locator('#modalBackdrop[data-modal-mode="agenda"]:not(.hidden)').waitFor();
   assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)),
-    ['title', 'date', 'time', 'client', 'process', 'location', 'source', 'description']);
+    ['title', 'date', 'time', 'client', 'contactId', 'process', 'processId', 'location', 'source', 'description']);
   assert.equal(await page.locator('#modalForm [name="source"]').inputValue(), 'Agenda externa');
   await page.locator('#modalCancel').click();
 
   await page.locator('#newAgendaButton').click();
   await page.locator('#modalBackdrop[data-modal-mode="agenda"]:not(.hidden)').waitFor();
-  assert.equal(await page.locator('.agenda-form-section').count(), 6);
+  assert.equal(await page.locator('.agenda-form-section').count(), 5);
+  const locationBox = await page.locator('#field-location').boundingBox();
+  const sourceBox = await page.locator('#field-source').boundingBox();
+  assert.ok(Math.abs(locationBox.y - sourceBox.y) <= 1, 'Local e origem ficam na mesma linha');
+  assert.ok(locationBox.x + locationBox.width <= sourceBox.x, 'Campos sem sobreposição');
   await page.locator('#modalCancel').click();
 
   const stateSafety = await page.evaluate(() => {

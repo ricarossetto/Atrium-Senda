@@ -8,6 +8,7 @@ Antes de alterar um domínio, leia a spec correspondente e as specs transversais
 
 - [UI mode](ui-mode.md)
 - [Store e persistência](store-persistence.md)
+- [Lançamentos financeiros](financial-entries.md)
 - [Política humana de prazos](human-deadline-policy.md)
 - [Tratamento de publicações](publication-treatment.md)
 - [Política judicial read-only](judicial-readonly-policy.md)
@@ -21,6 +22,7 @@ Antes de alterar um domínio, leia a spec correspondente e as specs transversais
 - [Auditoria](audit-policy.md)
 - [Importação](import-policy.md)
 - [Relacionamento e CRM](relationship-crm.md)
+- [Gestão de tarefas](task-management.md)
 - [Inteligência cadastral brasileira](brazilian-registry-intelligence.md)
 
 ## Regra de precedência

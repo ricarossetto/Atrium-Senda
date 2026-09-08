@@ -34,6 +34,7 @@ Definir o contrato do gerador de minutas e do acervo documental vinculado a clie
 - Gerar preview inerte de texto UTF-8, PNG, JPEG e WebP; renderizar somente a primeira página de PDF quando Poppler local estiver disponível.
 - Extrair texto nativo sem processo externo e executar OCR local explícito em imagens/PDF quando Tesseract (e, para PDF, Poppler) estiver configurado.
 - Criar PDF determinístico a partir de texto UTF-8/Markdown inerte como novo documento do mesmo owner.
+- Gerar explicitamente, no processo TJRS, um caderno processual derivado do snapshot: índice e um PDF por andamento, todos identificados como derivados, cifrados no provider documental e vinculados ao processo.
 
 ## Forbidden operations
 
@@ -44,6 +45,7 @@ Definir o contrato do gerador de minutas e do acervo documental vinculado a clie
 - Destruir bytes no soft delete; purgar sem confirmação explícita e sem registro de auditoria.
 - Enviar arquivo, página ou texto de cliente a OCR cloud/terceiro, iniciar OCR automático ou usar shell para montar comandos.
 - Exibir PDF original, HTML ou SVG como conteúdo ativo; confiar apenas em extensão/MIME; prometer conversão de Office ou qualquer formato arbitrário.
+- Apresentar um PDF derivado de andamento como peça original, certidão ou cópia autenticada dos autos.
 - FUTURE: classificação automática, versionamento, assinatura, DOCX gerado ou edição colaborativa.
 
 ## State model

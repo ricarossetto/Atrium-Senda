@@ -94,7 +94,7 @@ try {
     await page.locator('[data-task-id="ui-v2-task-publication"] [data-task-open]').click();
     await page.locator('#modalBackdrop[data-modal-mode="task"]:not(.hidden)').waitFor();
     const names = await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name));
-    assert.deepEqual(names, ['title', 'taskDefinition', 'description', 'process', 'client', 'actionType', 'protocol', 'fatalDeadline', 'deadline', 'date', 'time', 'responsible', 'responsibles', 'status', 'priority', 'points', 'addMinutes', 'timeDescription']);
+    assert.deepEqual(names, ['title', 'taskDefinition', 'description', 'process', 'processId', 'client', 'contactId', 'actionType', 'protocol', 'fatalDeadline', 'deadline', 'date', 'time', 'responsible', 'responsibles', 'status', 'priority', 'points', 'addMinutes', 'timeDescription']);
     assert.equal(await page.locator('.task-form-section').count(), 5);
     assert.equal(await page.locator('#field-deadline').inputValue(), '', 'Texto de 15 dias não pode inferir prazo.');
     assert.equal(await page.locator('#field-fatalDeadline').inputValue(), '');

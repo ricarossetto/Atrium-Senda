@@ -68,7 +68,8 @@ try {
   assert.deepEqual(presentationSafety, initial, 'Busca, sort e filtros não podem mutar Store, auditar, requisitar ou criar timer.');
 
   await page.locator('[data-contact-id="ui-v2-contact-client"]').click();
-  assert.equal(await page.locator('#contactInspector').getAttribute('role'), 'region');
+  assert.equal(await page.locator('#contactInspector').getAttribute('role'), 'dialog');
+  assert.equal(await page.locator('#contactInspector').getAttribute('aria-modal'), 'true');
   assert.equal(await page.locator('#modalBackdrop').isHidden(), true, 'Leitura deve abrir inspector, não formulário.');
   const inspectorText = await page.locator('#contactInspector').textContent();
   assert.match(inspectorText, /Marina Duarte Sintética/);
@@ -107,6 +108,7 @@ try {
     assert.doesNotMatch(JSON.stringify(edited.audit), new RegExp(secret.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 
+  await page.locator('[data-contact-inspector-close]').click();
   await page.locator('#newContactButton').click();
   await page.locator('#modalBackdrop[data-modal-mode="contact"]:not(.hidden)').waitFor();
   assert.deepEqual((await page.locator('#modalForm [name]').evaluateAll(nodes => nodes.map(node => node.name))).sort(), expectedFields);
@@ -135,7 +137,9 @@ try {
   await page.locator('#globalSearch').fill('Bruno Testemunha');
   await page.locator('#searchPaletteResults [data-search-target="contact"][data-search-id="ui-v2-contact-witness"]').click();
   assert.equal(await page.locator('#view-contacts').getAttribute('class').then(value => value.includes('active')), true);
-  assert.equal(await page.locator('#contactSearch').inputValue(), 'Bruno Testemunha Sintético');
+  assert.equal(await page.locator('#contactSearch').inputValue(), '', 'Busca global abre detalhes sem restringir a lista de contatos.');
+  assert.match(await page.locator('#contactInspector').textContent(), /Bruno Testemunha Sintético/);
+  assert.equal(await page.locator('#contactInspector').getAttribute('role'), 'dialog');
   assert.equal(await page.locator('[data-contact-id="ui-v2-contact-witness"]').count(), 1);
 
   assert.equal(await page.evaluate(() => JSON.stringify(window.Atrium.Store.state.leads)), initial.leads, 'Contacts nunca deve mutar Leads.');

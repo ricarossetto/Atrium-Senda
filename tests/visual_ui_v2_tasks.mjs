@@ -20,7 +20,10 @@ const SCENARIOS = [
   { file: '10-dark-1280x800-publication-linked-drawer.png', theme: 'dark', width: 1280, height: 800, state: 'publication' },
   { file: '11-light-1280x800-completed.png', theme: 'light', width: 1280, height: 800, state: 'completed' },
   { file: '12-light-390x844-mobile-list.png', theme: 'light', width: 390, height: 844, state: 'mobile-list' },
-  { file: '13-dark-390x844-mobile-sheet.png', theme: 'dark', width: 390, height: 844, state: 'mobile-sheet' }
+  { file: '13-dark-390x844-mobile-sheet.png', theme: 'dark', width: 390, height: 844, state: 'mobile-sheet' },
+  { file: '14-light-1440x900-task-list.png', theme: 'light', width: 1440, height: 900, state: 'task-list' },
+  { file: '15-dark-390x844-mobile-task-list.png', theme: 'dark', width: 390, height: 844, state: 'task-list' },
+  { file: '16-light-1186x698-task-list.png', theme: 'light', width: 1186, height: 698, state: 'task-list' }
 ];
 
 fs.mkdirSync(OUTPUT, { recursive: true });
@@ -56,6 +59,9 @@ try {
         await page.locator('[data-column="concluida"]').scrollIntoViewIfNeeded();
       } else if (scenario.state === 'mobile-sheet') {
         await page.locator('[data-task-id="ui-v2-task-publication"] [data-task-open]').click();
+      } else if (scenario.state === 'task-list') {
+        await page.locator('#taskListViewButton').click();
+        await page.locator('#taskListPanel:not(.hidden)').waitFor();
       }
 
       if (['new', 'edit', 'publication', 'mobile-sheet'].includes(scenario.state)) {
@@ -75,6 +81,8 @@ try {
           boardOverflow: innerWidth < 768 ? board.scrollWidth - board.clientWidth : 0,
           cards: board.querySelectorAll('[data-task-id]').length,
           columns: board.querySelectorAll('.kanban-column').length,
+          taskListVisible: !document.getElementById('taskListPanel').classList.contains('hidden'),
+          taskListRows: document.querySelectorAll('#taskList [data-task-list-id]').length,
           duplicateIds: ids.filter((id, index) => ids.indexOf(id) !== index),
           drawer: drawerRect ? {
             left: drawerRect.left, right: drawerRect.right, top: drawerRect.top, bottom: drawerRect.bottom,
@@ -91,6 +99,10 @@ try {
       assert.ok(layout.boardOverflow <= 2, `Overflow mobile do RecordList em ${scenario.file}: ${layout.boardOverflow}px.`); assertions++;
       assert.equal(layout.cards, 6); assertions++;
       assert.equal(layout.columns, 6); assertions++;
+      if (scenario.state === 'task-list') {
+        assert.equal(layout.taskListVisible, true); assertions++;
+        assert.equal(layout.taskListRows, 6); assertions++;
+      }
       assert.deepEqual(layout.duplicateIds, []); assertions++;
       assert.equal(layout.hasCritical, true); assertions++;
       assert.deepEqual(pageErrors, []); assertions++;
@@ -108,7 +120,7 @@ try {
     }
   }
 
-  assert.equal(hashes.size, SCENARIOS.length, 'Os 13 estados visuais selecionados devem produzir hashes distintos.');
+  assert.equal(hashes.size, SCENARIOS.length, 'Os estados visuais selecionados devem produzir hashes distintos.');
   console.log('======================================================');
   console.log('✓ UI V2 TAREFAS / KANBAN VISUAL QA CONCLUÍDO!');
   console.log(`- Screenshots: ${SCENARIOS.length}`);

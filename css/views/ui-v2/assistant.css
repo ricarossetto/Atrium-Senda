@@ -744,3 +744,4 @@ html[data-ui="v2"] #geminiKeyBackdrop .gemini-key-feedback.error {
     transition-duration: .01ms !important;
   }
 }
+html[data-ui="v2"] #aiKeyStatusChip { border-radius: var(--v2-radius-md); }

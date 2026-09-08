@@ -131,6 +131,8 @@ assert.equal(modalContract[0], 'agenda');
 assert.equal(modalContract[1], 'Detalhes do compromisso');
 assert.equal(modalContract[2], 'Agenda jurídica');
 assert.deepEqual(modalContract[3].map(field => field.name), ['title', 'date', 'time', 'client', 'process', 'location', 'source', 'description']);
+assert.equal(modalContract[3].find(field => field.name === 'client').identityName, 'contactId');
+assert.equal(modalContract[3].find(field => field.name === 'process').identityName, 'processId');
 assert.deepEqual(modalContract[3].find(field => field.name === 'source').options.map(option => option.value), ['Interna', 'Agenda externa', 'Importação']);
 
 const created = isolatedFeature.saveRecord({ title: 'Novo compromisso', date: referenceToday }, {});
@@ -283,6 +285,8 @@ try {
   await page.locator('#agendaList [data-agenda-activity-id="intimation-agenda"]').click();
   await page.locator('#modalTitle', { hasText: 'Detalhes da intimação' }).waitFor();
   assert.match(await page.locator('#modalForm [name="actInfo"]').inputValue(), /CONTESTAÇÃO/);
+  const intimationTextHeight = await page.locator('#field-text').evaluate(element => element.getBoundingClientRect().height);
+  assert.ok(intimationTextHeight >= 220, `Teor integral deve abrir como área de leitura; altura atual: ${intimationTextHeight}px.`);
   await page.click('#modalCancel');
   const intimationAfter = await page.evaluate(() => {
     const item = window.Atrium.Store.state.intimations.find(record => record.id === 'intimation-agenda');
@@ -302,7 +306,7 @@ try {
 
   await page.locator('#agendaList [data-agenda-activity-id="agenda-seed"]').click();
   await page.locator('#modalTitle', { hasText: 'Detalhes do compromisso' }).waitFor();
-  assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)), ['title', 'date', 'time', 'client', 'process', 'location', 'source', 'description']);
+  assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)), ['title', 'date', 'time', 'client', 'contactId', 'process', 'processId', 'location', 'source', 'description']);
   assert.equal(await page.locator('#modalForm [name="source"]').inputValue(), 'Agenda externa');
   await page.locator('#modalForm [name="title"]').fill('Audiência Agenda Modular Editada');
   await page.click('#modalForm button[type="submit"]');

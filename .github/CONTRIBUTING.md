@@ -11,7 +11,7 @@ Obrigado por contribuir com o ATRIUM. Mudanças devem preservar integridade de d
 
 ## Fluxo
 
-1. Leia `AGENTS.md` e a especificação relevante em [`specs/`](specs/README.md).
+1. Leia `AGENTS.md` e a especificação relevante em [`specs/`](../specs/README.md).
 2. Faça uma mudança pequena e coerente.
 3. Use fixtures exclusivamente sintéticas.
 4. Rode testes dirigidos ao domínio alterado.

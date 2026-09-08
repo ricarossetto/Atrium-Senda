@@ -148,19 +148,19 @@ html[data-ui="v2"] .contact-role-filter.is-active small { color: var(--v2-color-
 
 html[data-ui="v2"] .contacts-workspace-layout {
   min-width: 0;
-  height: clamp(500px, calc(100dvh - 290px), 660px);
+  height: auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(480px, 1.08fr) minmax(390px, .92fr);
-  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: visible;
 }
 
 html[data-ui="v2"] .contacts-master {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  overflow: hidden;
+  grid-template-rows: auto auto auto;
+  overflow: visible;
   background: var(--v2-color-surface);
   border-right: 1px solid var(--v2-color-border);
 }
@@ -207,8 +207,7 @@ html[data-ui="v2"] .contact-record-list {
   display: grid;
   align-content: start;
   max-height: none;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
 }
 
 html[data-ui="v2"] .contact-record {
@@ -281,7 +280,23 @@ html[data-ui="v2"]:has(#modalBackdrop[data-modal-mode="contact"]:not(.hidden)) .
   visibility: hidden;
 }
 
-html[data-ui="v2"] .contacts-inspector.is-empty { place-items: center; padding: var(--v2-space-8); }
+html[data-ui="v2"] .contacts-inspector.is-empty { display: none; }
+html[data-ui="v2"] #view-contacts:has(.contacts-inspector.is-open) { animation: none !important; transform: none !important; }
+html[data-ui="v2"]:has(#view-contacts.active .contacts-inspector.is-open) body { overflow: hidden; }
+html[data-ui="v2"] .contact-inspector-backdrop {
+  position: fixed; inset: 0; z-index: var(--v2-z-overlay);
+  background: color-mix(in srgb, var(--v2-color-background) 72%, transparent);
+  backdrop-filter: blur(3px);
+}
+html[data-ui="v2"] .contacts-inspector.is-open {
+  position: fixed; inset: 0 0 0 auto; z-index: calc(var(--v2-z-overlay) + 1);
+  width: min(960px, 92vw); height: 100dvh;
+  border-left: 1px solid var(--v2-color-border); box-shadow: var(--v2-shadow-card);
+}
+html[data-ui="v2"]:has(#contactInspector.is-open) .process-inspector-backdrop:not(.hidden) {
+  z-index: calc(var(--v2-z-overlay) + 2);
+}
+html[data-ui="v2"]:has(#modalBackdrop[data-modal-mode="contact"]:not(.hidden)) .contact-inspector-backdrop { visibility: hidden; }
 html[data-ui="v2"] .contact-inspector-empty { max-width: 310px; color: var(--v2-color-muted-foreground); text-align: center; }
 html[data-ui="v2"] .contact-inspector-empty > span { display: block; color: var(--v2-color-gold); font-size: 30px; }
 html[data-ui="v2"] .contact-inspector-empty h3 { margin: var(--v2-space-3) 0 var(--v2-space-2); color: var(--v2-color-foreground); font: 600 23px/1.15 var(--v2-font-editorial); }
@@ -308,10 +323,10 @@ html[data-ui="v2"] .contact-inspector-close {
   cursor: pointer;
 }
 
-html[data-ui="v2"] .contact-role-label { display: inline-flex; gap: var(--v2-space-2); align-items: center; color: var(--v2-color-primary); font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+html[data-ui="v2"] .contact-role-label { display: inline-flex; gap: var(--v2-space-2); align-items: center; color: var(--v2-color-primary); font-size: 12px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
 html[data-ui="v2"] .contact-role-label .contact-role-marker { width: 3px; height: 16px; }
 html[data-ui="v2"] .contact-inspector-header h3 { max-width: calc(100% - 44px); margin: var(--v2-space-2) 0 var(--v2-space-1); font: 600 clamp(24px, 2vw, 31px)/1.12 var(--v2-font-editorial); letter-spacing: -.02em; }
-html[data-ui="v2"] .contact-inspector-header p { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 11px; }
+html[data-ui="v2"] .contact-inspector-header p { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 14px; }
 
 html[data-ui="v2"] .contact-inspector-body {
   min-height: 0;
@@ -325,16 +340,16 @@ html[data-ui="v2"] .contact-inspector-body {
 
 html[data-ui="v2"] .contact-inspector-section { padding-bottom: var(--v2-space-4); border-bottom: 1px solid var(--v2-color-border-subtle); }
 html[data-ui="v2"] .contact-inspector-section:last-child { border-bottom: 0; }
-html[data-ui="v2"] .contact-inspector-section h4 { margin: 0 0 var(--v2-space-3); color: var(--v2-color-gold); font-size: 9px; font-weight: 850; letter-spacing: .11em; text-transform: uppercase; }
+html[data-ui="v2"] .contact-inspector-section h4 { margin: 0 0 var(--v2-space-3); color: var(--v2-color-gold); font-size: 12px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
 html[data-ui="v2"] .contact-inspector-section dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--v2-space-3) var(--v2-space-5); margin: 0; }
 html[data-ui="v2"] .contact-inspector-section dl > div { min-width: 0; }
-html[data-ui="v2"] .contact-inspector-section dt { margin: 0 0 3px; color: var(--v2-color-muted-foreground); font-size: 9px; }
-html[data-ui="v2"] .contact-inspector-section dd { margin: 0; overflow-wrap: anywhere; color: var(--v2-color-foreground); font-size: 12px; line-height: 1.45; }
-html[data-ui="v2"] .contact-inspector-section.is-sensitive dd { color: var(--v2-color-foreground-secondary); font-size: 11px; }
-html[data-ui="v2"] .contact-notes p { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 11px; line-height: 1.65; white-space: pre-wrap; }
+html[data-ui="v2"] .contact-inspector-section dt { margin: 0 0 4px; color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] .contact-inspector-section dd { margin: 0; overflow-wrap: anywhere; color: var(--v2-color-foreground); font-size: 14px; line-height: 1.5; }
+html[data-ui="v2"] .contact-inspector-section.is-sensitive dd { color: var(--v2-color-foreground-secondary); font-size: 13px; }
+html[data-ui="v2"] .contact-notes p { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
 html[data-ui="v2"] .contact-financial-summary { padding: var(--v2-space-3); background: var(--v2-color-surface-secondary); border: 1px solid var(--v2-color-border-subtle); border-radius: var(--v2-radius-md); }
 html[data-ui="v2"] .contact-financial-summary dd { color: var(--v2-color-accent-strong); font-variant-numeric: tabular-nums; }
-html[data-ui="v2"] .contact-financial-summary p { margin: var(--v2-space-3) 0 0; color: var(--v2-color-muted-foreground); font-size: 9px; line-height: 1.45; }
+html[data-ui="v2"] .contact-financial-summary p { margin: var(--v2-space-3) 0 0; color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.5; }
 
 html[data-ui="v2"] .contact-legal-summary {
   display: grid;
@@ -347,29 +362,29 @@ html[data-ui="v2"] .contact-legal-summary {
 
 html[data-ui="v2"] .contact-context-heading { display: flex; justify-content: space-between; gap: var(--v2-space-3); align-items: end; }
 html[data-ui="v2"] .contact-context-heading :where(p, h4) { margin: 0; }
-html[data-ui="v2"] .contact-context-heading p { color: var(--v2-color-gold); font-size: 8px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
-html[data-ui="v2"] .contact-context-heading h4 { margin-top: 2px; color: var(--v2-color-foreground); font: 600 18px/1.15 var(--v2-font-editorial); }
-html[data-ui="v2"] .contact-context-heading > span { color: var(--v2-color-primary); font-size: 9px; font-weight: 800; text-align: right; }
+html[data-ui="v2"] .contact-context-heading p { color: var(--v2-color-gold); font-size: 11px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+html[data-ui="v2"] .contact-context-heading h4 { margin-top: 2px; color: var(--v2-color-foreground); font: 600 22px/1.15 var(--v2-font-editorial); }
+html[data-ui="v2"] .contact-context-heading > span { color: var(--v2-color-primary); font-size: 12px; font-weight: 800; text-align: right; }
 
 html[data-ui="v2"] .contact-context-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; background: var(--v2-color-border-subtle); border: 1px solid var(--v2-color-border-subtle); border-radius: var(--v2-radius-md); }
 html[data-ui="v2"] .contact-context-metrics > div { min-width: 0; display: grid; gap: 1px; padding: var(--v2-space-2) var(--v2-space-3); background: var(--v2-color-surface-elevated); }
-html[data-ui="v2"] .contact-context-metrics strong { color: var(--v2-color-foreground); font-size: 15px; font-variant-numeric: tabular-nums; }
-html[data-ui="v2"] .contact-context-metrics span { overflow: hidden; color: var(--v2-color-muted-foreground); font-size: 8px; font-weight: 750; text-overflow: ellipsis; text-transform: uppercase; }
-html[data-ui="v2"] .contact-context-integrity { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 9px; line-height: 1.45; }
+html[data-ui="v2"] .contact-context-metrics strong { color: var(--v2-color-foreground); font-size: 18px; font-variant-numeric: tabular-nums; }
+html[data-ui="v2"] .contact-context-metrics span { overflow: hidden; color: var(--v2-color-muted-foreground); font-size: 11px; font-weight: 750; text-overflow: ellipsis; text-transform: uppercase; }
+html[data-ui="v2"] .contact-context-integrity { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 12px; line-height: 1.5; }
 
 html[data-ui="v2"] .contact-context-section { display: grid; gap: var(--v2-space-2); }
 html[data-ui="v2"] .contact-context-section > h4 { margin-bottom: var(--v2-space-1); }
-html[data-ui="v2"] .contact-context-empty { margin: 0; color: var(--v2-color-muted-foreground); font-size: 10px; line-height: 1.5; }
+html[data-ui="v2"] .contact-context-empty { margin: 0; color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.5; }
 html[data-ui="v2"] .contact-context-list { display: grid; gap: var(--v2-space-1-5); }
 html[data-ui="v2"] .contact-context-list > button {
   width: 100%;
   min-width: 0;
-  min-height: 48px;
+  min-height: 62px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--v2-space-3);
   align-items: center;
-  padding: var(--v2-space-2) var(--v2-space-3);
+  padding: var(--v2-space-3) var(--v2-space-4);
   color: var(--v2-color-foreground);
   background: var(--v2-color-surface-secondary);
   border: 1px solid var(--v2-color-border-subtle);
@@ -381,10 +396,10 @@ html[data-ui="v2"] .contact-context-list > button:hover { background: var(--v2-c
 html[data-ui="v2"] .contact-context-list > button > span:first-child { min-width: 0; display: grid; gap: 2px; }
 html[data-ui="v2"] .contact-context-list strong,
 html[data-ui="v2"] .contact-context-list small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-html[data-ui="v2"] .contact-context-list strong { font-size: 10px; font-weight: 780; }
-html[data-ui="v2"] .contact-context-list small { color: var(--v2-color-muted-foreground); font-size: 8px; }
-html[data-ui="v2"] .contact-context-link-meta { display: inline-flex; gap: var(--v2-space-2); align-items: center; color: var(--v2-color-primary); font-size: 8px; font-weight: 750; white-space: nowrap; }
-html[data-ui="v2"] .contact-context-link-meta b { font-size: 13px; }
+html[data-ui="v2"] .contact-context-list strong { font-size: 13px; font-weight: 780; }
+html[data-ui="v2"] .contact-context-list small { color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] .contact-context-link-meta { min-width: 0; display: inline-flex; gap: var(--v2-space-2); align-items: center; justify-content: flex-end; color: var(--v2-color-primary); font-size: 12px; font-weight: 750; line-height: 1.25; text-align: right; white-space: normal; }
+html[data-ui="v2"] .contact-context-link-meta b { flex: 0 0 auto; font-size: 17px; }
 
 html[data-ui="v2"] .contact-context-timeline { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
 html[data-ui="v2"] .contact-context-timeline li { position: relative; min-width: 0; }
@@ -392,9 +407,9 @@ html[data-ui="v2"] .contact-context-timeline :where(button, li > div) { width: 1
 html[data-ui="v2"] .contact-context-timeline button { cursor: pointer; }
 html[data-ui="v2"] .contact-context-timeline li:last-child :where(button, div) { border-bottom: 0; }
 html[data-ui="v2"] .contact-context-timeline :where(button, li > div) > span:nth-child(2) { min-width: 0; display: grid; gap: 2px; }
-html[data-ui="v2"] .contact-context-timeline small { overflow: hidden; color: var(--v2-color-muted-foreground); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
-html[data-ui="v2"] .contact-context-timeline strong { font-size: 10px; line-height: 1.35; }
-html[data-ui="v2"] .contact-context-timeline em { overflow: hidden; color: var(--v2-color-foreground-secondary); font-size: 8px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+html[data-ui="v2"] .contact-context-timeline small { overflow: hidden; color: var(--v2-color-muted-foreground); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+html[data-ui="v2"] .contact-context-timeline strong { font-size: 13px; line-height: 1.4; }
+html[data-ui="v2"] .contact-context-timeline em { overflow: hidden; color: var(--v2-color-foreground-secondary); font-size: 12px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 html[data-ui="v2"] .contact-context-timeline b { color: var(--v2-color-primary); font-size: 13px; }
 html[data-ui="v2"] .contact-timeline-marker { width: 7px; height: 7px; margin-top: 3px; background: var(--v2-color-muted-foreground); border-radius: var(--v2-radius-round); }
 html[data-ui="v2"] .contact-timeline-marker.is-deadline,
@@ -537,7 +552,7 @@ html[data-ui="v2"] .registry-qsa > div small { display: block; }
 html[data-ui="v2"] .registry-qsa > div small { color: var(--v2-color-muted-foreground); }
 
 @media (max-width: 1180px) {
-  html[data-ui="v2"] .contacts-workspace-layout { grid-template-columns: minmax(420px, 1fr) minmax(330px, .82fr); }
+  html[data-ui="v2"] .contacts-workspace-layout { grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] .contact-record { grid-template-columns: 3px minmax(150px, 1.2fr) minmax(130px, 1fr) minmax(110px, .85fr) 18px; }
   html[data-ui="v2"] .contact-record-date { display: none; }
 }
@@ -545,57 +560,10 @@ html[data-ui="v2"] .registry-qsa > div small { color: var(--v2-color-muted-foreg
 @media (max-width: 960px) {
   html[data-ui="v2"] #view-contacts > .section-toolbar { grid-template-columns: 1fr; align-items: start; }
   html[data-ui="v2"] #view-contacts .toolbar-actions { justify-content: flex-start; }
-  html[data-ui="v2"] .contacts-workspace-layout { grid-template-columns: minmax(360px, 1fr) minmax(300px, .8fr); }
+  html[data-ui="v2"] .contacts-workspace-layout { grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] .contact-record { grid-template-columns: 3px minmax(145px, 1.2fr) minmax(115px, 1fr) 18px; }
   html[data-ui="v2"] .contact-record-context { display: none; }
   html[data-ui="v2"] .contact-inspector-section dl { grid-template-columns: 1fr; }
-}
-
-@media (min-width: 761px) {
-  html[data-ui="v2"] .main-content:has(#view-contacts.active) {
-    height: 100dvh;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  html[data-ui="v2"] .main-content:has(#view-contacts.active) > :where(.topbar, .system-status-bar) {
-    flex: 0 0 auto;
-  }
-
-  html[data-ui="v2"] #view-contacts.active {
-    min-height: 0;
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  html[data-ui="v2"] #view-contacts > .section-toolbar { flex: 0 0 auto; }
-
-  html[data-ui="v2"] #view-contacts > .table-card {
-    min-height: 0;
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-  }
-
-  html[data-ui="v2"] #view-contacts .contacts-search,
-  html[data-ui="v2"] #view-contacts .contact-role-filters { flex: 0 0 auto; }
-
-  html[data-ui="v2"] #contactsV2Workspace,
-  html[data-ui="v2"] .contacts-v2-shell {
-    min-height: 0;
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-  }
-
-  html[data-ui="v2"] #view-contacts .contacts-workspace-layout {
-    height: auto;
-    flex: 1 1 auto;
-  }
 }
 
 @media (max-width: 760px) {
@@ -653,6 +621,8 @@ html[data-ui="v2"] .registry-qsa > div small { color: var(--v2-color-muted-foreg
   html[data-ui="v2"] .contact-inspector-close { width: 44px; height: 44px; }
   html[data-ui="v2"] .contact-inspector-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   html[data-ui="v2"] .contact-inspector-actions button { min-width: 0; min-height: 44px; }
+  html[data-ui="v2"] .contact-context-list > button { grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .contact-context-link-meta { justify-content: flex-start; text-align: left; }
   html[data-ui="v2"] #modalBackdrop[data-modal-mode="contact"] .modal { width: 100%; max-width: 100%; border-left: 0; }
   html[data-ui="v2"] #modalBackdrop[data-modal-mode="contact"] .modal > header,
   html[data-ui="v2"] #modalBackdrop[data-modal-mode="contact"] #modalFields,

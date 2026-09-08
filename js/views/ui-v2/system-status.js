@@ -19,7 +19,7 @@ export function createSystemStatusBar({
   let currentState = 'ready';
   let dismissTimer = null;
 
-  function setState(state, detail) {
+  function setState(state, detail, percent = null) {
     const definition = SYSTEM_STATUS_STATES[state] || SYSTEM_STATUS_STATES.ready;
     currentState = SYSTEM_STATUS_STATES[state] ? state : 'ready';
     const bar = documentRef?.getElementById?.('systemStatusBar');
@@ -31,9 +31,40 @@ export function createSystemStatusBar({
     const icon = documentRef.getElementById('systemStatusIcon');
     const label = documentRef.getElementById('systemStatusLabel');
     const message = documentRef.getElementById('systemStatusDetail');
-    if (icon) icon.innerHTML = iconSvg(definition.icon);
-    if (label) label.textContent = definition.label;
+    const progressTrack = documentRef?.getElementById?.('systemStatusProgressTrack');
+    const progressFill = documentRef?.getElementById?.('systemStatusProgressFill');
+
+    if (icon && icon.dataset.statusIcon !== definition.icon) {
+      icon.innerHTML = iconSvg(definition.icon);
+      icon.dataset.statusIcon = definition.icon;
+    }
+    if (label) {
+      if (currentState === 'syncing' && typeof percent === 'number' && Number.isFinite(percent)) {
+        label.textContent = `${definition.label} (${Math.min(100, Math.max(0, Math.round(percent)))}%)`;
+      } else {
+        label.textContent = definition.label;
+      }
+    }
     if (message) message.textContent = String(detail || definition.detail);
+
+    if (progressTrack && progressFill) {
+      if (currentState === 'syncing' && typeof percent === 'number' && Number.isFinite(percent)) {
+        progressTrack.classList.remove('hidden');
+        progressTrack.removeAttribute('aria-hidden');
+        progressTrack.setAttribute('role', 'progressbar');
+        progressTrack.setAttribute('aria-label', 'Progresso da sincronização');
+        progressTrack.setAttribute('aria-valuemin', '0');
+        progressTrack.setAttribute('aria-valuemax', '100');
+        progressTrack.setAttribute('aria-valuenow', String(Math.min(100, Math.max(0, Math.round(percent)))));
+        progressFill.style.width = `${Math.min(100, Math.max(0, Math.round(percent)))}%`;
+      } else {
+        progressTrack.classList.add('hidden');
+        progressTrack.setAttribute('aria-hidden', 'true');
+        progressTrack.removeAttribute('aria-valuenow');
+        progressFill.style.width = '0%';
+      }
+    }
+
     if (['ready', 'saved'].includes(currentState)) {
       dismissTimer = windowRef?.setTimeout?.(() => bar.classList.add('is-transient-hidden'), currentState === 'saved' ? 2200 : 1800);
     }

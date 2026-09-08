@@ -7,6 +7,7 @@ export function createProcessesV2Presenter({
   formatMinutes,
   onEdit,
   onConsult,
+  onDownloadAutos,
   onDocuments,
   onClient,
   onTasks,
@@ -16,6 +17,7 @@ export function createProcessesV2Presenter({
   onAgenda,
   onFinancial,
   onAssistant,
+  onCreateTask,
   onDelete
 } = {}) {
   let initialized = false;
@@ -46,7 +48,7 @@ export function createProcessesV2Presenter({
         if (task) { close({ restoreFocus: false }); onTask?.(task); }
       } else if (event.target.closest('[data-process-publication]')) {
         const publication = selectedPublications.find(item => String(item.id) === event.target.closest('[data-process-publication]').dataset.processPublication);
-        if (publication) { close({ restoreFocus: false }); onPublication?.(publication); }
+        if (publication) onPublication?.(publication);
       } else if (event.target.closest('[data-process-agenda]')) {
         const appointment = selectedAppointments.find(item => String(item.id) === event.target.closest('[data-process-agenda]').dataset.processAgenda);
         if (appointment) { close({ restoreFocus: false }); onAgenda?.({ entityId: appointment.id }); }
@@ -61,7 +63,7 @@ export function createProcessesV2Presenter({
           if (task) { close({ restoreFocus: false }); onTask?.(task); }
         } else if (timelineEvent.target === 'publication') {
           const publication = selectedPublications.find(item => String(item.id) === timelineEvent.entityId);
-          if (publication) { close({ restoreFocus: false }); onPublication?.(publication); }
+          if (publication) onPublication?.(publication);
         } else if (timelineEvent.target === 'agenda') {
           close({ restoreFocus: false }); onAgenda?.(timelineEvent);
         } else if (timelineEvent.target === 'document') {
@@ -75,6 +77,8 @@ export function createProcessesV2Presenter({
         const item = selectedItem; close({ restoreFocus: false }); onTasks?.(item);
       } else if (event.target.closest('[data-process-financial]')) {
         const item = selectedItem; close({ restoreFocus: false }); onFinancial?.(item);
+      } else if (event.target.closest('[data-download-autos]')) {
+        onDownloadAutos?.(event.target.closest('[data-download-autos]'), selectedItem);
       }
     });
     byId('processInspectorEdit')?.addEventListener('click', () => {
@@ -85,8 +89,17 @@ export function createProcessesV2Presenter({
       if (returnTarget?.isConnected && typeof returnTarget.focus === 'function') returnTarget.focus();
       onEdit?.(item);
     });
+    byId('processInspectorCreateTask')?.addEventListener('click', () => {
+      if (!selectedItem) return;
+      const item = selectedItem;
+      close({ restoreFocus: false });
+      onCreateTask?.(item);
+    });
     byId('processInspectorTjrs')?.addEventListener('click', event => {
       if (selectedItem) onConsult?.(event.currentTarget, selectedItem);
+    });
+    byId('processInspectorDownloadAutos')?.addEventListener('click', event => {
+      if (selectedItem) onDownloadAutos?.(event.currentTarget, selectedItem);
     });
     byId('processInspectorDocuments')?.addEventListener('click', () => {
       if (!selectedItem) return;
@@ -154,6 +167,7 @@ export function createProcessesV2Presenter({
     const consultButton = byId('processInspectorTjrs');
     consultButton.classList.toggle('hidden', !summary.canConsultTjrs);
     consultButton.dataset.tjrsConsult = summary.canConsultTjrs ? String(item.number || '') : '';
+    byId('processInspectorDownloadAutos')?.classList.toggle('hidden', !summary.canConsultTjrs);
 
     documentRef.querySelectorAll('#processTableBody [data-process-id]').forEach(row => {
       const selected = row.dataset.processId === String(item.id);
@@ -452,35 +466,46 @@ function renderMovements(movements, item, escapeHtml, formatDate) {
 }
 
 function renderJudicialContext(item, escapeHtml, formatDate) {
-  const parties = Array.isArray(item.judicialParties) ? item.judicialParties : [];
-  const collector = item.tjrsCollector;
-  if (!parties.length && !collector) return '';
+  const integration = item.judicialIntegration || item.judicialSnapshot || item.tjrsCollector;
+  const parties = Array.isArray(item.judicialParties) && item.judicialParties.length
+    ? item.judicialParties
+    : (Array.isArray(integration?.parties) ? integration.parties : []);
+  if (!parties.length && !integration) return `<section class="process-inspector-section" aria-labelledby="processJudicialHeading"><h3 id="processJudicialHeading">Contexto judicial</h3><p class="process-inspector-empty">Nenhuma consulta judicial incorporada. Atualize o processo para consultar as fontes disponíveis.</p>${renderAutosAction(item, escapeHtml)}</section>`;
   const partyList = parties.length
-    ? `<div class="process-linked-list process-judicial-parties">${parties.map(party => {
-        const lawyers = (Array.isArray(party.lawyers) ? party.lawyers : [])
+    ? `<div class="process-linked-list process-judicial-parties">${parties.filter(Boolean).map(party => {
+        const lawyers = (Array.isArray(party.lawyers) ? party.lawyers : []).filter(Boolean)
           .map(lawyer => unique([lawyer.name, lawyer.oabNumber ? `OAB ${lawyer.oabUf || ''} ${lawyer.oabNumber}` : '']).join(' · '))
           .filter(Boolean)
           .join('; ');
         return `<div><strong>${escapeHtml(party.name || 'Parte sem nome')}</strong><span>${escapeHtml(unique([party.role, lawyers]).join(' · '))}</span></div>`;
       }).join('')}</div>`
     : '<p class="process-inspector-empty">O snapshot não contém partes identificadas.</p>';
-  const diff = collector?.diff;
-  const collectorMeta = collector
+  const diff = integration?.diff;
+  const newMovsCount = Array.isArray(diff?.newMovements) ? diff.newMovements.length : (diff?.newMovements || 0);
+  const collectorMeta = integration
     ? `<dl class="process-metadata-grid process-collector-metadata">
-        ${definition('Estado do conector', collector.status === 'AVAILABLE' ? 'Disponível' : collector.status, escapeHtml)}
-        ${definition('Sistema', collector.system, escapeHtml)}
-        ${definition('Última coleta', formatDate(collector.syncedAt), escapeHtml)}
-        ${definition('Versão do coletor', collector.collectorVersion, escapeHtml)}
-        ${definition('Snapshots locais', collector.snapshotsCount, escapeHtml)}
-        ${definition('Novos andamentos', diff?.newMovements, escapeHtml)}
+        ${definition('Fonte / Provedor', integration.source || 'Fonte não informada', escapeHtml)}
+        ${integration.collectorVersion ? definition('Versão do coletor', integration.collectorVersion, escapeHtml) : ''}
+        ${integration.snapshotsCount != null ? definition('Snapshots locais', integration.snapshotsCount, escapeHtml) : ''}
+        ${definition('Tribunal', integration.court || item.court || 'Oficial', escapeHtml)}
+        ${definition('Última coleta', formatDate(integration.syncedAt), escapeHtml)}
+        ${definition('Andamentos coletados', integration.movementsCount != null ? integration.movementsCount : (integration.movements?.length ?? '—'), escapeHtml)}
+        ${definition('Novos andamentos', diff ? (newMovsCount > 0 ? `+${newMovsCount} novos` : 'Nenhum novo andamento') : 'Sem comparação disponível', escapeHtml)}
       </dl>`
     : '';
   return `<section class="process-inspector-section" aria-labelledby="processJudicialHeading">
     <h3 id="processJudicialHeading">Contexto judicial coletado</h3>
     ${collectorMeta}
     ${partyList}
+    ${renderAutosAction(item, escapeHtml)}
     <p class="process-inspector-note">Leitura local e somente consulta. O vínculo do cliente continua sob controle do escritório.</p>
   </section>`;
+}
+
+function renderAutosAction(item, escapeHtml) {
+  const isTjrs = String(item?.number || '').includes('.8.21.') || String(item?.court || '').toUpperCase().includes('TJRS');
+  if (!isTjrs) return '';
+  return `<div class="process-autos-action"><div><strong>Caderno processual para consulta offline</strong><span>Gera PDFs derivados do snapshot e guarda tudo no acervo cifrado deste processo.</span></div><button type="button" class="button ghost" data-download-autos data-process-id="${escapeHtml(item.id || '')}">Gerar caderno em PDFs</button></div>`;
 }
 
 function riskPresentation(value) {

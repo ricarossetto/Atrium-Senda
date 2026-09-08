@@ -21,7 +21,8 @@ const SCENARIOS = [
   { file: '09-light-1440x900-new-event-drawer.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'new' },
   { file: '10-dark-1440x900-edit-event-drawer.png', theme: 'dark', viewport: { width: 1440, height: 900 }, state: 'edit' },
   { file: '11-light-390x844-mobile-agenda.png', theme: 'light', viewport: { width: 390, height: 844 }, state: 'selected' },
-  { file: '12-dark-390x844-mobile-event-sheet.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'mobile-sheet' }
+  { file: '12-dark-390x844-mobile-event-sheet.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'mobile-sheet' },
+  { file: '13-light-1186x794-intimation-reader.png', theme: 'light', viewport: { width: 1186, height: 794 }, state: 'intimation-reader' }
 ];
 
 const session = await startUiV2Session();
@@ -51,10 +52,14 @@ try {
         await page.locator('#newAgendaButton').click();
       } else if (scenario.state === 'edit') {
         await page.locator('[data-agenda-activity-id="ui-v2-agenda-hearing"]').click();
+      } else if (scenario.state === 'intimation-reader') {
+        await page.locator('[data-agenda-activity-id="ui-v2-agenda-publication"]').click();
       }
 
       if (['new', 'edit', 'mobile-sheet'].includes(scenario.state)) {
         await page.locator('#modalBackdrop[data-modal-mode="agenda"]:not(.hidden)').waitFor();
+      } else if (scenario.state === 'intimation-reader') {
+        await page.locator('#modalBackdrop[data-modal-mode="intimationDetail"]:not(.hidden) #field-text').waitFor();
       }
       await page.waitForTimeout(280);
 
@@ -64,6 +69,8 @@ try {
         const calendarRect = calendar?.getBoundingClientRect();
         const drawer = document.querySelector('#modalBackdrop[data-modal-mode="agenda"]:not(.hidden) .modal');
         const drawerRect = drawer?.getBoundingClientRect();
+        const intimationReader = document.querySelector('#modalBackdrop[data-modal-mode="intimationDetail"]:not(.hidden) #field-text');
+        const intimationReaderRect = intimationReader?.getBoundingClientRect();
         const dayButtons = [...document.querySelectorAll('#miniCalendar .calendar-day[data-cal-date]')];
         return {
           active: document.getElementById('view-agenda').classList.contains('active'),
@@ -80,6 +87,12 @@ try {
             left: drawerRect.left, right: drawerRect.right, top: drawerRect.top, bottom: drawerRect.bottom,
             width: innerWidth, height: innerHeight,
             formOverflow: drawer.querySelector('form').scrollWidth - drawer.querySelector('form').clientWidth
+          } : null,
+          intimationReader: intimationReaderRect ? {
+            height: intimationReaderRect.height,
+            left: intimationReaderRect.left,
+            right: intimationReaderRect.right,
+            width: innerWidth
           } : null,
           hasTemporalLanguage: document.getElementById('view-agenda').textContent.includes('Publicação')
             || document.getElementById('view-agenda').textContent.includes('Próximas atividades')
@@ -100,6 +113,10 @@ try {
         assert.ok(layout.drawer.top >= -2 && layout.drawer.bottom <= layout.drawer.height + 2, `${scenario.file}: drawer vertical ${JSON.stringify(layout.drawer)}`); assertions++;
         assert.ok(layout.drawer.formOverflow <= 2); assertions++;
       }
+      if (scenario.state === 'intimation-reader') {
+        assert.ok(layout.intimationReader?.height >= 220, `Leitor da publicação reduzido em ${scenario.file}: ${JSON.stringify(layout.intimationReader)}.`); assertions++;
+        assert.ok(layout.intimationReader.left >= -2 && layout.intimationReader.right <= layout.intimationReader.width + 2, `Leitor fora do viewport em ${scenario.file}: ${JSON.stringify(layout.intimationReader)}.`); assertions++;
+      }
 
       const output = path.join(OUTPUT, scenario.file);
       await page.screenshot({ path: output, fullPage: false });
@@ -109,7 +126,7 @@ try {
     }
   }
 
-  assert.equal(hashes.size, SCENARIOS.length, 'Os 12 estados visuais devem produzir hashes distintos.');
+  assert.equal(hashes.size, SCENARIOS.length, 'Os estados visuais devem produzir hashes distintos.');
   console.log('======================================================');
   console.log('✓ UI V2 AGENDA VISUAL QA CONCLUÍDO!');
   console.log(`- Screenshots: ${SCENARIOS.length}`);

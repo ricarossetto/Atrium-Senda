@@ -199,4 +199,4 @@ Use o botão de tema na barra superior. A preferência é apenas visual e local 
 - **Gemini não configurado:** valide a chave na área do Assistente; não a registre em logs.
 - **Conflito de salvamento:** recarregue o estado mais recente e reaplique conscientemente sua alteração; não force a revisão.
 
-Para problemas de ambiente, consulte [Solução de problemas de instalação](INSTALLATION.md#18-solução-de-problemas). Para reportar vulnerabilidade, siga [SECURITY.md](../SECURITY.md).
+Para problemas de ambiente, consulte [Solução de problemas de instalação](INSTALLATION.md#18-solução-de-problemas). Para reportar vulnerabilidade, siga [SECURITY.md](../.github/SECURITY.md).

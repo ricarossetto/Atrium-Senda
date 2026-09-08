@@ -85,6 +85,8 @@ try {
     assert.ok(await page.locator('.legal-timeline [data-process-timeline]').count() >= 4, 'Entidades canônicas navegáveis devem aparecer na linha do tempo.');
     assert.equal(await page.locator('[data-process-task]').count(), 3, 'Todas as tarefas vinculadas devem permanecer acessíveis no inspector.');
     assert.equal(await page.locator('#processInspectorTjrs').isVisible(), true);
+    assert.equal(await page.locator('#processInspectorDownloadAutos').isVisible(), true);
+    assert.equal(await page.locator('[data-download-autos]').isVisible(), true);
     assert.equal(await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"]').getAttribute('aria-current'), 'true');
     assert.equal(requests.filter(request => /\/api\/tjrs\/consult/.test(request.url)).length, 0, 'Abrir inspector não consulta TJRS.');
 
@@ -159,6 +161,9 @@ try {
     ];
     assert.deepEqual([...names].sort(), [...expectedNames].sort(), 'Todos os nomes de campo devem permanecer presentes.');
     assert.equal(await page.locator('#field-client').getAttribute('required'), '');
+    assert.equal(await page.locator('#field-accessKey').getAttribute('type'), 'password');
+    assert.equal(await page.locator('#field-accessKey').getAttribute('name'), null, 'A chave não pode integrar o payload comum do Store.');
+    assert.match(await page.locator('.process-tjrs-assist-key').textContent(), /cofre cifrado.*reutilizada no monitoramento/i);
     await page.fill('#field-stage', 'Instrução revisada na V2');
     await page.locator('#modalForm button[type="submit"]').click();
     await page.locator('#modalBackdrop.hidden').waitFor({ state: 'attached' });
@@ -192,7 +197,7 @@ try {
           readOnly: true,
           state: 'AVAILABLE',
           draft: {
-            number: '5003280-32.2026.8.21.0404',
+            number: '0000001-58.2099.8.21.0000',
             client: '',
             court: 'TJRS',
             county: 'Bento Gonçalves',
@@ -209,7 +214,7 @@ try {
               { name: 'PARTE ADVERSA SINTÉTICA', role: 'REU', lawyers: [] }
             ],
             movements: [{ eventNumber: 12, date: '2026-09-03T10:00:00.000Z', description: 'Intimação eletrônica expedida', source: 'TJRS_PUBLIC' }],
-            tjrsCollector: { status: 'AVAILABLE', cnj: '50032803220268210404', source: 'TJRS_PUBLIC' }
+            tjrsCollector: { status: 'AVAILABLE', cnj: '00000015820998210000', source: 'TJRS_PUBLIC' }
           },
           summary: { parties: 2, movements: 1 },
           message: 'Snapshot local encontrado. Revise os dados antes de cadastrar o processo.'
@@ -219,10 +224,10 @@ try {
     await page.locator('[data-process-create]').click();
     await page.locator('#modalBackdrop[data-modal-mode="process"]:not(.hidden)').waitFor();
     assert.equal(await page.locator('#processTjrsPreview').isVisible(), true);
-    await page.locator('#field-number').fill('5003280-32.2026.8.21.0404');
+    await page.locator('#field-number').fill('0000001-58.2099.8.21.0000');
     await page.locator('#processTjrsPreview').click();
     await page.locator('#processTjrsPreviewStatus', { hasText: 'Dados judiciais carregados para revisão.' }).waitFor();
-    assert.deepEqual(previewPayload, { processNumber: '5003280-32.2026.8.21.0404' });
+    assert.deepEqual(previewPayload, { processNumber: '0000001-58.2099.8.21.0000' });
     assert.equal(await page.locator('#field-court').inputValue(), 'TJRS');
     assert.equal(await page.locator('#field-actionType').inputValue(), 'PROCEDIMENTO DO JUIZADO ESPECIAL CÍVEL');
     assert.equal(await page.locator('#field-client').inputValue(), '', 'Parte judicial não pode virar cliente automaticamente.');
@@ -238,14 +243,14 @@ try {
     assert.equal(await page.locator('#field-actionType').inputValue(), '', 'Sugestão judicial antiga deve ser removida quando o CNJ muda.');
     assert.equal(await page.locator('#field-lastMovement').inputValue(), '', 'Andamento do CNJ anterior não pode permanecer no formulário.');
     assert.match(await page.locator('#processTjrsPreviewStatus').textContent(), /CNJ foi alterado/);
-    await page.locator('#field-number').fill('5003280-32.2026.8.21.0404');
+    await page.locator('#field-number').fill('0000001-58.2099.8.21.0000');
     await page.locator('#processTjrsPreview').click();
     await page.locator('#processTjrsPreviewStatus', { hasText: 'Dados judiciais carregados para revisão.' }).waitFor();
     assert.equal(await page.locator('#field-court').inputValue(), 'Órgão revisado manualmente', 'Nova consulta não deve sobrescrever campo manual não vazio.');
     await page.locator('#field-client').fill('Cliente definido após revisão humana');
     await page.locator('#modalForm button[type="submit"]').click();
     await page.locator('#modalBackdrop.hidden').waitFor({ state: 'attached' });
-    const assisted = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.number === '5003280-32.2026.8.21.0404'));
+    const assisted = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.number === '0000001-58.2099.8.21.0000'));
     assert.equal(assisted.client, 'Cliente definido após revisão humana');
     assert.equal(assisted.court, 'Órgão revisado manualmente');
     assert.equal(assisted.source, 'TJRS_PUBLIC');

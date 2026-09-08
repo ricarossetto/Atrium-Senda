@@ -32,7 +32,11 @@ import { SearchIndex, parseDefaultPromptsSource } from './lib/search-index.mjs';
 import { RegistryService } from './lib/registry/registry-service.mjs';
 import { createRegistryHttpHandler } from './lib/http/registry-routes.mjs';
 import { TjrsSidecarClient } from './lib/judicial/tjrs-sidecar-client.mjs';
+import { refreshMonitoredTjrsProcesses } from './lib/judicial/tjrs-monitoring.mjs';
 import { createTjrsSidecarHttpHandler } from './lib/http/tjrs-sidecar-routes.mjs';
+import { OmniStorage } from './lib/judicial/omni/storage.mjs';
+import { OmniCollectorHub } from './lib/judicial/omni/hub.mjs';
+import { createOmniHttpHandler } from './lib/judicial/omni/http-routes.mjs';
 import { applyPublicationWorkAction } from './lib/publications/publication-workflow.mjs';
 import {
   apiContractHeaders,
@@ -63,7 +67,7 @@ await loadEnv(ENV_FILE);
 await ensureLocalSecrets(ENV_FILE);
 if (String(process.env.KELLER_SKIP_COLLECTOR_ENV).toLowerCase() !== 'true') await loadEnv(COLLECTOR_ENV_FILE);
 
-let APP_VERSION = '2.0.0';
+let APP_VERSION = '2.1.0';
 try {
   const pkg = JSON.parse(await readFile(path.join(ROOT, 'package.json'), 'utf8'));
   if (pkg.version) APP_VERSION = pkg.version;
@@ -92,6 +96,8 @@ const COLLECTOR_AGENT_FILE = path.join(ROOT, 'collector', 'agent.mjs');
 const CLOUD_MODE = String(process.env.JURISFLOW_CLOUD_MODE || process.env.KELLER_CLOUD_MODE || '').toLowerCase();
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || '127.0.0.1';
+const SERVER_STARTED_AT = new Date().toISOString();
+const SYNC_TIME_ZONE = process.env.ATRIUM_TIME_ZONE || 'America/Sao_Paulo';
 const PROCESS_RE = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/;
 const security = new SecurityManager({
   dataDirectory: DATA_DIR,
@@ -125,6 +131,20 @@ const handleRegistryRequest = createRegistryHttpHandler({ service: registryServi
 const tjrsSidecarClient = new TjrsSidecarClient();
 const handleTjrsSidecarRequest = createTjrsSidecarHttpHandler({
   client: tjrsSidecarClient,
+  assertAuthenticated,
+  readJson,
+  readStateEnvelope: readAppStateEnvelope,
+  saveState: saveAppStateDirect,
+  documentStorage,
+  credentialManager: judicialOrchestrator.credentialManager,
+  json
+});
+const omniStorage = new OmniStorage({ dataDirectory: DATA_DIR, securityManager: security });
+await omniStorage.init();
+const omniHub = new OmniCollectorHub({ storage: omniStorage });
+const handleOmniRequest = createOmniHttpHandler({
+  hub: omniHub,
+  storage: omniStorage,
   assertAuthenticated,
   readJson,
   readStateEnvelope: readAppStateEnvelope,
@@ -1142,15 +1162,22 @@ function json(res, status, payload, headers = {}) {
   });
   res.end(JSON.stringify(payload));
 }
+const parsedJsonBodies = new WeakMap();
 async function readJson(req, limit = 1_000_000) {
+  const cached = parsedJsonBodies.get(req);
+  if (cached) {
+    if (cached.size > limit) throw Object.assign(new Error('Carga maior que o limite permitido.'), { statusCode: 413 });
+    return cached.body;
+  }
   const chunks = []; let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
     if (size > limit) throw Object.assign(new Error('Carga maior que o limite permitido.'), { statusCode: 413 });
     chunks.push(chunk);
   }
-  if (!chunks.length) return {};
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
+  parsedJsonBodies.set(req, { body, size });
+  return body;
 }
 
 const CALENDAR_RESPONSE_LIMIT = 2_000_000;
@@ -2048,9 +2075,65 @@ async function serveStatic(req, res) {
   } catch { json(res, 404, { message: 'Arquivo não encontrado.' }); }
 }
 
+let syncRequestActive = false;
+const automaticSyncRuns = { startup: false, dailyDate: '' };
+let currentSyncProgress = {
+  active: false,
+  step: 0,
+  totalSteps: 4,
+  phase: 'idle',
+  label: 'Pronto',
+  detail: 'Nenhuma sincronização em andamento.',
+  percent: 0,
+  updatedAt: new Date().toISOString()
+};
+
+function syncDateInConfiguredTimeZone(now = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: SYNC_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(now);
+}
+
+function syncTriggerFromRequest(req) {
+  const trigger = String(req.headers['x-atrium-sync-trigger'] || 'manual').toLowerCase();
+  return ['startup', 'daily', 'manual'].includes(trigger) ? trigger : 'manual';
+}
+
+function claimAutomaticSync(trigger) {
+  if (trigger === 'startup') {
+    if (automaticSyncRuns.startup) return false;
+    automaticSyncRuns.startup = true;
+  }
+  if (trigger === 'daily') {
+    const today = syncDateInConfiguredTimeZone();
+    if (automaticSyncRuns.dailyDate === today) return false;
+    automaticSyncRuns.dailyDate = today;
+  }
+  return true;
+}
+
+function updateSyncProgress({ step, totalSteps = 4, phase, label, detail, percent }) {
+  const pct = Math.min(100, Math.max(0, Math.round(percent ?? currentSyncProgress.percent)));
+  currentSyncProgress = {
+    active: pct < 100 && !['done', 'error', 'idle'].includes(phase),
+    step: step ?? currentSyncProgress.step,
+    totalSteps,
+    phase: phase ?? currentSyncProgress.phase,
+    label: label ?? currentSyncProgress.label,
+    detail: detail ?? currentSyncProgress.detail,
+    percent: pct,
+    updatedAt: new Date().toISOString()
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    if (url.pathname.startsWith('/api/') && url.pathname !== '/api/auth/status') {
+    }
     if (req.method === 'GET' && url.pathname === '/api/system/api-metadata') {
       assertAuthenticated(req);
       return json(res, 200, buildApiMetadata({ applicationVersion: APP_VERSION }));
@@ -2137,8 +2220,12 @@ const server = http.createServer(async (req, res) => {
         windowsHide: true,
         stdio: 'ignore'
       });
-      managedCollector.once('exit', () => { managedCollector = null; });
-      managedCollector.once('error', () => { managedCollector = null; });
+      managedCollector.once('exit', (code) => {
+        managedCollector = null;
+      });
+      managedCollector.once('error', (err) => {
+        managedCollector = null;
+      });
       return json(res, 202, { ok: true, readOnly: true, portalCount: enabledIds.length, message: 'Atualização judicial somente leitura iniciada em segundo plano.' });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/trusted-device/revoke') {
@@ -2148,6 +2235,7 @@ const server = http.createServer(async (req, res) => {
 
     if (await handleRegistryRequest(req, res, url)) return;
     if (await handleTjrsSidecarRequest(req, res, url)) return;
+    if (await handleOmniRequest(req, res, url)) return;
 
     if (req.method === 'POST' && url.pathname === '/api/tjrs/consult') {
       assertAuthenticated(req);
@@ -2155,9 +2243,9 @@ const server = http.createServer(async (req, res) => {
       const rawNumber = String(body.processNumber || '').trim();
       const cleanNumber = rawNumber.replace(/\D/g, '');
       if (cleanNumber.length < 15) throw Object.assign(new Error('Número de processo CNJ inválido.'), { statusCode: 400 });
-      
+
       const isTrf4 = rawNumber.includes('.4.04.') || cleanNumber.includes('404');
-      
+
       const portalUrl = isTrf4
         ? `https://eproc.trf4.jus.br/eproc2trf4/controlador.php?acao=processo_consulta_publica`
         : `https://www.tjrs.jus.br/novo/busca/?return=proc&client=wp_index&q=${cleanNumber}`;
@@ -2178,7 +2266,15 @@ const server = http.createServer(async (req, res) => {
         const env = await readAppStateEnvelope();
         if (env?.state?.settings?.calendarUrl) hasCalendar = true;
       } catch {}
-      return json(res, 200, { mode: 'local-protected', calendarConfigured: hasCalendar, collectorConfigured: Boolean(runtime.updatedAt), lastCollectorRun: runtime.updatedAt, authentication: 'password; totp-optional-per-user' });
+      return json(res, 200, {
+        mode: 'local-protected',
+        calendarConfigured: hasCalendar,
+        collectorConfigured: Boolean(runtime.updatedAt),
+        lastCollectorRun: runtime.updatedAt,
+        authentication: 'password; totp-optional-per-user',
+        serverStartedAt: SERVER_STARTED_AT,
+        syncSchedule: { startup: true, dailyAt: '10:00', timeZone: SYNC_TIME_ZONE }
+      });
     }
 
     // ==========================================
@@ -2379,7 +2475,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/events') { assertAuthenticated(req); return json(res, 200, await readRuntime()); }
     if (req.method === 'GET' && url.pathname === '/api/state') { assertAuthenticated(req); return json(res, 200, await readPublicAppStateEnvelope()); }
     if (req.method === 'POST' && url.pathname === '/api/state') {
-      const session = assertAuthenticated(req, true); const body = await readJson(req, 3_000_000); const saved = await saveClientAppState(body.state, body.revision ?? null, session);
+      const session = assertAuthenticated(req, true);
+      const body = await readJson(req, 3_000_000);
+      const saved = await saveClientAppState(body.state, body.revision ?? null, session);
       return json(res, 200, { ok: true, ...saved });
     }
 
@@ -3681,8 +3779,34 @@ Diretrizes essenciais:
       const parsed = await parseUploadedSpreadsheet(body);
       return json(res, 200, { ok: true, ...parsed });
     }
+    if (req.method === 'GET' && url.pathname === '/api/sync/status') {
+      assertAuthenticated(req);
+      return json(res, 200, currentSyncProgress);
+    }
     if (req.method === 'POST' && url.pathname === '/api/sync') {
-      assertAuthenticated(req, true);
+      const syncSession = assertAuthenticated(req, true);
+      const syncTrigger = syncTriggerFromRequest(req);
+      if (syncTrigger !== 'manual' && !claimAutomaticSync(syncTrigger)) {
+        return json(res, 200, {
+          ok: true,
+          skipped: true,
+          trigger: syncTrigger,
+          message: syncTrigger === 'startup'
+            ? 'A sincronização desta inicialização já foi realizada.'
+            : 'A sincronização automática das 10h já foi realizada hoje.'
+        });
+      }
+      if (syncRequestActive) throw Object.assign(new Error('Já existe uma sincronização em andamento.'), { statusCode: 409 });
+      syncRequestActive = true;
+      req.ownsSync = true;
+      updateSyncProgress({
+        step: 1,
+        totalSteps: 4,
+        phase: 'starting',
+        label: 'Iniciando sincronização…',
+        detail: 'Carregando termos e acervo local…',
+        percent: 5
+      });
       const runtime = await readRuntime();
       let events = sanitizeArray(runtime.events);
       let tasks = sanitizeArray(runtime.tasks);
@@ -3724,9 +3848,29 @@ Diretrizes essenciais:
         };
         const djenFailures = [];
         let djenRecords = 0;
+        console.log('\n===============================================================');
+        console.log('  [SINCRONIZAÇÃO JUDICIAL ATIVA]');
+        console.log('===============================================================');
+        console.log('[Etapa 1/4] 🔍 Consultando comunicações no DJEN (ComunicaAPI do CNJ)...');
+        updateSyncProgress({
+          step: 1,
+          totalSteps: 4,
+          phase: 'djen',
+          label: 'Consultando DJEN…',
+          detail: `Consultando comunicações no DJEN (${monitoredTerms.length} termo(s))…`,
+          percent: 10
+        });
 
         for (const term of monitoredTerms) {
           try {
+            updateSyncProgress({
+              step: 1,
+              totalSteps: 4,
+              phase: 'djen',
+              label: 'Consultando DJEN…',
+              detail: `Conectando ao DJEN para OAB/${term.oabUf} ${term.oabNumber}…`,
+              percent: 15
+            });
             const result = await collectDjen({
               id: 'djen-cnj',
               name: 'DJEN / CNJ Oficial',
@@ -3736,13 +3880,34 @@ Diretrizes essenciais:
               ufOab: term.oabUf,
               numeroOab: term.oabNumber,
               timeoutMs: 25_000
-            }, { monitoredTerm: term, monitoredTerms }, target);
+            }, { monitoredTerm: term, monitoredTerms }, target, {
+              onProgress: ({ page, items, total }) => {
+                const termPct = total ? Math.min(18, Math.round((items / total) * 18)) : 10;
+                updateSyncProgress({
+                  step: 1,
+                  totalSteps: 4,
+                  phase: 'djen',
+                  label: `Consultando DJEN (${15 + termPct}%)`,
+                  percent: 15 + termPct,
+                  detail: `DJEN Pág. ${page}: ${items}${total ? `/${total}` : ''} intimações (OAB/${term.oabUf} ${term.oabNumber})`
+                });
+              }
+            });
             djenRecords += result.records || 0;
             if (!result.complete) djenFailures.push(`OAB/${term.oabUf} ${term.oabNumber}: coleta parcial`);
           } catch (error) {
             djenFailures.push(`OAB/${term.oabUf} ${term.oabNumber}: ${String(error.message).slice(0, 80)}`);
           }
         }
+        console.log(`  ✓ DJEN concluído: ${djenRecords} publicação(ões) lida(s) no total.`);
+        updateSyncProgress({
+          step: 2,
+          totalSteps: 4,
+          phase: 'djen-done',
+          label: 'DJEN Concluído',
+          detail: `${djenRecords} intimações localizadas no DJEN.`,
+          percent: 34
+        });
 
         const setSource = (aliases, record) => {
           const index = sources.findIndex(source => aliases.includes(source.id));
@@ -3778,6 +3943,15 @@ Diretrizes essenciais:
         ];
 
         if (processNumbers.length) {
+          console.log(`\n[Etapa 2/4] ⚖️ Enriquecendo andamentos no DataJud / CNJ (${processNumbers.length} processos)...`);
+          updateSyncProgress({
+            step: 2,
+            totalSteps: 4,
+            phase: 'datajud',
+            label: 'Consultando DataJud…',
+            detail: `Consultando 0/${processNumbers.length} processos no DataJud…`,
+            percent: 36
+          });
           try {
             const datajudResult = await collectDatajud({
               id: 'datajud-cnj',
@@ -3790,8 +3964,20 @@ Diretrizes essenciais:
               timeoutMs: 45_000
             }, { monitoredTerms }, target, {
               apiKey: appState?.settings?.datajudApiKey,
-              processNumbers
+              processNumbers,
+              onProgress: ({ current, total, number }) => {
+                const scaledPct = Math.round(36 + (current / total) * 50);
+                updateSyncProgress({
+                  step: 2,
+                  totalSteps: 4,
+                  phase: 'datajud',
+                  label: `Sincronizando (${scaledPct}%)`,
+                  detail: `DataJud: ${current}/${total} (${number})`,
+                  percent: scaledPct
+                });
+              }
             });
+            console.log(`  ✓ DataJud concluído: ${datajudResult.found}/${datajudResult.queried} processos enriquecidos com andamentos.`);
             setSource(['datajud-cnj', 'datajud'], {
               id: 'datajud-cnj',
               name: 'DataJud / CNJ',
@@ -3812,14 +3998,54 @@ Diretrizes essenciais:
               detail: `Aviso DataJud: ${String(error.message).slice(0, 120)}`
             });
           }
+        } else {
+          console.log('\n[Etapa 2/4] ⚖️ Nenhum novo processo requer consulta DataJud.');
         }
 
+        const tjrsMonitoring = await refreshMonitoredTjrsProcesses({
+          processes: target.processes,
+          userId: String(syncSession?.username || syncSession?.userId || syncSession?.id || ''),
+          credentialManager: judicialOrchestrator.credentialManager,
+          client: tjrsSidecarClient,
+          onProgress: ({ current, total, number }) => updateSyncProgress({
+            step: 2,
+            totalSteps: 4,
+            phase: 'tjrs-monitoring',
+            label: 'Monitorando processos TJRS…',
+            detail: `TJRS: ${current}/${total} (${number})`,
+            percent: Math.round(80 + (current / Math.max(total, 1)) * 7)
+          })
+        });
+        target.processes = tjrsMonitoring.processes;
+        if (tjrsMonitoring.configured) {
+          console.log(`  ✓ TJRS com chave: ${tjrsMonitoring.checked}/${tjrsMonitoring.configured} processo(s) monitorado(s); ${tjrsMonitoring.newMovements} novo(s) andamento(s).`);
+          setSource(['tjrs-sidecar-monitor'], {
+            id: 'tjrs-sidecar-monitor',
+            name: 'Monitoramento TJRS com chave',
+            short: 'TJRS',
+            method: 'Coletor local + chave cifrada',
+            status: tjrsMonitoring.failed ? 'attention' : 'ok',
+            lastCheck: new Date().toISOString(),
+            detail: `${tjrsMonitoring.checked}/${tjrsMonitoring.configured} processo(s) consultado(s); ${tjrsMonitoring.updated} atualizado(s); ${tjrsMonitoring.newMovements} novo(s) andamento(s)${tjrsMonitoring.failed ? `; ${tjrsMonitoring.failed} falha(s)` : ''}`
+          });
+        }
+
+        console.log('\n[Etapa 3/4] 🔗 Consolidando intimações e processos...');
+        updateSyncProgress({
+          step: 3,
+          totalSteps: 4,
+          phase: 'consolidating',
+          label: 'Consolidando acervo…',
+          detail: 'Vinculando partes e processos…',
+          percent: 88
+        });
         intimations = target.intimations;
         tasks = target.tasks;
-        processes = mergeExternalProcesses(processes, withoutSuppressedProcesses(target.processes, processSuppressions).filter(item => item.datajudAlias || /DataJud/i.test(String(item.source || ''))));
-        contacts = mergeExternalContacts(contacts, target.contacts.filter(item => item.datajudAlias || /DataJud/i.test(String(item.source || ''))));
+        processes = mergeExternalProcesses(processes, withoutSuppressedProcesses(target.processes, processSuppressions));
+        contacts = mergeExternalContacts(contacts, target.contacts);
         judicialImported = ['intimations', 'tasks', 'processes', 'contacts']
           .reduce((total, key) => total + Math.max(0, target[key].length - initialCounts[key]), 0);
+        console.log(`  ✓ Consolidado: ${intimations.length} intimação(ões), ${processes.length} processo(s) no acervo.`);
       }
 
       // 2. Sincronização com Agenda Externa (Webcal / iCalendar)
@@ -3854,6 +4080,15 @@ Diretrizes essenciais:
         updatedAt: new Date().toISOString()
       };
       applyClientReconciliation(updatedRuntime, clientReconciliation.links);
+      console.log('\n[Etapa 4/4] 💾 Persistindo dados no banco de dados local...');
+      updateSyncProgress({
+        step: 4,
+        totalSteps: 4,
+        phase: 'persisting',
+        label: 'Gravando acervo local…',
+        detail: 'Persistindo dados no banco de dados local…',
+        percent: 94
+      });
       await mutateRuntime(current => ({
         ...current,
         events: mergeBy(current.events, updatedRuntime.events),
@@ -3864,6 +4099,22 @@ Diretrizes essenciais:
         sources: mergeBy(current.sources, updatedRuntime.sources, 'id'),
         updatedAt: updatedRuntime.updatedAt
       }));
+
+      console.log('===============================================================');
+      console.log(`  ✓ SINCRONIZAÇÃO CONCLUÍDA COM SUCESSO!`);
+      console.log(`  Acervo ativo: ${updatedRuntime.intimations.length} intimações | ${updatedRuntime.processes.length} processos judiciais.`);
+      console.log('===============================================================\n');
+
+      updateSyncProgress({
+        step: 4,
+        totalSteps: 4,
+        phase: 'done',
+        label: 'Salvo e sincronizado',
+        detail: `Sincronização concluída com sucesso (${updatedRuntime.intimations.length} intimações, ${updatedRuntime.processes.length} processos).`,
+        percent: 100
+      });
+      syncRequestActive = false;
+      req.ownsSync = false;
 
       return json(res, 200, {
         ...updatedRuntime,
@@ -3880,9 +4131,20 @@ Diretrizes essenciais:
     if (req.method === 'GET' || req.method === 'HEAD') return serveStatic(req, res);
     json(res, 405, { message: 'Método não permitido.' });
   } catch (error) {
+    if (req.ownsSync) {
+      syncRequestActive = false;
+      req.ownsSync = false;
+      updateSyncProgress({
+      step: 0,
+      phase: 'error',
+      label: 'Alterações não salvas',
+      detail: 'Falha na sincronização. Verifique a conexão e tente novamente.',
+      percent: 0
+      });
+    }
     const headers = error.retryAfter ? { 'Retry-After': String(error.retryAfter) } : {};
     const message = error instanceof SyntaxError ? 'JSON inválido.' : (error.message || 'Falha interna da central.');
-    if (!error.statusCode) console.error(error);
+    if (!error.statusCode) console.error('[ATRIUM] Falha interna na requisição.');
     json(res, error.statusCode || 500, { message }, headers);
   }
 });
@@ -3894,6 +4156,6 @@ await readRuntime();
 console.log(`[ATRIUM Runtime]: Estado derivado inicializado com status "${runtimeStateStatus}".`);
 
 server.listen(PORT, HOST, () => {
-  console.log(`ATRIUM 2.0.0 — Escritório Integrado: http://${HOST}:${PORT}`);
+  console.log(`ATRIUM ${APP_VERSION} — Escritório Integrado: http://${HOST}:${PORT}`);
   console.log('Autenticação segura ativa (AES-256-GCM + TOTP 2FA).');
 });

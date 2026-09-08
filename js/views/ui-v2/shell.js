@@ -20,6 +20,8 @@ const NAVIGATION_GROUPS = Object.freeze({
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const SYSTEM_ORDER = Object.freeze(['monitoring', 'links', 'importer', 'integrations', 'audit', 'configuration']);
+const WORK_ORDER = Object.freeze(['processes', 'inbox', 'agenda', 'kanban']);
+const RELATIONSHIP_ORDER = Object.freeze(['contacts', 'leads']);
 
 export function createUiV2Shell({
   documentRef = globalThis.document,
@@ -60,11 +62,13 @@ export function createUiV2Shell({
         const group = NAVIGATION_GROUPS[item.dataset.view];
         documentRef?.querySelector?.(`[data-v2-nav-group="${group}"]`)?.appendChild(item);
       });
-      const systemNav = documentRef?.querySelector?.('[data-v2-nav-group="system"]');
-      SYSTEM_ORDER.forEach(view => {
-        const item = systemNav?.querySelector?.(`[data-view="${view}"]`);
-        if (item) systemNav.appendChild(item);
-      });
+      for (const [group, order] of [['work', WORK_ORDER], ['relationship', RELATIONSHIP_ORDER], ['system', SYSTEM_ORDER]]) {
+        const nav = documentRef?.querySelector?.(`[data-v2-nav-group="${group}"]`);
+        order.forEach(view => {
+          const item = nav?.querySelector?.(`[data-view="${view}"]`);
+          if (item) nav.appendChild(item);
+        });
+      }
       const panel = documentRef?.getElementById?.('v2UtilitiesMenuPanel');
       utilityButtons.forEach(button => panel?.appendChild(button));
     } else {

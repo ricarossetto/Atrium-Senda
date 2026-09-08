@@ -2,6 +2,23 @@
 
 As mudanças relevantes do ATRIUM são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## [2.1.0] - 2026-09-08
+
+### Added
+
+- Gestão de tarefas em Lista e Kanban, busca contextual e navegação entre registros vinculados.
+- Monitoramento com chave judicial protegida e sincronização na abertura, às 10h e manual.
+
+### Fixed
+
+- Edição e exclusão confirmada de despesas, legibilidade e organização dos painéis.
+- Teste de ponta a ponta aguarda o carregamento do estado antes de operar a interface.
+
+### Changed
+
+- Documentação e inicializadores auxiliares organizados em pastas.
+- Release validada pelo workflow completo, incluindo verificação Windows A1.
+
 ## [2.0.0] - 2026-09-02
 
 ### Stable

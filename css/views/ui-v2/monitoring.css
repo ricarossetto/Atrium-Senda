@@ -450,7 +450,9 @@ html[data-ui="v2"] .monitoring-form-section legend {
 }
 
 html[data-ui="v2"] .monitoring-form-section .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--v2-space-3); }
-html[data-ui="v2"] .monitoring-form-section .field { min-width: 0; }
+html[data-ui="v2"] .monitoring-form-section .field { min-width: 0; align-self: start; display: flex; flex-direction: column; gap: 6px; }
+html[data-ui="v2"] .monitoring-form-section .field input,
+html[data-ui="v2"] .monitoring-form-section .field select { min-height: 42px; margin: 0; }
 html[data-ui="v2"] .monitoring-form-section .field.full { grid-column: 1 / -1; }
 html[data-ui="v2"] .monitoring-form-section textarea { min-height: 160px; resize: vertical; }
 html[data-ui="v2"] .monitoring-form-section .field-note { color: var(--v2-color-muted-foreground); font-size: 9px; line-height: 1.4; }

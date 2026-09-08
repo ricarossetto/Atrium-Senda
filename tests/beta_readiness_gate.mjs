@@ -9,7 +9,7 @@ const documentUrls = {
   readiness: new URL('../docs/development/BETA_READINESS.md', import.meta.url),
   roadmap: new URL('../docs/development/ROADMAP.md', import.meta.url),
   decisions: new URL('../docs/development/DECISIONS.md', import.meta.url),
-  masterPlan: new URL('../DEVELOPMENT_MASTER_PLAN.md', import.meta.url)
+  masterPlan: new URL('../docs/development/DEVELOPMENT_MASTER_PLAN.md', import.meta.url)
 };
 const documents = Object.fromEntries(await Promise.all(
   Object.entries(documentUrls).map(async ([name, url]) => [name, await readFile(url, 'utf8')])

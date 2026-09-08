@@ -5,7 +5,7 @@ Este guia descreve o Beta técnico com a UI V2 como interface padrão e a UI Cl�
 ## 1. Iniciar no Windows
 
 1. Instale Node.js 24.
-2. Dê duplo clique em `iniciar-atrium.bat`.
+2. Dê duplo clique em `scripts/windows/iniciar-atrium.bat`.
 3. O starter valida a versão do Node.js, prepara `pnpm@11.19.0`, instala as dependências pelo lockfile congelado se necessário e abre `http://127.0.0.1:4173`.
 4. Mantenha a janela do servidor aberta durante o uso.
 

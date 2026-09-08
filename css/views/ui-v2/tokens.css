@@ -95,7 +95,7 @@ html[data-ui="v2"] {
   --v2-z-overlay: 80;
   --v2-z-toast: 100;
 
-  --v2-sidebar-width: 256px;
+  --v2-sidebar-width: 240px;
   --v2-sidebar-collapsed-width: 70px;
 }
 

@@ -69,6 +69,7 @@ export function renderContactsV2Workspace({
             : renderEmpty({ hasContacts: allRecords.length > 0, query, roleFilter })}
         </div>
       </section>
+      ${selected ? '<div class="contact-inspector-backdrop" data-contact-backdrop></div>' : ''}
       ${renderContactInspector({ item: selected, context: selectedContext, escapeHtml, formatDate })}
     </div>
   </div>`;

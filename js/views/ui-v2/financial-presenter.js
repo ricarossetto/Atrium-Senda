@@ -13,7 +13,7 @@ export function renderFinancialV2Workspace({ records, query, filter, escapeHtml,
 
   return `<section class="financial-v2-surface" aria-labelledby="financialOperationsHeading">
     <header class="financial-v2-surface-header">
-      <div><p>Carteira financeira</p><h3 id="financialOperationsHeading">Operações vinculadas a processos</h3></div>
+      <div><p>Carteira financeira</p><h3 id="financialOperationsHeading">Operações do escritório e de clientes</h3></div>
       <span aria-live="polite">${records.length} registro${records.length === 1 ? '' : 's'}</span>
     </header>
     ${content}
@@ -23,7 +23,7 @@ export function renderFinancialV2Workspace({ records, query, filter, escapeHtml,
 function renderDesktopTable(records, escapeHtml, formatCurrency) {
   return `<div class="financial-v2-table-wrap">
     <table class="financial-v2-table">
-      <caption class="sr-only">Operações financeiras vinculadas aos processos</caption>
+      <caption class="sr-only">Operações financeiras</caption>
       <thead><tr>
         <th scope="col">Processo e cliente</th>
         <th scope="col">Tipo</th>
@@ -32,8 +32,8 @@ function renderDesktopTable(records, escapeHtml, formatCurrency) {
         <th scope="col" class="is-money">Líquido do cliente</th>
         <th scope="col">Status</th>
       </tr></thead>
-      <tbody>${records.map(record => `<tr data-financial-record="${escapeHtml(record.id)}">
-        <td><button type="button" class="financial-process-link" data-financial-process-id="${escapeHtml(record.processId)}"><strong>${escapeHtml(record.processNumber)}</strong><small>${escapeHtml(record.client)}</small><span aria-hidden="true">→</span></button></td>
+      <tbody>${records.map(record => `<tr tabindex="0" data-financial-edit="${escapeHtml(String(record.editKey))}" title="Editar lançamento" data-financial-record="${escapeHtml(record.id)}">
+        <td>${renderRecordOwner(record, escapeHtml)}</td>
         <td><span class="financial-type is-${escapeHtml(record.kind)}">${escapeHtml(typeLabel(record))}</span>${record.date ? `<small>${escapeHtml(financialDate(record.date))}</small>` : ''}</td>
         <td class="financial-money">${formatCurrency(record.gross)}</td>
         <td class="financial-money is-fee">${record.feeAmount === null ? '—' : formatCurrency(record.feeAmount)}</td>
@@ -46,8 +46,8 @@ function renderDesktopTable(records, escapeHtml, formatCurrency) {
 
 function renderMobileList(records, escapeHtml, formatCurrency) {
   return `<div class="financial-v2-record-list" role="list" aria-label="Operações financeiras">
-    ${records.map(record => `<article class="financial-v2-record" role="listitem" data-financial-record="${escapeHtml(record.id)}" aria-label="${escapeHtml(`${record.processNumber}, ${record.client}, ${typeLabel(record)}, ${record.statusLabel}`)}">
-      <header><div><span class="financial-type is-${escapeHtml(record.kind)}">${escapeHtml(typeLabel(record))}</span><button type="button" class="financial-process-link" data-financial-process-id="${escapeHtml(record.processId)}"><strong>${escapeHtml(record.processNumber)}</strong><small>${escapeHtml(record.client)}</small><span aria-hidden="true">→</span></button></div>${statusMarkup(record, escapeHtml)}</header>
+    ${records.map(record => `<article tabindex="0" data-financial-edit="${escapeHtml(String(record.editKey))}" class="financial-v2-record" role="listitem" data-financial-record="${escapeHtml(record.id)}" aria-label="${escapeHtml(`${record.processNumber}, ${record.client}, ${typeLabel(record)}, ${record.statusLabel}`)}">
+      <header><div><span class="financial-type is-${escapeHtml(record.kind)}">${escapeHtml(typeLabel(record))}</span>${renderRecordOwner(record, escapeHtml)}</div>${statusMarkup(record, escapeHtml)}</header>
       <dl>
         <div><dt>Bruto</dt><dd>${formatCurrency(record.gross)}</dd></div>
         <div><dt>Honorários</dt><dd class="is-fee">${record.feeAmount === null ? '—' : formatCurrency(record.feeAmount)}</dd></div>
@@ -60,6 +60,12 @@ function renderMobileList(records, escapeHtml, formatCurrency) {
 
 function statusMarkup(record, escapeHtml) {
   return `<span class="financial-status is-${escapeHtml(record.statusTone)}"><span aria-hidden="true"></span>${escapeHtml(record.statusLabel)}</span>`;
+}
+
+function renderRecordOwner(record, escapeHtml) {
+  const label = `<strong>${escapeHtml(record.processNumber)}</strong><small>${escapeHtml(record.client)}</small>`;
+  if (!record.processId) return `<div class="financial-process-link is-static">${label}</div>`;
+  return `<button type="button" class="financial-process-link" data-financial-process-id="${escapeHtml(record.processId)}">${label}<span aria-hidden="true">→</span></button>`;
 }
 
 function typeLabel(record) {
@@ -80,6 +86,6 @@ function renderEmpty(hasQuery, filter) {
   return `<div class="financial-v2-empty">
     <span aria-hidden="true">◇</span>
     <strong>${filtered ? 'Nenhuma operação encontrada.' : 'Nenhum lançamento financeiro cadastrado.'}</strong>
-    <p>${filtered ? 'Revise a busca ou selecione outro filtro.' : 'Os lançamentos continuarão vinculados diretamente aos processos.'}</p>
+    <p>${filtered ? 'Revise a busca ou selecione outro filtro.' : 'Cadastre despesas do escritório ou lançamentos vinculados a processos e contatos.'}</p>
   </div>`;
 }

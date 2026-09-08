@@ -18,7 +18,9 @@ if %errorlevel% neq 0 (
 
 echo [OK] Iniciando sincronização do acervo com navegadores isolados...
 echo.
+pushd "%~dp0..\.."
 node collector/agent.mjs
+popd
 echo.
 echo Sincronização finalizada com sucesso.
 pause

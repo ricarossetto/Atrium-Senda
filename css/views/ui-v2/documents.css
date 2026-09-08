@@ -410,3 +410,17 @@ html[data-ui="v2"] #docGeneratorBackdrop .doc-generator-modal > footer .button {
   html[data-ui="v2"] #documentsTemplateGrid .document-template-card,
   html[data-ui="v2"] #docGeneratorBackdrop .doc-generator-modal { transition: none; animation: none; }
 }
+html[data-ui="v2"] #documentFileInput::file-selector-button {
+  padding: 9px 12px;
+  margin-right: 10px;
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-primary-soft);
+  color: var(--v2-color-foreground);
+  font: 700 12px var(--v2-font-interface);
+  cursor: pointer;
+}
+html[data-ui="v2"] #documentNamingPreview {
+  display: block; margin-top: 8px; font-size: 12px;
+  color: var(--v2-color-foreground-secondary);
+}

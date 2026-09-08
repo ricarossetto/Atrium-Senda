@@ -1,3 +1,4 @@
+import { openLinkedPublication } from './components/linked-publication-reader.js';
 import {
   ATRIUM_STORE_PERSISTENCE_ERROR_EVENT,
   STORE_PERSISTENCE_CONFLICT_EVENT,
@@ -9,6 +10,7 @@ import {
 import { applyClientReconciliation } from './core/client-reconciliation.js';
 import { acknowledgeActivity } from './core/activity-inbox.js';
 import { searchContent } from './core/api.js';
+import { millisecondsUntilDailySync, nextDailySyncAt } from './core/sync-schedule.js';
 import { createGlobalSearch } from './components/global-search.js';
 import { createModal } from './components/modal.js';
 import { createOnboarding } from './components/onboarding.js';
@@ -45,6 +47,7 @@ import { createLinksFeature } from './features/links.js';
 import { createMonitoringFeature } from './features/monitoring.js';
 import { createOfficeIdentityFeature } from './features/office-identity.js';
 import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js';
+import { publicationsInTrackingScope } from './core/publication-scope.js';
 import { createProcessesFeature } from './features/processes.js';
 import { createPromptsFeature } from './features/prompts.js';
 import { createSystemAdminFeature } from './features/system-admin.js';
@@ -152,7 +155,7 @@ import { createTasksFeature } from './features/tasks.js';
     const countBusiness = options.businessDays !== false;
     const isDouble = Boolean(options.doubleDeadline);
     const effectiveDays = isDouble ? totalDays * 2 : totalDays;
-    
+
     let current = new Date(`${String(startDateStr).slice(0, 10)}T00:00:00`);
     if (isNaN(current.getTime())) current = new Date();
 
@@ -338,7 +341,7 @@ import { createTasksFeature } from './features/tasks.js';
     uiShellComponent ||= createUiV2Shell({
       getNotifications: () => {
         const today = isoDate();
-        const publications = (Store.state.intimations || []).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').map(item => ({ target: 'intimation', id: item.id, title: item.title || 'Publicação pendente', detail: `${item.process || 'Sem processo'} · revisar triagem` }));
+        const publications = publicationsInTrackingScope(Store.state.intimations, Store.state.settings?.publicationTrackingSince).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').map(item => ({ target: 'intimation', id: item.id, title: item.title || 'Publicação pendente', detail: `${item.process || 'Sem processo'} · revisar triagem` }));
         const tasks = (Store.state.tasks || []).filter(item => !TERMINAL_STATUSES.includes(item.status) && (item.fatalDeadline || item.deadline) && (item.fatalDeadline || item.deadline) < today).map(item => ({ target: 'task', id: item.id, title: item.title || 'Tarefa atrasada', detail: `${item.process || item.client || 'Sem vínculo'} · prazo informado ${item.fatalDeadline || item.deadline}` }));
         return [...publications, ...tasks];
       },
@@ -571,10 +574,7 @@ import { createTasksFeature } from './features/tasks.js';
         App.toast(`Tarefas vinculadas ao processo ${process?.number || process?.protocol || 'selecionado'} estão disponíveis no quadro.`, 'info');
       },
       openTask: task => App.openTaskModal(task),
-      openPublication: publication => {
-        App.switchView('inbox');
-        getPublicationsFeature().select(publication.id);
-      },
+      openPublication: publication => openLinkedPublication(Store, publication.id),
       openAgenda: appointment => App.openAgendaModal(appointment),
       openFinancial: process => {
         App.switchView('financial');
@@ -601,19 +601,9 @@ import { createTasksFeature } from './features/tasks.js';
       updateTableSortHeaders,
       openModal: (...args) => App.openModal(...args),
       openOwnerDocuments: (ownerType, ownerId) => App.openOwnerDocuments(ownerType, ownerId),
-      openProcess: process => {
-        App.switchView('processes');
-        const input = document.getElementById('processSearch');
-        const query = process?.number || process?.protocol || '';
-        if (input) input.value = query;
-        App.renderProcesses(query);
-        window.setTimeout(() => document.querySelector(`#processTableBody [data-process-id="${CSS.escape(String(process.id))}"]`)?.click(), 0);
-      },
+      openProcess: process => getProcessesFeature().openDetails(process),
       openTask: task => App.openTaskModal(task),
-      openPublication: publication => {
-        App.switchView('inbox');
-        getPublicationsFeature().select(publication.id);
-      },
+      openPublication: publication => openLinkedPublication(Store, publication.id),
       openAgenda: appointment => App.openAgendaModal(appointment),
       openDocument: documentRecord => {
         App.switchView('documents');
@@ -930,11 +920,11 @@ import { createTasksFeature } from './features/tasks.js';
       this.renderAll();
       this.checkServerStatus();
       this.checkAiStatus();
-      document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long' }).format(new Date());
+      document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
       if (Store.state.settings.dismissedBanner) document.getElementById('environmentBanner').classList.add('hidden');
       this.checkFirstAccessTour();
-      this.syncAll({ silent: true });
-      this.autoSyncTimer = window.setInterval(() => this.syncWhenIdle(), 5 * 60 * 1000);
+      void this.syncAll({ silent: true, trigger: 'startup' });
+      this.scheduleDailySync();
     },
     initials(name) {
       if (!name) return 'AD';
@@ -1029,6 +1019,7 @@ import { createTasksFeature } from './features/tasks.js';
     },
     switchView(view) {
       if (this.currentView === 'processes' && view !== 'processes') getProcessesFeature().closeInspector({ restoreFocus: false });
+      if (this.currentView === 'contacts' && view !== 'contacts') getContactsFeature().closeInspector({ restoreFocus: false });
       this.currentView = view;
       document.querySelectorAll('.view').forEach(element => element.classList.toggle('active', element.id === `view-${view}`));
       document.querySelectorAll('.nav-item[data-view]').forEach(element => element.classList.toggle('active', element.dataset.view === view));
@@ -1306,12 +1297,58 @@ import { createTasksFeature } from './features/tasks.js';
       return getTasksFeature().openTaskModal(defaults);
     },
     openIntimationModal(defaults = {}) {
+      const processes = Store.state.processes || [];
+      const contacts = Store.state.contacts || [];
+      const normalizedProcessNumber = String(defaults.process || '').replace(/\D/g, '');
+      const linkedProcess = processes.find(process => process.id === defaults.processId)
+        || processes.find(process => normalizedProcessNumber && String(process.number || '').replace(/\D/g, '') === normalizedProcessNumber);
+      const linkedContact = contacts.find(contact => contact.id === defaults.contactId)
+        || contacts.find(contact => String(contact.name || '').trim().toLocaleLowerCase('pt-BR') === String(defaults.client || '').trim().toLocaleLowerCase('pt-BR'));
+      const modalDefaults = {
+        publishedAt: isoDate(),
+        source: 'Manual',
+        ...defaults,
+        processId: defaults.processId || linkedProcess?.id || '',
+        contactId: defaults.contactId || linkedContact?.id || ''
+      };
       this.openModal('intimation', defaults.id ? 'Editar intimação' : 'Nova intimação', 'Registro judicial', [
-        { name: 'title', label: 'Título / ato', required: true, full: true }, { name: 'process', label: 'Número do processo' }, { name: 'client', label: 'Cliente' },
+        { name: 'title', label: 'Título / ato', required: true, full: true },
+        {
+          name: 'process', label: 'Número do processo', type: 'combobox', identityName: 'processId',
+          placeholder: 'Pesquisar número, cliente, ação ou tribunal',
+          suggestions: processes.map(process => ({
+            id: process.id,
+            value: process.number || process.client || 'Processo sem número',
+            label: [process.client, process.actionType, process.court].filter(Boolean).join(' · ') || 'Processo cadastrado'
+          }))
+        },
+        {
+          name: 'client', label: 'Cliente', type: 'combobox', identityName: 'contactId',
+          placeholder: 'Pesquisar cliente ou contato cadastrado',
+          suggestions: contacts.map(contact => ({
+            id: contact.id,
+            value: contact.name || 'Contato sem nome',
+            label: [contact.contactRole === 'cliente' ? 'Cliente' : 'Contato', contact.phone, contact.email, contact.city].filter(Boolean).join(' · ')
+          }))
+        },
         { name: 'court', label: 'Tribunal / órgão' }, { name: 'publishedAt', label: 'Data da publicação', type: 'date' },
         { name: 'source', label: 'Origem', type: 'select', options: [{value:'Manual',label:'Manual'},{value:'Sistema jurídico',label:'Sistema jurídico'},{value:'DJEN',label:'DJEN'}] },
         { name: 'text', label: 'Texto original', type: 'textarea', full: true, required: true }
-      ], { publishedAt: isoDate(), source: 'Manual', ...defaults });
+      ], modalDefaults);
+
+      const processField = document.querySelector('#modalFields [data-modal-combobox-field] #field-process')?.closest('[data-modal-combobox-field]');
+      processField?.addEventListener('atrium:combobox-select', event => {
+        if (event.detail?.name !== 'process') return;
+        const process = processes.find(item => String(item.id) === String(event.detail.identity));
+        if (!process) return;
+        const contact = contacts.find(item => String(item.id) === String(process.contactId));
+        const clientInput = document.getElementById('field-client');
+        const clientIdentity = clientInput?.closest('[data-modal-combobox-field]')?.querySelector('[data-combobox-identity]');
+        const courtInput = document.getElementById('field-court');
+        if (clientInput) clientInput.value = contact?.name || process.client || '';
+        if (clientIdentity) clientIdentity.value = contact?.id || process.contactId || '';
+        if (courtInput) courtInput.value = process.court || '';
+      });
     },
     openProcessModal(defaults = {}) {
       return getProcessesFeature().openProcessModal(defaults);
@@ -1459,7 +1496,9 @@ import { createTasksFeature } from './features/tasks.js';
         const record = { id: this.modalMode.defaults.id || uid('int'), status: this.modalMode.defaults.status || 'nova', unread: this.modalMode.defaults.unread ?? true, term: this.modalMode.defaults.term || `${primaryTerm?.name || 'Advogado(a) Monitorado(a)'} · ${primaryTerm?.registration || 'OAB/UF 000000'}`, createdAt: this.modalMode.defaults.createdAt || new Date().toISOString(), ...this.modalMode.defaults, ...data, updatedAt: new Date().toISOString() };
         Store.upsert('intimations', record); Store.audit(editing ? 'Intimação atualizada' : 'Intimação registrada', `${record.title}${record.process ? ` · ${record.process}` : ''}`);
       } else if (this.modalMode.mode === 'process') {
-        if (!getProcessesFeature().saveProcess(data, this.modalMode.defaults)) return;
+        const savedProcess = getProcessesFeature().saveProcess(data, this.modalMode.defaults);
+        if (!savedProcess) return;
+        if (!await getProcessesFeature().persistAccessKey(savedProcess)) return;
       } else if (this.modalMode.mode === 'contact') {
         getContactsFeature().saveContact(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'agenda') {
@@ -1530,26 +1569,63 @@ import { createTasksFeature } from './features/tasks.js';
         await this.loadEmailStatus();
       } catch { /* O modo estático continua disponível. */ }
     },
-    async syncWhenIdle() {
+    scheduleDailySync(now = new Date()) {
+      if (this.autoSyncTimer) window.clearTimeout(this.autoSyncTimer);
+      const next = nextDailySyncAt(now);
+      this.nextAutomaticSyncAt = next.toISOString();
+      this.autoSyncTimer = window.setTimeout(async () => {
+        await this.syncWhenIdle({ trigger: 'daily' });
+        this.scheduleDailySync();
+      }, millisecondsUntilDailySync(now));
+      return next;
+    },
+    async syncWhenIdle({ trigger = 'daily' } = {}) {
       const modalOpen = !document.getElementById('modalBackdrop').classList.contains('hidden');
       const editing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
       if (modalOpen || editing) {
         clearTimeout(this.syncRetryTimer);
-        this.syncRetryTimer = window.setTimeout(() => this.syncWhenIdle(), 15 * 1000);
-        return;
+        this.syncRetryTimer = window.setTimeout(() => this.syncWhenIdle({ trigger }), 15 * 1000);
+        return false;
       }
-      await this.syncAll({ silent: true });
+      return this.syncAll({ silent: true, trigger });
     },
-    async syncAll({ silent = false } = {}) {
+    async syncAll({ silent = false, trigger = 'manual' } = {}) {
+      if (this.syncInProgress) return false;
+      this.syncInProgress = true;
       const buttons = [document.getElementById('syncButton'), document.getElementById('agendaSyncButton')];
-      buttons.forEach(button => { if (button) button.disabled = true; });
-      getSystemStatusComponent().setState('syncing');
+      buttons.forEach(button => { if (button) { button.disabled = true; button.setAttribute('aria-busy', 'true'); } });
+      getSystemStatusComponent().setState('syncing', 'Iniciando sincronização com os tribunais…', 5);
       if (!silent) this.toast('Iniciando sincronização protegida…');
+      let syncProgressPollTimer = null;
+      let pollBusy = false;
+      let pollClosed = false;
       try {
         if (!await Store.flush()) throw new Error('As alterações locais ainda não foram salvas. Sincronização cancelada para evitar perda de dados.');
-        const response = await window.KellerAuth.secureFetch('/api/sync', { method: 'POST', headers: { Accept: 'application/json' } });
+        if (typeof window !== 'undefined' && typeof window.setInterval === 'function') {
+          syncProgressPollTimer = window.setInterval(async () => {
+            if (pollBusy || pollClosed) return;
+            pollBusy = true;
+            try {
+              const pollRes = await window.KellerAuth.secureFetch('/api/sync/status', { method: 'GET', headers: { Accept: 'application/json' } });
+              if (pollRes.ok) {
+                const prog = await pollRes.json();
+                if (!pollClosed && prog && prog.active) {
+                  getSystemStatusComponent().setState('syncing', prog.detail || 'Consultando tribunais…', prog.percent);
+                }
+              }
+            } catch { /* polling silencioso */ } finally { pollBusy = false; }
+          }, 350);
+        }
+        const response = await window.KellerAuth.secureFetch('/api/sync', {
+          method: 'POST',
+          headers: { Accept: 'application/json', 'X-Atrium-Sync-Trigger': trigger }
+        });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || 'Servidor de integração indisponível.');
+        if (data.skipped) {
+          getSystemStatusComponent().setState('ready', data.message || 'Sincronização automática já realizada neste período.');
+          return true;
+        }
         if (Store.state.settings.demoMode && (Number(data.imported) > 0 || (data.intimations && data.intimations.length > 0))) {
           ['agenda', 'intimations', 'processes'].forEach(collection => {
             Store.state[collection] = Store.state[collection].filter(item => !String(item.id || '').includes('demo'));
@@ -1579,7 +1655,13 @@ import { createTasksFeature } from './features/tasks.js';
         if (!silent) this.toast(error.message || 'Não foi possível sincronizar.', 'error');
         return false;
       } finally {
-        buttons.forEach(button => { if (button) button.disabled = false; });
+        pollClosed = true;
+        this.syncInProgress = false;
+        if (syncProgressPollTimer) {
+          window.clearInterval(syncProgressPollTimer);
+          syncProgressPollTimer = null;
+        }
+        buttons.forEach(button => { if (button) { button.disabled = false; button.removeAttribute('aria-busy'); } });
       }
     },
     async importJson(file) {

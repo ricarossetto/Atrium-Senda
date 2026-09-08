@@ -1,3 +1,4 @@
+import { publicationsInTrackingScope } from './publication-scope.js';
 const DAY_MS = 86_400_000;
 const TERMINAL_STATUSES = new Set(['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada', 'descartada']);
 const SOURCE_PROBLEMS = new Set(['error', 'erro', 'attention', 'atencao', 'unavailable', 'indisponivel', 'stale']);
@@ -12,7 +13,7 @@ export function buildActivityInbox(state = {}, { now = new Date(), maxItems = 80
   const acknowledgements = state.settings?.activityInboxAcknowledged || {};
   const items = [];
 
-  for (const publication of state.intimations || []) {
+  for (const publication of publicationsInTrackingScope(state.intimations, state.settings?.publicationTrackingSince)) {
     if (!publication?.id || isTreatedPublication(publication)) continue;
     const process = linkedProcess(publication, processById, processByNumber);
     const unread = publication.unread !== false;

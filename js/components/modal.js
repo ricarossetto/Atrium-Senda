@@ -3,6 +3,7 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
   let lastFocusedElement = null;
   let previousBodyOverflow = '';
   let initialFormSnapshot = '';
+  let discardDialog = null;
 
   const focusableSelector = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -110,15 +111,36 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
   function requestClose() {
     const backdrop = document.getElementById('modalBackdrop');
     if (!backdrop || backdrop.classList.contains('hidden')) return false;
-    const confirmClose = document.defaultView?.confirm || globalThis.confirm;
-    if (hasUnsavedChanges()
-      && typeof confirmClose === 'function'
-      && !confirmClose('Há alterações não salvas. Deseja realmente fechar e descartá-las?')) return false;
+    if (hasUnsavedChanges()) {
+      if (discardDialog) return false;
+      const focused = document.activeElement;
+      discardDialog = document.createElement('dialog');
+      discardDialog.className = 'unsaved-changes-dialog';
+      discardDialog.setAttribute('aria-labelledby', 'unsavedChangesTitle');
+      discardDialog.setAttribute('aria-describedby', 'unsavedChangesDescription');
+      discardDialog.innerHTML = '<h2 id="unsavedChangesTitle">Descartar alterações?</h2><p id="unsavedChangesDescription">Há alterações não salvas. Se você sair agora, elas serão perdidas.</p><div class="unsaved-changes-actions"><button type="button" class="button ghost" data-keep-editing autofocus>Continuar editando</button><button type="button" class="button gold" data-discard-changes>Descartar alterações</button></div>';
+      const dismiss = () => {
+        discardDialog?.close();
+        discardDialog?.remove();
+        discardDialog = null;
+        focused?.focus();
+      };
+      discardDialog.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
+      discardDialog.addEventListener('keydown', event => event.stopPropagation());
+      discardDialog.querySelector('[data-keep-editing]').addEventListener('click', dismiss);
+      discardDialog.querySelector('[data-discard-changes]').addEventListener('click', () => { dismiss(); close(); });
+      document.body.appendChild(discardDialog);
+      discardDialog.showModal();
+      return false;
+    }
     close();
     return true;
   }
 
   function close() {
+    discardDialog?.close();
+    discardDialog?.remove();
+    discardDialog = null;
     const backdrop = document.getElementById('modalBackdrop');
     const wasOpen = backdrop && !backdrop.classList.contains('hidden');
     backdrop?.classList.add('hidden');
@@ -136,7 +158,7 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
   return Object.freeze({ init, open, close, requestClose, hasUnsavedChanges });
 }
 
-function installModalComboboxes(root) {
+export function installModalComboboxes(root) {
   root?.querySelectorAll('[data-modal-combobox-field]').forEach(field => {
     const input = field.querySelector('[data-modal-combobox]');
     const identity = field.querySelector('[data-combobox-identity]');
@@ -163,13 +185,29 @@ function installModalComboboxes(root) {
       identity.value = option.dataset.identity || '';
       options.forEach(item => item.setAttribute('aria-selected', String(item === option)));
       setOpen(false);
+      field.dispatchEvent(new CustomEvent('atrium:combobox-select', {
+        bubbles: true,
+        detail: {
+          name: input.name || '',
+          value: input.value,
+          identity: identity.value
+        }
+      }));
       input.focus();
     };
-    input.addEventListener('focus', filter);
+    // Opening is intentional: automatic modal focus must not reopen suggestions.
+    input.addEventListener('click', filter);
     input.addEventListener('input', () => { identity.value = ''; filter(); });
     input.addEventListener('keydown', event => {
-      if (event.key === 'Escape') { setOpen(false); return; }
+      if (event.key === 'Escape' && input.getAttribute('aria-expanded') === 'true') { event.preventDefault(); event.stopPropagation(); setOpen(false); return; }
+      if (event.key === 'Enter' && input.getAttribute('aria-expanded') === 'true') {
+        event.preventDefault();
+        const first = options.find(option => !option.classList.contains('hidden'));
+        if (first) choose(first);
+        return;
+      }
       if (event.key !== 'ArrowDown') return;
+      filter();
       const first = options.find(option => !option.classList.contains('hidden'));
       if (first) { event.preventDefault(); first.focus(); }
     });
@@ -178,7 +216,7 @@ function installModalComboboxes(root) {
       option.addEventListener('click', () => choose(option));
       option.addEventListener('keydown', event => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); choose(option); return; }
-        if (event.key === 'Escape') { event.preventDefault(); setOpen(false); input.focus(); return; }
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setOpen(false); input.focus(); return; }
         if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
         event.preventDefault();
         const visible = options.filter(item => !item.classList.contains('hidden'));
@@ -243,8 +281,8 @@ const AGENDA_FIELD_SECTIONS = Object.freeze({
   title: 'Identificação',
   date: 'Quando', time: 'Quando',
   client: 'Vínculos', process: 'Vínculos',
-  location: 'Local',
-  source: 'Origem',
+  location: 'Local e origem',
+  source: 'Local e origem',
   description: 'Observações'
 });
 

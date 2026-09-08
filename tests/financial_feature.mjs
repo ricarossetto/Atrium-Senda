@@ -35,7 +35,8 @@ for (const forbiddenCollection of [
   assert.equal(financialSource.includes(forbiddenCollection), false, 'Financeiro não pode criar coleção: ' + forbiddenCollection + '.');
 }
 assert.match(financialSource, /^import \{ Store \} from '\.\.\/core\/store\.js';/);
-assert.equal((financialSource.match(/^import /gm) || []).length, 1, 'Financeiro deve importar somente o Store canônico.');
+assert.equal((financialSource.match(/^import /gm) || []).length, 2, 'Financeiro usa Store canônico e combobox compartilhado, sem transporte paralelo.');
+assert.ok(financialSource.includes("import { installModalComboboxes } from '../components/modal.js';"));
 assert.match(portalSource, /import \{ createFinancialFeature \} from '\.\/features\/financial\.js';/);
 assert.equal((portalSource.match(/createFinancialFeature\(/g) || []).length, 1, 'Portal deve instanciar Financeiro uma única vez.');
 assert.equal(portalSource.includes('this.financialFilter'), false, 'Portal não pode manter shadow state do filtro financeiro.');

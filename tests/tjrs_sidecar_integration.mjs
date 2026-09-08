@@ -16,8 +16,8 @@ console.log('\n===============================================================')
 console.log('  ATRIUM — CONTRATO DO SIDECAR TJRS');
 console.log('===============================================================\n');
 
-const CNJ = '50032803220268210404';
-const FORMATTED_CNJ = '5003280-32.2026.8.21.0404';
+const CNJ = '00000015820998210000';
+const FORMATTED_CNJ = '0000001-58.2099.8.21.0000';
 const HASH = 'a'.repeat(64);
 const MOVEMENT_HASH = 'b'.repeat(64);
 

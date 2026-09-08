@@ -20,8 +20,9 @@ try {
   assert.match(await opener.getAttribute('aria-label'), /Marina Duarte Sintética, papel Cliente/);
   await opener.focus();
   await opener.press('Enter');
-  await page.waitForFunction(() => document.activeElement?.id === 'contactInspectorHeading');
-  assert.equal(await page.locator('#contactInspector').getAttribute('role'), 'region');
+  await page.waitForFunction(() => document.activeElement?.hasAttribute('data-contact-inspector-close'));
+  assert.equal(await page.locator('#contactInspector').getAttribute('role'), 'dialog');
+  assert.equal(await page.locator('#contactInspector').getAttribute('aria-modal'), 'true');
   assert.equal(await page.locator('#contactInspectorHeading').getAttribute('tabindex'), '-1');
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => document.activeElement?.dataset?.contactId === 'ui-v2-contact-client');

@@ -515,3 +515,4 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] [data-combobox-option]
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] [data-combobox-option] strong { font-size: 13px; }
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] [data-combobox-option] small { color: var(--v2-color-muted-foreground); font-size: 11px; }
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="lead"] [data-combobox-option].hidden { display: none; }
+html[data-ui="v2"] #leadCount { border-radius: var(--v2-radius-md); }

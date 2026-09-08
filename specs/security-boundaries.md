@@ -44,6 +44,8 @@ Falha é deny-by-default, com mensagens sanitizadas e sem fallback inseguro.
 
 Material sensível é cifrado e escrito de forma privada/atômica; chaves não entram no Store jurídico.
 
+Chaves de acesso de processos eproc ficam no cofre judicial cifrado, isoladas por usuário + CNJ. A UI pode substituí-las, mas nunca as relê; o backend as resolve para consultas posteriores.
+
 ## Relevant tests
 
 `tests/security.mjs`, `tests/security_migrations.mjs`, `tests/rls.mjs`, `tests/deployment.mjs`, `tests/backup_restore.mjs`.

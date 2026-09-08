@@ -42,10 +42,15 @@ try {
   assert.equal((await credentials.getPortalCredentials('eproc-sandbox', 'identity-a')).username, 'identity-a');
   assert.equal((await credentials.getPortalCredentials('eproc-sandbox', 'identity-b')).username, 'identity-b');
   assert.notEqual((await credentials.getPortalCredentials('eproc-sandbox', 'identity-a')).password, (await credentials.getPortalCredentials('eproc-sandbox', 'identity-b')).password);
+  const accessKeyMarker = 'SYNTHETIC_PROCESS_ACCESS_KEY';
+  await credentials.saveProcessAccessKey('5001234-56.2026.8.21.0001', { accessKey: accessKeyMarker, userId: 'identity-a' });
+  assert.equal(await credentials.getProcessAccessKey('5001234-56.2026.8.21.0001', 'identity-a'), accessKeyMarker);
+  assert.equal(await credentials.getProcessAccessKey('5001234-56.2026.8.21.0001', 'identity-b'), null, 'Chave processual deve permanecer isolada por usuário.');
 
   const credentialEnvelope = await readFile(path.join(root, 'judicial-integrations.json'), 'utf8');
   assert.doesNotMatch(credentialEnvelope, new RegExp(passwordMarker));
   assert.doesNotMatch(credentialEnvelope, new RegExp(secretMarker));
+  assert.doesNotMatch(credentialEnvelope, new RegExp(accessKeyMarker));
 
   const portal = {
     id: 'eproc-sandbox', name: 'eproc Sandbox Sintético', system: 'eproc', strategy: 'eproc',

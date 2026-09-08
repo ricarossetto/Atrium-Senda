@@ -15,7 +15,8 @@ const formatAge = () => 'Hoje';
 const unitItem = {
   id: 'publication-unit', title: 'Título <sintético>', process: '5000000-00.2026.8.21.0001',
   court: 'TJRS & Unidade', source: 'DJEN', publishedAt: '2026-08-30',
-  text: 'Texto oficial\ncom 15 dias sem prazo cadastrado.', treatmentStatus: 'untreated', unread: true, urgent: true
+  text: 'Texto oficial\ncom 15 dias sem prazo cadastrado.', treatmentStatus: 'untreated', unread: true, urgent: true,
+  hasHtml: true, rawHtml: '<p>Conteúdo <strong>HTML</strong> sintético.</p>'
 };
 const unitAct = { label: 'Manifestação', css: 'act-manifestacao' };
 const unitRow = renderPublicationRow({ item: unitItem, act: unitAct, parties: 'Cliente Sintético', selected: false, escapeHtml, formatDate, formatAge });
@@ -35,6 +36,8 @@ assert.match(unitDetail, /id="btnCreateTask"/);
 assert.match(unitDetail, /Outras providências/);
 assert.match(unitDetail, /data-detail-action="deadline"/);
 assert.match(unitDetail, /id="btnSendIntimationEmail"/);
+assert.match(unitDetail, /data-detail-action="view-decision-html"/);
+assert.match(unitDetail, /data-detail-action="download-decision-html"/);
 
 const presenterSource = readFileSync(new URL('../js/views/ui-v2/publications-presenter.js', import.meta.url), 'utf8');
 const featureSource = readFileSync(new URL('../js/features/publications.js', import.meta.url), 'utf8');
@@ -51,6 +54,12 @@ try {
   try {
     const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'light', probe: true });
     const fixture = await prepareUiV2PublicationsFixture(page);
+    await page.evaluate(() => {
+      const item = window.Atrium.Store.state.intimations.find(record => record.id === 'ui-v2-publication-urgent');
+      item.hasHtml = true;
+      item.rawHtml = '<div onclick="alert(1)"><h2>Decisão integral sintética</h2><script>alert(2)</script><p>Teor completo.</p></div>';
+      window.Atrium.App.renderInbox();
+    });
     const requests = [];
     page.on('request', request => requests.push({ method: request.method(), url: request.url() }));
     const intervalBaseline = await page.evaluate(() => window.__uiV2RuntimeProbe.intervals);
@@ -92,6 +101,13 @@ try {
     const detailText = await page.locator('#intimationDetail').textContent();
     assert.match(detailText, /TEXTO OFICIAL SINTÉTICO/);
     assert.match(detailText, /Aguardando triagem humana/);
+    assert.equal(await page.locator('[data-detail-action="view-decision-html"]').isVisible(), true);
+    await page.locator('[data-detail-action="view-decision-html"]').click();
+    await page.locator('.publication-decision-dialog[open]').waitFor();
+    const frameHtml = await page.locator('.publication-decision-dialog iframe').getAttribute('srcdoc');
+    assert.match(frameHtml, /Decisão integral sintética/);
+    assert.doesNotMatch(frameHtml, /alert\(|onclick/i);
+    await page.locator('.publication-decision-dialog [data-close-decision]').click();
     assert.equal(await urgentRow.getAttribute('aria-pressed'), 'true');
 
     await page.evaluate(() => document.getElementById('publicationInspectorBackdrop').dispatchEvent(new MouseEvent('click', { bubbles: true })));

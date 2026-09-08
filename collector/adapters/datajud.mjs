@@ -1,5 +1,5 @@
 const API_BASE = 'https://api-publica.datajud.cnj.jus.br';
-const OFFICIAL_DEFAULT_KEY = 'cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
+export const OFFICIAL_DEFAULT_KEY = 'cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
 const OFFICIAL_KEY_PAGE = 'https://datajud-wiki.cnj.jus.br/api-publica/acesso/';
 const PROCESS_RE = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/g;
 const STATE_ALIASES = {
@@ -31,7 +31,19 @@ export async function collectDatajud(portal, config, target, options = {}) {
   }
   if (!apiKey) apiKey = OFFICIAL_DEFAULT_KEY;
 
+  let index = 0;
   for (const number of numbers) {
+    index += 1;
+    const bar = renderProgressBar(index, numbers.length, 20);
+    const pct = Math.round((index / numbers.length) * 100);
+    if (typeof options.onProgress === 'function') {
+      try { options.onProgress({ current: index, total: numbers.length, number, percent: pct }); } catch {}
+    }
+    if (process.stdout?.isTTY) {
+      process.stdout.write(`\r  DataJud: ${bar} ${pct}% (${index}/${numbers.length})   `);
+    } else if (index === 1 || index % 5 === 0 || index === numbers.length) {
+      console.log(`  DataJud: ${bar} ${pct}% (${index}/${numbers.length})`);
+    }
     const alias = aliasForProcess(number);
     if (!alias) {
       failed += 1;
@@ -59,8 +71,18 @@ export async function collectDatajud(portal, config, target, options = {}) {
     }
     if (Number(portal.requestSpacingMs || 150) > 0) await sleep(Number(portal.requestSpacingMs || 150));
   }
+  if (process.stdout?.isTTY) {
+    process.stdout.write(`\r  DataJud: [████████████████████] 100% (${numbers.length}/${numbers.length}) concluído!          \n`);
+  }
 
   return { queried: numbers.length, found, updated, partial, failed, refreshedKey, complete: failed === 0 && partial === 0 };
+}
+
+function renderProgressBar(current, total, width = 20) {
+  const progress = Math.min(1, Math.max(0, current / (total || 1)));
+  const filled = Math.round(width * progress);
+  const empty = width - filled;
+  return `[${'█'.repeat(filled)}${'░'.repeat(empty)}]`;
 }
 
 async function queryProcess({ number, alias, apiKey, portal, fetchImpl, sleep }) {

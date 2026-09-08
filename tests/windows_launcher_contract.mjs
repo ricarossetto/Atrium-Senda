@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const bat = await readFile(new URL('../ATRIUM.bat', import.meta.url));
-const wrapper = await readFile(new URL('../iniciar-atrium.bat', import.meta.url));
+const wrapper = await readFile(new URL('../scripts/windows/iniciar-atrium.bat', import.meta.url));
 const installer = await readFile(new URL('../install.ps1', import.meta.url));
 const bootstrap = await readFile(new URL('../scripts/windows/atrium-bootstrap.ps1', import.meta.url));
 const serverLauncher = await readFile(new URL('../scripts/windows/atrium-server.ps1', import.meta.url));
@@ -14,7 +14,7 @@ const serverLauncherText = serverLauncher.toString('utf8').replace(/^\uFEFF/, ''
 
 const hasOnlyCrLf = buffer => !buffer.toString('binary').replaceAll('\r\n', '').includes('\n');
 for (const [name, source] of [
-  ['ATRIUM.bat', bat], ['iniciar-atrium.bat', wrapper], ['install.ps1', installer],
+  ['ATRIUM.bat', bat], ['scripts/windows/iniciar-atrium.bat', wrapper], ['install.ps1', installer],
   ['atrium-bootstrap.ps1', bootstrap], ['atrium-server.ps1', serverLauncher]
 ]) {
   assert.ok(source.includes(Buffer.from('\r\n')), `${name} deve usar CRLF.`);
@@ -26,7 +26,7 @@ for (const [name, source] of [['install.ps1', installer], ['atrium-bootstrap.ps1
 }
 
 assert.match(batText, /-NoLogo -NoProfile -ExecutionPolicy Bypass -File/i);
-assert.match(wrapperText, /^@echo off\r?\ncall "%~dp0ATRIUM\.bat" %\*/i);
+assert.match(wrapperText, /call "%~dp0\.\.\\\.\.\\ATRIUM\.bat" %\*/i);
 assert.match(bootstrapText, /\[switch\]\$Doctor/);
 assert.match(bootstrapText, /\[switch\]\$InstallOnly/);
 assert.match(bootstrapText, /Assert-RequiredFiles/);
@@ -45,7 +45,7 @@ assert.match(serverLauncherText, /Mantenha esta janela aberta/);
 assert.match(bootstrapText, /Nenhum servidor foi iniciado e nenhum dado foi alterado/i);
 assert.match(bootstrapText, /Nenhum servidor foi iniciado e os dados existentes foram preservados/i);
 
-assert.match(installerText, /\[string\]\$ReleaseTag\s*=\s*'v2\.0\.0'/);
+assert.match(installerText, /\[string\]\$ReleaseTag\s*=\s*'v2\.1\.0'/);
 assert.match(installerText, /\[string\]\$SourceRef\s*=\s*''/);
 assert.match(installerText, /\$Repository\s*=\s*'ricarossetto\/Atrium-Senda'/);
 assert.match(installerText, /archive\/refs\/heads\/\$SourceRef\.zip/);

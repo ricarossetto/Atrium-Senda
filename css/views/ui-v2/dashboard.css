@@ -316,15 +316,43 @@ html[data-ui="v2"] #view-dashboard .dashboard-tasks-column {
 }
 
 html[data-ui="v2"] #view-dashboard .dashboard-tasks-header {
-  align-items: flex-start;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: var(--v2-space-3);
   padding-bottom: var(--v2-space-3);
   border-color: var(--v2-color-border-subtle);
 }
 
 html[data-ui="v2"] #view-dashboard .dashboard-tasks-title {
+  flex-wrap: wrap;
+  flex-shrink: 0;
   color: var(--v2-color-foreground);
   font-size: 16px;
+}
+
+html[data-ui="v2"] #view-dashboard .dashboard-tasks-title > span {
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] #dashboardTaskCount {
+  flex: 0 0 auto;
+  border-radius: var(--v2-radius-md);
+  padding: 8px 10px;
+  line-height: 1;
+}
+
+html[data-ui="v2"] #view-dashboard .dashboard-tasks-header > div:last-child {
+  min-width: 0;
+  flex-wrap: nowrap !important;
+}
+
+html[data-ui="v2"] #dashboardTaskFilters { flex: 0 0 auto; }
+html[data-ui="v2"] #dashboardTaskFilters button { padding-inline: 8px; font-size: 11px; }
+
+html[data-ui="v2"] #dashboardTaskFilters button,
+html[data-ui="v2"] #view-dashboard .dashboard-tasks-header .inbox-sort-control {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 html[data-ui="v2"] #view-dashboard .dashboard-tasks-header .inbox-sort-control {
@@ -336,12 +364,19 @@ html[data-ui="v2"] #view-dashboard .dashboard-tasks-header .inbox-sort-control {
 }
 
 html[data-ui="v2"] #view-dashboard #dashboardTaskSortSelect {
+  width: 156px;
+  min-width: 0;
   min-height: 30px;
   color: var(--v2-color-foreground) !important;
   font-size: 12px !important;
 }
 
+html[data-ui="v2"] #todayLabel { font-size: 15px; font-weight: 650; }
+
 html[data-ui="v2"] #view-dashboard .dashboard-tasks-list {
+  max-height: none;
+  overflow: visible;
+  grid-template-columns: minmax(0, 1fr);
   display: grid;
   gap: var(--v2-space-2);
 }
@@ -501,6 +536,8 @@ html[data-ui="v2"] #view-dashboard .dashboard-reminder-date {
 }
 
 @media (max-width: 1260px) {
+  html[data-ui="v2"] #view-dashboard .dashboard-tasks-title { font-size: 14px; }
+  html[data-ui="v2"] #view-dashboard .dashboard-workspace-wrap { grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] .v2-dashboard-opening { grid-template-columns: 1fr; }
   html[data-ui="v2"] .v2-dashboard-opening-copy { max-width: none; padding-right: 0; padding-bottom: var(--v2-space-5); border-right: 0; border-bottom: 1px solid var(--v2-color-border-subtle); }
   html[data-ui="v2"] .v2-dashboard-opening h2 { max-width: 15ch; }
@@ -522,6 +559,7 @@ html[data-ui="v2"] #view-dashboard .dashboard-reminder-date {
   html[data-ui="v2"] .v2-dashboard-opening h2 { font-size: 36px; line-height: 38px; }
   html[data-ui="v2"] #view-dashboard .dashboard-tasks-header { flex-direction: column; }
   html[data-ui="v2"] #view-dashboard .dashboard-tasks-header > div:last-child { width: 100%; }
+  html[data-ui="v2"] #view-dashboard .dashboard-tasks-header > div:last-child { flex-wrap: wrap !important; }
   html[data-ui="v2"] #view-dashboard .activity-inbox-header { align-items: flex-start; flex-direction: column; }
   html[data-ui="v2"] #view-dashboard .activity-inbox-header > div:last-child { width: 100%; flex-wrap: wrap; }
 }

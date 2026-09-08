@@ -5,6 +5,8 @@ html[data-ui="v2"] #view-kanban {
 }
 
 html[data-ui="v2"] #view-kanban > .section-toolbar {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) auto auto;
   align-items: end;
   gap: var(--v2-space-4);
   margin-bottom: var(--v2-space-4);
@@ -64,6 +66,235 @@ html[data-ui="v2"] #view-kanban .toolbar-actions {
 html[data-ui="v2"] #view-kanban .toolbar-actions .button {
   min-height: 40px;
 }
+
+html[data-ui="v2"] .task-view-switch {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(82px, 1fr));
+  align-self: center;
+  padding: 4px;
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-round);
+}
+
+html[data-ui="v2"] .task-view-switch button {
+  min-height: 34px;
+  padding: 6px 14px;
+  color: var(--v2-color-foreground-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--v2-radius-round);
+  font: 750 12px/1 var(--v2-font-interface);
+  cursor: pointer;
+}
+
+html[data-ui="v2"] .task-view-switch button:is(:hover, :focus-visible) {
+  color: var(--v2-color-foreground);
+  outline: 2px solid color-mix(in srgb, var(--v2-color-primary) 42%, transparent);
+  outline-offset: 1px;
+}
+
+html[data-ui="v2"] .task-view-switch button.active {
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-elevated);
+  box-shadow: var(--v2-shadow-subtle);
+}
+
+html[data-ui="v2"] .task-list-panel {
+  min-width: 0;
+  display: grid;
+  gap: var(--v2-space-4);
+}
+
+html[data-ui="v2"] .task-list-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--v2-space-3);
+}
+
+html[data-ui="v2"] .task-list-summary article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px var(--v2-space-3);
+  padding: var(--v2-space-3) var(--v2-space-4);
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  box-shadow: var(--v2-shadow-subtle);
+}
+
+html[data-ui="v2"] .task-list-summary span {
+  align-self: center;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+html[data-ui="v2"] .task-list-summary strong {
+  grid-row: span 2;
+  align-self: center;
+  font: 650 24px/1 var(--v2-font-editorial);
+}
+
+html[data-ui="v2"] .task-list-summary small {
+  overflow: hidden;
+  color: var(--v2-color-muted-foreground);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] .task-list-controls {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(150px, auto) minmax(180px, auto) auto;
+  align-items: end;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-3);
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+}
+
+html[data-ui="v2"] .task-list-controls label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+html[data-ui="v2"] .task-list-controls label > span,
+html[data-ui="v2"] .task-list-row :is(.task-list-context, .task-list-deadline, .task-list-owner, .task-list-effort) > span,
+html[data-ui="v2"] .task-list-stage > span {
+  color: var(--v2-color-muted-foreground);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] .task-list-controls :is(input, select),
+html[data-ui="v2"] .task-list-stage select {
+  min-width: 0;
+  min-height: 40px;
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-inset);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-sm);
+  font: 650 12px/1.2 var(--v2-font-interface);
+}
+
+html[data-ui="v2"] .task-list-visible-count {
+  align-self: center;
+  padding: 7px 10px;
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-primary-subtle);
+  border-radius: var(--v2-radius-round);
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] .task-list {
+  min-width: 0;
+  display: grid;
+  gap: var(--v2-space-2);
+}
+
+html[data-ui="v2"] .task-list-row {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .8fr) minmax(0, .9fr) minmax(0, .75fr);
+  align-items: center;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-3) var(--v2-space-4);
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  box-shadow: var(--v2-shadow-subtle);
+}
+
+html[data-ui="v2"] .task-list-row::before {
+  position: absolute;
+  inset: 9px auto 9px 0;
+  width: 3px;
+  background: var(--v2-color-primary);
+  border-radius: 0 var(--v2-radius-round) var(--v2-radius-round) 0;
+  content: "";
+}
+
+html[data-ui="v2"] .task-list-row.is-overdue::before { background: var(--v2-color-danger); }
+html[data-ui="v2"] .task-list-row.is-complete { opacity: .78; }
+html[data-ui="v2"] .task-list-row.is-complete::before { background: var(--v2-color-success); }
+
+html[data-ui="v2"] .task-list-primary,
+html[data-ui="v2"] .task-list-context,
+html[data-ui="v2"] .task-list-stage,
+html[data-ui="v2"] .task-list-deadline,
+html[data-ui="v2"] .task-list-owner,
+html[data-ui="v2"] .task-list-effort {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+html[data-ui="v2"] .task-list-kicker {
+  overflow: hidden;
+  color: var(--v2-color-muted-foreground);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] .task-list-primary > button {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-ui="v2"] .task-list-primary > button:is(:hover, :focus-visible) strong { color: var(--v2-color-primary); text-decoration: underline; text-underline-offset: 3px; }
+html[data-ui="v2"] .task-list-primary strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+html[data-ui="v2"] .task-list-primary > button span { overflow: hidden; color: var(--v2-color-foreground-secondary); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+html[data-ui="v2"] .task-list-context strong,
+html[data-ui="v2"] .task-list-deadline strong,
+html[data-ui="v2"] .task-list-owner strong,
+html[data-ui="v2"] .task-list-effort strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+html[data-ui="v2"] .task-list-context small,
+html[data-ui="v2"] .task-list-deadline small,
+html[data-ui="v2"] .task-list-owner small { overflow: hidden; color: var(--v2-color-muted-foreground); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+html[data-ui="v2"] .task-list-deadline strong.overdue { color: var(--v2-color-danger); }
+html[data-ui="v2"] .task-list-stage select { min-height: 36px; padding: 6px 8px; }
+html[data-ui="v2"] .task-list-effort .timesheet-btn { min-height: 32px; justify-content: center; padding: 5px 7px; font-size: 9px; }
+html[data-ui="v2"] .task-list-timer-muted { color: var(--v2-color-muted-foreground); font-size: 10px; }
+
+html[data-ui="v2"] .task-list-empty {
+  min-height: 220px;
+  display: grid;
+  place-content: center;
+  gap: var(--v2-space-2);
+  padding: var(--v2-space-5);
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface);
+  border: 1px dashed var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  text-align: center;
+}
+
+html[data-ui="v2"] .task-list-empty strong { color: var(--v2-color-foreground); }
+html[data-ui="v2"] .task-list-empty span { font-size: 12px; }
 
 html[data-ui="v2"] #kanbanBoard {
   grid-auto-columns: minmax(286px, 1fr);
@@ -528,6 +759,53 @@ html[data-ui="v2"] .task-form-section .form-grid { gap: var(--v2-space-3); }
 html[data-ui="v2"] .task-form-section .field label { color: var(--v2-color-foreground-secondary); font-size: 10px; }
 html[data-ui="v2"] .task-form-section .field-note { color: var(--v2-color-muted-foreground); font-size: 10px; }
 
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] .modal-combobox {
+  position: relative;
+}
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] .modal-combobox-listbox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: var(--v2-z-popover);
+  max-height: 260px;
+  display: grid;
+  padding: var(--v2-space-1);
+  overflow-y: auto;
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border-strong);
+  border-radius: var(--v2-radius-md);
+  box-shadow: var(--v2-shadow-elevated);
+}
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] .modal-combobox-listbox.hidden { display: none; }
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] [data-combobox-option] {
+  min-height: 48px;
+  display: grid;
+  gap: 2px;
+  padding: var(--v2-space-2) var(--v2-space-3);
+  color: var(--v2-color-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: var(--v2-radius-sm);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] [data-combobox-option]:is(:hover, :focus-visible),
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] [data-combobox-option][aria-selected="true"] {
+  background: var(--v2-color-primary-soft);
+  outline: 0;
+}
+
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] [data-combobox-option] strong { font-size: 13px; }
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] [data-combobox-option] small { color: var(--v2-color-muted-foreground); font-size: 11px; }
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] [data-combobox-option].hidden { display: none; }
+
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="task"] #field-description {
   min-height: 148px;
   overflow-y: hidden;
@@ -582,6 +860,13 @@ html[data-ui="v2"] .kanban-columns-note { margin: 0; color: var(--v2-color-muted
 html[data-ui="v2"] #kanbanColumnsForm > footer { display: flex; justify-content: flex-end; gap: var(--v2-space-2); margin: var(--v2-space-2) 0 0; padding-top: var(--v2-space-4); border-top: 1px solid var(--v2-color-border); }
 body.kanban-columns-open { overflow: hidden; }
 
+@media (max-width: 1280px) and (min-width: 768px) {
+  html[data-ui="v2"] #view-kanban > .section-toolbar { grid-template-columns: minmax(240px, 1fr) auto; }
+  html[data-ui="v2"] #view-kanban .toolbar-actions { grid-column: 1 / -1; justify-content: flex-end; }
+  html[data-ui="v2"] .task-list-row { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.2fr) minmax(0, 1fr); }
+  html[data-ui="v2"] .task-list-row > :nth-child(n + 4) { padding-top: var(--v2-space-2); border-top: 1px solid var(--v2-color-border-subtle); }
+}
+
 @media (max-width: 1023px) and (min-width: 768px) {
   html[data-ui="v2"] #view-kanban { padding: var(--v2-space-4); }
   html[data-ui="v2"] #kanbanBoard { grid-auto-columns: minmax(276px, 38vw); }
@@ -591,14 +876,15 @@ body.kanban-columns-open { overflow: hidden; }
   html[data-ui="v2"] #view-kanban { padding: var(--v2-space-3); }
 
   html[data-ui="v2"] #view-kanban > .section-toolbar {
+    grid-template-columns: 1fr;
     align-items: stretch;
-    flex-direction: column;
     padding: var(--v2-space-3);
   }
 
   html[data-ui="v2"] .v2-task-heading h2 { font-size: 25px; line-height: 30px; }
 
   html[data-ui="v2"] #view-kanban .toolbar-actions {
+    grid-column: auto;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
@@ -608,6 +894,23 @@ body.kanban-columns-open { overflow: hidden; }
     min-height: 44px;
     padding-inline: var(--v2-space-2);
   }
+
+  html[data-ui="v2"] .task-view-switch { width: 100%; }
+  html[data-ui="v2"] .task-view-switch button { min-height: 44px; }
+  html[data-ui="v2"] .task-list-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-ui="v2"] .task-list-controls { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  html[data-ui="v2"] .task-list-search,
+  html[data-ui="v2"] .task-list-visible-count { grid-column: 1 / -1; }
+  html[data-ui="v2"] .task-list-visible-count { justify-self: start; }
+  html[data-ui="v2"] .task-list-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  html[data-ui="v2"] .task-list-primary { grid-column: 1 / -1; }
+  html[data-ui="v2"] .task-list-row > :nth-child(n + 2) { padding-top: var(--v2-space-2); border-top: 1px solid var(--v2-color-border-subtle); }
+  html[data-ui="v2"] .task-list-primary strong,
+  html[data-ui="v2"] .task-list-primary > button span { white-space: normal; }
+  html[data-ui="v2"] .task-list-primary > button,
+  html[data-ui="v2"] .task-list-controls :is(input, select),
+  html[data-ui="v2"] .task-list-stage select,
+  html[data-ui="v2"] .task-list-effort .timesheet-btn { min-height: 44px; }
 
   html[data-ui="v2"] #kanbanBoard {
     width: 100%;

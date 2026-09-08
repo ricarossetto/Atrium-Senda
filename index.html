@@ -158,7 +158,7 @@
           </button>
           <button class="nav-item" data-view="kanban">
             <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-tasks"></use></svg></span>
-            <span>Gestão kanban</span>
+            <span>Gestão de tarefas</span>
           </button>
           <button class="nav-item" data-view="agenda">
             <span class="nav-icon" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-agenda"></use></svg></span>
@@ -308,6 +308,9 @@
         <span class="system-status-icon" id="systemStatusIcon" aria-hidden="true"></span>
         <strong id="systemStatusLabel">Pronto</strong>
         <span id="systemStatusDetail">Dados carregados; salvamento automático ativo.</span>
+        <div class="system-status-progress-track hidden" id="systemStatusProgressTrack" aria-hidden="true">
+          <div class="system-status-progress-fill" id="systemStatusProgressFill" style="width: 0%;"></div>
+        </div>
       </div>
 
       <section class="view active" id="view-dashboard" data-title="Área de Trabalho" data-eyebrow="Atrium · Meu Dia">
@@ -351,7 +354,7 @@
           <div class="toolbar-copy"><p><span class="gold-pill"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-dashboard"></use></svg>Atrium · <span id="todayLabel"></span></span></p></div>
           <div class="toolbar-actions">
             <button class="button gold" id="btnDashboardNewTask"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Adicionar Tarefa</button>
-            <button class="button ghost" data-view-link="kanban">Ver Quadro Kanban →</button>
+            <button class="button ghost" data-view-link="kanban">Ver gestão de tarefas →</button>
           </div>
         </div>
 
@@ -382,22 +385,6 @@
             <div><small>Fontes saudáveis</small><strong id="metricSources">0/0</strong><p>na última verificação</p></div>
           </article>
         </div>
-
-        <section class="activity-inbox v2-only" aria-labelledby="activityInboxHeading">
-          <header class="activity-inbox-header">
-            <div><p class="v2-kicker">Central operacional</p><h3 id="activityInboxHeading">Caixa de atividades</h3><span>Fatos existentes que pedem uma ação ou conferência.</span></div>
-            <div><span class="v2-status-badge is-neutral" id="activityInboxCount">0 itens</span><div class="filter-tabs" id="activityInboxFilters" aria-label="Filtrar caixa de atividades"><button class="active" data-activity-filter="all">Tudo</button><button data-activity-filter="work">Trabalho</button><button data-activity-filter="judicial">Judicial</button><button data-activity-filter="system">Sistema</button></div></div>
-          </header>
-          <div class="activity-inbox-list" id="activityInboxList"></div>
-        </section>
-
-        <section class="dashboard-actionable-insights v2-only" aria-labelledby="dashboardInsightsHeading">
-          <header class="dashboard-actionable-insights-header">
-            <div><p class="v2-kicker">Indicadores para decisão</p><h3 id="dashboardInsightsHeading">Panorama acionável</h3></div>
-            <span>Somente dados registrados no ATRIUM</span>
-          </header>
-          <div class="dashboard-actionable-insights-grid" id="dashboardActionableInsights"></div>
-        </section>
 
         <!-- Layout da Área de Trabalho: 2 Colunas (Tarefas e Prazos à Esquerda / Widgets à Direita) -->
         <div class="dashboard-workspace-wrap">
@@ -507,6 +494,22 @@
             </div>
           </aside>
         </div>
+        <section class="activity-inbox v2-only" aria-labelledby="activityInboxHeading">
+          <header class="activity-inbox-header">
+            <div><p class="v2-kicker">Central operacional</p><h3 id="activityInboxHeading">Caixa de atividades</h3><span>Fatos existentes que pedem uma ação ou conferência.</span></div>
+            <div><span class="v2-status-badge is-neutral" id="activityInboxCount">0 itens</span><div class="filter-tabs" id="activityInboxFilters" aria-label="Filtrar caixa de atividades"><button class="active" data-activity-filter="all">Tudo</button><button data-activity-filter="work">Trabalho</button><button data-activity-filter="judicial">Judicial</button><button data-activity-filter="system">Sistema</button></div></div>
+          </header>
+          <div class="activity-inbox-list" id="activityInboxList"></div>
+        </section>
+
+        <section class="dashboard-actionable-insights v2-only" aria-labelledby="dashboardInsightsHeading">
+          <header class="dashboard-actionable-insights-header">
+            <div><p class="v2-kicker">Indicadores para decisão</p><h3 id="dashboardInsightsHeading">Panorama acionável</h3></div>
+            <span>Somente dados registrados no ATRIUM</span>
+          </header>
+          <div class="dashboard-actionable-insights-grid" id="dashboardActionableInsights"></div>
+        </section>
+
       </section>
 
       <section class="view" id="view-leads" data-title="Atendimentos e Oportunidades" data-eyebrow="CRM Jurídico & Captação">
@@ -654,7 +657,7 @@
             </form>
             <div class="document-library-panel">
               <div class="document-library-toolbar">
-                <label for="documentNamingTemplate"><span>Padrão de nome do escritório</span><input id="documentNamingTemplate" maxlength="180" placeholder="{cliente} - {tipo} - {data}"><small>Campos: {processo}, {cliente}, {tipo}, {data}, {tribunal}, {oab}. Vazio mantém o nome seguro original.</small></label>
+                <label for="documentNamingTemplate"><span>Padrão de nome do escritório</span><input id="documentNamingTemplate" maxlength="180" placeholder="Nome original do arquivo"><small>Deixe vazio para manter o nome original. Exemplo de padrão: {cliente} - {tipo} - {data}.</small><output id="documentNamingPreview" aria-live="polite"></output></label>
                 <button class="button ghost" id="documentNamingSave" type="button">Salvar padrão</button>
               </div>
               <div id="documentArchiveStatus" class="document-archive-status" role="status" aria-live="polite"></div>
@@ -714,6 +717,10 @@
         </div>
 
         <div class="section-toolbar">
+          <div class="publication-tracking-setup v2-only">
+            <span id="publicationTrackingLabel"></span>
+            <button type="button" class="button gold" id="publicationTrackingStart">Iniciar acompanhamento de hoje</button>
+          </div>
           <div class="filter-tabs" id="inboxFilters" aria-label="Filtrar publicações por tratamento e prioridade">
             <button class="active" data-filter="untreated">Não tratadas</button>
             <button data-filter="in_review">Em análise</button>
@@ -728,10 +735,11 @@
               <div class="inbox-sort-control">
                 <label for="inboxCutoffSelect">Período:</label>
                 <select id="inboxCutoffSelect">
+                  <option value="tracking">Desde o início do acompanhamento</option>
                   <option value="today">Hoje em diante</option>
                   <option value="7days">Últimos 7 dias</option>
                   <option value="30days">Últimos 30 dias</option>
-                  <option value="all" selected>Todas as publicações</option>
+                  <option value="all" selected>Todas as publicações (histórico)</option>
                 </select>
               </div>
               <div class="inbox-sort-control">
@@ -767,10 +775,14 @@
         </div>
       </section>
 
-      <section class="view" id="view-kanban" data-title="Kanban jurídico" data-eyebrow="Fluxo do escritório">
+      <section class="view" id="view-kanban" data-title="Gestão de tarefas" data-eyebrow="Fluxo do escritório">
         <div class="section-toolbar">
           <div class="toolbar-copy classic-only"><p>Organize o trabalho interno sem alterar silenciosamente a fonte oficial.</p></div>
-          <div class="v2-task-heading v2-only"><p>Gestão do trabalho</p><h2>Tarefas</h2><span id="taskResultCount" aria-live="polite">0 tarefas</span><small>Seis etapas canônicas, uma única fila operacional.</small></div>
+          <div class="v2-task-heading v2-only"><p>Gestão do trabalho</p><h2>Tarefas</h2><span id="taskResultCount" aria-live="polite">0 tarefas</span><small>Uma única fila operacional em lista ou Kanban.</small></div>
+          <div class="task-view-switch v2-only" role="group" aria-label="Visualização das tarefas">
+            <button type="button" id="taskListViewButton" data-task-view-mode="list" aria-pressed="false">Lista</button>
+            <button type="button" id="taskKanbanViewButton" data-task-view-mode="kanban" aria-pressed="true" class="active">Kanban</button>
+          </div>
           <div class="toolbar-actions">
             <button class="button ghost" id="editKanbanColumnsButton" type="button">Editar colunas</button>
             <button class="button ghost" id="kanbanFilterButton">Minhas tarefas</button>
@@ -778,6 +790,16 @@
           </div>
         </div>
         <p class="sr-only" id="taskBoardInstructions">Arraste uma tarefa ou use o controle Mover para em cada cartão.</p>
+        <section class="task-list-panel hidden" id="taskListPanel" aria-label="Tarefas em lista">
+          <div class="task-list-summary" id="taskListSummary"></div>
+          <div class="task-list-controls">
+            <label class="task-list-search"><span>Pesquisar tarefas</span><input id="taskListSearch" type="search" placeholder="Título, cliente, processo ou responsável"></label>
+            <label><span>Situação</span><select id="taskListStatusFilter"><option value="all">Todas</option><option value="active">Em andamento</option><option value="overdue">Atrasadas</option><option value="completed">Concluídas</option></select></label>
+            <label><span>Ordenar por</span><select id="taskListSort"><option value="deadline">Prazo mais próximo</option><option value="priority">Prioridade</option><option value="updated">Atualização recente</option><option value="title">Título</option></select></label>
+            <span class="task-list-visible-count" id="taskListVisibleCount" aria-live="polite"></span>
+          </div>
+          <div class="task-list" id="taskList" role="list"></div>
+        </section>
         <div class="kanban-board" id="kanbanBoard" aria-describedby="taskBoardInstructions"></div>
         <p class="sr-only" id="taskBoardLive" aria-live="polite"></p>
       </section>
@@ -830,9 +852,9 @@
         <div class="section-toolbar">
           <div class="toolbar-copy classic-only"><p>Contatos importados de sistemas jurídicos e preservados no armazenamento criptografado.</p></div>
           <div class="v2-contacts-heading v2-only">
-            <p>People workspace</p>
+            <p>Relacionamentos do escritório</p>
             <h2>Clientes e contatos</h2>
-            <small>Uma base canônica para pessoas, papéis e relacionamentos do escritório.</small>
+            <small>Consulte cadastros, vínculos e informações de clientes e contatos.</small>
           </div>
           <div class="toolbar-actions">
             <button class="button ghost" data-view-link="importer">
@@ -1645,8 +1667,10 @@
         <button type="button" class="button ghost" id="processInspectorAssistant">Usar no Assistente</button>
         <button type="button" class="button ghost" id="processInspectorDocuments">Ver documentos</button>
         <button type="button" class="button ghost" id="processInspectorExport">Baixar processo</button>
+        <button type="button" class="button ghost hidden" id="processInspectorDownloadAutos">Gerar caderno em PDFs</button>
         <button type="button" class="button ghost hidden" id="processInspectorTjrs">Atualizar TJRS</button>
         <button type="button" class="button process-edit-action" id="processInspectorEdit">Editar processo</button>
+        <button type="button" class="button gold process-create-task-action" id="processInspectorCreateTask"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Criar tarefa</button>
         <button type="button" class="button danger-outline process-delete-action" id="processInspectorDelete">Excluir processo</button>
       </footer>
     </aside>
@@ -1990,7 +2014,7 @@
           <div class="tour-slide-body">
             <p>Organize providências no Kanban e acompanhe compromissos na agenda integrada, mantendo responsáveis, prioridades e datas informadas.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Kanban jurídico</strong><span>Mova tarefas entre etapas canônicas sem perder o vínculo com sua origem.</span></div>
+              <div class="tour-feature-card"><strong>Gestão de tarefas</strong><span>Alterne entre Lista e Kanban sem perder o vínculo de cada tarefa com sua origem.</span></div>
               <div class="tour-feature-card"><strong>Agenda integrada</strong><span>Reuniões, audiências e prazos explicitamente cadastrados em visão diária e mensal.</span></div>
             </div>
             <div class="tour-note">
@@ -2235,6 +2259,7 @@
           <label class="financial-detail-only" style="display:none; flex-direction:column; gap:4px;">
             <span id="finDescriptionLabel" style="font-size:12px; font-weight:600; color:var(--muted);">Descrição da despesa</span>
             <input id="finDescriptionInput" name="description" type="text" maxlength="160" placeholder="Ex: preparo recursal">
+            <datalist id="financialExpenseSuggestions"><option value="Salários"></option><option value="Pró-labore"></option><option value="Férias e 13º salário"></option><option value="Encargos trabalhistas"></option><option value="Vale-transporte e alimentação"></option><option value="Impostos e tributos"></option><option value="INSS"></option><option value="FGTS"></option><option value="ISS"></option><option value="Aluguel"></option><option value="Condomínio"></option><option value="Energia elétrica"></option><option value="Água e esgoto"></option><option value="Internet"></option><option value="Telefonia"></option><option value="Contabilidade"></option><option value="Software jurídico"></option><option value="Assinaturas e armazenamento digital"></option><option value="Certificado digital"></option><option value="Anuidade OAB"></option><option value="Seguro profissional"></option><option value="Material de escritório"></option><option value="Papelaria e impressões"></option><option value="Equipamentos de informática"></option><option value="Manutenção de equipamentos"></option><option value="Limpeza"></option><option value="Copa e café"></option><option value="Marketing e publicidade"></option><option value="Cursos e capacitação"></option><option value="Livros e publicações"></option><option value="Transporte e combustível"></option><option value="Estacionamento e pedágios"></option><option value="Viagens e hospedagem"></option><option value="Correspondentes jurídicos"></option><option value="Custas processuais"></option><option value="Preparo recursal"></option><option value="Emolumentos e cartório"></option><option value="Correios e entregas"></option><option value="Tarifas bancárias"></option><option value="Outras despesas"></option></datalist>
           </label>
           </div>
           <div class="financial-entry-section is-values" role="group" aria-labelledby="finSectionValues" style="display:contents;">
@@ -2270,7 +2295,8 @@
           </div>
           </div>
         </div>
-        <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:14px 20px; border-top:1px solid var(--line);">
+        <footer class="modal-footer">
+          <button class="button danger hidden" id="financialEntryDelete" type="button">Excluir despesa</button>
           <button class="button ghost" id="financialEntryCancel" type="button">Cancelar</button>
           <button class="button gold" type="submit">Salvar Lançamento</button>
         </footer>
@@ -2418,7 +2444,7 @@
             Tem certeza que deseja descartar esta publicação do fluxo ativo? Ela poderá ser consultada ou restaurada posteriormente no filtro "Descartadas".
           </p>
           <div style="background:var(--surface-raised); padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:12px; color:var(--text-secondary);">
-            <strong id="discardPublicationProcessRef" style="color:var(--text-primary); display:block; margin-bottom:2px;">5002086-73.2022.4.04.7133</strong>
+            <strong id="discardPublicationProcessRef" style="color:var(--text-primary); display:block; margin-bottom:2px;">0000000-00.0000.8.21.0000</strong>
             <span id="discardPublicationTitleRef" style="color:var(--text-secondary);">Título da publicação</span>
           </div>
           <label style="display:flex; flex-direction:column; gap:4px;">
@@ -2451,7 +2477,7 @@
             Deseja confirmar o tratamento desta publicação? O registro será arquivado na lista de resolvidas com registro de data e autor.
           </p>
           <div style="background:var(--surface-raised); padding:10px 12px; border-radius:8px; border:1px solid var(--border); font-size:12px; color:var(--text-secondary);">
-            <strong id="treatPublicationProcessRef" style="color:var(--text-primary); display:block; margin-bottom:2px;">5002086-73.2022.4.04.7133</strong>
+            <strong id="treatPublicationProcessRef" style="color:var(--text-primary); display:block; margin-bottom:2px;">0000000-00.0000.8.21.0000</strong>
             <span id="treatPublicationTitleRef" style="color:var(--text-secondary);">Título da publicação</span>
           </div>
           <label style="display:flex; flex-direction:column; gap:4px;">

@@ -1,4 +1,5 @@
 import { Store } from '../core/store.js';
+import { installModalComboboxes } from '../components/modal.js';
 
 export function createFinancialFeature({
   store = Store,
@@ -11,6 +12,8 @@ export function createFinancialFeature({
   renderV2Workspace,
   onOpenProcess
 } = {}) {
+  let editingEntry = null;
+  let visibleRecords = [];
   let initialized = false;
   let financialFilter = 'all';
   let submittingEntry = false;
@@ -35,12 +38,20 @@ export function createFinancialFeature({
       byId('financialSearch')?.addEventListener('input', event => this.render(event.target.value));
       byId('financialV2Workspace')?.addEventListener('click', event => {
         const button = event.target.closest('[data-financial-process-id]');
-        if (!button) return;
+        if (!button) {
+          const row = event.target.closest('[data-financial-edit]');
+          if (row) this.editRecord(visibleRecords[Number(row.dataset.financialEdit)]);
+          return;
+        }
         const process = (store.state.processes || []).find(item => String(item.id) === button.dataset.financialProcessId);
         if (process) onOpenProcess?.(process);
       });
+      byId('financialV2Workspace')?.addEventListener('keydown', event => {
+        if (event.target.matches('[data-financial-edit]') && ['Enter', ' '].includes(event.key)) { event.preventDefault(); this.editRecord(visibleRecords[Number(event.target.dataset.financialEdit)]); }
+      });
       byId('newFinancialEntryButton')?.addEventListener('click', () => this.openEntryModal());
       byId('financialEntryClose')?.addEventListener('click', () => this.closeEntryModal());
+      byId('financialEntryDelete')?.addEventListener('click', () => this.confirmExpenseDeletion());
       byId('financialEntryCancel')?.addEventListener('click', () => this.closeEntryModal());
       byId('financialEntryBackdrop')?.addEventListener('click', event => {
         if (event.target === byId('financialEntryBackdrop')) this.closeEntryModal();
@@ -245,6 +256,38 @@ export function createFinancialFeature({
         }
       });
 
+      const directOwners = [
+        { name: 'Escritório', expenses: store.state.officeExpenses || [], office: true },
+        ...(store.state.contacts || [])
+      ];
+      for (const owner of directOwners) {
+        for (const expense of (Array.isArray(owner.expenses) ? owner.expenses : [])) {
+          const amount = finiteAmount(expense.amount);
+          if ((expense.status || 'pendente') === 'pendente') pendingExpenses += amount;
+          if ((filter === 'all' || filter === 'despesas') && (!needle || normalizeText(owner.name + ' ' + expense.description).includes(needle))) {
+            presentationRecords.push({ id: expense.id, processId: '', contactId: owner.office ? '' : owner.id,
+              kind: 'despesa', processNumber: owner.office ? 'Escritório' : 'Contato', client: owner.office ? 'Despesa operacional — sem vínculo' : owner.name,
+              typeLabel: expense.description, gross: amount, feeAmount: null, netClient: null, date: expense.date,
+              statusLabel: expense.status === 'pago' ? 'Paga' : expense.status === 'reembolsado' ? 'Reembolsada' : 'Pendente',
+              statusTone: expense.status === 'pendente' ? 'warning' : 'connected' });
+          }
+        }
+        for (const [key, kind, filterName] of [['receipts', 'recebimento', 'recebimentos'], ['feeInstallments', 'parcela', 'honorarios']]) {
+          for (const entry of (Array.isArray(owner[key]) ? owner[key] : [])) {
+            const amount = finiteAmount(entry.amount);
+            if (kind === 'recebimento' && entry.status !== 'estornado') totalReceipts += amount;
+            if (kind === 'parcela' && !isSettledFinancialStatus(entry.status)) totalHonorariosAFaturar += amount;
+            if ((filter === 'all' || filter === filterName) && (!needle || normalizeText(owner.name + ' ' + entry.description).includes(needle))) {
+              presentationRecords.push({ id: entry.id, processId: '', contactId: owner.id, kind,
+                processNumber: 'Contato', client: owner.name, typeLabel: entry.description,
+                gross: amount, feeAmount: amount, netClient: null, date: entry.date || entry.dueDate,
+                statusLabel: kind === 'recebimento' ? (entry.status === 'estornado' ? 'Estornado' : 'Recebido') : (isSettledFinancialStatus(entry.status) ? 'Paga' : 'Pendente'),
+                statusTone: isSettledFinancialStatus(entry.status) || entry.status === 'recebido' ? 'connected' : 'warning' });
+            }
+          }
+        }
+      }
+
       const honEl = byId('finMetricHonorarios');
       const rpvEl = byId('finMetricRpvCount');
       const expenseEl = byId('finMetricExpenses');
@@ -260,7 +303,7 @@ export function createFinancialFeature({
       if (isV2() && byId('financialV2Workspace') && renderV2Workspace) {
         listEl.innerHTML = '';
         byId('financialV2Workspace').innerHTML = renderV2Workspace({
-          records: presentationRecords,
+          records: (visibleRecords = presentationRecords).map((record, editKey) => ({ ...record, editKey })),
           query,
           filter,
           escapeHtml,
@@ -272,7 +315,96 @@ export function createFinancialFeature({
       }
     },
 
+    editRecord(record) {
+      if (!record) return;
+      const ownerId = record.processId || (record.contactId ? 'contact:' + record.contactId : 'office');
+      const owner = record.processId ? store.state.processes.find(p => p.id === record.processId)
+        : record.contactId ? store.state.contacts.find(c => c.id === record.contactId) : { expenses: store.state.officeExpenses || [] };
+      if (!owner) return;
+      const collection = { despesa: 'expenses', parcela: 'feeInstallments', recebimento: 'receipts' }[record.kind];
+      const entry = collection ? owner[collection]?.find(e => e.id === record.id) : null;
+      const type = collection ? record.kind : record.kind === 'rpv' ? 'rpv' : owner.feeType;
+      if ((collection && !entry) || !['despesa','parcela','recebimento','rpv','fixo','mensal','exito'].includes(type)) { onOpenProcess?.(owner); return; }
+      this.openEntryModal();
+      editingEntry = { ownerId, type, collection, id: entry?.id };
+      byId('finModalTitle').textContent = 'Editar lançamento financeiro';
+      byId('finProcessSelect').value = ownerId;
+      const option = [...documentRef.querySelectorAll('#finLinkResults [data-combobox-option]')].find(o => o.dataset.identity === ownerId);
+      byId('finLinkSearch').value = option?.dataset.value || record.client;
+      byId('finLinkSearch').disabled = type !== 'despesa';
+      byId('finTypeSelect').value = type;
+      byId('finTypeSelect').disabled = type !== 'despesa';
+      if (type === 'despesa') {
+        for (const option of byId('finTypeSelect').options) option.disabled = !['despesa', 'recebimento', 'parcela'].includes(option.value);
+        byId('financialEntryDelete')?.classList.remove('hidden');
+      }
+      byId('finGrossInput').value = entry?.amount ?? (type === 'exito' ? (owner.feePercentage ? owner.feeAmount * 100 / owner.feePercentage : 0) : record.gross);
+      byId('finFeePctInput').value = owner.feePercentage ?? '';
+      byId('finDescriptionInput').value = entry?.description || '';
+      byId('finDateInput').value = entry?.date || entry?.dueDate || '';
+      this.updateModalSummary();
+      byId('finStatusSelect').value = entry?.status || (type === 'rpv' ? owner.requisitionStatus : owner.feeStatus) || byId('finStatusSelect').value;
+      byId('finGrossInput').focus();
+    },
+
+    entryOwner(ownerId) {
+      return ownerId === 'office' ? { expenses: store.state.officeExpenses || [] }
+        : ownerId.startsWith('contact:') ? store.state.contacts.find(c => c.id === ownerId.slice(8))
+        : store.state.processes.find(p => p.id === ownerId);
+    },
+
+    confirmExpenseDeletion() {
+      if (submittingEntry || editingEntry?.type !== 'despesa' || byId('financialDeleteConfirm')) return;
+      const original = this.entryOwner(editingEntry.ownerId)?.expenses?.find(e => e.id === editingEntry.id);
+      if (!original) { showToast?.('Despesa não encontrada. Reabra a lista.', 'error'); return; }
+      const dialog = documentRef.createElement('dialog');
+      dialog.id = 'financialDeleteConfirm';
+      dialog.className = 'unsaved-changes-dialog';
+      dialog.setAttribute('aria-labelledby', 'financialDeleteTitle');
+      dialog.innerHTML = '<h2 id="financialDeleteTitle">Excluir despesa?</h2><p></p><footer><button class="button ghost" type="button" data-delete-cancel autofocus>Cancelar</button><button class="button danger" type="button" data-delete-confirm>Excluir despesa</button></footer>';
+      dialog.querySelector('p').textContent = `Excluir “${original.description}” (${formatCurrency(original.amount)})? Essa ação remove o lançamento financeiro.`;
+      dialog.addEventListener('keydown', event => event.stopPropagation());
+      dialog.addEventListener('close', () => { dialog.remove(); byId('financialEntryDelete')?.focus(); }, { once: true });
+      dialog.querySelector('[data-delete-cancel]').onclick = () => dialog.close();
+      dialog.querySelector('[data-delete-confirm]').onclick = async () => { dialog.close(); await this.deleteExpense(); };
+      documentRef.body.append(dialog);
+      dialog.showModal();
+    },
+
+    async deleteExpense() {
+      if (submittingEntry || editingEntry?.type !== 'despesa') return;
+      submittingEntry = true;
+      const previous = JSON.parse(JSON.stringify(store.state));
+      const button = byId('financialEntryDelete');
+      if (button) button.disabled = true;
+      try {
+        const owner = this.entryOwner(editingEntry.ownerId);
+        const index = owner?.expenses?.findIndex(e => e.id === editingEntry.id) ?? -1;
+        if (index < 0) throw new Error('Despesa não encontrada');
+        const [removed] = owner.expenses.splice(index, 1);
+        owner.updatedAt = owner.financialUpdatedAt = new Date().toISOString();
+        store.audit('Despesa excluída', `${removed.description}: ${formatCurrency(removed.amount)}`);
+        store.save();
+        if (!await store.flush()) throw new Error('Gravação não confirmada');
+        this.closeEntryModal();
+        this.render();
+        renderDashboardFinancialWidgets?.();
+        showToast?.('Despesa excluída.', 'success');
+      } catch {
+        store.state = previous;
+        showToast?.('Não foi possível confirmar a exclusão. A despesa foi mantida; tente novamente.', 'error');
+      } finally {
+        submittingEntry = false;
+        if (button) button.disabled = false;
+      }
+    },
+
     openEntryModal() {
+      editingEntry = null;
+      byId('financialEntryDelete')?.classList.add('hidden');
+      for (const option of byId('finTypeSelect')?.options || []) option.disabled = false;
+      if (byId('finModalTitle')) byId('finModalTitle').textContent = 'Novo Lançamento Financeiro';
+      if (byId('finTypeSelect')) byId('finTypeSelect').disabled = false;
       const backdrop = byId('financialEntryBackdrop');
       if (!backdrop) return;
       const select = byId('finProcessSelect');
@@ -280,6 +412,22 @@ export function createFinancialFeature({
       if (select) {
         select.innerHTML = '<option value="">Selecione o processo ou cliente...</option>' +
           processes.map(process => `<option value="${escapeHtml(process.id)}">${escapeHtml(process.number || 'S/N')} — ${escapeHtml(process.client || 'Cliente')}</option>`).join('');
+      }
+      if (isV2() && select) {
+        const choices = [
+          { id: 'office', label: 'Escritório — sem vínculo', detail: 'Despesa operacional' },
+          ...processes.map(p => ({ id: p.id, label: [p.number || 'Processo sem número', p.client].filter(Boolean).join(' — '), detail: 'Processo' })),
+          ...(store.state.contacts || []).map(c => ({ id: 'contact:' + c.id, label: c.name || 'Contato sem nome', detail: 'Contato / cliente' }))
+        ];
+        const field = select.closest('label');
+        field.setAttribute('data-modal-combobox-field', '');
+        field.innerHTML = '<span>Pesquisar vínculo</span><div class="modal-combobox">' +
+          '<input id="finLinkSearch" type="search" autocomplete="off" placeholder="Processo, cliente ou escritório…" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="finLinkResults" data-modal-combobox>' +
+          '<input id="finProcessSelect" type="hidden" name="processId" data-combobox-identity>' +
+          '<div id="finLinkResults" class="modal-combobox-listbox hidden" role="listbox">' +
+          choices.map((c, i) => '<button type="button" role="option" id="finLinkOption-' + i + '" aria-selected="false" data-combobox-option data-value="' + escapeHtml(c.label) + '" data-identity="' + escapeHtml(c.id) + '"><strong>' + escapeHtml(c.label) + '</strong><small>' + escapeHtml(c.detail) + '</small></button>').join('') +
+          '</div></div><small>Sem vínculo: selecione Escritório e o tipo Despesa.</small>';
+        installModalComboboxes(field.parentElement);
       }
       const form = byId('financialEntryForm');
       if (form) form.reset();
@@ -292,7 +440,7 @@ export function createFinancialFeature({
       }
       backdrop.classList.remove('hidden');
       documentRef.body.style.overflow = 'hidden';
-      if (isV2()) queueMicrotask(() => byId('finProcessSelect')?.focus());
+      if (isV2()) queueMicrotask(() => (byId('finLinkSearch') || byId('finProcessSelect'))?.focus());
     },
 
     closeEntryModal() {
@@ -352,6 +500,7 @@ export function createFinancialFeature({
       const dateLabel = byId('finDateLabel');
       if (descriptionLabel) descriptionLabel.textContent = isExpense ? 'Descrição da despesa' : isInstallment ? 'Identificação da parcela' : 'Identificação do recebimento';
       if (descriptionInput) descriptionInput.placeholder = isExpense ? 'Ex: preparo recursal' : isInstallment ? 'Ex: parcela 2 de 6' : 'Ex: pagamento via PIX';
+      byId('finDescriptionInput')?.setAttribute('list', isExpense ? 'financialExpenseSuggestions' : '');
       if (dateLabel) dateLabel.textContent = isInstallment ? 'Vencimento' : isReceipt ? 'Data do recebimento' : 'Data da despesa';
       const gross = parseFloat(byId('finGrossInput')?.value) || 0;
       const feePct = parseFloat(byId('finFeePctInput')?.value) || 0;
@@ -376,7 +525,7 @@ export function createFinancialFeature({
       try {
       const data = new FormData(form);
       const processId = data.get('processId');
-      const entryType = data.get('entryType');
+      const entryType = editingEntry?.type === 'despesa' ? data.get('entryType') : editingEntry?.type || data.get('entryType');
       const status = data.get('status');
       const grossAmount = Number(data.get('grossAmount'));
       const rawFeePercentage = String(data.get('feePercentage') ?? '').trim();
@@ -393,7 +542,17 @@ export function createFinancialFeature({
         return;
       }
 
-      const process = store.state.processes.find(item => item.id === processId);
+      const officeEntry = processId === 'office';
+      const contactId = String(processId || '').startsWith('contact:') ? String(processId).slice(8) : '';
+      const contact = contactId ? (store.state.contacts || []).find(item => String(item.id) === contactId) : null;
+      const process = officeEntry ? { expenses: store.state.officeExpenses || [] }
+        : contact || store.state.processes.find(item => item.id === processId);
+      if (officeEntry && entryType !== 'despesa') {
+        showToast?.('Para o escritório sem vínculo, selecione Despesa.', 'error'); return;
+      }
+      if (contact && !['despesa', 'recebimento', 'parcela'].includes(entryType)) {
+        showToast?.('Vínculo direto com contato aceita despesas, parcelas e recebimentos. Requisições e contratos exigem processo.', 'error'); return;
+      }
       if (!process) {
         showToast?.('Selecione um processo válido para vincular o lançamento.', 'error');
         return;
@@ -403,6 +562,23 @@ export function createFinancialFeature({
         return;
       }
 
+      if (editingEntry && editingEntry.type !== 'despesa' && (editingEntry.ownerId !== processId || editingEntry.type !== entryType)) return;
+      if (editingEntry?.type === 'despesa' && !['despesa', 'recebimento', 'parcela'].includes(entryType)) return;
+      const writeDetail = (collection, entry) => {
+        if (!editingEntry) { process[collection].push(entry); return; }
+        const source = this.entryOwner(editingEntry.ownerId);
+        const originals = source?.[editingEntry.collection];
+        const index = originals?.findIndex(item => item.id === editingEntry.id) ?? -1;
+        if (index < 0) throw new Error('Lançamento não encontrado. Reabra a lista.');
+        const original = originals[index];
+        const updated = { ...original, ...entry, id: original.id, createdAt: original.createdAt, updatedAt: new Date().toISOString() };
+        if (editingEntry.ownerId === processId && editingEntry.collection === collection) process[collection][index] = updated;
+        else {
+          originals.splice(index, 1);
+          process[collection].push(updated);
+          source.updatedAt = source.financialUpdatedAt = updated.updatedAt;
+        }
+      };
       if (entryType === 'rpv') {
         process.requisitionAmount = grossAmount;
         process.requisitionStatus = status;
@@ -429,7 +605,7 @@ export function createFinancialFeature({
           return;
         }
         process.expenses = Array.isArray(process.expenses) ? process.expenses : [];
-        process.expenses.push({
+        writeDetail('expenses', {
           id: `expense-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           description,
           amount: grossAmount,
@@ -443,7 +619,7 @@ export function createFinancialFeature({
           return;
         }
         process.feeInstallments = Array.isArray(process.feeInstallments) ? process.feeInstallments : [];
-        process.feeInstallments.push({
+        writeDetail('feeInstallments', {
           id: `installment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           description: description || `Parcela ${process.feeInstallments.length + 1}`,
           amount: grossAmount,
@@ -454,7 +630,7 @@ export function createFinancialFeature({
         });
       } else if (entryType === 'recebimento') {
         process.receipts = Array.isArray(process.receipts) ? process.receipts : [];
-        process.receipts.push({
+        writeDetail('receipts', {
           id: `receipt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           description: description || 'Recebimento de honorários',
           amount: grossAmount,
@@ -469,18 +645,23 @@ export function createFinancialFeature({
       process.updatedAt = new Date().toISOString();
       process.financialUpdatedAt = process.updatedAt;
 
-      store.upsert('processes', process);
-      store.audit('Lançamento financeiro registrado', `${process.number || process.client}: ${formatCurrency(grossAmount)} (${status})`);
+      if (officeEntry) store.state.officeExpenses = process.expenses;
+      else store.upsert(contact ? 'contacts' : 'processes', process);
+      store.audit(editingEntry ? 'Lançamento financeiro atualizado' : 'Lançamento financeiro registrado', `${officeEntry ? 'Escritório' : contact ? 'Contato' : process.number || process.client}: ${formatCurrency(grossAmount)} (${status})`);
       store.save();
 
       if (!await store.flush()) {
         store.state = stateBeforeSubmit;
+        showToast?.('Gravação não confirmada. O lançamento continua aberto para nova tentativa.', 'error');
         return;
       }
       this.closeEntryModal();
       this.render();
       renderDashboardFinancialWidgets?.();
       showToast?.('Lançamento financeiro salvo com sucesso!', 'success');
+      } catch (error) {
+        store.state = stateBeforeSubmit;
+        showToast?.('Não foi possível salvar o lançamento. Reabra a lista e tente novamente.', 'error');
       } finally {
         submittingEntry = false;
         if (submitButton?.isConnected) submitButton.disabled = false;

@@ -82,7 +82,7 @@ export function renderLeadsV2Workspace({
         <header class="lead-intake-header">
           <div>
             <p>Fluxo de entrada</p>
-            <h3 id="leadIntakeTitle">Atendimentos jurídicos</h3>
+            <h3 id="leadIntakeTitle">Atendimentos</h3>
           </div>
           <span>${leads.length} ${leads.length === 1 ? 'registro exibido' : 'registros exibidos'}</span>
         </header>

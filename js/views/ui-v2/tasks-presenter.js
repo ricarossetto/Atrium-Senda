@@ -42,12 +42,86 @@ export function createTasksV2Presenter({
     if (count) count.textContent = `${total} tarefa${total === 1 ? '' : 's'}`;
   }
 
+  function renderList({ container, summary, tasks, allTasks, columns, activeTaskId, elapsedLabel, sourceLabel }) {
+    if (!container) return;
+    const openTasks = allTasks.filter(task => task.status !== 'concluida');
+    const overdueTasks = openTasks.filter(task => {
+      const deadline = task.fatalDeadline || task.deadline;
+      return Boolean(deadline) && daysUntil(deadline) < 0;
+    });
+    const nextSevenDays = openTasks.filter(task => {
+      const deadline = task.fatalDeadline || task.deadline;
+      if (!deadline) return false;
+      const distance = daysUntil(deadline);
+      return distance >= 0 && distance <= 7;
+    });
+    if (summary) summary.innerHTML = [
+      ['Abertas', openTasks.length, 'Fila ativa'],
+      ['Atrasadas', overdueTasks.length, 'Revisão prioritária'],
+      ['Próximos 7 dias', nextSevenDays.length, 'Datas informadas'],
+      ['Concluídas', allTasks.length - openTasks.length, 'Histórico preservado']
+    ].map(([label, value, detail]) => `<article><span>${escapeHtml(label)}</span><strong>${value}</strong><small>${escapeHtml(detail)}</small></article>`).join('');
+    const visibleCount = byId('taskListVisibleCount');
+    if (visibleCount) visibleCount.textContent = `${tasks.length} exibida${tasks.length === 1 ? '' : 's'}`;
+    container.innerHTML = tasks.length
+      ? tasks.map(task => renderTaskListRow({
+          task,
+          columns,
+          activeTaskId,
+          elapsedLabel,
+          sourceLabel: sourceLabel(task.source),
+          escapeHtml,
+          formatDate,
+          formatMinutes,
+          totalTimeMinutes,
+          daysUntil
+        })).join('')
+      : '<div class="task-list-empty"><strong>Nenhuma tarefa encontrada.</strong><span>Ajuste a busca ou os filtros para consultar outra parte da fila.</span></div>';
+    updateCount(allTasks.length);
+  }
+
   function announce(message) {
     const live = byId('taskBoardLive');
     if (live) live.textContent = message || '';
   }
 
-  return Object.freeze({ render, updateCount, announce });
+  return Object.freeze({ render, renderList, updateCount, announce });
+}
+
+function renderTaskListRow({
+  task,
+  columns,
+  activeTaskId,
+  elapsedLabel,
+  sourceLabel,
+  escapeHtml,
+  formatDate,
+  formatMinutes,
+  totalTimeMinutes,
+  daysUntil
+}) {
+  const isDone = task.status === 'concluida';
+  const deadline = task.fatalDeadline || task.deadline;
+  const overdue = Boolean(deadline) && daysUntil(deadline) < 0 && !isDone;
+  const timeMinutes = totalTimeMinutes(task.timeLogs);
+  const isTimerRunning = activeTaskId === task.id;
+  const priority = ({ urgente: 'Urgente', importante: 'Importante', normal: 'Normal' })[task.priority] || 'Normal';
+  const timerButton = isDone
+    ? '<span class="task-list-timer-muted">Encerrada</span>'
+    : isTimerRunning
+      ? `<button type="button" class="timesheet-btn active task-list-timesheet-live" data-task-list-timesheet-stop="${escapeHtml(task.id)}" aria-label="Pausar cronômetro da tarefa ${escapeHtml(task.title)}">⏹ <span>${escapeHtml(elapsedLabel)}</span></button>`
+      : `<button type="button" class="timesheet-btn" data-task-list-timesheet-start="${escapeHtml(task.id)}" aria-label="Iniciar cronômetro da tarefa ${escapeHtml(task.title)}">▶ <span>Iniciar</span></button>`;
+  return `<article class="task-list-row ${overdue ? 'is-overdue' : ''} ${isDone ? 'is-complete' : ''}" data-task-list-id="${escapeHtml(task.id)}" role="listitem">
+    <div class="task-list-primary">
+      <span class="task-list-kicker">${escapeHtml(sourceLabel)} · <b class="task-priority priority-${escapeHtml(task.priority || 'normal')}">${escapeHtml(priority)}</b></span>
+      <button type="button" data-task-list-open="${escapeHtml(task.id)}" aria-label="Editar tarefa ${escapeHtml(task.title || 'sem título')}"><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><span>${escapeHtml(task.description || 'Sem descrição')}</span></button>
+    </div>
+    <div class="task-list-context"><span>Vínculos</span><strong>${escapeHtml(task.client || 'Cliente não informado')}</strong><small>${escapeHtml(task.process || 'Processo não informado')}</small></div>
+    <label class="task-list-stage"><span>Etapa</span><select data-task-list-move="${escapeHtml(task.id)}" aria-label="Mover ${escapeHtml(task.title || 'tarefa')} para outra etapa">${columns.map(column => `<option value="${escapeHtml(column.id)}" ${column.id === task.status ? 'selected' : ''}>${escapeHtml(column.title)}</option>`).join('')}</select></label>
+    <div class="task-list-deadline"><span>${task.fatalDeadline ? 'Prazo fatal' : 'Prazo interno'}</span><strong class="${overdue ? 'overdue' : ''}">${deadline ? escapeHtml(formatDate(deadline)) : 'Não informado'}</strong><small>${overdue ? 'Atrasada' : isDone ? 'Concluída' : 'Sob conferência'}</small></div>
+    <div class="task-list-owner"><span>Responsável</span><strong>${escapeHtml(task.responsible || 'Não informado')}</strong><small>${Number(task.points) || 0} pontos</small></div>
+    <div class="task-list-effort"><span>Tempo</span><strong>${timeMinutes > 0 ? escapeHtml(formatMinutes(timeMinutes)) : 'Sem registro'}</strong>${timerButton}</div>
+  </article>`;
 }
 
 export function renderTaskCard({

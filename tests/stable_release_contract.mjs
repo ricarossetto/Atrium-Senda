@@ -13,16 +13,16 @@ const dockerfile = read('Dockerfile');
 const compose = read('docker-compose.yml');
 const installer = read('install.ps1');
 
-assert.equal(pkg.version, '2.0.0');
+assert.equal(pkg.version, '2.1.0');
 assert.equal(pkg.license, 'MIT');
 assert.equal(pkg.packageManager, 'pnpm@11.19.0');
 assert.match(pkg.engines.node, /^>=24/);
-assert.match(pkg.description, /ATRIUM 2\.0/);
-assert.match(server, /let APP_VERSION\s*=\s*'2\.0\.0'/);
+assert.match(pkg.description, /ATRIUM 2\.1/);
+assert.match(server, /let APP_VERSION\s*=\s*'2\.1\.0'/);
 assert.match(server, /pkg\.version\) APP_VERSION = pkg\.version/);
 assert.doesNotMatch(index, /id="uiModeControl"|data-ui-mode=/);
 assert.match(index, /ATRIUM/);
-assert.match(installer, /\[string\]\$ReleaseTag\s*=\s*'v2\.0\.0'/);
+assert.match(installer, /\[string\]\$ReleaseTag\s*=\s*'v2\.1\.0'/);
 assert.match(installer, /\$Repository\s*=\s*'ricarossetto\/Atrium-Senda'/);
 assert.match(installer, /archive\/refs\/tags\/\$ReleaseTag\.zip/);
 assert.match(installer, /archive\/refs\/heads\/\$SourceRef\.zip/);
@@ -42,13 +42,13 @@ assert.match(readme, /ATRIUM\.bat/);
 assert.doesNotMatch(readme, /\bBeta\b|versão beta/i, 'README público deve apresentar a versão estável.');
 
 const requiredDocs = [
-  'CHANGELOG.md', 'CONTRIBUTING.md', 'SECURITY.md', 'docs/INSTALLATION.md', 'docs/USER_MANUAL.md',
-  'docs/ARCHITECTURE.md', 'docs/RELEASE_NOTES_2.0.0.md'
+  'docs/CHANGELOG.md', '.github/CONTRIBUTING.md', '.github/SECURITY.md', 'docs/INSTALLATION.md', 'docs/USER_MANUAL.md',
+  'docs/ARCHITECTURE.md', 'docs/RELEASE_NOTES_2.1.0.md'
 ];
 for (const file of requiredDocs) assert.equal(existsSync(path.join(ROOT, file)), true, `${file} ausente.`);
-assert.match(read('CHANGELOG.md'), /## \[2\.0\.0\] - 2026-09-02/);
-assert.match(read('docs/RELEASE_NOTES_2.0.0.md'), /^# ATRIUM 2\.0\.0 — Stable Release 1/m);
-assert.match(read('SECURITY.md'), /Divulgação responsável/);
+assert.match(read('docs/CHANGELOG.md'), /## \[2\.1\.0\] - 2026-09-08/);
+assert.match(read('docs/RELEASE_NOTES_2.1.0.md'), /^# ATRIUM 2\.1\.0 — Stable Release 2/m);
+assert.match(read('.github/SECURITY.md'), /Divulgação responsável/);
 
 const markdownFiles = ['README.md', ...requiredDocs];
 for (const file of markdownFiles) {
@@ -86,4 +86,4 @@ for (const line of compose.split(/\r?\n/).filter(value => /(?:SECRET|KEY|TOKEN)=
   assert.match(line, /=\$\{/, 'Compose não pode conter segredo literal.');
 }
 
-console.log(`✓ Contrato de release estável: 2.0.0, documentação completa, ${screenshots.length} screenshots sintéticos, links e containers seguros PASS.`);
+console.log(`✓ Contrato de release estável: 2.1.0, documentação completa, ${screenshots.length} screenshots sintéticos, links e containers seguros PASS.`);

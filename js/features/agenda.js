@@ -141,7 +141,8 @@ export function createAgendaFeature({
     openModal(defaults = {}) {
       openModal?.('agenda', defaults.id ? 'Detalhes do compromisso' : 'Novo compromisso', 'Agenda jurídica', [
         { name: 'title', label: 'Compromisso', required: true, full: true }, { name: 'date', label: 'Data', type: 'date', required: true }, { name: 'time', label: 'Horário', type: 'time' },
-        { name: 'client', label: 'Cliente / partes' }, { name: 'process', label: 'Processo' }, { name: 'location', label: 'Local' },
+        { name: 'client', label: 'Cliente / partes', type: 'combobox', identityName: 'contactId', suggestions: (store.state.contacts || []).map(contact => ({ id: contact.id, value: contact.name, label: 'Contato / cliente' })) },
+        { name: 'process', label: 'Processo', type: 'combobox', identityName: 'processId', suggestions: (store.state.processes || []).map(process => ({ id: process.id, value: process.number || process.client || 'Processo sem número', label: process.client || 'Processo' })) }, { name: 'location', label: 'Local' },
         { name: 'source', label: 'Origem', type: 'select', options: [{value:'Interna',label:'Interna'},{value:'Agenda externa',label:'Agenda externa'},{value:'Importação',label:'Importação'}] },
         { name: 'description', label: 'Observações', type: 'textarea', full: true }
       ], { date: isoDate(), source: 'Interna', ...defaults });

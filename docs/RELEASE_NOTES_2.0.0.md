@@ -49,7 +49,7 @@ Não copie `node_modules` e não substitua arquivos privados por exemplos. A ver
 - Documentos permanecem em armazenamento privado e protegido pelo backend.
 - O índice de busca é derivado e reconstruível.
 
-Leia [SECURITY.md](../SECURITY.md) antes de publicar o serviço fora de localhost.
+Leia [SECURITY.md](../.github/SECURITY.md) antes de publicar o serviço fora de localhost.
 
 ## Limitações conhecidas
 
@@ -64,4 +64,4 @@ Leia [SECURITY.md](../SECURITY.md) antes de publicar o serviço fora de localhos
 
 O código-fonte da tag inclui `ATRIUM.bat`, `README.md`, `package.json`, `pnpm-lock.yaml` e todo o runtime necessário. Não inclui `node_modules`, `.env`, diretórios de dados, certificados ou credenciais.
 
-Consulte o [changelog](../CHANGELOG.md), o [manual do usuário](USER_MANUAL.md) e a [arquitetura](ARCHITECTURE.md).
+Consulte o [changelog](CHANGELOG.md), o [manual do usuário](USER_MANUAL.md) e a [arquitetura](ARCHITECTURE.md).

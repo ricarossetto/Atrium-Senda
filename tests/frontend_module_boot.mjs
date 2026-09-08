@@ -101,7 +101,9 @@ try {
   const firstBootProbe = await readProbe();
   assert.equal(firstBootProbe.authenticatedListeners, 1, 'portal.js deve registrar um único listener de autenticação.');
   assert.equal(firstBootProbe.foundationEvents, 1, 'A fundação modular deve ser anunciada uma única vez.');
-  assert.equal(firstBootProbe.fiveMinuteIntervals, 1, 'App.init deve registrar um único timer de sincronização automática.');
+  assert.equal(firstBootProbe.fiveMinuteIntervals, 0, 'App.init não pode registrar sincronização a cada cinco minutos.');
+  const firstScheduledSync = await page.evaluate(() => window.portalApp.nextAutomaticSyncAt);
+  assert.equal(new Date(firstScheduledSync).getHours(), 10, 'A próxima sincronização automática deve ser agendada para as 10h.');
   assert.ok(firstBootProbe.navigationListeners >= 2, 'A navegação principal não foi vinculada.');
   assert.deepEqual(firstBootProbe.dependencySnapshots, [{
     auth: true,
@@ -143,7 +145,9 @@ try {
   const reloadProbe = await readProbe();
   assert.equal(reloadProbe.authenticatedListeners, 1, 'Reload deve registrar uma única fronteira de autenticação.');
   assert.equal(reloadProbe.foundationEvents, 1, 'Reload deve anunciar a fundação uma única vez.');
-  assert.equal(reloadProbe.fiveMinuteIntervals, 1, 'Reload deve registrar somente um timer de sync.');
+  assert.equal(reloadProbe.fiveMinuteIntervals, 0, 'Reload não pode reintroduzir sincronização a cada cinco minutos.');
+  const reloadScheduledSync = await page.evaluate(() => window.portalApp.nextAutomaticSyncAt);
+  assert.equal(new Date(reloadScheduledSync).getHours(), 10, 'Reload deve manter a próxima execução automática às 10h.');
   assert.deepEqual(pageErrors, [], `O boot modular gerou pageerror: ${pageErrors.join(' | ')}`);
 
   console.log('✓ Boot modular aprovado: portal único, ordem determinística, auth, Store, App, navegação, globals e reload.');

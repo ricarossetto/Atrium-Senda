@@ -1,4 +1,5 @@
 import { Store, isoDate, uid } from '../core/store.js';
+import { publicationsInTrackingScope } from '../core/publication-scope.js';
 import {
   createPublicationsV2Presenter,
   renderPublicationDetail,
@@ -203,6 +204,7 @@ export function createPublicationsFeature({
     init() {
       if (initialized) return false;
       initialized = true;
+      if (store.state.settings?.publicationTrackingSince) inboxCutoff = 'tracking';
       ensurePresentationFilter();
       this.bindListeners();
       getPresenter().init();
@@ -210,6 +212,26 @@ export function createPublicationsFeature({
     },
 
     bindListeners() {
+      byId('publicationTrackingStart')?.addEventListener('click', async event => {
+        const button = event.currentTarget;
+        if (button.disabled) return;
+        button.disabled = true;
+        const previous = store.state.settings?.publicationTrackingSince;
+        store.state.settings ||= {};
+        store.state.settings.publicationTrackingSince = isoDate();
+        try {
+          store.save();
+          if (!await store.flush()) throw new Error('Gravação não confirmada');
+          inboxCutoff = 'tracking';
+          this.renderInbox();
+          onRenderGlobalMetrics?.();
+          toast('Acompanhamento iniciado hoje. O histórico foi preservado.', 'success');
+        } catch {
+          if (previous === undefined) delete store.state.settings.publicationTrackingSince;
+          else store.state.settings.publicationTrackingSince = previous;
+          toast('Não foi possível salvar o início do acompanhamento.', 'error');
+        } finally { button.disabled = false; }
+      });
       byId('newIntimationButton')?.addEventListener('click', () => onOpenIntimation?.());
       byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
       byId('jsonImportInput')?.addEventListener('change', event => onImportJson?.(event.target.files[0]));
@@ -301,15 +323,18 @@ export function createPublicationsFeature({
 
     filteredItems() {
       ensurePresentationFilter();
-      return filterPublications(store.state.intimations, { filter: inboxFilter, sort: inboxSort, cutoff: inboxCutoff });
+      const records = inboxCutoff === 'tracking'
+        ? publicationsInTrackingScope(store.state.intimations, store.state.settings?.publicationTrackingSince)
+        : store.state.intimations;
+      return filterPublications(records, { filter: inboxFilter, sort: inboxSort, cutoff: inboxCutoff });
     },
 
     getUntreatedCount() {
-      return (store.state.intimations || []).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').length;
+      return publicationsInTrackingScope(store.state.intimations, store.state.settings?.publicationTrackingSince).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').length;
     },
 
     getMetrics(now = new Date()) {
-      const intimations = Array.isArray(store.state.intimations) ? store.state.intimations : [];
+      const intimations = publicationsInTrackingScope(store.state.intimations, store.state.settings?.publicationTrackingSince);
       return {
         untreated: intimations.filter(item => (item.treatmentStatus || 'untreated') === 'untreated').length,
         inReview: intimations.filter(item => item.treatmentStatus === 'in_review').length,
@@ -354,6 +379,12 @@ export function createPublicationsFeature({
     },
 
     renderInbox() {
+      const since = store.state.settings?.publicationTrackingSince;
+      if (byId('inboxCutoffSelect')) byId('inboxCutoffSelect').value = inboxCutoff;
+      const startButton = byId('publicationTrackingStart');
+      if (startButton) startButton.hidden = Boolean(since);
+      const trackingLabel = byId('publicationTrackingLabel');
+      if (trackingLabel) trackingLabel.textContent = since ? 'Acompanhamento desde ' + formatDate(since) + '. Histórico preservado em Todas as publicações.' : 'Comece a triagem pelas publicações de hoje, preservando o histórico.';
       ensurePresentationFilter();
       this.renderMetrics();
       byId('inboxFilters')?.querySelectorAll('button[data-filter]').forEach(button => {
@@ -631,6 +662,8 @@ export function createPublicationsFeature({
 
     async handleAction(item, action) {
       if (!item) return;
+      if (action === 'view-decision-html') return this.viewDecisionHtml(item);
+      if (action === 'download-decision-html') return this.downloadDecisionHtml(item);
       if (action === 'assistant') return onOpenAssistant?.(item);
       if (action === 'send-email') return this.openPublicationEmailModal(item);
       if (action === 'task') {
@@ -654,6 +687,41 @@ export function createPublicationsFeature({
       if (action === 'discard') return this.openDiscardModal(item);
       if (action === 'reopen') return this.applyTreatmentAction(item.id, 'reopen');
       if (action === 'restore') return this.applyTreatmentAction(item.id, 'restore');
+    },
+
+    viewDecisionHtml(item) {
+      if (!item?.hasHtml || !String(item.rawHtml || '').trim()) return false;
+      documentRef.querySelector('.publication-decision-dialog')?.remove();
+      const dialog = documentRef.createElement('dialog');
+      dialog.className = 'publication-decision-dialog';
+      dialog.setAttribute('aria-labelledby', 'publicationDecisionDialogTitle');
+      dialog.innerHTML = `<header><div><span>Conteúdo judicial preservado</span><h2 id="publicationDecisionDialogTitle">${escapeHtml(item.title || 'Decisão completa')}</h2></div><div><button type="button" class="button ghost" data-print-decision>Imprimir</button><button type="button" class="icon-button" data-close-decision aria-label="Fechar decisão">${iconSvg('close')}</button></div></header><iframe title="Decisão completa em HTML" sandbox="allow-same-origin"></iframe>`;
+      const frame = dialog.querySelector('iframe');
+      frame.srcdoc = generateDecisionHtmlDocument(item, escapeHtml);
+      const close = () => { dialog.close?.(); dialog.remove(); };
+      dialog.querySelector('[data-close-decision]').addEventListener('click', close);
+      dialog.querySelector('[data-print-decision]').addEventListener('click', () => frame.contentWindow?.print?.());
+      dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
+      documentRef.body.appendChild(dialog);
+      dialog.showModal();
+      return true;
+    },
+
+    downloadDecisionHtml(item) {
+      if (!item?.hasHtml || !String(item.rawHtml || '').trim()) return false;
+      const blob = new windowRef.Blob([generateDecisionHtmlDocument(item, escapeHtml)], { type: 'text/html;charset=utf-8' });
+      const url = windowRef.URL.createObjectURL(blob);
+      const link = documentRef.createElement('a');
+      const process = String(item.process || '').replace(/[^\d.-]/g, '') || 'sem-processo';
+      link.href = url;
+      link.download = `decisao-${process}.html`;
+      link.hidden = true;
+      documentRef.body.appendChild(link);
+      link.click();
+      link.remove();
+      windowRef.setTimeout(() => windowRef.URL.revokeObjectURL(url), 0);
+      toast('Documento HTML preparado para download.', 'success');
+      return true;
     },
 
     openWorkActionModal(item, type) {
@@ -995,6 +1063,53 @@ export function createPublicationsFeature({
   };
 
   return feature;
+}
+
+const DECISION_ALLOWED_TAGS = new Set(['div', 'p', 'br', 'hr', 'strong', 'b', 'em', 'i', 'u', 's', 'blockquote', 'pre', 'code', 'ul', 'ol', 'li', 'dl', 'dt', 'dd', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'small', 'sup', 'sub']);
+const DECISION_VOID_TAGS = new Set(['br', 'hr']);
+const DECISION_DROP_BLOCKS = /<(script|style|iframe|object|embed|svg|math|form|template|noscript)\b[^>]*>[\s\S]*?<\/\1\s*>/gi;
+const DECISION_PRINT_SCRIPT = 'document.getElementById("atriumPrintButton").addEventListener("click",()=>window.print());';
+const DECISION_PRINT_SCRIPT_HASH = 'sha256-sbLN3vQEeoXLrUDEBUBEBdZ1E+CUvPfZi7GMxPaw9L0=';
+
+export function sanitizeDecisionHtml(rawHtml, escapeHtmlFn = defaultEscapeHtml) {
+  let source = String(rawHtml || '').slice(0, 200_000);
+  let previous;
+  do {
+    previous = source;
+    source = source.replace(DECISION_DROP_BLOCKS, '');
+  } while (source !== previous);
+  source = source.replace(/<!--([\s\S]*?)-->/g, '');
+  return source.replace(/<\/?([a-z][a-z0-9-]*)([^>]*)>/gi, (match, rawTag, rawAttributes) => {
+    const tag = rawTag.toLowerCase();
+    if (!DECISION_ALLOWED_TAGS.has(tag)) return '';
+    const closing = /^<\//.test(match);
+    if (closing) return DECISION_VOID_TAGS.has(tag) ? '' : `</${tag}>`;
+    const attributes = [];
+    String(rawAttributes || '').replace(/\b(colspan|rowspan)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi, (_whole, name, doubleQuoted, singleQuoted, bare) => {
+      const value = Number(doubleQuoted ?? singleQuoted ?? bare);
+      if (Number.isInteger(value) && value >= 1 && value <= 100) attributes.push(`${name.toLowerCase()}="${value}"`);
+      return '';
+    });
+    if (/\bscope\s*=\s*(?:"(row|col|rowgroup|colgroup)"|'(row|col|rowgroup|colgroup)'|(row|col|rowgroup|colgroup))/i.test(rawAttributes || '')) {
+      const scope = RegExp.$1 || RegExp.$2 || RegExp.$3;
+      attributes.push(`scope="${escapeHtmlFn(scope)}"`);
+    }
+    return `<${tag}${attributes.length ? ` ${attributes.join(' ')}` : ''}>`;
+  });
+}
+
+export function generateDecisionHtmlDocument(item, escapeHtmlFn = defaultEscapeHtml) {
+  const title = escapeHtmlFn(item?.title || 'Decisão judicial');
+  const court = escapeHtmlFn(item?.court || item?.source || 'Origem judicial não informada');
+  const process = escapeHtmlFn(item?.process || 'Processo não identificado');
+  const parties = escapeHtmlFn(item?.client || 'Partes não identificadas');
+  const publishedAt = escapeHtmlFn(String(item?.publishedAt || 'Data não informada').slice(0, 40));
+  const content = sanitizeDecisionHtml(item?.rawHtml || '', escapeHtmlFn) || `<pre>${escapeHtmlFn(item?.text || 'Sem conteúdo.')}</pre>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src '${DECISION_PRINT_SCRIPT_HASH}'; img-src data:; base-uri 'none'; form-action 'none'"><title>${title}</title><style>:root{color-scheme:light dark;font-family:Georgia,'Times New Roman',serif;background:#f4f1eb;color:#222}*{box-sizing:border-box}body{margin:0;padding:clamp(16px,4vw,48px)}main{max-width:960px;margin:auto;background:Canvas;color:CanvasText;border:1px solid color-mix(in srgb,CanvasText 18%,transparent);border-radius:12px;padding:clamp(20px,5vw,56px);box-shadow:0 18px 55px rgba(0,0,0,.14)}header{padding-bottom:20px;border-bottom:2px solid #aa8538;margin-bottom:28px}header span{font:700 12px/1.2 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#9a741f}h1{font-size:clamp(24px,5vw,42px);margin:8px 0 12px}dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 24px;margin:0;font:14px/1.5 Arial,sans-serif}dt{font-weight:700;color:#78683f}dd{margin:0}.print-action{margin-top:18px;border:1px solid #aa8538;border-radius:8px;padding:10px 14px;background:#aa8538;color:#fff;font:700 14px/1 Arial,sans-serif;cursor:pointer}article{line-height:1.65;overflow-wrap:anywhere}table{width:100%;border-collapse:collapse;display:block;overflow-x:auto}th,td{border:1px solid #8b8b8b;padding:8px;text-align:left}pre{white-space:pre-wrap;font:inherit}@media(max-width:640px){dl{grid-template-columns:1fr}}@media print{body{padding:0;background:#fff}main{max-width:none;border:0;box-shadow:none;padding:0}.print-action{display:none}}</style></head><body><main><header><span>ATRIUM · Conteúdo judicial preservado</span><h1>${title}</h1><dl><div><dt>Tribunal / origem</dt><dd>${court}</dd></div><div><dt>Processo</dt><dd>${process}</dd></div><div><dt>Partes</dt><dd>${parties}</dd></div><div><dt>Publicação</dt><dd>${publishedAt}</dd></div></dl><button class="print-action" type="button" id="atriumPrintButton">Imprimir / salvar em PDF</button></header><article>${content}</article></main><script>${DECISION_PRINT_SCRIPT}</script></body></html>`;
+}
+
+function defaultEscapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
 }
 
 function resolvePublicationProcess(state, item) {

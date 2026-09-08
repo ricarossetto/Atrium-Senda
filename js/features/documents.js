@@ -525,6 +525,14 @@ ${id.lawyerOab} - ${id.officeName}`;
     updateOwnerOptions();
     const template = byId('documentNamingTemplate');
     if (template && documentRef.activeElement !== template) template.value = store.state.settings?.documentNamingTemplate || '';
+    const updateNamePreview = () => {
+      const preview = byId('documentNamingPreview');
+      if (!preview) return;
+      const examples = { cliente: 'Nome do cliente', tipo: 'Contrato', data: '2026-09-04', processo: 'Número do processo', tribunal: 'Tribunal', oab: 'Inscrição OAB' };
+      preview.textContent = template?.value ? 'Exemplo: ' + template.value.replace(/\{(processo|cliente|tipo|data|tribunal|oab)\}/g, (_, key) => examples[key]) : 'O arquivo manterá seu nome original.';
+    };
+    if (template) template.oninput = updateNamePreview;
+    updateNamePreview();
     const documents = (store.state.documents || []).filter(item => archiveFilter === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt);
     const list = byId('documentArchiveList');
     const status = byId('documentArchiveStatus');

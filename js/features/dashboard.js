@@ -1,4 +1,5 @@
 import { Store } from '../core/store.js';
+import { publicationsInTrackingScope } from '../core/publication-scope.js';
 import { buildActivityInbox } from '../core/activity-inbox.js';
 import { renderDashboardV2Summary } from '../views/ui-v2/dashboard.js';
 import { iconSvg } from '../views/ui-v2/icons.js';
@@ -343,7 +344,7 @@ export function createDashboardFeature({
       const state = store.state || {};
       const tasks = state.tasks || [];
       const processes = state.processes || [];
-      const publications = state.intimations || [];
+      const publications = publicationsInTrackingScope(state.intimations, state.settings?.publicationTrackingSince);
       const sources = state.sources || [];
       const documents = state.documents || [];
       const openTasks = tasks.filter(task => !isTerminalStatus(task.status));

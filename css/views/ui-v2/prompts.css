@@ -237,7 +237,7 @@ html[data-ui="v2"] #promptsCategoryChips .prompt-chip[aria-pressed="true"] {
 html[data-ui="v2"] #promptsGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  align-items: start;
+  align-items: stretch;
   gap: var(--v2-space-4);
   min-width: 0;
 }
@@ -247,8 +247,9 @@ html[data-ui="v2"] #promptsGrid .prompt-library-card {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto;
-  align-self: start;
+  grid-template-rows: 48px 100px minmax(0, 1fr) auto;
+  height: 410px;
+  align-self: stretch;
   gap: var(--v2-space-3);
   margin: 0;
   padding: var(--v2-space-5) !important;
@@ -328,9 +329,19 @@ html[data-ui="v2"] #promptsGrid .prompt-type-badge {
   background: transparent;
 }
 
-html[data-ui="v2"] #promptsGrid .prompt-card-copy { min-width: 0; }
+html[data-ui="v2"] #promptsGrid .prompt-library-card:has(> .prompt-tags-list) {
+  grid-template-rows: 48px 100px 24px minmax(0, 1fr) auto;
+}
+
+html[data-ui="v2"] #promptsGrid .prompt-tags-list { overflow: hidden; min-height: 0; }
+
+html[data-ui="v2"] #promptsGrid .prompt-card-copy { min-width: 0; overflow: hidden; }
 
 html[data-ui="v2"] #promptsGrid .prompt-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
   margin: 0;
   color: var(--v2-color-foreground);
   font: 750 17px/1.28 var(--v2-font-interface);
@@ -409,7 +420,8 @@ html[data-ui="v2"] #promptsGrid .prompt-text {
 }
 
 html[data-ui="v2"] #promptsGrid .prompt-card-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   justify-content: flex-start;
   align-items: center;
   flex-wrap: wrap;

@@ -19,14 +19,14 @@ export async function collectDjen(portal, config, target, options = {}) {
 
   const cutoff = portal.cutoffDate || options.cutoffDate || null;
   const { start, end } = saoPauloDateWindow(Number(portal.lookbackDays || 2), cutoff);
-  const result = await fetchPages({ endpoint, variant: number, uf, start, end, portal, fetchImpl, sleep });
+  const result = await fetchPages({ endpoint, variant: number, uf, start, end, portal, fetchImpl, sleep, onProgress: options.onProgress });
 
   const unique = [...new Map(result.items.map(item => [String(item.id), item])).values()];
   for (const item of unique) appendDjenItem(item, portal, config, target);
   return { records: unique.length, announced: result.count, complete: result.complete, start, end };
 }
 
-async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl, sleep }) {
+async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl, sleep, onProgress }) {
   const items = [];
   const pageSize = Math.min(50, Math.max(1, Number(portal.pageSize || 50)));
   const maxPages = Math.min(200, Math.max(1, Number(portal.maxPages || 40)));
@@ -83,6 +83,11 @@ async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl
 
     pageRetries = 0;
     items.push(...pageItems);
+    const countDisplay = count !== null ? ` de ${count}` : '';
+    console.log(`  -> DJEN Página ${pagina}: +${pageItems.length} publicação(ões) lida(s) (total acumulado: ${items.length}${countDisplay})`);
+    if (typeof onProgress === 'function') {
+      try { onProgress({ page: pagina, items: items.length, total: count }); } catch {}
+    }
     if (items.length >= count) break;
     await sleep(Number(portal.requestSpacingMs || 400));
   }
@@ -118,12 +123,14 @@ export function decodeHtmlEntities(value) {
   return text;
 }
 
-function appendDjenItem(item, portal, config, target) {
+export function appendDjenItem(item, portal, config, target) {
   const rawNumber = String(item.numeroprocessocommascara || item.numeroProcesso || item.numero_processo || '');
   const process = formatProcessNumber(rawNumber);
   const externalId = `djen:${item.id}`;
   const canceledReason = normalizeText(item.motivo_cancelamento || item.motivoCancelamento || '');
   const text = htmlToText(item.texto || '').slice(0, 20_000);
+  const rawHtml = String(item.texto || '').slice(0, 200_000);
+  const hasHtml = /<[a-z][^>]*>/i.test(rawHtml);
   const recipientRecords = Array.isArray(item.destinatarios) ? item.destinatarios.filter(value => normalizeText(value?.nome)) : [];
   const recipients = recipientRecords.map(value => normalizeText(value?.nome)).join(' · ');
   const publishedAt = String(item.data_disponibilizacao || item.dataDisponibilizacao || '').slice(0, 10);
@@ -192,6 +199,7 @@ function appendDjenItem(item, portal, config, target) {
     type: 'djen',
     title: decodeHtmlEntities(title),
     text: decodeHtmlEntities(text),
+    ...(hasHtml ? { rawHtml, hasHtml: true } : {}),
     description: decodeHtmlEntities(description),
     court: decodeHtmlEntities(court),
     process,
@@ -211,7 +219,7 @@ function appendDjenItem(item, portal, config, target) {
     return;
   }
 
-  for (const field of ['source', 'type', 'title', 'text', 'description', 'court', 'process', 'client', 'publishedAt', 'certificateUrl', 'officialLink']) {
+  for (const field of ['source', 'type', 'title', 'text', 'rawHtml', 'hasHtml', 'description', 'court', 'process', 'client', 'publishedAt', 'certificateUrl', 'officialLink']) {
     if (incoming[field] !== '' && incoming[field] !== null && incoming[field] !== undefined) existing[field] = incoming[field];
   }
   existing.monitoredTermIds = [...new Set([...(existing.monitoredTermIds || []), ...incoming.monitoredTermIds].filter(Boolean))];

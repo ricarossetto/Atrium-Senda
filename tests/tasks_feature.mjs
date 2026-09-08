@@ -206,7 +206,7 @@ try {
   await page.locator('#modalTitle', { hasText: 'Editar tarefa' }).waitFor();
   assert.deepEqual(
     await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)),
-    ['title', 'taskDefinition', 'process', 'client', 'fatalDeadline', 'deadline', 'date', 'time', 'responsible', 'responsibles', 'status', 'priority', 'points', 'addMinutes', 'timeDescription', 'description', 'actionType', 'protocol']
+    ['title', 'taskDefinition', 'process', 'processId', 'client', 'contactId', 'fatalDeadline', 'deadline', 'date', 'time', 'responsible', 'responsibles', 'status', 'priority', 'points', 'addMinutes', 'timeDescription', 'description', 'actionType', 'protocol']
   );
   assert.equal(await page.locator('#modalForm [name="fatalDeadline"]').inputValue(), fixture.tomorrow);
   assert.equal(await page.locator('#modalForm [name="points"]').inputValue(), '42');
