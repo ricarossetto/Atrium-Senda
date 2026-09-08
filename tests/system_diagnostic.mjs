@@ -5,6 +5,7 @@ import { startTestServer } from './helpers.mjs';
 
 console.log('\n=== TESTES DE DIAGNÓSTICO DO SISTEMA, BACKUPS & FEEDBACK BETA ===\n');
 
+const { version: applicationVersion } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const systemAdminSource = await readFile(new URL('../js/features/system-admin.js', import.meta.url), 'utf8');
 assert.match(
   systemAdminSource,
@@ -81,7 +82,7 @@ try {
   assert.ok(diagData.diagnostic.storage, 'Diagnóstico deve conter status de storage');
   assert.ok(diagData.diagnostic.security, 'Diagnóstico deve conter status de segurança');
   assert.ok(diagData.diagnostic.integrations, 'Diagnóstico deve conter status de integrações');
-  assert.equal(diagData.diagnostic.app.version, '2.0.0');
+  assert.equal(diagData.diagnostic.app.version, applicationVersion);
   assert.equal(diagData.diagnostic.storage.encryptedFile, 'data/app-state.json (ou diretório de dados configurado)');
   assert.equal(diagData.diagnostic.security.twoFactor, 'TOTP RFC 6238 disponível por usuário');
   assert.equal(diagData.diagnostic.integrations.djen.status, 'consulta_sob_demanda');
@@ -97,7 +98,7 @@ try {
   assert.equal(exportResp.status, 200, 'Exportação de diagnóstico deve retornar 200');
   assert.ok(exportResp.headers.get('content-disposition')?.includes('attachment'), 'Exportação deve definir header de anexo');
   const exportData = await exportResp.json();
-  assert.equal(exportData.app.version, '2.0.0');
+  assert.equal(exportData.app.version, applicationVersion);
   console.log('✓ Relatório de diagnóstico anonimizado exportado com sucesso.');
 
   // 4. Testar Criação de Backup Criptografado
