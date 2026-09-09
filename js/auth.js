@@ -116,6 +116,25 @@
         byId('authTabLogin')?.setAttribute('aria-selected', 'false');
         this.show('authRegisterForm');
       });
+      byId('authBackToLoginLink')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        byId('authTabLogin')?.click();
+      });
+      byId('authForgotPassLink')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.feedback('Para recuperar o acesso, utilize um de seus códigos de recuperação de uso único ou contate o administrador do seu escritório.', 'success');
+      });
+      byId('authTabNewOffice')?.addEventListener('click', () => {
+        if (window.AtriumSaas?.renderSaasModal) {
+          window.AtriumSaas.renderSaasModal(document.body);
+        } else {
+          import('./features/saas-onboarding.js?v=2.2.1').then(module => {
+            const saas = module.createSaasOnboardingFeature();
+            window.AtriumSaas = saas;
+            saas.renderSaasModal(document.body);
+          }).catch(err => console.error('Erro ao carregar módulo SaaS:', err));
+        }
+      });
       byId('skipMfaButton')?.addEventListener('click', async () => {
         this.feedback('');
         try {
@@ -160,6 +179,10 @@
       const tabs = byId('authTabs');
       if (tabs) {
         tabs.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authInvitationForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
+      }
+      const footer = byId('authCardFooter');
+      if (footer) {
+        footer.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authInvitationForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
       }
       byId('authGate').classList.remove('hidden'); byId('appShell').classList.add('hidden');
       state.authenticated = false;

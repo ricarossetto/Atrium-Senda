@@ -225,7 +225,105 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 }
 
 .auth-gate .auth-tab:hover { color: var(--auth-text); background: color-mix(in srgb, var(--auth-card) 70%, transparent); }
-.auth-gate .auth-tab.active { color: var(--auth-on-primary); border-color: color-mix(in srgb, var(--auth-primary-strong) 72%, var(--auth-line)); background: var(--auth-primary); box-shadow: none; }
+.auth-gate .auth-tab.active {
+  background: rgba(212, 175, 55, 0.16) !important;
+  color: #d4af37 !important;
+  border: 1px solid rgba(212, 175, 55, 0.32) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+  font-weight: 700 !important;
+}
+
+.auth-gate .auth-forgot-wrap {
+  text-align: center;
+  margin: 10px auto 4px;
+}
+
+.auth-gate .auth-forgot-password-link,
+.auth-gate .auth-link-action,
+.auth-gate button.auth-forgot-password-link,
+.auth-gate button.auth-link-action {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 4px 6px !important;
+  margin: 0 !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #c6aa6a !important;
+  cursor: pointer !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 44px;
+  transition: opacity 0.15s ease !important;
+}
+
+html[data-theme="light"] .auth-gate .auth-forgot-password-link,
+html[data-theme="light"] .auth-gate .auth-link-action,
+html[data-theme="light"] .auth-gate button.auth-forgot-password-link,
+html[data-theme="light"] .auth-gate button.auth-link-action {
+  color: #2b576e !important;
+}
+
+.auth-gate .auth-forgot-password-link:hover,
+.auth-gate .auth-link-action:hover {
+  opacity: .75 !important;
+}
+
+.auth-gate .auth-card-footer {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--auth-line);
+  text-align: center;
+}
+
+.auth-gate .auth-card-footer.hidden {
+  display: none !important;
+}
+
+.auth-gate .auth-footer-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--auth-muted);
+  flex-wrap: wrap;
+}
+
+.auth-gate .auth-footer-legal {
+  margin: 10px auto 0 !important;
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+  color: #8c969e !important;
+  text-align: center !important;
+  max-width: 440px !important;
+  font-weight: 400 !important;
+  opacity: .85 !important;
+}
+
+html[data-theme="light"] .auth-gate .auth-footer-legal {
+  color: #8c969e !important;
+}
+
+.auth-gate .auth-register-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--auth-line);
+  font-size: 12.5px;
+  color: var(--auth-muted);
+}
 
 .auth-gate .auth-step.active { animation: authMineralReveal 180ms ease both; }
 .auth-gate .auth-step .eyebrow { color: var(--auth-primary-strong); }
@@ -346,8 +444,20 @@ html[data-theme="light"] .auth-gate #authSetupForm select[name="oabUf"] {
 }
 
 .auth-gate .auth-submit { min-height: 46px; border-radius: 9px; }
-.auth-gate .button.gold { color: var(--auth-on-primary); border-color: color-mix(in srgb, var(--auth-primary-strong) 70%, var(--auth-line)); background: var(--auth-primary); box-shadow: none; }
-.auth-gate .button.gold:hover { color: var(--auth-on-primary); background: var(--auth-primary-strong); transform: none; box-shadow: none; }
+.auth-gate .button.gold {
+  color: #11100c !important;
+  background: linear-gradient(135deg, #f5e6a3, #d4af37) !important;
+  border: 1px solid rgba(212, 175, 55, 0.4) !important;
+  box-shadow: 0 8px 22px rgba(201, 168, 76, 0.2) !important;
+  font-weight: 700 !important;
+}
+.auth-gate .button.gold:hover {
+  color: #11100c !important;
+  background: linear-gradient(135deg, #fdf3c6, #dfc67a) !important;
+  border-color: #f5e6a3 !important;
+  box-shadow: 0 10px 28px rgba(201, 168, 76, 0.32) !important;
+  transform: none;
+}
 .auth-gate .button.ghost { color: var(--auth-text); border-color: var(--auth-line); background: transparent; box-shadow: none; }
 .auth-gate .button.ghost:hover { border-color: var(--auth-primary-strong); background: var(--auth-primary-soft); transform: none; }
 
@@ -383,6 +493,43 @@ html[data-theme="light"] .auth-gate .auth-feedback.error { color: #873f38; backg
 html[data-theme="light"] .auth-gate .auth-feedback.success { color: #47644e; background: #e4ede6; }
 .auth-gate .auth-local-note { margin-top: 12px !important; padding-top: 10px; border-color: var(--auth-line); color: var(--auth-muted) !important; }
 .auth-gate .auth-spinner { border-color: var(--auth-line); border-top-color: var(--auth-primary-strong); }
+
+html[data-theme="light"] .auth-gate .button.gold {
+  color: #11100c !important;
+  background: linear-gradient(135deg, #dfc67a, #c59b27) !important;
+  border: 1px solid #b79a5d !important;
+  box-shadow: 0 8px 22px rgba(201, 168, 76, 0.18) !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="light"] .auth-gate .button.gold:hover {
+  background: linear-gradient(135deg, #e8d28e, #d4af37) !important;
+  border-color: #d4af37 !important;
+  box-shadow: 0 10px 26px rgba(201, 168, 76, 0.28) !important;
+  transform: none;
+}
+
+html[data-theme="light"] .auth-gate .auth-tabs {
+  background: #eef1f1;
+  border: 1px solid #d2d8da;
+}
+
+html[data-theme="light"] .auth-gate .auth-tab {
+  color: #606970;
+}
+
+html[data-theme="light"] .auth-gate .auth-tab:hover {
+  color: #252a2e;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+html[data-theme="light"] .auth-gate .auth-tab.active {
+  background: #ffffff !important;
+  color: #204556 !important;
+  border: 1px solid #d2d8da !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+  font-weight: 700 !important;
+}
 
 @keyframes authMineralReveal {
   from { opacity: 0; transform: translateY(4px); }

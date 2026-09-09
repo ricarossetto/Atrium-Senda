@@ -30,7 +30,8 @@
   <link rel="stylesheet" href="css/views/ui-v2/importer.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/audit.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/links.css?v=1.0.0">
-  <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=2.2.1">
+  <link rel="stylesheet" href="css/views/ui-v2/saas.css?v=2.2.1">
   <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/icons.css?v=1.0.0">
@@ -148,17 +149,32 @@
           <label>Senha de acesso<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <button class="button gold auth-submit" type="submit">Criar escritório</button>
+          <div class="auth-register-footer">
+            <span>Já possui conta no Atrium?</span>
+            <button type="button" class="auth-link-action" id="authBackToLoginLink" style="background:none; border:none; padding:4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Entrar na conta</button>
+          </div>
         </form>
 
         <form id="authLoginForm" class="auth-step">
           <p class="eyebrow">Acesso restrito</p><h2>Entrar no Atrium</h2>
           <p>Informe seu usuário e senha de acesso.</p>
-          <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="admin ou seu.usuario"></label>
-          <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
-          <label>Código do autenticador ou recuperação (se a proteção em 2 etapas estiver ativada)<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000 (opcional se 2FA inativo)"></label>
+          <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="Digite seu usuário ou e-mail"></label>
+          <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Digite sua senha"></label>
+          <label class="auth-field-code">Código do autenticador ou recuperação (se ativado)<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000 (opcional se 2FA inativo)"></label>
           <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>O segundo fator não será exigido novamente neste dispositivo durante este período.</small></span></label>
           <button class="button gold auth-submit" type="submit">Entrar no Atrium</button>
+          <div class="auth-forgot-wrap" style="text-align:center; margin:12px 0 4px;">
+            <button type="button" class="auth-forgot-password-link" id="authForgotPassLink" style="background:none; border:none; padding:4px 0; font-family:inherit; font-size:12px; cursor:pointer; text-decoration:underline;">Esqueceu sua senha?</button>
+          </div>
         </form>
+
+        <div class="auth-card-footer" id="authCardFooter">
+          <div class="auth-footer-prompt">
+            <span>Ainda não tem conta no Atrium?</span>
+            <button type="button" class="auth-link-action" id="authTabNewOffice" style="background:none; border:none; padding:4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Cadastre seu escritório</button>
+          </div>
+          <p class="auth-footer-legal">Ao entrar você concorda com os Termos de Uso e a Política de Privacidade do Atrium.</p>
+        </div>
 
         <div id="authFeedback" class="auth-feedback hidden" role="alert"></div>
         <p class="auth-local-note">Proteção ativa: dados e chaves criptografadas permanecem sob controle do seu ambiente.</p>
@@ -1880,6 +1896,27 @@
               <div id="chkStep-signature"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-edit"></use></svg>Assinatura SHA-256:</span> <strong>·</strong></div>
               <div id="chkStep-serverHttps"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-integrations"></use></svg>Servidor HTTPS 127.0.0.1:</span> <strong>·</strong></div>
               <div id="chkStep-fingerprint"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>mTLS Fingerprint:</span> <strong>·</strong></div>
+            </div>
+
+            <div class="a1-sweep-card" style="margin-top: 12px; padding: 12px; background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 220px;">
+                  <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                    <span class="status-chip connected" style="font-size: 11px;">Inteligência A1</span>
+                    <strong style="color: var(--ivory); font-size: 13.5px;">Varredura de Segredos de Justiça e Clientes</strong>
+                  </div>
+                  <p style="margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4;">
+                    Desvenda processos em Segredo de Justiça no eproc TJRS via Certificado A1 + 2FA, vincula clientes não identificados e preenche juízo, comarca e classe faltantes.
+                  </p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button class="button gold" id="btnRunA1Sweep" type="button" style="white-space: nowrap; font-size: 12px; padding: 6px 14px;">
+                    <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-search"></use></svg>
+                    Executar Varredura A1
+                  </button>
+                </div>
+              </div>
+              <div id="a1SweepStatus" class="hidden" style="margin-top: 10px; font-size: 12px; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);" role="status" aria-live="polite"></div>
             </div>
 
           </div>
