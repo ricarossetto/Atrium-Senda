@@ -22,6 +22,7 @@ Supervisionar cobertura judicial por identidade e portal, com estratégia explí
 
 - `authenticate`, `health`, `discoverCases`, `fetchMovements`, `fetchPublications`, `disconnect` em adapter declarado read-only.
 - Atualização manual explícita, uma sincronização por inicialização do servidor e uma execução diária às 10h no fuso `America/Sao_Paulo` enquanto o portal estiver aberto.
+- Antes de consolidar o Store, a sincronização geral aguarda a leitura completa do acervo nos portais autenticados habilitados. Essa etapa descobre os processos do procurador independentemente de haver publicação recente; DJEN e DataJud continuam no encadeamento público posterior e não são executados em duplicidade pelo coletor gerenciado.
 - Sessão assistida explícita para portais habilitados; o usuário conclui login, CAPTCHA, TOTP ou confirmação humana exigida pelo tribunal.
 
 ## Forbidden operations

@@ -596,7 +596,6 @@ export function createJudicialIntegrationsFeature({
       const button = byId('syncJudicialNowButton');
       if (button) { button.disabled = true; button.textContent = 'Sincronizando acervo e intimações…'; }
       try {
-        await feature.request('/api/integrations/judicial/sync', {});
         const synchronized = await onSyncAll({ silent: true });
         if (!synchronized) return false;
         showToast('Sincronização com DJEN e tribunais concluída com sucesso!', 'success');

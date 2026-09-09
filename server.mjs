@@ -184,6 +184,7 @@ const emptyRuntime = () => ({ events: [], tasks: [], intimations: [], processes:
 let interactiveCollector = null;
 let interactiveCollectorState = { status: 'idle', portalIds: [], startedAt: null, completedAt: null, exitCode: null, lastMessage: '', lastError: '' };
 let managedCollector = null;
+let managedCollectorRun = null;
 let appStateMutationTail = Promise.resolve();
 let runtimeMutationTail = Promise.resolve();
 let runtimeStateStatus = 'EMPTY';
@@ -1141,6 +1142,75 @@ async function startInteractiveCollector(portalIds) {
     interactiveCollector = null;
   });
   return { started: true, portalCount: selected.length };
+}
+
+function managedPortfolioPortalIds(config) {
+  return config.portals
+    .filter(portal => portal.enabled && portal.accountScoped && portal.group !== 'Sistemas do escritório')
+    .map(portal => portal.id);
+}
+
+async function startManagedPortfolioCollector({ waitForCompletion = false } = {}) {
+  if (CLOUD_MODE) {
+    return { ok: true, skipped: true, cloud: true, portalCount: 0, message: 'O acervo autenticado é coletado pelo agente local do escritório.' };
+  }
+  if (String(process.env.KELLER_SKIP_COLLECTOR_ENV).toLowerCase() === 'true') {
+    return { ok: true, skipped: true, portalCount: 0, message: 'Coletor judicial desabilitado neste ambiente.' };
+  }
+  if (managedCollector && managedCollector.exitCode === null) {
+    if (!waitForCompletion || !managedCollectorRun) {
+      return { ok: true, alreadyRunning: true, portalCount: 0, message: 'A leitura do acervo autenticado já está em andamento.' };
+    }
+    const completion = await managedCollectorRun;
+    if (completion.error || completion.exitCode !== 0) {
+      throw Object.assign(new Error(completion.error || 'O coletor do acervo autenticado não concluiu a leitura.'), { statusCode: 502 });
+    }
+    return { ok: true, alreadyRunning: true, completed: true, portalCount: completion.portalCount };
+  }
+
+  const config = await readPortalConfiguration();
+  const enabledIds = managedPortfolioPortalIds(config);
+  if (!enabledIds.length) {
+    return { ok: true, skipped: true, portalCount: 0, message: 'Nenhum portal autenticado está habilitado para leitura do acervo.' };
+  }
+  const identity = extractOabAndUf(config.monitoredTerm);
+  const child = spawn(process.execPath, [COLLECTOR_AGENT_FILE], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      CENTRAL_URL: `http://${HOST}:${PORT}`,
+      COLLECTOR_HEADLESS: 'true',
+      COLLECTOR_INTERACTIVE: 'false',
+      LOGIN_WAIT_SECONDS: '90',
+      COLLECTOR_PORTAL_IDS: enabledIds.join(','),
+      JUDICIAL_IDENTITY_ID: 'office-primary',
+      JUDICIAL_OAB_UF: identity.uf,
+      JUDICIAL_OAB_NUMBER: identity.num
+    },
+    windowsHide: true,
+    stdio: 'ignore'
+  });
+  managedCollector = child;
+  managedCollectorRun = new Promise(resolve => {
+    let settled = false;
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      if (managedCollector === child) managedCollector = null;
+      resolve({ ...result, portalCount: enabledIds.length });
+    };
+    child.once('exit', exitCode => finish({ exitCode }));
+    child.once('error', error => finish({ exitCode: null, error: String(error?.message || error || 'Falha ao iniciar o coletor.').slice(0, 300) }));
+  });
+
+  if (!waitForCompletion) {
+    return { ok: true, started: true, readOnly: true, portalCount: enabledIds.length, message: 'Leitura do acervo autenticado iniciada em segundo plano.' };
+  }
+  const completion = await managedCollectorRun;
+  if (completion.error || completion.exitCode !== 0) {
+    throw Object.assign(new Error(completion.error || 'O coletor do acervo autenticado não concluiu a leitura.'), { statusCode: 502 });
+  }
+  return { ok: true, started: true, completed: true, readOnly: true, portalCount: enabledIds.length };
 }
 
 function applySecurityHeaders(res) {
@@ -2199,34 +2269,9 @@ const server = http.createServer(async (req, res) => {
       if (CLOUD_MODE) {
         return json(res, 200, { ok: true, cloud: true, message: 'Modo nuvem ativo: o coletor judicial autônomo executa no dispositivo seguro do escritório.' });
       }
-      if (managedCollector && managedCollector.exitCode === null) {
-        return json(res, 202, { ok: true, alreadyRunning: true, readOnly: true, message: 'A cobertura judicial gerenciada já está em atualização.' });
-      }
-      const config = await readPortalConfiguration();
-      const enabledIds = config.portals.filter(p => p.enabled || p.strategy === 'djen' || p.strategy === 'datajud').map(p => p.id);
-      const identity = extractOabAndUf(config.monitoredTerm);
-      managedCollector = spawn(process.execPath, [COLLECTOR_AGENT_FILE], {
-        cwd: ROOT,
-        env: {
-          ...process.env,
-          CENTRAL_URL: `http://${HOST}:${PORT}`,
-          COLLECTOR_HEADLESS: 'true',
-          COLLECTOR_INTERACTIVE: 'false',
-          COLLECTOR_PORTAL_IDS: enabledIds.join(','),
-          JUDICIAL_IDENTITY_ID: 'office-primary',
-          JUDICIAL_OAB_UF: identity.uf,
-          JUDICIAL_OAB_NUMBER: identity.num
-        },
-        windowsHide: true,
-        stdio: 'ignore'
-      });
-      managedCollector.once('exit', (code) => {
-        managedCollector = null;
-      });
-      managedCollector.once('error', (err) => {
-        managedCollector = null;
-      });
-      return json(res, 202, { ok: true, readOnly: true, portalCount: enabledIds.length, message: 'Atualização judicial somente leitura iniciada em segundo plano.' });
+      const waitForCompletion = url.searchParams.get('wait') === '1';
+      const result = await startManagedPortfolioCollector({ waitForCompletion });
+      return json(res, result.completed || result.skipped ? 200 : 202, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/trusted-device/revoke') {
       assertAuthenticated(req, true); const revoked = await security.revokeTrustedDevice(req);
@@ -3804,9 +3849,10 @@ Diretrizes essenciais:
         totalSteps: 4,
         phase: 'starting',
         label: 'Iniciando sincronização…',
-        detail: 'Carregando termos e acervo local…',
+        detail: 'Lendo o acervo dos portais autenticados habilitados…',
         percent: 5
       });
+      await startManagedPortfolioCollector({ waitForCompletion: true });
       const runtime = await readRuntime();
       let events = sanitizeArray(runtime.events);
       let tasks = sanitizeArray(runtime.tasks);

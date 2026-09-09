@@ -462,7 +462,10 @@ async function verifySourceContracts() {
     readFile(new URL('../AGENTS.md', import.meta.url), 'utf8')
   ]);
   const syncSource = serverSource.slice(serverSource.indexOf("url.pathname === '/api/sync'"), serverSource.indexOf("if (req.method === 'GET' || req.method === 'HEAD')"));
+  assert(syncSource.indexOf('await startManagedPortfolioCollector({ waitForCompletion: true })') >= 0 && syncSource.indexOf('await startManagedPortfolioCollector({ waitForCompletion: true })') < syncSource.indexOf('const runtime = await readRuntime()'), '/api/sync deve aguardar o acervo autenticado antes de ler e consolidar o runtime');
   assert(syncSource.indexOf('await collectDjen') >= 0 && syncSource.indexOf('await collectDjen') < syncSource.indexOf('await collectDatajud'), '/api/sync deve encadear DJEN antes do DataJud');
+  assert.match(serverSource, /portal\.enabled && portal\.accountScoped/, 'coletor de acervo deve selecionar somente portais autenticados habilitados');
+  assert.doesNotMatch(serverSource.slice(serverSource.indexOf('function managedPortfolioPortalIds'), serverSource.indexOf('async function startManagedPortfolioCollector')), /strategy === ['"](?:djen|datajud)['"]/, 'seleção do acervo autenticado não deve duplicar DJEN ou DataJud');
   assert.match(serverSource, /emptyRuntime[^\n]+contacts:\s*\[\]/, 'runtime canônico deve declarar contacts');
   assert.match(serverSource, /contacts:\s*mergeExternalContacts\(runtime\.contacts, collections\.contacts\)/, '/api/ingest deve preservar contacts');
   assert.match(syncSource, /contacts,\s*\n\s*sources:/, '/api/sync deve persistir e retornar contacts');
