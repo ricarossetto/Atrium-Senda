@@ -855,6 +855,11 @@ import { createTasksFeature } from './features/tasks.js';
       showToast: (message, type) => App.toast(message, type),
       onRenderDiagnostic: () => getSystemAdminFeature().renderDiagnostic(),
       onRenderBackups: () => getSystemAdminFeature().renderBackups(),
+      onOpenJudicialSetup: () => App.openJudicialSetup(),
+      onOpenDataJudModal: () => App.openDataJudConfigModal(),
+      onOpenGeminiKeyModal: () => App.openGeminiKeyModal(),
+      onOpenCalendarSetup: () => App.openCalendarConfigModal(),
+      onOpenEmailConfigModal: () => App.openEmailConfigModal(),
       presentation: getConfigurationAdminPresenter()
     });
     return configurationFeature;

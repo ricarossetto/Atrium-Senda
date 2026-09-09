@@ -43,3 +43,13 @@ Não faça merge/cherry-pick integral desse commit: foram encontrados credenciai
 - A suíte global `pnpm test` não foi executada, conforme orientação do usuário.
 
 O servidor deve permanecer rodando na 4173. A próxima etapa é revisão humana/visual desta branch e, depois, preparação do merge; ainda não promover para `main` sem o workflow candidato verde.
+
+## Painel operacional de Configurações
+
+- As dez seções administrativas receberam campos operacionais para equipe, fluxo, metas, notificações e integrações.
+- Status podem ser alternados no mesmo registro, com persistência e rollback em caso de falha.
+- Integrações conhecidas abrem os modais canônicos de A1/2FA, DataJud, Gemini, agenda e e-mail; nenhuma credencial entra em `state.configuration`.
+- Textos do patch externo que prometiam prazo automático, tarefa automática, envio automático ou frequências inexistentes foram substituídos por preferências e sugestões sujeitas a confirmação humana.
+- Os novos atalhos e callouts usam a cor primária no tema claro, sem o dourado anteriormente rejeitado.
+- Contrato registrado em `specs/configuration-management.md`.
+- Passaram `configuration_feature.mjs`, `ui_v2_configuration_admin.mjs` e `configuration_persistence.mjs`.

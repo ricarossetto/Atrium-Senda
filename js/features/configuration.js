@@ -21,16 +21,88 @@ const CONFIGURATION_SECTIONS = [
 ];
 
 const FIELDS_BY_SECTION = {
-  taskDefinitions: [{name:'name',label:'Nome da tarefa',required:true,full:true},{name:'points',label:'Pontuação',type:'number'},{name:'phase',label:'Fase'}],
-  users: [{name:'name',label:'Nome do usuário',required:true,full:true},{name:'role',label:'Função'},{name:'pointsGoal',label:'Meta de pontos'}],
-  actionGroups: [{name:'name',label:'Grupo de ação',required:true,full:true},{name:'publicationResponsible',label:'Responsável pelas publicações',full:true}],
-  actionTypes: [{name:'name',label:'Tipo de ação',required:true,full:true},{name:'group',label:'Grupo'}],
-  stages: [{name:'name',label:'Etapa',required:true,full:true},{name:'classification',label:'Classificação'},{name:'phase',label:'Fase'}],
-  origins: [{name:'name',label:'Origem',required:true,full:true}],
-  goals: [{name:'group',label:'Grupo',required:true,full:true},{name:'monthlyClosings',label:'Meta mensal de fechamentos',type:'number'}],
-  inboxSections: [{name:'value',label:'Nome da seção',required:true,full:true}],
-  notificationAssignments: [{name:'event',label:'Evento',required:true,full:true},{name:'responsibles',label:'Responsáveis',full:true,placeholder:'Separe os nomes por vírgula'}],
-  integrations: [{name:'name',label:'Integração',required:true,full:true},{name:'status',label:'Status'},{name:'method',label:'Método'}]
+  taskDefinitions: [
+    { name: 'name', label: 'Nome da tarefa', required: true, full: true },
+    { name: 'points', label: 'Pontuação de produtividade', type: 'number' },
+    { name: 'phase', label: 'Fase processual', suggestions: ['Judicial', 'Recursal', 'Execução/cobrança', 'Administrativo', 'Negociação', 'Consultoria', 'Marketing', 'Rh/financeiro', 'Todas'] },
+    { name: 'slaDays', label: 'Tempo interno esperado (dias úteis)', type: 'number', note: 'Referência operacional da equipe; não calcula nem preenche prazo jurídico' },
+    { name: 'priority', label: 'Prioridade sugerida', type: 'select', options: [{ value: 'normal', label: 'Normal' }, { value: 'alta', label: 'Alta prioridade' }, { value: 'urgente', label: 'Urgente para conferência' }, { value: 'baixa', label: 'Baixa prioridade' }] },
+    { name: 'defaultRole', label: 'Responsável sugerido', type: 'select', options: [{ value: '', label: 'A definir no processo' }, { value: 'Advogado Titular', label: 'Advogado Titular' }, { value: 'Controladoria & Prazos', label: 'Controladoria & Prazos' }, { value: 'Assistente Jurídico', label: 'Assistente Jurídico' }, { value: 'Secretaria', label: 'Secretaria / Administrativo' }] },
+    { name: 'requireDocument', label: 'Exigência documental', type: 'select', options: [{ value: 'nao', label: 'Não obrigatório' }, { value: 'sim', label: 'Sim — exige anexo de minuta ou petição' }] },
+    { name: 'status', label: 'Status no catálogo', type: 'select', options: [{ value: 'ativo', label: 'Ativo (disponível para criação)' }, { value: 'inativo', label: 'Inativo (ocultar novos registros)' }] },
+    { name: 'instructions', label: 'Instruções e checklist de execução', type: 'textarea', full: true, placeholder: 'Orientações práticas para o executor da tarefa…' }
+  ],
+  users: [
+    { name: 'name', label: 'Nome do usuário', required: true, full: true },
+    { name: 'role', label: 'Função no escritório', suggestions: ['Administrador', 'Advogado Sócio', 'Advogado Titular', 'Advogado Associado', 'Assistente Jurídico', 'Controladoria & Prazos', 'Secretária'] },
+    { name: 'pointsGoal', label: 'Meta mensal de pontos', type: 'number' },
+    { name: 'oab', label: 'Inscrição OAB', placeholder: 'Ex.: OAB/RS 000000' },
+    { name: 'email', label: 'E-mail profissional', type: 'email', placeholder: 'nome@escritorio.adv.br' },
+    { name: 'status', label: 'Status da conta', type: 'select', options: [{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Suspenso' }] }
+  ],
+  actionGroups: [
+    { name: 'name', label: 'Grupo de ação / Área', required: true, full: true },
+    { name: 'publicationResponsible', label: 'Responsável pelas publicações', full: true },
+    { name: 'leaderLawyer', label: 'Advogado coordenador da área', type: 'select', options: [{ value: '', label: 'A definir' }, { value: 'Advogado Titular', label: 'Advogado Titular' }, { value: 'Sócio Responsável', label: 'Sócio Responsável' }, { value: 'Controladoria Jurídica', label: 'Controladoria Jurídica' }] },
+    { name: 'autoAssign', label: 'Responsável sugerido na triagem', type: 'select', options: [{ value: 'sim', label: 'Sugerir o responsável da área' }, { value: 'nao', label: 'Definir manualmente na triagem' }] },
+    { name: 'color', label: 'Cor identificadora da área', type: 'select', options: [{ value: 'gold', label: 'Dourado ATRIUM' }, { value: 'blue', label: 'Azul Petróleo' }, { value: 'emerald', label: 'Verde Esmeralda' }, { value: 'burgundy', label: 'Bordô / Vinho' }, { value: 'indigo', label: 'Índigo Profundo' }] },
+    { name: 'description', label: 'Diretrizes e escopo da área', type: 'textarea', full: true, placeholder: 'Descreva a abrangência jurídica e regras desta especialidade…' }
+  ],
+  actionTypes: [
+    { name: 'name', label: 'Tipo de ação', required: true, full: true },
+    { name: 'group', label: 'Grupo de especialidade', suggestions: ['Cível', 'Trabalhista', 'Previdenciário', 'Família', 'Consumidor', 'Tributário', 'Criminal', 'Precatório', 'Administrativo', 'Serviços'] },
+    { name: 'procedure', label: 'Rito processual sugerido', type: 'select', options: [{ value: 'comum', label: 'Comum / Ordinário' }, { value: 'sumarissimo', label: 'Sumaríssimo / Juizado Especial (JEC/JEF)' }, { value: 'execucao', label: 'Execução de Título' }, { value: 'especial', label: 'Procedimento Especial' }, { value: 'administrativo', label: 'Processo Administrativo' }] },
+    { name: 'defaultCourt', label: 'Tribunal padrão sugerido', type: 'select', options: [{ value: 'TJRS', label: 'TJRS — Justiça Estadual' }, { value: 'TRF4', label: 'TRF4 / JEF — Justiça Federal' }, { value: 'TRT4', label: 'TRT4 — Justiça do Trabalho' }, { value: 'STJ', label: 'STJ — Superior Tribunal de Justiça' }, { value: 'STF', label: 'STF — Supremo Tribunal Federal' }, { value: 'outro', label: 'Outro / Variável' }] },
+    { name: 'estimatedDuration', label: 'Duração média estimada (meses)', type: 'number', placeholder: 'ex: 24' },
+    { name: 'status', label: 'Status do tipo de ação', type: 'select', options: [{ value: 'ativo', label: 'Ativo (disponível no cadastro de processos)' }, { value: 'inativo', label: 'Inativo / Em desuso' }] }
+  ],
+  stages: [
+    { name: 'name', label: 'Etapa', required: true, full: true },
+    { name: 'classification', label: 'Classificação / Macro-fase', suggestions: ['Inicial', 'Acordo', 'Audiência', 'Julgamento', 'Recurso', 'Execução', 'Pagamento', 'Diligência', 'Triagem', 'Encerrado'] },
+    { name: 'phase', label: 'Fase processual', suggestions: ['Judicial', 'Recursal', 'Execução/cobrança', 'Administrativo', 'Negociação', 'Consultoria', 'Arquivamento'] },
+    { name: 'slaMaxDays', label: 'Alerta de estagnação (dias)', type: 'number', note: 'Gera aviso se o processo ficar nesta etapa por mais de X dias sem andamento' },
+    { name: 'nextSuggestedStage', label: 'Próxima etapa recomendada no fluxo', suggestions: ['AÇÃO PROTOCOLADA/INICIADA', 'AGUARDA AUDIÊNCIA', 'AGUARDA SENTENÇA', 'APRESENTADO RECURSO', 'CUMPRIMENTO DE SENTENÇA', 'RPV EMITIDO', 'TRÂNSITO EM JULGADO / PROCESSO FINALIZADO'] },
+    { name: 'status', label: 'Status da etapa', type: 'select', options: [{ value: 'ativo', label: 'Ativa no pipeline' }, { value: 'inativo', label: 'Oculta' }] }
+  ],
+  origins: [
+    { name: 'name', label: 'Origem', required: true, full: true },
+    { name: 'channelType', label: 'Canal de captação', type: 'select', options: [{ value: 'indicacao', label: 'Indicação de Cliente / Terceiro' }, { value: 'marketing_digital', label: 'Marketing Digital / Google Ads' }, { value: 'redes_sociais', label: 'Redes Sociais / WhatsApp' }, { value: 'balcao', label: 'Atendimento Balcão / Presencial' }, { value: 'parceria', label: 'Parceria Profissional / Correspondente' }, { value: 'convenio', label: 'Convênio / Entidade Sindical' }, { value: 'outro', label: 'Outro canal' }] },
+    { name: 'partnerCommission', label: 'Comissão / Parceria padrão (%)', type: 'number', placeholder: 'ex: 10', note: 'Percentual padrão de honorários do parceiro para esta origem' },
+    { name: 'defaultAttendant', label: 'Responsável padrão pelo primeiro atendimento', placeholder: 'Ex.: Advogado Titular, Equipe Comercial' },
+    { name: 'status', label: 'Status do canal', type: 'select', options: [{ value: 'ativo', label: 'Ativo para novos clientes' }, { value: 'inativo', label: 'Inativo / Encerrado' }] }
+  ],
+  goals: [
+    { name: 'group', label: 'Grupo / Área', required: true, full: true },
+    { name: 'monthlyClosings', label: 'Meta mensal de fechamentos', type: 'number' },
+    { name: 'financialGoal', label: 'Meta mensal de faturamento (R$)', type: 'number', placeholder: 'ex: 50000', note: 'Faturamento bruto esperado em novos fechamentos' },
+    { name: 'pointsGoal', label: 'Meta de pontos da equipe', type: 'number', placeholder: 'ex: 1500' },
+    { name: 'period', label: 'Período de apuração', type: 'select', options: [{ value: 'mensal', label: 'Mensal' }, { value: 'trimestral', label: 'Trimestral' }, { value: 'semestral', label: 'Semestral' }, { value: 'anual', label: 'Anual' }] },
+    { name: 'responsible', label: 'Gestor responsável pela meta', placeholder: 'Ex.: Advogado Titular' }
+  ],
+  inboxSections: [
+    { name: 'value', label: 'Nome da seção', required: true, full: true },
+    { name: 'filterRule', label: 'Regra de agrupamento de publicações', type: 'select', options: [{ value: 'todas', label: 'Todas as publicações recentes' }, { value: 'urgentes', label: 'Apenas publicações urgentes e prazos fatais' }, { value: 'nao_tratadas', label: 'Somente publicações pendentes de triagem' }, { value: 'datajud', label: 'Andamentos capturados no DataJud' }, { value: 'tarefas', label: 'Tarefas urgentes com prazo no dia' }] },
+    { name: 'displayLimit', label: 'Limite de exibição de itens', type: 'select', options: [{ value: '10', label: '10 itens' }, { value: '20', label: '20 itens (recomendado)' }, { value: '50', label: '50 itens' }, { value: '100', label: '100 itens' }] },
+    { name: 'highlightUrgent', label: 'Destacar itens urgentes no topo', type: 'select', options: [{ value: 'sim', label: 'Sim — destacar com badge de urgência' }, { value: 'nao', label: 'Não — ordenação cronológica padrão' }] },
+    { name: 'status', label: 'Visibilidade da seção', type: 'select', options: [{ value: 'ativo', label: 'Ativa no painel de entrada' }, { value: 'oculta', label: 'Oculta temporariamente' }] }
+  ],
+  notificationAssignments: [
+    { name: 'event', label: 'Evento disparador', required: true, full: true, suggestions: ['Publicação capturada do DJEN', 'Prazo fatal a vencer em 48h', 'Prazo fatal a vencer em 24h', 'Andamento capturado nos tribunais', 'Nova tarefa atribuída', 'Intimação urgente pendente', 'Novo lead / atendimento cadastrado'] },
+    { name: 'responsibles', label: 'Responsáveis destinatários', full: true, placeholder: 'Separe os nomes ou cargos por vírgula (ex: Advogado Titular, Apoio Jurídico)', note: 'Membros da equipe que receberão o aviso' },
+    { name: 'channels', label: 'Canais de entrega', full: true, type: 'select', options: [{ value: 'inapp_email', label: 'Painel In-App + Notificação por E-mail' }, { value: 'inapp_only', label: 'Apenas Painel In-App' }, { value: 'inapp_email_alert', label: 'Painel + E-mail + Alerta Sonoro no Navegador' }, { value: 'critical_banner', label: 'Alerta Visual Crítico em Tela' }] },
+    { name: 'timing', label: 'Momento do envio', type: 'select', options: [{ value: 'imediato', label: 'Imediato ao detectar o evento' }, { value: '24h', label: '24 horas antes do prazo' }, { value: '48h', label: '48 horas antes do prazo' }, { value: '08h_dia', label: 'No início do dia do evento (08:00)' }] },
+    { name: 'urgency', label: 'Nível de gravidade', type: 'select', options: [{ value: 'normal', label: 'Normal' }, { value: 'alta', label: 'Alta relevância' }, { value: 'urgente', label: 'Urgente / Prazo fatal' }] },
+    { name: 'autoTask', label: 'Sugerir criação de tarefa', type: 'select', options: [{ value: 'nao', label: 'Não sugerir' }, { value: 'sim', label: 'Sugerir tarefa para confirmação humana' }] },
+    { name: 'status', label: 'Estado da notificação', type: 'select', options: [{ value: 'ativo', label: 'Ativa (enviar alertas)' }, { value: 'pausada', label: 'Pausada temporariamente' }] }
+  ],
+  integrations: [
+    { name: 'name', label: 'Integração', required: true, full: true },
+    { name: 'status', label: 'Status da conexão', type: 'select', options: [{ value: 'Ativo', label: 'Ativo (operacional)' }, { value: 'Preparado', label: 'Preparado (aguarda credencial)' }, { value: 'Pausado', label: 'Pausado temporariamente' }, { value: 'Desativado', label: 'Desativado' }] },
+    { name: 'method', label: 'Método / Tipo de agente', suggestions: ['API Oficial Pública', 'Agente Local Seguro', 'REST API', 'Sincronização iCal', 'Conexão IMAP / SMTP'] },
+    { name: 'syncFrequency', label: 'Preferência de sincronização', type: 'select', options: [{ value: 'startup_daily', label: 'Na abertura e no ciclo diário configurado' }, { value: 'manual', label: 'Somente sob demanda (manual)' }] },
+    { name: 'autoNotifyErrors', label: 'Notificar falhas de conexão', type: 'select', options: [{ value: 'sim', label: 'Sim — alertar administradores em caso de falha' }, { value: 'nao', label: 'Não — apenas registrar na auditoria' }] },
+    { name: 'notes', label: 'Notas técnicas e parâmetros do escritório', type: 'textarea', full: true, placeholder: 'Endpoints, observações sobre credenciais ou regras internas…' }
+  ]
 };
 
 const formatResponsibles = value => {
@@ -38,6 +110,56 @@ const formatResponsibles = value => {
   if (typeof value === 'string') return value.trim();
   return '';
 };
+
+function getDirectSetupTarget(name) {
+  const normalized = String(name || '').toLowerCase();
+  if (/eproc|pje|a1|certificado|portais/.test(normalized)) {
+    return {
+      type: 'judicial',
+      badge: 'Certificado Digital A1 + TOTP',
+      description: 'Gerencie o arquivo PFX, senha protegida e o 2FA QR Code para varredura segura nos portais judiciais.',
+      actionLabel: 'Abrir Painel de Certificado A1'
+    };
+  }
+  if (/datajud|cnj|djen|diário/.test(normalized)) {
+    return {
+      type: 'datajud',
+      badge: 'DataJud / CNJ Metadados',
+      description: 'Configure a chave pública da API DataJud/CNJ e o tribunal padrão para captura de andamentos.',
+      actionLabel: 'Configurar Chave DataJud'
+    };
+  }
+  if (/gemini|ia|inteligência/.test(normalized)) {
+    return {
+      type: 'gemini',
+      badge: 'Google Gemini Flash IA',
+      description: 'Configure sua Gemini API Key gratuita e ative a assistência jurídica inteligente do ATRIUM.',
+      actionLabel: 'Configurar Chave da IA'
+    };
+  }
+  if (/webcal|agenda|calendar/.test(normalized)) {
+    return {
+      type: 'calendar',
+      badge: 'Agenda Externa iCal',
+      description: 'Exporte o feed seguro iCal com prazos e compromissos para sincronizar com Google Agenda ou Outlook.',
+      actionLabel: 'Configurar Feed de Agenda'
+    };
+  }
+  if (/email|e-mail|imap|smtp/.test(normalized)) {
+    return {
+      type: 'email',
+      badge: 'E-mail Corporativo',
+      description: 'Configure o transporte de e-mail e os destinatários autorizados para envios manuais.',
+      actionLabel: 'Configurar Contas de E-mail'
+    };
+  }
+  return {
+    type: 'general',
+    badge: 'Integração de Sistema',
+    description: 'Parametrize a frequência de sincronização, regras de alerta e notas técnicas desta integração.',
+    actionLabel: 'Ajustar Parâmetros'
+  };
+}
 
 export function createConfigurationFeature({
   store,
@@ -49,6 +171,11 @@ export function createConfigurationFeature({
   showToast = () => {},
   onRenderDiagnostic = () => {},
   onRenderBackups = () => {},
+  onOpenJudicialSetup = () => {},
+  onOpenDataJudModal = () => {},
+  onOpenGeminiKeyModal = () => {},
+  onOpenCalendarSetup = () => {},
+  onOpenEmailConfigModal = () => {},
   presentation = null,
   warn = () => {}
 } = {}) {
@@ -89,6 +216,27 @@ export function createConfigurationFeature({
           if (registryAction === 'test-provider') feature.testRegistryProvider(event.target.closest('[data-registry-provider]')?.dataset.registryProvider, event.target.closest('button'));
           return;
         }
+        const directBtn = event.target.closest('[data-direct-integration]');
+        if (directBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          feature.triggerDirectIntegration(directBtn.dataset.directIntegration);
+          return;
+        }
+        const toggleIntegrationBtn = event.target.closest('[data-toggle-integration]');
+        if (toggleIntegrationBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          feature.toggleRecordStatus(Number(toggleIntegrationBtn.dataset.toggleIntegration));
+          return;
+        }
+        const toggleStatusBtn = event.target.closest('[data-toggle-status]');
+        if (toggleStatusBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          feature.toggleRecordStatus(Number(toggleStatusBtn.dataset.toggleStatus));
+          return;
+        }
         const deleteButton = event.target.closest('[data-delete-config]');
         if (deleteButton) {
           event.preventDefault();
@@ -109,6 +257,15 @@ export function createConfigurationFeature({
         const index = Number(row.dataset.configIndex);
         const records = Array.isArray(store.state.configuration?.[configurationSection]) ? store.state.configuration[configurationSection] : [];
         if (records[index] !== undefined) feature.openModal(records[index], index);
+      });
+      byId('modalBackdrop')?.addEventListener('click', event => {
+        const modalIntegrationBtn = event.target.closest('[data-modal-open-dedicated-integration]');
+        if (modalIntegrationBtn) {
+          event.preventDefault();
+          const targetName = modalIntegrationBtn.dataset.modalOpenDedicatedIntegration;
+          byId('modalClose')?.click?.() || byId('modalCancel')?.click?.();
+          setTimeout(() => feature.triggerDirectIntegration(targetName), 80);
+        }
       });
       byId('configurationList')?.addEventListener('submit', event => {
         if (event.target.matches('[data-registry-bank-form]')) {
@@ -304,6 +461,64 @@ export function createConfigurationFeature({
       }
     },
 
+    triggerDirectIntegration(name) {
+      const normalized = String(name || '').toLowerCase();
+      if (/eproc|pje|a1|certificado|portais/.test(normalized)) {
+        onOpenJudicialSetup();
+        return true;
+      }
+      if (/datajud|cnj|djen|diário/.test(normalized)) {
+        onOpenDataJudModal();
+        return true;
+      }
+      if (/gemini|ia|inteligência/.test(normalized)) {
+        onOpenGeminiKeyModal();
+        return true;
+      }
+      if (/webcal|agenda|calendar/.test(normalized)) {
+        onOpenCalendarSetup();
+        return true;
+      }
+      if (/email|e-mail|imap|smtp/.test(normalized)) {
+        onOpenEmailConfigModal();
+        return true;
+      }
+      showToast('Abra a edição deste item para configurar seus parâmetros.', 'info');
+      return false;
+    },
+
+    async toggleRecordStatus(index) {
+      const section = configurationSection;
+      const list = store.state.configuration?.[section];
+      if (!Array.isArray(list) || index < 0 || index >= list.length) return false;
+      const record = list[index];
+      if (!record || typeof record === 'string') return false;
+      const previousStatus = record.status;
+      if (section === 'integrations') {
+        record.status = (record.status === 'Ativo' || record.status === 'ativo') ? 'Pausado' : 'Ativo';
+      } else if (section === 'notificationAssignments') {
+        record.status = record.status === 'pausada' ? 'ativo' : 'pausada';
+      } else if (section === 'taskDefinitions') {
+        record.status = record.status === 'inativo' ? 'ativo' : 'inativo';
+      } else {
+        record.status = (record.status === 'inativo' || record.status === 'oculta') ? 'ativo' : 'inativo';
+      }
+      store.save();
+      store.audit('Status de configuração alterado', `${section} · ${record.name || record.event || record.group || 'item'} → ${record.status}`);
+      try {
+        if (!await store.flush()) throw new Error('Não foi possível persistir a alteração de status.');
+        feature.render();
+        showToast(`Status atualizado para ${record.status}.`, 'success');
+        return true;
+      } catch (error) {
+        record.status = previousStatus;
+        store.save();
+        feature.render();
+        showToast('Não foi possível salvar a alteração de status.', 'error');
+        return false;
+      }
+    },
+
     row(item, index) {
       const v2 = documentRef.documentElement?.dataset?.ui === 'v2';
       if (typeof item === 'string') {
@@ -326,15 +541,89 @@ export function createConfigurationFeature({
           </div>`;
       }
       if (!item || typeof item !== 'object') return '';
-      const primary = item.name || item.event || item.group || 'Configuração';
-      const secondary = item.role || item.phase || item.group || item.publicationResponsible || item.method || formatResponsibles(item.responsibles) || item.status || '—';
-      const meta = Number.isFinite(item.points) ? `<span class="config-points">${item.points} pontos</span>` : item.monthlyClosings == null && 'monthlyClosings' in item ? '<small>Meta não definida</small>' : `<small>${escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
+      const primary = item.name || item.event || item.group || item.value || 'Configuração';
+      let secondary = '';
+      let meta = '';
+      let extraActions = '';
+
+      let effectiveSection = configurationSection;
+      if ('monthlyClosings' in item || 'financialGoal' in item) {
+        effectiveSection = 'goals';
+      } else if ('event' in item || ('responsibles' in item && !('points' in item))) {
+        effectiveSection = 'notificationAssignments';
+      } else if ('syncFrequency' in item) {
+        effectiveSection = 'integrations';
+      } else if ('procedure' in item || 'defaultCourt' in item) {
+        effectiveSection = 'actionTypes';
+      } else if ('classification' in item || 'nextSuggestedStage' in item) {
+        effectiveSection = 'stages';
+      } else if ('channelType' in item || 'partnerCommission' in item) {
+        effectiveSection = 'origins';
+      } else if ('leaderLawyer' in item || 'autoAssign' in item) {
+        effectiveSection = 'actionGroups';
+      }
+
+      if (effectiveSection === 'taskDefinitions') {
+        const parts = [];
+        if (item.phase) parts.push(item.phase);
+        if (item.slaDays) parts.push(`SLA ${item.slaDays} dias úteis`);
+        if (item.priority) parts.push(String(item.priority).toUpperCase());
+        secondary = parts.length ? parts.join(' · ') : 'Judicial · SLA 5 dias úteis · NORMAL';
+        const statusClass = item.status === 'inativo' ? 'warning' : 'success';
+        const statusLabel = item.status === 'inativo' ? 'Inativa' : 'Ativa';
+        meta = `${Number.isFinite(item.points) ? `<span class="config-points">${item.points} pontos</span>` : ''}<button type="button" class="configuration-status-pill ${statusClass}" data-toggle-status="${index}" title="Alternar status">${statusLabel}</button>`;
+      } else if (effectiveSection === 'notificationAssignments') {
+        const channels = item.channels === 'inapp_only' ? 'In-App' : item.channels === 'critical_banner' ? 'Banner' : item.channels ? 'In-App + E-mail' : '';
+        const timing = item.timing === '24h' ? '24h antes' : item.timing === '48h' ? '48h antes' : item.timing === '08h_dia' ? '08h' : item.timing ? 'Imediato' : '';
+        const responsiblesStr = formatResponsibles(item.responsibles);
+        const parts = [responsiblesStr, channels, timing].filter(Boolean);
+        secondary = parts.length ? parts.join(' · ') : '—';
+        const statusClass = item.status === 'pausada' ? 'warning' : 'success';
+        const statusLabel = item.status === 'pausada' ? 'Pausada' : 'Ativa';
+        meta = `<button type="button" class="configuration-status-pill ${statusClass}" data-toggle-status="${index}" title="Alternar notificação">${statusLabel}</button>`;
+      } else if (effectiveSection === 'integrations') {
+        const freq = item.syncFrequency === 'manual' ? 'Manual' : item.syncFrequency === 'startup_daily' ? 'Abertura + ciclo diário' : item.syncFrequency ? 'Configurada' : '';
+        secondary = `${item.method || 'API Oficial'}${freq ? ' · Frequência: ' + freq : ''}`;
+        const statusClass = (item.status === 'Ativo' || item.status === 'ativo') ? 'success' : item.status === 'Preparado' ? 'neutral' : 'warning';
+        const statusLabel = item.status || 'Ativo';
+        meta = `<button type="button" class="configuration-status-pill ${statusClass}" data-toggle-integration="${index}" title="Alternar status da integração">${escapeHtml(statusLabel)}</button>`;
+        extraActions = `<button type="button" class="button ghost configuration-action-btn" data-direct-integration="${escapeHtml(primary)}" title="Configurar conexão de ${escapeHtml(primary)}">Configurar Conexão ⚙</button>`;
+      } else if (effectiveSection === 'goals') {
+        secondary = item.period ? `Período: ${item.period}` : (item.group || 'Geral');
+        if (item.monthlyClosings == null && 'monthlyClosings' in item) {
+          meta = '<small>Meta não definida</small>';
+        } else {
+          const closings = item.monthlyClosings != null ? `${item.monthlyClosings} fechamentos` : '';
+          const fin = item.financialGoal ? ` · R$ ${Number(item.financialGoal).toLocaleString('pt-BR')}` : '';
+          meta = `<span class="config-points">${closings}${fin}</span>`;
+        }
+      } else if (effectiveSection === 'actionTypes') {
+        const procedure = item.procedure === 'sumarissimo' ? 'Sumaríssimo' : item.procedure === 'execucao' ? 'Execução' : item.procedure === 'especial' ? 'Especial' : item.procedure ? 'Comum' : '';
+        const parts = [item.group || 'Geral', procedure ? `Rito ${procedure}` : '', item.defaultCourt || 'Tribunal variável'].filter(Boolean);
+        secondary = parts.join(' · ');
+        meta = `<small>${item.estimatedDuration ? item.estimatedDuration + ' meses' : escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
+      } else if (effectiveSection === 'stages') {
+        secondary = `${item.phase || 'Judicial'} · ${item.classification || 'Geral'}`;
+        meta = `<small>${item.slaMaxDays ? 'Alerta: ' + item.slaMaxDays + 'd' : escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
+      } else if (effectiveSection === 'origins') {
+        const commission = item.partnerCommission ? ` · ${item.partnerCommission}%` : '';
+        secondary = `${item.channelType || 'Geral'}${commission}`;
+        meta = `<small>${escapeHtml(item.defaultAttendant ? 'Resp: ' + item.defaultAttendant : item.registeredAt || 'Ativo')}</small>`;
+      } else if (effectiveSection === 'actionGroups') {
+        secondary = item.publicationResponsible || 'Advogado Responsável';
+        meta = `<small>${escapeHtml(item.leaderLawyer ? 'Líder: ' + item.leaderLawyer : item.registeredAt || 'Ativo')}</small>`;
+      } else {
+        secondary = item.role || item.phase || item.group || item.publicationResponsible || item.method || formatResponsibles(item.responsibles) || item.status || '—';
+        meta = Number.isFinite(item.points) ? `<span class="config-points">${item.points} pontos</span>` : item.monthlyClosings == null && 'monthlyClosings' in item ? '<small>Meta não definida</small>' : `<small>${escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
+      }
+
       if (v2) return `
         <article class="configuration-row" role="listitem" data-config-index="${index}">
           <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(primary)}">
             <span class="config-row-info"><strong>${escapeHtml(primary)}</strong><span>${escapeHtml(secondary)}</span>${meta}</span>
             <span class="configuration-edit-affordance" aria-hidden="true">Editar →</span>
           </button>
+          ${extraActions}
           <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(primary)}">${iconSvg('delete')} Excluir</button>
         </article>`;
       return `
@@ -344,6 +633,7 @@ export function createConfigurationFeature({
             <span>${escapeHtml(secondary)}</span>
             ${meta}
           </div>
+          ${extraActions}
           <button type="button" class="btn-delete-config-row" data-delete-config="${index}" title="Excluir este item">×</button>
         </div>`;
     },
@@ -352,7 +642,21 @@ export function createConfigurationFeature({
       const fields = FIELDS_BY_SECTION[configurationSection] || [{ name: 'name', label: 'Nome', required: true, full: true }];
       const values = typeof defaults === 'string' ? { value: defaults } : { ...defaults };
       if ('responsibles' in values) values.responsibles = formatResponsibles(values.responsibles);
-      openModal('configuration', index === null ? 'Novo item de configuração' : 'Editar configuração', 'Estrutura do escritório', fields, { ...values, _section: configurationSection, _index: index });
+      let topHtml = '';
+      if (configurationSection === 'integrations' && values.name) {
+        const target = getDirectSetupTarget(values.name);
+        topHtml = `<div class="configuration-modal-callout">
+          <div class="configuration-callout-info">
+            <span class="configuration-callout-badge">${escapeHtml(target.badge)}</span>
+            <strong>${escapeHtml(values.name)}</strong>
+            <p>${escapeHtml(target.description)}</p>
+          </div>
+          <button type="button" class="button ghost" data-modal-open-dedicated-integration="${escapeHtml(values.name)}">
+            ${escapeHtml(target.actionLabel)} →
+          </button>
+        </div>`;
+      }
+      openModal('configuration', index === null ? 'Novo item de configuração' : 'Editar configuração', 'Estrutura do escritório', fields, { ...values, _section: configurationSection, _index: index }, topHtml);
     },
 
     saveRecord(data, defaults = {}) {
@@ -362,15 +666,34 @@ export function createConfigurationFeature({
       let record = { ...defaults, ...data };
       delete record._section;
       delete record._index;
-      if (section === 'inboxSections') record = data.value;
+      if (section === 'inboxSections') {
+        const hasExtra = data.filterRule || data.displayLimit || data.highlightUrgent || data.status;
+        record = hasExtra ? { ...defaults, ...data, value: data.value } : data.value;
+      }
       if (section === 'notificationAssignments') record.responsibles = String(data.responsibles || '').split(/[,;]/).map(item => item.trim()).filter(Boolean);
-      if (section === 'taskDefinitions') record.points = Number(data.points) || 0;
-      if (section === 'goals') record.monthlyClosings = data.monthlyClosings === '' ? null : Number(data.monthlyClosings);
+      if (section === 'taskDefinitions') {
+        record.points = Number(data.points) || 0;
+        if ('slaDays' in data && data.slaDays !== '') record.slaDays = Number(data.slaDays) || 5;
+      }
+      if (section === 'goals') {
+        record.monthlyClosings = (data.monthlyClosings === '' || data.monthlyClosings === undefined) ? null : Number(data.monthlyClosings);
+        if ('financialGoal' in data) record.financialGoal = (data.financialGoal === '' || data.financialGoal === undefined) ? null : Number(data.financialGoal);
+        if ('pointsGoal' in data) record.pointsGoal = (data.pointsGoal === '' || data.pointsGoal === undefined) ? null : Number(data.pointsGoal);
+      }
+      if (section === 'origins' && 'partnerCommission' in data) {
+        record.partnerCommission = data.partnerCommission === '' ? 0 : Number(data.partnerCommission) || 0;
+      }
+      if (section === 'stages' && 'slaMaxDays' in data) {
+        record.slaMaxDays = data.slaMaxDays === '' ? null : Number(data.slaMaxDays);
+      }
+      if (section === 'actionTypes' && 'estimatedDuration' in data) {
+        record.estimatedDuration = data.estimatedDuration === '' ? null : Number(data.estimatedDuration);
+      }
       const creating = index === null || index === undefined || index === '';
       if (creating) list.push(record);
       else list[Number(index)] = record;
       store.save();
-      store.audit(creating ? 'Configuração adicionada' : 'Configuração atualizada', `${section} · ${typeof record === 'string' ? record : record.name || record.event || record.group || 'item'}`);
+      store.audit(creating ? 'Configuração adicionada' : 'Configuração atualizada', `${section} · ${typeof record === 'string' ? record : record.name || record.event || record.group || record.value || 'item'}`);
       return record;
     },
 

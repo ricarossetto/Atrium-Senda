@@ -23,6 +23,7 @@ Antes de alterar um domínio, leia a spec correspondente e as specs transversais
 - [Importação](import-policy.md)
 - [Relacionamento e CRM](relationship-crm.md)
 - [Gestão de tarefas](task-management.md)
+- [Configurações operacionais](configuration-management.md)
 - [Inteligência cadastral brasileira](brazilian-registry-intelligence.md)
 
 ## Regra de precedência

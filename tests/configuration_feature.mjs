@@ -53,6 +53,7 @@ const requests = [];
 let flushResult = true;
 let diagnosticRenders = 0;
 let backupRenders = 0;
+const directSetupCalls = [];
 const store = {
   state: { configuration, contacts: [{ id: 'contact-synthetic' }, { id: 'contact-synthetic-2' }] },
   saveCalls: 0,
@@ -89,7 +90,12 @@ const feature = createConfigurationFeature({
   openModal: (...args) => modalCalls.push(args),
   showToast: (message, type) => toasts.push({ message, type }),
   onRenderDiagnostic: () => { diagnosticRenders++; },
-  onRenderBackups: () => { backupRenders++; }
+  onRenderBackups: () => { backupRenders++; },
+  onOpenJudicialSetup: () => directSetupCalls.push('judicial'),
+  onOpenDataJudModal: () => directSetupCalls.push('datajud'),
+  onOpenGeminiKeyModal: () => directSetupCalls.push('gemini'),
+  onOpenCalendarSetup: () => directSetupCalls.push('calendar'),
+  onOpenEmailConfigModal: () => directSetupCalls.push('email')
 });
 
 assert.equal(feature.section, 'taskDefinitions');
@@ -141,9 +147,16 @@ assert.deepEqual(feature.users, []);
 assert.equal(feature.role, 'collaborator');
 
 const expectedFields = {
-  taskDefinitions: ['name', 'points', 'phase'], users: ['name', 'role', 'pointsGoal'], actionGroups: ['name', 'publicationResponsible'],
-  actionTypes: ['name', 'group'], stages: ['name', 'classification', 'phase'], origins: ['name'], goals: ['group', 'monthlyClosings'],
-  inboxSections: ['value'], notificationAssignments: ['event', 'responsibles'], integrations: ['name', 'status', 'method']
+  taskDefinitions: ['name', 'points', 'phase', 'slaDays', 'priority', 'defaultRole', 'requireDocument', 'status', 'instructions'],
+  users: ['name', 'role', 'pointsGoal', 'oab', 'email', 'status'],
+  actionGroups: ['name', 'publicationResponsible', 'leaderLawyer', 'autoAssign', 'color', 'description'],
+  actionTypes: ['name', 'group', 'procedure', 'defaultCourt', 'estimatedDuration', 'status'],
+  stages: ['name', 'classification', 'phase', 'slaMaxDays', 'nextSuggestedStage', 'status'],
+  origins: ['name', 'channelType', 'partnerCommission', 'defaultAttendant', 'status'],
+  goals: ['group', 'monthlyClosings', 'financialGoal', 'pointsGoal', 'period', 'responsible'],
+  inboxSections: ['value', 'filterRule', 'displayLimit', 'highlightUrgent', 'status'],
+  notificationAssignments: ['event', 'responsibles', 'channels', 'timing', 'urgency', 'autoTask', 'status'],
+  integrations: ['name', 'status', 'method', 'syncFrequency', 'autoNotifyErrors', 'notes']
 };
 for (const [section, names] of Object.entries(expectedFields)) {
   feature.section = section;
@@ -166,6 +179,17 @@ feature.saveRecord({ group: 'Meta Sem Número', monthlyClosings: '' }, { _sectio
 assert.equal(configuration.goals.at(-1).monthlyClosings, null);
 assert.ok(audits.some(item => item.action === 'Configuração adicionada'));
 assert.ok(audits.some(item => item.action === 'Configuração atualizada'));
+
+for (const [name, expected] of [['Certificado A1', 'judicial'], ['DataJud CNJ', 'datajud'], ['Gemini IA', 'gemini'], ['Agenda iCal', 'calendar'], ['E-mail SMTP', 'email']]) {
+  assert.equal(feature.triggerDirectIntegration(name), true);
+  assert.equal(directSetupCalls.at(-1), expected);
+}
+feature.section = 'taskDefinitions';
+flushResult = false;
+const statusBeforeFailure = configuration.taskDefinitions[0].status;
+assert.equal(await feature.toggleRecordStatus(0), false);
+assert.equal(configuration.taskDefinitions[0].status, statusBeforeFailure);
+flushResult = true;
 
 feature.section = 'origins';
 const originalOrigins = structuredClone(configuration.origins);
