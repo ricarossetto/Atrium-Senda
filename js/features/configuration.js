@@ -584,7 +584,7 @@ export function createConfigurationFeature({
         const statusClass = (item.status === 'Ativo' || item.status === 'ativo') ? 'success' : item.status === 'Preparado' ? 'neutral' : 'warning';
         const statusLabel = item.status || 'Ativo';
         meta = `<button type="button" class="configuration-status-pill ${statusClass}" data-toggle-integration="${index}" title="Alternar status da integração">${escapeHtml(statusLabel)}</button>`;
-        extraActions = `<button type="button" class="button ghost configuration-action-btn" data-direct-integration="${escapeHtml(primary)}" title="Configurar conexão de ${escapeHtml(primary)}">Configurar Conexão ⚙</button>`;
+        extraActions = `<button type="button" class="button ghost configuration-action-btn" data-direct-integration="${escapeHtml(primary)}" title="Configurar conexão de ${escapeHtml(primary)}">Configurar Conexão</button>`;
       } else if (effectiveSection === 'goals') {
         secondary = item.period ? `Período: ${item.period}` : (item.group || 'Geral');
         if (item.monthlyClosings == null && 'monthlyClosings' in item) {

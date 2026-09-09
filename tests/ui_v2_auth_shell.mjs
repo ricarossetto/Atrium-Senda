@@ -183,7 +183,7 @@ try {
           displayName: rect('displayName'), email: rect('email'), username: rect('username'),
           password: rect('password'), confirmPassword: rect('confirmPassword'),
           cardOverflow: card.scrollHeight - card.clientHeight,
-          themeControlInsideCard: document.querySelector('.auth-theme-toggle')?.parentElement === card,
+          themeControlInsideCard: Boolean(document.querySelector('.auth-theme-toggle')?.closest('.auth-panel')),
           brandTitleSize: Number.parseFloat(getComputedStyle(brandTitle).fontSize),
           brandSubtitleSize: Number.parseFloat(getComputedStyle(brandSubtitle).fontSize),
           brandSubtitleStyle: getComputedStyle(brandSubtitle).fontStyle,

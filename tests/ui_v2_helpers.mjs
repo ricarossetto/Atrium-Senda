@@ -887,6 +887,7 @@ export async function prepareUiV2TasksFixture(page) {
     Store.state.audit = [];
     App.renderAll();
     App.switchView('kanban');
+    document.getElementById('taskKanbanViewButton')?.click();
   }, fixture);
   await page.locator('#view-kanban.active').waitFor();
   await page.locator('#kanbanBoard [data-task-id="ui-v2-task-overdue"]').waitFor();

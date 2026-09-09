@@ -7,6 +7,8 @@
   <meta name="description" content="Atrium: Plataforma Open-Source de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
   <title>Atrium — Plataforma de Gestão Jurídica Inteligente</title>
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/favicon.svg">
+  <link rel="shortcut icon" href="assets/icons/favicon.svg">
   <script src="js/views/ui-v2/preference-init.js"></script>
   <link rel="stylesheet" href="css/portal.css?v=2.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/tokens.css?v=1.0.0">
@@ -57,10 +59,10 @@
       </div>
     </div>
     <div class="auth-panel">
+      <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle data-theme-silent="true" aria-label="Tema claro ativo. Alternar para tema escuro">
+        <span data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
+      </button>
       <div class="auth-card">
-        <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle data-theme-silent="true" aria-label="Tema claro ativo. Alternar para tema escuro">
-          <span data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
-        </button>
         <div id="authLoading" class="auth-step active"><span class="auth-spinner"></span><h2>Verificando proteção…</h2><p>Validando a configuração de segurança.</p></div>
 
         <form id="authSetupForm" class="auth-step">
@@ -122,7 +124,7 @@
 
         <form id="authInvitationForm" class="auth-step">
           <p class="eyebrow">Convite de equipe</p><h2>Entre no escritório</h2>
-          <p id="authInvitationSummary">Confirme seus dados e crie suas credenciais pessoais.</p>
+          <p id="authInvitationSummary">Confirme seus dados e crie suas credenciais pessoais de colaborador.</p>
           <div class="auth-invitation-identity">
             <strong id="authInvitationWorkspace"></strong>
             <span id="authInvitationPerson"></span>
@@ -132,23 +134,36 @@
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <small class="auth-hint">O convite funciona uma única vez. Depois, você ativará a proteção em duas etapas.</small>
           <button class="button gold auth-submit" type="submit">Criar meu acesso</button>
+          <button type="button" class="button ghost auth-submit" id="authInvitationBackBtn" style="margin-top: 8px;">Voltar ao login</button>
         </form>
 
         <div class="auth-tabs" id="authTabs" role="tablist" aria-label="Escolher forma de acesso">
           <button type="button" class="auth-tab active" id="authTabLogin" role="tab" aria-selected="true" aria-controls="authLoginForm">Entrar na Conta</button>
-          <button type="button" class="auth-tab" id="authTabRegister" role="tab" aria-selected="false" aria-controls="authRegisterForm">Criar escritório</button>
+          <button type="button" class="auth-tab" id="authTabRegister" role="tab" aria-selected="false" aria-controls="authRegisterForm">Criar Novo Escritório</button>
         </div>
 
         <form id="authRegisterForm" class="auth-step">
-          <p class="eyebrow">Novo escritório</p><h2>Criar seu espaço no ATRIUM</h2>
-          <p>Crie um ambiente separado para o seu escritório. Os dados e usuários ficarão isolados dos demais escritórios.</p>
-          <label>Nome do escritório<input name="workspaceName" autocomplete="organization" required placeholder="Nome do escritório" maxlength="120"></label>
-          <label>Nome completo<input name="displayName" autocomplete="name" required placeholder="Dr(a). Nome Sobrenome" maxlength="100"></label>
+          <p class="eyebrow">Fundação de Banca</p><h2>Cadastrar Novo Escritório</h2>
+          <p class="auth-form-desc">Crie um ambiente digital privativo para sua banca jurídica com isolamento total de processos e gestão de equipe.</p>
+          
+          <div class="auth-plan-placeholder" id="authPlanPlaceholder">
+            <div class="auth-plan-header">
+              <span class="auth-plan-badge">Plano Banca Digital Pro</span>
+              <span class="auth-plan-price">R$ 197<small>/mês</small></span>
+            </div>
+            <ul class="auth-plan-features">
+              <li><svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg><span>Até <strong>5 usuários</strong> (advogados e equipe) inclusos</span></li>
+              <li><svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg><span>Degustação de 14 dias gratuita ativa • Cobrança desabilitada</span></li>
+            </ul>
+          </div>
+
+          <label>Nome do escritório<input name="workspaceName" autocomplete="organization" required placeholder="Ex: Carvalho & Associados Advocacia" maxlength="120"></label>
+          <label>Nome completo do titular<input name="displayName" autocomplete="name" required placeholder="Dr(a). Nome Sobrenome" maxlength="100"></label>
           <label>E-mail de contato<input name="email" type="email" autocomplete="email" required placeholder="advogado@escritorio.adv.br" maxlength="100"></label>
           <label>Usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._\x2d]{3,64}" placeholder="nome.sobrenome" maxlength="64"></label>
           <label>Senha de acesso<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
-          <button class="button gold auth-submit" type="submit">Criar escritório</button>
+          <button class="button gold auth-submit" type="submit">Cadastrar escritório</button>
           <div class="auth-register-footer">
             <span>Já possui conta no Atrium?</span>
             <button type="button" class="auth-link-action" id="authBackToLoginLink" style="background:none; border:none; padding:4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Entrar na conta</button>
@@ -163,15 +178,19 @@
           <label class="auth-field-code">Código do autenticador ou recuperação (se ativado)<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000 (opcional se 2FA inativo)"></label>
           <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>O segundo fator não será exigido novamente neste dispositivo durante este período.</small></span></label>
           <button class="button gold auth-submit" type="submit">Entrar no Atrium</button>
-          <div class="auth-forgot-wrap" style="text-align:center; margin:12px 0 4px;">
+          <div class="auth-forgot-wrap" style="text-align:center; margin:10px 0 4px;">
             <button type="button" class="auth-forgot-password-link" id="authForgotPassLink" style="background:none; border:none; padding:4px 0; font-family:inherit; font-size:12px; cursor:pointer; text-decoration:underline;">Esqueceu sua senha?</button>
           </div>
         </form>
 
         <div class="auth-card-footer" id="authCardFooter">
           <div class="auth-footer-prompt">
-            <span>Ainda não tem conta no Atrium?</span>
-            <button type="button" class="auth-link-action" id="authTabNewOffice" style="background:none; border:none; padding:4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Cadastre seu escritório</button>
+            <span>Advogado com convite de equipe?</span>
+            <button type="button" class="auth-link-action" id="authFooterInviteBtn" style="background:none; border:none; padding:2px 4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Ativar acesso de colaborador</button>
+          </div>
+          <div class="auth-footer-prompt" style="margin-top: 6px;">
+            <span>Deseja fundar uma nova banca?</span>
+            <button type="button" class="auth-link-action" id="authTabNewOffice" style="background:none; border:none; padding:2px 4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Cadastrar novo escritório</button>
           </div>
           <p class="auth-footer-legal">Ao entrar você concorda com os Termos de Uso e a Política de Privacidade do Atrium.</p>
         </div>
@@ -840,18 +859,18 @@
         <div class="section-toolbar">
           <div class="toolbar-copy classic-only"><p>Organize o trabalho interno sem alterar silenciosamente a fonte oficial.</p></div>
           <div class="v2-task-heading v2-only"><p>Gestão do trabalho</p><h2>Tarefas</h2><span id="taskResultCount" aria-live="polite">0 tarefas</span><small>Uma única fila operacional em lista ou Kanban.</small></div>
-          <div class="task-view-switch v2-only" role="group" aria-label="Visualização das tarefas">
-            <button type="button" id="taskListViewButton" data-task-view-mode="list" aria-pressed="false">Lista</button>
-            <button type="button" id="taskKanbanViewButton" data-task-view-mode="kanban" aria-pressed="true" class="active">Kanban</button>
+          <div class="task-view-switch v2-only" id="taskViewSwitch" data-active-mode="list" role="group" aria-label="Visualização das tarefas">
+            <button type="button" id="taskListViewButton" data-task-view-mode="list" aria-pressed="true" class="active">Lista</button>
+            <button type="button" id="taskKanbanViewButton" data-task-view-mode="kanban" aria-pressed="false">Kanban</button>
           </div>
           <div class="toolbar-actions">
-            <button class="button ghost" id="editKanbanColumnsButton" type="button">Editar colunas</button>
             <button class="button ghost" id="kanbanFilterButton">Minhas tarefas</button>
+            <button class="button ghost" id="editKanbanColumnsButton" type="button">Editar colunas</button>
             <button class="button gold" id="newTaskButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Nova tarefa</button>
           </div>
         </div>
-        <p class="sr-only" id="taskBoardInstructions">Arraste uma tarefa ou use o controle Mover para em cada cartão.</p>
-        <section class="task-list-panel hidden" id="taskListPanel" aria-label="Tarefas em lista">
+        <p class="sr-only hidden" id="taskBoardInstructions">Arraste uma tarefa ou use o controle Mover para em cada cartão.</p>
+        <section class="task-list-panel" id="taskListPanel" aria-label="Tarefas em lista">
           <div class="task-list-summary" id="taskListSummary"></div>
           <div class="task-list-controls">
             <label class="task-list-search"><span>Pesquisar tarefas</span><input id="taskListSearch" type="search" placeholder="Título, cliente, processo ou responsável"></label>
@@ -861,7 +880,7 @@
           </div>
           <div class="task-list" id="taskList" role="list"></div>
         </section>
-        <div class="kanban-board" id="kanbanBoard" aria-describedby="taskBoardInstructions"></div>
+        <div class="kanban-board hidden" id="kanbanBoard" aria-describedby="taskBoardInstructions"></div>
         <p class="sr-only" id="taskBoardLive" aria-live="polite"></p>
       </section>
 

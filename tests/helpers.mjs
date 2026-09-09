@@ -25,6 +25,7 @@ export async function startTestServer({ env = {}, dataDirectory: requestedDataDi
       KELLER_SKIP_COLLECTOR_ENV: 'true', ATRIUM_MOCK_SMTP: 'true',
       AUTH_SESSION_SECRET: sessionSecret, AUTH_ENCRYPTION_KEY: encryptionKey,
       COLLECTOR_INGEST_TOKEN: collectorToken, COOKIE_SECURE: 'false', EXTERNAL_CALENDAR_URL: '',
+      ATRIUM_ALLOW_INSECURE_TEST_ENV: 'true',
       ...env
     },
     stdio: ['ignore', 'pipe', 'pipe']

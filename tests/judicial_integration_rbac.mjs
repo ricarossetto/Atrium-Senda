@@ -86,7 +86,7 @@ async function setupMaster(baseUrl) {
 
 async function setupUser(baseUrl, master, { username, displayName, email, role }) {
   const password = 'Usuario-Judicial-2026!';
-  let response = await postJson(`${baseUrl}/api/auth/register`, { username, displayName, email, password });
+  let response = await postJson(`${baseUrl}/api/auth/register`, { username, displayName, email, password }, master.headers);
   const registration = await response.json();
   assert.equal(response.status, 200);
 

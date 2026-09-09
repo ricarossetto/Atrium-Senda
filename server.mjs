@@ -343,6 +343,7 @@ function envFlag(value) {
 }
 
 function assertCloudConfiguration() {
+  if (envFlag(process.env.ATRIUM_ALLOW_INSECURE_TEST_ENV)) return;
   const required = ['AUTH_SESSION_SECRET', 'AUTH_ENCRYPTION_KEY', 'SETUP_BOOTSTRAP_TOKEN', 'ATRIUM_FRONTEND_ORIGINS'];
   const missing = required.filter(key => {
     const value = String(process.env[key] || '').trim();
@@ -2600,7 +2601,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    if (req.method === 'POST' && (url.pathname === '/api/integrations/eproc/processes/download-autos' || url.pathname === '/api/integrations/eproc/download-autos')) {
+    if (req.method === 'POST' && (url.pathname === '/api/integrations/eproc/processes/download-autos' || url.pathname === '/api/integrations/eproc/download-autos' || url.pathname === '/api/integrations/tjrs-sidecar/processes/download-autos')) {
       assertAuthenticated(req);
       if (CLOUD_MODE && currentWorkspaceId() !== security.state.defaultWorkspaceId) {
         return json(res, 503, { ok: false, state: 'LOCAL_AGENT_REQUIRED', message: 'O download de autos via A1 exige o agente local deste escritório.' });
@@ -4460,7 +4461,7 @@ Diretrizes essenciais:
         }
 
         // Auto-enriquecimento eproc TJRS: verifica se há processos sem cliente ou em segredo de justiça
-        if (!CLOUD_MODE && currentWorkspaceId() === security.state.defaultWorkspaceId) {
+        if (currentWorkspaceId() === security.state.defaultWorkspaceId) {
           try {
             const orch = await judicialOrchestratorForCurrentWorkspace();
             const rawSecrets = await orch?.credentialManager?.readRawSecrets?.().catch(() => ({}));

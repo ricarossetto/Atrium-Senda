@@ -150,10 +150,10 @@ export function createSaasOnboardingFeature(options = {}) {
       debounceTimer = setTimeout(async () => {
         const check = await checkSlugAvailability(raw);
         if (check.valid) {
-          slugFeedback.textContent = `✓ Disponível: https://${raw}.atrium.adv.br`;
+          slugFeedback.textContent = `Disponível: https://${raw}.atrium.adv.br`;
           slugFeedback.className = 'field-feedback success';
         } else {
-          slugFeedback.textContent = `✗ ${check.reason}`;
+          slugFeedback.textContent = check.reason;
           slugFeedback.className = 'field-feedback error';
         }
       }, 350);

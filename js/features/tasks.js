@@ -56,7 +56,7 @@ export function createTasksFeature({
   let timeSheetInterval = null;
   let tasksPresenter;
   let kanbanColumnsDraft = [];
-  let taskViewMode = 'kanban';
+  let taskViewMode = 'list';
   let taskListQuery = '';
   let taskListFilter = 'all';
   let taskListSort = 'deadline';
@@ -226,10 +226,10 @@ export function createTasksFeature({
       if (!isV2()) return;
       const listMode = taskViewMode === 'list';
       byId('view-kanban')?.setAttribute('data-task-view', taskViewMode);
+      byId('taskViewSwitch')?.setAttribute('data-active-mode', taskViewMode);
       byId('taskListPanel')?.classList.toggle('hidden', !listMode);
       byId('kanbanBoard')?.classList.toggle('hidden', listMode);
       byId('taskBoardInstructions')?.classList.toggle('hidden', listMode);
-      byId('editKanbanColumnsButton')?.classList.toggle('hidden', listMode);
       for (const button of documentRef.querySelectorAll('[data-task-view-mode]')) {
         const active = button.dataset.taskViewMode === taskViewMode;
         button.classList.toggle('active', active);

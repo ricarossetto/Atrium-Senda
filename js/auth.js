@@ -124,8 +124,22 @@
         event.preventDefault();
         this.feedback('Para recuperar o acesso, utilize um de seus códigos de recuperação de uso único ou contate o administrador do seu escritório.', 'success');
       });
+      byId('authFooterInviteBtn')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        byId('authTabLogin')?.classList.remove('active');
+        byId('authTabRegister')?.classList.remove('active');
+        byId('authTabLogin')?.setAttribute('aria-selected', 'false');
+        byId('authTabRegister')?.setAttribute('aria-selected', 'false');
+        this.show('authInvitationForm');
+      });
+      byId('authInvitationBackBtn')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        byId('authTabLogin')?.click();
+      });
       byId('authTabNewOffice')?.addEventListener('click', () => {
-        if (window.AtriumSaas?.renderSaasModal) {
+        if (state.workspaceRegistrationEnabled) {
+          byId('authTabRegister')?.click();
+        } else if (window.AtriumSaas?.renderSaasModal) {
           window.AtriumSaas.renderSaasModal(document.body);
         } else {
           import('./features/saas-onboarding.js?v=2.2.1').then(module => {
