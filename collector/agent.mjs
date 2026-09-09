@@ -11,7 +11,7 @@ import { computeNextRefresh, isRefreshDue, sanitizeJudicialError } from '../lib/
 import { collectDjen } from './adapters/djen.mjs';
 import { collectDatajud } from './adapters/datajud.mjs';
 import { collectPje } from './adapters/pje.mjs';
-import { openEprocProcessDetails, downloadAndOrganizeProcessDocuments } from './adapters/eproc.mjs';
+import { openEprocProcessDetails, downloadAndOrganizeProcessDocuments, isEprocSessionActive } from './adapters/eproc.mjs';
 import { authStateRequiresHumanAction, classifyJudicialAuthState, findAuthenticatedJudicialPage, JUDICIAL_AUTH_STATES } from './auth-state.mjs';
 
 const COLLECTOR_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -96,7 +96,11 @@ try {
       );
       const authAdapter = getAuthAdapter(authStrategy);
       const portalCreds = judicialSecrets.portalCredentials?.[portal.id] || null;
-      const totpSecret = judicialSecrets.totpSecrets?.[portal.id]?.secret || (portal.autoTotpEnv ? process.env[portal.autoTotpEnv] : null);
+      let totpSecret = judicialSecrets.totpSecrets?.[portal.id]?.secret || (portal.autoTotpEnv ? process.env[portal.autoTotpEnv] : null);
+      if (!totpSecret && /eproc|tjrs/i.test(portal.id)) {
+        const matchingKey = Object.keys(judicialSecrets.totpSecrets || {}).find(k => /eproc|tjrs/i.test(k));
+        if (matchingKey) totpSecret = judicialSecrets.totpSecrets[matchingKey].secret;
+      }
       const credentials = portalCreds ? { ...portalCreds, totpSecret } : (totpSecret ? { totpSecret } : null);
 
       if (authStrategy === AUTH_STRATEGIES.CLIENT_CERT_MTLS || portal.usesCertificate || portal.certificateMode === 'pfx-mtls' || (portal.strategy === 'eproc' && (judicialSecrets.certificate || process.env.A1_PFX_PATH))) {
@@ -599,6 +603,7 @@ async function needsHumanAuthentication(page, portal = null) {
 async function detectAuthenticationState(page, portal = null) {
   if (page.isClosed()) return JUDICIAL_AUTH_STATES.SESSION_EXPIRED;
   if (portal?.strategy === 'eproc') {
+    if (await isEprocSessionActive(page).catch(() => false)) return JUDICIAL_AUTH_STATES.AUTHENTICATED_SESSION;
     const authenticatedNavigation = await firstVisibleHrefAcrossFrames(page, 'a', (href, text) =>
       /acao=(?:relatorio_)?processo_(?:procurador_)?listar|acao=citacao_intimacao_(?:prazo_aberto|pendente)_listar/i.test(href)
       || /rela[cç][aã]o de processos|processos do procurador|intima[cç][oõ]es pendentes/i.test(text));

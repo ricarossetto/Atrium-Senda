@@ -1079,15 +1079,23 @@ function validatePfxWithOpenSSL(file, passphrase) {
       let certPem = '';
       try {
         certPem = await extract(['pkcs12', '-in', file, '-passin', 'env:ATRIUM_PFX_PASSWORD', '-nokeys', '-legacy']);
-      } catch {
-        try {
-          certPem = await extract(['pkcs12', '-in', file, '-passin', 'env:ATRIUM_PFX_PASSWORD', '-nokeys']);
-        } catch (err) {
-          const msg = err.message.toLowerCase();
+      } catch (legacyErr) {
+        if (/unknown option|unrecognized flag/i.test(legacyErr.message || '')) {
+          try {
+            certPem = await extract(['pkcs12', '-in', file, '-passin', 'env:ATRIUM_PFX_PASSWORD', '-nokeys']);
+          } catch (err) {
+            const msg = err.message.toLowerCase();
+            if (msg.includes('mac verify failure') || msg.includes('bad decrypt') || msg.includes('password') || msg.includes('pkcs12_parse')) {
+              throw new Error('A senha informada para o certificado PFX está incorreta.');
+            }
+            throw new Error(`Falha ao ler o certificado PFX: ${err.message}`);
+          }
+        } else {
+          const msg = legacyErr.message.toLowerCase();
           if (msg.includes('mac verify failure') || msg.includes('bad decrypt') || msg.includes('password') || msg.includes('pkcs12_parse')) {
             throw new Error('A senha informada para o certificado PFX está incorreta.');
           }
-          throw new Error(`Falha ao ler o certificado PFX: ${err.message}`);
+          throw new Error(`Falha ao ler o certificado PFX: ${legacyErr.message}`);
         }
       }
 

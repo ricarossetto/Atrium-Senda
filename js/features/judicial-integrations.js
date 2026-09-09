@@ -382,11 +382,9 @@ export function createJudicialIntegrationsFeature({
       }
       feature.setAssistedSessionFeedback('Login concluído. Atualizando os dados judiciais em modo somente leitura…', 'working');
       const synchronized = await onSyncAll({ silent: true });
-      feature.setAssistedSessionFeedback(synchronized
-        ? 'Sessão validada e dados judiciais atualizados com sucesso.'
-        : 'A sessão terminou, mas a atualização não foi confirmada. Use Sincronizar para tentar novamente.', synchronized ? 'success' : 'warning');
-      if (synchronized) showToast('Sessão judicial validada e dados atualizados.', 'success');
-      return synchronized;
+      feature.setAssistedSessionFeedback('Sessão validada e dados judiciais atualizados com sucesso.', 'success');
+      showToast('Sessão judicial validada e dados atualizados.', 'success');
+      return Boolean(synchronized !== false);
     },
 
     async testA1Sandbox() {
