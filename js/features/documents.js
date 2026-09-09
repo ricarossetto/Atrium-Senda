@@ -50,6 +50,23 @@ export const DOCUMENT_CATALOG = Object.freeze([
   })
 ]);
 
+export function documentEventNumber(documentRecord) {
+  const name = String(documentRecord?.name || documentRecord?.originalName || '').trim();
+  const leadingMatch = name.match(/^(\d{1,5})\s*[-_.]/);
+  if (leadingMatch) return Number(leadingMatch[1]);
+  const eventMatch = name.match(/(?:evento|ev\.?)\s*(\d{1,5})/i);
+  if (eventMatch) return Number(eventMatch[1]);
+  const metadataEvent = Number(documentRecord?.metadata?.event);
+  if (Number.isFinite(metadataEvent)) return metadataEvent;
+  const derivationIndex = Number(documentRecord?.derivation?.index);
+  return Number.isFinite(derivationIndex) ? derivationIndex : Number.POSITIVE_INFINITY;
+}
+
+export function isOfficialA1Document(documentRecord) {
+  return String(documentRecord?.metadata?.origin || '').toLowerCase().includes('eproc')
+    || (documentRecord?.metadata?.tags || []).some(tag => String(tag).toLowerCase() === 'a1-oficial');
+}
+
 export function createDocumentsFeature({
   store,
   documentRef = globalThis.document,
@@ -533,10 +550,33 @@ ${id.lawyerOab} - ${id.officeName}`;
     };
     if (template) template.oninput = updateNamePreview;
     updateNamePreview();
-    const documents = (store.state.documents || []).filter(item => archiveFilter === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt);
+    let documents = (store.state.documents || []).filter(item => archiveFilter === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt);
+    let ownerLabel = '';
+    if (selectedOwner?.ownerId) {
+      documents = documents.filter(documentRecord =>
+        String(documentRecord.ownerType || '') === String(selectedOwner.ownerType) &&
+        String(documentRecord.ownerId || '') === String(selectedOwner.ownerId)
+      );
+      if (selectedOwner.ownerType === 'process') {
+        const process = (store.state.processes || []).find(item => String(item.id) === String(selectedOwner.ownerId));
+        ownerLabel = `processo ${process?.number || process?.protocol || selectedOwner.ownerId}`;
+        documents.sort((left, right) => {
+          const leftEvent = documentEventNumber(left);
+          const rightEvent = documentEventNumber(right);
+          if (leftEvent !== rightEvent) return leftEvent - rightEvent;
+          return String(left.documentDate || left.createdAt || '').localeCompare(String(right.documentDate || right.createdAt || ''))
+            || String(left.name || '').localeCompare(String(right.name || ''));
+        });
+      } else {
+        const contact = (store.state.contacts || []).find(item => String(item.id) === String(selectedOwner.ownerId));
+        ownerLabel = `contato ${contact?.name || selectedOwner.ownerId}`;
+      }
+    }
     const list = byId('documentArchiveList');
     const status = byId('documentArchiveStatus');
-    if (status) status.textContent = `${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'} ${archiveFilter === 'deleted' ? 'na lixeira' : 'no acervo ativo'}`;
+    if (status) {
+      status.innerHTML = `<span>${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'} ${archiveFilter === 'deleted' ? 'na lixeira' : 'no acervo ativo'}${ownerLabel ? ` de ${escapeHtml(ownerLabel)}` : ''}</span>${ownerLabel ? '<button type="button" class="button ghost document-owner-filter-clear" data-clear-document-owner>Ver todos</button>' : ''}`;
+    }
     if (!list) return;
     list.innerHTML = documents.length ? documents.map(document => `
       <article class="document-record${document.deletedAt ? ' is-deleted' : ''}" data-document-id="${escapeHtml(document.id)}" tabindex="-1">
@@ -546,7 +586,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           <span>${escapeHtml(documentOwnerName(document))}</span>
           <small>${escapeHtml(document.documentType || 'Documento')} · ${escapeHtml(document.documentDate || '')} · ${escapeHtml(formatDocumentSize(document.size))}</small>
           ${document.metadata?.origin ? `<small>Origem: ${escapeHtml(document.metadata.origin)}</small>` : ''}
-          ${document.metadata?.tags?.length ? `<div class="document-metadata-tags" aria-label="Tags">${document.metadata.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
+          ${Number.isFinite(documentEventNumber(document)) || isOfficialA1Document(document) || document.metadata?.tags?.length ? `<div class="document-metadata-tags" aria-label="Tags e origem do documento">${Number.isFinite(documentEventNumber(document)) ? `<span>Ev. ${String(documentEventNumber(document)).padStart(3, '0')}</span>` : ''}${isOfficialA1Document(document) ? '<span>Oficial A1</span>' : ''}${(document.metadata?.tags || []).filter(tag => String(tag).toLowerCase() !== 'a1-oficial').map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
           ${document.metadata?.summary ? `<p class="document-metadata-summary">${escapeHtml(document.metadata.summary)}</p>` : ''}
           ${document.metadata?.relatedDocumentIds?.length ? `<small>${escapeHtml(String(document.metadata.relatedDocumentIds.length))} documento(s) relacionado(s)</small>` : ''}
           ${document.intelligence?.ocr ? `<small class="document-intelligence-status">Texto extraído sob supervisão · ${escapeHtml(String(document.intelligence.ocr.characterCount || 0))} caracteres</small>` : ''}
@@ -557,7 +597,7 @@ ${id.lawyerOab} - ${id.officeName}`;
             : `${document.ownerId ? `<button class="button ghost" type="button" data-document-action="owner">Abrir ${document.ownerType === 'process' ? 'processo' : 'contato'}</button>` : ''}<button class="button ghost" type="button" data-document-action="assistant">Usar no Assistente</button><button class="button ghost" type="button" data-document-action="metadata">Organizar</button><button class="button ghost" type="button" data-document-action="preview">Preview</button><button class="button ghost" type="button" data-document-action="${document.intelligence?.ocr ? 'read-ocr' : 'ocr'}">${document.intelligence?.ocr ? 'Ver extração' : 'Extrair texto'}</button>${canConvertDocumentToPdf(document) ? '<button class="button ghost" type="button" data-document-action="pdf">Gerar PDF</button>' : ''}<button class="button ghost" type="button" data-document-action="download">Baixar</button><button class="button ghost" type="button" data-document-action="delete">Mover para lixeira</button>`}
         </div>
       </article>`).join('')
-      : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.'}</span></div>`;
+      : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : ownerLabel ? `Não há documentos vinculados a ${escapeHtml(ownerLabel)}.` : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.'}</span></div>`;
   }
 
   const feature = {
@@ -593,11 +633,22 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('docGenProcessSelect')?.addEventListener('change', () => feature.updatePreview());
       byId('docGenCopyButton')?.addEventListener('click', () => feature.copyToClipboard());
       byId('docGenDownloadButton')?.addEventListener('click', () => feature.download());
-      byId('documentOwnerType')?.addEventListener('change', () => { selectedOwner = null; updateOwnerOptions(); });
+      byId('documentOwnerType')?.addEventListener('change', () => { selectedOwner = null; updateOwnerOptions(); renderArchive(); });
+      byId('documentOwnerId')?.addEventListener('change', event => {
+        const ownerId = event.target.value;
+        selectedOwner = ownerId ? { ownerType: byId('documentOwnerType')?.value === 'contact' ? 'contact' : 'process', ownerId } : null;
+        renderArchive();
+      });
       byId('documentUploadForm')?.addEventListener('submit', event => feature.uploadDocument(event));
       byId('documentNamingSave')?.addEventListener('click', () => feature.saveNamingTemplate());
       byId('documentIntelligenceClose')?.addEventListener('click', closeIntelligencePanel);
       byId('documentArchiveWorkspace')?.addEventListener('click', event => {
+        if (event.target.closest('[data-clear-document-owner]')) {
+          selectedOwner = null;
+          if (byId('documentOwnerId')) byId('documentOwnerId').value = '';
+          renderArchive();
+          return;
+        }
         const filter = event.target.closest('[data-document-filter]');
         if (filter) return feature.setArchiveFilter(filter.dataset.documentFilter);
         const action = event.target.closest('[data-document-action]');
@@ -655,6 +706,9 @@ ${id.lawyerOab} - ${id.officeName}`;
       const type = byId('documentOwnerType');
       if (type) type.value = ownerType === 'process' ? 'process' : 'contact';
       updateOwnerOptions();
+      const owner = byId('documentOwnerId');
+      if (owner) owner.value = ownerId;
+      renderArchive();
       byId('documentArchiveWorkspace')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
       return true;
     },

@@ -11,6 +11,8 @@ export function createProcessesV2Presenter({
   onConsult,
   onDownloadAutos,
   onDocuments,
+  onPreviewDocument,
+  onDownloadDocument,
   onClient,
   onTasks,
   onTask,
@@ -33,6 +35,7 @@ export function createProcessesV2Presenter({
   let selectedTimeline = [];
   let lastFocusedElement = null;
   let previousBodyOverflow = '';
+  let previewObjectUrl = '';
 
   const byId = id => documentRef?.getElementById(id);
 
@@ -57,8 +60,8 @@ export function createProcessesV2Presenter({
         const appointment = selectedAppointments.find(item => String(item.id) === event.target.closest('[data-process-agenda]').dataset.processAgenda);
         if (appointment) { close({ restoreFocus: false }); onAgenda?.({ entityId: appointment.id }); }
       } else if (event.target.closest('[data-process-document]')) {
-        const document = selectedDocuments.find(item => String(item.id) === event.target.closest('[data-process-document]').dataset.processDocument);
-        if (document) { const item = selectedItem; close({ restoreFocus: false }); onDocuments?.(item, document.id); }
+        const docId = event.target.closest('[data-process-document]').dataset.processDocument;
+        openProcessDocuments(selectedItem, docId);
       } else if (event.target.closest('[data-process-timeline]')) {
         const timelineEvent = selectedTimeline.find(item => String(item.id) === event.target.closest('[data-process-timeline]').dataset.processTimeline);
         if (!timelineEvent) return;
@@ -71,7 +74,7 @@ export function createProcessesV2Presenter({
         } else if (timelineEvent.target === 'agenda') {
           close({ restoreFocus: false }); onAgenda?.(timelineEvent);
         } else if (timelineEvent.target === 'document') {
-          const item = selectedItem; close({ restoreFocus: false }); onDocuments?.(item, timelineEvent.entityId);
+          openProcessDocuments(selectedItem, timelineEvent.entityId);
         } else if (timelineEvent.target === 'financial') {
           const item = selectedItem; close({ restoreFocus: false }); onFinancial?.(item);
         }
@@ -109,9 +112,37 @@ export function createProcessesV2Presenter({
     });
     byId('processInspectorDocuments')?.addEventListener('click', () => {
       if (!selectedItem) return;
-      const item = selectedItem;
-      close({ restoreFocus: false });
-      onDocuments?.(item);
+      openProcessDocuments(selectedItem);
+    });
+    byId('processDocumentsClose')?.addEventListener('click', () => closeProcessDocuments({ returnToProcess: false }));
+    byId('processDocumentsBackToProcess')?.addEventListener('click', () => closeProcessDocuments({ returnToProcess: true }));
+    byId('processDocumentsBackdrop')?.addEventListener('click', event => {
+      if (event.target === byId('processDocumentsBackdrop')) closeProcessDocuments({ returnToProcess: false });
+    });
+    byId('processDocumentsBackdrop')?.addEventListener('keydown', handleDocumentsKeydown);
+    byId('processDocumentsBackdrop')?.addEventListener('keydown', handleDocumentsKeydown);
+    byId('processDocumentPreviewClose')?.addEventListener('click', () => closeProcessDocumentPreview());
+    byId('processDocumentsBody')?.addEventListener('click', event => {
+      const previewBtn = event.target.closest('[data-preview-process-doc]');
+      if (previewBtn) {
+        previewProcessDoc(previewBtn.dataset.previewProcessDoc);
+        return;
+      }
+      const downloadBtn = event.target.closest('[data-download-process-doc]');
+      if (downloadBtn) {
+        downloadProcessDoc(downloadBtn.dataset.downloadProcessDoc);
+        return;
+      }
+      const assistantBtn = event.target.closest('[data-assistant-process-doc]');
+      if (assistantBtn) {
+        closeProcessDocuments({ returnToProcess: false });
+        onAssistant?.(selectedItem);
+        return;
+      }
+      const card = event.target.closest('[data-doc-card-id]');
+      if (card && !event.target.closest('button')) {
+        previewProcessDoc(card.dataset.docCardId);
+      }
     });
     byId('processInspectorAssistant')?.addEventListener('click', () => {
       if (!selectedItem) return;
@@ -182,7 +213,6 @@ export function createProcessesV2Presenter({
         ? 'Exportar novamente o backup técnico deste processo'
         : 'Exportar um arquivo JSON para backup ou transferência; não contém os autos em PDF';
     }
-
     documentRef.querySelectorAll('#processTableBody [data-process-id]').forEach(row => {
       const selected = row.dataset.processId === String(item.id);
       row.classList.toggle('is-selected', selected);
@@ -201,8 +231,14 @@ export function createProcessesV2Presenter({
 
   function close({ restoreFocus = true } = {}) {
     const backdrop = byId('processInspectorBackdrop');
-    const wasOpen = Boolean(backdrop && !backdrop.classList.contains('hidden'));
+    const documentsBackdrop = byId('processDocumentsBackdrop');
+    const wasOpen = Boolean(
+      (backdrop && !backdrop.classList.contains('hidden')) ||
+      (documentsBackdrop && !documentsBackdrop.classList.contains('hidden'))
+    );
     backdrop?.classList.add('hidden');
+    byId('processDocumentsBackdrop')?.classList.add('hidden');
+    closeProcessDocumentPreview();
     byId('appShell')?.removeAttribute('inert');
     documentRef.querySelectorAll('#processTableBody [aria-current="true"]').forEach(row => {
       row.removeAttribute('aria-current');
@@ -244,20 +280,211 @@ export function createProcessesV2Presenter({
     }
   }
 
-  return Object.freeze({ init, renderRows, renderEmpty, updateCount, open, close });
+  function extractEventNumber(doc) {
+    const name = String(doc?.name || doc?.originalName || '').trim();
+    const leadingMatch = name.match(/^(\d{1,5})\s*[-_.]/);
+    if (leadingMatch) return parseInt(leadingMatch[1], 10);
+    const eventMatch = name.match(/(?:evento|ev\.?)\s*(\d{1,5})/i);
+    if (eventMatch) return parseInt(eventMatch[1], 10);
+    if (doc?.metadata?.event != null) return Number(doc.metadata.event);
+    if (doc?.derivation?.index != null) return Number(doc.derivation.index);
+    return 999999;
+  }
+
+  function openProcessDocuments(item, focusDocId = '') {
+    if (!item) return;
+    const documentsBackdrop = byId('processDocumentsBackdrop');
+    if (!documentsBackdrop) {
+      onDocuments?.(item, focusDocId);
+      return;
+    }
+    const number = item.number || item.protocol || 'Processo sem número';
+    const client = item.client || 'Cliente não informado';
+    if (byId('processDocumentsTitle')) byId('processDocumentsTitle').textContent = number;
+    if (byId('processDocumentsSubtitle')) byId('processDocumentsSubtitle').textContent = `${client} · Autos e documentos processuais`;
+
+    const docs = (selectedDocuments || []).slice();
+    docs.sort((a, b) => {
+      const evA = extractEventNumber(a);
+      const evB = extractEventNumber(b);
+      if (evA !== evB) return evA - evB;
+      const dateA = a.documentDate || a.createdAt || '';
+      const dateB = b.documentDate || b.createdAt || '';
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+
+    renderProcessDocumentsList(docs, focusDocId);
+
+    byId('processInspectorBackdrop')?.classList.add('hidden');
+    documentsBackdrop.classList.remove('hidden');
+    queueMicrotask(() => byId('processDocumentsClose')?.focus());
+  }
+
+  function closeProcessDocuments({ returnToProcess = true } = {}) {
+    if (!returnToProcess) return close({ restoreFocus: true });
+    byId('processDocumentsBackdrop')?.classList.add('hidden');
+    closeProcessDocumentPreview();
+    if (selectedItem) {
+      byId('processInspectorBackdrop')?.classList.remove('hidden');
+      queueMicrotask(() => byId('processInspectorDocuments')?.focus());
+    }
+  }
+
+  function closeProcessDocumentPreview() {
+    if (previewObjectUrl) {
+      globalThis.URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = '';
+    }
+    byId('processDocumentPreviewPanel')?.classList.add('hidden');
+    const body = byId('processDocumentPreviewBody');
+    if (body) body.replaceChildren();
+  }
+
+  function renderProcessDocumentsList(docs, focusDocId = '') {
+    const container = byId('processDocumentsBody');
+    if (!container) return;
+    if (!docs.length) {
+      container.innerHTML = `
+        <div class="process-documents-empty">
+          <p>Nenhum documento anexado a este processo no momento.</p>
+          <small>Use “Gerar caderno em PDFs” para reunir os andamentos disponíveis no acervo.</small>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="process-documents-list-header">
+        <span class="process-documents-count"><strong>${docs.length}</strong> documento${docs.length === 1 ? '' : 's'} no acervo (ordem cronológica de eventos)</span>
+      </div>
+      <div class="process-documents-items-list">
+        ${docs.map(doc => {
+          const eventNum = extractEventNumber(doc);
+          const eventBadge = eventNum < 999999 ? `<span class="process-doc-event-badge">Ev. ${String(eventNum).padStart(3, '0')}</span>` : '';
+          const isA1 = (doc.metadata?.origin || '').includes('eproc') || (doc.metadata?.tags || []).includes('a1-oficial');
+          const a1Badge = isA1 ? '<span class="process-doc-a1-badge">Oficial A1</span>' : '';
+          const sizeKb = doc.size ? `${Math.round(doc.size / 1024)} KB` : '';
+          const dateStr = doc.documentDate || (doc.createdAt ? doc.createdAt.slice(0, 10) : '');
+          const isFocused = String(doc.id) === String(focusDocId);
+
+          return `
+            <article class="process-doc-card ${isFocused ? 'is-focused' : ''}" data-doc-card-id="${escapeHtml(doc.id)}">
+              <div class="process-doc-card-top">
+                <div class="process-doc-card-badges">
+                  ${eventBadge}
+                  ${a1Badge}
+                  <span class="process-doc-type-badge">${escapeHtml(doc.documentType || doc.type || 'Documento')}</span>
+                </div>
+                <span class="process-doc-meta">${dateStr ? formatDate(dateStr) : '—'}${sizeKb ? ` · ${sizeKb}` : ''}</span>
+              </div>
+              <h4 class="process-doc-card-name" title="${escapeHtml(doc.name || doc.originalName)}">${escapeHtml(doc.name || doc.originalName || 'Documento sem nome')}</h4>
+              ${doc.metadata?.summary ? `<p class="process-doc-card-summary">${escapeHtml(doc.metadata.summary)}</p>` : ''}
+              <div class="process-doc-card-actions">
+                <button type="button" class="button ghost text-xs" data-preview-process-doc="${escapeHtml(doc.id)}">Preview</button>
+                <button type="button" class="button ghost text-xs" data-download-process-doc="${escapeHtml(doc.id)}">Baixar</button>
+                <button type="button" class="button ghost text-xs" data-assistant-process-doc="${escapeHtml(doc.id)}">Assistente</button>
+              </div>
+            </article>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    if (focusDocId) {
+      queueMicrotask(() => {
+        const escapedId = globalThis.CSS?.escape ? globalThis.CSS.escape(String(focusDocId)) : String(focusDocId).replace(/["\\]/g, '\\$&');
+        container.querySelector(`[data-doc-card-id="${escapedId}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
+    }
+  }
+
+  async function previewProcessDoc(docId) {
+    const doc = (selectedDocuments || []).find(d => String(d.id) === String(docId));
+    if (!doc) return;
+    const panel = byId('processDocumentPreviewPanel');
+    const titleEl = byId('processDocumentPreviewTitle');
+    const metaEl = byId('processDocumentPreviewMeta');
+    const bodyEl = byId('processDocumentPreviewBody');
+    if (!panel || !bodyEl) return;
+
+    titleEl.textContent = doc.name || doc.originalName || 'Preview do documento';
+    metaEl.textContent = `${doc.documentType || 'Documento'} · ${formatDate(doc.documentDate || doc.createdAt)} · Original preservado`;
+    bodyEl.innerHTML = '<p class="document-intelligence-loading">Carregando visualização segura…</p>';
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+    const downloadBtn = byId('processDocumentPreviewDownload');
+    if (downloadBtn) {
+      downloadBtn.onclick = () => downloadProcessDoc(doc.id, doc.name);
+    }
+
+    try {
+      if (typeof onPreviewDocument === 'function') {
+        const result = await onPreviewDocument(doc);
+        bodyEl.replaceChildren();
+        if (result?.type === 'image' && result.blob) {
+          if (previewObjectUrl) globalThis.URL.revokeObjectURL(previewObjectUrl);
+          previewObjectUrl = globalThis.URL.createObjectURL(result.blob);
+          const img = documentRef.createElement('img');
+          img.src = previewObjectUrl;
+          img.className = 'process-doc-preview-image';
+          img.alt = `Preview seguro de ${doc.name || doc.originalName || 'documento'}`;
+          bodyEl.append(img);
+        } else if (result?.text) {
+          const pre = documentRef.createElement('pre');
+          pre.className = 'process-doc-preview-text';
+          pre.textContent = result.text;
+          bodyEl.append(pre);
+        } else {
+          bodyEl.innerHTML = '<div class="empty-state"><p>Visualização não disponível.</p></div>';
+        }
+      } else {
+        bodyEl.innerHTML = '<div class="empty-state"><p>Pré-visualização não configurada.</p></div>';
+      }
+    } catch (err) {
+      bodyEl.innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message || 'Falha ao exibir preview.')}</p></div>`;
+    }
+  }
+
+  async function downloadProcessDoc(docId, docName) {
+    const doc = (selectedDocuments || []).find(d => String(d.id) === String(docId));
+    if (typeof onDownloadDocument === 'function') {
+      await onDownloadDocument(doc || { id: docId, name: docName });
+    }
+  }
+
+  function handleDocumentsKeydown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeProcessDocuments({ returnToProcess: true });
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const drawer = byId('processDocumentsDrawer');
+    const focusable = [...(drawer?.querySelectorAll(FOCUSABLE) || [])]
+      .filter(element => element.getClientRects().length > 0);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && documentRef.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && documentRef.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  return Object.freeze({ init, renderRows, renderEmpty, updateCount, open, close, openProcessDocuments, closeProcessDocuments });
 }
 
 export function renderRow({ item, escapeHtml, formatDate }) {
   const number = item.number || item.protocol || 'Sem número';
-  const tribunal = item.court || item.county || 'Órgão não informado';
-  const phase = unique([item.actionType, item.judicialPhase, item.stage]).join(' · ') || 'Classificação não informada';
+  const tribunal = item.court || 'TJRS';
+  const phase = item.judicialPhase || item.stage || 'Fase não informada';
+  const processMeta = unique([item.actionType, item.subject]).join(' · ') || 'Tipo de ação não informado';
   const registeredDate = item.registeredAt || item.createdAt;
-  const processMeta = unique([
-    item.secrecy ? 'Segredo de justiça' : 'Consulta pública',
-    item.oldNumber ? `Antigo ${item.oldNumber}` : '',
-    item.caseFolder ? `Pasta ${item.caseFolder}` : '',
-    item.nb ? `NB ${item.nb}` : ''
-  ]).join(' · ');
   const displayedClient = item.resolvedClient || (/^cliente n[aã]o informado$/i.test(String(item.client || '').trim()) ? '' : item.client);
   const partyMeta = displayedClient
     ? (unique([item.clientPosition, item.opposingParty ? `vs. ${item.opposingParty}` : '']).join(' · ') || 'Vínculo confirmado na carteira')
@@ -453,8 +680,13 @@ function renderLinkedTasks(tasks, escapeHtml, formatDate) {
 function renderOperationalLinks(appointments, documents, escapeHtml, formatDate) {
   if (!appointments.length && !documents.length) return '';
   const appointmentItems = appointments.map(item => `<button type="button" data-process-agenda="${escapeHtml(item.id)}" aria-label="Abrir compromisso ${escapeHtml(item.title || 'sem título')}"><strong>${escapeHtml(item.title || 'Compromisso sem título')}</strong><span>${escapeHtml(formatDate(item.date || item.startAt))}${item.time ? ` · ${escapeHtml(item.time)}` : ''}</span></button>`).join('');
-  const documentItems = documents.map(item => `<button type="button" data-process-document="${escapeHtml(item.id)}" aria-label="Abrir documento ${escapeHtml(item.name || item.originalName || 'sem nome')}"><strong>${escapeHtml(item.name || item.originalName || 'Documento sem nome')}</strong><span>${escapeHtml(item.documentType || item.type || 'Documento')} · ${escapeHtml(formatDate(item.documentDate || item.createdAt))}</span></button>`).join('');
-  return `<section class="process-inspector-section" aria-labelledby="processRelationsHeading"><h3 id="processRelationsHeading">Compromissos e documentos</h3><div class="process-linked-list">${appointmentItems}${documentItems}</div></section>`;
+  const documentItems = documents.map(item => {
+    const isOfficialA1 = item.documentType?.includes('eproc A1') || item.metadata?.origin?.includes('eproc TJRS (Certificado A1)');
+    const sizeKb = item.size ? `${Math.round(item.size / 1024)} KB` : '';
+    const badge = isOfficialA1 ? ' <span style="display:inline-block;padding:1px 5px;font-size:9px;border-radius:4px;background:rgba(37,99,235,0.15);color:var(--v2-color-primary,#2563eb);font-weight:600;">OFICIAL A1</span>' : '';
+    return `<button type="button" data-process-document="${escapeHtml(item.id)}" aria-label="Abrir documento ${escapeHtml(item.name || item.originalName || 'sem nome')}"><strong>${escapeHtml(item.name || item.originalName || 'Documento sem nome')}${badge}</strong><span>${escapeHtml(item.documentType || item.type || 'Documento')}${sizeKb ? ` · ${sizeKb}` : ''} · ${escapeHtml(formatDate(item.documentDate || item.createdAt))}</span></button>`;
+  }).join('');
+  return `<section class="process-inspector-section" aria-labelledby="processRelationsHeading"><h3 id="processRelationsHeading">Compromissos e documentos (${documents.length})</h3><div class="process-linked-list">${appointmentItems}${documentItems}</div></section>`;
 }
 
 function renderLinkedPublications(publications, escapeHtml, formatDate) {
@@ -527,7 +759,21 @@ function renderAccessKeyAction(item) {
 function renderAutosAction(item, escapeHtml) {
   const isTjrs = String(item?.number || '').includes('.8.21.') || String(item?.court || '').toUpperCase().includes('TJRS');
   if (!isTjrs) return '';
-  return `<div class="process-autos-action"><div><strong>Caderno processual para consulta offline</strong><span>Gera PDFs a partir dos dados já consultados no TJRS e guarda tudo no acervo cifrado deste processo.</span></div><button type="button" class="button ghost" data-download-autos data-process-id="${escapeHtml(item.id || '')}">Gerar caderno em PDFs</button></div>`;
+  return `
+    <div class="process-autos-action" style="border-left: 3px solid var(--v2-color-primary, #2563eb); margin-bottom: 8px;">
+      <div>
+        <strong>Autos oficiais completos via Certificado A1 (eproc TJRS)</strong>
+        <span>Baixa as peças originais oficiais (petições, decisões, certidões) autenticando com seu Certificado Digital A1 + 2FA no tribunal.</span>
+      </div>
+    </div>
+    <div class="process-autos-action">
+      <div>
+        <strong>Caderno processual para consulta offline</strong>
+        <span>Gera PDFs a partir dos dados já consultados no TJRS e guarda tudo no acervo cifrado deste processo.</span>
+      </div>
+      <button type="button" class="button ghost" data-download-autos data-process-id="${escapeHtml(item.id || '')}">Gerar caderno em PDFs</button>
+    </div>
+  `;
 }
 
 function riskPresentation(value) {

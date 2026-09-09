@@ -384,6 +384,7 @@ import { createTasksFeature } from './features/tasks.js';
       onCompleteTask: taskId => getTasksFeature().completeTask(taskId),
       onRenderAll: () => App.renderAll(),
       onOpenAgenda: item => App.openAgendaModal(item),
+      onOpenProcess: process => App.openProcess(process),
       onOpenActivity: item => {
         if (item.target === 'agenda') {
           const appointment = Store.state.agenda.find(candidate => candidate.id === item.entityId);
@@ -534,7 +535,8 @@ import { createTasksFeature } from './features/tasks.js';
       closeModal: () => App.closeModal(),
       showToast: (message, type) => App.toast(message, type),
       onRenderAll: () => App.renderAll(),
-      onAnalyzeWithAi: analyzeTaskWithAi
+      onAnalyzeWithAi: analyzeTaskWithAi,
+      onOpenProcess: process => App.openProcess(process)
     });
     return tasksFeature;
   }
@@ -1114,6 +1116,18 @@ import { createTasksFeature } from './features/tasks.js';
       const opened = getDocumentsFeature().openOwnerDocuments(ownerType, ownerId);
       if (documentId) getDocumentsFeature().focusDocument(documentId);
       return opened;
+    },
+    openProcess(processOrId) {
+      const rawId = typeof processOrId === 'object' && processOrId ? processOrId.id : processOrId;
+      const rawNumber = typeof processOrId === 'object' && processOrId ? processOrId.number : processOrId;
+      const numberDigits = String(rawNumber || '').replace(/\D/g, '');
+      const process = Store.state.processes.find(item =>
+        (rawId && String(item.id) === String(rawId)) ||
+        (numberDigits && String(item.number || '').replace(/\D/g, '') === numberDigits)
+      );
+      if (!process?.id) return false;
+      this.handleGlobalSearchSelection({ target: 'process', id: process.id });
+      return true;
     },
     renderAssistant() {
       return getAssistantFeature().syncPresentation();

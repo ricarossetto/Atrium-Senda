@@ -51,6 +51,37 @@ export function createProcessesFeature({
       onConsult: button => feature.consultTjrs(button),
       onDownloadAutos: (button, item) => feature.downloadAutos(button, item),
       onDocuments: (item, documentId) => openOwnerDocuments?.('process', item.id, documentId),
+      onPreviewDocument: async documentRecord => {
+        const response = await secureFetch(`/api/documents/${encodeURIComponent(documentRecord.id)}/preview`, {
+          headers: { Accept: 'text/plain,image/png,image/jpeg,image/webp' }
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.message || 'Não foi possível gerar a visualização segura deste arquivo.');
+        }
+        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+        if (contentType.startsWith('image/')) return { type: 'image', blob: await response.blob() };
+        return { type: 'text', text: await response.text() };
+      },
+      onDownloadDocument: async documentRecord => {
+        const response = await secureFetch(`/api/documents/${encodeURIComponent(documentRecord.id)}/content`, {
+          headers: { Accept: 'application/octet-stream' }
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.message || 'Não foi possível baixar o documento.');
+        }
+        const blob = await response.blob();
+        const url = globalThis.URL.createObjectURL(blob);
+        try {
+          const link = documentRef.createElement('a');
+          link.href = url;
+          link.download = documentRecord.name || documentRecord.originalName || 'documento';
+          link.click();
+        } finally {
+          globalThis.URL.revokeObjectURL(url);
+        }
+      },
       onClient: item => openClient?.(item),
       onTasks: item => openLinkedTasks?.(item),
       onTask: task => openTask?.(task),

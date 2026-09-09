@@ -1718,6 +1718,41 @@
     </aside>
   </div>
 
+  <div class="process-documents-backdrop v2-only hidden" id="processDocumentsBackdrop">
+    <aside class="process-documents-drawer" id="processDocumentsDrawer" role="dialog" aria-modal="true" aria-labelledby="processDocumentsTitle">
+      <header class="process-documents-header">
+        <div>
+          <p class="eyebrow" id="processDocumentsEyebrow">Documentos do Processo</p>
+          <h2 id="processDocumentsTitle">0000000-00.0000.8.21.0000</h2>
+          <span id="processDocumentsSubtitle" class="process-documents-subtitle">Acervo e autos oficiais</span>
+        </div>
+        <div class="process-documents-header-actions">
+          <button type="button" class="button ghost" id="processDocumentsBackToProcess">Voltar ao processo</button>
+          <button type="button" class="icon-button" id="processDocumentsClose" aria-label="Fechar documentos do processo">
+            <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg>
+          </button>
+        </div>
+      </header>
+      <div class="process-documents-body" id="processDocumentsBody"></div>
+      <section id="processDocumentPreviewPanel" class="process-document-preview-panel hidden" aria-labelledby="processDocumentPreviewTitle" tabindex="-1">
+        <header>
+          <div>
+            <p class="eyebrow">Visualização contextual</p>
+            <h4 id="processDocumentPreviewTitle">Preview do documento</h4>
+            <span id="processDocumentPreviewMeta">Leitura local preservada</span>
+          </div>
+          <div class="process-document-preview-controls">
+            <button type="button" class="button ghost" id="processDocumentPreviewDownload">Baixar</button>
+            <button class="icon-button" id="processDocumentPreviewClose" type="button" aria-label="Fechar preview contextual">
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg>
+            </button>
+          </div>
+        </header>
+        <div id="processDocumentPreviewBody" class="process-document-preview-body" aria-live="polite"></div>
+      </section>
+    </aside>
+  </div>
+
   <div class="modal-backdrop hidden" id="kanbanColumnsBackdrop">
     <section class="modal kanban-columns-modal" role="dialog" aria-modal="true" aria-labelledby="kanbanColumnsTitle">
       <header><div><p class="eyebrow">Quadro de trabalho</p><h2 id="kanbanColumnsTitle">Editar colunas do Kanban</h2><p>Renomeie etapas, adicione novas colunas ou remova as que estiverem vazias.</p></div><button class="icon-button" id="kanbanColumnsClose" type="button" aria-label="Fechar editor de colunas"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button></header>
@@ -1830,6 +1865,7 @@
               <div id="chkStep-serverHttps"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-integrations"></use></svg>Servidor HTTPS 127.0.0.1:</span> <strong>·</strong></div>
               <div id="chkStep-fingerprint"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>mTLS Fingerprint:</span> <strong>·</strong></div>
             </div>
+
           </div>
 
           <form id="certificateSetupForm" class="setup-form-row">
@@ -2328,7 +2364,7 @@
             <input id="finFeePctInput" name="feePercentage" type="number" step="0.5" min="0" max="100" placeholder="Ex: 30" value="30" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
           </label>
           </div>
-          <div class="financial-entry-section is-preview" role="group" aria-labelledby="finSectionPreview" style="display:contents;">
+            <div class="financial-entry-section is-preview" role="group" aria-labelledby="finSectionPreview" style="display:contents;">
           <h4 id="finSectionPreview" class="v2-only">Preview <span>Não persistido</span></h4>
           <div class="financial-entry-summary" aria-live="polite">
             <div><small style="color:var(--muted); font-size:10px; text-transform:uppercase;">Valor Bruto</small><strong id="finSumGross" style="display:block; color:var(--ivory); font-size:15px; margin-top:2px;">R$ 0,00</strong></div>

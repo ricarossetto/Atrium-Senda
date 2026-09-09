@@ -409,11 +409,27 @@ html[data-ui="v2"] #view-dashboard .dashboard-task-process {
   line-height: 16px;
 }
 
-html[data-ui="v2"] #view-dashboard .dashboard-task-process > :where(strong, span) {
+html[data-ui="v2"] #view-dashboard .dashboard-task-process > :where(strong, span, button) {
   min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+html[data-ui="v2"] #view-dashboard .dashboard-task-process-badge {
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+html[data-ui="v2"] #view-dashboard .dashboard-task-process-badge:hover,
+html[data-ui="v2"] #view-dashboard .dashboard-task-process-badge:focus-visible {
+  color: var(--v2-color-foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 html[data-ui="v2"] #view-dashboard .dashboard-task-process .atrium-icon {
