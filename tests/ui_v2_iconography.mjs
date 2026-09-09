@@ -86,7 +86,7 @@ assert.equal(Object.keys(dependencies).some(name => /(?:icon|lucide|fontawesome|
 assert.doesNotMatch(index, /(?:fontawesome|font-awesome|material-icons|material-symbols|unpkg\.com\/.*icon|cdn\.jsdelivr\.net\/.*icon)/i, 'Não pode existir CDN de iconografia.');
 
 const brandHashes = {
-  'assets/icons/atrium-logo.svg': '6db6896590bbe1a61a678e7760446b343299d1826109980edb10e2b4e68be8c1',
+  'assets/icons/atrium-logo.svg': '57aefeb535bb88fef83be1b1017b10705fab6b8942d141e11798e71f35086e75',
   'assets/icons/atrium-emblem.svg': '9a3e5e785f6f446a46c0719f8fe6fe4d6ea69e6f45c01204a6535d0fde5f0d23',
   'assets/icons/favicon.svg': '14fde9b36ce5828ac511f00d95adbcf5f674e4cb98668083a683549c5c690619'
 };
