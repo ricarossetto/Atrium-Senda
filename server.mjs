@@ -887,7 +887,10 @@ async function judicialIntegrationStatus() {
 }
 
 function validatePfxWithWindows(file, passphrase) {
+  const absoluteFile = path.resolve(file);
   const script = [
+    '[Console]::InputEncoding = [System.Text.Encoding]::UTF8',
+    '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
     '$ErrorActionPreference = "Stop"',
     '$payload = [Console]::In.ReadToEnd() | ConvertFrom-Json',
     '$secure = ConvertTo-SecureString ([string]$payload.passphrase) -AsPlainText -Force',
@@ -917,7 +920,7 @@ function validatePfxWithWindows(file, passphrase) {
       try { finish(null, JSON.parse(stdout.trim())); }
       catch { finish(new Error('O Windows não retornou uma validação reconhecível.')); }
     });
-    child.stdin.end(JSON.stringify({ path: file, passphrase }));
+    child.stdin.end(JSON.stringify({ path: absoluteFile, passphrase }), 'utf8');
   });
 }
 
@@ -3623,8 +3626,10 @@ Diretrizes essenciais:
         diagnostics: reconciledDiagnostics,
         certificate: {
           ...legacyStatus.certificate,
-          summary: reconciledDiagnostics.a1.summary,
-          status: reconciledDiagnostics.a1.status
+          valid: Boolean(legacyStatus.certificate.valid || reconciledDiagnostics.a1?.status === 'operational'),
+          accessible: Boolean(legacyStatus.certificate.accessible || legacyStatus.certificate.configured),
+          summary: reconciledDiagnostics.a1?.summary || legacyStatus.certificate.summary,
+          status: reconciledDiagnostics.a1?.status || (legacyStatus.certificate.valid ? 'operational' : 'not_configured')
         }
       });
     }

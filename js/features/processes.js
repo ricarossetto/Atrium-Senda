@@ -47,7 +47,7 @@ export function createProcessesFeature({
       formatDate,
       formatMinutes,
       onEdit: item => feature.openProcessModal(item),
-      onConsult: button => feature.consultTjrs(button),
+      onConsult: (button, item) => feature.consultTjrs(button, item),
       onDownloadAutos: (button, item) => feature.downloadAutos(button, item),
       onDocuments: (item, documentId) => openOwnerDocuments?.('process', item.id, documentId),
       onClient: item => openClient?.(item),
@@ -296,9 +296,10 @@ export function createProcessesFeature({
       return true;
     },
 
-    async consultTjrs(button) {
-      const processNumber = button.dataset.tjrsConsult;
-      const process = store.state.processes.find(item => item.number === processNumber);
+    async consultTjrs(button, fallbackItem = null) {
+      const processNumber = button?.dataset?.tjrsConsult || fallbackItem?.number;
+      const cleanTarget = normalizeCnj(processNumber);
+      const process = fallbackItem || store.state.processes.find(item => item.number === processNumber || (cleanTarget && normalizeCnj(item.number) === cleanTarget));
       if (!process?.id) {
         showToast?.('Processo local não encontrado para atualização.', 'error');
         return false;
