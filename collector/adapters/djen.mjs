@@ -19,10 +19,13 @@ export async function collectDjen(portal, config, target, options = {}) {
 
   const cutoff = portal.cutoffDate || options.cutoffDate || null;
   const { start, end } = saoPauloDateWindow(Number(portal.lookbackDays || 2), cutoff);
+  const intimationCutoffDate = portal.intimationLookbackDays
+    ? saoPauloDateWindow(Number(portal.intimationLookbackDays)).start
+    : null;
   const result = await fetchPages({ endpoint, variant: number, uf, start, end, portal, fetchImpl, sleep, onProgress: options.onProgress });
 
   const unique = [...new Map(result.items.map(item => [String(item.id), item])).values()];
-  for (const item of unique) appendDjenItem(item, portal, config, target);
+  for (const item of unique) appendDjenItem(item, portal, config, target, { intimationCutoffDate });
   return { records: unique.length, announced: result.count, complete: result.complete, start, end };
 }
 
@@ -123,7 +126,7 @@ export function decodeHtmlEntities(value) {
   return text;
 }
 
-export function appendDjenItem(item, portal, config, target) {
+export function appendDjenItem(item, portal, config, target, options = {}) {
   const rawNumber = String(item.numeroprocessocommascara || item.numeroProcesso || item.numero_processo || '');
   const process = formatProcessNumber(rawNumber);
   const externalId = `djen:${item.id}`;
@@ -190,6 +193,11 @@ export function appendDjenItem(item, portal, config, target) {
       monitoredTermIds: uniqueStrings([monitoredTermId, ...matchedTerms.map(termIdentity)]),
       ...(canonicalClient?.id ? { client: canonicalClient.name, contactId: canonicalClient.id } : {})
     }]);
+  }
+
+  // Filtrar intimações para a caixa de entrada apenas se estiver dentro da janela de triagem (ex: 2 dias)
+  if (options.intimationCutoffDate && publishedAt && publishedAt < options.intimationCutoffDate) {
+    return;
   }
 
   const incoming = {
@@ -304,7 +312,7 @@ function saoPauloDateWindow(days, cutoffDate) {
   if (cutoffDate && typeof cutoffDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(cutoffDate)) {
     return { start: cutoffDate > end ? end : cutoffDate, end };
   }
-  const safeDays = Math.min(30, Math.max(1, Number.isFinite(days) ? Math.trunc(days) : 2));
+  const safeDays = Math.min(365, Math.max(1, Number.isFinite(days) ? Math.trunc(days) : 2));
   const startDate = new Date(`${end}T12:00:00-03:00`);
   startDate.setDate(startDate.getDate() - (safeDays - 1));
   return { start: dateInSaoPaulo(startDate), end };

@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm, readdir, copyFile, chmod } from 'node:fs/promises';
 import { existsSync, constants as fsConstants } from 'node:fs';
-import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
+import { randomBytes, timingSafeEqual, createHash, X509Certificate } from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
@@ -96,7 +96,7 @@ const RECOVERY_DIR = path.join(DATA_DIR, 'recovery');
 const DEFAULT_PORTALS_FILE = existsSync(path.join(ROOT, 'collector', 'portals.json')) ? path.join(ROOT, 'collector', 'portals.json') : path.join(ROOT, 'collector', 'portals.example.json');
 const PORTALS_FILE = path.resolve(process.env.JURISFLOW_PORTALS_FILE || process.env.KELLER_PORTALS_FILE || DEFAULT_PORTALS_FILE);
 const COLLECTOR_AGENT_FILE = path.join(ROOT, 'collector', 'agent.mjs');
-const CLOUD_MODE = String(process.env.JURISFLOW_CLOUD_MODE || process.env.KELLER_CLOUD_MODE || '').toLowerCase();
+const CLOUD_MODE = ['true', '1', 'yes'].includes(String(process.env.JURISFLOW_CLOUD_MODE || process.env.KELLER_CLOUD_MODE || '').toLowerCase());
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || '127.0.0.1';
 const SERVER_STARTED_AT = new Date().toISOString();
@@ -937,7 +937,7 @@ async function judicialIntegrationStatus() {
     source: secrets.certificate?.source || ''
   };
   if (certificate.accessible && secrets.certificate?.passphrase) {
-    try { certificate = { ...certificate, ...(await validatePfxWithWindows(certificatePath, secrets.certificate.passphrase)) }; }
+    try { certificate = { ...certificate, ...(await validatePfx(certificatePath, secrets.certificate.passphrase)) }; }
     catch { certificate.valid = false; }
   }
   return {
@@ -948,6 +948,106 @@ async function judicialIntegrationStatus() {
     interactiveCollectorRunning: Boolean(interactiveCollector && interactiveCollector.exitCode === null),
     interactiveCollectorState
   };
+}
+
+async function validatePfx(file, passphrase) {
+  const absoluteFile = path.resolve(file);
+  try {
+    return await validatePfxWithOpenSSL(absoluteFile, passphrase);
+  } catch (openSslErr) {
+    if (process.platform === 'win32') {
+      try {
+        return await validatePfxWithWindows(absoluteFile, passphrase);
+      } catch (winErr) {
+        throw winErr;
+      }
+    }
+    throw openSslErr;
+  }
+}
+
+function validatePfxWithOpenSSL(file, passphrase) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('openssl', ['pkcs12', '-in', file, '-passin', 'stdin', '-nodes', '-nokeys', '-legacy'], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      error ? reject(error) : resolve(value);
+    };
+    const timer = setTimeout(() => { child.kill(); finish(new Error('A validação do certificado excedeu o tempo limite.')); }, 15_000);
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    child.on('error', err => finish(err));
+    child.on('exit', code => {
+      if (code !== 0) {
+        return validatePfxWithOpenSSLStandard(file, passphrase).then(resolve, reject);
+      }
+      try {
+        const certs = stdout.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) || [];
+        if (!certs.length) return finish(new Error('Nenhum certificado encontrado no arquivo PFX.'));
+        const x509 = new X509Certificate(certs[0]);
+        const expiresAt = x509.validTo ? new Date(x509.validTo).toISOString() : null;
+        finish(null, {
+          valid: true,
+          certificateCount: certs.length,
+          expiresAt,
+          subject: x509.subject,
+          issuer: x509.issuer
+        });
+      } catch (err) {
+        finish(err);
+      }
+    });
+    child.stdin.end(passphrase + '\n');
+  });
+}
+
+function validatePfxWithOpenSSLStandard(file, passphrase) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('openssl', ['pkcs12', '-in', file, '-passin', 'stdin', '-nodes', '-nokeys'], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      error ? reject(error) : resolve(value);
+    };
+    const timer = setTimeout(() => { child.kill(); finish(new Error('A validação do certificado excedeu o tempo limite.')); }, 15_000);
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    child.on('error', err => finish(err));
+    child.on('exit', code => {
+      if (code !== 0) {
+        return finish(new Error('Senha incorreta ou certificado PFX inválido.'));
+      }
+      try {
+        const certs = stdout.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) || [];
+        if (!certs.length) return finish(new Error('Nenhum certificado encontrado no arquivo PFX.'));
+        const x509 = new X509Certificate(certs[0]);
+        const expiresAt = x509.validTo ? new Date(x509.validTo).toISOString() : null;
+        finish(null, {
+          valid: true,
+          certificateCount: certs.length,
+          expiresAt,
+          subject: x509.subject,
+          issuer: x509.issuer
+        });
+      } catch (err) {
+        finish(err);
+      }
+    });
+    child.stdin.end(passphrase + '\n');
+  });
 }
 
 function validatePfxWithWindows(file, passphrase) {
@@ -1099,7 +1199,6 @@ function extractTotpSecret(value) {
 }
 
 async function saveUploadedCertificate(body) {
-  if (CLOUD_MODE) throw Object.assign(new Error('O certificado A1 só pode ser configurado no agente local protegido.'), { statusCode: 503 });
   const fileName = path.basename(String(body.fileName || 'certificado.pfx'));
   if (!/\.(pfx|p12)$/i.test(fileName)) throw Object.assign(new Error('Selecione um certificado .pfx ou .p12.'), { statusCode: 400 });
   const encoded = String(body.pfxBase64 || '').replace(/^data:[^,]+,/, '');
@@ -1113,7 +1212,7 @@ async function saveUploadedCertificate(body) {
   const destination = path.join(secretDirectory, `a1-${Date.now()}-${randomBytes(6).toString('hex')}.pfx`);
   await writeFile(destination, binary, { mode: 0o600 });
   let validation;
-  try { validation = await validatePfxWithWindows(destination, passphrase); }
+  try { validation = await validatePfx(destination, passphrase); }
   catch (error) { await unlink(destination).catch(() => {}); throw Object.assign(error, { statusCode: 400 }); }
   const secrets = await readJudicialSecrets();
   secrets.certificate = { path: destination, passphrase, fileName, source: 'encrypted-store', configuredAt: new Date().toISOString() };
@@ -1133,7 +1232,6 @@ async function updatePortalCoverage(enabledIds) {
 }
 
 async function resetJudicialConnections() {
-  if (CLOUD_MODE) throw Object.assign(new Error('As sessões judiciais só podem ser zeradas no agente local protegido.'), { statusCode: 503 });
   if (interactiveCollector && interactiveCollector.exitCode === null) {
     throw Object.assign(new Error('Encerre a primeira conexão em andamento antes de zerar os acessos.'), { statusCode: 409 });
   }
@@ -1167,7 +1265,6 @@ async function resetJudicialConnections() {
 }
 
 async function startInteractiveCollector(portalIds) {
-  if (CLOUD_MODE) throw Object.assign(new Error('A primeira conexão com tribunais deve ser iniciada no agente local com PJeOffice.'), { statusCode: 503 });
   if (interactiveCollector && interactiveCollector.exitCode === null) throw Object.assign(new Error('Já existe uma primeira conexão em andamento.'), { statusCode: 409 });
   const config = await readPortalConfiguration();
   const allowed = authenticatedPortalIds(config);
@@ -1217,9 +1314,6 @@ function managedPortfolioPortalIds(config) {
 }
 
 async function startManagedPortfolioCollector({ waitForCompletion = false } = {}) {
-  if (CLOUD_MODE) {
-    return { ok: true, skipped: true, cloud: true, portalCount: 0, message: 'O acervo autenticado é coletado pelo agente local do escritório.' };
-  }
   if (String(process.env.KELLER_SKIP_COLLECTOR_ENV).toLowerCase() === 'true') {
     return { ok: true, skipped: true, portalCount: 0, message: 'Coletor judicial desabilitado neste ambiente.' };
   }
@@ -2403,9 +2497,6 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/sync') {
       assertAuthenticated(req, true);
-      if (CLOUD_MODE) {
-        return json(res, 200, { ok: true, cloud: true, message: 'Modo nuvem ativo: o coletor judicial autônomo executa no dispositivo seguro do escritório.' });
-      }
       const waitForCompletion = url.searchParams.get('wait') === '1';
       const result = await startManagedPortfolioCollector({ waitForCompletion });
       return json(res, result.completed || result.skipped ? 200 : 202, result);
@@ -3831,16 +3922,7 @@ Diretrizes essenciais:
       });
     }
 
-    if (CLOUD_MODE) {
-      if (['/api/integrations/judicial/certificate', '/api/integrations/judicial/reset', '/api/integrations/judicial/connect', '/api/integrations/judicial/a1/sandbox'].includes(url.pathname)) {
-        assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
-        return json(res, 503, { ok: false, message: 'Operações com certificado digital local e sessões de desktop não estão disponíveis em ambiente de nuvem.' });
-      }
-      if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/sync') {
-        assertAuthenticated(req, true);
-        return json(res, 200, { ok: true, message: 'Em ambiente de nuvem, a sincronização do acervo com certificado deve ser realizada pelo agente local.' });
-      }
-    }
+
 
     if (req.method === 'GET' && url.pathname === '/api/integrations/judicial') {
       const session = assertAuthenticated(req);
@@ -4149,7 +4231,8 @@ Diretrizes essenciais:
               id: 'djen-cnj',
               name: 'DJEN / CNJ Oficial',
               url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
-              lookbackDays: 2,
+              lookbackDays: 60,
+              intimationLookbackDays: 2,
               queryOabVariants: false,
               ufOab: term.oabUf,
               numeroOab: term.oabNumber,
