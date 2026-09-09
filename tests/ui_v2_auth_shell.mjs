@@ -19,6 +19,10 @@ assert.deepEqual(endpoints, expectedEndpoints.toSorted());
 assert.match(indexSource, /css\/views\/ui-v2\/auth\.css/);
 assert.doesNotMatch(indexSource, /triagem autônoma/i);
 assert.match(indexSource, /class="theme-toggle-btn auth-theme-toggle" data-theme-toggle/);
+assert.match(indexSource, /Dados protegidos no seu computador/);
+assert.match(indexSource, /Verificação de acesso em duas etapas/);
+assert.match(indexSource, /Acesso restrito a usuários autorizados/);
+assert.doesNotMatch(indexSource, /Criptografia AES-256-GCM|Segundo Fator TOTP \(RFC 6238\)|Sessão HttpOnly &amp; Zero Trust/);
 
 const SCENARIOS = [
   { file: '01-light-1440-loading.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'loading', configured: true },

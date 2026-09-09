@@ -29,7 +29,7 @@ html[data-theme="light"] .auth-gate {
   --auth-muted: #606970;
   --auth-line: #d2d8da;
   --auth-primary: #d4e5ed;
-  --auth-primary-strong: #bfd8e4;
+  --auth-primary-strong: #42677a;
   --auth-primary-soft: rgba(154, 190, 207, .22);
   --auth-on-primary: #284654;
   --auth-focus: #526d7c;
@@ -109,9 +109,10 @@ html[data-theme="light"] .auth-gate {
 
 .auth-gate .auth-brand-svg { width: clamp(176px, 18vw, 238px); height: auto; }
 html[data-theme="light"] .auth-gate .auth-logo-frame {
-  border-color: #394148;
-  background: #252a2e;
+  border-color: var(--auth-line);
+  background: rgba(255, 255, 253, .72);
 }
+html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../assets/icons/atrium-logo-light.svg"); }
 .auth-gate .auth-visual-copy { max-width: 700px; margin: clamp(90px, 17vh, 180px) 0 clamp(54px, 9vh, 96px); }
 
 .auth-gate .auth-visual-copy .eyebrow {
