@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm, readdir, copyFile, chmod } from 'node:fs/promises';
 import { existsSync, constants as fsConstants } from 'node:fs';
-import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
+import { randomBytes, timingSafeEqual, createHash, X509Certificate } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
@@ -1010,7 +1010,7 @@ async function judicialIntegrationStatus() {
     source: secrets.certificate?.source || ''
   };
   if (certificate.accessible && secrets.certificate?.passphrase) {
-    try { certificate = { ...certificate, ...(await validatePfxWithWindows(certificatePath, secrets.certificate.passphrase)) }; }
+    try { certificate = { ...certificate, ...(await validatePfx(certificatePath, secrets.certificate.passphrase)) }; }
     catch { certificate.valid = false; }
   }
   return {
@@ -1056,6 +1056,59 @@ function validatePfxWithWindows(file, passphrase) {
     });
     child.stdin.end(JSON.stringify({ path: file, passphrase }));
   });
+}
+
+function validatePfxWithOpenSSL(file, passphrase) {
+  return new Promise((resolve, reject) => {
+    const env = { ...process.env, ATRIUM_PFX_PASSWORD: String(passphrase) };
+    const extract = (args) => new Promise((res, rej) => {
+      const child = spawn('openssl', args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.on('data', d => { stdout += d; });
+      child.stderr.on('data', d => { stderr += d; });
+      child.on('error', rej);
+      child.on('exit', code => {
+        if (code === 0) res(stdout);
+        else rej(new Error(stderr.trim() || `openssl falhou com código ${code}`));
+      });
+    });
+
+    (async () => {
+      let certPem = '';
+      try {
+        certPem = await extract(['pkcs12', '-in', file, '-passin', 'env:ATRIUM_PFX_PASSWORD', '-nokeys', '-legacy']);
+      } catch {
+        try {
+          certPem = await extract(['pkcs12', '-in', file, '-passin', 'env:ATRIUM_PFX_PASSWORD', '-nokeys']);
+        } catch (err) {
+          const msg = err.message.toLowerCase();
+          if (msg.includes('mac verify failure') || msg.includes('bad decrypt') || msg.includes('password') || msg.includes('pkcs12_parse')) {
+            throw new Error('A senha informada para o certificado PFX está incorreta.');
+          }
+          throw new Error(`Falha ao ler o certificado PFX: ${err.message}`);
+        }
+      }
+
+      const x509 = new X509Certificate(certPem);
+      const notAfter = new Date(x509.validTo);
+      return {
+        valid: true,
+        certificateCount: 1,
+        expiresAt: notAfter.toISOString(),
+        subject: x509.subject,
+        issuer: x509.issuer,
+        fingerprintSha256: x509.fingerprint256.replace(/:/g, '').toUpperCase()
+      };
+    })().then(resolve, reject);
+  });
+}
+
+function validatePfx(file, passphrase) {
+  if (process.platform === 'win32') {
+    return validatePfxWithWindows(file, passphrase);
+  }
+  return validatePfxWithOpenSSL(file, passphrase);
 }
 
 async function pjeOfficeStatus() {
@@ -1169,7 +1222,9 @@ function extractTotpSecret(value) {
 }
 
 async function saveUploadedCertificate(body) {
-  if (CLOUD_MODE) throw Object.assign(new Error('O certificado A1 só pode ser configurado no agente local protegido.'), { statusCode: 503 });
+  if (CLOUD_MODE && currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+    throw Object.assign(new Error('O certificado A1 só pode ser configurado no agente local protegido.'), { statusCode: 503 });
+  }
   const fileName = path.basename(String(body.fileName || 'certificado.pfx'));
   if (!/\.(pfx|p12)$/i.test(fileName)) throw Object.assign(new Error('Selecione um certificado .pfx ou .p12.'), { statusCode: 400 });
   const encoded = String(body.pfxBase64 || '').replace(/^data:[^,]+,/, '');
@@ -1183,7 +1238,7 @@ async function saveUploadedCertificate(body) {
   const destination = path.join(secretDirectory, `a1-${Date.now()}-${randomBytes(6).toString('hex')}.pfx`);
   await writeFile(destination, binary, { mode: 0o600 });
   let validation;
-  try { validation = await validatePfxWithWindows(destination, passphrase); }
+  try { validation = await validatePfx(destination, passphrase); }
   catch (error) { await unlink(destination).catch(() => {}); throw Object.assign(error, { statusCode: 400 }); }
   const secrets = await readJudicialSecrets();
   secrets.certificate = { path: destination, passphrase, fileName, source: 'encrypted-store', configuredAt: new Date().toISOString() };
@@ -2519,7 +2574,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/integrations/eproc/sweep') {
       assertAuthenticated(req);
-      if (CLOUD_MODE || currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+      if (CLOUD_MODE && currentWorkspaceId() !== security.state.defaultWorkspaceId) {
         return json(res, 503, { ok: false, state: 'LOCAL_AGENT_REQUIRED', message: 'A varredura eproc via A1 exige o agente local deste escritório.' });
       }
       const body = await readJson(req).catch(() => ({}));
@@ -2545,14 +2600,21 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    if (req.method === 'POST' && url.pathname === '/api/integrations/eproc/download-autos') {
+    if (req.method === 'POST' && (url.pathname === '/api/integrations/eproc/processes/download-autos' || url.pathname === '/api/integrations/eproc/download-autos')) {
       assertAuthenticated(req);
-      if (CLOUD_MODE || currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+      if (CLOUD_MODE && currentWorkspaceId() !== security.state.defaultWorkspaceId) {
         return json(res, 503, { ok: false, state: 'LOCAL_AGENT_REQUIRED', message: 'O download de autos via A1 exige o agente local deste escritório.' });
       }
       const body = await readJson(req).catch(() => ({}));
-      const processNumber = String(body.processNumber || body.cnj || '').trim();
-      if (!processNumber) throw Object.assign(new Error('Número de processo CNJ obrigatório.'), { statusCode: 400 });
+      let targetCnj = String(body.processNumber || body.cnj || '').trim();
+
+      if (!targetCnj && body.processId) {
+        const envelope = await readAppStateEnvelope().catch(() => null);
+        const proc = (envelope?.state?.processes || []).find(p => p.id === body.processId);
+        if (proc?.number) targetCnj = String(proc.number).trim();
+      }
+
+      if (!targetCnj) throw Object.assign(new Error('Número de processo CNJ obrigatório.'), { statusCode: 400 });
 
       if (isEprocDownloadActive) {
         throw Object.assign(new Error('Já existe um download de autos em andamento no eproc TJRS. Aguarde a conclusão.'), { statusCode: 409 });
@@ -2561,14 +2623,24 @@ const server = http.createServer(async (req, res) => {
       isEprocDownloadActive = true;
       try {
         const downloadResult = await downloadProcessWithA1({
-          processNumber,
+          cnj: targetCnj,
           securityManager: security,
           documentStorage,
           readStateEnvelope: readAppStateEnvelope,
           saveState: saveAppStateDirect
         });
 
-        return json(res, 200, downloadResult);
+        return json(res, 200, {
+          ok: true,
+          piecesCount: downloadResult.piecesCount,
+          totalFiles: downloadResult.totalFiles,
+          client: downloadResult.client,
+          court: downloadResult.court,
+          cnj: downloadResult.cnj,
+          revision: downloadResult.revision,
+          documents: downloadResult.documents,
+          message: downloadResult.message || `✓ ${downloadResult.piecesCount || 0} peça(s) oficial(is) baixada(s) do eproc TJRS via Certificado A1!`
+        });
       } finally {
         isEprocDownloadActive = false;
       }
@@ -3914,7 +3986,7 @@ Diretrizes essenciais:
       });
     }
 
-    if (CLOUD_MODE) {
+    if (CLOUD_MODE && currentWorkspaceId() !== security.state.defaultWorkspaceId) {
       if (['/api/integrations/judicial/certificate', '/api/integrations/judicial/reset', '/api/integrations/judicial/connect', '/api/integrations/judicial/a1/sandbox'].includes(url.pathname)) {
         assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
         return json(res, 503, { ok: false, message: 'Operações com certificado digital local e sessões de desktop não estão disponíveis em ambiente de nuvem.' });
