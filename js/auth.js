@@ -95,7 +95,7 @@
         if (window.AtriumSaas?.renderSaasModal) {
           window.AtriumSaas.renderSaasModal(document.body);
         } else {
-          import('./features/saas-onboarding.js').then(module => {
+          import('./features/saas-onboarding.js?v=2.2.1').then(module => {
             const saas = module.createSaasOnboardingFeature();
             window.AtriumSaas = saas;
             saas.renderSaasModal(document.body);
