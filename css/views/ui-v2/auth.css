@@ -36,13 +36,15 @@ html[data-theme="light"] .auth-gate {
 }
 
 .auth-gate .auth-theme-toggle {
-  position: fixed;
+  position: absolute;
   z-index: 4;
-  top: 20px;
-  right: 20px;
+  top: 14px;
+  right: 14px;
   order: initial;
+  width: 42px;
   min-height: 42px;
-  padding: 8px 13px;
+  padding: 8px;
+  justify-content: center;
   color: var(--auth-text);
   background: color-mix(in srgb, var(--auth-card) 88%, transparent);
   border-color: var(--auth-line);
@@ -152,16 +154,17 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 }
 
 .auth-gate .auth-panel {
-  align-items: center;
-  padding: clamp(28px, 5vw, 66px);
+  align-items: start;
+  padding: 12px clamp(28px, 5vw, 66px);
   background: var(--auth-panel);
 }
 
 .auth-gate .auth-card {
+  position: relative;
   width: min(100%, 520px);
-  max-height: calc(100dvh - 56px);
+  max-height: calc(100dvh - 24px);
   overflow: auto;
-  padding: clamp(26px, 4vw, 44px);
+  padding: 22px clamp(26px, 3.4vw, 38px) 16px;
   border: 1px solid var(--auth-line);
   border-radius: 18px;
   color: var(--auth-text);
@@ -196,6 +199,9 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 .auth-gate .auth-step h2 { margin: 8px 0 12px; color: var(--auth-text); font-size: clamp(27px, 3vw, 37px); }
 .auth-gate .auth-step > p:not(.eyebrow) { margin-bottom: 22px; color: var(--auth-muted); }
 
+.auth-gate #authSetupForm > .eyebrow { padding-right: 48px; }
+.auth-gate #authSetupForm > p:not(.eyebrow) { margin-bottom: 15px; line-height: 1.48; }
+
 .auth-gate .auth-step label {
   gap: 7px;
   margin: 14px 0;
@@ -211,7 +217,8 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 
 .auth-gate .auth-setup-grid > label,
 .auth-gate .auth-field-row label {
-  margin: 0 0 14px;
+  margin: 0 0 8px;
+  gap: 5px;
 }
 
 .auth-gate .auth-field-row {
@@ -222,8 +229,14 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 
 .auth-gate .auth-field-row input,
 .auth-gate .auth-field-row select {
-  min-height: 46px;
+  min-height: 42px;
 }
+
+.auth-gate #authSetupForm input,
+.auth-gate #authSetupForm select { min-height: 42px; padding-top: 9px; padding-bottom: 9px; }
+.auth-gate #authSetupForm .password-input-wrap input[type="password"] { height: 42px; padding-top: 10px; padding-bottom: 10px; }
+.auth-gate #authSetupForm .password-toggle { min-height: 40px; }
+.auth-gate #authSetupForm .auth-submit { min-height: 42px; margin-top: 12px; }
 
 .auth-gate .auth-step input,
 .auth-gate .auth-step select {
@@ -310,7 +323,7 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 .auth-gate .auth-feedback.success { border-color: #587460; color: #b8d5bf; background: rgba(64, 101, 74, .17); }
 html[data-theme="light"] .auth-gate .auth-feedback.error { color: #873f38; background: #f4e4e2; }
 html[data-theme="light"] .auth-gate .auth-feedback.success { color: #47644e; background: #e4ede6; }
-.auth-gate .auth-local-note { border-color: var(--auth-line); color: var(--auth-muted) !important; }
+.auth-gate .auth-local-note { margin-top: 12px !important; padding-top: 10px; border-color: var(--auth-line); color: var(--auth-muted) !important; }
 .auth-gate .auth-spinner { border-color: var(--auth-line); border-top-color: var(--auth-primary-strong); }
 
 @keyframes authMineralReveal {
@@ -332,8 +345,7 @@ html[data-theme="light"] .auth-gate .auth-feedback.success { color: #47644e; bac
 }
 
 @media (max-width: 520px) {
-  .auth-gate .auth-theme-toggle { top: 12px; right: 12px; min-width: 44px; padding: 8px 11px; }
-  .auth-gate .auth-theme-toggle [data-theme-toggle-text] { display: none; }
+  .auth-gate .auth-theme-toggle { top: 10px; right: 10px; min-width: 44px; padding: 8px; }
   .auth-gate .auth-visual { padding: 18px; }
   .auth-gate .auth-logo-frame { min-height: 48px; padding: 7px 10px; }
   .auth-gate .auth-brand-svg { width: 158px; }

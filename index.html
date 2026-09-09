@@ -37,10 +37,6 @@
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
-    <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle>
-      <span data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
-      <span data-theme-toggle-text>Tema Claro</span>
-    </button>
     <div class="auth-visual">
       <div class="auth-brand-logo">
         <div class="auth-logo-frame">
@@ -60,6 +56,9 @@
     </div>
     <div class="auth-panel">
       <div class="auth-card">
+        <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle aria-label="Tema claro ativo. Alternar para tema escuro">
+          <span data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
+        </button>
         <div id="authLoading" class="auth-step active"><span class="auth-spinner"></span><h2>Verificando proteção…</h2><p>Validando a configuração de segurança.</p></div>
 
         <form id="authSetupForm" class="auth-step">

@@ -140,9 +140,12 @@ try {
           const box = element.getBoundingClientRect();
           return { top: box.top, left: box.left, right: box.right, width: box.width, height: box.height };
         };
+        const card = document.querySelector('.auth-card');
         return {
           displayName: rect('displayName'), email: rect('email'), username: rect('username'),
-          oab: rect('oab'), oabUf: rect('oabUf'), password: rect('password'), confirmPassword: rect('confirmPassword')
+          oab: rect('oab'), oabUf: rect('oabUf'), password: rect('password'), confirmPassword: rect('confirmPassword'),
+          cardOverflow: card.scrollHeight - card.clientHeight,
+          themeControlInsideCard: document.querySelector('.auth-theme-toggle')?.parentElement === card
         };
       });
       const fullWidth = ['displayName', 'email', 'username', 'password', 'confirmPassword'].map(name => setupLayout[name]);
@@ -151,6 +154,8 @@ try {
       assert.ok(setupLayout.username.top < setupLayout.oab.top && setupLayout.oab.top < setupLayout.password.top && setupLayout.password.top < setupLayout.confirmPassword.top); assertions++;
       assert.ok(Math.abs(setupLayout.oab.top - setupLayout.oabUf.top) <= 1 && Math.abs(setupLayout.oab.height - setupLayout.oabUf.height) <= 1); assertions++;
       assert.ok(setupLayout.oab.right < setupLayout.oabUf.left && setupLayout.oabUf.width >= 120); assertions++;
+      assert.ok(setupLayout.cardOverflow <= 2, `O primeiro acesso não deve exigir rolagem interna: ${setupLayout.cardOverflow}px.`); assertions++;
+      assert.equal(setupLayout.themeControlInsideCard, true); assertions++;
     }
 
     const output = path.join(OUTPUT, scenario.file);
