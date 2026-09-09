@@ -1,5 +1,5 @@
 import { Store, isoDate, uid } from '../core/store.js';
-import { publicationsInTrackingScope } from '../core/publication-scope.js';
+import { publicationsInRecentScope } from '../core/publication-scope.js';
 import {
   createPublicationsV2Presenter,
   renderPublicationDetail,
@@ -68,6 +68,7 @@ export function filterPublications(items, {
   const todayStr = isoDate(0, now);
   const filtered = (Array.isArray(items) ? items : []).filter(item => {
     const pubDate = (item.publishedAt || '').slice(0, 10);
+    if (cutoff === '2days' && pubDate && pubDate < isoDate(-1, now)) return false;
     if (cutoff === 'today' && pubDate && pubDate < todayStr) return false;
     if (cutoff === '7days' && pubDate) {
       if (pubDate < isoDate(-7, now)) return false;
@@ -144,7 +145,7 @@ export function createPublicationsFeature({
   let inboxFilterExplicit = false;
   let inboxFilterMode = null;
   let inboxSort = 'priority-urgent';
-  let inboxCutoff = 'all';
+  let inboxCutoff = '2days';
   let currentEmailBulletin = null;
   let publicationsPresenter;
 
@@ -204,7 +205,6 @@ export function createPublicationsFeature({
     init() {
       if (initialized) return false;
       initialized = true;
-      if (store.state.settings?.publicationTrackingSince) inboxCutoff = 'tracking';
       ensurePresentationFilter();
       this.bindListeners();
       getPresenter().init();
@@ -212,26 +212,6 @@ export function createPublicationsFeature({
     },
 
     bindListeners() {
-      byId('publicationTrackingStart')?.addEventListener('click', async event => {
-        const button = event.currentTarget;
-        if (button.disabled) return;
-        button.disabled = true;
-        const previous = store.state.settings?.publicationTrackingSince;
-        store.state.settings ||= {};
-        store.state.settings.publicationTrackingSince = isoDate();
-        try {
-          store.save();
-          if (!await store.flush()) throw new Error('Gravação não confirmada');
-          inboxCutoff = 'tracking';
-          this.renderInbox();
-          onRenderGlobalMetrics?.();
-          toast('Acompanhamento iniciado hoje. O histórico foi preservado.', 'success');
-        } catch {
-          if (previous === undefined) delete store.state.settings.publicationTrackingSince;
-          else store.state.settings.publicationTrackingSince = previous;
-          toast('Não foi possível salvar o início do acompanhamento.', 'error');
-        } finally { button.disabled = false; }
-      });
       byId('newIntimationButton')?.addEventListener('click', () => onOpenIntimation?.());
       byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
       byId('jsonImportInput')?.addEventListener('change', event => onImportJson?.(event.target.files[0]));
@@ -323,18 +303,15 @@ export function createPublicationsFeature({
 
     filteredItems() {
       ensurePresentationFilter();
-      const records = inboxCutoff === 'tracking'
-        ? publicationsInTrackingScope(store.state.intimations, store.state.settings?.publicationTrackingSince)
-        : store.state.intimations;
-      return filterPublications(records, { filter: inboxFilter, sort: inboxSort, cutoff: inboxCutoff });
+      return filterPublications(store.state.intimations, { filter: inboxFilter, sort: inboxSort, cutoff: inboxCutoff });
     },
 
     getUntreatedCount() {
-      return publicationsInTrackingScope(store.state.intimations, store.state.settings?.publicationTrackingSince).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').length;
+      return publicationsInRecentScope(store.state.intimations).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').length;
     },
 
     getMetrics(now = new Date()) {
-      const intimations = publicationsInTrackingScope(store.state.intimations, store.state.settings?.publicationTrackingSince);
+      const intimations = publicationsInRecentScope(store.state.intimations, { now });
       return {
         untreated: intimations.filter(item => (item.treatmentStatus || 'untreated') === 'untreated').length,
         inReview: intimations.filter(item => item.treatmentStatus === 'in_review').length,
@@ -379,12 +356,9 @@ export function createPublicationsFeature({
     },
 
     renderInbox() {
-      const since = store.state.settings?.publicationTrackingSince;
       if (byId('inboxCutoffSelect')) byId('inboxCutoffSelect').value = inboxCutoff;
-      const startButton = byId('publicationTrackingStart');
-      if (startButton) startButton.hidden = Boolean(since);
       const trackingLabel = byId('publicationTrackingLabel');
-      if (trackingLabel) trackingLabel.textContent = since ? 'Acompanhamento desde ' + formatDate(since) + '. Histórico preservado em Todas as publicações.' : 'Comece a triagem pelas publicações de hoje, preservando o histórico.';
+      if (trackingLabel) trackingLabel.textContent = 'A triagem mostra os últimos dois dias. O histórico completo continua disponível no filtro de período.';
       ensurePresentationFilter();
       this.renderMetrics();
       byId('inboxFilters')?.querySelectorAll('button[data-filter]').forEach(button => {

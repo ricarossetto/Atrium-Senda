@@ -47,7 +47,7 @@ import { createLinksFeature } from './features/links.js';
 import { createMonitoringFeature } from './features/monitoring.js';
 import { createOfficeIdentityFeature } from './features/office-identity.js';
 import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js';
-import { publicationsInTrackingScope } from './core/publication-scope.js';
+import { publicationsInRecentScope } from './core/publication-scope.js';
 import { createProcessesFeature } from './features/processes.js';
 import { createPromptsFeature } from './features/prompts.js';
 import { createSystemAdminFeature } from './features/system-admin.js';
@@ -341,7 +341,7 @@ import { createTasksFeature } from './features/tasks.js';
     uiShellComponent ||= createUiV2Shell({
       getNotifications: () => {
         const today = isoDate();
-        const publications = publicationsInTrackingScope(Store.state.intimations, Store.state.settings?.publicationTrackingSince).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').map(item => ({ target: 'intimation', id: item.id, title: item.title || 'Publicação pendente', detail: `${item.process || 'Sem processo'} · revisar triagem` }));
+        const publications = publicationsInRecentScope(Store.state.intimations).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').map(item => ({ target: 'intimation', id: item.id, title: item.title || 'Publicação pendente', detail: `${item.process || 'Sem processo'} · revisar triagem` }));
         const tasks = (Store.state.tasks || []).filter(item => !TERMINAL_STATUSES.includes(item.status) && (item.fatalDeadline || item.deadline) && (item.fatalDeadline || item.deadline) < today).map(item => ({ target: 'task', id: item.id, title: item.title || 'Tarefa atrasada', detail: `${item.process || item.client || 'Sem vínculo'} · prazo informado ${item.fatalDeadline || item.deadline}` }));
         return [...publications, ...tasks];
       },

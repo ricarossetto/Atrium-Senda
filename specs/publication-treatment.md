@@ -15,9 +15,9 @@ Endpoints de tratamento em `server.mjs`, `js/features/publications.js` e migrati
 - Estados: `untreated`, `in_review`, `treated`, `discarded`.
 - Transições válidas são decididas no backend com ator autenticado e revision.
 - Tratada no ATRIUM não significa ciência no tribunal.
-- O início da triagem corrente é ativado explicitamente por "Iniciar acompanhamento de hoje". A data local fica em settings.publicationTrackingSince pelo Store com revisão e flush confirmado.
-- O marco é fixo: pendências de dias anteriores ao dia atual, mas posteriores ao marco, continuam visíveis. A descoberta de processos não é restringida.
-- Métricas, alertas e Activity Inbox usam esse marco. "Todas as publicações (histórico)" permite consultar registros anteriores sem alterar seu tratamento. Datas desconhecidas continuam visíveis para conferência.
+- A triagem corrente usa automaticamente uma janela móvel de dois dias civis: hoje e ontem, segundo a data local do dispositivo.
+- Métricas, badge lateral, alertas e Activity Inbox usam a mesma janela. "Todas as publicações (histórico)" permite consultar registros anteriores sem alterar seu tratamento.
+- Datas desconhecidas continuam visíveis para conferência. A janela de publicações nunca restringe a descoberta nem a atualização dos processos cadastrados.
 
 ## Allowed operations
 

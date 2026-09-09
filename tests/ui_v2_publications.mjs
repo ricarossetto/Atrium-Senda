@@ -55,9 +55,18 @@ try {
     const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'light', probe: true });
     const fixture = await prepareUiV2PublicationsFixture(page);
     await page.evaluate(() => {
+      const format = date => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
       const item = window.Atrium.Store.state.intimations.find(record => record.id === 'ui-v2-publication-urgent');
       item.hasHtml = true;
       item.rawHtml = '<div onclick="alert(1)"><h2>Decisão integral sintética</h2><script>alert(2)</script><p>Teor completo.</p></div>';
+      window.Atrium.Store.state.intimations[0].publishedAt = format(today);
+      window.Atrium.Store.state.intimations[1].publishedAt = format(yesterday);
+      window.Atrium.Store.state.intimations[2].publishedAt = format(today);
+      window.Atrium.Store.state.intimations[3].publishedAt = '2000-01-01';
+      window.Atrium.App.inboxCutoff = '2days';
       window.Atrium.App.renderInbox();
     });
     const requests = [];
@@ -66,6 +75,10 @@ try {
 
     assert.equal(await page.evaluate(() => window.Atrium.App.inboxFilter), 'all');
     assert.equal(await page.locator('#inboxFilters [data-filter="all"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#inboxCutoffSelect').inputValue(), '2days');
+    assert.equal(await page.locator('#inboxList [data-intimation-id]').count(), 3);
+    assert.equal(await page.locator('#publicationResultCount').textContent(), '3 de 4 publicações');
+    await page.locator('#inboxCutoffSelect').selectOption('all');
     assert.equal(await page.locator('#inboxList [data-intimation-id]').count(), 4);
     assert.equal(await page.locator('#publicationResultCount').textContent(), '4 de 4 publicações');
     assert.equal(await page.locator('#view-inbox').evaluate(view => view.classList.contains('publication-detail-open')), false);

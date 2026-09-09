@@ -738,7 +738,6 @@
         <div class="section-toolbar">
           <div class="publication-tracking-setup v2-only">
             <span id="publicationTrackingLabel"></span>
-            <button type="button" class="button gold" id="publicationTrackingStart">Iniciar acompanhamento de hoje</button>
           </div>
           <div class="filter-tabs" id="inboxFilters" aria-label="Filtrar publicações por tratamento e prioridade">
             <button class="active" data-filter="untreated">Não tratadas</button>
@@ -754,11 +753,11 @@
               <div class="inbox-sort-control">
                 <label for="inboxCutoffSelect">Período:</label>
                 <select id="inboxCutoffSelect">
-                  <option value="tracking">Desde o início do acompanhamento</option>
+                  <option value="2days" selected>Últimos 2 dias</option>
                   <option value="today">Hoje em diante</option>
                   <option value="7days">Últimos 7 dias</option>
                   <option value="30days">Últimos 30 dias</option>
-                  <option value="all" selected>Todas as publicações (histórico)</option>
+                  <option value="all">Todas as publicações (histórico)</option>
                 </select>
               </div>
               <div class="inbox-sort-control">

@@ -70,6 +70,7 @@ assert.deepEqual(filterPublications(publications, { filter: 'in_review', sort: '
 assert.deepEqual(filterPublications(publications, { filter: 'treated', now: referenceNow }).map(item => item.id), ['treated']);
 assert.deepEqual(filterPublications(publications, { filter: 'discarded', now: referenceNow }).map(item => item.id), ['discarded']);
 assert.deepEqual(filterPublications(publications, { filter: 'prazo-fatal', now: referenceNow }).map(item => item.id), ['fatal']);
+assert.deepEqual(filterPublications(publications, { filter: 'all', cutoff: '2days', sort: 'date-asc', now: referenceNow }).map(item => item.id), ['untreated-urgent', 'fatal']);
 assert.deepEqual(filterPublications(publications, { filter: 'all', cutoff: '7days', sort: 'date-asc', now: referenceNow }).map(item => item.id), ['treated', 'review', 'untreated-urgent', 'fatal']);
 assert.deepEqual(filterPublications(publications, { filter: 'untreated', sort: 'priority-urgent', now: referenceNow }).map(item => item.id), ['untreated-urgent', 'untreated-old', 'fatal']);
 assert.deepEqual(filterPublications(publications, { filter: 'all', sort: 'date-desc', now: referenceNow }).map(item => item.id), ['fatal', 'untreated-urgent', 'review', 'treated', 'untreated-old', 'discarded']);

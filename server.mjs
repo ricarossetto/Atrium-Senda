@@ -3875,7 +3875,7 @@ Diretrizes essenciais:
               id: 'djen-cnj',
               name: 'DJEN / CNJ Oficial',
               url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
-              lookbackDays: 30,
+              lookbackDays: 2,
               queryOabVariants: false,
               ufOab: term.oabUf,
               numeroOab: term.oabNumber,
