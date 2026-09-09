@@ -370,6 +370,125 @@ html[data-ui="v2"] .configuration-row-actions { display: flex; justify-content: 
 html[data-ui="v2"] .configuration-row-actions .button { min-height: 40px; }
 html[data-ui="v2"] .configuration-protected-access { color: var(--v2-color-muted-foreground); font-size: 9.5px; }
 
+html[data-ui="v2"] .configuration-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  margin-left: var(--v2-space-2);
+  padding: 0 8px;
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-round);
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--v2-duration-fast) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] .configuration-status-pill.success {
+  color: var(--v2-color-success);
+  background: var(--v2-color-success-soft);
+  border-color: color-mix(in srgb, var(--v2-color-success) 38%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .configuration-status-pill.success:hover {
+  background: color-mix(in srgb, var(--v2-color-success) 22%, var(--v2-color-surface));
+  border-color: var(--v2-color-success);
+}
+
+html[data-ui="v2"] .configuration-status-pill.warning {
+  color: var(--v2-color-warning);
+  background: var(--v2-color-warning-soft);
+  border-color: color-mix(in srgb, var(--v2-color-warning) 38%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .configuration-status-pill.warning:hover {
+  background: color-mix(in srgb, var(--v2-color-warning) 22%, var(--v2-color-surface));
+  border-color: var(--v2-color-warning);
+}
+
+html[data-ui="v2"] .configuration-status-pill.neutral {
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-secondary);
+  border-color: var(--v2-color-border);
+}
+
+html[data-ui="v2"] .configuration-status-pill.neutral:hover {
+  color: var(--v2-color-foreground);
+  border-color: var(--v2-color-foreground-secondary);
+}
+
+html[data-ui="v2"] .configuration-action-btn {
+  font-size: 11px;
+  font-weight: 600;
+  border-color: color-mix(in srgb, var(--v2-color-gold) 40%, var(--v2-color-border));
+  color: var(--v2-color-gold);
+  white-space: nowrap;
+  transition: all var(--v2-duration-fast) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] .configuration-action-btn:hover {
+  background: color-mix(in srgb, var(--v2-color-gold) 15%, transparent);
+  border-color: var(--v2-color-gold);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--v2-color-gold) 25%, transparent);
+}
+
+html[data-ui="v2"] .configuration-modal-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-4);
+  padding: var(--v2-space-4);
+  margin-bottom: var(--v2-space-4);
+  background: color-mix(in srgb, var(--v2-color-gold-soft) 40%, var(--v2-color-surface-secondary));
+  border: 1px solid color-mix(in srgb, var(--v2-color-gold) 45%, var(--v2-color-border));
+  border-radius: var(--v2-radius-md);
+}
+
+html[data-ui="v2"] .configuration-callout-info {
+  display: grid;
+  gap: 4px;
+}
+
+html[data-ui="v2"] .configuration-callout-badge {
+  display: inline-block;
+  width: fit-content;
+  padding: 2px 7px;
+  background: color-mix(in srgb, var(--v2-color-gold) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--v2-color-gold) 50%, var(--v2-color-border));
+  border-radius: var(--v2-radius-round);
+  color: var(--v2-color-gold);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] .configuration-callout-info strong {
+  color: var(--v2-color-foreground);
+  font-size: 13px;
+}
+
+html[data-ui="v2"] .configuration-callout-info p {
+  margin: 0;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+html[data-ui="v2"] .configuration-modal-callout button {
+  flex-shrink: 0;
+  min-height: 38px;
+  color: var(--v2-color-gold);
+  border-color: color-mix(in srgb, var(--v2-color-gold) 50%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .configuration-modal-callout button:hover {
+  background: color-mix(in srgb, var(--v2-color-gold) 20%, transparent);
+  border-color: var(--v2-color-gold);
+}
+
 html[data-ui="v2"] .configuration-system-loading .auth-spinner { margin: 0 auto var(--v2-space-4); }
 html[data-ui="v2"] .configuration-system-error > span { color: var(--v2-color-danger); font-size: 24px; font-weight: 700; }
 

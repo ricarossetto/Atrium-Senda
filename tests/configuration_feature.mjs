@@ -141,9 +141,16 @@ assert.deepEqual(feature.users, []);
 assert.equal(feature.role, 'collaborator');
 
 const expectedFields = {
-  taskDefinitions: ['name', 'points', 'phase'], users: ['name', 'role', 'pointsGoal'], actionGroups: ['name', 'publicationResponsible'],
-  actionTypes: ['name', 'group'], stages: ['name', 'classification', 'phase'], origins: ['name'], goals: ['group', 'monthlyClosings'],
-  inboxSections: ['value'], notificationAssignments: ['event', 'responsibles'], integrations: ['name', 'status', 'method']
+  taskDefinitions: ['name', 'points', 'phase', 'slaDays', 'priority', 'defaultRole', 'requireDocument', 'status', 'instructions'],
+  users: ['name', 'role', 'pointsGoal', 'oab', 'email', 'status'],
+  actionGroups: ['name', 'publicationResponsible', 'leaderLawyer', 'autoAssign', 'color', 'description'],
+  actionTypes: ['name', 'group', 'procedure', 'defaultCourt', 'estimatedDuration', 'status'],
+  stages: ['name', 'classification', 'phase', 'slaMaxDays', 'nextSuggestedStage', 'status'],
+  origins: ['name', 'channelType', 'partnerCommission', 'defaultAttendant', 'status'],
+  goals: ['group', 'monthlyClosings', 'financialGoal', 'pointsGoal', 'period', 'responsible'],
+  inboxSections: ['value', 'filterRule', 'displayLimit', 'highlightUrgent', 'status'],
+  notificationAssignments: ['event', 'responsibles', 'channels', 'timing', 'urgency', 'autoTask', 'status'],
+  integrations: ['name', 'status', 'method', 'syncFrequency', 'autoNotifyErrors', 'notes']
 };
 for (const [section, names] of Object.entries(expectedFields)) {
   feature.section = section;
