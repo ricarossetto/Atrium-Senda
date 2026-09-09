@@ -8,7 +8,7 @@
   <title>Atrium — Plataforma de Gestão Jurídica Inteligente</title>
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
   <script src="js/views/ui-v2/preference-init.js"></script>
-  <link rel="stylesheet" href="css/portal.css?v=2.0.0">
+  <link rel="stylesheet" href="css/portal.css?v=2.1.2">
   <link rel="stylesheet" href="css/views/ui-v2/tokens.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/primitives.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/motion.css?v=1.0.0">
@@ -30,7 +30,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/importer.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/audit.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/links.css?v=1.0.0">
-  <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=1.0.0">
+  <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=2.1.2">
   <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/icons.css?v=1.0.0">
@@ -61,14 +61,6 @@
         <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle data-theme-silent="true" aria-label="Tema claro ativo. Alternar para tema escuro">
           <span data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
         </button>
-
-        <div class="auth-card-brand hidden">
-          <img src="assets/icons/atrium-emblem.svg" alt="ATRIUM" class="auth-card-emblem">
-          <div class="auth-card-brand-meta">
-            <span class="auth-card-brand-name">ATRIUM</span>
-            <span class="auth-card-brand-tagline">Escritório Integrado</span>
-          </div>
-        </div>
 
         <div id="authLoading" class="auth-step active"><span class="auth-spinner"></span><h2>Verificando proteção…</h2><p>Validando a configuração de segurança.</p></div>
 
@@ -144,7 +136,7 @@
           <button class="button gold auth-submit" type="submit">Criar conta e solicitar acesso</button>
           <div class="auth-register-footer">
             <span>Já possui conta no Atrium?</span>
-            <button type="button" class="auth-link-action" id="authBackToLoginLink">Entrar na conta</button>
+            <button type="button" class="auth-link-action" id="authBackToLoginLink" style="background:none; border:none; padding:4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Entrar na conta</button>
           </div>
         </form>
 
@@ -157,17 +149,17 @@
           <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="Digite seu usuário ou e-mail"></label>
           <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Digite sua senha"></label>
           <label class="auth-field-code">Código do autenticador ou recuperação (se ativado)<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000 (opcional se 2FA inativo)"></label>
-          <div class="auth-login-options">
-            <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>O segundo fator não será exigido neste dispositivo durante este período.</small></span></label>
-            <button type="button" class="auth-forgot-password-link" id="authForgotPassLink">Esqueceu sua senha?</button>
-          </div>
+          <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>O segundo fator não será exigido neste dispositivo durante este período.</small></span></label>
           <button class="button gold auth-submit" type="submit">Entrar no Atrium</button>
+          <div class="auth-forgot-wrap" style="text-align:center; margin:12px 0 4px;">
+            <button type="button" class="auth-forgot-password-link" id="authForgotPassLink" style="background:none; border:none; padding:4px 0; font-family:inherit; font-size:12px; cursor:pointer; text-decoration:underline;">Esqueceu sua senha?</button>
+          </div>
         </form>
 
         <div class="auth-card-footer" id="authCardFooter">
           <div class="auth-footer-prompt">
             <span>Ainda não tem conta no Atrium?</span>
-            <button type="button" class="auth-link-action" id="authTabNewOffice">Cadastre seu escritório</button>
+            <button type="button" class="auth-link-action" id="authTabNewOffice" style="background:none; border:none; padding:4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Cadastre seu escritório</button>
           </div>
           <p class="auth-footer-legal">Ao entrar você concorda com os Termos de Uso e a Política de Privacidade do Atrium.</p>
         </div>
