@@ -120,7 +120,6 @@ export function createProcessesV2Presenter({
       if (event.target === byId('processDocumentsBackdrop')) closeProcessDocuments({ returnToProcess: false });
     });
     byId('processDocumentsBackdrop')?.addEventListener('keydown', handleDocumentsKeydown);
-    byId('processDocumentsBackdrop')?.addEventListener('keydown', handleDocumentsKeydown);
     byId('processDocumentPreviewClose')?.addEventListener('click', () => closeProcessDocumentPreview());
     byId('processDocumentsBody')?.addEventListener('click', event => {
       const previewBtn = event.target.closest('[data-preview-process-doc]');
@@ -333,7 +332,7 @@ export function createProcessesV2Presenter({
 
   function closeProcessDocumentPreview() {
     if (previewObjectUrl) {
-      globalThis.URL.revokeObjectURL(previewObjectUrl);
+      globalThis.URL?.revokeObjectURL?.(previewObjectUrl);
       previewObjectUrl = '';
     }
     byId('processDocumentPreviewPanel')?.classList.add('hidden');
@@ -423,8 +422,9 @@ export function createProcessesV2Presenter({
         const result = await onPreviewDocument(doc);
         bodyEl.replaceChildren();
         if (result?.type === 'image' && result.blob) {
-          if (previewObjectUrl) globalThis.URL.revokeObjectURL(previewObjectUrl);
-          previewObjectUrl = globalThis.URL.createObjectURL(result.blob);
+          if (previewObjectUrl) globalThis.URL?.revokeObjectURL?.(previewObjectUrl);
+          previewObjectUrl = globalThis.URL?.createObjectURL?.(result.blob) || '';
+          if (!previewObjectUrl) throw new Error('Este navegador não oferece visualização local deste arquivo.');
           const img = documentRef.createElement('img');
           img.src = previewObjectUrl;
           img.className = 'process-doc-preview-image';
@@ -481,10 +481,15 @@ export function createProcessesV2Presenter({
 
 export function renderRow({ item, escapeHtml, formatDate }) {
   const number = item.number || item.protocol || 'Sem número';
-  const tribunal = item.court || 'TJRS';
-  const phase = item.judicialPhase || item.stage || 'Fase não informada';
-  const processMeta = unique([item.actionType, item.subject]).join(' · ') || 'Tipo de ação não informado';
+  const tribunal = item.court || item.county || 'Órgão não informado';
+  const phase = unique([item.actionType, item.judicialPhase, item.stage]).join(' · ') || 'Classificação não informada';
   const registeredDate = item.registeredAt || item.createdAt;
+  const processMeta = unique([
+    item.secrecy ? 'Segredo de justiça' : 'Consulta pública',
+    item.oldNumber ? `Antigo ${item.oldNumber}` : '',
+    item.caseFolder ? `Pasta ${item.caseFolder}` : '',
+    item.nb ? `NB ${item.nb}` : ''
+  ]).join(' · ');
   const displayedClient = item.resolvedClient || (/^cliente n[aã]o informado$/i.test(String(item.client || '').trim()) ? '' : item.client);
   const partyMeta = displayedClient
     ? (unique([item.clientPosition, item.opposingParty ? `vs. ${item.opposingParty}` : '']).join(' · ') || 'Vínculo confirmado na carteira')
@@ -683,7 +688,7 @@ function renderOperationalLinks(appointments, documents, escapeHtml, formatDate)
   const documentItems = documents.map(item => {
     const isOfficialA1 = item.documentType?.includes('eproc A1') || item.metadata?.origin?.includes('eproc TJRS (Certificado A1)');
     const sizeKb = item.size ? `${Math.round(item.size / 1024)} KB` : '';
-    const badge = isOfficialA1 ? ' <span style="display:inline-block;padding:1px 5px;font-size:9px;border-radius:4px;background:rgba(37,99,235,0.15);color:var(--v2-color-primary,#2563eb);font-weight:600;">OFICIAL A1</span>' : '';
+    const badge = isOfficialA1 ? ' <span class="process-doc-a1-badge">Oficial A1</span>' : '';
     return `<button type="button" data-process-document="${escapeHtml(item.id)}" aria-label="Abrir documento ${escapeHtml(item.name || item.originalName || 'sem nome')}"><strong>${escapeHtml(item.name || item.originalName || 'Documento sem nome')}${badge}</strong><span>${escapeHtml(item.documentType || item.type || 'Documento')}${sizeKb ? ` · ${sizeKb}` : ''} · ${escapeHtml(formatDate(item.documentDate || item.createdAt))}</span></button>`;
   }).join('');
   return `<section class="process-inspector-section" aria-labelledby="processRelationsHeading"><h3 id="processRelationsHeading">Compromissos e documentos (${documents.length})</h3><div class="process-linked-list">${appointmentItems}${documentItems}</div></section>`;
@@ -759,21 +764,7 @@ function renderAccessKeyAction(item) {
 function renderAutosAction(item, escapeHtml) {
   const isTjrs = String(item?.number || '').includes('.8.21.') || String(item?.court || '').toUpperCase().includes('TJRS');
   if (!isTjrs) return '';
-  return `
-    <div class="process-autos-action" style="border-left: 3px solid var(--v2-color-primary, #2563eb); margin-bottom: 8px;">
-      <div>
-        <strong>Autos oficiais completos via Certificado A1 (eproc TJRS)</strong>
-        <span>Baixa as peças originais oficiais (petições, decisões, certidões) autenticando com seu Certificado Digital A1 + 2FA no tribunal.</span>
-      </div>
-    </div>
-    <div class="process-autos-action">
-      <div>
-        <strong>Caderno processual para consulta offline</strong>
-        <span>Gera PDFs a partir dos dados já consultados no TJRS e guarda tudo no acervo cifrado deste processo.</span>
-      </div>
-      <button type="button" class="button ghost" data-download-autos data-process-id="${escapeHtml(item.id || '')}">Gerar caderno em PDFs</button>
-    </div>
-  `;
+  return `<div class="process-autos-action"><div><strong>Caderno processual para consulta offline</strong><span>Gera PDFs a partir dos dados já consultados no TJRS e guarda tudo no acervo cifrado deste processo.</span></div><button type="button" class="button ghost" data-download-autos data-process-id="${escapeHtml(item.id || '')}">Gerar caderno em PDFs</button></div>`;
 }
 
 function riskPresentation(value) {

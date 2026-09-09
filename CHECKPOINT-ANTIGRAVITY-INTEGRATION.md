@@ -32,5 +32,14 @@ Não faça merge/cherry-pick integral desse commit: foram encontrados credenciai
 8. Só depois fazer commit funcional/push da branch e preparar merge revisável. Não promover a main sem workflow candidato verde.
 9. Não fazer redesign visual autônomo; apenas violações evidentes.
 
-O teste focado anterior perdeu o retorno da ferramenta; não declare que passou. O servidor deve permanecer rodando na 4173.
+## Validação concluída após a retomada
 
+- Removidos listener duplicado, estilos inline e promessa visual de download A1 sem implementação.
+- Restaurada a apresentação canônica do tribunal e da classificação, sem presumir TJRS.
+- Ordenação por evento e badges `Evento`, `Oficial A1` e tags existentes conferidos.
+- `node --check` passou nos JavaScript alterados.
+- `git diff --check` passou.
+- Passaram: `ui_v2_processes.mjs`, `ui_v2_tasks.mjs`, `ui_v2_documents.mjs`, `dashboard_feature.mjs` e `ui_v2_iconography.mjs`.
+- A suíte global `pnpm test` não foi executada, conforme orientação do usuário.
+
+O servidor deve permanecer rodando na 4173. A próxima etapa é revisão humana/visual desta branch e, depois, preparação do merge; ainda não promover para `main` sem o workflow candidato verde.
