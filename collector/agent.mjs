@@ -100,7 +100,10 @@ try {
       const credentials = portalCreds ? { ...portalCreds, totpSecret } : (totpSecret ? { totpSecret } : null);
 
       if (authStrategy === AUTH_STRATEGIES.CLIENT_CERT_MTLS || portal.usesCertificate || portal.certificateMode === 'pfx-mtls' || (portal.strategy === 'eproc' && (judicialSecrets.certificate || process.env.A1_PFX_PATH))) {
-        const pfxPath = judicialSecrets.certificate?.path || process.env.A1_PFX_PATH;
+        let pfxPath = judicialSecrets.certificate?.path || process.env.A1_PFX_PATH;
+        if (pfxPath && !path.isAbsolute(pfxPath)) {
+          pfxPath = path.resolve(ROOT, pfxPath);
+        }
         const passphrase = judicialSecrets.certificate?.passphrase || process.env.A1_PFX_PASSPHRASE;
         if (pfxPath && passphrase && existsSync(pfxPath)) {
           try {

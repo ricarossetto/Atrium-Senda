@@ -1668,11 +1668,47 @@
         <button type="button" class="button ghost" id="processInspectorDocuments">Ver documentos</button>
         <button type="button" class="button ghost" id="processInspectorExport">Baixar processo</button>
         <button type="button" class="button ghost hidden" id="processInspectorDownloadAutos">Gerar caderno em PDFs</button>
+        <button type="button" class="button ghost hidden" id="processInspectorDownloadEprocA1">Baixar Autos com A1</button>
         <button type="button" class="button ghost hidden" id="processInspectorTjrs">Atualizar TJRS</button>
         <button type="button" class="button process-edit-action" id="processInspectorEdit">Editar processo</button>
         <button type="button" class="button gold process-create-task-action" id="processInspectorCreateTask"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Criar tarefa</button>
         <button type="button" class="button danger-outline process-delete-action" id="processInspectorDelete">Excluir processo</button>
       </footer>
+    </aside>
+  </div>
+
+  <div class="process-documents-backdrop v2-only hidden" id="processDocumentsBackdrop">
+    <aside class="process-documents-drawer" id="processDocumentsDrawer" role="dialog" aria-modal="true" aria-labelledby="processDocumentsTitle">
+      <header class="process-documents-header">
+        <div>
+          <p class="eyebrow" id="processDocumentsEyebrow">Documentos do Processo</p>
+          <h2 id="processDocumentsTitle">0000000-00.0000.8.21.0000</h2>
+          <span id="processDocumentsSubtitle" class="process-documents-subtitle">Acervo e autos oficiais</span>
+        </div>
+        <div class="process-documents-header-actions">
+          <button type="button" class="button ghost" id="processDocumentsBackToProcess">Voltar ao processo</button>
+          <button type="button" class="icon-button" id="processDocumentsClose" aria-label="Fechar documentos do processo">
+            <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg>
+          </button>
+        </div>
+      </header>
+      <div class="process-documents-body" id="processDocumentsBody"></div>
+      <section id="processDocumentPreviewPanel" class="process-document-preview-panel hidden" aria-labelledby="processDocumentPreviewTitle" tabindex="-1">
+        <header>
+          <div>
+            <p class="eyebrow">Visualização contextual</p>
+            <h4 id="processDocumentPreviewTitle">Preview do documento</h4>
+            <span id="processDocumentPreviewMeta">Leitura local preservada</span>
+          </div>
+          <div class="process-document-preview-controls">
+            <button type="button" class="button ghost" id="processDocumentPreviewDownload">Baixar</button>
+            <button class="icon-button" id="processDocumentPreviewClose" type="button" aria-label="Fechar preview contextual">
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg>
+            </button>
+          </div>
+        </header>
+        <div id="processDocumentPreviewBody" class="process-document-preview-body" aria-live="polite"></div>
+      </section>
     </aside>
   </div>
 
@@ -1787,6 +1823,27 @@
               <div id="chkStep-signature"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-edit"></use></svg>Assinatura SHA-256:</span> <strong>·</strong></div>
               <div id="chkStep-serverHttps"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-integrations"></use></svg>Servidor HTTPS 127.0.0.1:</span> <strong>·</strong></div>
               <div id="chkStep-fingerprint"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>mTLS Fingerprint:</span> <strong>·</strong></div>
+            </div>
+
+            <div class="a1-sweep-card" style="margin-top: 12px; padding: 12px; background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 220px;">
+                  <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                    <span class="status-chip connected" style="font-size: 11px;">Inteligência A1</span>
+                    <strong style="color: var(--ivory); font-size: 13.5px;">Varredura de Segredos de Justiça e Clientes</strong>
+                  </div>
+                  <p style="margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4;">
+                    Desvenda processos em Segredo de Justiça no eproc TJRS via Certificado A1 + 2FA, vincula clientes não identificados e preenche juízo, comarca e classe faltantes.
+                  </p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button class="button gold" id="btnRunA1Sweep" type="button" style="white-space: nowrap; font-size: 12px; padding: 6px 14px;">
+                    <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-search"></use></svg>
+                    Executar Varredura A1
+                  </button>
+                </div>
+              </div>
+              <div id="a1SweepStatus" class="hidden" style="margin-top: 10px; font-size: 12px; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);" role="status" aria-live="polite"></div>
             </div>
           </div>
 

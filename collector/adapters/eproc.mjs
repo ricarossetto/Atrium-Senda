@@ -397,14 +397,37 @@ export async function collectEprocProcessReport(page, maxPages = 5) {
 }
 
 /**
- * Abre a tela "Consulta Processual - Detalhes do Processo" para um determinado CNJ
- */
-
-
-/**
  * Extrai todos os dados estruturados e a lista de movimentações (eventos) da página de detalhes
  */
 export async function extractProcessDetails(page) {
+  // 1. Expande o painel "Informações Adicionais" se a chave/conteúdo ainda não estiver visível
+  try {
+    const isChaveVisible = await page.locator('#imgChaveProcesso, #spnChaveProcesso').first().isVisible().catch(() => false);
+    if (!isChaveVisible) {
+      const infAdicionalBtn = page.locator('#imgStatusInfAdicional, [title*="Informações Adicionais" i], #fldInformacoesAdicionais legend, legend:has-text("Informações Adicionais")').first();
+      if (await infAdicionalBtn.count() > 0) {
+        await infAdicionalBtn.click().catch(() => {});
+        await page.waitForTimeout(500);
+      }
+    }
+  } catch {}
+
+  // 2. Clica no ícone de chave/cadeado para buscar/revelar a Chave do Processo se ainda não estiver preenchida
+  try {
+    const hasKeyVal = await page.evaluate(() => {
+      const s = document.querySelector('#spnChaveProcesso');
+      return Boolean(s && s.innerText && s.innerText.replace(/\D/g, '').length >= 6);
+    }).catch(() => false);
+
+    if (!hasKeyVal) {
+      const chaveBtn = page.locator('#imgChaveProcesso, [title*="Chave do Processo" i], [title*="Buscar Chave" i], [onclick*="buscarChaveProcesso" i]').first();
+      if (await chaveBtn.count() > 0 && await chaveBtn.isVisible().catch(() => false)) {
+        await chaveBtn.click().catch(() => {});
+        await page.waitForTimeout(800);
+      }
+    }
+  } catch {}
+
   return page.evaluate(() => {
     const getText = (selector) => {
       const el = document.querySelector(selector);
@@ -428,14 +451,41 @@ export async function extractProcessDetails(page) {
     const court = findField('Órgão Julgador');
     const judge = findField('Juiz\\(a\\)') || findField('Magistrado');
     const status = findField('Situação');
-    const caseValue = findField('Valor da Causa');
+
+    // Valor da Causa (suporta quebra de linha entre rótulo e valor)
+    let caseValue = '';
+    const mVal = bodyText.match(/Valor\s*(?:da)?\s*Causa[:\s]*[\r\n\s]*(R\$\s*[\d.,]+|[\d.,]+)/i);
+    if (mVal) {
+      caseValue = mVal[1].trim();
+    } else {
+      caseValue = findField('Valor da Causa');
+    }
+
+    // Chave do Processo
+    let accessKey = '';
+    const spnKey = document.querySelector('#spnChaveProcesso, [id*="ChaveProcesso"]');
+    if (spnKey && spnKey.innerText.trim()) {
+      const digits = spnKey.innerText.trim().replace(/\D/g, '');
+      if (digits.length >= 6) accessKey = digits;
+    }
+    if (!accessKey) {
+      const mKey = bodyText.match(/Chave\s*(?:do)?\s*Processo[:\s]*[\r\n\s]*(\d{6,30})/i);
+      if (mKey) accessKey = mKey[1].trim();
+    }
+
+    // Segredo de Justiça
+    const isSecrecy = /Segredo de Justiça/i.test(bodyText) || /Sigilo/i.test(bodyText);
+    const secrecyLevelMatch = bodyText.match(/Segredo de Justiça\s*(\([^)]+\))?/i);
+    const secrecyLevel = secrecyLevelMatch ? (secrecyLevelMatch[1] ? `Segredo de Justiça ${secrecyLevelMatch[1].trim()}` : 'Segredo de Justiça') : (isSecrecy ? 'Segredo de Justiça' : '');
 
     // Partes (ignora tabela de eventos/movimentações para não poluir com textos de intimação)
+    // Partes e Representantes
     const parties = [];
-    const partyTables = [...document.querySelectorAll('table')].filter(t => {
+    const partyTables = [...document.querySelectorAll('#tblPartesERepresentantes, table')].filter(t => {
+      if (t.id === 'tblPartesERepresentantes') return true;
       const text = t.innerText;
       const isEvents = text.includes('Evento') && (text.includes('Data/Hora') || text.includes('Descrição'));
-      return !isEvents && (text.includes('AUTOR') || text.includes('RÉU') || text.includes('Polo'));
+      return !isEvents && (/AUTOR|RÉU|EXEQUENTE|EXECUTADO|REQUERENTE|REQUERIDO|EMBARGANTE|EMBARGADO|IMPUGNANTE|IMPUGNADO|PACIENTE|AGRAVANTE|AGRAVADO|APELANTE|APELADO|Polo|Partes/i.test(text));
     });
     partyTables.forEach(table => {
       [...table.querySelectorAll('tr')].forEach(row => {
@@ -479,21 +529,115 @@ export async function extractProcessDetails(page) {
       });
     }
 
-    // Extração inteligente do cliente do advogado
+    // Extração estruturada de pólos: Cliente e Adversa (Parte Contrária)
     let clientName = '';
-    for (const p of parties) {
-      if (/RICARDO DE LUCA ROSSETTO/i.test(p)) {
-        const m = p.match(/^([^(\n\r]+?)(?:\s*\(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\)|\s*-\s*Pessoa|\s*RS\d+)/i);
-        if (m && m[1]) {
-          clientName = m[1].replace(/AUTOR[:\s]*/i, '').replace(/RÉU[:\s]*/i, '').trim();
-          break;
+    let clientDocument = '';
+    let clientPosition = '';
+    let opposingParty = '';
+    let opposingPartyDocument = '';
+    let opposingPosition = '';
+
+    const lawyerRe = /RICARDO DE LUCA ROSSETTO|LEANDRO RICARDO ROSSETTO|RS135294|RS034110|04276712050|029238|057243|KELLER/i;
+
+    const partesTable = document.querySelector('#tblPartesERepresentantes');
+    if (partesTable) {
+      const ths = [...partesTable.querySelectorAll('th')];
+      const trs = [...partesTable.querySelectorAll('tr')];
+      const dataRow = trs.find(tr => tr.querySelector('td.autorReu, td'));
+      if (dataRow) {
+        const tds = [...dataRow.querySelectorAll('td')];
+        const poles = [];
+
+        tds.forEach((td, idx) => {
+          const header = ths[idx]?.innerText?.trim() || '';
+          const nameEl = td.querySelector('.infraNomeParte, a[data-parte]');
+          let name = nameEl ? nameEl.innerText.trim() : '';
+
+          const cpfEl = td.querySelector('[id*="spnCpfParte"], [title*="Copiar CPF"]');
+          let doc = cpfEl ? cpfEl.innerText.trim().replace(/\s+/g, '') : '';
+          if (!doc) {
+            const mDoc = td.innerText.match(/\((\d{2,3}\.?\d{3}\.?\d{3}[-\/]?\d{2,4}[-\/]?\d{0,2})\)/);
+            if (mDoc) doc = mDoc[1].trim();
+          }
+
+          if (!name) {
+            const lines = td.innerText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            for (const l of lines) {
+              if (/Tipo de Usuário|ADVOGADO|PROCURADOR|MINISTÉRIO/i.test(l)) continue;
+              if (lawyerRe.test(l)) continue;
+              const clean = l
+                .replace(/^(AUTOR|RÉU|EXEQUENTE|EXECUTADO|REQUERENTE|REQUERIDO)[:\s]*/i, '')
+                .replace(/\(\d{2,3}\.?\d{3}\.?\d{3}[-\/]?\d{2,4}[-\/]?\d{0,2}\).*/, '')
+                .replace(/\(Sucessor.*?\).*/i, '')
+                .replace(/-\s*Pessoa.*|JG.*|RS\d+.*/i, '')
+                .trim();
+              if (clean.length > 2 && !/^(AUTOR|RÉU|EXEQUENTE|EXECUTADO|REQUERENTE|REQUERIDO)$/i.test(clean)) {
+                name = clean;
+                break;
+              }
+            }
+          }
+
+          const isLawyerHere = lawyerRe.test(td.innerText);
+          poles.push({
+            role: header,
+            name,
+            document: doc,
+            isLawyerHere,
+            rawText: td.innerText.trim()
+          });
+        });
+
+        const clientPole = poles.find(p => p.isLawyerHere) || poles[0];
+        const oppPole = poles.find(p => p !== clientPole);
+
+        if (clientPole) {
+          clientName = clientPole.name;
+          clientDocument = clientPole.document;
+          clientPosition = clientPole.role;
+        }
+        if (oppPole) {
+          opposingParty = oppPole.name;
+          opposingPartyDocument = oppPole.document;
+          opposingPosition = oppPole.role;
         }
       }
     }
+
+    // Fallbacks para cliente
     if (!clientName) {
-      const autor = parties.find(p => /AUTOR/i.test(p) && !/RÉU/i.test(p)) || parties[0];
-      if (autor) {
-        clientName = autor.replace(/AUTOR[:\s]*/i, '').split('(')[0].split('-')[0].trim();
+      if (partesTable) {
+        const cells = [...partesTable.querySelectorAll('td, th, tr')];
+        for (const cell of cells) {
+          const cellText = cell.innerText || '';
+          if (lawyerRe.test(cellText)) {
+            const lines = cellText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            for (const line of lines) {
+              if (!lawyerRe.test(line) && !/Tipo de Usuário|ADVOGADO|OAB|PROCURADOR|MINISTÉRIO|PÚBLICO/i.test(line)) {
+                const clean = line
+                  .replace(/^(AUTOR|RÉU|EXEQUENTE|EXECUTADO|REQUERENTE|REQUERIDO)[:\s]*/i, '')
+                  .replace(/\s*\(\d{2,3}\.?\d{3}\.?\d{3}[-\/]?\d{2,4}[-\/]?\d{0,2}\).*/, '')
+                  .replace(/\s*\(Sucessor.*?\).*/i, '')
+                  .replace(/\s*-\s*Pessoa.*|\s*JG.*|\s*RS\d+.*/i, '')
+                  .trim();
+                if (clean && clean.length > 2 && !/^(AUTOR|RÉU|EXEQUENTE|EXECUTADO|REQUERENTE|REQUERIDO)$/i.test(clean)) {
+                  clientName = clean;
+                  break;
+                }
+              }
+            }
+            if (clientName) break;
+          }
+        }
+      }
+    }
+
+    if (!clientName) {
+      const activePole = parties.find(p => /AUTOR|EXEQUENTE|REQUERENTE|EMBARGANTE|AGRAVANTE/i.test(p) && !/RÉU|EXECUTADO|REQUERIDO/i.test(p)) || parties[0];
+      if (activePole) {
+        clientName = activePole
+          .replace(/^(AUTOR|RÉU|EXEQUENTE|EXECUTADO|REQUERENTE|REQUERIDO|EMBARGANTE|EMBARGADO)[:\s]*/i, '')
+          .split('(')[0].split('-')[0].trim();
       }
     }
     if (!clientName) clientName = 'Cliente Geral';
@@ -501,6 +645,11 @@ export async function extractProcessDetails(page) {
     return {
       number,
       clientName,
+      clientDocument,
+      clientPosition,
+      opposingParty,
+      opposingPartyDocument,
+      opposingPosition,
       actionClass,
       competence,
       distributionDate,
@@ -508,6 +657,9 @@ export async function extractProcessDetails(page) {
       judge,
       status,
       caseValue,
+      accessKey,
+      secrecy: isSecrecy,
+      secrecyLevel,
       partiesSummary: parties.slice(0, 10).join(' | '),
       movementsCount: movements.length,
       movements
@@ -578,7 +730,18 @@ export async function downloadAndOrganizeProcessDocuments(page, {
       if (cells.length >= 3) {
         const seq = cells[0] || '';
         const desc = cells[2] || '';
-        const links = [...row.querySelectorAll('a[href*="acessar_documento"]')];
+        const links = [...row.querySelectorAll('a')].filter(a => {
+          const h = a.getAttribute('href') || '';
+          const t = a.innerText.trim();
+          if (!t) return false;
+          if (h.includes('processo_selecionar') || h.includes('painel_adv') || h.includes('#')) return false;
+          return h.includes('acessar_documento') ||
+                 h.includes('documento_download') ||
+                 h.includes('documento_visualizar') ||
+                 h.includes('arvore_documento') ||
+                 /^(?:PET|PROC|DOC|SENT|DEC|DESP|TERMO|CERT|OFIC|MAND|LAUDO|CONTR|INF|INDICE|00\d|\d+)/i.test(t) ||
+                 /download|peça|documento/i.test(t);
+        });
         links.forEach(a => {
           list.push({
             seq,

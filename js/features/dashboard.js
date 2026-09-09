@@ -22,6 +22,7 @@ export function createDashboardFeature({
   onOpenAgenda,
   onOpenActivity,
   onAcknowledgeActivity,
+  onOpenProcess,
   showToast
 } = {}) {
   let initialized = false;
@@ -244,7 +245,7 @@ export function createDashboardFeature({
               <div class="dashboard-task-title">${escapeHtml(task.title)}</div>
               <div class="dashboard-task-process">
                 ${clientName ? `<strong>${iconSvg('contacts')} ${escapeHtml(clientName)}</strong>` : '<span class="dashboard-task-context-empty">Cliente não vinculado</span>'}
-                ${processNumber ? `<span>${iconSvg('processes')} <b>${escapeHtml(processNumber)}</b></span>` : '<span class="dashboard-task-context-empty">Processo não vinculado</span>'}
+                ${processNumber ? `<span class="dashboard-task-process-badge" data-dashboard-process-open="${escapeHtml(processNumber)}" title="Acessar processo" style="cursor:pointer;">${iconSvg('processes')} <b>${escapeHtml(processNumber)}</b></span>` : '<span class="dashboard-task-context-empty">Processo não vinculado</span>'}
                 ${actionType ? `<span class="dashboard-task-action-type">${iconSvg('court')} <b>${escapeHtml(actionType)}</b></span>` : '<span class="dashboard-task-context-empty">Tipo da ação não informado</span>'}
               </div>
               <div class="dashboard-task-tags">
@@ -262,6 +263,16 @@ export function createDashboardFeature({
       listEl.querySelectorAll('[data-dashboard-task-id]').forEach(item => {
         item.addEventListener('click', event => {
           if (event.target.closest('[data-complete-task-id]')) return;
+          const processClick = event.target.closest('[data-dashboard-process-open]');
+          if (processClick && onOpenProcess) {
+            const raw = processClick.dataset.dashboardProcessOpen;
+            const proc = (store.state.processes || []).find(p => p.number === raw || p.number?.replace(/\D/g, '') === raw?.replace(/\D/g, ''));
+            if (proc) {
+              event.stopPropagation();
+              onOpenProcess(proc);
+              return;
+            }
+          }
           const task = (store.state.tasks || []).find(candidate => candidate.id === item.dataset.dashboardTaskId);
           if (task) onOpenTask?.(task);
         });

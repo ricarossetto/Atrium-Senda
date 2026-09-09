@@ -520,6 +520,17 @@ ${id.lawyerOab} - ${id.officeName}`;
     return new Error(payload.message || fallback);
   }
 
+  function extractEventNumber(doc) {
+    const name = String(doc?.name || doc?.originalName || '').trim();
+    const leadingMatch = name.match(/^(\d{1,5})\s*[-_.]/);
+    if (leadingMatch) return parseInt(leadingMatch[1], 10);
+    const eventMatch = name.match(/(?:evento|ev\.?)\s*(\d{1,5})/i);
+    if (eventMatch) return parseInt(eventMatch[1], 10);
+    if (doc?.metadata?.event != null) return Number(doc.metadata.event);
+    if (doc?.derivation?.index != null) return Number(doc.derivation.index);
+    return 999999;
+  }
+
   function renderArchive() {
     if (!isV2()) return;
     updateOwnerOptions();
@@ -533,16 +544,66 @@ ${id.lawyerOab} - ${id.officeName}`;
     };
     if (template) template.oninput = updateNamePreview;
     updateNamePreview();
-    const documents = (store.state.documents || []).filter(item => archiveFilter === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt);
+
+    let documents = (store.state.documents || []).filter(item => archiveFilter === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt);
+
+    let ownerFilterLabel = '';
+    if (selectedOwner?.ownerId) {
+      if (selectedOwner.ownerType === 'process') {
+        const proc = (store.state.processes || []).find(p => String(p.id) === String(selectedOwner.ownerId));
+        const procNum = String(proc?.number || proc?.protocol || '').trim();
+        const procDigits = procNum.replace(/\D/g, '');
+        documents = documents.filter(doc => {
+          if (doc.ownerType === 'process' && String(doc.ownerId) === String(selectedOwner.ownerId)) return true;
+          if (doc.processId && String(doc.processId) === String(selectedOwner.ownerId)) return true;
+          const docProc = String(doc.process || doc.processNumber || '').trim();
+          if (procNum && docProc === procNum) return true;
+          if (procDigits && docProc.replace(/\D/g, '') === procDigits) return true;
+          return false;
+        });
+        documents.sort((a, b) => {
+          const evA = extractEventNumber(a);
+          const evB = extractEventNumber(b);
+          if (evA !== evB) return evA - evB;
+          const dateA = a.documentDate || a.createdAt || '';
+          const dateB = b.documentDate || b.createdAt || '';
+          if (dateA !== dateB) return dateA.localeCompare(dateB);
+          return String(a.name || '').localeCompare(String(b.name || ''));
+        });
+        ownerFilterLabel = `Processo ${procNum || proc?.id}`;
+      } else if (selectedOwner.ownerType === 'contact') {
+        documents = documents.filter(doc => {
+          if (doc.ownerType === 'contact' && String(doc.ownerId) === String(selectedOwner.ownerId)) return true;
+          if (doc.contactId && String(doc.contactId) === String(selectedOwner.ownerId)) return true;
+          return false;
+        });
+        const contact = (store.state.contacts || []).find(c => String(c.id) === String(selectedOwner.ownerId));
+        ownerFilterLabel = `Contato ${contact?.name || selectedOwner.ownerId}`;
+      }
+    }
+
     const list = byId('documentArchiveList');
     const status = byId('documentArchiveStatus');
-    if (status) status.textContent = `${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'} ${archiveFilter === 'deleted' ? 'na lixeira' : 'no acervo ativo'}`;
+    if (status) {
+      const clearBtn = ownerFilterLabel ? ` <button type="button" class="button ghost text-xs" data-clear-owner-filter style="padding:2px 8px; font-size:11px; margin-left:8px;">Limpar filtro (${escapeHtml(ownerFilterLabel)})</button>` : '';
+      status.innerHTML = `<span>${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'} ${archiveFilter === 'deleted' ? 'na lixeira' : 'no acervo ativo'}${ownerFilterLabel ? ` · Isolamento estrito por ${escapeHtml(ownerFilterLabel)} (ordem de eventos 0 a N)` : ''}</span>${clearBtn}`;
+    }
     if (!list) return;
-    list.innerHTML = documents.length ? documents.map(document => `
+    list.innerHTML = documents.length ? documents.map(document => {
+      const evNum = extractEventNumber(document);
+      const evBadge = evNum < 999999 ? `<span class="process-doc-event-badge" style="display:inline-block; margin-right:6px; font-size:11px; padding:2px 6px; border-radius:4px; background:var(--accent-soft, #eef2ff); color:var(--primary, #3730a3); font-weight:700;">Ev. ${String(evNum).padStart(3, '0')}</span>` : '';
+      const isA1 = (document.metadata?.origin || '').includes('eproc') || (document.metadata?.tags || []).includes('a1-oficial');
+      const a1Badge = isA1 ? `<span class="process-doc-a1-badge" style="display:inline-block; margin-right:6px; font-size:11px; padding:2px 6px; border-radius:4px; background:var(--success-soft, #ecfdf5); color:var(--success, #059669); font-weight:700;">Oficial A1</span>` : '';
+
+      return `
       <article class="document-record${document.deletedAt ? ' is-deleted' : ''}" data-document-id="${escapeHtml(document.id)}" tabindex="-1">
         <div class="document-record-icon" aria-hidden="true">${iconSvg('documents')}</div>
         <div class="document-record-copy">
-          <strong>${escapeHtml(document.name)}</strong>
+          <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+            ${evBadge}
+            ${a1Badge}
+            <strong>${escapeHtml(document.name)}</strong>
+          </div>
           <span>${escapeHtml(documentOwnerName(document))}</span>
           <small>${escapeHtml(document.documentType || 'Documento')} · ${escapeHtml(document.documentDate || '')} · ${escapeHtml(formatDocumentSize(document.size))}</small>
           ${document.metadata?.origin ? `<small>Origem: ${escapeHtml(document.metadata.origin)}</small>` : ''}
@@ -556,8 +617,9 @@ ${id.lawyerOab} - ${id.officeName}`;
             ? `<button class="button ghost" type="button" data-document-action="restore">Restaurar</button><button class="button danger" type="button" data-document-action="purge">Excluir definitivamente</button>`
             : `${document.ownerId ? `<button class="button ghost" type="button" data-document-action="owner">Abrir ${document.ownerType === 'process' ? 'processo' : 'contato'}</button>` : ''}<button class="button ghost" type="button" data-document-action="assistant">Usar no Assistente</button><button class="button ghost" type="button" data-document-action="metadata">Organizar</button><button class="button ghost" type="button" data-document-action="preview">Preview</button><button class="button ghost" type="button" data-document-action="${document.intelligence?.ocr ? 'read-ocr' : 'ocr'}">${document.intelligence?.ocr ? 'Ver extração' : 'Extrair texto'}</button>${canConvertDocumentToPdf(document) ? '<button class="button ghost" type="button" data-document-action="pdf">Gerar PDF</button>' : ''}<button class="button ghost" type="button" data-document-action="download">Baixar</button><button class="button ghost" type="button" data-document-action="delete">Mover para lixeira</button>`}
         </div>
-      </article>`).join('')
-      : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.'}</span></div>`;
+      </article>`;
+    }).join('')
+      : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : (ownerFilterLabel ? 'Nenhum documento encontrado para este vínculo específico.' : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.')}</span>${ownerFilterLabel ? `<button type="button" class="button ghost text-xs" data-clear-owner-filter style="margin-top:8px;">Ver todos os documentos</button>` : ''}</div>`;
   }
 
   const feature = {
@@ -593,11 +655,24 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('docGenProcessSelect')?.addEventListener('change', () => feature.updatePreview());
       byId('docGenCopyButton')?.addEventListener('click', () => feature.copyToClipboard());
       byId('docGenDownloadButton')?.addEventListener('click', () => feature.download());
-      byId('documentOwnerType')?.addEventListener('change', () => { selectedOwner = null; updateOwnerOptions(); });
+      byId('documentOwnerType')?.addEventListener('change', () => { selectedOwner = null; updateOwnerOptions(); renderArchive(); });
+      byId('documentOwnerId')?.addEventListener('change', () => {
+        const ownerType = byId('documentOwnerType')?.value || 'process';
+        const ownerId = byId('documentOwnerId')?.value;
+        selectedOwner = ownerId ? { ownerType, ownerId } : null;
+        renderArchive();
+      });
       byId('documentUploadForm')?.addEventListener('submit', event => feature.uploadDocument(event));
       byId('documentNamingSave')?.addEventListener('click', () => feature.saveNamingTemplate());
       byId('documentIntelligenceClose')?.addEventListener('click', closeIntelligencePanel);
       byId('documentArchiveWorkspace')?.addEventListener('click', event => {
+        if (event.target.closest('[data-clear-owner-filter]')) {
+          selectedOwner = null;
+          const select = byId('documentOwnerId');
+          if (select) select.value = '';
+          renderArchive();
+          return;
+        }
         const filter = event.target.closest('[data-document-filter]');
         if (filter) return feature.setArchiveFilter(filter.dataset.documentFilter);
         const action = event.target.closest('[data-document-action]');
@@ -852,11 +927,34 @@ ${id.lawyerOab} - ${id.officeName}`;
         body.replaceChildren();
         const contentType = String(response.headers.get('content-type') || '').toLowerCase();
         if (contentType.startsWith('image/')) {
-          intelligenceObjectUrl = windowRef.URL.createObjectURL(await response.blob());
+          const buffer = await response.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          const chunkSize = 0x8000;
+          let binary = '';
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+          }
           const image = documentRef.createElement('img');
-          image.src = intelligenceObjectUrl;
+          image.src = `data:${contentType.split(';')[0] || 'image/png'};base64,${windowRef.btoa(binary)}`;
           image.alt = `Preview seguro de ${document.name}`;
+          image.style.maxWidth = '100%';
+          image.style.height = 'auto';
+          image.style.display = 'block';
+          image.style.borderRadius = '8px';
+          image.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
           body.append(image);
+          const actions = documentRef.createElement('div');
+          actions.className = 'document-preview-actions';
+          actions.style.marginTop = '1rem';
+          actions.style.display = 'flex';
+          actions.style.gap = '0.5rem';
+          const downloadBtn = documentRef.createElement('button');
+          downloadBtn.type = 'button';
+          downloadBtn.className = 'button ghost';
+          downloadBtn.textContent = 'Baixar arquivo original';
+          downloadBtn.addEventListener('click', () => feature.handleArchiveAction(document.id, 'download'));
+          actions.append(downloadBtn);
+          body.append(actions);
         } else {
           const text = documentRef.createElement('pre');
           text.textContent = await response.text();
@@ -865,7 +963,29 @@ ${id.lawyerOab} - ${id.officeName}`;
         body.setAttribute('aria-busy', 'false');
         return true;
       } catch (error) {
-        closeIntelligencePanel();
+        if (body?.isConnected) {
+          body.replaceChildren();
+          const errBox = documentRef.createElement('div');
+          errBox.className = 'empty-state document-preview-fallback';
+          const msg = documentRef.createElement('p');
+          msg.textContent = error.message;
+          errBox.append(msg);
+          const actions = documentRef.createElement('div');
+          actions.style.marginTop = '0.75rem';
+          actions.style.display = 'flex';
+          actions.style.gap = '0.5rem';
+          const downloadBtn = documentRef.createElement('button');
+          downloadBtn.type = 'button';
+          downloadBtn.className = 'button primary';
+          downloadBtn.textContent = 'Baixar arquivo original';
+          downloadBtn.addEventListener('click', () => feature.handleArchiveAction(document.id, 'download'));
+          actions.append(downloadBtn);
+          errBox.append(actions);
+          body.append(errBox);
+          body.setAttribute('aria-busy', 'false');
+        } else {
+          closeIntelligencePanel();
+        }
         showToast(error.message, 'error');
         return false;
       }

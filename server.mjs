@@ -2,7 +2,7 @@ import http from 'node:http';
 import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm, readdir, copyFile, chmod } from 'node:fs/promises';
 import { existsSync, constants as fsConstants } from 'node:fs';
 import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import path from 'node:path';
@@ -34,6 +34,7 @@ import { createRegistryHttpHandler } from './lib/http/registry-routes.mjs';
 import { TjrsSidecarClient } from './lib/judicial/tjrs-sidecar-client.mjs';
 import { refreshMonitoredTjrsProcesses } from './lib/judicial/tjrs-monitoring.mjs';
 import { createTjrsSidecarHttpHandler } from './lib/http/tjrs-sidecar-routes.mjs';
+import { downloadProcessWithA1, sweepAndEnrichProcessesWithA1 } from './lib/judicial/eproc-a1-downloader.mjs';
 import { OmniStorage } from './lib/judicial/omni/storage.mjs';
 import { OmniCollectorHub } from './lib/judicial/omni/hub.mjs';
 import { createOmniHttpHandler } from './lib/judicial/omni/http-routes.mjs';
@@ -99,6 +100,7 @@ const HOST = process.env.HOST || '127.0.0.1';
 const SERVER_STARTED_AT = new Date().toISOString();
 const SYNC_TIME_ZONE = process.env.ATRIUM_TIME_ZONE || 'America/Sao_Paulo';
 const PROCESS_RE = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/;
+let isEprocDownloadActive = false;
 const security = new SecurityManager({
   dataDirectory: DATA_DIR,
   sessionSecret: process.env.AUTH_SESSION_SECRET,
@@ -1147,7 +1149,7 @@ async function startInteractiveCollector(portalIds) {
 }
 
 function applySecurityHeaders(res) {
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -2239,6 +2241,78 @@ const server = http.createServer(async (req, res) => {
     if (await handleRegistryRequest(req, res, url)) return;
     if (await handleTjrsSidecarRequest(req, res, url)) return;
     if (await handleOmniRequest(req, res, url)) return;
+
+    if (req.method === 'POST' && url.pathname === '/api/integrations/eproc/processes/download-autos') {
+      const session = assertAuthenticated(req, true);
+      const body = await readJson(req, 20_000);
+      const processId = String(body.processId || '').trim();
+      const rawNumber = String(body.processNumber || '').trim();
+      const cnjDigits = rawNumber.replace(/\D/g, '');
+      if (!processId && !cnjDigits) throw Object.assign(new Error('Processo local não informado.'), { statusCode: 400 });
+
+      const envelope = await readAppStateEnvelope();
+      if (!envelope?.state) throw Object.assign(new Error('O estado local ainda não foi inicializado.'), { statusCode: 409 });
+
+      const processItem = (envelope.state.processes || []).find(item =>
+        String(item?.id) === processId ||
+        (item?.number && item.number.replace(/\D/g, '') === cnjDigits)
+      );
+      if (!processItem && !rawNumber) throw Object.assign(new Error('Processo não encontrado no acervo local.'), { statusCode: 404 });
+
+      const targetCnj = processItem?.number || rawNumber;
+
+      if (isEprocDownloadActive) {
+        throw Object.assign(new Error('Já existe um download de autos em andamento via Certificado A1. Aguarde a conclusão da operação anterior.'), { statusCode: 409 });
+      }
+
+      isEprocDownloadActive = true;
+      try {
+        const downloadResult = await downloadProcessWithA1({
+          cnj: targetCnj,
+          securityManager: security,
+          documentStorage,
+          readStateEnvelope: readAppStateEnvelope,
+          saveState: saveAppStateDirect
+        });
+
+        return json(res, 200, {
+          ok: true,
+          piecesCount: downloadResult.piecesCount,
+          totalFiles: downloadResult.totalFiles,
+          client: downloadResult.client,
+          revision: downloadResult.revision,
+          documents: downloadResult.documents,
+          message: `✓ ${downloadResult.piecesCount} peça(s) oficial(is) baixada(s) do eproc TJRS via Certificado A1!`
+        });
+      } finally {
+        isEprocDownloadActive = false;
+      }
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/integrations/eproc/sweep') {
+      assertAuthenticated(req);
+      const body = await readJson(req).catch(() => ({}));
+      const maxProcesses = Number(body.maxProcesses) || 50;
+
+      if (isEprocDownloadActive) {
+        throw Object.assign(new Error('Já existe uma operação com o eproc TJRS em andamento via Certificado A1. Aguarde a conclusão anterior.'), { statusCode: 409 });
+      }
+
+      isEprocDownloadActive = true;
+      try {
+        const sweepResult = await sweepAndEnrichProcessesWithA1({
+          processNumber: body.processNumber || body.cnj,
+          securityManager: security,
+          readStateEnvelope: readAppStateEnvelope,
+          saveState: saveAppStateDirect,
+          maxProcesses
+        });
+
+        return json(res, 200, sweepResult);
+      } finally {
+        isEprocDownloadActive = false;
+      }
+    }
 
     if (req.method === 'POST' && url.pathname === '/api/tjrs/consult') {
       assertAuthenticated(req);
@@ -3665,8 +3739,23 @@ Diretrizes essenciais:
     // TOTP Parse QR / Migration
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/totp/parse') {
       assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
-      const body = await readJson(req);
-      const raw = body.qrData || body.secret;
+      const body = await readJson(req, 15_000_000);
+      let raw = body.qrData || body.secret;
+      if (!raw && body.imageBase64) {
+        try {
+          const buffer = Buffer.from(String(body.imageBase64).replace(/^data:[^,]+,/, ''), 'base64');
+          const tempPath = path.join(DATA_DIR, `temp-qr-${Date.now()}-${randomBytes(4).toString('hex')}.png`);
+          await writeFile(tempPath, buffer);
+          try {
+            const pyCode = `import cv2; d = cv2.QRCodeDetector(); val, _, _ = d.detectAndDecode(cv2.imread(r'${tempPath}')); print(val or '')`;
+            raw = execFileSync('python', ['-c', pyCode], { encoding: 'utf8' }).trim();
+          } finally {
+            try { await unlink(tempPath); } catch {}
+          }
+        } catch (err) {
+          console.error('Falha no fallback de decodificação de QR no servidor:', err.message);
+        }
+      }
       if (!raw) throw Object.assign(new Error('Nenhum dado de QR ou segredo recebido.'), { statusCode: 400 });
       const parsed = parseTotpUri(raw);
       return json(res, 200, { ok: true, ...parsed });
@@ -4035,6 +4124,50 @@ Diretrizes essenciais:
             lastCheck: new Date().toISOString(),
             detail: `${tjrsMonitoring.checked}/${tjrsMonitoring.configured} processo(s) consultado(s); ${tjrsMonitoring.updated} atualizado(s); ${tjrsMonitoring.newMovements} novo(s) andamento(s)${tjrsMonitoring.failed ? `; ${tjrsMonitoring.failed} falha(s)` : ''}`
           });
+        }
+
+        // Auto-enriquecimento eproc TJRS: verifica se há processos sem cliente ou em segredo de justiça
+        try {
+          const rawSecrets = await judicialOrchestrator?.credentialManager?.readRawSecrets?.().catch(() => ({}));
+          const hasA1 = Boolean(rawSecrets?.certificate?.path || process.env.A1_PFX_PATH);
+          const hasTotp = Boolean(rawSecrets?.totpSecrets && Object.keys(rawSecrets.totpSecrets).length > 0);
+          if (hasA1 && hasTotp && !isEprocDownloadActive) {
+            const hasEnrichmentCandidates = (target.processes || []).some(p => {
+              const num = String(p.number || '');
+              const court = String(p.court || '').toUpperCase();
+              const isTjrs = num.includes('.8.21.') || court.includes('TJRS') || p.source === 'eproc-tjrs';
+              if (!isTjrs) return false;
+              const client = String(p.client || '').trim();
+              const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
+              const isSecrecy = Boolean(p.secrecy) || /sigilo|segredo/i.test(client);
+              return isMissingClient || isSecrecy;
+            });
+
+            if (hasEnrichmentCandidates) {
+              console.log('\n[Etapa 2.5/4] 🔐 Auto-enriquecimento eproc TJRS para processos com Segredo ou Cliente pendente...');
+              isEprocDownloadActive = true;
+              try {
+                const sweepRes = await sweepAndEnrichProcessesWithA1({
+                  securityManager: security,
+                  readStateEnvelope: readAppStateEnvelope,
+                  saveState: saveAppStateDirect,
+                  maxProcesses: 10
+                });
+                if (sweepRes?.enrichedCount > 0) {
+                  console.log(`  ✓ Auto-enriquecimento eproc: ${sweepRes.enrichedCount} processo(s) atualizado(s) automaticamente.`);
+                  const freshEnvelope = await readAppStateEnvelope();
+                  if (freshEnvelope?.state?.processes) {
+                    target.processes = freshEnvelope.state.processes;
+                    target.contacts = freshEnvelope.state.contacts || target.contacts;
+                  }
+                }
+              } finally {
+                isEprocDownloadActive = false;
+              }
+            }
+          }
+        } catch (enrichErr) {
+          console.warn('  ⚠️ Aviso auto-enriquecimento eproc TJRS:', enrichErr.message);
         }
 
         console.log('\n[Etapa 3/4] 🔗 Consolidando intimações e processos...');
