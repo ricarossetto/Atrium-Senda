@@ -1,89 +1,88 @@
 /* =============================================================================
-   ATRIUM — UI V2 SAAS MULTI-TENANT ONBOARDING STYLES
+   ATRIUM — UI V2 ONBOARDING & CADASTRO DE ESCRITÓRIO
    ============================================================================= */
+
+.saas-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: var(--overlay, rgba(10, 10, 10, 0.82));
+  backdrop-filter: blur(12px);
+  z-index: 1000;
+  animation: v2-overlay-in 0.2s ease;
+}
+
+.saas-modal-window {
+  max-width: 540px;
+  width: min(540px, 94vw);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow);
+}
 
 .subdomain-input-group {
   display: flex;
   align-items: center;
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
-  border-radius: 6px;
-  background: var(--bg-surface-elevated, #161a22);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-input);
   overflow: hidden;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .subdomain-input-group:focus-within {
-  border-color: var(--gold-primary, #d4af37);
-  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.16);
 }
 
 .subdomain-input-group input {
   flex: 1;
   border: none !important;
+  outline: none !important;
   background: transparent !important;
   box-shadow: none !important;
   padding: 10px 12px;
   font-family: inherit;
-  font-size: 14px;
-  color: var(--text-primary, #f0f3f6);
+  font-size: 13px;
+  color: var(--text-primary);
 }
 
 .subdomain-suffix {
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gold-primary, #d4af37);
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
   background: rgba(212, 175, 55, 0.08);
-  border-left: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
-  line-height: 38px;
+  border-left: 1px solid var(--border);
+  line-height: 42px;
   user-select: none;
 }
 
 .field-feedback {
   display: block;
   margin-top: 5px;
-  font-size: 12px;
-  color: var(--text-muted, #8b949e);
+  font-size: 11px;
+  color: var(--text-muted);
   transition: color 0.2s ease;
 }
 
 .field-feedback.success {
-  color: #3fb950;
-  font-weight: 500;
+  color: #38a169;
+  font-weight: 600;
 }
 
 .field-feedback.error {
-  color: #f85149;
-  font-weight: 500;
+  color: #e53e3e;
+  font-weight: 600;
 }
 
 .field-feedback.loading {
-  color: var(--gold-primary, #d4af37);
+  color: var(--gold);
   font-style: italic;
-}
-
-.oab-input-group {
-  display: flex;
-  gap: 8px;
-}
-
-.oab-input-group input {
-  flex: 2;
-}
-
-.oab-input-group select {
-  flex: 1;
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
-  border-radius: 6px;
-  background: var(--bg-surface-elevated, #161a22);
-  color: var(--text-primary, #f0f3f6);
-  padding: 8px 10px;
-  font-size: 14px;
-}
-
-.saas-modal-window {
-  max-width: 580px;
-  width: 92%;
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(212, 175, 55, 0.1);
 }

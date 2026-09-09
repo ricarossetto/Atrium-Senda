@@ -1,4 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Atrium Senda">
-  <rect width="64" height="64" rx="14" fill="#14201d"/>
-  <path d="M17 47 29 16h7l12 31h-8l-2.4-7H27.1l-2.4 7Zm12.5-14h5.7l-2.8-8.5Z" fill="#d5b879"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="favGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5E6A3"/>
+      <stop offset="35%" stop-color="#C8A24B"/>
+      <stop offset="100%" stop-color="#8C7322"/>
+    </linearGradient>
+    <linearGradient id="favGoldLight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFDF0"/>
+      <stop offset="100%" stop-color="#E5C794"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="120" height="120" rx="26" fill="#121517"/>
+
+  <g transform="translate(12, 10)">
+    <!-- Pedimento Triangular -->
+    <path d="M48 6 L90 66 L75 66 L48 24 L21 66 L6 66 Z" fill="url(#favGoldGrad)"/>
+    
+    <!-- Coluna Esquerda -->
+    <rect x="13" y="68" width="17" height="4.5" rx="1.5" fill="url(#favGoldGrad)"/>
+    <rect x="15.5" y="72.5" width="4" height="25" fill="url(#favGoldGrad)"/>
+    <rect x="23.5" y="72.5" width="4" height="25" fill="url(#favGoldGrad)"/>
+    <rect x="11" y="97.5" width="21" height="4.5" rx="1.5" fill="url(#favGoldGrad)"/>
+
+    <!-- Coluna Direita -->
+    <rect x="66" y="68" width="17" height="4.5" rx="1.5" fill="url(#favGoldGrad)"/>
+    <rect x="68.5" y="72.5" width="4" height="25" fill="url(#favGoldGrad)"/>
+    <rect x="76.5" y="72.5" width="4" height="25" fill="url(#favGoldGrad)"/>
+    <rect x="64" y="97.5" width="21" height="4.5" rx="1.5" fill="url(#favGoldGrad)"/>
+
+    <!-- Circuitos Internos -->
+    <!-- Circuito Central -->
+    <path d="M48 30 L48 97.5" stroke="url(#favGoldLight)" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="48" cy="27" r="5" fill="url(#favGoldLight)"/>
+
+    <!-- Circuito Esquerdo -->
+    <path d="M37 50 L43.5 60 L43.5 97.5" stroke="url(#favGoldGrad)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="36" cy="48" r="4" fill="url(#favGoldGrad)"/>
+
+    <!-- Circuito Direito -->
+    <path d="M59 50 L52.5 60 L52.5 97.5" stroke="url(#favGoldGrad)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="60" cy="48" r="4" fill="url(#favGoldGrad)"/>
+  </g>
 </svg>

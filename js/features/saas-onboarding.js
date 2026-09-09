@@ -34,73 +34,82 @@ export function createSaasOnboardingFeature(options = {}) {
   function renderSaasModal(container, { onCreated } = {}) {
     const modalHtml = `
       <div id="saasRegisterBackdrop" class="modal-backdrop saas-modal-backdrop">
-        <div class="modal-window saas-modal-window" role="dialog" aria-modal="true" aria-labelledby="saasModalTitle">
-          <div class="modal-header">
+        <section class="modal card saas-modal-window" role="dialog" aria-modal="true" aria-labelledby="saasModalTitle" style="max-width:540px; width:92%;">
+          <header class="modal-header" style="display:flex; align-items:flex-start; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--border);">
             <div>
-              <span class="badge gold">SaaS Multi-Tenant</span>
-              <h2 id="saasModalTitle">Criar Novo Escritório no ATRIUM</h2>
-              <p class="modal-subtitle">Crie seu espaço exclusivo com isolamento de dados, OAB e eproc TJRS.</p>
+              <p class="eyebrow" style="margin:0 0 4px; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--gold);">Novo Escritório</p>
+              <h3 id="saasModalTitle" style="margin:0; font-family:var(--font-serif); font-size:22px; color:var(--text-primary);">Cadastrar Escritório no ATRIUM</h3>
+              <p style="margin:4px 0 0; font-size:12px; color:var(--text-secondary);">Crie seu espaço exclusivo com isolamento de dados, OAB e eproc TJRS.</p>
             </div>
-            <button type="button" class="button ghost icon-only" id="btnCloseSaasModal" aria-label="Fechar">&times;</button>
-          </div>
+            <button class="icon-button" id="btnCloseSaasModal" type="button" aria-label="Fechar modal" style="width:36px; height:36px; display:grid; place-items:center; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--text-secondary); cursor:pointer;">
+              <svg class="atrium-icon" aria-hidden="true" focusable="false" style="width:16px; height:16px;"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg>
+            </button>
+          </header>
 
-          <form id="saasRegisterForm" class="modal-body">
-            <div class="form-group">
-              <label for="saasOfficeName">Nome da Banca / Escritório *</label>
-              <input type="text" id="saasOfficeName" required placeholder="Ex: Rossetto Advocacia & Consultoria" />
-            </div>
+          <form id="saasRegisterForm">
+            <div class="modal-body" style="padding:22px 24px; display:flex; flex-direction:column; gap:16px;">
+              <label style="display:flex; flex-direction:column; gap:6px;">
+                <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary);">Nome da Banca / Escritório *</span>
+                <input type="text" id="saasOfficeName" required placeholder="Ex: Carvalho & Associados Advocacia" style="width:100%; min-height:42px; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface-input); color:var(--text-primary); font-size:13px; box-sizing:border-box;">
+              </label>
 
-            <div class="form-group">
-              <label for="saasSlug">Endereço Web Exclusivo (Subdomínio) *</label>
-              <div class="subdomain-input-group">
-                <input type="text" id="saasSlug" required placeholder="meuescritorio" autocomplete="off" />
-                <span class="subdomain-suffix">.atrium.adv.br</span>
-              </div>
-              <small id="saasSlugFeedback" class="field-feedback">Apenas letras minúsculas, números e hífens.</small>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group flex-2">
-                <label for="saasOwnerName">Advogado(a) Responsável *</label>
-                <input type="text" id="saasOwnerName" required placeholder="Seu nome completo" />
-              </div>
-              <div class="form-group flex-1">
-                <label for="saasOab">OAB / UF *</label>
-                <div class="oab-input-group">
-                  <input type="text" id="saasOab" required placeholder="12345" />
-                  <select id="saasOabUf" required>
-                    <option value="RS" selected>RS</option>
-                    <option value="SC">SC</option>
-                    <option value="PR">PR</option>
-                    <option value="SP">SP</option>
-                    <option value="RJ">RJ</option>
-                    <option value="DF">DF</option>
-                  </select>
+              <label style="display:flex; flex-direction:column; gap:6px;">
+                <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary);">Endereço Web Exclusivo (Subdomínio) *</span>
+                <div class="subdomain-input-group" style="display:flex; align-items:center; border:1px solid var(--border); border-radius:8px; background:var(--surface-input); overflow:hidden;">
+                  <input type="text" id="saasSlug" required placeholder="meuescritorio" autocomplete="off" style="flex:1; border:none; outline:none; background:transparent; padding:10px 12px; color:var(--text-primary); font-size:13px; min-height:42px; box-sizing:border-box;">
+                  <span class="subdomain-suffix" style="padding:0 14px; font-size:12px; font-weight:700; color:var(--gold); background:rgba(212,175,55,0.08); border-left:1px solid var(--border); line-height:42px; user-select:none;">.atrium.adv.br</span>
                 </div>
+                <small id="saasSlugFeedback" class="field-feedback" style="font-size:11px; color:var(--text-muted); margin-top:2px;">Apenas letras minúsculas, números e hífens.</small>
+              </label>
+
+              <div style="display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr); gap:12px;">
+                <label style="display:flex; flex-direction:column; gap:6px; min-width:0;">
+                  <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary);">Advogado(a) Responsável *</span>
+                  <input type="text" id="saasOwnerName" required placeholder="Dr(a). Nome Completo" style="width:100%; min-width:0; min-height:42px; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface-input); color:var(--text-primary); font-size:13px; box-sizing:border-box;">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:6px; min-width:0;">
+                  <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary);">OAB / UF *</span>
+                  <div style="display:flex; gap:6px; width:100%; min-width:0; box-sizing:border-box;">
+                    <input type="text" id="saasOab" required placeholder="000000" style="flex:1 1 auto; min-width:0; width:100%; min-height:42px; padding:10px 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface-input); color:var(--text-primary); font-size:13px; box-sizing:border-box;">
+                    <select id="saasOabUf" required style="flex:0 0 60px; width:60px; min-width:60px; min-height:42px; padding:8px 4px; text-align:center; border-radius:8px; border:1px solid var(--border); background:var(--surface-input); color:var(--text-primary); font-size:13px; box-sizing:border-box; cursor:pointer;">
+                      <option value="RS" selected>RS</option>
+                      <option value="SC">SC</option>
+                      <option value="PR">PR</option>
+                      <option value="SP">SP</option>
+                      <option value="RJ">RJ</option>
+                      <option value="MG">MG</option>
+                      <option value="DF">DF</option>
+                      <option value="BA">BA</option>
+                      <option value="GO">GO</option>
+                      <option value="PE">PE</option>
+                      <option value="CE">CE</option>
+                    </select>
+                  </div>
+                </label>
               </div>
+
+              <label style="display:flex; flex-direction:column; gap:6px;">
+                <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary);">E-mail Corporativo *</span>
+                <input type="email" id="saasOwnerEmail" required placeholder="advogado@escritorio.adv.br" style="width:100%; min-height:42px; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface-input); color:var(--text-primary); font-size:13px; box-sizing:border-box;">
+              </label>
+
+              <label style="display:flex; flex-direction:column; gap:6px;">
+                <span style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-secondary);">Senha de Acesso do Administrador *</span>
+                <input type="password" id="saasPassword" required minlength="8" placeholder="Mínimo de 8 caracteres" style="width:100%; min-height:42px; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface-input); color:var(--text-primary); font-size:13px; box-sizing:border-box;">
+              </label>
+
+              <div id="saasFormError" class="auth-feedback error hidden" style="padding:10px 14px; border-radius:8px; font-size:12px; line-height:1.45;"></div>
             </div>
 
-            <div class="form-group">
-              <label for="saasOwnerEmail">E-mail Corporativo *</label>
-              <input type="email" id="saasOwnerEmail" required placeholder="advogado@escritorio.adv.br" />
-            </div>
-
-            <div class="form-group">
-              <label for="saasPassword">Senha de Acesso do Administrador *</label>
-              <input type="password" id="saasPassword" required minlength="8" placeholder="Mínimo de 8 caracteres" />
-            </div>
-
-            <div id="saasFormError" class="alert error hidden"></div>
-
-            <div class="modal-actions">
-              <button type="button" class="button ghost" id="btnCancelSaas">Cancelar</button>
-              <button type="submit" class="button primary" id="btnSubmitSaas">
-                <span class="btn-text">Criar Meu Escritório 🚀</span>
+            <footer class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; padding:16px 24px; border-top:1px solid var(--border); background:var(--surface-raised); border-radius:0 0 16px 16px;">
+              <button type="button" class="button ghost" id="btnCancelSaas" style="min-height:40px; padding:0 16px;">Cancelar</button>
+              <button type="submit" class="button gold" id="btnSubmitSaas" style="min-height:40px; padding:0 20px;">
+                <span class="btn-text">Criar Meu Escritório</span>
                 <span class="btn-spinner hidden">Criando ambiente isolado...</span>
               </button>
-            </div>
+            </footer>
           </form>
-        </div>
+        </section>
       </div>
     `;
 

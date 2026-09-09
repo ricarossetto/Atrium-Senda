@@ -29,10 +29,10 @@ html[data-theme="light"] .auth-gate {
   --auth-muted: #606970;
   --auth-line: #d2d8da;
   --auth-primary: #dfc67a;
-  --auth-primary-strong: #92400e;
-  --auth-primary-soft: rgba(183, 154, 93, .14);
+  --auth-primary-strong: #42677a;
+  --auth-primary-soft: rgba(66, 103, 122, .14);
   --auth-on-primary: #11100c;
-  --auth-focus: #b79a5d;
+  --auth-focus: #42677a;
 }
 
 .auth-gate .auth-theme-toggle {
@@ -323,7 +323,7 @@ html[data-theme="light"] .auth-gate .auth-forgot-password-link,
 html[data-theme="light"] .auth-gate .auth-link-action,
 html[data-theme="light"] .auth-gate button.auth-forgot-password-link,
 html[data-theme="light"] .auth-gate button.auth-link-action {
-  color: #92400e !important;
+  color: #2b576e !important;
 }
 
 .auth-gate .auth-forgot-password-link:hover,
@@ -594,7 +594,7 @@ html[data-theme="light"] .auth-gate .auth-tab:hover {
 
 html[data-theme="light"] .auth-gate .auth-tab.active {
   background: #ffffff !important;
-  color: #92400e !important;
+  color: #204556 !important;
   border: 1px solid #d2d8da !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
   font-weight: 700 !important;
