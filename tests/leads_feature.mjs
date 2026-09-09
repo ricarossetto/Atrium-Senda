@@ -173,7 +173,7 @@ try {
   await page.evaluate(() => window.Atrium.App.switchView('leads'));
   await page.locator('#view-leads.active').waitFor();
   assert.equal(await page.locator('#leadCount').textContent(), '5 atendimentos');
-  await page.evaluate(() => window.Atrium.Theme.setTheme('dark'));
+  await page.click('#themeToggleButton');
   await page.waitForTimeout(350);
   await page.screenshot({ path: path.join(visualArtifactsDir, 'leads-desktop-dark.png'), fullPage: true });
   await page.click('#themeToggleButton');

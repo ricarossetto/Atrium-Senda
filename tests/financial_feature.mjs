@@ -288,7 +288,7 @@ try {
   await page.locator('#financialSearch').fill('');
   await page.locator('#financialFilters [data-fin-filter="all"]').click();
 
-  await page.evaluate(() => window.Atrium.Theme.setTheme('dark'));
+  await page.click('#themeToggleButton');
   await page.waitForTimeout(350);
   await page.screenshot({ path: path.join(visualArtifactsDir, 'financial-desktop-dark.png'), fullPage: true });
   await page.click('#themeToggleButton');
