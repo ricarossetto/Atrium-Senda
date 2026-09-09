@@ -112,9 +112,6 @@ export function createProcessesV2Presenter({
     byId('processInspectorDownloadAutos')?.addEventListener('click', event => {
       if (selectedItem) onDownloadAutos?.(event.currentTarget, selectedItem);
     });
-    byId('processInspectorDownloadEprocA1')?.addEventListener('click', event => {
-      if (selectedItem) onDownloadEprocA1?.(event.currentTarget, selectedItem);
-    });
     byId('processInspectorDocuments')?.addEventListener('click', () => {
       if (!selectedItem) return;
       openProcessDocuments(selectedItem);
@@ -216,7 +213,6 @@ export function createProcessesV2Presenter({
         ? 'Exportar novamente o backup técnico deste processo'
         : 'Exportar um arquivo JSON para backup ou transferência; não contém os autos em PDF';
     }
-    byId('processInspectorDownloadEprocA1')?.classList.toggle('hidden', !summary.canConsultTjrs);
 
     documentRef.querySelectorAll('#processTableBody [data-process-id]').forEach(row => {
       const selected = row.dataset.processId === String(item.id);
