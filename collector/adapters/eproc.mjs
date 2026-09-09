@@ -430,9 +430,13 @@ export async function extractProcessDetails(page) {
     const status = findField('Situação');
     const caseValue = findField('Valor da Causa');
 
-    // Partes
+    // Partes (ignora tabela de eventos/movimentações para não poluir com textos de intimação)
     const parties = [];
-    const partyTables = [...document.querySelectorAll('table')].filter(t => t.innerText.includes('AUTOR') || t.innerText.includes('RÉU') || t.innerText.includes('Polo'));
+    const partyTables = [...document.querySelectorAll('table')].filter(t => {
+      const text = t.innerText;
+      const isEvents = text.includes('Evento') && (text.includes('Data/Hora') || text.includes('Descrição'));
+      return !isEvents && (text.includes('AUTOR') || text.includes('RÉU') || text.includes('Polo'));
+    });
     partyTables.forEach(table => {
       [...table.querySelectorAll('tr')].forEach(row => {
         const text = row.innerText.trim();
