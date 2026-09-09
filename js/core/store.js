@@ -204,7 +204,7 @@ export const Store = {
       return;
     }
 
-    if (!persisted && this.stateStatus === 'NEW_INSTALL') {
+    if (!persisted && this.stateStatus === 'NEW_INSTALL' && !globalThis.ATRIUM_CONFIG?.apiBaseUrl) {
       let legacyData = null;
       try { legacyData = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { /* legado corrompido — ignorar */ }
       if (legacyData && typeof legacyData === 'object' && (legacyData.version === 1 || Array.isArray(legacyData.processes))) {
@@ -242,6 +242,10 @@ export const Store = {
       if (this.stateStatus === 'NEW_INSTALL') {
         for (const key of ['intimations', 'tasks', 'processes', 'agenda', 'audit']) this.state[key] = [];
         this.state.settings.demoMode = false;
+        const authenticatedUser = globalThis.KellerAuth?.currentUser;
+        if (authenticatedUser?.workspaceName) this.state.settings.officeName = authenticatedUser.workspaceName;
+        if (authenticatedUser?.displayName) this.state.settings.lawyerName = authenticatedUser.displayName;
+        if (authenticatedUser?.email) this.state.settings.lawyerEmail = authenticatedUser.email;
       }
       const schemaVersion = Number(this.serverMeta?.schemaVersion);
       const dataVersion = Number(this.serverMeta?.dataVersion);

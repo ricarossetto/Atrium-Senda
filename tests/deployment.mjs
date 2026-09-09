@@ -24,6 +24,32 @@ async function findAvailablePort() {
 
 async function runDeploymentTests() {
   console.log('=== TESTES DE DEPLOYMENT & CONFORMIDADE COM NUVEM (RENDER / PROD) ===\n');
+  console.log('0. Validando recusa de boot cloud sem configuração explícita...');
+  const invalidCloud = spawn(process.execPath, ['server.mjs'], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      JURISFLOW_CLOUD_MODE: 'true',
+      AUTH_SESSION_SECRET: '',
+      AUTH_ENCRYPTION_KEY: '',
+      SETUP_BOOTSTRAP_TOKEN: '',
+      ATRIUM_FRONTEND_ORIGINS: '',
+      COOKIE_SECURE: 'false',
+      KELLER_SKIP_COLLECTOR_ENV: 'true'
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  let invalidOutput = '';
+  invalidCloud.stdout.on('data', chunk => { invalidOutput += chunk; });
+  invalidCloud.stderr.on('data', chunk => { invalidOutput += chunk; });
+  await Promise.race([
+    new Promise(resolve => invalidCloud.once('exit', resolve)),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Servidor cloud inválido não recusou o boot.')), 5_000))
+  ]);
+  assert.notEqual(invalidCloud.exitCode, 0, 'Servidor cloud incompleto não pode iniciar.');
+  assert.match(invalidOutput, /Configuração cloud incompleta/, 'Falha de boot deve explicar a configuração cloud ausente.');
+  console.log('✓ Servidor falhou fechado antes de abrir a porta.');
+
   const dataDirectory = await mkdtemp(path.join(tmpdir(), 'atrium-deploy-test-'));
   const port = await findAvailablePort();
   const bootstrapToken = 'test-bootstrap-token-' + randomBytes(8).toString('hex');
@@ -46,7 +72,9 @@ async function runDeploymentTests() {
       AUTH_SESSION_SECRET: sessionSecret,
       AUTH_ENCRYPTION_KEY: encryptionKey,
       COLLECTOR_INGEST_TOKEN: collectorToken,
-      SETUP_BOOTSTRAP_TOKEN: bootstrapToken
+      SETUP_BOOTSTRAP_TOKEN: bootstrapToken,
+      ATRIUM_FRONTEND_ORIGINS: 'https://app.atrium.example.test',
+      ATRIUM_PUBLIC_SIGNUP: 'false'
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });
@@ -74,6 +102,11 @@ async function runDeploymentTests() {
     }
     assert.equal(ready, true, `O servidor de produção deve iniciar e responder 200 no /api/auth/status. Log: ${serverOutput}`);
     console.log('✓ Servidor de produção iniciou com sucesso (HTTP 200).');
+
+    const publicStatus = await (await fetch(`${baseUrl}/api/auth/status`)).json();
+    assert.equal(publicStatus.bootstrapRequired, true, 'Frontend deve saber que o primeiro setup exige token de ativação.');
+    assert.equal(publicStatus.setupMfaRequired, true, 'Primeiro administrador cloud deve ativar MFA.');
+    assert.equal(publicStatus.workspaceRegistrationEnabled, false, 'Cadastro público cloud deve permanecer fechado sem opt-in.');
 
     // 2. Validar bloqueio de bootstrap sem token secreto
     console.log('\n2. Validando proteção contra sequestro de primeiro administrador (SETUP_BOOTSTRAP_TOKEN)...');
@@ -106,6 +139,13 @@ async function runDeploymentTests() {
     const setupData = await authorizedSetup.json();
     assert.ok(setupData.setupToken, 'Deve retornar setupToken assinado');
     assert.ok(setupData.manualSecret, 'Deve retornar chave TOTP Base32');
+
+    const skipMfaRes = await fetch(`${baseUrl}/api/auth/setup/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ setupToken: setupData.setupToken, skipMfa: true })
+    });
+    assert.equal(skipMfaRes.status, 400, 'Cloud não pode criar o primeiro administrador sem MFA.');
 
     const totpCode = generateTotp(setupData.manualSecret);
     const verifyRes = await fetch(`${baseUrl}/api/auth/setup/verify`, {

@@ -11,8 +11,9 @@ const OUTPUT = path.join(ROOT, 'artifacts', 'visual-qa', 'ui-v2-auth-shell');
 const authSource = fs.readFileSync(path.join(ROOT, 'js', 'auth.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const expectedEndpoints = [
-  '/api/auth/status', '/api/auth/setup', '/api/auth/setup/verify', '/api/auth/register',
-  '/api/auth/register/verify', '/api/auth/login', '/api/auth/logout', '/api/auth/profile'
+  '/api/auth/status', '/api/auth/setup', '/api/auth/setup/verify', '/api/auth/workspaces/register',
+  '/api/auth/workspaces/register/verify', '/api/auth/invitations/accept', '/api/auth/register/verify',
+  '/api/auth/login', '/api/auth/logout', '/api/auth/profile'
 ];
 const endpoints = [...new Set(authSource.match(/\/api\/auth\/[a-z/]+/g) || [])].sort();
 assert.deepEqual(endpoints, expectedEndpoints.toSorted());
@@ -40,7 +41,8 @@ const SCENARIOS = [
   { file: '10-light-1920x1080-first-setup.png', theme: 'light', viewport: { width: 1920, height: 1080 }, state: 'setup', configured: false },
   { file: '11-dark-1920x1200-first-setup.png', theme: 'dark', viewport: { width: 1920, height: 1200 }, state: 'setup', configured: false },
   { file: '12-light-2560x1080-first-setup.png', theme: 'light', viewport: { width: 2560, height: 1080 }, state: 'setup', configured: false },
-  { file: '13-light-1920x1080-monitoring-setup.png', theme: 'light', viewport: { width: 1920, height: 1080 }, state: 'setup-monitoring', configured: false }
+  { file: '13-light-1920x1080-monitoring-setup.png', theme: 'light', viewport: { width: 1920, height: 1080 }, state: 'setup-monitoring', configured: false },
+  { file: '14-light-1440-team-invitation.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'invitation', configured: true }
 ];
 
 fs.mkdirSync(OUTPUT, { recursive: true });
@@ -64,7 +66,12 @@ try {
       contentType: 'application/json',
       body: JSON.stringify({ configured: scenario.configured, authenticated: false })
     }));
-    await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
+    await page.route('**/api/auth/invitations/accept?*', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, invitation: { displayName: 'Colaboradora Teste', email: 'convidada@example.test', workspace: { id: 'ws-synthetic', name: 'Escritório Teste' } } })
+    }));
+    await page.goto(`${server.baseUrl}${scenario.state === 'invitation' ? '#invite=synthetic-invitation-token' : ''}`, { waitUntil: 'networkidle' });
     await page.locator('#authGate:not(.hidden)').waitFor();
     await page.evaluate(({ state, theme }) => {
       document.documentElement.dataset.theme = theme;
@@ -86,6 +93,7 @@ try {
       if (state === 'setup-monitoring') {
         const form = document.getElementById('authSetupForm');
         window.KellerAuth.show('authSetupForm');
+        form.elements.workspaceName.value = 'Escritório Teste';
         form.elements.displayName.value = 'Advogada Teste';
         form.elements.email.value = 'advogada@example.test';
         form.elements.username.value = 'advogada.teste';
@@ -99,7 +107,7 @@ try {
       }
     }, { state: scenario.state, theme: scenario.theme });
 
-    const expectedId = ({ loading: 'authLoading', login: 'authLoginForm', 'login-error': 'authLoginForm', register: 'authRegisterForm', setup: 'authSetupForm', 'setup-monitoring': 'authSetupForm', totp: 'authTotpSetupForm', recovery: 'authRecoveryStep' })[scenario.state];
+    const expectedId = ({ loading: 'authLoading', login: 'authLoginForm', 'login-error': 'authLoginForm', register: 'authRegisterForm', setup: 'authSetupForm', 'setup-monitoring': 'authSetupForm', invitation: 'authInvitationForm', totp: 'authTotpSetupForm', recovery: 'authRecoveryStep' })[scenario.state];
     await page.locator(`#${expectedId}.active`).waitFor();
     await page.waitForFunction(() => [...document.querySelectorAll('#authGate *')]
       .flatMap(element => element.getAnimations())
@@ -153,6 +161,11 @@ try {
     if (scenario.state === 'register') {
       assert.equal(await page.locator('#authTabRegister').getAttribute('aria-selected'), 'true'); assertions++;
       assert.equal(await page.locator('#authTabLogin').getAttribute('aria-selected'), 'false'); assertions++;
+    }
+    if (scenario.state === 'invitation') {
+      assert.equal(await page.locator('#authInvitationWorkspace').textContent(), 'Escritório Teste'); assertions++;
+      assert.match(await page.locator('#authInvitationPerson').textContent(), /Colaboradora Teste.*convidada@example\.test/); assertions++;
+      assert.equal(await page.locator('#authTabs').isVisible(), false); assertions++;
     }
     if (scenario.state === 'setup') {
       const setupLayout = await page.evaluate(() => {
@@ -219,7 +232,10 @@ try {
         };
       });
       assert.ok(Math.abs(setupLayout.oab.top - setupLayout.oabUf.top) <= 1 && Math.abs(setupLayout.oab.height - setupLayout.oabUf.height) <= 1); assertions++;
-      assert.ok(setupLayout.oab.right < setupLayout.oabUf.left && setupLayout.oabUf.width >= 120); assertions++;
+      assert.ok(
+        setupLayout.oab.right < setupLayout.oabUf.left && setupLayout.oabUf.width >= 120,
+        `Campos OAB/UF desalinhados: ${JSON.stringify(setupLayout)}`
+      ); assertions++;
       assert.equal(setupLayout.monitoringVisible, true); assertions++;
       assert.equal(setupLayout.continueLabel, 'Continuar sem monitoramento'); assertions++;
       assert.equal(setupLayout.ufLabelAlignment, 'left'); assertions++;
@@ -246,7 +262,7 @@ try {
     await context.close();
     return names;
   })();
-  assert.deepEqual(fieldNames, ['code', 'confirmPassword', 'displayName', 'email', 'enableMonitoring', 'oab', 'oabUf', 'password', 'trustBrowser', 'username']);
+  assert.deepEqual(fieldNames, ['bootstrapToken', 'code', 'confirmPassword', 'displayName', 'email', 'enableMonitoring', 'oab', 'oabUf', 'password', 'trustBrowser', 'username', 'workspaceName']);
 
   const publicThemeControl = await (async () => {
     const context = await browser.newContext();

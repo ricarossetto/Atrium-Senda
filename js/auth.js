@@ -1,8 +1,14 @@
 (() => {
   'use strict';
 
-  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, registrationSetupToken: null, pendingUser: null, user: null, profileAvatarDraft: '', profileSnapshot: '' };
+  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, workspaceSetupToken: null, invitationSetupToken: null, invitationToken: null, invitationCompleted: false, pendingUser: null, user: null, workspace: null, workspaceRegistrationEnabled: true, bootstrapRequired: false, setupMfaRequired: false, profileAvatarDraft: '', profileSnapshot: '' };
   const byId = id => document.getElementById(id);
+  const resolveApiUrl = value => {
+    const url = String(value || '');
+    if (!url.startsWith('/api/')) return url;
+    const base = String(globalThis.ATRIUM_CONFIG?.apiBaseUrl || '').trim().replace(/\/$/, '');
+    return base ? `${base}${url}` : url;
+  };
 
   const Auth = {
     get authenticated() { return state.authenticated; },
@@ -14,15 +20,32 @@
       try {
         const status = await request('/api/auth/status');
         state.configured = status.configured;
-        if (status.tenant) {
-          state.tenant = status.tenant;
-          const eyebrow = document.querySelector('.auth-visual-copy .eyebrow');
-          if (eyebrow) eyebrow.textContent = `Escritório: ${status.tenant.name}`;
-          const authTabNewOffice = byId('authTabNewOffice');
-          if (authTabNewOffice) authTabNewOffice.style.display = 'none';
+        state.workspaceRegistrationEnabled = status.workspaceRegistrationEnabled !== false;
+        state.bootstrapRequired = Boolean(status.bootstrapRequired);
+        state.setupMfaRequired = Boolean(status.setupMfaRequired);
+        byId('authTabRegister')?.classList.toggle('hidden', !state.workspaceRegistrationEnabled);
+        byId('authBootstrapField')?.toggleAttribute('hidden', !state.bootstrapRequired);
+        if (byId('authBootstrapToken')) byId('authBootstrapToken').required = state.bootstrapRequired;
+        byId('skipMfaButton')?.classList.toggle('hidden', state.setupMfaRequired);
+        const inviteToken = new URLSearchParams(globalThis.location.search).get('invite')
+          || new URLSearchParams(globalThis.location.hash.replace(/^#/, '')).get('invite');
+        if (inviteToken) {
+          try {
+            const result = await request(`/api/auth/invitations/accept?token=${encodeURIComponent(inviteToken)}`);
+            state.invitationToken = inviteToken;
+            state.workspace = result.invitation.workspace;
+            byId('authInvitationWorkspace').textContent = result.invitation.workspace.name;
+            byId('authInvitationPerson').textContent = `${result.invitation.displayName} · ${result.invitation.email}`;
+            this.show('authInvitationForm');
+            byId('authInvitationForm').elements.username.focus();
+          } catch (error) {
+            this.show(status.configured ? 'authLoginForm' : 'authSetupForm');
+            this.feedback(error.message, 'error');
+          }
+          return;
         }
         if (status.authenticated) {
-          state.csrfToken = status.csrfToken; state.trustedDevice = Boolean(status.trustedDevice); state.user = status.user;
+          state.csrfToken = status.csrfToken; state.trustedDevice = Boolean(status.trustedDevice); state.user = status.user; state.workspace = status.workspace;
           this.enter(status.user);
         } else {
           this.show(status.configured ? 'authLoginForm' : 'authSetupForm');
@@ -77,6 +100,7 @@
       byId('authTotpSetupForm').addEventListener('submit', event => this.verifySetup(event));
       byId('authLoginForm').addEventListener('submit', event => this.login(event));
       byId('authRegisterForm')?.addEventListener('submit', event => this.register(event));
+      byId('authInvitationForm')?.addEventListener('submit', event => this.acceptInvitation(event));
       byId('authTabLogin')?.addEventListener('click', () => {
         byId('authTabLogin')?.classList.add('active');
         byId('authTabRegister')?.classList.remove('active');
@@ -85,43 +109,16 @@
         this.show('authLoginForm');
       });
       byId('authTabRegister')?.addEventListener('click', () => {
+        if (!state.workspaceRegistrationEnabled) return;
         byId('authTabRegister')?.classList.add('active');
         byId('authTabLogin')?.classList.remove('active');
         byId('authTabRegister')?.setAttribute('aria-selected', 'true');
         byId('authTabLogin')?.setAttribute('aria-selected', 'false');
         this.show('authRegisterForm');
       });
-      byId('authTabNewOffice')?.addEventListener('click', () => {
-        if (window.AtriumSaas?.renderSaasModal) {
-          window.AtriumSaas.renderSaasModal(document.body);
-        } else {
-          import('./features/saas-onboarding.js?v=2.2.1').then(module => {
-            const saas = module.createSaasOnboardingFeature();
-            window.AtriumSaas = saas;
-            saas.renderSaasModal(document.body);
-          }).catch(err => console.error('Erro ao carregar módulo SaaS:', err));
-        }
-      });
-      byId('authBackToLoginLink')?.addEventListener('click', (event) => {
-        event.preventDefault();
-        byId('authTabLogin')?.click();
-      });
-      byId('authForgotPassLink')?.addEventListener('click', (event) => {
-        event.preventDefault();
-        this.feedback('Para recuperar o acesso, utilize um de seus códigos de recuperação de uso único ou contate o administrador do seu escritório.', 'success');
-      });
       byId('skipMfaButton')?.addEventListener('click', async () => {
         this.feedback('');
         try {
-          if (state.registrationSetupToken) {
-            const result = await request('/api/auth/register/verify', { method: 'POST', body: { setupToken: state.registrationSetupToken, skipMfa: true } });
-            state.registrationSetupToken = null;
-            byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
-            byId('authTabLogin')?.classList.add('active'); byId('authTabRegister')?.classList.remove('active');
-            byId('authTabLogin')?.setAttribute('aria-selected', 'true'); byId('authTabRegister')?.setAttribute('aria-selected', 'false');
-            this.show('authLoginForm'); this.feedback(result.message, 'success');
-            return;
-          }
           if (state.setupToken) {
             const result = await request('/api/auth/setup/verify', { method: 'POST', body: { setupToken: state.setupToken, skipMfa: true } });
             state.authenticated = true; state.csrfToken = result.csrfToken; state.user = result.user;
@@ -134,7 +131,16 @@
         try { await navigator.clipboard.writeText(byId('authRecoveryCodes').textContent); this.feedback('Códigos copiados. Guarde-os fora deste computador.', 'success'); }
         catch { this.feedback('Não foi possível copiar automaticamente. Selecione e copie os códigos.', 'error'); }
       });
-      byId('finishRecovery').addEventListener('click', () => this.enter(state.pendingUser));
+      byId('finishRecovery').addEventListener('click', () => {
+        if (state.invitationCompleted) {
+          state.invitationCompleted = false;
+          this.show('authLoginForm');
+          this.feedback('Cadastro concluído. Entre com seu usuário, senha e código do autenticador.', 'success');
+          byId('authLoginForm').elements.username.focus();
+          return;
+        }
+        this.enter(state.pendingUser);
+      });
       byId('logoutButton').addEventListener('click', () => this.logout());
       byId('profileButton')?.addEventListener('click', () => this.openProfile());
       byId('profileSettingsClose')?.addEventListener('click', () => this.closeProfile());
@@ -153,18 +159,45 @@
       document.querySelectorAll('.auth-step').forEach(element => element.classList.toggle('active', element.id === id));
       const tabs = byId('authTabs');
       if (tabs) {
-        tabs.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
-      }
-      const footer = byId('authCardFooter');
-      if (footer) {
-        footer.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
-      }
-      const brand = document.querySelector('.auth-card-brand');
-      if (brand) {
-        brand.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
+        tabs.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authInvitationForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
       }
       byId('authGate').classList.remove('hidden'); byId('appShell').classList.add('hidden');
       state.authenticated = false;
+    },
+    async acceptInvitation(event) {
+      event.preventDefault();
+      this.feedback('');
+      const formElement = event.currentTarget;
+      const form = new FormData(formElement);
+      if (form.get('password') !== form.get('confirmPassword')) return this.feedback('As senhas não coincidem.', 'error');
+      this.busy(formElement, true);
+      try {
+        const result = await request('/api/auth/invitations/accept', {
+          method: 'POST',
+          body: {
+            inviteToken: state.invitationToken,
+            username: form.get('username'),
+            password: form.get('password')
+          }
+        });
+        state.invitationToken = null;
+        state.invitationSetupToken = result.setupToken;
+        byId('authQrCode').src = result.qrCode;
+        byId('authManualSecret').textContent = result.manualSecret;
+        formElement.reset();
+        const cleanUrl = new URL(globalThis.location.href);
+        cleanUrl.searchParams.delete('invite');
+        cleanUrl.hash = '';
+        globalThis.history.replaceState({}, '', cleanUrl);
+        this.show('authTotpSetupForm');
+        byId('skipMfaButton').hidden = true;
+        this.feedback('Convite aceito. Vincule o autenticador para concluir o cadastro.', 'success');
+        byId('authTotpSetupForm').elements.code.focus();
+      } catch (error) {
+        this.feedback(error.message, 'error');
+      } finally {
+        this.busy(formElement, false);
+      }
     },
     async register(event) {
       event.preventDefault(); this.feedback('');
@@ -175,22 +208,23 @@
       }
       this.busy(formElement, true);
       try {
-        const result = await request('/api/auth/register', {
+        const result = await request('/api/auth/workspaces/register', {
           method: 'POST',
           body: {
+            workspaceName: form.get('workspaceName'),
             displayName: form.get('displayName'),
             email: form.get('email'),
             username: form.get('username'),
-            oab: form.get('oab'),
             password: form.get('password')
           }
         });
-        state.registrationSetupToken = result.setupToken;
+        state.workspaceSetupToken = result.setupToken;
         byId('authQrCode').src = result.qrCode;
         byId('authManualSecret').textContent = result.manualSecret;
         formElement.reset();
         this.show('authTotpSetupForm');
-        this.feedback('Vincule o autenticador ou clique em "Configurar mais tarde" para prosseguir.', 'success');
+        byId('skipMfaButton').hidden = true;
+        this.feedback('Vincule o autenticador para proteger o novo escritório.', 'success');
         byId('authTotpSetupForm').elements.code.focus();
       } catch (error) {
         this.feedback(error.message, 'error');
@@ -213,12 +247,14 @@
       try {
         const result = await request('/api/auth/setup', { method: 'POST', body: {
           username: form.get('username'),
+          workspaceName: form.get('workspaceName'),
           displayName: form.get('displayName'),
           email: form.get('email'),
           oab: form.get('oab'),
           oabUf: form.get('oabUf'),
           enableMonitoring: monitor,
-          password: form.get('password')
+          password: form.get('password'),
+          bootstrapToken: form.get('bootstrapToken')
         } });
         state.setupToken = result.setupToken; byId('authQrCode').src = result.qrCode; byId('authManualSecret').textContent = result.manualSecret;
         formElement.reset(); this.show('authTotpSetupForm'); byId('authTotpSetupForm').elements.code.focus();
@@ -228,13 +264,29 @@
     async verifySetup(event) {
       event.preventDefault(); this.feedback(''); const formElement = event.currentTarget; const form = new FormData(formElement); this.busy(formElement, true);
       try {
-        if (state.registrationSetupToken) {
-          const result = await request('/api/auth/register/verify', { method: 'POST', body: { setupToken: state.registrationSetupToken, code: form.get('code') } });
-          state.registrationSetupToken = null;
+        if (state.invitationSetupToken) {
+          const result = await request('/api/auth/register/verify', { method: 'POST', body: { setupToken: state.invitationSetupToken, code: form.get('code') } });
+          state.invitationSetupToken = null;
+          state.invitationCompleted = true;
+          byId('authManualSecret').textContent = '';
+          byId('authQrCode').removeAttribute('src');
+          formElement.reset();
+          byId('authRecoveryCodes').textContent = (result.recoveryCodes || []).join('\n');
+          this.show('authRecoveryStep');
+          this.feedback('Proteção em duas etapas ativada. Guarde os códigos de recuperação.', 'success');
+          return;
+        }
+        if (state.workspaceSetupToken) {
+          const result = await request('/api/auth/workspaces/register/verify', { method: 'POST', body: { setupToken: state.workspaceSetupToken, code: form.get('code') } });
+          state.workspaceSetupToken = null;
+          state.authenticated = true; state.csrfToken = result.csrfToken; state.pendingUser = result.user; state.workspace = result.workspace;
           byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src'); formElement.reset();
-          byId('authTabLogin')?.classList.add('active'); byId('authTabRegister')?.classList.remove('active');
-          byId('authTabLogin')?.setAttribute('aria-selected', 'true'); byId('authTabRegister')?.setAttribute('aria-selected', 'false');
-          this.show('authLoginForm'); this.feedback(result.message, 'success');
+          if (result.recoveryCodes?.length) {
+            byId('authRecoveryCodes').textContent = result.recoveryCodes.join('\n');
+            this.show('authRecoveryStep');
+          } else {
+            this.enter(result.user);
+          }
           return;
         }
         const result = await request('/api/auth/setup/verify', { method: 'POST', body: { setupToken: state.setupToken, code: form.get('code') } });
@@ -381,7 +433,7 @@
       const method = String(options.method || 'GET').toUpperCase();
       const headers = new Headers(options.headers || {});
       if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && state.csrfToken) headers.set('X-CSRF-Token', state.csrfToken);
-      const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
+      const response = await fetch(resolveApiUrl(url), { ...options, headers, credentials: 'include' });
       if (response.status === 401) { state.authenticated = false; state.csrfToken = null; this.show('authLoginForm'); }
       return response;
     },
@@ -394,7 +446,7 @@
   };
 
   async function request(url, { method = 'GET', body } = {}) {
-    const response = await fetch(url, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    const response = await fetch(resolveApiUrl(url), { method, credentials: 'include', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.message || 'Operação não concluída.');
     return payload;

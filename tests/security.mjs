@@ -36,7 +36,7 @@ try {
   const cookie = response.headers.get('set-cookie').split(';')[0]; const csrf = verified.csrfToken; const recovery = verified.recoveryCodes[0];
 
   const collaboratorPassword = 'Colaborador-2026!';
-  response = await postJson(`${server.baseUrl}/api/auth/register`, { username: 'colaborador', displayName: 'Pessoa Colaboradora', email: 'colaborador@example.test', password: collaboratorPassword });
+  response = await postJson(`${server.baseUrl}/api/auth/register`, { username: 'colaborador', displayName: 'Pessoa Colaboradora', email: 'colaborador@example.test', password: collaboratorPassword }, { Cookie: cookie, 'X-CSRF-Token': csrf });
   const registration = await response.json();
   assert(response.ok && registration.setupToken && registration.manualSecret && registration.qrCode.startsWith('data:image/png'), 'Cadastro de colaborador não exigiu configuração TOTP.');
   response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'colaborador', password: collaboratorPassword, code: generateTotp(registration.manualSecret) });
@@ -140,6 +140,7 @@ try {
   response = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'admin', password, code: generateTotp(payload.manualSecret), trustBrowser: true });
   const trustedLogin = await response.json();
   const trustedCookies = response.headers.getSetCookie();
+  const trustedSessionCookie = trustedCookies.map(value => value.split(';')[0]).find(value => value.startsWith('keller_session='));
   const trustedCookie = trustedCookies.map(value => value.split(';')[0]).find(value => value.startsWith('keller_trusted='));
   assert(response.ok && trustedLogin.trustedDevice && trustedCookie, 'A opção de confiar no navegador não criou um dispositivo confiável.');
   response = await fetch(`${server.baseUrl}/api/auth/status`, { headers: { Cookie: trustedCookie } });
@@ -152,7 +153,7 @@ try {
 
   // Teste de MFA Opcional: usuário registrado com skipMfa consegue logar apenas com senha
   const optionalUserPwd = 'Advogado-SemMfa-2026!';
-  response = await postJson(`${server.baseUrl}/api/auth/register`, { username: 'adv_sem_mfa', displayName: 'Advogado Sem MFA', email: 'semmfa@example.test', password: optionalUserPwd });
+  response = await postJson(`${server.baseUrl}/api/auth/register`, { username: 'adv_sem_mfa', displayName: 'Advogado Sem MFA', email: 'semmfa@example.test', password: optionalUserPwd }, { Cookie: trustedSessionCookie, 'X-CSRF-Token': trustedLogin.csrfToken });
   const optReg = await response.json();
   response = await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: optReg.setupToken, skipMfa: true });
   assert(response.ok && (await response.json()).status === 'pending_approval', 'Registro sem MFA falhou na verificação.');

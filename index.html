@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0c0c0b">
   <meta name="description" content="Atrium: Plataforma Open-Source de Gestão Jurídica Inteligente. Centralização segura, Kanban jurídico, gestão de prazos, triagem inteligente de intimações e IA assistencial.">
   <title>Atrium — Plataforma de Gestão Jurídica Inteligente</title>
-  <link rel="icon" href="assets/icons/favicon.svg?v=2.2.0" type="image/svg+xml">
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
   <script src="js/views/ui-v2/preference-init.js"></script>
-  <link rel="stylesheet" href="css/portal.css?v=2.2.0">
+  <link rel="stylesheet" href="css/portal.css?v=2.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/tokens.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/primitives.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/motion.css?v=1.0.0">
@@ -30,11 +30,10 @@
   <link rel="stylesheet" href="css/views/ui-v2/importer.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/audit.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/links.css?v=1.0.0">
-  <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=2.2.1">
+  <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=1.0.0">
   <link rel="stylesheet" href="css/views/ui-v2/icons.css?v=1.0.0">
-  <link rel="stylesheet" href="css/views/ui-v2/saas.css?v=2.2.1">
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -61,16 +60,17 @@
         <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle data-theme-silent="true" aria-label="Tema claro ativo. Alternar para tema escuro">
           <span data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
         </button>
-
         <div id="authLoading" class="auth-step active"><span class="auth-spinner"></span><h2>Verificando proteção…</h2><p>Validando a configuração de segurança.</p></div>
 
         <form id="authSetupForm" class="auth-step">
           <div id="authIdentityStep"><p class="eyebrow">Primeiro acesso</p><h2>Crie seu acesso mestre</h2>
           <p>Sua senha é privada e protegida com criptografia no dispositivo. Use uma frase forte e exclusiva.</p>
           <div class="auth-setup-grid">
+            <label>Nome do escritório<input name="workspaceName" autocomplete="organization" placeholder="Nome do escritório" required maxlength="120"></label>
             <label>Nome de exibição<input name="displayName" autocomplete="name" placeholder="Dr(a). Advogado(a) Titular" required maxlength="100"></label>
             <label>E-mail profissional<input name="email" type="email" autocomplete="email" placeholder="advogado@escritorio.adv.br" required maxlength="160"></label>
             <label>Usuário de acesso<input name="username" autocomplete="username" placeholder="admin" required pattern="[a-zA-Z0-9._\x2d]{3,64}" maxlength="64"></label>
+            <label id="authBootstrapField" hidden>Token de ativação<input id="authBootstrapToken" name="bootstrapToken" type="password" autocomplete="off" maxlength="256" placeholder="Fornecido pelo responsável da instalação"></label>
 
             <label>Senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
             <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
@@ -119,50 +119,46 @@
           <button class="button gold auth-submit" id="finishRecovery" type="button">Já guardei — entrar no Atrium</button>
         </div>
 
+        <form id="authInvitationForm" class="auth-step">
+          <p class="eyebrow">Convite de equipe</p><h2>Entre no escritório</h2>
+          <p id="authInvitationSummary">Confirme seus dados e crie suas credenciais pessoais.</p>
+          <div class="auth-invitation-identity">
+            <strong id="authInvitationWorkspace"></strong>
+            <span id="authInvitationPerson"></span>
+          </div>
+          <label>Seu usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._\x2d]{3,64}" maxlength="64" placeholder="nome.sobrenome"></label>
+          <label>Crie uma senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+          <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+          <small class="auth-hint">O convite funciona uma única vez. Depois, você ativará a proteção em duas etapas.</small>
+          <button class="button gold auth-submit" type="submit">Criar meu acesso</button>
+        </form>
+
         <div class="auth-tabs" id="authTabs" role="tablist" aria-label="Escolher forma de acesso">
           <button type="button" class="auth-tab active" id="authTabLogin" role="tab" aria-selected="true" aria-controls="authLoginForm">Entrar na Conta</button>
-          <button type="button" class="auth-tab" id="authTabRegister" role="tab" aria-selected="false" aria-controls="authRegisterForm">Criar conta</button>
+          <button type="button" class="auth-tab" id="authTabRegister" role="tab" aria-selected="false" aria-controls="authRegisterForm">Criar escritório</button>
         </div>
 
         <form id="authRegisterForm" class="auth-step">
-          <p class="eyebrow">Novo Membro / Cadastro</p><h2>Criar Acesso ao Atrium</h2>
-          <p>Cadastre seus dados e solicite a liberação do seu acesso ao administrador.</p>
+          <p class="eyebrow">Novo escritório</p><h2>Criar seu espaço no ATRIUM</h2>
+          <p>Crie um ambiente separado para o seu escritório. Os dados e usuários ficarão isolados dos demais escritórios.</p>
+          <label>Nome do escritório<input name="workspaceName" autocomplete="organization" required placeholder="Nome do escritório" maxlength="120"></label>
           <label>Nome completo<input name="displayName" autocomplete="name" required placeholder="Dr(a). Nome Sobrenome" maxlength="100"></label>
           <label>E-mail de contato<input name="email" type="email" autocomplete="email" required placeholder="advogado@escritorio.adv.br" maxlength="100"></label>
           <label>Usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._\x2d]{3,64}" placeholder="nome.sobrenome" maxlength="64"></label>
-          <label>OAB / Cargo (opcional)<input name="oab" placeholder="OAB/UF 000000" maxlength="40"></label>
           <label>Senha de acesso<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
-          <button class="button gold auth-submit" type="submit">Criar conta e solicitar acesso</button>
-          <div class="auth-register-footer">
-            <span>Já possui conta no Atrium?</span>
-            <button type="button" class="auth-link-action" id="authBackToLoginLink" style="background:none; border:none; padding:4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Entrar na conta</button>
-          </div>
+          <button class="button gold auth-submit" type="submit">Criar escritório</button>
         </form>
 
         <form id="authLoginForm" class="auth-step">
-          <div class="auth-step-head">
-            <p class="eyebrow">Acesso restrito</p>
-            <h2>Entrar no Atrium</h2>
-            <p>Informe seu usuário e senha de acesso.</p>
-          </div>
-          <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="Digite seu usuário ou e-mail"></label>
-          <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Digite sua senha"></label>
-          <label class="auth-field-code">Código do autenticador ou recuperação (se ativado)<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000 (opcional se 2FA inativo)"></label>
-          <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>O segundo fator não será exigido neste dispositivo durante este período.</small></span></label>
+          <p class="eyebrow">Acesso restrito</p><h2>Entrar no Atrium</h2>
+          <p>Informe seu usuário e senha de acesso.</p>
+          <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="admin ou seu.usuario"></label>
+          <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
+          <label>Código do autenticador ou recuperação (se a proteção em 2 etapas estiver ativada)<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000 (opcional se 2FA inativo)"></label>
+          <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>O segundo fator não será exigido novamente neste dispositivo durante este período.</small></span></label>
           <button class="button gold auth-submit" type="submit">Entrar no Atrium</button>
-          <div class="auth-forgot-wrap" style="text-align:center; margin:12px 0 4px;">
-            <button type="button" class="auth-forgot-password-link" id="authForgotPassLink" style="background:none; border:none; padding:4px 0; font-family:inherit; font-size:12px; cursor:pointer; text-decoration:underline;">Esqueceu sua senha?</button>
-          </div>
         </form>
-
-        <div class="auth-card-footer" id="authCardFooter">
-          <div class="auth-footer-prompt">
-            <span>Ainda não tem conta no Atrium?</span>
-            <button type="button" class="auth-link-action" id="authTabNewOffice" style="background:none; border:none; padding:4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Cadastre seu escritório</button>
-          </div>
-          <p class="auth-footer-legal">Ao entrar você concorda com os Termos de Uso e a Política de Privacidade do Atrium.</p>
-        </div>
 
         <div id="authFeedback" class="auth-feedback hidden" role="alert"></div>
         <p class="auth-local-note">Proteção ativa: dados e chaves criptografadas permanecem sob controle do seu ambiente.</p>
@@ -1886,26 +1882,6 @@
               <div id="chkStep-fingerprint"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>mTLS Fingerprint:</span> <strong>·</strong></div>
             </div>
 
-            <div class="a1-sweep-card" style="margin-top: 12px; padding: 12px; background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 6px;">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 220px;">
-                  <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                    <span class="status-chip connected" style="font-size: 11px;">Inteligência A1</span>
-                    <strong style="color: var(--ivory); font-size: 13.5px;">Varredura de Segredos de Justiça e Clientes</strong>
-                  </div>
-                  <p style="margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4;">
-                    Desvenda processos em Segredo de Justiça no eproc TJRS via Certificado A1 + 2FA, vincula clientes não identificados e preenche juízo, comarca e classe faltantes.
-                  </p>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <button class="button gold" id="btnRunA1Sweep" type="button" style="white-space: nowrap; font-size: 12px; padding: 6px 14px;">
-                    <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-search"></use></svg>
-                    Executar Varredura A1
-                  </button>
-                </div>
-              </div>
-              <div id="a1SweepStatus" class="hidden" style="margin-top: 10px; font-size: 12px; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);" role="status" aria-live="polite"></div>
-            </div>
           </div>
 
           <form id="certificateSetupForm" class="setup-form-row">
@@ -2404,7 +2380,7 @@
             <input id="finFeePctInput" name="feePercentage" type="number" step="0.5" min="0" max="100" placeholder="Ex: 30" value="30" style="padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel-soft); color:var(--ivory);">
           </label>
           </div>
-          <div class="financial-entry-section is-preview" role="group" aria-labelledby="finSectionPreview" style="display:contents;">
+            <div class="financial-entry-section is-preview" role="group" aria-labelledby="finSectionPreview" style="display:contents;">
           <h4 id="finSectionPreview" class="v2-only">Preview <span>Não persistido</span></h4>
           <div class="financial-entry-summary" aria-live="polite">
             <div><small style="color:var(--muted); font-size:10px; text-transform:uppercase;">Valor Bruto</small><strong id="finSumGross" style="display:block; color:var(--ivory); font-size:15px; margin-top:2px;">R$ 0,00</strong></div>
@@ -2686,7 +2662,8 @@
   <script src="js/prompts-data.js?v=2.0.0" defer></script>
   <script src="js/skills-data.js?v=2.0.0" defer></script>
   <script src="js/office-data.js?v=2.0.0" defer></script>
-  <script src="js/auth.js?v=2.2.1" defer></script>
+  <script src="js/runtime-config.js?v=2.2.0" defer></script>
+  <script src="js/auth.js?v=2.2.0" defer></script>
   <script type="module" src="js/app/bootstrap.js?v=2.0.0"></script>
 </body>
 </html>

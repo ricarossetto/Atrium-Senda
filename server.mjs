@@ -1,12 +1,13 @@
 import http from 'node:http';
 import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm, readdir, copyFile, chmod } from 'node:fs/promises';
 import { existsSync, constants as fsConstants } from 'node:fs';
-import { randomBytes, timingSafeEqual, createHash, X509Certificate } from 'node:crypto';
-import { spawn, execFileSync } from 'node:child_process';
+import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { SecurityManager, verifyTotp } from './lib/security.mjs';
 import { buildRelevantOfficeContext, buildSelectedAssistantContextMessage, resolveSelectedAssistantContext } from './lib/ai-context.mjs';
 import { applyClientReconciliation, isKnownClientName, normalizeProcessNumber } from './js/core/client-reconciliation.js';
@@ -36,6 +37,7 @@ import { refreshMonitoredTjrsProcesses } from './lib/judicial/tjrs-monitoring.mj
 import { createTjrsSidecarHttpHandler } from './lib/http/tjrs-sidecar-routes.mjs';
 import { downloadProcessWithA1, sweepAndEnrichProcessesWithA1 } from './lib/judicial/eproc-a1-downloader.mjs';
 import { OmniStorage } from './lib/judicial/omni/storage.mjs';
+import { TjrsAdapter } from './lib/judicial/omni/adapters/tjrs-adapter.mjs';
 import { OmniCollectorHub } from './lib/judicial/omni/hub.mjs';
 import { createOmniHttpHandler } from './lib/judicial/omni/http-routes.mjs';
 import { applyPublicationWorkAction } from './lib/publications/publication-workflow.mjs';
@@ -57,8 +59,6 @@ import {
   FutureSchemaError,
   CorruptedStateError
 } from './lib/state-migrations.mjs';
-import { TenantManager } from './lib/tenant/tenant-manager.mjs';
-import { TenantContextRegistry } from './lib/tenant/tenant-context.mjs';
 import ExcelJS from 'exceljs';
 import * as xlsxModule from 'xlsx';
 const XLSX = xlsxModule.default || xlsxModule;
@@ -67,7 +67,8 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const ENV_FILE = path.join(ROOT, '.env');
 const COLLECTOR_ENV_FILE = path.join(ROOT, '.env.collector');
 await loadEnv(ENV_FILE);
-await ensureLocalSecrets(ENV_FILE);
+const CLOUD_MODE = envFlag(process.env.JURISFLOW_CLOUD_MODE || process.env.KELLER_CLOUD_MODE);
+await ensureRuntimeSecrets(ENV_FILE, { cloudMode: CLOUD_MODE });
 if (String(process.env.KELLER_SKIP_COLLECTOR_ENV).toLowerCase() !== 'true') await loadEnv(COLLECTOR_ENV_FILE);
 
 let APP_VERSION = '2.1.1';
@@ -85,18 +86,10 @@ try {
 }
 
 const DATA_DIR = path.resolve(process.env.JURISFLOW_DATA_DIR || process.env.KELLER_DATA_DIR || path.join(ROOT, 'data'));
-const RUNTIME_FILE = path.join(DATA_DIR, 'runtime.json');
-const APP_STATE_FILE = path.join(DATA_DIR, 'app-state.json');
-const INTEGRATIONS_FILE = path.join(DATA_DIR, 'judicial-integrations.json');
-const PORTAL_PREFERENCES_FILE = path.join(DATA_DIR, 'judicial-portal-preferences.json');
-const AI_SECRETS_FILE = path.join(DATA_DIR, 'ai-secrets.json');
-const FEEDBACK_FILE = path.join(DATA_DIR, 'feedback', 'beta-feedback.json');
-const MIGRATIONS_DIR = path.join(DATA_DIR, 'migrations', 'pre-migration');
-const RECOVERY_DIR = path.join(DATA_DIR, 'recovery');
 const DEFAULT_PORTALS_FILE = existsSync(path.join(ROOT, 'collector', 'portals.json')) ? path.join(ROOT, 'collector', 'portals.json') : path.join(ROOT, 'collector', 'portals.example.json');
 const PORTALS_FILE = path.resolve(process.env.JURISFLOW_PORTALS_FILE || process.env.KELLER_PORTALS_FILE || DEFAULT_PORTALS_FILE);
 const COLLECTOR_AGENT_FILE = path.join(ROOT, 'collector', 'agent.mjs');
-const CLOUD_MODE = ['true', '1', 'yes'].includes(String(process.env.JURISFLOW_CLOUD_MODE || process.env.KELLER_CLOUD_MODE || '').toLowerCase());
+const PUBLIC_WORKSPACE_REGISTRATION = !CLOUD_MODE || envFlag(process.env.ATRIUM_PUBLIC_SIGNUP);
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || '127.0.0.1';
 const SERVER_STARTED_AT = new Date().toISOString();
@@ -107,27 +100,113 @@ const security = new SecurityManager({
   dataDirectory: DATA_DIR,
   sessionSecret: process.env.AUTH_SESSION_SECRET,
   encryptionKey: process.env.AUTH_ENCRYPTION_KEY,
-  secureCookies: String(process.env.COOKIE_SECURE).toLowerCase() === 'true'
+  secureCookies: envFlag(process.env.COOKIE_SECURE),
+  allowWorkspaceRegistration: PUBLIC_WORKSPACE_REGISTRATION,
+  bootstrapRequired: Boolean(process.env.SETUP_BOOTSTRAP_TOKEN),
+  requireMfaForSetup: CLOUD_MODE
 });
 await security.init();
+const workspaceRequestContext = new AsyncLocalStorage();
+
+function currentWorkspaceId() {
+  return workspaceRequestContext.getStore()?.workspaceId || security.state.defaultWorkspaceId;
+}
+
+function workspaceDataDirectory(workspaceId = currentWorkspaceId()) {
+  const id = String(workspaceId || '').trim();
+  if (!/^ws-(?:default|[0-9a-f]{8}-[0-9a-f-]{27,})$/i.test(id)) {
+    throw Object.assign(new Error('Identificador de escritório inválido.'), { statusCode: 400 });
+  }
+  if (id === security.state.defaultWorkspaceId) return DATA_DIR;
+  const target = path.resolve(DATA_DIR, 'workspaces', id);
+  const boundary = `${path.resolve(DATA_DIR, 'workspaces')}${path.sep}`;
+  if (!target.startsWith(boundary)) throw Object.assign(new Error('Diretório de escritório inválido.'), { statusCode: 400 });
+  return target;
+}
+
+function appStateFile() { return path.join(workspaceDataDirectory(), 'app-state.json'); }
+function runtimeFile() { return path.join(workspaceDataDirectory(), 'runtime.json'); }
+function migrationsDirectory() { return path.join(workspaceDataDirectory(), 'migrations', 'pre-migration'); }
+function recoveryDirectory() { return path.join(workspaceDataDirectory(), 'recovery'); }
+function aiSecretsFile() { return path.join(workspaceDataDirectory(), 'ai-secrets.json'); }
+function feedbackFile() { return path.join(workspaceDataDirectory(), 'feedback', 'beta-feedback.json'); }
+function integrationsFile() { return path.join(workspaceDataDirectory(), 'judicial-integrations.json'); }
+function portalPreferencesFile() { return path.join(workspaceDataDirectory(), 'judicial-portal-preferences.json'); }
 
 const defaultPortalsList = existsSync(PORTALS_FILE) ? JSON.parse(await readFile(PORTALS_FILE, 'utf8')).portals || [] : [];
-const judicialOrchestrator = new JudicialOrchestrator({
-  dataDirectory: DATA_DIR,
-  securityManager: security,
-  portalsConfig: defaultPortalsList
+const judicialOrchestratorInstances = new Map();
+async function judicialOrchestratorForCurrentWorkspace() {
+  const workspaceId = currentWorkspaceId();
+  if (!judicialOrchestratorInstances.has(workspaceId)) {
+    judicialOrchestratorInstances.set(workspaceId, (async () => {
+      const instance = new JudicialOrchestrator({
+        dataDirectory: workspaceDataDirectory(workspaceId),
+        securityManager: security,
+        portalsConfig: defaultPortalsList
+      });
+      await instance.init();
+      instance.setPortals((await readPortalConfiguration()).portals);
+      return instance;
+    })());
+  }
+  return judicialOrchestratorInstances.get(workspaceId);
+}
+const workspaceCredentialManager = new Proxy({}, {
+  get(_target, property) {
+    return async (...args) => {
+      const instance = await judicialOrchestratorForCurrentWorkspace();
+      return instance.credentialManager[property](...args);
+    };
+  }
 });
-await judicialOrchestrator.init();
 
-const emailService = new EmailService({
-  dataDirectory: DATA_DIR,
-  securityManager: security
+const emailServiceInstances = new Map();
+async function emailServiceForCurrentWorkspace() {
+  const workspaceId = currentWorkspaceId();
+  if (!emailServiceInstances.has(workspaceId)) {
+    emailServiceInstances.set(workspaceId, (async () => {
+      const instance = new EmailService({ dataDirectory: workspaceDataDirectory(workspaceId), securityManager: security });
+      await instance.init();
+      return instance;
+    })());
+  }
+  return emailServiceInstances.get(workspaceId);
+}
+const emailService = new Proxy({}, {
+  get(_target, property) {
+    if (property === 'init') return async () => emailServiceForCurrentWorkspace();
+    return async (...args) => {
+      const instance = await emailServiceForCurrentWorkspace();
+      return instance[property](...args);
+    };
+  }
 });
 await emailService.init();
 
-const documentStorage = assertDocumentStorageProvider(
-  new EncryptedLocalDocumentStorageProvider({ dataDirectory: DATA_DIR, securityManager: security })
-);
+const documentStorageInstances = new Map();
+async function documentStorageForCurrentWorkspace() {
+  const workspaceId = currentWorkspaceId();
+  if (!documentStorageInstances.has(workspaceId)) {
+    documentStorageInstances.set(workspaceId, (async () => {
+      const instance = assertDocumentStorageProvider(new EncryptedLocalDocumentStorageProvider({
+        dataDirectory: workspaceDataDirectory(workspaceId),
+        securityManager: security
+      }));
+      await instance.init();
+      return instance;
+    })());
+  }
+  return documentStorageInstances.get(workspaceId);
+}
+const documentStorage = assertDocumentStorageProvider(new Proxy({}, {
+  get(_target, property) {
+    if (property === 'init') return async () => documentStorageForCurrentWorkspace();
+    return async (...args) => {
+      const instance = await documentStorageForCurrentWorkspace();
+      return instance[property](...args);
+    };
+  }
+}));
 await documentStorage.init();
 const documentIntelligence = new DocumentIntelligenceService();
 const registryService = new RegistryService();
@@ -140,35 +219,29 @@ const handleTjrsSidecarRequest = createTjrsSidecarHttpHandler({
   readStateEnvelope: readAppStateEnvelope,
   saveState: saveAppStateDirect,
   documentStorage,
-  credentialManager: judicialOrchestrator.credentialManager,
+  credentialManager: workspaceCredentialManager,
   json
 });
-const omniStorage = new OmniStorage({ dataDirectory: DATA_DIR, securityManager: security });
-await omniStorage.init();
-const omniHub = new OmniCollectorHub({ storage: omniStorage });
+const omniServiceInstances = new Map();
+async function omniServicesForCurrentWorkspace() {
+  const workspaceId = currentWorkspaceId();
+  if (!omniServiceInstances.has(workspaceId)) {
+    omniServiceInstances.set(workspaceId, (async () => {
+      const storage = new OmniStorage({ dataDirectory: workspaceDataDirectory(workspaceId), securityManager: security });
+      await storage.init();
+      return { storage, hub: new OmniCollectorHub({ storage, adapters: { tjrs: new TjrsAdapter({ allowSidecar: !CLOUD_MODE && workspaceId === security.state.defaultWorkspaceId }) } }) };
+    })());
+  }
+  return omniServiceInstances.get(workspaceId);
+}
+await omniServicesForCurrentWorkspace();
 const handleOmniRequest = createOmniHttpHandler({
-  hub: omniHub,
-  storage: omniStorage,
+  resolveServices: omniServicesForCurrentWorkspace,
   assertAuthenticated,
   readJson,
   readStateEnvelope: readAppStateEnvelope,
   saveState: saveAppStateDirect,
   json
-});
-const tenantManager = new TenantManager({
-  dataDirectory: DATA_DIR,
-  sessionSecret: process.env.AUTH_SESSION_SECRET,
-  encryptionKey: process.env.AUTH_ENCRYPTION_KEY,
-  secureCookies: String(process.env.COOKIE_SECURE).toLowerCase() === 'true',
-  baseDomain: process.env.BASE_DOMAIN || 'atrium.adv.br'
-});
-await tenantManager.init();
-
-const tenantContextRegistry = new TenantContextRegistry(tenantManager, {
-  sessionSecret: process.env.AUTH_SESSION_SECRET,
-  encryptionKey: process.env.AUTH_ENCRYPTION_KEY,
-  secureCookies: String(process.env.COOKIE_SECURE).toLowerCase() === 'true',
-  portalsConfig: defaultPortalsList
 });
 let defaultSearchPrompts = [];
 try {
@@ -176,16 +249,23 @@ try {
 } catch (error) {
   console.warn(`[ATRIUM Busca]: catálogo padrão indisponível para indexação derivada (${error.message}).`);
 }
-const searchIndex = new SearchIndex({
-  defaultPrompts: defaultSearchPrompts,
-  loadOcrText: async checksum => (await documentStorage.get(checksum)).toString('utf8')
-});
+const workspaceSearchIndexes = new Map();
+function currentSearchIndex() {
+  const key = workspaceDataDirectory();
+  if (!workspaceSearchIndexes.has(key)) {
+    workspaceSearchIndexes.set(key, new SearchIndex({
+      defaultPrompts: defaultSearchPrompts,
+      loadOcrText: async checksum => (await documentStorage.get(checksum)).toString('utf8')
+    }));
+  }
+  return workspaceSearchIndexes.get(key);
+}
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp', '.ttf': 'font/ttf'
 };
-const publicFiles = new Set(['index.html', 'css/portal.css', 'js/jsqr.js', 'js/auth.js', 'js/portal.js', 'js/prompts-data.js', 'js/skills-data.js', 'js/office-data.js']);
+const publicFiles = new Set(['index.html', 'css/portal.css', 'js/jsqr.js', 'js/runtime-config.js', 'js/auth.js', 'js/portal.js', 'js/prompts-data.js', 'js/skills-data.js', 'js/office-data.js']);
 const publicDirectories = ['assets/images/', 'assets/fonts/', 'assets/team/', 'assets/icons/'];
 const publicFrontendDirectories = [
   { prefix: 'js/app/', extensions: new Set(['.js']) },
@@ -204,21 +284,40 @@ let interactiveCollector = null;
 let interactiveCollectorState = { status: 'idle', portalIds: [], startedAt: null, completedAt: null, exitCode: null, lastMessage: '', lastError: '' };
 let managedCollector = null;
 let managedCollectorRun = null;
-let appStateMutationTail = Promise.resolve();
-let runtimeMutationTail = Promise.resolve();
-let runtimeStateStatus = 'EMPTY';
-let runtimeRecoveryDetails = null;
-let lastRuntimeUpdate = null;
+const appStateMutationTails = new Map();
+const runtimeMutationTails = new Map();
+const workspaceRuntimeHealth = new Map();
+const workspaceStateHealth = new Map();
+
+function runtimeHealth(workspaceId = currentWorkspaceId()) {
+  const key = workspaceDataDirectory(workspaceId);
+  if (!workspaceRuntimeHealth.has(key)) {
+    workspaceRuntimeHealth.set(key, { status: 'EMPTY', recoveryDetails: null, lastUpdate: null });
+  }
+  return workspaceRuntimeHealth.get(key);
+}
+
+function stateHealth(workspaceId = currentWorkspaceId()) {
+  const key = workspaceDataDirectory(workspaceId);
+  if (!workspaceStateHealth.has(key)) {
+    workspaceStateHealth.set(key, { status: 'INITIALIZING', recoveryDetails: null, lastMigrationAt: null });
+  }
+  return workspaceStateHealth.get(key);
+}
 
 function enqueueAppStateMutation(operation) {
-  const queued = appStateMutationTail.then(operation, operation);
-  appStateMutationTail = queued.catch(() => {});
+  const workspaceId = workspaceDataDirectory();
+  const previous = appStateMutationTails.get(workspaceId) || Promise.resolve();
+  const queued = previous.then(operation, operation);
+  appStateMutationTails.set(workspaceId, queued.catch(() => {}));
   return queued;
 }
 
 function enqueueRuntimeMutation(operation) {
-  const queued = runtimeMutationTail.then(operation, operation);
-  runtimeMutationTail = queued.catch(() => {});
+  const workspaceId = workspaceDataDirectory();
+  const previous = runtimeMutationTails.get(workspaceId) || Promise.resolve();
+  const queued = previous.then(operation, operation);
+  runtimeMutationTails.set(workspaceId, queued.catch(() => {}));
   return queued;
 }
 
@@ -239,7 +338,25 @@ async function loadEnv(file) {
   for (const [key, value] of Object.entries(parsed)) if (!(key in process.env)) process.env[key] = value;
 }
 
-async function ensureLocalSecrets(file) {
+function envFlag(value) {
+  return /^(?:true|1|yes|on)$/i.test(String(value || '').trim());
+}
+
+function assertCloudConfiguration() {
+  const required = ['AUTH_SESSION_SECRET', 'AUTH_ENCRYPTION_KEY', 'SETUP_BOOTSTRAP_TOKEN', 'ATRIUM_FRONTEND_ORIGINS'];
+  const missing = required.filter(key => {
+    const value = String(process.env[key] || '').trim();
+    return !value || /troque|gerad|exemplo|change|replace/i.test(value);
+  });
+  if (!envFlag(process.env.COOKIE_SECURE)) missing.push('COOKIE_SECURE=true');
+  if (missing.length) throw new Error(`Configuração cloud incompleta. Defina explicitamente: ${missing.join(', ')}.`);
+}
+
+async function ensureRuntimeSecrets(file, { cloudMode = false } = {}) {
+  if (cloudMode) {
+    assertCloudConfiguration();
+    return;
+  }
   const generated = [];
   const specs = [
     ['AUTH_SESSION_SECRET', () => randomBytes(48).toString('base64url')],
@@ -279,7 +396,7 @@ function runtimeRecoveryFileLabel(filename) {
 
 async function latestRuntimeRecoveryDetails() {
   try {
-    const names = (await readdir(RECOVERY_DIR))
+    const names = (await readdir(recoveryDirectory()))
       .filter(name => /^runtime-corrupt-.*\.json$/.test(name))
       .sort();
     const filename = names.at(-1);
@@ -296,52 +413,52 @@ async function latestRuntimeRecoveryDetails() {
 }
 
 async function quarantineCorruptRuntime(reason) {
-  await mkdir(RECOVERY_DIR, { recursive: true });
+  await mkdir(recoveryDirectory(), { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   let filename;
   let targetPath;
   do {
     filename = `runtime-corrupt-${timestamp}-${randomBytes(4).toString('hex')}.json`;
-    targetPath = path.join(RECOVERY_DIR, filename);
+    targetPath = path.join(recoveryDirectory(), filename);
   } while (existsSync(targetPath));
 
   try {
-    await rename(RUNTIME_FILE, targetPath);
+    await rename(runtimeFile(), targetPath);
   } catch (renameError) {
-    if (!existsSync(RUNTIME_FILE)) throw renameError;
-    await copyFile(RUNTIME_FILE, targetPath, fsConstants.COPYFILE_EXCL);
+    if (!existsSync(runtimeFile())) throw renameError;
+    await copyFile(runtimeFile(), targetPath, fsConstants.COPYFILE_EXCL);
     await chmod(targetPath, 0o600);
-    await unlink(RUNTIME_FILE);
+    await unlink(runtimeFile());
   }
   await chmod(targetPath, 0o600);
 
-  runtimeStateStatus = 'QUARANTINED';
-  runtimeRecoveryDetails = {
+  runtimeHealth().status = 'QUARANTINED';
+  runtimeHealth().recoveryDetails = {
     reason,
     recoveryFile: runtimeRecoveryFileLabel(filename),
     at: new Date().toISOString()
   };
-  lastRuntimeUpdate = null;
-  return runtimeRecoveryDetails;
+  runtimeHealth().lastUpdate = null;
+  return runtimeHealth().recoveryDetails;
 }
 
 async function readRuntimeUnlocked() {
   let rawText;
   try {
-    rawText = await readFile(RUNTIME_FILE, 'utf8');
+    rawText = await readFile(runtimeFile(), 'utf8');
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
-    if (runtimeStateStatus !== 'QUARANTINED') {
+    if (runtimeHealth().status !== 'QUARANTINED') {
       const previousRecovery = await latestRuntimeRecoveryDetails();
       if (previousRecovery) {
-        runtimeStateStatus = 'QUARANTINED';
-        runtimeRecoveryDetails = previousRecovery;
+        runtimeHealth().status = 'QUARANTINED';
+        runtimeHealth().recoveryDetails = previousRecovery;
       } else {
-        runtimeStateStatus = 'EMPTY';
-        runtimeRecoveryDetails = null;
+        runtimeHealth().status = 'EMPTY';
+        runtimeHealth().recoveryDetails = null;
       }
     }
-    lastRuntimeUpdate = null;
+    runtimeHealth().lastUpdate = null;
     return emptyRuntime();
   }
 
@@ -363,9 +480,9 @@ async function readRuntimeUnlocked() {
         throw invalidRuntime('RUNTIME_DECRYPTION_FAILED');
       }
       const runtime = normalizeRuntimePayload(decrypted);
-      runtimeStateStatus = 'READY';
-      runtimeRecoveryDetails = null;
-      lastRuntimeUpdate = stored.updatedAt || runtime.updatedAt || null;
+      runtimeHealth().status = 'READY';
+      runtimeHealth().recoveryDetails = null;
+      runtimeHealth().lastUpdate = stored.updatedAt || runtime.updatedAt || null;
       return runtime;
     }
 
@@ -381,17 +498,17 @@ async function readRuntimeUnlocked() {
 async function readRuntime() { return readRuntimeUnlocked(); }
 
 async function saveRuntimeUnlocked(payload) {
-  await mkdir(DATA_DIR, { recursive: true });
+  await mkdir(workspaceDataDirectory(), { recursive: true });
   const envelope = {
     version: 1,
     algorithm: 'aes-256-gcm',
     updatedAt: payload?.updatedAt || new Date().toISOString(),
     encrypted: security.encrypt(JSON.stringify({ ...emptyRuntime(), ...payload }))
   };
-  await writePrivateJsonAtomically(RUNTIME_FILE, envelope);
-  runtimeStateStatus = 'READY';
-  runtimeRecoveryDetails = null;
-  lastRuntimeUpdate = envelope.updatedAt;
+  await writePrivateJsonAtomically(runtimeFile(), envelope);
+  runtimeHealth().status = 'READY';
+  runtimeHealth().recoveryDetails = null;
+  runtimeHealth().lastUpdate = envelope.updatedAt;
 }
 
 async function saveRuntime(payload) {
@@ -406,22 +523,18 @@ async function mutateRuntime(mutator) {
     return next;
   });
 }
-let serverStateStatus = 'INITIALIZING';
-let stateRecoveryDetails = null;
-let lastMigrationAt = null;
-
 async function createPreMigrationBackup(rawEncryptedEnvelope) {
-  await mkdir(MIGRATIONS_DIR, { recursive: true });
+  await mkdir(migrationsDirectory(), { recursive: true });
   const filename = `pre-migration-${new Date().toISOString().replace(/[:.]/g, '-')}.atrium-backup`;
-  const targetPath = path.join(MIGRATIONS_DIR, filename);
+  const targetPath = path.join(migrationsDirectory(), filename);
   await writeFile(targetPath, JSON.stringify(rawEncryptedEnvelope, null, 2), { encoding: 'utf8', mode: 0o600 });
   return targetPath;
 }
 
 async function quarantineCorruptState(rawContent, reason) {
-  await mkdir(RECOVERY_DIR, { recursive: true });
+  await mkdir(recoveryDirectory(), { recursive: true });
   const filename = `app-state-corrupt-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
-  const targetPath = path.join(RECOVERY_DIR, filename);
+  const targetPath = path.join(recoveryDirectory(), filename);
   await writeFile(targetPath, typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent, null, 2), { encoding: 'utf8', mode: 0o600 });
   return path.posix.join('recovery', filename);
 }
@@ -437,21 +550,21 @@ async function extractLegacyAiKeyForStartup(state, legacyKeyBeforeStateMigration
 }
 
 async function initServerState() {
-  if (!existsSync(APP_STATE_FILE)) {
-    serverStateStatus = 'NEW_INSTALL';
+  if (!existsSync(appStateFile())) {
+    stateHealth().status = 'NEW_INSTALL';
     return { status: 'NEW_INSTALL' };
   }
 
   let rawText;
   let envelope;
   try {
-    rawText = await readFile(APP_STATE_FILE, 'utf8');
+    rawText = await readFile(appStateFile(), 'utf8');
     envelope = JSON.parse(rawText);
   } catch (err) {
     const corruptFile = await quarantineCorruptState(rawText || '', 'JSON_PARSE_ERROR');
-    serverStateStatus = 'RECOVERY_REQUIRED';
-    stateRecoveryDetails = { reason: 'ARQUIVO_JSON_CORROMPIDO', file: corruptFile, error: err.message, at: new Date().toISOString() };
-    return { status: serverStateStatus, details: stateRecoveryDetails };
+    stateHealth().status = 'RECOVERY_REQUIRED';
+    stateHealth().recoveryDetails = { reason: 'ARQUIVO_JSON_CORROMPIDO', file: corruptFile, error: err.message, at: new Date().toISOString() };
+    return { status: stateHealth().status, details: stateHealth().recoveryDetails };
   }
 
   let decryptedState;
@@ -460,32 +573,32 @@ async function initServerState() {
     decryptedState = JSON.parse(security.decrypt(envelope.encrypted));
   } catch (err) {
     const corruptFile = await quarantineCorruptState(rawText, 'DECRYPTION_ERROR');
-    serverStateStatus = 'RECOVERY_REQUIRED';
-    stateRecoveryDetails = { reason: 'FALHA_DESCRIPTOGRAFIA', file: corruptFile, error: err.message, at: new Date().toISOString() };
-    return { status: serverStateStatus, details: stateRecoveryDetails };
+    stateHealth().status = 'RECOVERY_REQUIRED';
+    stateHealth().recoveryDetails = { reason: 'FALHA_DESCRIPTOGRAFIA', file: corruptFile, error: err.message, at: new Date().toISOString() };
+    return { status: stateHealth().status, details: stateHealth().recoveryDetails };
   }
 
   const foundVersion = Number(decryptedState.schemaVersion ?? decryptedState.version ?? 1);
   const legacyAiKeyBeforeStateMigration = String(decryptedState?.settings?.geminiApiKey || '').trim();
 
   if (foundVersion > CURRENT_SCHEMA_VERSION) {
-    serverStateStatus = 'FUTURE_SCHEMA_ERROR';
-    stateRecoveryDetails = {
+    stateHealth().status = 'FUTURE_SCHEMA_ERROR';
+    stateHealth().recoveryDetails = {
       reason: 'FUTURE_SCHEMA',
       foundVersion,
       expectedVersion: CURRENT_SCHEMA_VERSION,
       message: `Estes dados foram criados por uma versão mais nova do ATRIUM (schema ${foundVersion} > ${CURRENT_SCHEMA_VERSION}). Atualize o ATRIUM.`
     };
-    return { status: serverStateStatus, details: stateRecoveryDetails };
+    return { status: stateHealth().status, details: stateHealth().recoveryDetails };
   }
 
   if (foundVersion < CURRENT_SCHEMA_VERSION) {
     try {
       await createPreMigrationBackup(envelope);
     } catch (backupErr) {
-      serverStateStatus = 'RECOVERY_REQUIRED';
-      stateRecoveryDetails = { reason: 'PRE_MIGRATION_BACKUP_FAILED', error: backupErr.message, at: new Date().toISOString() };
-      return { status: serverStateStatus, details: stateRecoveryDetails };
+      stateHealth().status = 'RECOVERY_REQUIRED';
+      stateHealth().recoveryDetails = { reason: 'PRE_MIGRATION_BACKUP_FAILED', error: backupErr.message, at: new Date().toISOString() };
+      return { status: stateHealth().status, details: stateHealth().recoveryDetails };
     }
 
     let migrationResult;
@@ -493,17 +606,17 @@ async function initServerState() {
       migrationResult = runStateMigrations(decryptedState, APP_VERSION);
     } catch (migErr) {
       const corruptFile = await quarantineCorruptState(rawText, 'MIGRATION_EXECUTION_ERROR');
-      serverStateStatus = 'RECOVERY_REQUIRED';
-      stateRecoveryDetails = { reason: 'MIGRATION_FAILED', file: corruptFile, error: migErr.message, at: new Date().toISOString() };
-      return { status: serverStateStatus, details: stateRecoveryDetails };
+      stateHealth().status = 'RECOVERY_REQUIRED';
+      stateHealth().recoveryDetails = { reason: 'MIGRATION_FAILED', file: corruptFile, error: migErr.message, at: new Date().toISOString() };
+      return { status: stateHealth().status, details: stateHealth().recoveryDetails };
     }
 
     try {
       const aiMigration = await extractLegacyAiKeyForStartup(migrationResult.state, legacyAiKeyBeforeStateMigration);
       await saveAppStateDirect(aiMigration.state, envelope.revision || envelope.updatedAt || null);
-      lastMigrationAt = aiMigration.state.migratedAt;
-      serverStateStatus = 'READY';
-      stateRecoveryDetails = null;
+      stateHealth().lastMigrationAt = aiMigration.state.migratedAt;
+      stateHealth().status = 'READY';
+      stateHealth().recoveryDetails = null;
       return {
         status: 'READY',
         migrated: true,
@@ -512,9 +625,9 @@ async function initServerState() {
         toVersion: migrationResult.toVersion
       };
     } catch (saveErr) {
-      serverStateStatus = 'RECOVERY_REQUIRED';
-      stateRecoveryDetails = { reason: 'STARTUP_MIGRATION_SAVE_FAILED', at: new Date().toISOString() };
-      return { status: serverStateStatus, details: stateRecoveryDetails };
+      stateHealth().status = 'RECOVERY_REQUIRED';
+      stateHealth().recoveryDetails = { reason: 'STARTUP_MIGRATION_SAVE_FAILED', at: new Date().toISOString() };
+      return { status: stateHealth().status, details: stateHealth().recoveryDetails };
     }
   }
 
@@ -522,9 +635,9 @@ async function initServerState() {
     validateAppState(decryptedState, CURRENT_SCHEMA_VERSION);
   } catch (valErr) {
     const corruptFile = await quarantineCorruptState(rawText, 'VALIDATION_FAILED');
-    serverStateStatus = 'RECOVERY_REQUIRED';
-    stateRecoveryDetails = { reason: 'VALIDATION_FAILED', file: corruptFile, error: valErr.message, at: new Date().toISOString() };
-    return { status: serverStateStatus, details: stateRecoveryDetails };
+    stateHealth().status = 'RECOVERY_REQUIRED';
+    stateHealth().recoveryDetails = { reason: 'VALIDATION_FAILED', file: corruptFile, error: valErr.message, at: new Date().toISOString() };
+    return { status: stateHealth().status, details: stateHealth().recoveryDetails };
   }
 
   try {
@@ -532,26 +645,26 @@ async function initServerState() {
     if (aiMigration.migrated) {
       await saveAppStateDirect(aiMigration.state, envelope.revision || envelope.updatedAt || null);
     }
-    serverStateStatus = 'READY';
-    stateRecoveryDetails = null;
+    stateHealth().status = 'READY';
+    stateHealth().recoveryDetails = null;
     return { status: 'READY', aiSecretMigrated: aiMigration.migrated };
   } catch {
-    serverStateStatus = 'RECOVERY_REQUIRED';
-    stateRecoveryDetails = { reason: 'LEGACY_AI_SECRET_MIGRATION_FAILED', at: new Date().toISOString() };
-    return { status: serverStateStatus, details: stateRecoveryDetails };
+    stateHealth().status = 'RECOVERY_REQUIRED';
+    stateHealth().recoveryDetails = { reason: 'LEGACY_AI_SECRET_MIGRATION_FAILED', at: new Date().toISOString() };
+    return { status: stateHealth().status, details: stateHealth().recoveryDetails };
   }
 }
 
 async function readAppStateEnvelope() {
-  if (serverStateStatus === 'RECOVERY_REQUIRED' || serverStateStatus === 'FUTURE_SCHEMA_ERROR') {
-    return { state: null, revision: null, status: serverStateStatus, recoveryDetails: stateRecoveryDetails };
+  if (stateHealth().status === 'RECOVERY_REQUIRED' || stateHealth().status === 'FUTURE_SCHEMA_ERROR') {
+    return { state: null, revision: null, status: stateHealth().status, recoveryDetails: stateHealth().recoveryDetails };
   }
   try {
-    if (!existsSync(APP_STATE_FILE)) return { state: null, revision: null };
-    const envelope = JSON.parse(await readFile(APP_STATE_FILE, 'utf8'));
+    if (!existsSync(appStateFile())) return { state: null, revision: null };
+    const envelope = JSON.parse(await readFile(appStateFile(), 'utf8'));
     return { state: JSON.parse(security.decrypt(envelope.encrypted)), revision: envelope.revision || envelope.updatedAt || null };
   } catch (error) {
-    if (existsSync(APP_STATE_FILE)) throw new Error('O estado criptografado não pôde ser aberto.', { cause: error });
+    if (existsSync(appStateFile())) throw new Error('O estado criptografado não pôde ser aberto.', { cause: error });
     return { state: null, revision: null };
   }
 }
@@ -585,7 +698,8 @@ async function saveAppStateDirectUnlocked(value, expectedRevision = null) {
     value.audit = mergedAudit.slice(0, 1000);
   }
 
-  await mkdir(DATA_DIR, { recursive: true });
+  const stateDirectory = workspaceDataDirectory();
+  await mkdir(stateDirectory, { recursive: true });
   const envelope = {
     version: 1,
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -596,16 +710,17 @@ async function saveAppStateDirectUnlocked(value, expectedRevision = null) {
     updatedAt: new Date().toISOString()
   };
 
-  const tmpFile = `${APP_STATE_FILE}.tmp-${randomBytes(6).toString('hex')}`;
+  const stateFile = appStateFile();
+  const tmpFile = `${stateFile}.tmp-${randomBytes(6).toString('hex')}`;
   try {
     await writeFile(tmpFile, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
-    await rename(tmpFile, APP_STATE_FILE);
+    await rename(tmpFile, stateFile);
   } catch (error) {
     await unlink(tmpFile).catch(() => {});
     throw error;
   }
 
-  serverStateStatus = 'READY';
+  stateHealth().status = 'READY';
   return { updatedAt: envelope.updatedAt, revision: envelope.revision, schemaVersion: CURRENT_SCHEMA_VERSION };
 }
 
@@ -614,24 +729,13 @@ async function saveAppStateDirect(value, expectedRevision = null) {
 }
 
 async function saveAppState(value, expectedRevision = null) {
-  if (serverStateStatus === 'RECOVERY_REQUIRED') {
+  if (stateHealth().status === 'RECOVERY_REQUIRED') {
     throw Object.assign(new Error('O sistema está em Modo de Recuperação. Não é permitido sobrescrever dados corrompidos sem restauração prévia.'), { statusCode: 423 });
   }
   return saveAppStateDirect(value, expectedRevision);
 }
 
-async function saveClientAppState(value, expectedRevision, session, tenantCtx = null) {
-  if (tenantCtx) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
-    }
-    if (value.settings && typeof value.settings === 'object') delete value.settings.geminiApiKey;
-    const current = await tenantCtx.readStateEnvelope();
-    value.documents = Array.isArray(current.state?.documents) ? structuredClone(current.state.documents) : [];
-    if (!value.settings || typeof value.settings !== 'object' || Array.isArray(value.settings)) value.settings = {};
-    value.settings.documentNamingTemplate = String(current.state?.settings?.documentNamingTemplate || '');
-    return tenantCtx.saveStateDirect(value, expectedRevision);
-  }
+async function saveClientAppState(value, expectedRevision, session) {
   return enqueueAppStateMutation(async () => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
@@ -664,12 +768,12 @@ async function saveClientAppState(value, expectedRevision, session, tenantCtx = 
 }
 
 async function readAiApiKey() {
-  if (process.env.GEMINI_API_KEY) return String(process.env.GEMINI_API_KEY).trim();
+  if (currentWorkspaceId() === security.state.defaultWorkspaceId && process.env.GEMINI_API_KEY) return String(process.env.GEMINI_API_KEY).trim();
   try {
-    const envelope = JSON.parse(await readFile(AI_SECRETS_FILE, 'utf8'));
+    const envelope = JSON.parse(await readFile(aiSecretsFile(), 'utf8'));
     return String(JSON.parse(security.decrypt(envelope.encrypted))?.geminiApiKey || '').trim();
   } catch (error) {
-    if (existsSync(AI_SECRETS_FILE)) throw new Error('A chave de IA criptografada não pôde ser aberta.', { cause: error });
+    if (existsSync(aiSecretsFile())) throw new Error('A chave de IA criptografada não pôde ser aberta.', { cause: error });
     return '';
   }
 }
@@ -684,13 +788,13 @@ async function saveAiApiKey(apiKey) {
     encrypted: security.encrypt(JSON.stringify({ geminiApiKey: String(apiKey || '').trim() })),
     updatedAt: new Date().toISOString()
   };
-  await writePrivateJsonAtomically(AI_SECRETS_FILE, envelope);
+  await writePrivateJsonAtomically(aiSecretsFile(), envelope);
 }
 
 async function readFeedbackEntries() {
   let rawText;
   try {
-    rawText = await readFile(FEEDBACK_FILE, 'utf8');
+    rawText = await readFile(feedbackFile(), 'utf8');
   } catch (error) {
     if (error.code === 'ENOENT') return [];
     throw error;
@@ -713,7 +817,7 @@ async function saveFeedbackEntries(entries) {
     encrypted: security.encrypt(JSON.stringify(entries.slice(0, 100))),
     updatedAt: new Date().toISOString()
   };
-  await writePrivateJsonAtomically(FEEDBACK_FILE, envelope);
+  await writePrivateJsonAtomically(feedbackFile(), envelope);
 }
 
 async function appendServerAudit(action, detail, actor = 'Administrador') {
@@ -736,59 +840,26 @@ async function appendServerAudit(action, detail, actor = 'Administrador') {
   } catch {}
 }
 
-async function readPublicAppStateEnvelope(tenantCtx = null) {
-  if (tenantCtx) {
-    const envelope = await tenantCtx.readStateEnvelope();
-    if (!envelope.state) {
-      return {
-        stateStatus: 'NEW_INSTALL',
-        state: null,
-        revision: null,
-        schemaVersion: CURRENT_SCHEMA_VERSION,
-        dataVersion: CURRENT_DATA_VERSION,
-        appVersion: APP_VERSION,
-        buildId: BUILD_ID,
-        tenant: {
-          id: tenantCtx.tenant.id,
-          name: tenantCtx.tenant.name,
-          slug: tenantCtx.tenant.slug
-        }
-      };
-    }
-    return {
-      stateStatus: 'READY',
-      state: envelope.state,
-      revision: envelope.revision,
-      schemaVersion: CURRENT_SCHEMA_VERSION,
-      dataVersion: CURRENT_DATA_VERSION,
-      appVersion: APP_VERSION,
-      buildId: BUILD_ID,
-      tenant: {
-        id: tenantCtx.tenant.id,
-        name: tenantCtx.tenant.name,
-        slug: tenantCtx.tenant.slug
-      }
-    };
-  }
-  if (serverStateStatus === 'RECOVERY_REQUIRED') {
+async function readPublicAppStateEnvelope() {
+  if (stateHealth().status === 'RECOVERY_REQUIRED') {
     return {
       stateStatus: 'RECOVERY_REQUIRED',
       state: null,
       revision: null,
-      recoveryDetails: stateRecoveryDetails,
+      recoveryDetails: stateHealth().recoveryDetails,
       message: 'O ATRIUM encontrou um problema ao abrir os dados existentes. Nenhum dado foi sobrescrito.'
     };
   }
-  if (serverStateStatus === 'FUTURE_SCHEMA_ERROR') {
+  if (stateHealth().status === 'FUTURE_SCHEMA_ERROR') {
     return {
       stateStatus: 'FUTURE_SCHEMA_ERROR',
       state: null,
       revision: null,
-      recoveryDetails: stateRecoveryDetails,
-      message: stateRecoveryDetails?.message || 'Versão de dados incompatível.'
+      recoveryDetails: stateHealth().recoveryDetails,
+      message: stateHealth().recoveryDetails?.message || 'Versão de dados incompatível.'
     };
   }
-  if (serverStateStatus === 'NEW_INSTALL') {
+  if (stateHealth().status === 'NEW_INSTALL') {
     return {
       stateStatus: 'NEW_INSTALL',
       state: null,
@@ -826,12 +897,12 @@ async function readPublicAppStateEnvelope(tenantCtx = null) {
 
 async function readJudicialSecrets() {
   try {
-    const envelope = JSON.parse(await readFile(INTEGRATIONS_FILE, 'utf8'));
+    const envelope = JSON.parse(await readFile(integrationsFile(), 'utf8'));
     return JSON.parse(security.decrypt(envelope.encrypted));
   } catch (error) {
-    if (existsSync(INTEGRATIONS_FILE)) throw new Error('A configuração judicial criptografada não pôde ser aberta.', { cause: error });
+    if (existsSync(integrationsFile())) throw new Error('A configuração judicial criptografada não pôde ser aberta.', { cause: error });
     return {
-      certificate: process.env.A1_PFX_PATH && process.env.A1_PFX_PASSPHRASE ? {
+      certificate: currentWorkspaceId() === security.state.defaultWorkspaceId && process.env.A1_PFX_PATH && process.env.A1_PFX_PASSPHRASE ? {
         path: process.env.A1_PFX_PATH,
         passphrase: process.env.A1_PFX_PASSPHRASE,
         fileName: path.basename(process.env.A1_PFX_PATH),
@@ -844,14 +915,15 @@ async function readJudicialSecrets() {
 }
 
 async function saveJudicialSecrets(value) {
-  await mkdir(DATA_DIR, { recursive: true });
+  await mkdir(workspaceDataDirectory(), { recursive: true });
   const envelope = {
     version: 1,
     algorithm: 'aes-256-gcm',
     encrypted: security.encrypt(JSON.stringify(value)),
     updatedAt: new Date().toISOString()
   };
-  await writeFile(INTEGRATIONS_FILE, JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
+  await mkdir(workspaceDataDirectory(), { recursive: true });
+  await writeFile(integrationsFile(), JSON.stringify(envelope, null, 2), { encoding: 'utf8', mode: 0o600 });
 }
 
 async function readPortalConfiguration() {
@@ -881,23 +953,24 @@ async function readPortalConfiguration() {
 }
 
 async function readPortalPreferences() {
-  if (!existsSync(PORTAL_PREFERENCES_FILE)) return { enabledIds: [] };
-  const envelope = JSON.parse(await readFile(PORTAL_PREFERENCES_FILE, 'utf8'));
+  if (!existsSync(portalPreferencesFile())) return { enabledIds: [] };
+  const envelope = JSON.parse(await readFile(portalPreferencesFile(), 'utf8'));
   const value = JSON.parse(security.decrypt(envelope.encrypted));
   return { enabledIds: Array.isArray(value.enabledIds) ? [...new Set(value.enabledIds.map(String))] : [] };
 }
 
 async function savePortalPreferences(enabledIds) {
-  await mkdir(DATA_DIR, { recursive: true });
+  await mkdir(workspaceDataDirectory(), { recursive: true });
   const envelope = {
     version: 1,
     algorithm: 'aes-256-gcm',
     encrypted: security.encrypt(JSON.stringify({ enabledIds, updatedAt: new Date().toISOString() })),
     updatedAt: new Date().toISOString()
   };
-  const temporary = `${PORTAL_PREFERENCES_FILE}.${process.pid}.tmp`;
+  await mkdir(workspaceDataDirectory(), { recursive: true });
+  const temporary = `${portalPreferencesFile()}.${process.pid}.tmp`;
   await writeFile(temporary, `${JSON.stringify(envelope, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
-  await rename(temporary, PORTAL_PREFERENCES_FILE);
+  await rename(temporary, portalPreferencesFile());
 }
 
 function publicCertificatePortals(config, secrets) {
@@ -937,7 +1010,7 @@ async function judicialIntegrationStatus() {
     source: secrets.certificate?.source || ''
   };
   if (certificate.accessible && secrets.certificate?.passphrase) {
-    try { certificate = { ...certificate, ...(await validatePfx(certificatePath, secrets.certificate.passphrase)) }; }
+    try { certificate = { ...certificate, ...(await validatePfxWithWindows(certificatePath, secrets.certificate.passphrase)) }; }
     catch { certificate.valid = false; }
   }
   return {
@@ -950,111 +1023,8 @@ async function judicialIntegrationStatus() {
   };
 }
 
-async function validatePfx(file, passphrase) {
-  const absoluteFile = path.resolve(file);
-  try {
-    return await validatePfxWithOpenSSL(absoluteFile, passphrase);
-  } catch (openSslErr) {
-    if (process.platform === 'win32') {
-      try {
-        return await validatePfxWithWindows(absoluteFile, passphrase);
-      } catch (winErr) {
-        throw winErr;
-      }
-    }
-    throw openSslErr;
-  }
-}
-
-function validatePfxWithOpenSSL(file, passphrase) {
-  return new Promise((resolve, reject) => {
-    const child = spawn('openssl', ['pkcs12', '-in', file, '-passin', 'stdin', '-nodes', '-nokeys', '-legacy'], {
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-    let stdout = '';
-    let stderr = '';
-    let settled = false;
-    const finish = (error, value) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      error ? reject(error) : resolve(value);
-    };
-    const timer = setTimeout(() => { child.kill(); finish(new Error('A validação do certificado excedeu o tempo limite.')); }, 15_000);
-    child.stdout.on('data', chunk => { stdout += chunk; });
-    child.stderr.on('data', chunk => { stderr += chunk; });
-    child.on('error', err => finish(err));
-    child.on('exit', code => {
-      if (code !== 0) {
-        return validatePfxWithOpenSSLStandard(file, passphrase).then(resolve, reject);
-      }
-      try {
-        const certs = stdout.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) || [];
-        if (!certs.length) return finish(new Error('Nenhum certificado encontrado no arquivo PFX.'));
-        const x509 = new X509Certificate(certs[0]);
-        const expiresAt = x509.validTo ? new Date(x509.validTo).toISOString() : null;
-        finish(null, {
-          valid: true,
-          certificateCount: certs.length,
-          expiresAt,
-          subject: x509.subject,
-          issuer: x509.issuer
-        });
-      } catch (err) {
-        finish(err);
-      }
-    });
-    child.stdin.end(passphrase + '\n');
-  });
-}
-
-function validatePfxWithOpenSSLStandard(file, passphrase) {
-  return new Promise((resolve, reject) => {
-    const child = spawn('openssl', ['pkcs12', '-in', file, '-passin', 'stdin', '-nodes', '-nokeys'], {
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-    let stdout = '';
-    let stderr = '';
-    let settled = false;
-    const finish = (error, value) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      error ? reject(error) : resolve(value);
-    };
-    const timer = setTimeout(() => { child.kill(); finish(new Error('A validação do certificado excedeu o tempo limite.')); }, 15_000);
-    child.stdout.on('data', chunk => { stdout += chunk; });
-    child.stderr.on('data', chunk => { stderr += chunk; });
-    child.on('error', err => finish(err));
-    child.on('exit', code => {
-      if (code !== 0) {
-        return finish(new Error('Senha incorreta ou certificado PFX inválido.'));
-      }
-      try {
-        const certs = stdout.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) || [];
-        if (!certs.length) return finish(new Error('Nenhum certificado encontrado no arquivo PFX.'));
-        const x509 = new X509Certificate(certs[0]);
-        const expiresAt = x509.validTo ? new Date(x509.validTo).toISOString() : null;
-        finish(null, {
-          valid: true,
-          certificateCount: certs.length,
-          expiresAt,
-          subject: x509.subject,
-          issuer: x509.issuer
-        });
-      } catch (err) {
-        finish(err);
-      }
-    });
-    child.stdin.end(passphrase + '\n');
-  });
-}
-
 function validatePfxWithWindows(file, passphrase) {
-  const absoluteFile = path.resolve(file);
   const script = [
-    '[Console]::InputEncoding = [System.Text.Encoding]::UTF8',
-    '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
     '$ErrorActionPreference = "Stop"',
     '$payload = [Console]::In.ReadToEnd() | ConvertFrom-Json',
     '$secure = ConvertTo-SecureString ([string]$payload.passphrase) -AsPlainText -Force',
@@ -1084,7 +1054,7 @@ function validatePfxWithWindows(file, passphrase) {
       try { finish(null, JSON.parse(stdout.trim())); }
       catch { finish(new Error('O Windows não retornou uma validação reconhecível.')); }
     });
-    child.stdin.end(JSON.stringify({ path: absoluteFile, passphrase }), 'utf8');
+    child.stdin.end(JSON.stringify({ path: file, passphrase }));
   });
 }
 
@@ -1199,6 +1169,7 @@ function extractTotpSecret(value) {
 }
 
 async function saveUploadedCertificate(body) {
+  if (CLOUD_MODE) throw Object.assign(new Error('O certificado A1 só pode ser configurado no agente local protegido.'), { statusCode: 503 });
   const fileName = path.basename(String(body.fileName || 'certificado.pfx'));
   if (!/\.(pfx|p12)$/i.test(fileName)) throw Object.assign(new Error('Selecione um certificado .pfx ou .p12.'), { statusCode: 400 });
   const encoded = String(body.pfxBase64 || '').replace(/^data:[^,]+,/, '');
@@ -1207,12 +1178,12 @@ async function saveUploadedCertificate(body) {
   if (binary.length < 100 || binary.length > 5_000_000) throw Object.assign(new Error('O certificado deve ter entre 100 bytes e 5 MB.'), { statusCode: 400 });
   const passphrase = String(body.passphrase || '');
   if (!passphrase || passphrase.length > 256) throw Object.assign(new Error('Informe a senha atual do certificado.'), { statusCode: 400 });
-  const secretDirectory = path.join(DATA_DIR, 'secrets');
+  const secretDirectory = path.join(workspaceDataDirectory(), 'secrets');
   await mkdir(secretDirectory, { recursive: true });
   const destination = path.join(secretDirectory, `a1-${Date.now()}-${randomBytes(6).toString('hex')}.pfx`);
   await writeFile(destination, binary, { mode: 0o600 });
   let validation;
-  try { validation = await validatePfx(destination, passphrase); }
+  try { validation = await validatePfxWithWindows(destination, passphrase); }
   catch (error) { await unlink(destination).catch(() => {}); throw Object.assign(error, { statusCode: 400 }); }
   const secrets = await readJudicialSecrets();
   secrets.certificate = { path: destination, passphrase, fileName, source: 'encrypted-store', configuredAt: new Date().toISOString() };
@@ -1227,11 +1198,13 @@ async function updatePortalCoverage(enabledIds) {
   const selected = [...enabled].filter(id => allowedIds.has(id));
   await savePortalPreferences(selected);
   const reconciled = await readPortalConfiguration();
-  judicialOrchestrator.setPortals(reconciled.portals);
+  (await judicialOrchestratorForCurrentWorkspace()).setPortals(reconciled.portals);
   return { enabled: selected };
 }
 
 async function resetJudicialConnections() {
+  if (currentWorkspaceId() !== security.state.defaultWorkspaceId) throw Object.assign(new Error('Use o agente local pareado com este escritório.'), { statusCode: 503 });
+  if (CLOUD_MODE) throw Object.assign(new Error('As sessões judiciais só podem ser zeradas no agente local protegido.'), { statusCode: 503 });
   if (interactiveCollector && interactiveCollector.exitCode === null) {
     throw Object.assign(new Error('Encerre a primeira conexão em andamento antes de zerar os acessos.'), { statusCode: 409 });
   }
@@ -1265,6 +1238,8 @@ async function resetJudicialConnections() {
 }
 
 async function startInteractiveCollector(portalIds) {
+  if (currentWorkspaceId() !== security.state.defaultWorkspaceId) throw Object.assign(new Error('Use o agente local pareado com este escritório.'), { statusCode: 503 });
+  if (CLOUD_MODE) throw Object.assign(new Error('A primeira conexão com tribunais deve ser iniciada no agente local com PJeOffice.'), { statusCode: 503 });
   if (interactiveCollector && interactiveCollector.exitCode === null) throw Object.assign(new Error('Já existe uma primeira conexão em andamento.'), { statusCode: 409 });
   const config = await readPortalConfiguration();
   const allowed = authenticatedPortalIds(config);
@@ -1314,6 +1289,9 @@ function managedPortfolioPortalIds(config) {
 }
 
 async function startManagedPortfolioCollector({ waitForCompletion = false } = {}) {
+  if (CLOUD_MODE || currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+    return { ok: true, skipped: true, cloud: true, portalCount: 0, message: 'O acervo autenticado é coletado pelo agente local do escritório.' };
+  }
   if (String(process.env.KELLER_SKIP_COLLECTOR_ENV).toLowerCase() === 'true') {
     return { ok: true, skipped: true, portalCount: 0, message: 'Coletor judicial desabilitado neste ambiente.' };
   }
@@ -1374,13 +1352,30 @@ async function startManagedPortfolioCollector({ waitForCompletion = false } = {}
 }
 
 function applySecurityHeaders(res) {
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  if (!res.hasHeader('Cross-Origin-Resource-Policy')) res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+}
+
+const allowedFrontendOrigins = new Set(String(process.env.ATRIUM_FRONTEND_ORIGINS || '')
+  .split(',')
+  .map(value => value.trim().replace(/\/$/, ''))
+  .filter(Boolean));
+
+function applyCorsHeaders(req, res) {
+  const origin = String(req.headers.origin || '').trim().replace(/\/$/, '');
+  if (!origin || !allowedFrontendOrigins.has(origin)) return false;
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token, X-Atrium-Sync-Trigger');
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  return true;
 }
 function json(res, status, payload, headers = {}) {
   applySecurityHeaders(res);
@@ -1966,15 +1961,29 @@ function buildCanonicalPublicationTask(input, publicationId, actorName, nowIso) 
     protocol: publicationTaskText(input.protocol, 1_000, 'Protocolo')
   };
 }
-function collectorAuthorized(req) {
+function collectorWorkspace(req) {
   const authorization = String(req.headers.authorization || '');
-  const expected = `Bearer ${process.env.COLLECTOR_INGEST_TOKEN}`;
-  return authorization.length === expected.length && timingSafeEqual(Buffer.from(authorization), Buffer.from(expected));
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  const workspaceId = String(req.headers['x-atrium-workspace-id'] || '').trim();
+  const paired = security.authenticateCollector(token, workspaceId);
+  if (paired) return paired;
+  const legacyToken = String(process.env.COLLECTOR_INGEST_TOKEN || '');
+  if (!workspaceId && token && legacyToken && constantTimeTextEqual(token, legacyToken)) {
+    return { id: security.state.defaultWorkspaceId };
+  }
+  return null;
+}
+
+function constantTimeTextEqual(left, right) {
+  const a = Buffer.from(String(left));
+  const b = Buffer.from(String(right));
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 function assertAuthenticated(req, requireCsrf = false) {
-  const sec = req.tenant?.security || security;
-  const session = sec.requireSession(req);
-  if (requireCsrf) sec.requireCsrf(req, session);
+  const session = security.requireSession(req);
+  if (!session.workspaceId) throw Object.assign(new Error('A sessão não está vinculada a um escritório.'), { statusCode: 403 });
+  workspaceRequestContext.enterWith({ workspaceId: session.workspaceId });
+  if (requireCsrf) security.requireCsrf(req, session);
   return session;
 }
 function isPrivilegedRole(role) {
@@ -2239,7 +2248,7 @@ async function createPreRestoreSafetySnapshot(currentEnv, session) {
   if (!currentEnv?.state) return null;
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const suffix = randomBytes(4).toString('hex');
-  const targetPath = path.join(DATA_DIR, 'backups', `safety-snapshot-pre-restore-${timestamp}-${suffix}.atrium-backup`);
+  const targetPath = path.join(workspaceDataDirectory(), 'backups', `safety-snapshot-pre-restore-${timestamp}-${suffix}.atrium-backup`);
   const payload = createEncryptedBackupPayload(currentEnv.state, {
     createdBy: session.username,
     purpose: 'pre-restore-safety-snapshot',
@@ -2306,18 +2315,26 @@ async function serveStatic(req, res) {
   } catch { json(res, 404, { message: 'Arquivo não encontrado.' }); }
 }
 
-let syncRequestActive = false;
-const automaticSyncRuns = { startup: false, dailyDate: '' };
-let currentSyncProgress = {
-  active: false,
-  step: 0,
-  totalSteps: 4,
-  phase: 'idle',
-  label: 'Pronto',
-  detail: 'Nenhuma sincronização em andamento.',
-  percent: 0,
-  updatedAt: new Date().toISOString()
-};
+const workspaceSyncStates = new Map();
+function syncState(workspaceId = currentWorkspaceId()) {
+  if (!workspaceSyncStates.has(workspaceId)) {
+    workspaceSyncStates.set(workspaceId, {
+      requestActive: false,
+      automaticRuns: { startup: false, dailyDate: '' },
+      progress: {
+        active: false,
+        step: 0,
+        totalSteps: 4,
+        phase: 'idle',
+        label: 'Pronto',
+        detail: 'Nenhuma sincronização em andamento.',
+        percent: 0,
+        updatedAt: new Date().toISOString()
+      }
+    });
+  }
+  return workspaceSyncStates.get(workspaceId);
+}
 
 function syncDateInConfiguredTimeZone(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {
@@ -2334,6 +2351,7 @@ function syncTriggerFromRequest(req) {
 }
 
 function claimAutomaticSync(trigger) {
+  const automaticSyncRuns = syncState().automaticRuns;
   if (trigger === 'startup') {
     if (automaticSyncRuns.startup) return false;
     automaticSyncRuns.startup = true;
@@ -2347,8 +2365,9 @@ function claimAutomaticSync(trigger) {
 }
 
 function updateSyncProgress({ step, totalSteps = 4, phase, label, detail, percent }) {
+  const currentSyncProgress = syncState().progress;
   const pct = Math.min(100, Math.max(0, Math.round(percent ?? currentSyncProgress.percent)));
-  currentSyncProgress = {
+  syncState().progress = {
     active: pct < 100 && !['done', 'error', 'idle'].includes(phase),
     step: step ?? currentSyncProgress.step,
     totalSteps,
@@ -2363,66 +2382,16 @@ function updateSyncProgress({ step, totalSteps = 4, phase, label, detail, percen
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-    let tenantCtx = null;
-    try {
-      tenantCtx = await tenantContextRegistry.resolveContextFromRequest(req);
-    } catch (err) {
-      console.warn('[Tenant Resolution Warn]:', err.message);
+    const corsAllowed = applyCorsHeaders(req, res);
+    if (req.method === 'OPTIONS') {
+      if (!corsAllowed) return json(res, 403, { message: 'Origem do frontend não autorizada.' });
+      applySecurityHeaders(res);
+      res.writeHead(204);
+      return res.end();
     }
-    req.tenant = tenantCtx;
-    const sec = req.tenant?.security || security;
-
-    // ==========================================
-    // ROTAS SAAS & ONBOARDING MULTI-TENANT
-    // ==========================================
-    if (req.method === 'GET' && url.pathname === '/api/saas/check-slug') {
-      const slug = url.searchParams.get('slug') || '';
-      return json(res, 200, tenantManager.validateSlug(slug));
+    if (req.method === 'GET' && url.pathname === '/api/health') {
+      return json(res, 200, { ok: true, service: 'atrium-api', version: APP_VERSION });
     }
-
-    if (req.method === 'POST' && url.pathname === '/api/saas/register-office') {
-      const body = await readJson(req);
-      const result = await tenantManager.createTenant({
-        name: body.officeName || body.name,
-        slug: body.slug,
-        ownerName: body.ownerName,
-        ownerEmail: body.ownerEmail,
-        oab: body.lawyerOab || body.oab,
-        oabUf: body.oabUf,
-        password: body.adminPassword || body.password,
-        plan: body.plan || 'pro'
-      });
-      const newTenantCtx = await tenantContextRegistry.getContextForTenant(result.tenant);
-      const username = (body.ownerEmail || '').split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
-      const loginResult = await newTenantCtx.security.login({
-        username,
-        password: body.adminPassword || body.password
-      }, remoteAddress(req), req.headers['user-agent'] || '');
-
-      const cookies = [newTenantCtx.security.sessionCookie(loginResult.token)];
-      return json(res, 201, {
-        ok: true,
-        tenant: result.tenant,
-        user: loginResult.user,
-        csrfToken: loginResult.csrfToken,
-        url: result.url
-      }, { 'Set-Cookie': cookies });
-    }
-
-    if (req.method === 'GET' && url.pathname === '/api/saas/info') {
-      const allTenants = tenantManager.listTenants();
-      return json(res, 200, {
-        multiTenant: true,
-        activeTenant: req.tenant ? {
-          id: req.tenant.tenant.id,
-          name: req.tenant.tenant.name,
-          slug: req.tenant.tenant.slug
-        } : null,
-        tenantCount: allTenants.length,
-        baseDomain: tenantManager.baseDomain
-      });
-    }
-
     if (url.pathname.startsWith('/api/') && url.pathname !== '/api/auth/status') {
     }
     if (req.method === 'GET' && url.pathname === '/api/system/api-metadata') {
@@ -2433,132 +2402,126 @@ const server = http.createServer(async (req, res) => {
       assertAuthenticated(req);
       return json(res, 404, { message: 'Versão de API não suportada.', code: 'UNSUPPORTED_API_VERSION' });
     }
-    if (req.method === 'GET' && url.pathname === '/api/auth/status') {
-      const status = sec.publicStatus(req);
-      if (req.tenant) {
-        status.tenant = {
-          id: req.tenant.tenant.id,
-          name: req.tenant.tenant.name,
-          slug: req.tenant.tenant.slug
-        };
-      }
-      return json(res, 200, status);
-    }
-    if (req.method === 'POST' && url.pathname === '/api/auth/setup') return json(res, 200, await sec.beginSetup(await readJson(req), remoteAddress(req)));
+    if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, security.publicStatus(req));
+    if (req.method === 'POST' && url.pathname === '/api/auth/setup') return json(res, 200, await security.beginSetup(await readJson(req), remoteAddress(req)));
     if (req.method === 'POST' && url.pathname === '/api/auth/setup/verify') {
-      const result = await sec.finishSetup(await readJson(req));
-      return json(res, 200, { authenticated: true, csrfToken: result.csrfToken, user: result.user, recoveryCodes: result.recoveryCodes }, { 'Set-Cookie': sec.sessionCookie(result.token) });
+      const result = await security.finishSetup(await readJson(req));
+      return json(res, 200, { authenticated: true, csrfToken: result.csrfToken, user: result.user, recoveryCodes: result.recoveryCodes }, { 'Set-Cookie': security.sessionCookie(result.token) });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/workspaces/register') {
+      const result = await security.beginWorkspaceRegistration(await readJson(req), remoteAddress(req));
+      return json(res, 200, result);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/workspaces/register/verify') {
+      const result = await security.finishWorkspaceRegistration(await readJson(req));
+      return json(res, 200, {
+        authenticated: true,
+        csrfToken: result.csrfToken,
+        user: result.user,
+        workspace: result.workspace,
+        recoveryCodes: result.recoveryCodes
+      }, { 'Set-Cookie': security.sessionCookie(result.token) });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/login') {
-      const result = await sec.login(await readJson(req), remoteAddress(req), req.headers['user-agent'] || '');
-      const cookies = [sec.sessionCookie(result.token)];
-      if (result.trustedToken) cookies.push(sec.trustedDeviceCookie(result.trustedToken));
+      const result = await security.login(await readJson(req), remoteAddress(req), req.headers['user-agent'] || '');
+      const cookies = [security.sessionCookie(result.token)];
+      if (result.trustedToken) cookies.push(security.trustedDeviceCookie(result.trustedToken));
       return json(res, 200, { authenticated: true, csrfToken: result.csrfToken, user: result.user, trustedDevice: Boolean(result.trustedToken) }, { 'Set-Cookie': cookies });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
-      const session = assertAuthenticated(req, true); await sec.logout(req);
-      return json(res, 200, { ok: true, user: session.username }, { 'Set-Cookie': [sec.clearCookie(), sec.clearTrustedDeviceCookie()] });
+      const session = assertAuthenticated(req, true); await security.logout(req);
+      return json(res, 200, { ok: true, user: session.username }, { 'Set-Cookie': [security.clearCookie(), security.clearTrustedDeviceCookie()] });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/profile') {
       const session = assertAuthenticated(req, true);
-      const user = await sec.updateCurrentUserProfile(session.username, await readJson(req));
+      const user = await security.updateCurrentUserProfile(session.username, await readJson(req));
       return json(res, 200, { ok: true, user });
     }
+    if (req.method === 'GET' && url.pathname === '/api/auth/invitations/accept') {
+      return json(res, 200, { ok: true, invitation: security.validateTeamInvitation(url.searchParams.get('token')) });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/invitations/accept') {
+      return json(res, 200, await security.acceptTeamInvitation(await readJson(req)));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/auth/invitations') {
+      const session = assertAuthenticated(req);
+      if (!['master_admin', 'admin'].includes(session.role)) throw Object.assign(new Error('Apenas administradores podem consultar convites.'), { statusCode: 403 });
+      return json(res, 200, { invitations: security.listTeamInvitations(session.workspaceId), currentRole: session.role });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/invitations') {
+      const session = assertAuthenticated(req, true);
+      if (!['master_admin', 'admin'].includes(session.role)) throw Object.assign(new Error('Apenas administradores podem convidar integrantes.'), { statusCode: 403 });
+      return json(res, 201, { ok: true, ...(await security.createTeamInvitation(await readJson(req), session.workspaceId)) });
+    }
+    if (req.method === 'DELETE' && url.pathname === '/api/auth/invitations') {
+      const session = assertAuthenticated(req, true);
+      if (!['master_admin', 'admin'].includes(session.role)) throw Object.assign(new Error('Apenas administradores podem cancelar convites.'), { statusCode: 403 });
+      const body = await readJson(req);
+      await security.revokeTeamInvitation(body.invitationId, session.workspaceId);
+      return json(res, 200, { ok: true });
+    }
     if (req.method === 'POST' && url.pathname === '/api/auth/register') {
-      const result = await sec.registerUser(await readJson(req));
+      const session = assertAuthenticated(req, true);
+      if (!['master_admin', 'admin'].includes(session.role)) throw Object.assign(new Error('Apenas administradores podem cadastrar integrantes.'), { statusCode: 403 });
+      const result = await security.registerUser(await readJson(req), session.workspaceId);
       return json(res, 200, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/register/verify') {
-      const result = await sec.verifyRegisteredUser(await readJson(req));
+      const result = await security.verifyRegisteredUser(await readJson(req));
       return json(res, 200, result);
     }
     if (req.method === 'GET' && url.pathname === '/api/auth/users') {
       const session = assertAuthenticated(req);
-      return json(res, 200, { users: sec.listUsers(), currentRole: session.role || 'collaborator' });
+      return json(res, 200, { users: security.listUsers(session.workspaceId), currentRole: session.role || 'collaborator' });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/users/manage') {
       const session = assertAuthenticated(req, true);
       if (session.role !== 'master_admin') throw Object.assign(new Error('Apenas o administrador principal pode gerenciar usuários.'), { statusCode: 403 });
       const body = await readJson(req);
-      const user = await sec.updateUserStatus(body.userId, body);
+      const user = await security.updateUserStatus(body.userId, body, session.workspaceId);
       return json(res, 200, { ok: true, user });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/mfa/enable') {
       const session = assertAuthenticated(req, true);
       const body = await readJson(req);
-      const result = await sec.enableUserMfa(session.username, body);
+      const result = await security.enableUserMfa(session.username, body);
       return json(res, 200, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/mfa/disable') {
       const session = assertAuthenticated(req, true);
       const body = await readJson(req);
-      const result = await sec.disableUserMfa(session.username, body);
+      const result = await security.disableUserMfa(session.username, body);
       return json(res, 200, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/sync') {
       assertAuthenticated(req, true);
+      if (CLOUD_MODE) {
+        return json(res, 200, { ok: true, cloud: true, message: 'Modo nuvem ativo: o coletor judicial autônomo executa no dispositivo seguro do escritório.' });
+      }
       const waitForCompletion = url.searchParams.get('wait') === '1';
       const result = await startManagedPortfolioCollector({ waitForCompletion });
       return json(res, result.completed || result.skipped ? 200 : 202, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/trusted-device/revoke') {
-      assertAuthenticated(req, true); const revoked = await sec.revokeTrustedDevice(req);
-      return json(res, 200, { ok: true, revoked }, { 'Set-Cookie': sec.clearTrustedDeviceCookie() });
+      assertAuthenticated(req, true); const revoked = await security.revokeTrustedDevice(req);
+      return json(res, 200, { ok: true, revoked }, { 'Set-Cookie': security.clearTrustedDeviceCookie() });
     }
 
     if (await handleRegistryRequest(req, res, url)) return;
-    if (await handleTjrsSidecarRequest(req, res, url)) return;
-    if (await handleOmniRequest(req, res, url)) return;
-
-    if (req.method === 'POST' && url.pathname === '/api/integrations/eproc/processes/download-autos') {
-      const session = assertAuthenticated(req, true);
-      const body = await readJson(req, 20_000);
-      const processId = String(body.processId || '').trim();
-      const rawNumber = String(body.processNumber || '').trim();
-      const cnjDigits = rawNumber.replace(/\D/g, '');
-      if (!processId && !cnjDigits) throw Object.assign(new Error('Processo local não informado.'), { statusCode: 400 });
-
-      const envelope = await readAppStateEnvelope();
-      if (!envelope?.state) throw Object.assign(new Error('O estado local ainda não foi inicializado.'), { statusCode: 409 });
-
-      const processItem = (envelope.state.processes || []).find(item =>
-        String(item?.id) === processId ||
-        (item?.number && item.number.replace(/\D/g, '') === cnjDigits)
-      );
-      if (!processItem && !rawNumber) throw Object.assign(new Error('Processo não encontrado no acervo local.'), { statusCode: 404 });
-
-      const targetCnj = processItem?.number || rawNumber;
-
-      if (isEprocDownloadActive) {
-        throw Object.assign(new Error('Já existe um download de autos em andamento via Certificado A1. Aguarde a conclusão da operação anterior.'), { statusCode: 409 });
+    if (url.pathname.startsWith('/api/integrations/tjrs-sidecar/')) {
+      assertAuthenticated(req);
+      if (CLOUD_MODE || currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+        return json(res, 503, { ok: false, state: 'LOCAL_AGENT_REQUIRED', message: 'Esta consulta exige o agente local deste escritório. O coletor compartilhado do servidor não pode acessar seus processos privados.' });
       }
-
-      isEprocDownloadActive = true;
-      try {
-        const downloadResult = await downloadProcessWithA1({
-          cnj: targetCnj,
-          securityManager: security,
-          documentStorage,
-          readStateEnvelope: readAppStateEnvelope,
-          saveState: saveAppStateDirect
-        });
-
-        return json(res, 200, {
-          ok: true,
-          piecesCount: downloadResult.piecesCount,
-          totalFiles: downloadResult.totalFiles,
-          client: downloadResult.client,
-          revision: downloadResult.revision,
-          documents: downloadResult.documents,
-          message: `✓ ${downloadResult.piecesCount} peça(s) oficial(is) baixada(s) do eproc TJRS via Certificado A1!`
-        });
-      } finally {
-        isEprocDownloadActive = false;
-      }
+      if (await handleTjrsSidecarRequest(req, res, url)) return;
     }
+    if (await handleOmniRequest(req, res, url)) return;
 
     if (req.method === 'POST' && url.pathname === '/api/integrations/eproc/sweep') {
       assertAuthenticated(req);
+      if (CLOUD_MODE || currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+        return json(res, 503, { ok: false, state: 'LOCAL_AGENT_REQUIRED', message: 'A varredura eproc via A1 exige o agente local deste escritório.' });
+      }
       const body = await readJson(req).catch(() => ({}));
       const maxProcesses = Number(body.maxProcesses) || 50;
 
@@ -2577,6 +2540,35 @@ const server = http.createServer(async (req, res) => {
         });
 
         return json(res, 200, sweepResult);
+      } finally {
+        isEprocDownloadActive = false;
+      }
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/integrations/eproc/download-autos') {
+      assertAuthenticated(req);
+      if (CLOUD_MODE || currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+        return json(res, 503, { ok: false, state: 'LOCAL_AGENT_REQUIRED', message: 'O download de autos via A1 exige o agente local deste escritório.' });
+      }
+      const body = await readJson(req).catch(() => ({}));
+      const processNumber = String(body.processNumber || body.cnj || '').trim();
+      if (!processNumber) throw Object.assign(new Error('Número de processo CNJ obrigatório.'), { statusCode: 400 });
+
+      if (isEprocDownloadActive) {
+        throw Object.assign(new Error('Já existe um download de autos em andamento no eproc TJRS. Aguarde a conclusão.'), { statusCode: 409 });
+      }
+
+      isEprocDownloadActive = true;
+      try {
+        const downloadResult = await downloadProcessWithA1({
+          processNumber,
+          securityManager: security,
+          documentStorage,
+          readStateEnvelope: readAppStateEnvelope,
+          saveState: saveAppStateDirect
+        });
+
+        return json(res, 200, downloadResult);
       } finally {
         isEprocDownloadActive = false;
       }
@@ -2606,7 +2598,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/status') {
       assertAuthenticated(req); const runtime = await readRuntime();
-      let hasCalendar = Boolean(process.env.EXTERNAL_CALENDAR_URL);
+      let hasCalendar = Boolean(currentWorkspaceId() === security.state.defaultWorkspaceId && process.env.EXTERNAL_CALENDAR_URL);
       try {
         const env = await readAppStateEnvelope();
         if (env?.state?.settings?.calendarUrl) hasCalendar = true;
@@ -2634,13 +2626,13 @@ const server = http.createServer(async (req, res) => {
 
       let storageSizeBytes = 0;
       try {
-        if (existsSync(APP_STATE_FILE)) {
-          const st = await stat(APP_STATE_FILE);
+        if (existsSync(appStateFile())) {
+          const st = await stat(appStateFile());
           storageSizeBytes = st.size;
         }
       } catch {}
 
-      const backupDir = path.join(DATA_DIR, 'backups');
+      const backupDir = path.join(workspaceDataDirectory(), 'backups');
       let backupCount = 0;
       let lastBackup = null;
       try {
@@ -2686,7 +2678,7 @@ const server = http.createServer(async (req, res) => {
           twoFactor: 'TOTP RFC 6238 disponível por usuário',
           cookieSecure: Boolean(security.secureCookies),
           bootstrapTokenConfigured: Boolean(process.env.SETUP_BOOTSTRAP_TOKEN),
-          totalUsers: (security.listUsers ? security.listUsers().length : 1),
+          totalUsers: (security.listUsers ? security.listUsers(session.workspaceId).length : 1),
           currentUserRole: session.role || 'master_admin'
         },
         integrations: {
@@ -2707,16 +2699,16 @@ const server = http.createServer(async (req, res) => {
           collector: {
             strategy: CLOUD_MODE ? 'agente_remoto_local' : 'coletor_local',
             lastRun: runtime.updatedAt || null,
-            status: runtimeStateStatus === 'QUARANTINED'
+            status: runtimeHealth().status === 'QUARANTINED'
               ? 'atencao_runtime_quarentenado'
               : (CLOUD_MODE ? 'cloud_mode' : (runtime.updatedAt ? 'ativo' : 'aguardando_primeira_execucao'))
           }
         },
         runtime: {
-          status: runtimeStateStatus,
-          recoveryDetails: runtimeRecoveryDetails,
-          fileExists: existsSync(RUNTIME_FILE),
-          lastRuntimeUpdate
+          status: runtimeHealth().status,
+          recoveryDetails: runtimeHealth().recoveryDetails,
+          fileExists: existsSync(runtimeFile()),
+          lastRuntimeUpdate: runtimeHealth().lastUpdate
         },
         backups: {
           totalBackups: backupCount,
@@ -2746,7 +2738,7 @@ const server = http.createServer(async (req, res) => {
       const session = assertAuthenticated(req, true);
       const appEnv = await readAppStateEnvelope();
       const state = appEnv.state || canonicalEmptyBackupState();
-      const backupDir = path.join(DATA_DIR, 'backups');
+      const backupDir = path.join(workspaceDataDirectory(), 'backups');
       await mkdir(backupDir, { recursive: true });
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -2818,11 +2810,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/api/events') { assertAuthenticated(req); return json(res, 200, await readRuntime()); }
-    if (req.method === 'GET' && url.pathname === '/api/state') { assertAuthenticated(req); return json(res, 200, await readPublicAppStateEnvelope(req.tenant)); }
+    if (req.method === 'GET' && url.pathname === '/api/state') { assertAuthenticated(req); return json(res, 200, await readPublicAppStateEnvelope()); }
     if (req.method === 'POST' && url.pathname === '/api/state') {
       const session = assertAuthenticated(req, true);
       const body = await readJson(req, 3_000_000);
-      const saved = await saveClientAppState(body.state, body.revision ?? null, session, req.tenant);
+      const saved = await saveClientAppState(body.state, body.revision ?? null, session);
       return json(res, 200, { ok: true, ...saved });
     }
 
@@ -2830,20 +2822,20 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/search') {
       assertAuthenticated(req);
       const query = String(url.searchParams.get('q') || '').trim();
-      if (query.length < 2) return json(res, 200, { ok: true, query, results: [], index: searchIndex.status });
+      if (query.length < 2) return json(res, 200, { ok: true, query, results: [], index: currentSearchIndex().status });
       if (query.length > 160) throw Object.assign(new Error('A busca global aceita no máximo 160 caracteres.'), { statusCode: 400 });
       const envelope = await readAppStateEnvelope();
-      const synchronization = await searchIndex.ensure({ state: envelope.state || {}, revision: envelope.revision || null });
-      const results = searchIndex.search(query, { limit: url.searchParams.get('limit') });
+      const synchronization = await currentSearchIndex().ensure({ state: envelope.state || {}, revision: envelope.revision || null });
+      const results = currentSearchIndex().search(query, { limit: url.searchParams.get('limit') });
       return json(res, 200, {
         ok: true,
         query,
         results,
         index: {
-          version: searchIndex.status.version,
-          sourceRevision: searchIndex.status.sourceRevision,
-          entryCount: searchIndex.status.entryCount,
-          generatedAt: searchIndex.status.generatedAt,
+          version: currentSearchIndex().status.version,
+          sourceRevision: currentSearchIndex().status.sourceRevision,
+          entryCount: currentSearchIndex().status.entryCount,
+          generatedAt: currentSearchIndex().status.generatedAt,
           rebuilt: synchronization.rebuilt,
           synchronized: synchronization.synchronized
         }
@@ -2853,7 +2845,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/search/rebuild') {
       assertAdmin(req, true, 'Apenas administradores podem reconstruir o índice derivado de busca.');
       const envelope = await readAppStateEnvelope();
-      const rebuilt = await searchIndex.rebuild({ state: envelope.state || {}, revision: envelope.revision || null });
+      const rebuilt = await currentSearchIndex().rebuild({ state: envelope.state || {}, revision: envelope.revision || null });
       return json(res, 200, { ok: true, index: rebuilt });
     }
 
@@ -3234,9 +3226,9 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/system/state-diagnostics') {
       assertAuthenticated(req);
-      const profileCount = await judicialOrchestrator.sessionManager.countProfiles();
-      const stateFileExists = existsSync(APP_STATE_FILE);
-      const runtimeFileExists = existsSync(RUNTIME_FILE);
+      const profileCount = await (await judicialOrchestratorForCurrentWorkspace()).sessionManager.countProfiles();
+      const stateFileExists = existsSync(appStateFile());
+      const runtimeFileExists = existsSync(runtimeFile());
       return json(res, 200, {
         appVersion: APP_VERSION,
         buildId: BUILD_ID,
@@ -3244,18 +3236,18 @@ const server = http.createServer(async (req, res) => {
         expectedSchemaVersion: CURRENT_SCHEMA_VERSION,
         runtimeSchemaVersion: CURRENT_RUNTIME_SCHEMA_VERSION,
         uiSchemaVersion: CURRENT_UI_SCHEMA_VERSION,
-        stateStatus: serverStateStatus,
-        stateSource: serverStateStatus === 'NEW_INSTALL' ? 'NEW_INSTALL' : 'SERVER',
+        stateStatus: stateHealth().status,
+        stateSource: stateHealth().status === 'NEW_INSTALL' ? 'NEW_INSTALL' : 'SERVER',
         stateFileExists,
-        stateReadable: serverStateStatus === 'READY',
-        stateValid: serverStateStatus === 'READY',
+        stateReadable: stateHealth().status === 'READY',
+        stateValid: stateHealth().status === 'READY',
         runtimeFileExists,
-        runtimeStateStatus,
-        runtimeRecoveryDetails,
-        lastRuntimeUpdate,
+        runtimeStateStatus: runtimeHealth().status,
+        runtimeRecoveryDetails: runtimeHealth().recoveryDetails,
+        lastRuntimeUpdate: runtimeHealth().lastUpdate,
         profileCount,
-        lastMigrationAt,
-        recoveryDetails: stateRecoveryDetails
+        lastMigrationAt: stateHealth().lastMigrationAt,
+        recoveryDetails: stateHealth().recoveryDetails
       });
     }
 
@@ -3270,7 +3262,7 @@ const server = http.createServer(async (req, res) => {
       const parts = url.pathname.split('/');
       const portalId = parts[parts.length - 2];
       if (!portalId) throw Object.assign(new Error('ID do portal inválido.'), { statusCode: 400 });
-      const result = await judicialOrchestrator.sessionManager.clearPortalSession(session.username, portalId);
+      const result = await (await judicialOrchestratorForCurrentWorkspace()).sessionManager.clearPortalSession(session.username, portalId);
       return json(res, 200, {
         ok: true,
         portalId,
@@ -3280,7 +3272,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/state/import-legacy') {
       assertAdmin(req, true, 'Apenas o administrador principal pode importar dados legados.');
-      if (serverStateStatus !== 'NEW_INSTALL' || existsSync(APP_STATE_FILE)) {
+      if (stateHealth().status !== 'NEW_INSTALL' || existsSync(appStateFile())) {
         throw Object.assign(new Error('A importação legada só é permitida em uma instalação nova, antes da criação do estado principal.'), { statusCode: 409 });
       }
       const body = await readJson(req, 4_000_000);
@@ -3922,11 +3914,20 @@ Diretrizes essenciais:
       });
     }
 
-
+    if (CLOUD_MODE) {
+      if (['/api/integrations/judicial/certificate', '/api/integrations/judicial/reset', '/api/integrations/judicial/connect', '/api/integrations/judicial/a1/sandbox'].includes(url.pathname)) {
+        assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
+        return json(res, 503, { ok: false, message: 'Operações com certificado digital local e sessões de desktop não estão disponíveis em ambiente de nuvem.' });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/sync') {
+        assertAuthenticated(req, true);
+        return json(res, 200, { ok: true, message: 'Em ambiente de nuvem, a sincronização do acervo com certificado deve ser realizada pelo agente local.' });
+      }
+    }
 
     if (req.method === 'GET' && url.pathname === '/api/integrations/judicial') {
       const session = assertAuthenticated(req);
-      const diagnostics = await judicialOrchestrator.getDiagnostics(session.username);
+      const diagnostics = await (await judicialOrchestratorForCurrentWorkspace()).getDiagnostics(session.username);
       const legacyStatus = await judicialIntegrationStatus();
       const runtime = await readRuntime();
       const runtimeSources = new Map(sanitizeArray(runtime.sources).map(source => [source.id, source]));
@@ -3959,24 +3960,22 @@ Diretrizes essenciais:
         diagnostics: reconciledDiagnostics,
         certificate: {
           ...legacyStatus.certificate,
-          valid: Boolean(legacyStatus.certificate.valid || reconciledDiagnostics.a1?.status === 'operational'),
-          accessible: Boolean(legacyStatus.certificate.accessible || legacyStatus.certificate.configured),
-          summary: reconciledDiagnostics.a1?.summary || legacyStatus.certificate.summary,
-          status: reconciledDiagnostics.a1?.status || (legacyStatus.certificate.valid ? 'operational' : 'not_configured')
+          summary: reconciledDiagnostics.a1.summary,
+          status: reconciledDiagnostics.a1.status
         }
       });
     }
 
     if (req.method === 'GET' && url.pathname === '/api/integrations/judicial/diagnostics') {
       const session = assertAuthenticated(req);
-      const diagnostics = await judicialOrchestrator.getDiagnostics(session.username);
+      const diagnostics = await (await judicialOrchestratorForCurrentWorkspace()).getDiagnostics(session.username);
       return json(res, 200, { ok: true, diagnostics });
     }
 
     // A1 Certificate Sandbox Execution
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/a1/sandbox') {
       assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
-      const result = await judicialOrchestrator.runA1Test();
+      const result = await (await judicialOrchestratorForCurrentWorkspace()).runA1Test();
       return json(res, 200, { ok: true, sandbox: result });
     }
 
@@ -3986,7 +3985,7 @@ Diretrizes essenciais:
       const body = await readJson(req);
       let result;
       if (body.portalId) {
-        result = await judicialOrchestrator.runTotpTest(body.portalId);
+        result = await (await judicialOrchestratorForCurrentWorkspace()).runTotpTest(body.portalId);
       } else if (body.secret) {
         result = runTotpSandbox({ secret: body.secret });
       } else {
@@ -3998,23 +3997,8 @@ Diretrizes essenciais:
     // TOTP Parse QR / Migration
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/totp/parse') {
       assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE);
-      const body = await readJson(req, 15_000_000);
-      let raw = body.qrData || body.secret;
-      if (!raw && body.imageBase64) {
-        try {
-          const buffer = Buffer.from(String(body.imageBase64).replace(/^data:[^,]+,/, ''), 'base64');
-          const tempPath = path.join(DATA_DIR, `temp-qr-${Date.now()}-${randomBytes(4).toString('hex')}.png`);
-          await writeFile(tempPath, buffer);
-          try {
-            const pyCode = `import cv2; d = cv2.QRCodeDetector(); val, _, _ = d.detectAndDecode(cv2.imread(r'${tempPath}')); print(val or '')`;
-            raw = execFileSync('python', ['-c', pyCode], { encoding: 'utf8' }).trim();
-          } finally {
-            try { await unlink(tempPath); } catch {}
-          }
-        } catch (err) {
-          console.error('Falha no fallback de decodificação de QR no servidor:', err.message);
-        }
-      }
+      const body = await readJson(req);
+      const raw = body.qrData || body.secret;
       if (!raw) throw Object.assign(new Error('Nenhum dado de QR ou segredo recebido.'), { statusCode: 400 });
       const parsed = parseTotpUri(raw);
       return json(res, 200, { ok: true, ...parsed });
@@ -4031,7 +4015,7 @@ Diretrizes essenciais:
       const passphrase = String(body.passphrase || '');
       const pfxBuffer = Buffer.from(encoded, 'base64');
 
-      const saved = await judicialOrchestrator.credentialManager.saveCertificate({
+      const saved = await (await judicialOrchestratorForCurrentWorkspace()).credentialManager.saveCertificate({
         fileName,
         pfxBuffer,
         passphrase
@@ -4080,32 +4064,48 @@ Diretrizes essenciais:
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/connect') {
       assertAdmin(req, true, JUDICIAL_ADMIN_FORBIDDEN_MESSAGE); const body = await readJson(req); return json(res, 202, await startInteractiveCollector(body.portalIds));
     }
+    if (req.method === 'GET' && url.pathname === '/api/integrations/collector/pair') {
+      const session = assertAdmin(req, false, 'Apenas administradores podem consultar o pareamento do coletor local.');
+      return json(res, 200, { ok: true, workspaceId: session.workspaceId, ...security.collectorTokenStatus(session.workspaceId) });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/integrations/collector/pair') {
+      const session = assertAdmin(req, true, 'Apenas administradores podem parear o coletor local.');
+      const pairing = await security.issueCollectorToken(session.workspaceId);
+      await appendServerAudit('Coletor local pareado', 'Um novo token substituiu o pareamento anterior deste escritório.', session.displayName || session.username);
+      return json(res, 201, { ok: true, ...pairing, message: 'Pareamento criado. Copie o token agora; ele não será exibido novamente.' });
+    }
+    if (req.method === 'DELETE' && url.pathname === '/api/integrations/collector/pair') {
+      const session = assertAdmin(req, true, 'Apenas administradores podem remover o pareamento do coletor local.');
+      const result = await security.revokeCollectorToken(session.workspaceId);
+      return json(res, 200, { ok: true, ...result, message: 'Pareamento do coletor removido.' });
+    }
     if (req.method === 'POST' && url.pathname === '/api/ingest') {
-      if (!collectorAuthorized(req)) return json(res, 401, { message: 'Coletor não autorizado.' });
-      const incoming = await readJson(req, 5_000_000);
-      const appState = await readAppState().catch(() => null);
-      const suppressions = processDiscoverySuppressionSet(appState);
-      const collections = {
-        events: sanitizeArray(incoming.events),
-        tasks: sanitizeArray(incoming.tasks),
-        intimations: sanitizeArray(incoming.intimations),
-        processes: withoutSuppressedProcesses(incoming.processes, suppressions),
-        contacts: sanitizeArray(incoming.contacts),
-        sources: sanitizeArray(incoming.sources),
-        documents: sanitizeArray(incoming.documents)
-      };
-      const next = await mutateRuntime(runtime => ({
-        events: mergeBy(runtime.events, collections.events),
-        tasks: mergeBy(runtime.tasks, collections.tasks),
-        intimations: mergeExternalIntimations(runtime.intimations, collections.intimations),
-        processes: mergeExternalProcesses(withoutSuppressedProcesses(runtime.processes, suppressions), collections.processes),
-        contacts: mergeExternalContacts(runtime.contacts, collections.contacts),
-        sources: mergeBy(runtime.sources, collections.sources, 'id'),
-        documents: mergeBy(runtime.documents || [], collections.documents, 'id'),
-        updatedAt: new Date().toISOString()
-      }));
-      const imported = ['events', 'tasks', 'intimations', 'processes', 'contacts', 'documents'].reduce((sum, key) => sum + collections[key].length, 0);
-      return json(res, 200, { ok: true, imported, updatedAt: next.updatedAt });
+      const workspace = collectorWorkspace(req);
+      if (!workspace) return json(res, 401, { message: 'Coletor não autorizado para este escritório.' });
+      return workspaceRequestContext.run({ workspaceId: workspace.id }, async () => {
+        const incoming = await readJson(req, 5_000_000);
+        const appState = await readAppState().catch(() => null);
+        const suppressions = processDiscoverySuppressionSet(appState);
+        const collections = {
+          events: sanitizeArray(incoming.events),
+          tasks: sanitizeArray(incoming.tasks),
+          intimations: sanitizeArray(incoming.intimations),
+          processes: withoutSuppressedProcesses(incoming.processes, suppressions),
+          contacts: sanitizeArray(incoming.contacts),
+          sources: sanitizeArray(incoming.sources)
+        };
+        const next = await mutateRuntime(runtime => ({
+          events: mergeBy(runtime.events, collections.events),
+          tasks: mergeBy(runtime.tasks, collections.tasks),
+          intimations: mergeExternalIntimations(runtime.intimations, collections.intimations),
+          processes: mergeExternalProcesses(withoutSuppressedProcesses(runtime.processes, suppressions), collections.processes),
+          contacts: mergeExternalContacts(runtime.contacts, collections.contacts),
+          sources: mergeBy(runtime.sources, collections.sources, 'id'),
+          updatedAt: new Date().toISOString()
+        }));
+        const imported = ['events', 'tasks', 'intimations', 'processes', 'contacts'].reduce((sum, key) => sum + collections[key].length, 0);
+        return json(res, 200, { ok: true, imported, updatedAt: next.updatedAt });
+      });
     }
     if (req.method === 'GET' && url.pathname === '/api/import/template') {
       const type = url.searchParams.get('type') || 'processes';
@@ -4136,7 +4136,7 @@ Diretrizes essenciais:
     }
     if (req.method === 'GET' && url.pathname === '/api/sync/status') {
       assertAuthenticated(req);
-      return json(res, 200, currentSyncProgress);
+      return json(res, 200, syncState().progress);
     }
     if (req.method === 'POST' && url.pathname === '/api/sync') {
       const syncSession = assertAuthenticated(req, true);
@@ -4151,8 +4151,8 @@ Diretrizes essenciais:
             : 'A sincronização automática das 10h já foi realizada hoje.'
         });
       }
-      if (syncRequestActive) throw Object.assign(new Error('Já existe uma sincronização em andamento.'), { statusCode: 409 });
-      syncRequestActive = true;
+      if (syncState().requestActive) throw Object.assign(new Error('Já existe uma sincronização em andamento.'), { statusCode: 409 });
+      syncState().requestActive = true;
       req.ownsSync = true;
       updateSyncProgress({
         step: 1,
@@ -4362,7 +4362,7 @@ Diretrizes essenciais:
         const tjrsMonitoring = await refreshMonitoredTjrsProcesses({
           processes: target.processes,
           userId: String(syncSession?.username || syncSession?.userId || syncSession?.id || ''),
-          credentialManager: judicialOrchestrator.credentialManager,
+          credentialManager: (await judicialOrchestratorForCurrentWorkspace()).credentialManager,
           client: tjrsSidecarClient,
           onProgress: ({ current, total, number }) => updateSyncProgress({
             step: 2,
@@ -4388,47 +4388,50 @@ Diretrizes essenciais:
         }
 
         // Auto-enriquecimento eproc TJRS: verifica se há processos sem cliente ou em segredo de justiça
-        try {
-          const rawSecrets = await judicialOrchestrator?.credentialManager?.readRawSecrets?.().catch(() => ({}));
-          const hasA1 = Boolean(rawSecrets?.certificate?.path || process.env.A1_PFX_PATH);
-          const hasTotp = Boolean(rawSecrets?.totpSecrets && Object.keys(rawSecrets.totpSecrets).length > 0);
-          if (hasA1 && hasTotp && !isEprocDownloadActive) {
-            const hasEnrichmentCandidates = (target.processes || []).some(p => {
-              const num = String(p.number || '');
-              const court = String(p.court || '').toUpperCase();
-              const isTjrs = num.includes('.8.21.') || court.includes('TJRS') || p.source === 'eproc-tjrs';
-              if (!isTjrs) return false;
-              const client = String(p.client || '').trim();
-              const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
-              const isSecrecy = Boolean(p.secrecy) || /sigilo|segredo/i.test(client);
-              return isMissingClient || isSecrecy;
-            });
+        if (!CLOUD_MODE && currentWorkspaceId() === security.state.defaultWorkspaceId) {
+          try {
+            const orch = await judicialOrchestratorForCurrentWorkspace();
+            const rawSecrets = await orch?.credentialManager?.readRawSecrets?.().catch(() => ({}));
+            const hasA1 = Boolean(rawSecrets?.certificate?.path || process.env.A1_PFX_PATH);
+            const hasTotp = Boolean(rawSecrets?.totpSecrets && Object.keys(rawSecrets.totpSecrets).length > 0);
+            if (hasA1 && hasTotp && !isEprocDownloadActive) {
+              const hasEnrichmentCandidates = (target.processes || []).some(p => {
+                const num = String(p.number || '');
+                const court = String(p.court || '').toUpperCase();
+                const isTjrs = num.includes('.8.21.') || court.includes('TJRS') || p.source === 'eproc-tjrs';
+                if (!isTjrs) return false;
+                const client = String(p.client || '').trim();
+                const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
+                const isSecrecy = Boolean(p.secrecy) || /sigilo|segredo/i.test(client);
+                return isMissingClient || isSecrecy;
+              });
 
-            if (hasEnrichmentCandidates) {
-              console.log('\n[Etapa 2.5/4] 🔐 Auto-enriquecimento eproc TJRS para processos com Segredo ou Cliente pendente...');
-              isEprocDownloadActive = true;
-              try {
-                const sweepRes = await sweepAndEnrichProcessesWithA1({
-                  securityManager: security,
-                  readStateEnvelope: readAppStateEnvelope,
-                  saveState: saveAppStateDirect,
-                  maxProcesses: 10
-                });
-                if (sweepRes?.enrichedCount > 0) {
-                  console.log(`  ✓ Auto-enriquecimento eproc: ${sweepRes.enrichedCount} processo(s) atualizado(s) automaticamente.`);
-                  const freshEnvelope = await readAppStateEnvelope();
-                  if (freshEnvelope?.state?.processes) {
-                    target.processes = freshEnvelope.state.processes;
-                    target.contacts = freshEnvelope.state.contacts || target.contacts;
+              if (hasEnrichmentCandidates) {
+                console.log('\n[Etapa 2.5/4] 🔐 Auto-enriquecimento eproc TJRS para processos com Segredo ou Cliente pendente...');
+                isEprocDownloadActive = true;
+                try {
+                  const sweepRes = await sweepAndEnrichProcessesWithA1({
+                    securityManager: security,
+                    readStateEnvelope: readAppStateEnvelope,
+                    saveState: saveAppStateDirect,
+                    maxProcesses: 10
+                  });
+                  if (sweepRes?.enrichedCount > 0) {
+                    console.log(`  ✓ Auto-enriquecimento eproc: ${sweepRes.enrichedCount} processo(s) atualizado(s) automaticamente.`);
+                    const freshEnvelope = await readAppStateEnvelope();
+                    if (freshEnvelope?.state?.processes) {
+                      target.processes = freshEnvelope.state.processes;
+                      target.contacts = freshEnvelope.state.contacts || target.contacts;
+                    }
                   }
+                } finally {
+                  isEprocDownloadActive = false;
                 }
-              } finally {
-                isEprocDownloadActive = false;
               }
             }
+          } catch (enrichErr) {
+            console.warn('  ⚠️ Aviso auto-enriquecimento eproc TJRS:', enrichErr.message);
           }
-        } catch (enrichErr) {
-          console.warn('  ⚠️ Aviso auto-enriquecimento eproc TJRS:', enrichErr.message);
         }
 
         console.log('\n[Etapa 3/4] 🔗 Consolidando intimações e processos...');
@@ -4450,7 +4453,7 @@ Diretrizes essenciais:
       }
 
       // 2. Sincronização com Agenda Externa (Webcal / iCalendar)
-      const calUrl = appState?.settings?.calendarUrl || process.env.EXTERNAL_CALENDAR_URL;
+      const calUrl = appState?.settings?.calendarUrl || (currentWorkspaceId() === security.state.defaultWorkspaceId ? process.env.EXTERNAL_CALENDAR_URL : '');
       if (calUrl) {
         try {
           const parsed = calendarPayload(parseCalendar(await fetchCalendarSource(calUrl)));
@@ -4514,7 +4517,7 @@ Diretrizes essenciais:
         detail: `Sincronização concluída com sucesso (${updatedRuntime.intimations.length} intimações, ${updatedRuntime.processes.length} processos).`,
         percent: 100
       });
-      syncRequestActive = false;
+      syncState().requestActive = false;
       req.ownsSync = false;
 
       return json(res, 200, {
@@ -4533,7 +4536,7 @@ Diretrizes essenciais:
     json(res, 405, { message: 'Método não permitido.' });
   } catch (error) {
     if (req.ownsSync) {
-      syncRequestActive = false;
+      syncState().requestActive = false;
       req.ownsSync = false;
       updateSyncProgress({
       step: 0,
@@ -4550,11 +4553,17 @@ Diretrizes essenciais:
   }
 });
 
-const stateInitResult = await initServerState();
+for (const workspace of security.state.workspaces || []) {
+  await workspaceRequestContext.run({ workspaceId: workspace.id }, async () => {
+    await initServerState();
+    await readRuntime();
+  });
+}
+const stateInitResult = { status: stateHealth().status };
 console.log(`[ATRIUM Persistência]: Estado inicializado com status "${stateInitResult.status}". Schema v${CURRENT_SCHEMA_VERSION}.`);
-judicialOrchestrator.setPortals((await readPortalConfiguration()).portals);
+await judicialOrchestratorForCurrentWorkspace();
 await readRuntime();
-console.log(`[ATRIUM Runtime]: Estado derivado inicializado com status "${runtimeStateStatus}".`);
+console.log(`[ATRIUM Runtime]: Estado derivado inicializado com status "${runtimeHealth().status}".`);
 
 server.listen(PORT, HOST, () => {
   console.log(`ATRIUM ${APP_VERSION} — Escritório Integrado: http://${HOST}:${PORT}`);
