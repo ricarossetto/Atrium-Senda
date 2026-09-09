@@ -109,7 +109,7 @@ html[data-theme="light"] .auth-gate {
   backdrop-filter: blur(12px);
 }
 
-.auth-gate .auth-brand-svg { width: clamp(176px, 18vw, 238px); height: auto; }
+.auth-gate .auth-brand-svg { width: clamp(210px, 22vw, 300px); height: auto; }
 html[data-theme="light"] .auth-gate .auth-logo-frame {
   border-color: var(--auth-line);
   background: rgba(255, 255, 253, .72);
@@ -133,7 +133,13 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
   letter-spacing: -.025em;
 }
 
-.auth-gate .auth-visual-copy h1 em { color: var(--auth-primary-strong); font-weight: 500; }
+.auth-gate .auth-visual-copy h1 em {
+  color: var(--auth-primary-strong);
+  font-size: .74em;
+  font-style: normal;
+  font-weight: 560;
+  letter-spacing: -.01em;
+}
 .auth-gate .auth-visual-copy > p:last-child { max-width: 560px; margin: 0; color: var(--auth-muted); font-size: 15px; line-height: 1.72; }
 
 .auth-gate .auth-security-list {
@@ -149,12 +155,22 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 }
 
 .auth-gate .auth-security-list span {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
   padding-top: 10px;
   border-top: 1px solid var(--auth-line);
 }
 
+.auth-gate .auth-security-list span > span {
+  display: block;
+  padding: 0;
+  border: 0;
+}
+
 .auth-gate .auth-panel {
-  align-items: start;
+  align-items: center;
   padding: 12px clamp(28px, 5vw, 66px);
   background: var(--auth-panel);
 }
@@ -226,6 +242,8 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
   align-items: end;
   gap: 12px;
 }
+
+.auth-gate .auth-uf-label { padding-left: 8px; text-align: left; }
 
 .auth-gate .auth-field-row input,
 .auth-gate .auth-field-row select {

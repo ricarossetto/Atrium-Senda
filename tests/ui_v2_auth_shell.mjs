@@ -33,7 +33,10 @@ const SCENARIOS = [
   { file: '06-dark-1280-totp.png', theme: 'dark', viewport: { width: 1280, height: 800 }, state: 'totp', configured: true },
   { file: '07-light-1280-recovery.png', theme: 'light', viewport: { width: 1280, height: 800 }, state: 'recovery', configured: true },
   { file: '08-light-390-login.png', theme: 'light', viewport: { width: 390, height: 844 }, state: 'login', configured: true },
-  { file: '09-dark-390-register.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'register', configured: true }
+  { file: '09-dark-390-register.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'register', configured: true },
+  { file: '10-light-1920x1080-first-setup.png', theme: 'light', viewport: { width: 1920, height: 1080 }, state: 'setup', configured: false },
+  { file: '11-dark-1920x1200-first-setup.png', theme: 'dark', viewport: { width: 1920, height: 1200 }, state: 'setup', configured: false },
+  { file: '12-light-2560x1080-first-setup.png', theme: 'light', viewport: { width: 2560, height: 1080 }, state: 'setup', configured: false }
 ];
 
 fs.mkdirSync(OUTPUT, { recursive: true });
@@ -141,11 +144,27 @@ try {
           return { top: box.top, left: box.left, right: box.right, width: box.width, height: box.height };
         };
         const card = document.querySelector('.auth-card');
+        const brandTitle = document.querySelector('.auth-visual-copy h1');
+        const brandSubtitle = brandTitle.querySelector('em');
+        const securityItems = [...document.querySelectorAll('.auth-security-list > span')];
+        const cardBox = card.getBoundingClientRect();
         return {
           displayName: rect('displayName'), email: rect('email'), username: rect('username'),
           oab: rect('oab'), oabUf: rect('oabUf'), password: rect('password'), confirmPassword: rect('confirmPassword'),
           cardOverflow: card.scrollHeight - card.clientHeight,
-          themeControlInsideCard: document.querySelector('.auth-theme-toggle')?.parentElement === card
+          themeControlInsideCard: document.querySelector('.auth-theme-toggle')?.parentElement === card,
+          ufLabelAlignment: getComputedStyle(document.querySelector('.auth-uf-label')).textAlign,
+          ufLabelPadding: Number.parseFloat(getComputedStyle(document.querySelector('.auth-uf-label')).paddingLeft),
+          brandTitleSize: Number.parseFloat(getComputedStyle(brandTitle).fontSize),
+          brandSubtitleSize: Number.parseFloat(getComputedStyle(brandSubtitle).fontSize),
+          brandSubtitleStyle: getComputedStyle(brandSubtitle).fontStyle,
+          cardCenterOffset: Math.abs(cardBox.top + cardBox.height / 2 - innerHeight / 2),
+          securityItemsUseHangingIndent: securityItems.every(item => {
+            const text = item.querySelector(':scope > span');
+            return getComputedStyle(item).display === 'grid'
+              && getComputedStyle(item).gridTemplateColumns.split(' ').length === 2
+              && Boolean(text);
+          })
         };
       });
       const fullWidth = ['displayName', 'email', 'username', 'password', 'confirmPassword'].map(name => setupLayout[name]);
@@ -156,6 +175,12 @@ try {
       assert.ok(setupLayout.oab.right < setupLayout.oabUf.left && setupLayout.oabUf.width >= 120); assertions++;
       assert.ok(setupLayout.cardOverflow <= 2, `O primeiro acesso não deve exigir rolagem interna: ${setupLayout.cardOverflow}px.`); assertions++;
       assert.equal(setupLayout.themeControlInsideCard, true); assertions++;
+      assert.equal(setupLayout.ufLabelAlignment, 'left'); assertions++;
+      assert.equal(setupLayout.ufLabelPadding, 8); assertions++;
+      assert.equal(setupLayout.brandSubtitleStyle, 'normal'); assertions++;
+      assert.ok(setupLayout.brandSubtitleSize < setupLayout.brandTitleSize * .8); assertions++;
+      assert.ok(setupLayout.cardCenterOffset <= 2, `O cartão deve ficar centralizado verticalmente: desvio de ${setupLayout.cardCenterOffset}px.`); assertions++;
+      assert.equal(setupLayout.securityItemsUseHangingIndent, true); assertions++;
     }
 
     const output = path.join(OUTPUT, scenario.file);
@@ -183,7 +208,7 @@ try {
     const button = page.locator('.auth-theme-toggle');
     const initial = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, saved: localStorage.getItem('atrium_theme') }));
     await button.click();
-    const dark = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme || 'dark', saved: localStorage.getItem('atrium_theme') }));
+    const dark = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme || 'dark', saved: localStorage.getItem('atrium_theme'), toasts: document.querySelectorAll('#toastRegion .toast').length }));
     await button.click();
     const light = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, saved: localStorage.getItem('atrium_theme') }));
     const result = { initial, dark, light, visible: await button.isVisible(), label: await button.getAttribute('aria-label') };
@@ -191,7 +216,7 @@ try {
     return result;
   })();
   assert.deepEqual(publicThemeControl.initial, { theme: 'light', saved: 'light' });
-  assert.deepEqual(publicThemeControl.dark, { theme: 'dark', saved: 'dark' });
+  assert.deepEqual(publicThemeControl.dark, { theme: 'dark', saved: 'dark', toasts: 0 });
   assert.deepEqual(publicThemeControl.light, { theme: 'light', saved: 'light' });
   assert.equal(publicThemeControl.visible, true);
   assert.equal(publicThemeControl.label, 'Tema claro ativo. Alternar para tema escuro');

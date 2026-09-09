@@ -47,6 +47,10 @@ O tema visual também é uma preferência local independente. Sem escolha salva,
 em tema claro. O seletor fica disponível desde a tela de autenticação e permanece sincronizado
 com o seletor da aplicação; a escolha `light` ou `dark` usa a chave `atrium_theme` no navegador.
 
+As referências primárias de composição desktop são 1920×1080 (padrão principal), 1920×1200
+(notebook) e 2560×1080 (ultrawide). Viewports menores continuam cobertos como comportamento
+responsivo complementar.
+
 ## Relevant tests
 
 `tests/ui_v2_mode_contract.mjs`, `tests/ui_v2_final_parity.mjs`, `tests/ui_v2_runtime_hygiene.mjs`.

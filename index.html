@@ -49,14 +49,14 @@
         <p>Gestão jurídica organizada, segura e supervisionada para a rotina profissional do escritório.</p>
       </div>
       <div class="auth-security-list">
-        <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>Dados protegidos no seu computador</span>
-        <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>Verificação de acesso em duas etapas</span>
-        <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>Acesso restrito a usuários autorizados</span>
+        <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg><span>Dados protegidos no seu computador</span></span>
+        <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg><span>Verificação de acesso em duas etapas</span></span>
+        <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg><span>Acesso restrito a usuários autorizados</span></span>
       </div>
     </div>
     <div class="auth-panel">
       <div class="auth-card">
-        <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle aria-label="Tema claro ativo. Alternar para tema escuro">
+        <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle data-theme-silent="true" aria-label="Tema claro ativo. Alternar para tema escuro">
           <span data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
         </button>
         <div id="authLoading" class="auth-step active"><span class="auth-spinner"></span><h2>Verificando proteção…</h2><p>Validando a configuração de segurança.</p></div>
@@ -69,8 +69,8 @@
             <label>E-mail profissional<input name="email" type="email" autocomplete="email" placeholder="advogado@escritorio.adv.br" required maxlength="160"></label>
             <label>Usuário de acesso<input name="username" autocomplete="username" placeholder="admin" required pattern="[a-zA-Z0-9._\x2d]{3,64}" maxlength="64"></label>
             <div class="auth-field-row">
-              <label>OAB (opcional)<input name="oab" inputmode="text" autocomplete="off" placeholder="000000" maxlength="20"></label>
-              <label>UF<select name="oabUf" aria-label="UF da OAB">
+              <label><span>OAB (opcional)</span><input name="oab" inputmode="text" autocomplete="off" placeholder="000000" maxlength="20"></label>
+              <label><span class="auth-uf-label">UF</span><select name="oabUf" aria-label="UF da OAB">
                 <option value="">Selecione</option>
                 <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option>
                 <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>

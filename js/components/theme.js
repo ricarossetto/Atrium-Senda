@@ -45,10 +45,12 @@ export function createTheme({ showToast, onChange } = {}) {
     onChange?.(currentTheme);
   }
 
-  function toggleTheme() {
+  function toggleTheme(event) {
     const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
     setTheme(nextTheme);
-    showToast?.(`Tema alternado para Modo ${nextTheme === 'light' ? 'Claro' : 'Escuro'}.`, 'success');
+    if (event?.currentTarget?.dataset.themeSilent !== 'true') {
+      showToast?.(`Tema alternado para Modo ${nextTheme === 'light' ? 'Claro' : 'Escuro'}.`, 'success');
+    }
   }
 
   return Object.freeze({
