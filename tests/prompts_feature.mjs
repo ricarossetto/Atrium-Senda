@@ -208,7 +208,7 @@ try {
   });
 
   assert.equal(promptsDataHash, '5ad2e02eaf7ea80bb76b43e2de7beccc05ffb159af56b634a4f9d712e74f8340');
-  assert.equal(skillsDataHash, 'adc7de1e9cb6bb0ec896995f844e06941781a2b81366cd29eee4337d8e07405f');
+  assert.equal(skillsDataHash, '16f638bd98920f20767725f4ee3cec7fa3ec5f5e1ba7592c83b07d05b15f5905');
   assert.equal(createHash('sha256').update(characterization.initialHtml, 'utf8').digest('hex'), 'c0d4b9fff3c808bee0313a35f02ba09a5f6f57714c2b22aea0c79e4458688103');
   assert.deepEqual(characterization.filterResults, {
     initial: ['custom-test-001', 'default-test-001', 'default-test-002'],

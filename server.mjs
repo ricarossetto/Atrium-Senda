@@ -3743,7 +3743,8 @@ Diretrizes essenciais:
         intimations: sanitizeArray(incoming.intimations),
         processes: withoutSuppressedProcesses(incoming.processes, suppressions),
         contacts: sanitizeArray(incoming.contacts),
-        sources: sanitizeArray(incoming.sources)
+        sources: sanitizeArray(incoming.sources),
+        documents: sanitizeArray(incoming.documents)
       };
       const next = await mutateRuntime(runtime => ({
         events: mergeBy(runtime.events, collections.events),
@@ -3752,9 +3753,10 @@ Diretrizes essenciais:
         processes: mergeExternalProcesses(withoutSuppressedProcesses(runtime.processes, suppressions), collections.processes),
         contacts: mergeExternalContacts(runtime.contacts, collections.contacts),
         sources: mergeBy(runtime.sources, collections.sources, 'id'),
+        documents: mergeBy(runtime.documents || [], collections.documents, 'id'),
         updatedAt: new Date().toISOString()
       }));
-      const imported = ['events', 'tasks', 'intimations', 'processes', 'contacts'].reduce((sum, key) => sum + collections[key].length, 0);
+      const imported = ['events', 'tasks', 'intimations', 'processes', 'contacts', 'documents'].reduce((sum, key) => sum + collections[key].length, 0);
       return json(res, 200, { ok: true, imported, updatedAt: next.updatedAt });
     }
     if (req.method === 'GET' && url.pathname === '/api/import/template') {

@@ -24,7 +24,7 @@ assert.doesNotMatch(featureSource, /^\s*import\s/m);
 assert.doesNotMatch(featureSource, /\b(?:fetch|secureFetch)\s*\(/);
 assert.doesNotMatch(presenterSource, /\bStore\b|customPrompts|\bfetch\s*\(|secureFetch|\bsave\s*\(|\bflush\s*\(|\baudit\s*\(|clipboard\.writeText|setTimeout|onUsePrompt/);
 assert.equal(createHash('sha256').update(promptsData).digest('hex'), '5ad2e02eaf7ea80bb76b43e2de7beccc05ffb159af56b634a4f9d712e74f8340');
-assert.equal(createHash('sha256').update(skillsData).digest('hex'), 'adc7de1e9cb6bb0ec896995f844e06941781a2b81366cd29eee4337d8e07405f');
+assert.equal(createHash('sha256').update(skillsData).digest('hex'), '16f638bd98920f20767725f4ee3cec7fa3ec5f5e1ba7592c83b07d05b15f5905');
 
 const rollbackStore = {
   state: { customPrompts: [{ id: 'custom-rollback-v2', isCustom: true, title: 'Rollback V2' }] },
