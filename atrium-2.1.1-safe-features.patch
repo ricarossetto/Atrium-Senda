@@ -1,0 +1,1936 @@
+diff --git a/css/views/ui-v2/configuration.css b/css/views/ui-v2/configuration.css
+index 690442f..6158efd 100644
+--- a/css/views/ui-v2/configuration.css
++++ b/css/views/ui-v2/configuration.css
+@@ -370,6 +370,125 @@ html[data-ui="v2"] .configuration-row-actions { display: flex; justify-content:
+ html[data-ui="v2"] .configuration-row-actions .button { min-height: 40px; }
+ html[data-ui="v2"] .configuration-protected-access { color: var(--v2-color-muted-foreground); font-size: 9.5px; }
+ 
++html[data-ui="v2"] .configuration-status-pill {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  min-height: 22px;
++  margin-left: var(--v2-space-2);
++  padding: 0 8px;
++  border: 1px solid var(--v2-color-border);
++  border-radius: var(--v2-radius-round);
++  font-size: 9px;
++  font-weight: 750;
++  white-space: nowrap;
++  cursor: pointer;
++  transition: all var(--v2-duration-fast) var(--v2-ease-standard);
++}
++
++html[data-ui="v2"] .configuration-status-pill.success {
++  color: var(--v2-color-success);
++  background: var(--v2-color-success-soft);
++  border-color: color-mix(in srgb, var(--v2-color-success) 38%, var(--v2-color-border));
++}
++
++html[data-ui="v2"] .configuration-status-pill.success:hover {
++  background: color-mix(in srgb, var(--v2-color-success) 22%, var(--v2-color-surface));
++  border-color: var(--v2-color-success);
++}
++
++html[data-ui="v2"] .configuration-status-pill.warning {
++  color: var(--v2-color-warning);
++  background: var(--v2-color-warning-soft);
++  border-color: color-mix(in srgb, var(--v2-color-warning) 38%, var(--v2-color-border));
++}
++
++html[data-ui="v2"] .configuration-status-pill.warning:hover {
++  background: color-mix(in srgb, var(--v2-color-warning) 22%, var(--v2-color-surface));
++  border-color: var(--v2-color-warning);
++}
++
++html[data-ui="v2"] .configuration-status-pill.neutral {
++  color: var(--v2-color-foreground-secondary);
++  background: var(--v2-color-surface-secondary);
++  border-color: var(--v2-color-border);
++}
++
++html[data-ui="v2"] .configuration-status-pill.neutral:hover {
++  color: var(--v2-color-foreground);
++  border-color: var(--v2-color-foreground-secondary);
++}
++
++html[data-ui="v2"] .configuration-action-btn {
++  font-size: 11px;
++  font-weight: 600;
++  border-color: color-mix(in srgb, var(--v2-color-gold) 40%, var(--v2-color-border));
++  color: var(--v2-color-gold);
++  white-space: nowrap;
++  transition: all var(--v2-duration-fast) var(--v2-ease-standard);
++}
++
++html[data-ui="v2"] .configuration-action-btn:hover {
++  background: color-mix(in srgb, var(--v2-color-gold) 15%, transparent);
++  border-color: var(--v2-color-gold);
++  box-shadow: 0 0 10px color-mix(in srgb, var(--v2-color-gold) 25%, transparent);
++}
++
++html[data-ui="v2"] .configuration-modal-callout {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: var(--v2-space-4);
++  padding: var(--v2-space-4);
++  margin-bottom: var(--v2-space-4);
++  background: color-mix(in srgb, var(--v2-color-gold-soft) 40%, var(--v2-color-surface-secondary));
++  border: 1px solid color-mix(in srgb, var(--v2-color-gold) 45%, var(--v2-color-border));
++  border-radius: var(--v2-radius-md);
++}
++
++html[data-ui="v2"] .configuration-callout-info {
++  display: grid;
++  gap: 4px;
++}
++
++html[data-ui="v2"] .configuration-callout-badge {
++  display: inline-block;
++  width: fit-content;
++  padding: 2px 7px;
++  background: color-mix(in srgb, var(--v2-color-gold) 20%, transparent);
++  border: 1px solid color-mix(in srgb, var(--v2-color-gold) 50%, var(--v2-color-border));
++  border-radius: var(--v2-radius-round);
++  color: var(--v2-color-gold);
++  font-size: 9px;
++  font-weight: 750;
++  letter-spacing: .08em;
++  text-transform: uppercase;
++}
++
++html[data-ui="v2"] .configuration-callout-info strong {
++  color: var(--v2-color-foreground);
++  font-size: 13px;
++}
++
++html[data-ui="v2"] .configuration-callout-info p {
++  margin: 0;
++  color: var(--v2-color-foreground-secondary);
++  font-size: 11px;
++  line-height: 1.45;
++}
++
++html[data-ui="v2"] .configuration-modal-callout button {
++  flex-shrink: 0;
++  min-height: 38px;
++  color: var(--v2-color-gold);
++  border-color: color-mix(in srgb, var(--v2-color-gold) 50%, var(--v2-color-border));
++}
++
++html[data-ui="v2"] .configuration-modal-callout button:hover {
++  background: color-mix(in srgb, var(--v2-color-gold) 20%, transparent);
++  border-color: var(--v2-color-gold);
++}
++
+ html[data-ui="v2"] .configuration-system-loading .auth-spinner { margin: 0 auto var(--v2-space-4); }
+ html[data-ui="v2"] .configuration-system-error > span { color: var(--v2-color-danger); font-size: 24px; font-weight: 700; }
+ 
+diff --git a/css/views/ui-v2/processes.css b/css/views/ui-v2/processes.css
+index f49d094..f4a02e6 100644
+--- a/css/views/ui-v2/processes.css
++++ b/css/views/ui-v2/processes.css
+@@ -1012,3 +1012,290 @@ html[data-ui="v2"] .process-form-section .form-grid {
+     grid-column: auto;
+   }
+ }
++
++/* ==========================================================================
++   PROCESS DOCUMENTS DRAWER & CONTEXTUAL PREVIEW
++   ========================================================================== */
++html[data-ui="v2"] .process-documents-backdrop {
++  position: fixed;
++  inset: 0;
++  z-index: calc(var(--v2-z-overlay) + 5);
++  display: flex;
++  justify-content: flex-end;
++  padding: 0;
++  background: color-mix(in srgb, var(--v2-color-background) 78%, transparent);
++  backdrop-filter: blur(3px);
++  overscroll-behavior: contain;
++  animation: v2-overlay-in var(--v2-duration-base) var(--v2-ease-standard) both;
++}
++
++html[data-ui="v2"] .process-documents-drawer {
++  width: min(620px, 100%);
++  height: 100dvh;
++  display: grid;
++  grid-template-rows: auto minmax(0, 1fr) auto;
++  color: var(--v2-color-foreground);
++  background: var(--v2-color-surface-elevated);
++  border-left: 1px solid var(--v2-color-border);
++  box-shadow: var(--v2-shadow-elevated);
++  transform-origin: right center;
++  animation: v2-drawer-in var(--v2-duration-slow) var(--v2-ease-standard) both;
++  overscroll-behavior: contain;
++}
++
++html[data-ui="v2"] .process-documents-header {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: var(--v2-space-3);
++  padding: var(--v2-space-4) var(--v2-space-5);
++  background: var(--v2-color-surface-elevated);
++  border-bottom: 1px solid var(--v2-color-border-subtle);
++}
++
++html[data-ui="v2"] .process-documents-header h2 {
++  margin: 0;
++  color: var(--v2-color-foreground);
++  font: 700 16px/22px var(--v2-font-interface);
++}
++
++html[data-ui="v2"] .process-documents-subtitle {
++  color: var(--v2-color-muted-foreground);
++  font-size: 11.5px;
++}
++
++html[data-ui="v2"] .process-documents-header-actions {
++  display: flex;
++  align-items: center;
++  gap: var(--v2-space-2);
++}
++
++html[data-ui="v2"] .process-documents-body {
++  overflow-y: auto;
++  padding: var(--v2-space-4) var(--v2-space-5);
++  display: flex;
++  flex-direction: column;
++  gap: var(--v2-space-3);
++}
++
++html[data-ui="v2"] .process-documents-list-header {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  padding-bottom: var(--v2-space-2);
++  border-bottom: 1px solid var(--v2-color-border-subtle);
++}
++
++html[data-ui="v2"] .process-documents-count {
++  font-size: 12px;
++  color: var(--v2-color-muted-foreground);
++}
++
++html[data-ui="v2"] .process-documents-count strong {
++  color: var(--v2-color-foreground);
++}
++
++html[data-ui="v2"] .process-documents-items-list {
++  display: flex;
++  flex-direction: column;
++  gap: var(--v2-space-2);
++}
++
++html[data-ui="v2"] .process-doc-card {
++  padding: var(--v2-space-3) var(--v2-space-4);
++  background: var(--v2-color-surface-secondary);
++  border: 1px solid var(--v2-color-border-subtle);
++  border-radius: var(--v2-radius-md);
++  transition: border-color var(--v2-duration-fast), background var(--v2-duration-fast);
++}
++
++html[data-ui="v2"] .process-doc-card:hover {
++  border-color: var(--v2-color-border);
++  background: var(--v2-color-surface-hover);
++}
++
++html[data-ui="v2"] .process-doc-card.is-focused {
++  border-color: var(--v2-color-primary, #2563eb);
++  background: var(--v2-color-primary-subtle);
++}
++
++html[data-ui="v2"] .process-doc-card-top {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: var(--v2-space-2);
++  margin-bottom: 4px;
++}
++
++html[data-ui="v2"] .process-doc-card-badges {
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  flex-wrap: wrap;
++}
++
++html[data-ui="v2"] .process-doc-event-badge {
++  display: inline-block;
++  padding: 1px 6px;
++  font-size: 10px;
++  font-weight: 750;
++  letter-spacing: .03em;
++  color: var(--v2-color-gold, #c9a84c);
++  background: color-mix(in srgb, var(--v2-color-gold, #c9a84c) 15%, transparent);
++  border: 1px solid color-mix(in srgb, var(--v2-color-gold, #c9a84c) 30%, transparent);
++  border-radius: var(--v2-radius-sm);
++}
++
++html[data-ui="v2"] .process-doc-a1-badge {
++  display: inline-block;
++  padding: 1px 6px;
++  font-size: 9.5px;
++  font-weight: 700;
++  letter-spacing: .04em;
++  text-transform: uppercase;
++  color: var(--v2-color-primary, #2563eb);
++  background: color-mix(in srgb, var(--v2-color-primary, #2563eb) 15%, transparent);
++  border-radius: var(--v2-radius-sm);
++}
++
++html[data-ui="v2"] .process-doc-type-badge {
++  font-size: 10.5px;
++  color: var(--v2-color-muted-foreground);
++}
++
++html[data-ui="v2"] .process-doc-meta {
++  font-size: 11px;
++  color: var(--v2-color-muted-foreground);
++  white-space: nowrap;
++}
++
++html[data-ui="v2"] .process-doc-card-name {
++  margin: 0 0 4px;
++  font-size: 13px;
++  font-weight: 600;
++  color: var(--v2-color-foreground);
++  line-height: 1.35;
++  overflow-wrap: break-word;
++}
++
++html[data-ui="v2"] .process-doc-card-summary {
++  margin: 0 0 8px;
++  font-size: 11.5px;
++  color: var(--v2-color-foreground-secondary);
++  line-height: 1.4;
++}
++
++html[data-ui="v2"] .process-doc-card-actions {
++  display: flex;
++  align-items: center;
++  gap: var(--v2-space-2);
++  margin-top: var(--v2-space-2);
++}
++
++html[data-ui="v2"] .process-doc-card-actions .button {
++  padding: 3px 10px;
++  font-size: 11px;
++  min-height: 28px;
++}
++
++html[data-ui="v2"] .process-document-preview-panel {
++  border-top: 1px solid var(--v2-color-border);
++  background: var(--v2-color-surface-elevated);
++  max-height: 50vh;
++  display: flex;
++  flex-direction: column;
++}
++
++html[data-ui="v2"] .process-document-preview-panel > header {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: var(--v2-space-2);
++  padding: var(--v2-space-3) var(--v2-space-4);
++  background: var(--v2-color-surface-secondary);
++  border-bottom: 1px solid var(--v2-color-border-subtle);
++}
++
++html[data-ui="v2"] .process-document-preview-panel h4 {
++  margin: 0;
++  font-size: 13px;
++  font-weight: 700;
++  color: var(--v2-color-foreground);
++}
++
++html[data-ui="v2"] .process-document-preview-controls {
++  display: flex;
++  align-items: center;
++  gap: var(--v2-space-2);
++}
++
++html[data-ui="v2"] .process-document-preview-body {
++  padding: var(--v2-space-4);
++  overflow-y: auto;
++  max-height: 40vh;
++}
++
++html[data-ui="v2"] .process-doc-preview-text {
++  margin: 0;
++  font-family: var(--v2-font-mono, monospace);
++  font-size: 11.5px;
++  line-height: 1.5;
++  white-space: pre-wrap;
++  word-break: break-word;
++  color: var(--v2-color-foreground);
++  background: var(--v2-color-surface-inset);
++  padding: var(--v2-space-3);
++  border-radius: var(--v2-radius-sm);
++  border: 1px solid var(--v2-color-border-subtle);
++}
++
++html[data-ui="v2"] .process-documents-empty {
++  padding: var(--v2-space-6) var(--v2-space-4);
++  text-align: center;
++  color: var(--v2-color-muted-foreground);
++}
++
++html[data-ui="v2"] .process-enrichment-flag {
++  display: inline-flex;
++  align-items: center;
++  gap: 4px;
++  padding: 2px 7px;
++  font-size: 11px;
++  font-weight: 700;
++  border-radius: var(--v2-radius-sm);
++  background: color-mix(in srgb, #f59e0b 14%, transparent);
++  color: #b45309;
++  border: 1px solid color-mix(in srgb, #f59e0b 30%, transparent);
++}
++
++html[data-ui="v2"] .process-enrichment-banner {
++  display: flex;
++  align-items: flex-start;
++  gap: var(--v2-space-3);
++  margin-top: var(--v2-space-3);
++  padding: var(--v2-space-3) var(--v2-space-4);
++  background: color-mix(in srgb, #f59e0b 10%, var(--v2-color-surface-secondary));
++  border: 1px solid color-mix(in srgb, #f59e0b 28%, var(--v2-color-border));
++  border-radius: var(--v2-radius-md);
++  font-size: 12px;
++  color: var(--v2-color-foreground);
++}
++
++html[data-ui="v2"] .process-enrichment-banner strong {
++  color: #b45309;
++  display: block;
++  margin-bottom: 2px;
++}
++
++html[data-ui="v2"] .process-enrichment-banner p {
++  margin: 0;
++  color: var(--v2-color-muted-foreground);
++  line-height: 1.4;
++}
++
++html[data-ui="v2"] .process-enrichment-icon {
++  font-size: 15px;
++  flex-shrink: 0;
++  margin-top: 1px;
++}
++
+diff --git a/css/views/ui-v2/tasks.css b/css/views/ui-v2/tasks.css
+index f8d10ae..fa7603a 100644
+--- a/css/views/ui-v2/tasks.css
++++ b/css/views/ui-v2/tasks.css
+@@ -732,6 +732,53 @@ html[data-ui="v2"] .task-completion-bar > div > span {
+ html[data-ui="v2"] .task-completion-state { color: var(--v2-color-warning); font-size: 13px; }
+ html[data-ui="v2"] .task-completion-state.is-complete { color: var(--v2-color-success); }
+ 
++html[data-ui="v2"] .task-completion-actions {
++  display: flex;
++  align-items: center;
++  gap: var(--v2-space-2);
++  flex-wrap: wrap;
++}
++
++html[data-ui="v2"] .task-linked-process-banner {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: var(--v2-space-3);
++  margin-bottom: var(--v2-space-4);
++  padding: var(--v2-space-3) var(--v2-space-4);
++  background: var(--v2-color-surface-elevated);
++  border: 1px solid var(--v2-color-border);
++  border-left: 3px solid var(--v2-color-primary, #2563eb);
++  border-radius: var(--v2-radius-md);
++}
++
++html[data-ui="v2"] .task-linked-process-info {
++  display: grid;
++  gap: 2px;
++}
++
++html[data-ui="v2"] .task-linked-process-eyebrow {
++  display: inline-flex;
++  align-items: center;
++  gap: 4px;
++  color: var(--v2-color-primary, #2563eb);
++  font-size: 10px;
++  font-weight: 750;
++  letter-spacing: .04em;
++  text-transform: uppercase;
++}
++
++html[data-ui="v2"] .task-linked-process-info strong {
++  font-size: 13.5px;
++  color: var(--v2-color-foreground);
++  font-weight: 700;
++}
++
++html[data-ui="v2"] .task-linked-process-info small {
++  color: var(--v2-color-muted-foreground);
++  font-size: 11.5px;
++}
++
+ html[data-ui="v2"] .task-form-sections {
+   display: grid;
+   gap: var(--v2-space-3);
+diff --git a/index.html b/index.html
+index 6f58f06..303936f 100644
+--- a/index.html
++++ b/index.html
+@@ -1718,6 +1718,41 @@
+     </aside>
+   </div>
+ 
++  <div class="process-documents-backdrop v2-only hidden" id="processDocumentsBackdrop">
++    <aside class="process-documents-drawer" id="processDocumentsDrawer" role="dialog" aria-modal="true" aria-labelledby="processDocumentsTitle">
++      <header class="process-documents-header">
++        <div>
++          <p class="eyebrow" id="processDocumentsEyebrow">Documentos do Processo</p>
++          <h2 id="processDocumentsTitle">0000000-00.0000.8.21.0000</h2>
++          <span id="processDocumentsSubtitle" class="process-documents-subtitle">Acervo e autos oficiais</span>
++        </div>
++        <div class="process-documents-header-actions">
++          <button type="button" class="button ghost" id="processDocumentsBackToProcess">Voltar ao processo</button>
++          <button type="button" class="icon-button" id="processDocumentsClose" aria-label="Fechar documentos do processo">
++            <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg>
++          </button>
++        </div>
++      </header>
++      <div class="process-documents-body" id="processDocumentsBody"></div>
++      <section id="processDocumentPreviewPanel" class="process-document-preview-panel hidden" aria-labelledby="processDocumentPreviewTitle" tabindex="-1">
++        <header>
++          <div>
++            <p class="eyebrow">Visualização contextual</p>
++            <h4 id="processDocumentPreviewTitle">Preview do documento</h4>
++            <span id="processDocumentPreviewMeta">Leitura local preservada</span>
++          </div>
++          <div class="process-document-preview-controls">
++            <button type="button" class="button ghost" id="processDocumentPreviewDownload">Baixar</button>
++            <button class="icon-button" id="processDocumentPreviewClose" type="button" aria-label="Fechar preview contextual">
++              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg>
++            </button>
++          </div>
++        </header>
++        <div id="processDocumentPreviewBody" class="process-document-preview-body" aria-live="polite"></div>
++      </section>
++    </aside>
++  </div>
++
+   <div class="modal-backdrop hidden" id="kanbanColumnsBackdrop">
+     <section class="modal kanban-columns-modal" role="dialog" aria-modal="true" aria-labelledby="kanbanColumnsTitle">
+       <header><div><p class="eyebrow">Quadro de trabalho</p><h2 id="kanbanColumnsTitle">Editar colunas do Kanban</h2><p>Renomeie etapas, adicione novas colunas ou remova as que estiverem vazias.</p></div><button class="icon-button" id="kanbanColumnsClose" type="button" aria-label="Fechar editor de colunas"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button></header>
+@@ -1830,6 +1865,27 @@
+               <div id="chkStep-serverHttps"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-integrations"></use></svg>Servidor HTTPS 127.0.0.1:</span> <strong>·</strong></div>
+               <div id="chkStep-fingerprint"><span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>mTLS Fingerprint:</span> <strong>·</strong></div>
+             </div>
++
++            <div class="a1-sweep-card" style="margin-top: 12px; padding: 12px; background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 6px;">
++              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
++                <div style="flex: 1; min-width: 220px;">
++                  <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
++                    <span class="status-chip connected" style="font-size: 11px;">Inteligência A1</span>
++                    <strong style="color: var(--ivory); font-size: 13.5px;">Varredura de Segredos de Justiça e Clientes</strong>
++                  </div>
++                  <p style="margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4;">
++                    Desvenda processos em Segredo de Justiça no eproc TJRS via Certificado A1 + 2FA, vincula clientes não identificados e preenche juízo, comarca e classe faltantes.
++                  </p>
++                </div>
++                <div style="display: flex; align-items: center; gap: 8px;">
++                  <button class="button gold" id="btnRunA1Sweep" type="button" style="white-space: nowrap; font-size: 12px; padding: 6px 14px;">
++                    <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-search"></use></svg>
++                    Executar Varredura A1
++                  </button>
++                </div>
++              </div>
++              <div id="a1SweepStatus" class="hidden" style="margin-top: 10px; font-size: 12px; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);" role="status" aria-live="polite"></div>
++            </div>
+           </div>
+ 
+           <form id="certificateSetupForm" class="setup-form-row">
+diff --git a/js/features/configuration.js b/js/features/configuration.js
+index a8acfe8..6ca1cfb 100644
+--- a/js/features/configuration.js
++++ b/js/features/configuration.js
+@@ -21,16 +21,88 @@ const CONFIGURATION_SECTIONS = [
+ ];
+ 
+ const FIELDS_BY_SECTION = {
+-  taskDefinitions: [{name:'name',label:'Nome da tarefa',required:true,full:true},{name:'points',label:'Pontuação',type:'number'},{name:'phase',label:'Fase'}],
+-  users: [{name:'name',label:'Nome do usuário',required:true,full:true},{name:'role',label:'Função'},{name:'pointsGoal',label:'Meta de pontos'}],
+-  actionGroups: [{name:'name',label:'Grupo de ação',required:true,full:true},{name:'publicationResponsible',label:'Responsável pelas publicações',full:true}],
+-  actionTypes: [{name:'name',label:'Tipo de ação',required:true,full:true},{name:'group',label:'Grupo'}],
+-  stages: [{name:'name',label:'Etapa',required:true,full:true},{name:'classification',label:'Classificação'},{name:'phase',label:'Fase'}],
+-  origins: [{name:'name',label:'Origem',required:true,full:true}],
+-  goals: [{name:'group',label:'Grupo',required:true,full:true},{name:'monthlyClosings',label:'Meta mensal de fechamentos',type:'number'}],
+-  inboxSections: [{name:'value',label:'Nome da seção',required:true,full:true}],
+-  notificationAssignments: [{name:'event',label:'Evento',required:true,full:true},{name:'responsibles',label:'Responsáveis',full:true,placeholder:'Separe os nomes por vírgula'}],
+-  integrations: [{name:'name',label:'Integração',required:true,full:true},{name:'status',label:'Status'},{name:'method',label:'Método'}]
++  taskDefinitions: [
++    { name: 'name', label: 'Nome da tarefa', required: true, full: true },
++    { name: 'points', label: 'Pontuação de produtividade', type: 'number' },
++    { name: 'phase', label: 'Fase processual', suggestions: ['Judicial', 'Recursal', 'Execução/cobrança', 'Administrativo', 'Negociação', 'Consultoria', 'Marketing', 'Rh/financeiro', 'Todas'] },
++    { name: 'slaDays', label: 'Prazo padrão (dias úteis)', type: 'number', note: 'Prazo preenchido automaticamente ao criar tarefas deste tipo' },
++    { name: 'priority', label: 'Prioridade sugerida', type: 'select', options: [{ value: 'normal', label: 'Normal' }, { value: 'alta', label: 'Alta prioridade' }, { value: 'urgente', label: 'Urgente / Prazo fatal' }, { value: 'baixa', label: 'Baixa prioridade' }] },
++    { name: 'defaultRole', label: 'Responsável sugerido', type: 'select', options: [{ value: '', label: 'A definir no processo' }, { value: 'Advogado Titular', label: 'Advogado Titular' }, { value: 'Controladoria & Prazos', label: 'Controladoria & Prazos' }, { value: 'Assistente Jurídico', label: 'Assistente Jurídico' }, { value: 'Secretaria', label: 'Secretaria / Administrativo' }] },
++    { name: 'requireDocument', label: 'Exigência documental', type: 'select', options: [{ value: 'nao', label: 'Não obrigatório' }, { value: 'sim', label: 'Sim — exige anexo de minuta ou petição' }] },
++    { name: 'status', label: 'Status no catálogo', type: 'select', options: [{ value: 'ativo', label: 'Ativo (disponível para criação)' }, { value: 'inativo', label: 'Inativo (ocultar novos registros)' }] },
++    { name: 'instructions', label: 'Instruções e checklist de execução', type: 'textarea', full: true, placeholder: 'Orientações práticas para o executor da tarefa…' }
++  ],
++  users: [
++    { name: 'name', label: 'Nome do usuário', required: true, full: true },
++    { name: 'role', label: 'Função no escritório', suggestions: ['Administrador', 'Advogado Sócio', 'Advogado Titular', 'Advogado Associado', 'Assistente Jurídico', 'Controladoria & Prazos', 'Secretária'] },
++    { name: 'pointsGoal', label: 'Meta mensal de pontos', type: 'number' },
++    { name: 'oab', label: 'Inscrição OAB', placeholder: 'Ex.: OAB/RS 000000' },
++    { name: 'email', label: 'E-mail profissional', type: 'email', placeholder: 'nome@escritorio.adv.br' },
++    { name: 'status', label: 'Status da conta', type: 'select', options: [{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Suspenso' }] }
++  ],
++  actionGroups: [
++    { name: 'name', label: 'Grupo de ação / Área', required: true, full: true },
++    { name: 'publicationResponsible', label: 'Responsável pelas publicações', full: true },
++    { name: 'leaderLawyer', label: 'Advogado coordenador da área', type: 'select', options: [{ value: '', label: 'A definir' }, { value: 'Advogado Titular', label: 'Advogado Titular' }, { value: 'Sócio Responsável', label: 'Sócio Responsável' }, { value: 'Controladoria Jurídica', label: 'Controladoria Jurídica' }] },
++    { name: 'autoAssign', label: 'Distribuição automática de publicações', type: 'select', options: [{ value: 'sim', label: 'Sim — vincular publicações da área ao responsável' }, { value: 'nao', label: 'Não — passar por triagem manual' }] },
++    { name: 'color', label: 'Cor identificadora da área', type: 'select', options: [{ value: 'gold', label: 'Dourado ATRIUM' }, { value: 'blue', label: 'Azul Petróleo' }, { value: 'emerald', label: 'Verde Esmeralda' }, { value: 'burgundy', label: 'Bordô / Vinho' }, { value: 'indigo', label: 'Índigo Profundo' }] },
++    { name: 'description', label: 'Diretrizes e escopo da área', type: 'textarea', full: true, placeholder: 'Descreva a abrangência jurídica e regras desta especialidade…' }
++  ],
++  actionTypes: [
++    { name: 'name', label: 'Tipo de ação', required: true, full: true },
++    { name: 'group', label: 'Grupo de especialidade', suggestions: ['Cível', 'Trabalhista', 'Previdenciário', 'Família', 'Consumidor', 'Tributário', 'Criminal', 'Precatório', 'Administrativo', 'Serviços'] },
++    { name: 'procedure', label: 'Rito processual sugerido', type: 'select', options: [{ value: 'comum', label: 'Comum / Ordinário' }, { value: 'sumarissimo', label: 'Sumaríssimo / Juizado Especial (JEC/JEF)' }, { value: 'execucao', label: 'Execução de Título' }, { value: 'especial', label: 'Procedimento Especial' }, { value: 'administrativo', label: 'Processo Administrativo' }] },
++    { name: 'defaultCourt', label: 'Tribunal padrão sugerido', type: 'select', options: [{ value: 'TJRS', label: 'TJRS — Justiça Estadual' }, { value: 'TRF4', label: 'TRF4 / JEF — Justiça Federal' }, { value: 'TRT4', label: 'TRT4 — Justiça do Trabalho' }, { value: 'STJ', label: 'STJ — Superior Tribunal de Justiça' }, { value: 'STF', label: 'STF — Supremo Tribunal Federal' }, { value: 'outro', label: 'Outro / Variável' }] },
++    { name: 'estimatedDuration', label: 'Duração média estimada (meses)', type: 'number', placeholder: 'ex: 24' },
++    { name: 'status', label: 'Status do tipo de ação', type: 'select', options: [{ value: 'ativo', label: 'Ativo (disponível no cadastro de processos)' }, { value: 'inativo', label: 'Inativo / Em desuso' }] }
++  ],
++  stages: [
++    { name: 'name', label: 'Etapa', required: true, full: true },
++    { name: 'classification', label: 'Classificação / Macro-fase', suggestions: ['Inicial', 'Acordo', 'Audiência', 'Julgamento', 'Recurso', 'Execução', 'Pagamento', 'Diligência', 'Triagem', 'Encerrado'] },
++    { name: 'phase', label: 'Fase processual', suggestions: ['Judicial', 'Recursal', 'Execução/cobrança', 'Administrativo', 'Negociação', 'Consultoria', 'Arquivamento'] },
++    { name: 'slaMaxDays', label: 'Alerta de estagnação (dias)', type: 'number', note: 'Gera aviso se o processo ficar nesta etapa por mais de X dias sem andamento' },
++    { name: 'nextSuggestedStage', label: 'Próxima etapa recomendada no fluxo', suggestions: ['AÇÃO PROTOCOLADA/INICIADA', 'AGUARDA AUDIÊNCIA', 'AGUARDA SENTENÇA', 'APRESENTADO RECURSO', 'CUMPRIMENTO DE SENTENÇA', 'RPV EMITIDO', 'TRÂNSITO EM JULGADO / PROCESSO FINALIZADO'] },
++    { name: 'status', label: 'Status da etapa', type: 'select', options: [{ value: 'ativo', label: 'Ativa no pipeline' }, { value: 'inativo', label: 'Oculta' }] }
++  ],
++  origins: [
++    { name: 'name', label: 'Origem', required: true, full: true },
++    { name: 'channelType', label: 'Canal de captação', type: 'select', options: [{ value: 'indicacao', label: 'Indicação de Cliente / Terceiro' }, { value: 'marketing_digital', label: 'Marketing Digital / Google Ads' }, { value: 'redes_sociais', label: 'Redes Sociais / WhatsApp' }, { value: 'balcao', label: 'Atendimento Balcão / Presencial' }, { value: 'parceria', label: 'Parceria Profissional / Correspondente' }, { value: 'convenio', label: 'Convênio / Entidade Sindical' }, { value: 'outro', label: 'Outro canal' }] },
++    { name: 'partnerCommission', label: 'Comissão / Parceria padrão (%)', type: 'number', placeholder: 'ex: 10', note: 'Percentual padrão de honorários do parceiro para esta origem' },
++    { name: 'defaultAttendant', label: 'Responsável padrão pelo primeiro atendimento', placeholder: 'Ex.: Advogado Titular, Equipe Comercial' },
++    { name: 'status', label: 'Status do canal', type: 'select', options: [{ value: 'ativo', label: 'Ativo para novos clientes' }, { value: 'inativo', label: 'Inativo / Encerrado' }] }
++  ],
++  goals: [
++    { name: 'group', label: 'Grupo / Área', required: true, full: true },
++    { name: 'monthlyClosings', label: 'Meta mensal de fechamentos', type: 'number' },
++    { name: 'financialGoal', label: 'Meta mensal de faturamento (R$)', type: 'number', placeholder: 'ex: 50000', note: 'Faturamento bruto esperado em novos fechamentos' },
++    { name: 'pointsGoal', label: 'Meta de pontos da equipe', type: 'number', placeholder: 'ex: 1500' },
++    { name: 'period', label: 'Período de apuração', type: 'select', options: [{ value: 'mensal', label: 'Mensal' }, { value: 'trimestral', label: 'Trimestral' }, { value: 'semestral', label: 'Semestral' }, { value: 'anual', label: 'Anual' }] },
++    { name: 'responsible', label: 'Gestor responsável pela meta', placeholder: 'Ex.: Advogado Titular' }
++  ],
++  inboxSections: [
++    { name: 'value', label: 'Nome da seção', required: true, full: true },
++    { name: 'filterRule', label: 'Regra de agrupamento de publicações', type: 'select', options: [{ value: 'todas', label: 'Todas as publicações recentes' }, { value: 'urgentes', label: 'Apenas publicações urgentes e prazos fatais' }, { value: 'nao_tratadas', label: 'Somente publicações pendentes de triagem' }, { value: 'datajud', label: 'Andamentos capturados no DataJud' }, { value: 'tarefas', label: 'Tarefas urgentes com prazo no dia' }] },
++    { name: 'displayLimit', label: 'Limite de exibição de itens', type: 'select', options: [{ value: '10', label: '10 itens' }, { value: '20', label: '20 itens (recomendado)' }, { value: '50', label: '50 itens' }, { value: '100', label: '100 itens' }] },
++    { name: 'highlightUrgent', label: 'Destacar itens urgentes no topo', type: 'select', options: [{ value: 'sim', label: 'Sim — destacar com badge de urgência' }, { value: 'nao', label: 'Não — ordenação cronológica padrão' }] },
++    { name: 'status', label: 'Visibilidade da seção', type: 'select', options: [{ value: 'ativo', label: 'Ativa no painel de entrada' }, { value: 'oculta', label: 'Oculta temporariamente' }] }
++  ],
++  notificationAssignments: [
++    { name: 'event', label: 'Evento disparador', required: true, full: true, suggestions: ['Publicação capturada do DJEN', 'Prazo fatal a vencer em 48h', 'Prazo fatal a vencer em 24h', 'Andamento capturado nos tribunais', 'Nova tarefa atribuída', 'Intimação urgente pendente', 'Novo lead / atendimento cadastrado'] },
++    { name: 'responsibles', label: 'Responsáveis destinatários', full: true, placeholder: 'Separe os nomes ou cargos por vírgula (ex: Advogado Titular, Apoio Jurídico)', note: 'Membros da equipe que receberão o aviso' },
++    { name: 'channels', label: 'Canais de entrega', full: true, type: 'select', options: [{ value: 'inapp_email', label: 'Painel In-App + Notificação por E-mail' }, { value: 'inapp_only', label: 'Apenas Painel In-App' }, { value: 'inapp_email_alert', label: 'Painel + E-mail + Alerta Sonoro no Navegador' }, { value: 'critical_banner', label: 'Alerta Visual Crítico em Tela' }] },
++    { name: 'timing', label: 'Momento do envio', type: 'select', options: [{ value: 'imediato', label: 'Imediato ao detectar o evento' }, { value: '24h', label: '24 horas antes do prazo' }, { value: '48h', label: '48 horas antes do prazo' }, { value: '08h_dia', label: 'No início do dia do evento (08:00)' }] },
++    { name: 'urgency', label: 'Nível de gravidade', type: 'select', options: [{ value: 'normal', label: 'Normal' }, { value: 'alta', label: 'Alta relevância' }, { value: 'urgente', label: 'Urgente / Prazo fatal' }] },
++    { name: 'autoTask', label: 'Criar tarefa automática no kanban', type: 'select', options: [{ value: 'nao', label: 'Não — apenas notificar' }, { value: 'sim', label: 'Sim — abrir tarefa de análise na triagem' }] },
++    { name: 'status', label: 'Estado da notificação', type: 'select', options: [{ value: 'ativo', label: 'Ativa (enviar alertas)' }, { value: 'pausada', label: 'Pausada temporariamente' }] }
++  ],
++  integrations: [
++    { name: 'name', label: 'Integração', required: true, full: true },
++    { name: 'status', label: 'Status da conexão', type: 'select', options: [{ value: 'Ativo', label: 'Ativo (operacional)' }, { value: 'Preparado', label: 'Preparado (aguarda credencial)' }, { value: 'Pausado', label: 'Pausado temporariamente' }, { value: 'Desativado', label: 'Desativado' }] },
++    { name: 'method', label: 'Método / Tipo de agente', suggestions: ['API Oficial Pública', 'Agente Local Seguro', 'REST API', 'Sincronização iCal', 'Conexão IMAP / SMTP'] },
++    { name: 'syncFrequency', label: 'Frequência de sincronização', type: 'select', options: [{ value: 'auto', label: 'Automática a cada 30 minutos' }, { value: 'hourly', label: 'A cada 1 hora' }, { value: 'daily', label: 'Diária (08:00 e 18:00)' }, { value: 'manual', label: 'Somente sob demanda (manual)' }] },
++    { name: 'autoNotifyErrors', label: 'Notificar falhas de conexão', type: 'select', options: [{ value: 'sim', label: 'Sim — alertar administradores em caso de falha' }, { value: 'nao', label: 'Não — apenas registrar na auditoria' }] },
++    { name: 'notes', label: 'Notas técnicas e parâmetros do escritório', type: 'textarea', full: true, placeholder: 'Endpoints, observações sobre credenciais ou regras internas…' }
++  ]
+ };
+ 
+ const formatResponsibles = value => {
+@@ -39,6 +111,56 @@ const formatResponsibles = value => {
+   return '';
+ };
+ 
++function getDirectSetupTarget(name) {
++  const normalized = String(name || '').toLowerCase();
++  if (/eproc|pje|a1|certificado|portais/.test(normalized)) {
++    return {
++      type: 'judicial',
++      badge: 'Certificado Digital A1 + TOTP',
++      description: 'Gerencie o arquivo PFX, senha protegida e o 2FA QR Code para varredura segura nos portais judiciais.',
++      actionLabel: 'Abrir Painel de Certificado A1'
++    };
++  }
++  if (/datajud|cnj|djen|diário/.test(normalized)) {
++    return {
++      type: 'datajud',
++      badge: 'DataJud / CNJ Metadados',
++      description: 'Configure a chave pública da API DataJud/CNJ e o tribunal padrão para captura de andamentos.',
++      actionLabel: 'Configurar Chave DataJud'
++    };
++  }
++  if (/gemini|ia|inteligência/.test(normalized)) {
++    return {
++      type: 'gemini',
++      badge: 'Google Gemini Flash IA',
++      description: 'Configure sua Gemini API Key gratuita e ative a assistência jurídica inteligente do ATRIUM.',
++      actionLabel: 'Configurar Chave da IA'
++    };
++  }
++  if (/webcal|agenda|calendar/.test(normalized)) {
++    return {
++      type: 'calendar',
++      badge: 'Agenda Externa iCal',
++      description: 'Exporte o feed seguro iCal com prazos e compromissos para sincronizar com Google Agenda ou Outlook.',
++      actionLabel: 'Configurar Feed de Agenda'
++    };
++  }
++  if (/email|e-mail|imap|smtp/.test(normalized)) {
++    return {
++      type: 'email',
++      badge: 'E-mail Corporativo',
++      description: 'Configure servidores IMAP/SMTP, destinatários e regras de captura automática de publicações por e-mail.',
++      actionLabel: 'Configurar Contas de E-mail'
++    };
++  }
++  return {
++    type: 'general',
++    badge: 'Integração de Sistema',
++    description: 'Parametrize a frequência de sincronização, regras de alerta e notas técnicas desta integração.',
++    actionLabel: 'Ajustar Parâmetros'
++  };
++}
++
+ export function createConfigurationFeature({
+   store,
+   documentRef = globalThis.document,
+@@ -49,6 +171,11 @@ export function createConfigurationFeature({
+   showToast = () => {},
+   onRenderDiagnostic = () => {},
+   onRenderBackups = () => {},
++  onOpenJudicialSetup = () => {},
++  onOpenDataJudModal = () => {},
++  onOpenGeminiKeyModal = () => {},
++  onOpenCalendarSetup = () => {},
++  onOpenEmailConfigModal = () => {},
+   presentation = null,
+   warn = () => {}
+ } = {}) {
+@@ -89,6 +216,27 @@ export function createConfigurationFeature({
+           if (registryAction === 'test-provider') feature.testRegistryProvider(event.target.closest('[data-registry-provider]')?.dataset.registryProvider, event.target.closest('button'));
+           return;
+         }
++        const directBtn = event.target.closest('[data-direct-integration]');
++        if (directBtn) {
++          event.preventDefault();
++          event.stopPropagation();
++          feature.triggerDirectIntegration(directBtn.dataset.directIntegration);
++          return;
++        }
++        const toggleIntegrationBtn = event.target.closest('[data-toggle-integration]');
++        if (toggleIntegrationBtn) {
++          event.preventDefault();
++          event.stopPropagation();
++          feature.toggleRecordStatus(Number(toggleIntegrationBtn.dataset.toggleIntegration));
++          return;
++        }
++        const toggleStatusBtn = event.target.closest('[data-toggle-status]');
++        if (toggleStatusBtn) {
++          event.preventDefault();
++          event.stopPropagation();
++          feature.toggleRecordStatus(Number(toggleStatusBtn.dataset.toggleStatus));
++          return;
++        }
+         const deleteButton = event.target.closest('[data-delete-config]');
+         if (deleteButton) {
+           event.preventDefault();
+@@ -110,6 +258,15 @@ export function createConfigurationFeature({
+         const records = Array.isArray(store.state.configuration?.[configurationSection]) ? store.state.configuration[configurationSection] : [];
+         if (records[index] !== undefined) feature.openModal(records[index], index);
+       });
++      byId('modalBackdrop')?.addEventListener('click', event => {
++        const modalIntegrationBtn = event.target.closest('[data-modal-open-dedicated-integration]');
++        if (modalIntegrationBtn) {
++          event.preventDefault();
++          const targetName = modalIntegrationBtn.dataset.modalOpenDedicatedIntegration;
++          byId('modalClose')?.click?.() || byId('modalCancel')?.click?.();
++          setTimeout(() => feature.triggerDirectIntegration(targetName), 80);
++        }
++      });
+       byId('configurationList')?.addEventListener('submit', event => {
+         if (event.target.matches('[data-registry-bank-form]')) {
+           event.preventDefault();
+@@ -304,6 +461,61 @@ export function createConfigurationFeature({
+       }
+     },
+ 
++    triggerDirectIntegration(name) {
++      const normalized = String(name || '').toLowerCase();
++      if (/eproc|pje|a1|certificado|portais/.test(normalized)) {
++        onOpenJudicialSetup();
++        return true;
++      }
++      if (/datajud|cnj|djen|diário/.test(normalized)) {
++        onOpenDataJudModal();
++        return true;
++      }
++      if (/gemini|ia|inteligência/.test(normalized)) {
++        onOpenGeminiKeyModal();
++        return true;
++      }
++      if (/webcal|agenda|calendar/.test(normalized)) {
++        onOpenCalendarSetup();
++        return true;
++      }
++      if (/email|e-mail|imap|smtp/.test(normalized)) {
++        onOpenEmailConfigModal();
++        return true;
++      }
++      showToast('Abra a edição deste item para configurar seus parâmetros.', 'info');
++      return false;
++    },
++
++    async toggleRecordStatus(index) {
++      const section = configurationSection;
++      const list = store.state.configuration?.[section];
++      if (!Array.isArray(list) || index < 0 || index >= list.length) return false;
++      const record = list[index];
++      if (!record || typeof record === 'string') return false;
++      if (section === 'integrations') {
++        record.status = (record.status === 'Ativo' || record.status === 'ativo') ? 'Pausado' : 'Ativo';
++      } else if (section === 'notificationAssignments') {
++        record.status = record.status === 'pausada' ? 'ativo' : 'pausada';
++      } else if (section === 'taskDefinitions') {
++        record.status = record.status === 'inativo' ? 'ativo' : 'inativo';
++      } else {
++        record.status = (record.status === 'inativo' || record.status === 'oculta') ? 'ativo' : 'inativo';
++      }
++      store.save();
++      store.audit('Status de configuração alterado', `${section} · ${record.name || record.event || record.group || 'item'} → ${record.status}`);
++      try {
++        await store.flush();
++        feature.render();
++        showToast(`Status atualizado para ${record.status}.`, 'success');
++        return true;
++      } catch (error) {
++        feature.render();
++        showToast('Não foi possível salvar a alteração de status.', 'error');
++        return false;
++      }
++    },
++
+     row(item, index) {
+       const v2 = documentRef.documentElement?.dataset?.ui === 'v2';
+       if (typeof item === 'string') {
+@@ -326,15 +538,89 @@ export function createConfigurationFeature({
+           </div>`;
+       }
+       if (!item || typeof item !== 'object') return '';
+-      const primary = item.name || item.event || item.group || 'Configuração';
+-      const secondary = item.role || item.phase || item.group || item.publicationResponsible || item.method || formatResponsibles(item.responsibles) || item.status || '—';
+-      const meta = Number.isFinite(item.points) ? `<span class="config-points">${item.points} pontos</span>` : item.monthlyClosings == null && 'monthlyClosings' in item ? '<small>Meta não definida</small>' : `<small>${escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
++      const primary = item.name || item.event || item.group || item.value || 'Configuração';
++      let secondary = '';
++      let meta = '';
++      let extraActions = '';
++
++      let effectiveSection = configurationSection;
++      if ('monthlyClosings' in item || 'financialGoal' in item) {
++        effectiveSection = 'goals';
++      } else if ('event' in item || ('responsibles' in item && !('points' in item))) {
++        effectiveSection = 'notificationAssignments';
++      } else if ('syncFrequency' in item) {
++        effectiveSection = 'integrations';
++      } else if ('procedure' in item || 'defaultCourt' in item) {
++        effectiveSection = 'actionTypes';
++      } else if ('classification' in item || 'nextSuggestedStage' in item) {
++        effectiveSection = 'stages';
++      } else if ('channelType' in item || 'partnerCommission' in item) {
++        effectiveSection = 'origins';
++      } else if ('leaderLawyer' in item || 'autoAssign' in item) {
++        effectiveSection = 'actionGroups';
++      }
++
++      if (effectiveSection === 'taskDefinitions') {
++        const parts = [];
++        if (item.phase) parts.push(item.phase);
++        if (item.slaDays) parts.push(`SLA ${item.slaDays} dias úteis`);
++        if (item.priority) parts.push(String(item.priority).toUpperCase());
++        secondary = parts.length ? parts.join(' · ') : 'Judicial · SLA 5 dias úteis · NORMAL';
++        const statusClass = item.status === 'inativo' ? 'warning' : 'success';
++        const statusLabel = item.status === 'inativo' ? 'Inativa' : 'Ativa';
++        meta = `${Number.isFinite(item.points) ? `<span class="config-points">${item.points} pontos</span>` : ''}<button type="button" class="configuration-status-pill ${statusClass}" data-toggle-status="${index}" title="Alternar status">${statusLabel}</button>`;
++      } else if (effectiveSection === 'notificationAssignments') {
++        const channels = item.channels === 'inapp_only' ? 'In-App' : item.channels === 'critical_banner' ? 'Banner' : item.channels ? 'In-App + E-mail' : '';
++        const timing = item.timing === '24h' ? '24h antes' : item.timing === '48h' ? '48h antes' : item.timing === '08h_dia' ? '08h' : item.timing ? 'Imediato' : '';
++        const responsiblesStr = formatResponsibles(item.responsibles);
++        const parts = [responsiblesStr, channels, timing].filter(Boolean);
++        secondary = parts.length ? parts.join(' · ') : '—';
++        const statusClass = item.status === 'pausada' ? 'warning' : 'success';
++        const statusLabel = item.status === 'pausada' ? 'Pausada' : 'Ativa';
++        meta = `<button type="button" class="configuration-status-pill ${statusClass}" data-toggle-status="${index}" title="Alternar notificação">${statusLabel}</button>`;
++      } else if (effectiveSection === 'integrations') {
++        const freq = item.syncFrequency === 'hourly' ? '1 hora' : item.syncFrequency === 'daily' ? 'Diária' : item.syncFrequency === 'manual' ? 'Manual' : item.syncFrequency ? 'Automática' : '';
++        secondary = `${item.method || 'API Oficial'}${freq ? ' · Frequência: ' + freq : ''}`;
++        const statusClass = (item.status === 'Ativo' || item.status === 'ativo') ? 'success' : item.status === 'Preparado' ? 'neutral' : 'warning';
++        const statusLabel = item.status || 'Ativo';
++        meta = `<button type="button" class="configuration-status-pill ${statusClass}" data-toggle-integration="${index}" title="Alternar status da integração">${escapeHtml(statusLabel)}</button>`;
++        extraActions = `<button type="button" class="button ghost configuration-action-btn" data-direct-integration="${escapeHtml(primary)}" title="Configurar conexão de ${escapeHtml(primary)}">Configurar Conexão ⚙</button>`;
++      } else if (effectiveSection === 'goals') {
++        secondary = item.period ? `Período: ${item.period}` : (item.group || 'Geral');
++        if (item.monthlyClosings == null && 'monthlyClosings' in item) {
++          meta = '<small>Meta não definida</small>';
++        } else {
++          const closings = item.monthlyClosings != null ? `${item.monthlyClosings} fechamentos` : '';
++          const fin = item.financialGoal ? ` · R$ ${Number(item.financialGoal).toLocaleString('pt-BR')}` : '';
++          meta = `<span class="config-points">${closings}${fin}</span>`;
++        }
++      } else if (effectiveSection === 'actionTypes') {
++        const procedure = item.procedure === 'sumarissimo' ? 'Sumaríssimo' : item.procedure === 'execucao' ? 'Execução' : item.procedure === 'especial' ? 'Especial' : item.procedure ? 'Comum' : '';
++        const parts = [item.group || 'Geral', procedure ? `Rito ${procedure}` : '', item.defaultCourt || 'TJRS'].filter(Boolean);
++        secondary = parts.join(' · ');
++        meta = `<small>${item.estimatedDuration ? item.estimatedDuration + ' meses' : escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
++      } else if (effectiveSection === 'stages') {
++        secondary = `${item.phase || 'Judicial'} · ${item.classification || 'Geral'}`;
++        meta = `<small>${item.slaMaxDays ? 'Alerta: ' + item.slaMaxDays + 'd' : escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
++      } else if (effectiveSection === 'origins') {
++        const commission = item.partnerCommission ? ` · ${item.partnerCommission}%` : '';
++        secondary = `${item.channelType || 'Geral'}${commission}`;
++        meta = `<small>${escapeHtml(item.defaultAttendant ? 'Resp: ' + item.defaultAttendant : item.registeredAt || 'Ativo')}</small>`;
++      } else if (effectiveSection === 'actionGroups') {
++        secondary = item.publicationResponsible || 'Advogado Responsável';
++        meta = `<small>${escapeHtml(item.leaderLawyer ? 'Líder: ' + item.leaderLawyer : item.registeredAt || 'Ativo')}</small>`;
++      } else {
++        secondary = item.role || item.phase || item.group || item.publicationResponsible || item.method || formatResponsibles(item.responsibles) || item.status || '—';
++        meta = Number.isFinite(item.points) ? `<span class="config-points">${item.points} pontos</span>` : item.monthlyClosings == null && 'monthlyClosings' in item ? '<small>Meta não definida</small>' : `<small>${escapeHtml(item.registeredAt || item.status || 'Ativo')}</small>`;
++      }
++
+       if (v2) return `
+         <article class="configuration-row" role="listitem" data-config-index="${index}">
+           <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(primary)}">
+             <span class="config-row-info"><strong>${escapeHtml(primary)}</strong><span>${escapeHtml(secondary)}</span>${meta}</span>
+             <span class="configuration-edit-affordance" aria-hidden="true">Editar →</span>
+           </button>
++          ${extraActions}
+           <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(primary)}">${iconSvg('delete')} Excluir</button>
+         </article>`;
+       return `
+@@ -344,6 +630,7 @@ export function createConfigurationFeature({
+             <span>${escapeHtml(secondary)}</span>
+             ${meta}
+           </div>
++          ${extraActions}
+           <button type="button" class="btn-delete-config-row" data-delete-config="${index}" title="Excluir este item">×</button>
+         </div>`;
+     },
+@@ -352,7 +639,21 @@ export function createConfigurationFeature({
+       const fields = FIELDS_BY_SECTION[configurationSection] || [{ name: 'name', label: 'Nome', required: true, full: true }];
+       const values = typeof defaults === 'string' ? { value: defaults } : { ...defaults };
+       if ('responsibles' in values) values.responsibles = formatResponsibles(values.responsibles);
+-      openModal('configuration', index === null ? 'Novo item de configuração' : 'Editar configuração', 'Estrutura do escritório', fields, { ...values, _section: configurationSection, _index: index });
++      let topHtml = '';
++      if (configurationSection === 'integrations' && values.name) {
++        const target = getDirectSetupTarget(values.name);
++        topHtml = `<div class="configuration-modal-callout">
++          <div class="configuration-callout-info">
++            <span class="configuration-callout-badge">${escapeHtml(target.badge)}</span>
++            <strong>${escapeHtml(values.name)}</strong>
++            <p>${escapeHtml(target.description)}</p>
++          </div>
++          <button type="button" class="button ghost" data-modal-open-dedicated-integration="${escapeHtml(values.name)}">
++            ${escapeHtml(target.actionLabel)} →
++          </button>
++        </div>`;
++      }
++      openModal('configuration', index === null ? 'Novo item de configuração' : 'Editar configuração', 'Estrutura do escritório', fields, { ...values, _section: configurationSection, _index: index }, topHtml);
+     },
+ 
+     saveRecord(data, defaults = {}) {
+@@ -362,15 +663,34 @@ export function createConfigurationFeature({
+       let record = { ...defaults, ...data };
+       delete record._section;
+       delete record._index;
+-      if (section === 'inboxSections') record = data.value;
++      if (section === 'inboxSections') {
++        const hasExtra = data.filterRule || data.displayLimit || data.highlightUrgent || data.status;
++        record = hasExtra ? { ...defaults, ...data, value: data.value } : data.value;
++      }
+       if (section === 'notificationAssignments') record.responsibles = String(data.responsibles || '').split(/[,;]/).map(item => item.trim()).filter(Boolean);
+-      if (section === 'taskDefinitions') record.points = Number(data.points) || 0;
+-      if (section === 'goals') record.monthlyClosings = data.monthlyClosings === '' ? null : Number(data.monthlyClosings);
++      if (section === 'taskDefinitions') {
++        record.points = Number(data.points) || 0;
++        if ('slaDays' in data && data.slaDays !== '') record.slaDays = Number(data.slaDays) || 5;
++      }
++      if (section === 'goals') {
++        record.monthlyClosings = (data.monthlyClosings === '' || data.monthlyClosings === undefined) ? null : Number(data.monthlyClosings);
++        if ('financialGoal' in data) record.financialGoal = (data.financialGoal === '' || data.financialGoal === undefined) ? null : Number(data.financialGoal);
++        if ('pointsGoal' in data) record.pointsGoal = (data.pointsGoal === '' || data.pointsGoal === undefined) ? null : Number(data.pointsGoal);
++      }
++      if (section === 'origins' && 'partnerCommission' in data) {
++        record.partnerCommission = data.partnerCommission === '' ? 0 : Number(data.partnerCommission) || 0;
++      }
++      if (section === 'stages' && 'slaMaxDays' in data) {
++        record.slaMaxDays = data.slaMaxDays === '' ? null : Number(data.slaMaxDays);
++      }
++      if (section === 'actionTypes' && 'estimatedDuration' in data) {
++        record.estimatedDuration = data.estimatedDuration === '' ? null : Number(data.estimatedDuration);
++      }
+       const creating = index === null || index === undefined || index === '';
+       if (creating) list.push(record);
+       else list[Number(index)] = record;
+       store.save();
+-      store.audit(creating ? 'Configuração adicionada' : 'Configuração atualizada', `${section} · ${typeof record === 'string' ? record : record.name || record.event || record.group || 'item'}`);
++      store.audit(creating ? 'Configuração adicionada' : 'Configuração atualizada', `${section} · ${typeof record === 'string' ? record : record.name || record.event || record.group || record.value || 'item'}`);
+       return record;
+     },
+ 
+diff --git a/js/features/dashboard.js b/js/features/dashboard.js
+index b66dde9..0fa8534 100644
+--- a/js/features/dashboard.js
++++ b/js/features/dashboard.js
+@@ -22,6 +22,7 @@ export function createDashboardFeature({
+   onOpenAgenda,
+   onOpenActivity,
+   onAcknowledgeActivity,
++  onOpenProcess,
+   showToast
+ } = {}) {
+   let initialized = false;
+@@ -244,7 +245,7 @@ export function createDashboardFeature({
+               <div class="dashboard-task-title">${escapeHtml(task.title)}</div>
+               <div class="dashboard-task-process">
+                 ${clientName ? `<strong>${iconSvg('contacts')} ${escapeHtml(clientName)}</strong>` : '<span class="dashboard-task-context-empty">Cliente não vinculado</span>'}
+-                ${processNumber ? `<span>${iconSvg('processes')} <b>${escapeHtml(processNumber)}</b></span>` : '<span class="dashboard-task-context-empty">Processo não vinculado</span>'}
++                ${processNumber ? `<span class="dashboard-task-process-badge" data-dashboard-process-open="${escapeHtml(processNumber)}" title="Acessar processo" style="cursor:pointer;">${iconSvg('processes')} <b>${escapeHtml(processNumber)}</b></span>` : '<span class="dashboard-task-context-empty">Processo não vinculado</span>'}
+                 ${actionType ? `<span class="dashboard-task-action-type">${iconSvg('court')} <b>${escapeHtml(actionType)}</b></span>` : '<span class="dashboard-task-context-empty">Tipo da ação não informado</span>'}
+               </div>
+               <div class="dashboard-task-tags">
+@@ -262,6 +263,16 @@ export function createDashboardFeature({
+       listEl.querySelectorAll('[data-dashboard-task-id]').forEach(item => {
+         item.addEventListener('click', event => {
+           if (event.target.closest('[data-complete-task-id]')) return;
++          const processClick = event.target.closest('[data-dashboard-process-open]');
++          if (processClick && onOpenProcess) {
++            const raw = processClick.dataset.dashboardProcessOpen;
++            const proc = (store.state.processes || []).find(p => p.number === raw || p.number?.replace(/\D/g, '') === raw?.replace(/\D/g, ''));
++            if (proc) {
++              event.stopPropagation();
++              onOpenProcess(proc);
++              return;
++            }
++          }
+           const task = (store.state.tasks || []).find(candidate => candidate.id === item.dataset.dashboardTaskId);
+           if (task) onOpenTask?.(task);
+         });
+diff --git a/js/features/documents.js b/js/features/documents.js
+index 44c345e..98c755a 100644
+--- a/js/features/documents.js
++++ b/js/features/documents.js
+@@ -520,6 +520,17 @@ ${id.lawyerOab} - ${id.officeName}`;
+     return new Error(payload.message || fallback);
+   }
+ 
++  function extractEventNumber(doc) {
++    const name = String(doc?.name || doc?.originalName || '').trim();
++    const leadingMatch = name.match(/^(\d{1,5})\s*[-_.]/);
++    if (leadingMatch) return parseInt(leadingMatch[1], 10);
++    const eventMatch = name.match(/(?:evento|ev\.?)\s*(\d{1,5})/i);
++    if (eventMatch) return parseInt(eventMatch[1], 10);
++    if (doc?.metadata?.event != null) return Number(doc.metadata.event);
++    if (doc?.derivation?.index != null) return Number(doc.derivation.index);
++    return 999999;
++  }
++
+   function renderArchive() {
+     if (!isV2()) return;
+     updateOwnerOptions();
+@@ -533,16 +544,66 @@ ${id.lawyerOab} - ${id.officeName}`;
+     };
+     if (template) template.oninput = updateNamePreview;
+     updateNamePreview();
+-    const documents = (store.state.documents || []).filter(item => archiveFilter === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt);
++
++    let documents = (store.state.documents || []).filter(item => archiveFilter === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt);
++
++    let ownerFilterLabel = '';
++    if (selectedOwner?.ownerId) {
++      if (selectedOwner.ownerType === 'process') {
++        const proc = (store.state.processes || []).find(p => String(p.id) === String(selectedOwner.ownerId));
++        const procNum = String(proc?.number || proc?.protocol || '').trim();
++        const procDigits = procNum.replace(/\D/g, '');
++        documents = documents.filter(doc => {
++          if (doc.ownerType === 'process' && String(doc.ownerId) === String(selectedOwner.ownerId)) return true;
++          if (doc.processId && String(doc.processId) === String(selectedOwner.ownerId)) return true;
++          const docProc = String(doc.process || doc.processNumber || '').trim();
++          if (procNum && docProc === procNum) return true;
++          if (procDigits && docProc.replace(/\D/g, '') === procDigits) return true;
++          return false;
++        });
++        documents.sort((a, b) => {
++          const evA = extractEventNumber(a);
++          const evB = extractEventNumber(b);
++          if (evA !== evB) return evA - evB;
++          const dateA = a.documentDate || a.createdAt || '';
++          const dateB = b.documentDate || b.createdAt || '';
++          if (dateA !== dateB) return dateA.localeCompare(dateB);
++          return String(a.name || '').localeCompare(String(b.name || ''));
++        });
++        ownerFilterLabel = `Processo ${procNum || proc?.id}`;
++      } else if (selectedOwner.ownerType === 'contact') {
++        documents = documents.filter(doc => {
++          if (doc.ownerType === 'contact' && String(doc.ownerId) === String(selectedOwner.ownerId)) return true;
++          if (doc.contactId && String(doc.contactId) === String(selectedOwner.ownerId)) return true;
++          return false;
++        });
++        const contact = (store.state.contacts || []).find(c => String(c.id) === String(selectedOwner.ownerId));
++        ownerFilterLabel = `Contato ${contact?.name || selectedOwner.ownerId}`;
++      }
++    }
++
+     const list = byId('documentArchiveList');
+     const status = byId('documentArchiveStatus');
+-    if (status) status.textContent = `${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'} ${archiveFilter === 'deleted' ? 'na lixeira' : 'no acervo ativo'}`;
++    if (status) {
++      const clearBtn = ownerFilterLabel ? ` <button type="button" class="button ghost text-xs" data-clear-owner-filter style="padding:2px 8px; font-size:11px; margin-left:8px;">Limpar filtro (${escapeHtml(ownerFilterLabel)})</button>` : '';
++      status.innerHTML = `<span>${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'} ${archiveFilter === 'deleted' ? 'na lixeira' : 'no acervo ativo'}${ownerFilterLabel ? ` · Isolamento estrito por ${escapeHtml(ownerFilterLabel)} (ordem de eventos 0 a N)` : ''}</span>${clearBtn}`;
++    }
+     if (!list) return;
+-    list.innerHTML = documents.length ? documents.map(document => `
++    list.innerHTML = documents.length ? documents.map(document => {
++      const evNum = extractEventNumber(document);
++      const evBadge = evNum < 999999 ? `<span class="process-doc-event-badge" style="display:inline-block; margin-right:6px; font-size:11px; padding:2px 6px; border-radius:4px; background:var(--accent-soft, #eef2ff); color:var(--primary, #3730a3); font-weight:700;">Ev. ${String(evNum).padStart(3, '0')}</span>` : '';
++      const isA1 = (document.metadata?.origin || '').includes('eproc') || (document.metadata?.tags || []).includes('a1-oficial');
++      const a1Badge = isA1 ? `<span class="process-doc-a1-badge" style="display:inline-block; margin-right:6px; font-size:11px; padding:2px 6px; border-radius:4px; background:var(--success-soft, #ecfdf5); color:var(--success, #059669); font-weight:700;">Oficial A1</span>` : '';
++
++      return `
+       <article class="document-record${document.deletedAt ? ' is-deleted' : ''}" data-document-id="${escapeHtml(document.id)}" tabindex="-1">
+         <div class="document-record-icon" aria-hidden="true">${iconSvg('documents')}</div>
+         <div class="document-record-copy">
+-          <strong>${escapeHtml(document.name)}</strong>
++          <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
++            ${evBadge}
++            ${a1Badge}
++            <strong>${escapeHtml(document.name)}</strong>
++          </div>
+           <span>${escapeHtml(documentOwnerName(document))}</span>
+           <small>${escapeHtml(document.documentType || 'Documento')} · ${escapeHtml(document.documentDate || '')} · ${escapeHtml(formatDocumentSize(document.size))}</small>
+           ${document.metadata?.origin ? `<small>Origem: ${escapeHtml(document.metadata.origin)}</small>` : ''}
+@@ -556,8 +617,9 @@ ${id.lawyerOab} - ${id.officeName}`;
+             ? `<button class="button ghost" type="button" data-document-action="restore">Restaurar</button><button class="button danger" type="button" data-document-action="purge">Excluir definitivamente</button>`
+             : `${document.ownerId ? `<button class="button ghost" type="button" data-document-action="owner">Abrir ${document.ownerType === 'process' ? 'processo' : 'contato'}</button>` : ''}<button class="button ghost" type="button" data-document-action="assistant">Usar no Assistente</button><button class="button ghost" type="button" data-document-action="metadata">Organizar</button><button class="button ghost" type="button" data-document-action="preview">Preview</button><button class="button ghost" type="button" data-document-action="${document.intelligence?.ocr ? 'read-ocr' : 'ocr'}">${document.intelligence?.ocr ? 'Ver extração' : 'Extrair texto'}</button>${canConvertDocumentToPdf(document) ? '<button class="button ghost" type="button" data-document-action="pdf">Gerar PDF</button>' : ''}<button class="button ghost" type="button" data-document-action="download">Baixar</button><button class="button ghost" type="button" data-document-action="delete">Mover para lixeira</button>`}
+         </div>
+-      </article>`).join('')
+-      : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.'}</span></div>`;
++      </article>`;
++    }).join('')
++      : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : (ownerFilterLabel ? 'Nenhum documento encontrado para este vínculo específico.' : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.')}</span>${ownerFilterLabel ? `<button type="button" class="button ghost text-xs" data-clear-owner-filter style="margin-top:8px;">Ver todos os documentos</button>` : ''}</div>`;
+   }
+ 
+   const feature = {
+@@ -593,11 +655,24 @@ ${id.lawyerOab} - ${id.officeName}`;
+       byId('docGenProcessSelect')?.addEventListener('change', () => feature.updatePreview());
+       byId('docGenCopyButton')?.addEventListener('click', () => feature.copyToClipboard());
+       byId('docGenDownloadButton')?.addEventListener('click', () => feature.download());
+-      byId('documentOwnerType')?.addEventListener('change', () => { selectedOwner = null; updateOwnerOptions(); });
++      byId('documentOwnerType')?.addEventListener('change', () => { selectedOwner = null; updateOwnerOptions(); renderArchive(); });
++      byId('documentOwnerId')?.addEventListener('change', () => {
++        const ownerType = byId('documentOwnerType')?.value || 'process';
++        const ownerId = byId('documentOwnerId')?.value;
++        selectedOwner = ownerId ? { ownerType, ownerId } : null;
++        renderArchive();
++      });
+       byId('documentUploadForm')?.addEventListener('submit', event => feature.uploadDocument(event));
+       byId('documentNamingSave')?.addEventListener('click', () => feature.saveNamingTemplate());
+       byId('documentIntelligenceClose')?.addEventListener('click', closeIntelligencePanel);
+       byId('documentArchiveWorkspace')?.addEventListener('click', event => {
++        if (event.target.closest('[data-clear-owner-filter]')) {
++          selectedOwner = null;
++          const select = byId('documentOwnerId');
++          if (select) select.value = '';
++          renderArchive();
++          return;
++        }
+         const filter = event.target.closest('[data-document-filter]');
+         if (filter) return feature.setArchiveFilter(filter.dataset.documentFilter);
+         const action = event.target.closest('[data-document-action]');
+@@ -852,11 +927,34 @@ ${id.lawyerOab} - ${id.officeName}`;
+         body.replaceChildren();
+         const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+         if (contentType.startsWith('image/')) {
+-          intelligenceObjectUrl = windowRef.URL.createObjectURL(await response.blob());
++          const buffer = await response.arrayBuffer();
++          const bytes = new Uint8Array(buffer);
++          const chunkSize = 0x8000;
++          let binary = '';
++          for (let i = 0; i < bytes.length; i += chunkSize) {
++            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
++          }
+           const image = documentRef.createElement('img');
+-          image.src = intelligenceObjectUrl;
++          image.src = `data:${contentType.split(';')[0] || 'image/png'};base64,${windowRef.btoa(binary)}`;
+           image.alt = `Preview seguro de ${document.name}`;
++          image.style.maxWidth = '100%';
++          image.style.height = 'auto';
++          image.style.display = 'block';
++          image.style.borderRadius = '8px';
++          image.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+           body.append(image);
++          const actions = documentRef.createElement('div');
++          actions.className = 'document-preview-actions';
++          actions.style.marginTop = '1rem';
++          actions.style.display = 'flex';
++          actions.style.gap = '0.5rem';
++          const downloadBtn = documentRef.createElement('button');
++          downloadBtn.type = 'button';
++          downloadBtn.className = 'button ghost';
++          downloadBtn.textContent = 'Baixar arquivo original';
++          downloadBtn.addEventListener('click', () => feature.handleArchiveAction(document.id, 'download'));
++          actions.append(downloadBtn);
++          body.append(actions);
+         } else {
+           const text = documentRef.createElement('pre');
+           text.textContent = await response.text();
+@@ -865,7 +963,29 @@ ${id.lawyerOab} - ${id.officeName}`;
+         body.setAttribute('aria-busy', 'false');
+         return true;
+       } catch (error) {
+-        closeIntelligencePanel();
++        if (body?.isConnected) {
++          body.replaceChildren();
++          const errBox = documentRef.createElement('div');
++          errBox.className = 'empty-state document-preview-fallback';
++          const msg = documentRef.createElement('p');
++          msg.textContent = error.message;
++          errBox.append(msg);
++          const actions = documentRef.createElement('div');
++          actions.style.marginTop = '0.75rem';
++          actions.style.display = 'flex';
++          actions.style.gap = '0.5rem';
++          const downloadBtn = documentRef.createElement('button');
++          downloadBtn.type = 'button';
++          downloadBtn.className = 'button primary';
++          downloadBtn.textContent = 'Baixar arquivo original';
++          downloadBtn.addEventListener('click', () => feature.handleArchiveAction(document.id, 'download'));
++          actions.append(downloadBtn);
++          errBox.append(actions);
++          body.append(errBox);
++          body.setAttribute('aria-busy', 'false');
++        } else {
++          closeIntelligencePanel();
++        }
+         showToast(error.message, 'error');
+         return false;
+       }
+diff --git a/js/features/processes.js b/js/features/processes.js
+index 6ae2996..4795355 100644
+--- a/js/features/processes.js
++++ b/js/features/processes.js
+@@ -48,9 +48,48 @@ export function createProcessesFeature({
+       formatDate,
+       formatMinutes,
+       onEdit: item => feature.openProcessModal(item),
+-      onConsult: button => feature.consultTjrs(button),
++      onConsult: (button, item) => feature.consultTjrs(button, item),
+       onDownloadAutos: (button, item) => feature.downloadAutos(button, item),
++      onDownloadEprocA1: (button, item) => feature.downloadEprocA1(button, item),
+       onDocuments: (item, documentId) => openOwnerDocuments?.('process', item.id, documentId),
++      onPreviewDocument: async doc => {
++        if (!doc?.id) throw new Error('Documento inválido');
++        const secureFetchFn = globalThis.KellerAuth?.secureFetch || globalThis.fetch;
++        const response = await secureFetchFn(`/api/documents/${encodeURIComponent(doc.id)}/preview`, {
++          headers: { Accept: 'text/plain,image/png,image/jpeg,image/webp' }
++        });
++        if (!response.ok) throw new Error('Não foi possível carregar a visualização deste documento.');
++        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
++        if (contentType.startsWith('image/')) {
++          const buffer = await response.arrayBuffer();
++          const bytes = new Uint8Array(buffer);
++          let binary = '';
++          for (let i = 0; i < bytes.length; i += 0x8000) {
++            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
++          }
++          return { type: 'image', src: `data:${contentType.split(';')[0]};base64,${globalThis.btoa(binary)}` };
++        } else {
++          const text = await response.text();
++          return { type: 'text', text };
++        }
++      },
++      onDownloadDocument: async doc => {
++        const docId = doc?.id;
++        if (!docId) return;
++        const name = doc?.name || doc?.originalName || 'documento.pdf';
++        const secureFetchFn = globalThis.KellerAuth?.secureFetch || globalThis.fetch;
++        const response = await secureFetchFn(`/api/documents/${encodeURIComponent(docId)}/content`, {
++          headers: { Accept: 'application/octet-stream' }
++        });
++        if (!response.ok) throw new Error('Falha ao baixar arquivo.');
++        const blob = await response.blob();
++        const url = globalThis.URL.createObjectURL(blob);
++        const a = documentRef.createElement('a');
++        a.href = url;
++        a.download = name;
++        a.click();
++        globalThis.URL.revokeObjectURL(url);
++      },
+       onClient: item => openClient?.(item),
+       onTasks: item => openLinkedTasks?.(item),
+       onTask: task => openTask?.(task),
+@@ -404,9 +443,10 @@ export function createProcessesFeature({
+       return true;
+     },
+ 
+-    async consultTjrs(button) {
+-      const processNumber = button.dataset.tjrsConsult;
+-      const process = store.state.processes.find(item => item.number === processNumber);
++    async consultTjrs(button, fallbackItem = null) {
++      const processNumber = button?.dataset?.tjrsConsult || fallbackItem?.number;
++      const cleanTarget = normalizeCnj(processNumber);
++      const process = fallbackItem || store.state.processes.find(item => item.number === processNumber || (cleanTarget && normalizeCnj(item.number) === cleanTarget));
+       if (!process?.id) {
+         showToast?.('Processo local não encontrado para atualização.', 'error');
+         return false;
+@@ -503,6 +543,46 @@ export function createProcessesFeature({
+       }
+     },
+ 
++    async downloadEprocA1(button, item) {
++      const process = item || store.state.processes.find(record => record.id === button?.dataset?.processId);
++      if (!process?.id || !canConsultTjrs(process)) {
++        showToast?.('Este recurso exige um processo TJRS cadastrado.', 'error');
++        return false;
++      }
++      const originalHtml = button?.innerHTML || 'Baixar Autos com A1';
++      if (button) {
++        button.disabled = true;
++        button.innerHTML = 'Baixando peças via A1…';
++      }
++      try {
++        const payload = { processId: process.id, processNumber: process.number, revision: store.revision };
++        const response = await secureFetch('/api/integrations/eproc/processes/download-autos', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json' },
++          body: JSON.stringify(payload)
++        });
++        const result = await response.json().catch(() => ({}));
++        if (!response.ok || !result.ok) {
++          showToast?.(result.message || 'Não foi possível baixar os autos via Certificado A1.', 'error');
++          return false;
++        }
++        if (Array.isArray(result.documents)) store.state.documents = result.documents;
++        store.revision = result.revision || store.revision;
++        const refreshed = store.state.processes.find(record => record.id === process.id) || process;
++        getPresenter().open(refreshed, getProcessSummary(refreshed), null);
++        showToast?.(result.message || `${result.piecesCount} peça(s) oficial(is) baixada(s) via Certificado A1 e arquivada(s) no acervo!`, 'success');
++        return true;
++      } catch (error) {
++        showToast?.(`Falha ao baixar autos via A1: ${error.message}`, 'error');
++        return false;
++      } finally {
++        if (button) {
++          button.disabled = false;
++          button.innerHTML = originalHtml;
++        }
++      }
++    },
++
+     openDetails(item) {
+       return getPresenter().open(item, getProcessSummary(item), documentRef.activeElement);
+     },
+diff --git a/js/features/tasks.js b/js/features/tasks.js
+index 2a305bf..869862d 100644
+--- a/js/features/tasks.js
++++ b/js/features/tasks.js
+@@ -47,6 +47,7 @@ export function createTasksFeature({
+   showToast,
+   onRenderAll,
+   onAnalyzeWithAi,
++  onOpenProcess,
+   now = () => Date.now()
+ } = {}) {
+   let initialized = false;
+@@ -504,24 +505,52 @@ export function createTasksFeature({
+       const cleanTitle = decodeHtmlEntities(defaults.title || '');
+       const hasPublicationContext = Boolean(defaults.intimationId || defaults.sourceIntimationId || /djen|datajud|publica/i.test(String(defaults.source || '')));
+ 
++      const rawProcessNumber = String(defaults.process || defaults.processNumber || '').trim();
++      const cleanProcessDigits = rawProcessNumber.replace(/\D/g, '');
++      const linkedProcess = processes.find(p =>
++        (defaults.processId && String(p.id) === String(defaults.processId)) ||
++        (rawProcessNumber && String(p.number || p.protocol || '').trim() === rawProcessNumber) ||
++        (cleanProcessDigits && String(p.number || '').replace(/\D/g, '') === cleanProcessDigits)
++      );
++
+       let completionBarHtml = '';
+       if (defaults.id) {
+         const isDone = isTerminalStatus(defaults.status);
+         completionBarHtml = isV2() ? `
+         <div class="task-completion-bar">
+           <div><span>Situação da tarefa</span><strong class="task-completion-state ${isDone ? 'is-complete' : 'is-active'}">${isDone ? 'Concluída' : 'Em andamento'}</strong></div>
+-          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask">${iconSvg('check')}Marcar como concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask">${iconSvg('reopen')}Reabrir tarefa</button>`}
++          <div class="task-completion-actions">
++            ${linkedProcess ? `<button type="button" class="button ghost task-process-quick-link" id="btnOpenTaskProcess" title="Acessar processo judicial">${iconSvg('processes')} Acessar processo</button>` : ''}
++            ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask">${iconSvg('check')}Marcar como concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask">${iconSvg('reopen')}Reabrir tarefa</button>`}
++          </div>
+         </div>` : `
+         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding:10px 14px; background:var(--panel-soft); border-radius:10px; border:1px solid var(--line);">
+           <div style="display:flex; align-items:center; gap:8px;">
+             <span style="font-size:12px; color:var(--muted); font-weight:600;">Situação da Tarefa:</span>
+             <span class="status-chip ${isDone ? 'connected' : 'warning'}">${isDone ? 'Concluída' : 'Em andamento'}</span>
+           </div>
+-          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask" style="padding:6px 14px; font-size:12px; font-weight:600;">${iconSvg('check')}Marcar como Concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask" style="padding:6px 14px; font-size:12px;">${iconSvg('reopen')}Reabrir Tarefa</button>`}
++          <div style="display:flex; align-items:center; gap:8px;">
++            ${linkedProcess ? `<button type="button" class="button ghost" id="btnOpenTaskProcess" style="padding:6px 12px; font-size:12px;">${iconSvg('processes')} Acessar processo</button>` : ''}
++            ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask" style="padding:6px 14px; font-size:12px; font-weight:600;">${iconSvg('check')}Marcar como Concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask" style="padding:6px 14px; font-size:12px;">${iconSvg('reopen')}Reabrir Tarefa</button>`}
++          </div>
+         </div>`;
+       }
+ 
+-      let topHtml = completionBarHtml;
++      let linkedProcessBannerHtml = '';
++      if (linkedProcess) {
++        const processDetails = [linkedProcess.client, linkedProcess.actionType || linkedProcess.subject, linkedProcess.court || linkedProcess.county].filter(Boolean).join(' · ');
++        linkedProcessBannerHtml = `
++        <div class="task-linked-process-banner">
++          <div class="task-linked-process-info">
++            <span class="task-linked-process-eyebrow">${iconSvg('processes')} Processo vinculado</span>
++            <strong>${escapeHtml(linkedProcess.number || linkedProcess.protocol || 'Processo')}</strong>
++            <small>${escapeHtml(processDetails || 'Processo cadastrado no acervo')}</small>
++          </div>
++          <button type="button" class="button ghost task-btn-open-process" id="btnOpenTaskProcessBanner">${iconSvg('processes')} Acessar processo</button>
++        </div>`;
++      }
++
++      let topHtml = `${completionBarHtml}${linkedProcessBannerHtml}`;
+       if (cleanDescription && (!isV2() || hasPublicationContext)) {
+         topHtml += `
+           <div class="task-intimation-card ${isV2() ? 'is-v2' : ''}">
+@@ -651,6 +680,14 @@ export function createTasksFeature({
+         closeModal?.();
+         onAnalyzeWithAi?.(cleanDescription);
+       });
++
++      const handleOpenLinkedProcess = () => {
++        if (!linkedProcess) return;
++        closeModal?.();
++        onOpenProcess?.(linkedProcess);
++      };
++      byId('btnOpenTaskProcess')?.addEventListener('click', handleOpenLinkedProcess);
++      byId('btnOpenTaskProcessBanner')?.addEventListener('click', handleOpenLinkedProcess);
+     },
+ 
+     buildTask(data, defaults = {}) {
+diff --git a/js/portal.js b/js/portal.js
+index 4e1c576..8d1dd2c 100644
+--- a/js/portal.js
++++ b/js/portal.js
+@@ -381,6 +381,7 @@ import { createTasksFeature } from './features/tasks.js';
+       renderPublicationsMetrics: () => App.renderPublicationsMetrics(),
+       renderOfficeIdentity: () => App.renderOfficeIdentity(),
+       onOpenTask: task => App.openTaskModal(task),
++      onOpenProcess: process => App.openProcess(process),
+       onCompleteTask: taskId => getTasksFeature().completeTask(taskId),
+       onRenderAll: () => App.renderAll(),
+       onOpenAgenda: item => App.openAgendaModal(item),
+@@ -534,7 +535,8 @@ import { createTasksFeature } from './features/tasks.js';
+       closeModal: () => App.closeModal(),
+       showToast: (message, type) => App.toast(message, type),
+       onRenderAll: () => App.renderAll(),
+-      onAnalyzeWithAi: analyzeTaskWithAi
++      onAnalyzeWithAi: analyzeTaskWithAi,
++      onOpenProcess: process => App.openProcess(process)
+     });
+     return tasksFeature;
+   }
+@@ -853,6 +855,11 @@ import { createTasksFeature } from './features/tasks.js';
+       showToast: (message, type) => App.toast(message, type),
+       onRenderDiagnostic: () => getSystemAdminFeature().renderDiagnostic(),
+       onRenderBackups: () => getSystemAdminFeature().renderBackups(),
++      onOpenJudicialSetup: () => App.openJudicialSetup(),
++      onOpenDataJudModal: () => App.openDataJudConfigModal(),
++      onOpenGeminiKeyModal: () => App.openGeminiKeyModal(),
++      onOpenCalendarSetup: () => App.openCalendarConfigModal(),
++      onOpenEmailConfigModal: () => App.openEmailConfigModal(),
+       presentation: getConfigurationAdminPresenter()
+     });
+     return configurationFeature;
+@@ -1109,6 +1116,14 @@ import { createTasksFeature } from './features/tasks.js';
+     renderDocuments() {
+       return getDocumentsFeature().render();
+     },
++    openProcess(processOrId) {
++      const process = typeof processOrId === 'object' && processOrId
++        ? processOrId
++        : (Store.state.processes || []).find(p => String(p.id) === String(processOrId) || String(p.number || '').replace(/\D/g, '') === String(processOrId).replace(/\D/g, ''));
++      if (!process) return false;
++      this.switchView('processes');
++      return getProcessesFeature().openDetails(process);
++    },
+     openOwnerDocuments(ownerType, ownerId, documentId = '') {
+       this.switchView('documents');
+       const opened = getDocumentsFeature().openOwnerDocuments(ownerType, ownerId);
+@@ -1181,7 +1196,42 @@ import { createTasksFeature } from './features/tasks.js';
+       return getTasksFeature().moveTask(taskId, status);
+     },
+     renderProcesses(query = '') {
+-      return getProcessesFeature().render(query);
++      const rendered = getProcessesFeature().render(query);
++      this.triggerAutoEnrichEproc();
++      return rendered;
++    },
++    async triggerAutoEnrichEproc() {
++      if (this._autoEnrichmentInFlight || this._autoEnrichmentDone) return;
++      const candidates = (Store.state.processes || []).filter(p => {
++        const isTjrs = String(p.number || '').includes('.8.21.') || String(p.court || '').toUpperCase().includes('TJRS');
++        if (!isTjrs) return false;
++        const client = String(p.client || '').trim();
++        const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
++        const isSecrecy = Boolean(p.secrecy) || /sigilo|segredo/i.test(client);
++        return isMissingClient || isSecrecy;
++      });
++      if (!candidates.length) return;
++      this._autoEnrichmentInFlight = true;
++      try {
++        const response = await window.KellerAuth?.secureFetch?.('/api/integrations/eproc/sweep', {
++          method: 'POST',
++          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
++          body: JSON.stringify({ maxProcesses: 5 })
++        });
++        if (response?.ok) {
++          const data = await response.json().catch(() => ({}));
++          this._autoEnrichmentDone = true;
++          if (data?.enrichedCount > 0) {
++            await Store.fetchState();
++            this.renderAll();
++            this.toast(`${data.enrichedCount} processo(s) TJRS enriquecido(s) automaticamente com dados do eproc A1!`, 'success');
++          }
++        }
++      } catch (err) {
++        console.warn('Auto-enriquecimento eproc TJRS em segundo plano:', err.message);
++      } finally {
++        this._autoEnrichmentInFlight = false;
++      }
+     },
+     renderContacts(query = '') {
+       return getContactsFeature().render(query);
+diff --git a/js/views/ui-v2/processes-presenter.js b/js/views/ui-v2/processes-presenter.js
+index 05967f4..33e5fff 100644
+--- a/js/views/ui-v2/processes-presenter.js
++++ b/js/views/ui-v2/processes-presenter.js
+@@ -10,7 +10,10 @@ export function createProcessesV2Presenter({
+   onEdit,
+   onConsult,
+   onDownloadAutos,
++  onDownloadEprocA1,
+   onDocuments,
++  onPreviewDocument,
++  onDownloadDocument,
+   onClient,
+   onTasks,
+   onTask,
+@@ -57,8 +60,8 @@ export function createProcessesV2Presenter({
+         const appointment = selectedAppointments.find(item => String(item.id) === event.target.closest('[data-process-agenda]').dataset.processAgenda);
+         if (appointment) { close({ restoreFocus: false }); onAgenda?.({ entityId: appointment.id }); }
+       } else if (event.target.closest('[data-process-document]')) {
+-        const document = selectedDocuments.find(item => String(item.id) === event.target.closest('[data-process-document]').dataset.processDocument);
+-        if (document) { const item = selectedItem; close({ restoreFocus: false }); onDocuments?.(item, document.id); }
++        const docId = event.target.closest('[data-process-document]').dataset.processDocument;
++        openProcessDocuments(selectedItem, docId);
+       } else if (event.target.closest('[data-process-timeline]')) {
+         const timelineEvent = selectedTimeline.find(item => String(item.id) === event.target.closest('[data-process-timeline]').dataset.processTimeline);
+         if (!timelineEvent) return;
+@@ -71,7 +74,7 @@ export function createProcessesV2Presenter({
+         } else if (timelineEvent.target === 'agenda') {
+           close({ restoreFocus: false }); onAgenda?.(timelineEvent);
+         } else if (timelineEvent.target === 'document') {
+-          const item = selectedItem; close({ restoreFocus: false }); onDocuments?.(item, timelineEvent.entityId);
++          openProcessDocuments(selectedItem, timelineEvent.entityId);
+         } else if (timelineEvent.target === 'financial') {
+           const item = selectedItem; close({ restoreFocus: false }); onFinancial?.(item);
+         }
+@@ -81,6 +84,8 @@ export function createProcessesV2Presenter({
+         const item = selectedItem; close({ restoreFocus: false }); onTasks?.(item);
+       } else if (event.target.closest('[data-process-financial]')) {
+         const item = selectedItem; close({ restoreFocus: false }); onFinancial?.(item);
++      } else if (event.target.closest('[data-download-eproc-a1]')) {
++        onDownloadEprocA1?.(event.target.closest('[data-download-eproc-a1]'), selectedItem);
+       } else if (event.target.closest('[data-download-autos]')) {
+         onDownloadAutos?.(event.target.closest('[data-download-autos]'), selectedItem);
+       } else if (event.target.closest('[data-process-access-key]')) {
+@@ -109,9 +114,35 @@ export function createProcessesV2Presenter({
+     });
+     byId('processInspectorDocuments')?.addEventListener('click', () => {
+       if (!selectedItem) return;
+-      const item = selectedItem;
+-      close({ restoreFocus: false });
+-      onDocuments?.(item);
++      openProcessDocuments(selectedItem);
++    });
++    byId('processDocumentsClose')?.addEventListener('click', () => closeProcessDocuments({ returnToProcess: false }));
++    byId('processDocumentsBackToProcess')?.addEventListener('click', () => closeProcessDocuments({ returnToProcess: true }));
++    byId('processDocumentsBackdrop')?.addEventListener('click', event => {
++      if (event.target === byId('processDocumentsBackdrop')) closeProcessDocuments({ returnToProcess: false });
++    });
++    byId('processDocumentPreviewClose')?.addEventListener('click', () => closeProcessDocumentPreview());
++    byId('processDocumentsBody')?.addEventListener('click', event => {
++      const previewBtn = event.target.closest('[data-preview-process-doc]');
++      if (previewBtn) {
++        previewProcessDoc(previewBtn.dataset.previewProcessDoc);
++        return;
++      }
++      const downloadBtn = event.target.closest('[data-download-process-doc]');
++      if (downloadBtn) {
++        downloadProcessDoc(downloadBtn.dataset.downloadProcessDoc);
++        return;
++      }
++      const assistantBtn = event.target.closest('[data-assistant-process-doc]');
++      if (assistantBtn) {
++        closeProcessDocuments({ returnToProcess: false });
++        onAssistant?.(selectedItem);
++        return;
++      }
++      const card = event.target.closest('[data-doc-card-id]');
++      if (card && !event.target.closest('button')) {
++        previewProcessDoc(card.dataset.docCardId);
++      }
+     });
+     byId('processInspectorAssistant')?.addEventListener('click', () => {
+       if (!selectedItem) return;
+@@ -203,6 +234,8 @@ export function createProcessesV2Presenter({
+     const backdrop = byId('processInspectorBackdrop');
+     const wasOpen = Boolean(backdrop && !backdrop.classList.contains('hidden'));
+     backdrop?.classList.add('hidden');
++    byId('processDocumentsBackdrop')?.classList.add('hidden');
++    closeProcessDocumentPreview();
+     byId('appShell')?.removeAttribute('inert');
+     documentRef.querySelectorAll('#processTableBody [aria-current="true"]').forEach(row => {
+       row.removeAttribute('aria-current');
+@@ -244,20 +277,196 @@ export function createProcessesV2Presenter({
+     }
+   }
+ 
+-  return Object.freeze({ init, renderRows, renderEmpty, updateCount, open, close });
++  function extractEventNumber(doc) {
++    const name = String(doc?.name || doc?.originalName || '').trim();
++    const leadingMatch = name.match(/^(\d{1,5})\s*[-_.]/);
++    if (leadingMatch) return parseInt(leadingMatch[1], 10);
++    const eventMatch = name.match(/(?:evento|ev\.?)\s*(\d{1,5})/i);
++    if (eventMatch) return parseInt(eventMatch[1], 10);
++    if (doc?.metadata?.event != null) return Number(doc.metadata.event);
++    if (doc?.derivation?.index != null) return Number(doc.derivation.index);
++    return 999999;
++  }
++
++  function openProcessDocuments(item, focusDocId = '') {
++    if (!item) return;
++    const documentsBackdrop = byId('processDocumentsBackdrop');
++    if (!documentsBackdrop) {
++      onDocuments?.(item, focusDocId);
++      return;
++    }
++    const number = item.number || item.protocol || 'Processo sem número';
++    const client = item.client || 'Cliente não informado';
++    if (byId('processDocumentsTitle')) byId('processDocumentsTitle').textContent = number;
++    if (byId('processDocumentsSubtitle')) byId('processDocumentsSubtitle').textContent = `${client} · Autos e documentos processuais`;
++
++    const docs = (selectedDocuments || []).slice();
++    docs.sort((a, b) => {
++      const evA = extractEventNumber(a);
++      const evB = extractEventNumber(b);
++      if (evA !== evB) return evA - evB;
++      const dateA = a.documentDate || a.createdAt || '';
++      const dateB = b.documentDate || b.createdAt || '';
++      if (dateA !== dateB) return dateA.localeCompare(dateB);
++      return String(a.name || '').localeCompare(String(b.name || ''));
++    });
++
++    renderProcessDocumentsList(docs, focusDocId);
++
++    byId('processInspectorBackdrop')?.classList.add('hidden');
++    documentsBackdrop.classList.remove('hidden');
++    queueMicrotask(() => byId('processDocumentsClose')?.focus());
++  }
++
++  function closeProcessDocuments({ returnToProcess = true } = {}) {
++    byId('processDocumentsBackdrop')?.classList.add('hidden');
++    closeProcessDocumentPreview();
++    if (returnToProcess && selectedItem) {
++      byId('processInspectorBackdrop')?.classList.remove('hidden');
++      queueMicrotask(() => byId('processInspectorDocuments')?.focus());
++    } else {
++      close({ restoreFocus: true });
++    }
++  }
++
++  function closeProcessDocumentPreview() {
++    byId('processDocumentPreviewPanel')?.classList.add('hidden');
++    const body = byId('processDocumentPreviewBody');
++    if (body) body.replaceChildren();
++  }
++
++  function renderProcessDocumentsList(docs, focusDocId = '') {
++    const container = byId('processDocumentsBody');
++    if (!container) return;
++    if (!docs.length) {
++      container.innerHTML = `
++        <div class="process-documents-empty">
++          <p>Nenhum documento anexado a este processo no momento.</p>
++          <small>Use "Gerar caderno em PDFs" ou "Baixar Autos com A1" para capturar as peças oficiais.</small>
++        </div>`;
++      return;
++    }
++
++    container.innerHTML = `
++      <div class="process-documents-list-header">
++        <span class="process-documents-count"><strong>${docs.length}</strong> documento${docs.length === 1 ? '' : 's'} no acervo (ordem cronológica de eventos)</span>
++      </div>
++      <div class="process-documents-items-list">
++        ${docs.map(doc => {
++          const eventNum = extractEventNumber(doc);
++          const eventBadge = eventNum < 999999 ? `<span class="process-doc-event-badge">Ev. ${String(eventNum).padStart(3, '0')}</span>` : '';
++          const isA1 = (doc.metadata?.origin || '').includes('eproc') || (doc.metadata?.tags || []).includes('a1-oficial');
++          const a1Badge = isA1 ? '<span class="process-doc-a1-badge">Oficial A1</span>' : '';
++          const sizeKb = doc.size ? `${Math.round(doc.size / 1024)} KB` : '';
++          const dateStr = doc.documentDate || (doc.createdAt ? doc.createdAt.slice(0, 10) : '');
++          const isFocused = String(doc.id) === String(focusDocId);
++
++          return `
++            <article class="process-doc-card ${isFocused ? 'is-focused' : ''}" data-doc-card-id="${escapeHtml(doc.id)}">
++              <div class="process-doc-card-top">
++                <div class="process-doc-card-badges">
++                  ${eventBadge}
++                  ${a1Badge}
++                  <span class="process-doc-type-badge">${escapeHtml(doc.documentType || doc.type || 'Documento')}</span>
++                </div>
++                <span class="process-doc-meta">${dateStr ? formatDate(dateStr) : '—'}${sizeKb ? ` · ${sizeKb}` : ''}</span>
++              </div>
++              <h4 class="process-doc-card-name" title="${escapeHtml(doc.name || doc.originalName)}">${escapeHtml(doc.name || doc.originalName || 'Documento sem nome')}</h4>
++              ${doc.metadata?.summary ? `<p class="process-doc-card-summary">${escapeHtml(doc.metadata.summary)}</p>` : ''}
++              <div class="process-doc-card-actions">
++                <button type="button" class="button ghost text-xs" data-preview-process-doc="${escapeHtml(doc.id)}">Preview</button>
++                <button type="button" class="button ghost text-xs" data-download-process-doc="${escapeHtml(doc.id)}">Baixar</button>
++                <button type="button" class="button ghost text-xs" data-assistant-process-doc="${escapeHtml(doc.id)}">Assistente</button>
++              </div>
++            </article>
++          `;
++        }).join('')}
++      </div>
++    `;
++
++    if (focusDocId) {
++      setTimeout(() => {
++        container.querySelector(`[data-doc-card-id="${focusDocId}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
++      }, 50);
++    }
++  }
++
++  async function previewProcessDoc(docId) {
++    const doc = (selectedDocuments || []).find(d => String(d.id) === String(docId));
++    if (!doc) return;
++    const panel = byId('processDocumentPreviewPanel');
++    const titleEl = byId('processDocumentPreviewTitle');
++    const metaEl = byId('processDocumentPreviewMeta');
++    const bodyEl = byId('processDocumentPreviewBody');
++    if (!panel || !bodyEl) return;
++
++    titleEl.textContent = doc.name || doc.originalName || 'Preview do documento';
++    metaEl.textContent = `${doc.documentType || 'Documento'} · ${formatDate(doc.documentDate || doc.createdAt)} · Original preservado`;
++    bodyEl.innerHTML = '<p class="document-intelligence-loading">Carregando visualização segura…</p>';
++    panel.classList.remove('hidden');
++    panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
++
++    const downloadBtn = byId('processDocumentPreviewDownload');
++    if (downloadBtn) {
++      downloadBtn.onclick = () => downloadProcessDoc(doc.id, doc.name);
++    }
++
++    try {
++      if (typeof onPreviewDocument === 'function') {
++        const result = await onPreviewDocument(doc);
++        bodyEl.replaceChildren();
++        if (result?.type === 'image' && result.src) {
++          const img = documentRef.createElement('img');
++          img.src = result.src;
++          img.style.maxWidth = '100%';
++          img.style.height = 'auto';
++          img.style.borderRadius = '6px';
++          img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
++          bodyEl.append(img);
++        } else if (result?.text) {
++          const pre = documentRef.createElement('pre');
++          pre.className = 'process-doc-preview-text';
++          pre.textContent = result.text;
++          bodyEl.append(pre);
++        } else if (result?.html) {
++          bodyEl.innerHTML = result.html;
++        } else {
++          bodyEl.innerHTML = '<div class="empty-state"><p>Visualização não disponível.</p></div>';
++        }
++      } else {
++        bodyEl.innerHTML = '<div class="empty-state"><p>Pré-visualização não configurada.</p></div>';
++      }
++    } catch (err) {
++      bodyEl.innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message || 'Falha ao exibir preview.')}</p></div>`;
++    }
++  }
++
++  async function downloadProcessDoc(docId, docName) {
++    const doc = (selectedDocuments || []).find(d => String(d.id) === String(docId));
++    if (typeof onDownloadDocument === 'function') {
++      await onDownloadDocument(doc || { id: docId, name: docName });
++    }
++  }
++
++  return Object.freeze({ init, renderRows, renderEmpty, updateCount, open, close, openProcessDocuments, closeProcessDocuments });
++}
++
++export function isProcessEnrichmentCandidate(item) {
++  if (!item) return false;
++  const isTjrs = String(item.number || '').includes('.8.21.') || String(item.court || '').toUpperCase().includes('TJRS');
++  if (!isTjrs) return false;
++  const client = String(item.client || '').trim();
++  const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
++  const isSecrecy = Boolean(item.secrecy) || /sigilo|segredo/i.test(client);
++  return isMissingClient || isSecrecy;
+ }
+ 
+ export function renderRow({ item, escapeHtml, formatDate }) {
+   const number = item.number || item.protocol || 'Sem número';
+-  const tribunal = item.court || item.county || 'Órgão não informado';
+-  const phase = unique([item.actionType, item.judicialPhase, item.stage]).join(' · ') || 'Classificação não informada';
++  const tribunal = item.court || 'TJRS';
++  const phase = item.judicialPhase || item.stage || 'Fase não informada';
++  const processMeta = unique([item.actionType, item.subject]).join(' · ') || 'Tipo de ação não informado';
+   const registeredDate = item.registeredAt || item.createdAt;
+-  const processMeta = unique([
+-    item.secrecy ? 'Segredo de justiça' : 'Consulta pública',
+-    item.oldNumber ? `Antigo ${item.oldNumber}` : '',
+-    item.caseFolder ? `Pasta ${item.caseFolder}` : '',
+-    item.nb ? `NB ${item.nb}` : ''
+-  ]).join(' · ');
+   const displayedClient = item.resolvedClient || (/^cliente n[aã]o informado$/i.test(String(item.client || '').trim()) ? '' : item.client);
+   const partyMeta = displayedClient
+     ? (unique([item.clientPosition, item.opposingParty ? `vs. ${item.opposingParty}` : '']).join(' · ') || 'Vínculo confirmado na carteira')
+@@ -268,12 +477,17 @@ export function renderRow({ item, escapeHtml, formatDate }) {
+   const secrecy = item.secrecy
+     ? '<span class="process-secrecy"><span aria-hidden="true">●</span> Segredo de justiça</span>'
+     : '';
++  const needsEnrichment = isProcessEnrichmentCandidate(item);
++  const enrichmentFlag = needsEnrichment
++    ? '<span class="process-enrichment-flag" title="Processo necessita de enriquecimento eproc TJRS (Segredo ou Cliente ausente)"><span aria-hidden="true">●</span> Enriquecimento eproc</span>'
++    : '';
+ 
+   return `<tr data-process-id="${escapeHtml(item.id)}" tabindex="0" aria-label="Ver detalhes do processo ${escapeHtml(number)}">
+     <td class="process-cell-number" data-label="Processo">
+       <strong data-process-number>${escapeHtml(number)}</strong>
+       <small>${escapeHtml(processMeta)}</small>
+       ${secrecy}
++      ${enrichmentFlag}
+     </td>
+     <td class="process-cell-parties" data-label="Cliente e partes">
+       <strong>${escapeHtml(displayedClient || 'Cliente ainda não vinculado')}</strong>
+@@ -305,6 +519,19 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
+   const secrecy = item.secrecy
+     ? '<span class="process-secrecy"><span aria-hidden="true">●</span> Segredo de justiça</span>'
+     : '<span class="process-visibility">Consulta pública</span>';
++  const needsEnrichment = isProcessEnrichmentCandidate(item);
++  const enrichmentFlag = needsEnrichment
++    ? '<span class="process-enrichment-flag" title="Processo necessita de enriquecimento eproc TJRS (Segredo ou Cliente ausente)"><span aria-hidden="true">●</span> Enriquecimento eproc</span>'
++    : '';
++  const enrichmentBanner = needsEnrichment
++    ? `<div class="process-enrichment-banner" role="status">
++        <span class="process-enrichment-icon" aria-hidden="true">●</span>
++        <div>
++          <strong>Identificação eproc pendente</strong>
++          <p>Processo em segredo de justiça ou com cliente ainda não identificado. O coletor eproc A1 busca os dados oficiais automaticamente.</p>
++        </div>
++      </div>`
++    : '';
+   const monitoring = item.monitoring === 'active' ? 'Monitorando' : 'Monitoramento inativo';
+   const risk = riskPresentation(item.risk);
+   const fee = feePresentation(item);
+@@ -312,7 +539,8 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
+ 
+   return `<section class="process-inspector-identity" aria-labelledby="processInspectorIdentityHeading">
+     <p class="process-inspector-kicker" id="processInspectorIdentityHeading">Leitura processual</p>
+-    <div class="process-inspector-number"><strong data-process-number>${escapeHtml(number)}</strong>${secrecy}</div>
++    <div class="process-inspector-number"><strong data-process-number>${escapeHtml(number)}</strong>${secrecy}${enrichmentFlag}</div>
++    ${enrichmentBanner}
+     <h3><button type="button" class="process-inspector-client-link" data-process-client aria-label="Abrir contato de ${escapeHtml(item.client || 'cliente não informado')}">${escapeHtml(item.client || 'Cliente não informado')}</button></h3>
+     <p>${escapeHtml(item.clientPosition || 'Posição não informada')}${item.opposingParty ? ` <span>vs.</span> ${escapeHtml(item.opposingParty)}` : ''}</p>
+     <div class="process-inspector-context"><strong>${escapeHtml(item.court || item.county || 'Órgão não informado')}</strong><span>${escapeHtml(unique([item.courtUnit, item.actionType, item.judicialPhase, item.stage]).join(' · ') || 'Classificação não informada')}</span></div>
+@@ -453,8 +681,13 @@ function renderLinkedTasks(tasks, escapeHtml, formatDate) {
+ function renderOperationalLinks(appointments, documents, escapeHtml, formatDate) {
+   if (!appointments.length && !documents.length) return '';
+   const appointmentItems = appointments.map(item => `<button type="button" data-process-agenda="${escapeHtml(item.id)}" aria-label="Abrir compromisso ${escapeHtml(item.title || 'sem título')}"><strong>${escapeHtml(item.title || 'Compromisso sem título')}</strong><span>${escapeHtml(formatDate(item.date || item.startAt))}${item.time ? ` · ${escapeHtml(item.time)}` : ''}</span></button>`).join('');
+-  const documentItems = documents.map(item => `<button type="button" data-process-document="${escapeHtml(item.id)}" aria-label="Abrir documento ${escapeHtml(item.name || item.originalName || 'sem nome')}"><strong>${escapeHtml(item.name || item.originalName || 'Documento sem nome')}</strong><span>${escapeHtml(item.documentType || item.type || 'Documento')} · ${escapeHtml(formatDate(item.documentDate || item.createdAt))}</span></button>`).join('');
+-  return `<section class="process-inspector-section" aria-labelledby="processRelationsHeading"><h3 id="processRelationsHeading">Compromissos e documentos</h3><div class="process-linked-list">${appointmentItems}${documentItems}</div></section>`;
++  const documentItems = documents.map(item => {
++    const isOfficialA1 = item.documentType?.includes('eproc A1') || item.metadata?.origin?.includes('eproc TJRS (Certificado A1)');
++    const sizeKb = item.size ? `${Math.round(item.size / 1024)} KB` : '';
++    const badge = isOfficialA1 ? ' <span style="display:inline-block;padding:1px 5px;font-size:9px;border-radius:4px;background:rgba(37,99,235,0.15);color:var(--v2-color-primary,#2563eb);font-weight:600;">OFICIAL A1</span>' : '';
++    return `<button type="button" data-process-document="${escapeHtml(item.id)}" aria-label="Abrir documento ${escapeHtml(item.name || item.originalName || 'sem nome')}"><strong>${escapeHtml(item.name || item.originalName || 'Documento sem nome')}${badge}</strong><span>${escapeHtml(item.documentType || item.type || 'Documento')}${sizeKb ? ` · ${sizeKb}` : ''} · ${escapeHtml(formatDate(item.documentDate || item.createdAt))}</span></button>`;
++  }).join('');
++  return `<section class="process-inspector-section" aria-labelledby="processRelationsHeading"><h3 id="processRelationsHeading">Compromissos e documentos (${documents.length})</h3><div class="process-linked-list">${appointmentItems}${documentItems}</div></section>`;
+ }
+ 
+ function renderLinkedPublications(publications, escapeHtml, formatDate) {
+@@ -527,7 +760,22 @@ function renderAccessKeyAction(item) {
+ function renderAutosAction(item, escapeHtml) {
+   const isTjrs = String(item?.number || '').includes('.8.21.') || String(item?.court || '').toUpperCase().includes('TJRS');
+   if (!isTjrs) return '';
+-  return `<div class="process-autos-action"><div><strong>Caderno processual para consulta offline</strong><span>Gera PDFs a partir dos dados já consultados no TJRS e guarda tudo no acervo cifrado deste processo.</span></div><button type="button" class="button ghost" data-download-autos data-process-id="${escapeHtml(item.id || '')}">Gerar caderno em PDFs</button></div>`;
++  return `
++    <div class="process-autos-action" style="border-left: 3px solid var(--v2-color-primary, #2563eb); margin-bottom: 8px;">
++      <div>
++        <strong>Autos oficiais completos via Certificado A1 (eproc TJRS)</strong>
++        <span>Baixa as peças originais oficiais (petições, decisões, certidões) autenticando com seu Certificado Digital A1 + 2FA no tribunal.</span>
++      </div>
++      <button type="button" class="button primary" data-download-eproc-a1 data-process-id="${escapeHtml(item.id || '')}">Baixar Autos com A1</button>
++    </div>
++    <div class="process-autos-action">
++      <div>
++        <strong>Caderno processual para consulta offline</strong>
++        <span>Gera PDFs a partir dos dados já consultados no TJRS e guarda tudo no acervo cifrado deste processo.</span>
++      </div>
++      <button type="button" class="button ghost" data-download-autos data-process-id="${escapeHtml(item.id || '')}">Gerar caderno em PDFs</button>
++    </div>
++  `;
+ }
+ 
+ function riskPresentation(value) {
+diff --git a/tests/configuration_feature.mjs b/tests/configuration_feature.mjs
+index 40356fe..be2e209 100644
+--- a/tests/configuration_feature.mjs
++++ b/tests/configuration_feature.mjs
+@@ -141,9 +141,16 @@ assert.deepEqual(feature.users, []);
+ assert.equal(feature.role, 'collaborator');
+ 
+ const expectedFields = {
+-  taskDefinitions: ['name', 'points', 'phase'], users: ['name', 'role', 'pointsGoal'], actionGroups: ['name', 'publicationResponsible'],
+-  actionTypes: ['name', 'group'], stages: ['name', 'classification', 'phase'], origins: ['name'], goals: ['group', 'monthlyClosings'],
+-  inboxSections: ['value'], notificationAssignments: ['event', 'responsibles'], integrations: ['name', 'status', 'method']
++  taskDefinitions: ['name', 'points', 'phase', 'slaDays', 'priority', 'defaultRole', 'requireDocument', 'status', 'instructions'],
++  users: ['name', 'role', 'pointsGoal', 'oab', 'email', 'status'],
++  actionGroups: ['name', 'publicationResponsible', 'leaderLawyer', 'autoAssign', 'color', 'description'],
++  actionTypes: ['name', 'group', 'procedure', 'defaultCourt', 'estimatedDuration', 'status'],
++  stages: ['name', 'classification', 'phase', 'slaMaxDays', 'nextSuggestedStage', 'status'],
++  origins: ['name', 'channelType', 'partnerCommission', 'defaultAttendant', 'status'],
++  goals: ['group', 'monthlyClosings', 'financialGoal', 'pointsGoal', 'period', 'responsible'],
++  inboxSections: ['value', 'filterRule', 'displayLimit', 'highlightUrgent', 'status'],
++  notificationAssignments: ['event', 'responsibles', 'channels', 'timing', 'urgency', 'autoTask', 'status'],
++  integrations: ['name', 'status', 'method', 'syncFrequency', 'autoNotifyErrors', 'notes']
+ };
+ for (const [section, names] of Object.entries(expectedFields)) {
+   feature.section = section;
