@@ -48,9 +48,48 @@ export function createProcessesFeature({
       formatDate,
       formatMinutes,
       onEdit: item => feature.openProcessModal(item),
-      onConsult: button => feature.consultTjrs(button),
+      onConsult: (button, item) => feature.consultTjrs(button, item),
       onDownloadAutos: (button, item) => feature.downloadAutos(button, item),
+      onDownloadEprocA1: (button, item) => feature.downloadEprocA1(button, item),
       onDocuments: (item, documentId) => openOwnerDocuments?.('process', item.id, documentId),
+      onPreviewDocument: async doc => {
+        if (!doc?.id) throw new Error('Documento inválido');
+        const secureFetchFn = globalThis.KellerAuth?.secureFetch || globalThis.fetch;
+        const response = await secureFetchFn(`/api/documents/${encodeURIComponent(doc.id)}/preview`, {
+          headers: { Accept: 'text/plain,image/png,image/jpeg,image/webp' }
+        });
+        if (!response.ok) throw new Error('Não foi possível carregar a visualização deste documento.');
+        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+        if (contentType.startsWith('image/')) {
+          const buffer = await response.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          let binary = '';
+          for (let i = 0; i < bytes.length; i += 0x8000) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+          }
+          return { type: 'image', src: `data:${contentType.split(';')[0]};base64,${globalThis.btoa(binary)}` };
+        } else {
+          const text = await response.text();
+          return { type: 'text', text };
+        }
+      },
+      onDownloadDocument: async doc => {
+        const docId = doc?.id;
+        if (!docId) return;
+        const name = doc?.name || doc?.originalName || 'documento.pdf';
+        const secureFetchFn = globalThis.KellerAuth?.secureFetch || globalThis.fetch;
+        const response = await secureFetchFn(`/api/documents/${encodeURIComponent(docId)}/content`, {
+          headers: { Accept: 'application/octet-stream' }
+        });
+        if (!response.ok) throw new Error('Falha ao baixar arquivo.');
+        const blob = await response.blob();
+        const url = globalThis.URL.createObjectURL(blob);
+        const a = documentRef.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.click();
+        globalThis.URL.revokeObjectURL(url);
+      },
       onClient: item => openClient?.(item),
       onTasks: item => openLinkedTasks?.(item),
       onTask: task => openTask?.(task),
@@ -404,9 +443,10 @@ export function createProcessesFeature({
       return true;
     },
 
-    async consultTjrs(button) {
-      const processNumber = button.dataset.tjrsConsult;
-      const process = store.state.processes.find(item => item.number === processNumber);
+    async consultTjrs(button, fallbackItem = null) {
+      const processNumber = button?.dataset?.tjrsConsult || fallbackItem?.number;
+      const cleanTarget = normalizeCnj(processNumber);
+      const process = fallbackItem || store.state.processes.find(item => item.number === processNumber || (cleanTarget && normalizeCnj(item.number) === cleanTarget));
       if (!process?.id) {
         showToast?.('Processo local não encontrado para atualização.', 'error');
         return false;
@@ -499,6 +539,46 @@ export function createProcessesFeature({
         if (button) {
           button.disabled = false;
           button.textContent = originalLabel;
+        }
+      }
+    },
+
+    async downloadEprocA1(button, item) {
+      const process = item || store.state.processes.find(record => record.id === button?.dataset?.processId);
+      if (!process?.id || !canConsultTjrs(process)) {
+        showToast?.('Este recurso exige um processo TJRS cadastrado.', 'error');
+        return false;
+      }
+      const originalHtml = button?.innerHTML || 'Baixar Autos com A1';
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = 'Baixando peças via A1…';
+      }
+      try {
+        const payload = { processId: process.id, processNumber: process.number, revision: store.revision };
+        const response = await secureFetch('/api/integrations/eproc/processes/download-autos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) {
+          showToast?.(result.message || 'Não foi possível baixar os autos via Certificado A1.', 'error');
+          return false;
+        }
+        if (Array.isArray(result.documents)) store.state.documents = result.documents;
+        store.revision = result.revision || store.revision;
+        const refreshed = store.state.processes.find(record => record.id === process.id) || process;
+        getPresenter().open(refreshed, getProcessSummary(refreshed), null);
+        showToast?.(result.message || `${result.piecesCount} peça(s) oficial(is) baixada(s) via Certificado A1 e arquivada(s) no acervo!`, 'success');
+        return true;
+      } catch (error) {
+        showToast?.(`Falha ao baixar autos via A1: ${error.message}`, 'error');
+        return false;
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = originalHtml;
         }
       }
     },

@@ -381,6 +381,7 @@ import { createTasksFeature } from './features/tasks.js';
       renderPublicationsMetrics: () => App.renderPublicationsMetrics(),
       renderOfficeIdentity: () => App.renderOfficeIdentity(),
       onOpenTask: task => App.openTaskModal(task),
+      onOpenProcess: process => App.openProcess(process),
       onCompleteTask: taskId => getTasksFeature().completeTask(taskId),
       onRenderAll: () => App.renderAll(),
       onOpenAgenda: item => App.openAgendaModal(item),
@@ -534,7 +535,8 @@ import { createTasksFeature } from './features/tasks.js';
       closeModal: () => App.closeModal(),
       showToast: (message, type) => App.toast(message, type),
       onRenderAll: () => App.renderAll(),
-      onAnalyzeWithAi: analyzeTaskWithAi
+      onAnalyzeWithAi: analyzeTaskWithAi,
+      onOpenProcess: process => App.openProcess(process)
     });
     return tasksFeature;
   }
@@ -1109,6 +1111,14 @@ import { createTasksFeature } from './features/tasks.js';
     renderDocuments() {
       return getDocumentsFeature().render();
     },
+    openProcess(processOrId) {
+      const process = typeof processOrId === 'object' && processOrId
+        ? processOrId
+        : (Store.state.processes || []).find(p => String(p.id) === String(processOrId) || String(p.number || '').replace(/\D/g, '') === String(processOrId).replace(/\D/g, ''));
+      if (!process) return false;
+      this.switchView('processes');
+      return getProcessesFeature().openDetails(process);
+    },
     openOwnerDocuments(ownerType, ownerId, documentId = '') {
       this.switchView('documents');
       const opened = getDocumentsFeature().openOwnerDocuments(ownerType, ownerId);
@@ -1181,7 +1191,42 @@ import { createTasksFeature } from './features/tasks.js';
       return getTasksFeature().moveTask(taskId, status);
     },
     renderProcesses(query = '') {
-      return getProcessesFeature().render(query);
+      const rendered = getProcessesFeature().render(query);
+      this.triggerAutoEnrichEproc();
+      return rendered;
+    },
+    async triggerAutoEnrichEproc() {
+      if (this._autoEnrichmentInFlight || this._autoEnrichmentDone) return;
+      const candidates = (Store.state.processes || []).filter(p => {
+        const isTjrs = String(p.number || '').includes('.8.21.') || String(p.court || '').toUpperCase().includes('TJRS');
+        if (!isTjrs) return false;
+        const client = String(p.client || '').trim();
+        const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
+        const isSecrecy = Boolean(p.secrecy) || /sigilo|segredo/i.test(client);
+        return isMissingClient || isSecrecy;
+      });
+      if (!candidates.length) return;
+      this._autoEnrichmentInFlight = true;
+      try {
+        const response = await window.KellerAuth?.secureFetch?.('/api/integrations/eproc/sweep', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ maxProcesses: 5 })
+        });
+        if (response?.ok) {
+          const data = await response.json().catch(() => ({}));
+          this._autoEnrichmentDone = true;
+          if (data?.enrichedCount > 0) {
+            await Store.fetchState();
+            this.renderAll();
+            this.toast(`${data.enrichedCount} processo(s) TJRS enriquecido(s) automaticamente com dados do eproc A1!`, 'success');
+          }
+        }
+      } catch (err) {
+        console.warn('Auto-enriquecimento eproc TJRS em segundo plano:', err.message);
+      } finally {
+        this._autoEnrichmentInFlight = false;
+      }
     },
     renderContacts(query = '') {
       return getContactsFeature().render(query);

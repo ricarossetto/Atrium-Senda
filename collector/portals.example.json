@@ -17,12 +17,14 @@
     {
       "id": "eproc-tjrs-1g", "name": "TJRS · eproc 1º grau", "short": "RS1", "group": "Justiça Estadual", "system": "eproc",
       "court": "TJRS 1º grau", "enabled": false, "accountScoped": true, "url": "https://eproc1g.tjrs.jus.br/eproc/", "strategy": "eproc",
-      "authStrategy": "credentials-totp", "automationLevel": "supported"
+      "authStrategy": "client-cert-mtls", "certificateMode": "pfx-mtls", "usesCertificate": true, "supportsTotp": true,
+      "trustedAuthOrigins": ["https://keycloak-httpd-mtls.tjrs.jus.br"], "automationLevel": "supported"
     },
     {
       "id": "eproc-tjrs-2g", "name": "TJRS · eproc 2º grau", "short": "RS2", "group": "Justiça Estadual", "system": "eproc",
       "court": "TJRS 2º grau", "enabled": false, "accountScoped": true, "url": "https://eproc2g.tjrs.jus.br/eproc/", "strategy": "eproc",
-      "authStrategy": "credentials-totp", "automationLevel": "supported"
+      "authStrategy": "client-cert-mtls", "certificateMode": "pfx-mtls", "usesCertificate": true, "supportsTotp": true,
+      "trustedAuthOrigins": ["https://keycloak-httpd-mtls.tjrs.jus.br"], "automationLevel": "supported"
     },
     {
       "id": "eproc-tjsc-1g", "name": "TJSC · eproc 1º grau", "short": "SC1", "group": "Justiça Estadual", "system": "eproc",

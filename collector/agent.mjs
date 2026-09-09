@@ -11,6 +11,7 @@ import { computeNextRefresh, isRefreshDue, sanitizeJudicialError } from '../lib/
 import { collectDjen } from './adapters/djen.mjs';
 import { collectDatajud } from './adapters/datajud.mjs';
 import { collectPje } from './adapters/pje.mjs';
+import { openEprocProcessDetails, downloadAndOrganizeProcessDocuments } from './adapters/eproc.mjs';
 import { authStateRequiresHumanAction, classifyJudicialAuthState, findAuthenticatedJudicialPage, JUDICIAL_AUTH_STATES } from './auth-state.mjs';
 
 const COLLECTOR_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -59,7 +60,7 @@ const preBrowserPortals = publicPortals.filter(portal => portal.strategy === 'dj
 const postBrowserPortals = publicPortals.filter(portal => portal.strategy === 'datajud');
 const browserPortals = portals.filter(portal => !['djen', 'datajud'].includes(portal.strategy));
 
-const payload = { events: [], tasks: [], intimations: [], processes: [], contacts: [], sources: [] };
+const payload = { events: [], tasks: [], intimations: [], processes: [], contacts: [], sources: [], documents: [] };
 const existingProcessNumbers = await loadExistingProcessNumbers();
 
 try {
@@ -88,26 +89,40 @@ try {
       const clientCerts = [];
       const authStrategy = portal.authStrategy || (
         portal.strategy === 'pje' ? AUTH_STRATEGIES.PJEOFFICE_LOCAL :
+        (portal.strategy === 'eproc' && (portal.certificateMode === 'pfx-mtls' || portal.usesCertificate || judicialSecrets.certificate || process.env.A1_PFX_PATH))
+          ? AUTH_STRATEGIES.CLIENT_CERT_MTLS :
         portal.strategy === 'eproc' ? AUTH_STRATEGIES.CREDENTIALS_TOTP :
         AUTH_STRATEGIES.MANUAL_PERSISTENT_SESSION
       );
       const authAdapter = getAuthAdapter(authStrategy);
       const portalCreds = judicialSecrets.portalCredentials?.[portal.id] || null;
-      const totpSecret = judicialSecrets.totpSecrets?.[portal.id]?.secret || null;
+      const totpSecret = judicialSecrets.totpSecrets?.[portal.id]?.secret || (portal.autoTotpEnv ? process.env[portal.autoTotpEnv] : null);
       const credentials = portalCreds ? { ...portalCreds, totpSecret } : (totpSecret ? { totpSecret } : null);
 
-      if (authStrategy === AUTH_STRATEGIES.CLIENT_CERT_MTLS) {
-        const pfxPath = judicialSecrets.certificate?.path || process.env.A1_PFX_PATH;
+      if (authStrategy === AUTH_STRATEGIES.CLIENT_CERT_MTLS || portal.usesCertificate || portal.certificateMode === 'pfx-mtls' || (portal.strategy === 'eproc' && (judicialSecrets.certificate || process.env.A1_PFX_PATH))) {
+        let pfxPath = judicialSecrets.certificate?.path || process.env.A1_PFX_PATH;
+        if (pfxPath && !path.isAbsolute(pfxPath)) {
+          pfxPath = path.resolve(ROOT, pfxPath);
+        }
         const passphrase = judicialSecrets.certificate?.passphrase || process.env.A1_PFX_PASSPHRASE;
         if (pfxPath && passphrase && existsSync(pfxPath)) {
           try {
             const modernCert = await createModernizedPfx({ pfxPath, passphrase });
             modernCertCleanup = modernCert.cleanup;
-            clientCerts.push({
-              origin: new URL(portal.url).origin,
-              pfxPath: modernCert.modernPath,
-              passphrase: modernCert.modernPassphrase
-            });
+            const candidateOrigins = new Set([
+              new URL(portal.url).origin,
+              ...(portal.trustedAuthOrigins || [])
+            ]);
+            if (/tjrs\.jus\.br/i.test(portal.url) || portal.id.includes('tjrs')) {
+              candidateOrigins.add('https://keycloak-httpd-mtls.tjrs.jus.br');
+            }
+            for (const origin of candidateOrigins) {
+              clientCerts.push({
+                origin,
+                pfxPath: modernCert.modernPath,
+                passphrase: modernCert.modernPassphrase
+              });
+            }
           } catch (certErr) {
             console.warn(`[A1 Sandbox] Aviso ao modernizar PFX para ${portal.name}:`, certErr.message);
           }
@@ -258,7 +273,7 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
     await page.waitForTimeout(2_000);
 
     if (await needsHumanAuthentication(activePage, portal)) {
-      if (authAdapter && authAdapter.strategy === AUTH_STRATEGIES.CREDENTIALS_TOTP && credentials?.username) {
+      if (authAdapter) {
         try {
           await authAdapter.authenticate(context, activePage, portal, credentials);
         } catch (authErr) {
@@ -286,6 +301,46 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
 
     if (portal.strategy === 'eproc') {
       const result = await collectEproc(activePage, portal, target);
+      if (portal.downloadAutos || process.env.DOWNLOAD_AUTOS === 'true' || process.env.TARGET_CNJ) {
+        const targetNumber = (process.env.TARGET_CNJ || '').replace(/\D/g, '');
+        const procsToDownload = targetNumber
+          ? (result.collectedProcesses || []).filter(p => p.number.replace(/\D/g, '').includes(targetNumber) || targetNumber.includes(p.number.replace(/\D/g, '')))
+          : (result.collectedProcesses || []).slice(0, 5);
+
+        for (const proc of procsToDownload) {
+          try {
+            console.log(`[eproc] Baixando autos do processo ${proc.number} (${proc.client})...`);
+            await openEprocProcessDetails(activePage, proc.number);
+            const downloadResult = await downloadAndOrganizeProcessDocuments(activePage, {
+              cnj: proc.number,
+              clientName: proc.client
+            });
+            if (downloadResult?.files?.length && Array.isArray(target.documents)) {
+              for (const f of downloadResult.files) {
+                target.documents.push({
+                  id: `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  name: f.name,
+                  originalName: f.name,
+                  mime: 'application/pdf',
+                  size: f.size || 1024,
+                  createdAt: new Date().toISOString(),
+                  ownerType: 'process',
+                  ownerId: proc.number,
+                  documentType: f.type === 'indice' ? 'Índice de Autos' : 'Peça Processual',
+                  metadata: {
+                    origin: 'eproc TJRS',
+                    tags: ['eproc', 'autos', 'tjrs'],
+                    localPath: f.path,
+                    description: f.description || ''
+                  }
+                });
+              }
+            }
+          } catch (dlErr) {
+            console.warn(`[eproc] Aviso ao baixar autos do processo ${proc.number}:`, dlErr.message);
+          }
+        }
+      }
       target.sources.push(source(portal, 'ok', checkedAt, `${result.processes} processo(s) · ${result.deadlines} prazo(s) · ${result.pending} intimação(ões) pendente(s).`));
       return { state: SESSION_STATUS.CONNECTED, counts: result };
     }
@@ -340,7 +395,7 @@ async function collectEproc(page, portal, target) {
     }
   }
 
-  return { processes: processes.length, deadlines: deadlines.length, pending: pending.length };
+  return { processes: processes.length, deadlines: deadlines.length, pending: pending.length, collectedProcesses: processes };
 }
 
 async function navigateToEprocProcessReport(page) {
@@ -653,10 +708,17 @@ async function tryAutomatedTotp(page, portal) {
   const secret = judicialSecrets.totpSecrets?.[portal.id]?.secret || (portal.autoTotpEnv ? process.env[portal.autoTotpEnv] : '');
   if (!secret) return false;
   const allowedOrigins = new Set([new URL(portal.url).origin, ...(portal.trustedAuthOrigins || [])]);
+  if (/tjrs\.jus\.br/i.test(portal.url) || portal.id.includes('tjrs')) {
+    allowedOrigins.add('https://keycloak-httpd-mtls.tjrs.jus.br');
+  }
   if (!allowedOrigins.has(new URL(page.url()).origin)) return false;
 
   // Seletores abrangentes para captura de campos 2FA/TOTP em eproc, PJe, PDPJ e portais de autenticação
   const selectors = [
+    '#otp',
+    'input[name="otp"]',
+    'input[name="totp"]',
+    'input[name="code"]',
     'input[autocomplete="one-time-code"]',
     'input#txtCodAutenticacao',
     'input#txtCodigo',
@@ -707,6 +769,7 @@ async function tryAutomatedTotp(page, portal) {
   await page.waitForTimeout(300);
 
   const submitCandidates = [
+    page.locator('#kc-login, button[name="login"], input[name="login"]').first(),
     page.locator('button[type="submit"], input[type="submit"], input#sbmEntrar, button#btnEntrar, input#btnEntrar, button#sbmEntrar').first(),
     page.getByRole('button', { name: /^(validar|entrar|continuar|confirmar|acessar|verificar)$/i }).first()
   ];
@@ -728,9 +791,13 @@ async function tryAutomatedTotp(page, portal) {
 
 async function tryAutomatedCertificateLogin(page, portal) {
   const allowedOrigins = new Set([new URL(portal.url).origin, ...(portal.trustedAuthOrigins || [])]);
+  if (/tjrs\.jus\.br/i.test(portal.url) || portal.id.includes('tjrs')) {
+    allowedOrigins.add('https://keycloak-httpd-mtls.tjrs.jus.br');
+  }
   if (!allowedOrigins.has(new URL(page.url()).origin)) return false;
 
   const candidates = [
+    page.locator('#kc-login-certificate, button[name="loginCertificate"], #kc-form-login-certificate, button:has-text("Certificado Digital"), a:has-text("Certificado Digital")').first(),
     page.getByRole('button', { name: /certificado\s+digital/i }),
     page.getByRole('link', { name: /certificado\s+digital/i }),
     page.getByText(/acesso\s+com\s+certificado\s+digital/i, { exact: false }),

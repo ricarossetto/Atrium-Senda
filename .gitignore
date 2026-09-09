@@ -3,6 +3,8 @@
 !.env.example
 data/
 !data/.gitkeep
+data-*/
+data-backup*/
 collector/.profile/
 collector/portals.json
 *.pfx

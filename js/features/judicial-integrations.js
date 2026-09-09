@@ -55,6 +55,7 @@ export function createJudicialIntegrationsFeature({
       byId('savePortalCoverageButton')?.addEventListener('click', () => feature.savePortalCoverage());
       byId('syncJudicialNowButton')?.addEventListener('click', () => feature.syncNow());
       byId('launchPortalLoginButton')?.addEventListener('click', event => feature.launchAssistedSession(event.currentTarget));
+      byId('btnRunA1Sweep')?.addEventListener('click', () => feature.runA1Sweep());
       byId('portalCoverageList')?.addEventListener('click', event => {
         const totpButton = event.target.closest('[data-configure-totp]');
         if (totpButton) {
@@ -477,9 +478,24 @@ export function createJudicialIntegrationsFeature({
             warn('Falha ao ler QR com BarcodeDetector.');
           }
         }
-        if (!raw) throw new Error('Não foi possível ler o QR Code da imagem. Verifique se o enquadramento está nítido ou cole a chave manual Base32.');
-        const parsed = await feature.request('/api/integrations/judicial/totp/parse', { qrData: raw });
-        raw = '';
+        let parsed = null;
+        if (raw) {
+          parsed = await feature.request('/api/integrations/judicial/totp/parse', { qrData: raw });
+          raw = '';
+        } else if (file) {
+          status.textContent = 'Decodificando no servidor seguro…';
+          const arrayBuffer = await file.arrayBuffer();
+          let binary = '';
+          const bytes = new Uint8Array(arrayBuffer);
+          const len = bytes.byteLength;
+          for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          const base64 = windowRef.btoa(binary);
+          parsed = await feature.request('/api/integrations/judicial/totp/parse', { imageBase64: base64, fileName: file.name });
+        } else {
+          throw new Error('Não foi possível ler o QR Code da imagem. Verifique se o enquadramento está nítido ou cole a chave manual Base32.');
+        }
         const parsedAccounts = parsed.type === 'migration' ? parsed.accounts : [parsed.account];
         pendingTotpAccounts = (parsedAccounts || []).filter(account => account?.secret).map(account => ({
           name: String(account.name || 'Conta sem nome').slice(0, 160),
@@ -608,6 +624,48 @@ export function createJudicialIntegrationsFeature({
         return false;
       } finally {
         if (button) { button.disabled = false; button.innerHTML = `${presentation?.icon?.('sync') || '✦ '}<span class="classic-only">Sincronizar Acervo e Intimações Agora</span><span class="v2-only">Atualizar cobertura agora</span>`; }
+      }
+    },
+
+    async runA1Sweep() {
+      const button = byId('btnRunA1Sweep');
+      const statusEl = byId('a1SweepStatus');
+      const originalText = button?.innerHTML || 'Executar Varredura A1';
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = 'Varrendo eproc TJRS via A1…';
+      }
+      if (statusEl) {
+        statusEl.classList.remove('hidden');
+        statusEl.style.color = 'var(--gold-soft)';
+        statusEl.textContent = 'Autenticando via Certificado A1 + 2FA e identificando processos com segredo de justiça ou dados faltantes…';
+      }
+      try {
+        const result = await feature.request('/api/integrations/eproc/sweep', { maxProcesses: 50 });
+        if (result.ok) {
+          showToast(result.message || 'Varredura A1 concluída com sucesso!', 'success');
+          audit('Varredura A1 concluída', `${result.enrichedCount} de ${result.sweptCount} processo(s) enriquecido(s).`);
+          if (statusEl) {
+            statusEl.style.color = 'var(--emerald-bright, #34d399)';
+            const sample = (result.updatedProcesses || []).slice(0, 3).map(p => `• ${p.number}: ${p.client}`).join('<br>');
+            statusEl.innerHTML = `<strong>Varredura Concluída:</strong> ${result.enrichedCount} processo(s) enriquecido(s) com dados oficiais do eproc TJRS.${sample ? `<div style="margin-top: 6px; font-size: 11px; opacity: 0.9;">${sample}</div>` : ''}`;
+          }
+          await onSyncAll({ silent: true }).catch(() => {});
+        } else {
+          throw new Error(result.message || 'Não foi possível concluir a varredura.');
+        }
+      } catch (error) {
+        showToast(`Falha na varredura A1: ${error.message}`, 'error');
+        if (statusEl) {
+          statusEl.classList.remove('hidden');
+          statusEl.style.color = 'var(--danger-soft, #f87171)';
+          statusEl.textContent = `Erro na varredura: ${error.message}`;
+        }
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = originalText;
+        }
       }
     },
 

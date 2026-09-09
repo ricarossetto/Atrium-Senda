@@ -47,6 +47,7 @@ export function createTasksFeature({
   showToast,
   onRenderAll,
   onAnalyzeWithAi,
+  onOpenProcess,
   now = () => Date.now()
 } = {}) {
   let initialized = false;
@@ -504,24 +505,52 @@ export function createTasksFeature({
       const cleanTitle = decodeHtmlEntities(defaults.title || '');
       const hasPublicationContext = Boolean(defaults.intimationId || defaults.sourceIntimationId || /djen|datajud|publica/i.test(String(defaults.source || '')));
 
+      const rawProcessNumber = String(defaults.process || defaults.processNumber || '').trim();
+      const cleanProcessDigits = rawProcessNumber.replace(/\D/g, '');
+      const linkedProcess = processes.find(p =>
+        (defaults.processId && String(p.id) === String(defaults.processId)) ||
+        (rawProcessNumber && String(p.number || p.protocol || '').trim() === rawProcessNumber) ||
+        (cleanProcessDigits && String(p.number || '').replace(/\D/g, '') === cleanProcessDigits)
+      );
+
       let completionBarHtml = '';
       if (defaults.id) {
         const isDone = isTerminalStatus(defaults.status);
         completionBarHtml = isV2() ? `
         <div class="task-completion-bar">
           <div><span>Situação da tarefa</span><strong class="task-completion-state ${isDone ? 'is-complete' : 'is-active'}">${isDone ? 'Concluída' : 'Em andamento'}</strong></div>
-          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask">${iconSvg('check')}Marcar como concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask">${iconSvg('reopen')}Reabrir tarefa</button>`}
+          <div class="task-completion-actions">
+            ${linkedProcess ? `<button type="button" class="button ghost task-process-quick-link" id="btnOpenTaskProcess" title="Acessar processo judicial">${iconSvg('processes')} Acessar processo</button>` : ''}
+            ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask">${iconSvg('check')}Marcar como concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask">${iconSvg('reopen')}Reabrir tarefa</button>`}
+          </div>
         </div>` : `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding:10px 14px; background:var(--panel-soft); border-radius:10px; border:1px solid var(--line);">
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="font-size:12px; color:var(--muted); font-weight:600;">Situação da Tarefa:</span>
             <span class="status-chip ${isDone ? 'connected' : 'warning'}">${isDone ? 'Concluída' : 'Em andamento'}</span>
           </div>
-          ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask" style="padding:6px 14px; font-size:12px; font-weight:600;">${iconSvg('check')}Marcar como Concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask" style="padding:6px 14px; font-size:12px;">${iconSvg('reopen')}Reabrir Tarefa</button>`}
+          <div style="display:flex; align-items:center; gap:8px;">
+            ${linkedProcess ? `<button type="button" class="button ghost" id="btnOpenTaskProcess" style="padding:6px 12px; font-size:12px;">${iconSvg('processes')} Acessar processo</button>` : ''}
+            ${!isDone ? `<button type="button" class="button gold" id="btnDirectCompleteTask" style="padding:6px 14px; font-size:12px; font-weight:600;">${iconSvg('check')}Marcar como Concluída</button>` : `<button type="button" class="button ghost" id="btnDirectReopenTask" style="padding:6px 14px; font-size:12px;">${iconSvg('reopen')}Reabrir Tarefa</button>`}
+          </div>
         </div>`;
       }
 
-      let topHtml = completionBarHtml;
+      let linkedProcessBannerHtml = '';
+      if (linkedProcess) {
+        const processDetails = [linkedProcess.client, linkedProcess.actionType || linkedProcess.subject, linkedProcess.court || linkedProcess.county].filter(Boolean).join(' · ');
+        linkedProcessBannerHtml = `
+        <div class="task-linked-process-banner">
+          <div class="task-linked-process-info">
+            <span class="task-linked-process-eyebrow">${iconSvg('processes')} Processo vinculado</span>
+            <strong>${escapeHtml(linkedProcess.number || linkedProcess.protocol || 'Processo')}</strong>
+            <small>${escapeHtml(processDetails || 'Processo cadastrado no acervo')}</small>
+          </div>
+          <button type="button" class="button ghost task-btn-open-process" id="btnOpenTaskProcessBanner">${iconSvg('processes')} Acessar processo</button>
+        </div>`;
+      }
+
+      let topHtml = `${completionBarHtml}${linkedProcessBannerHtml}`;
       if (cleanDescription && (!isV2() || hasPublicationContext)) {
         topHtml += `
           <div class="task-intimation-card ${isV2() ? 'is-v2' : ''}">
@@ -651,6 +680,14 @@ export function createTasksFeature({
         closeModal?.();
         onAnalyzeWithAi?.(cleanDescription);
       });
+
+      const handleOpenLinkedProcess = () => {
+        if (!linkedProcess) return;
+        closeModal?.();
+        onOpenProcess?.(linkedProcess);
+      };
+      byId('btnOpenTaskProcess')?.addEventListener('click', handleOpenLinkedProcess);
+      byId('btnOpenTaskProcessBanner')?.addEventListener('click', handleOpenLinkedProcess);
     },
 
     buildTask(data, defaults = {}) {
