@@ -22,15 +22,18 @@ A aplicação roda no computador ou na infraestrutura controlada pelo escritóri
 
 ## Comece aqui — primeiro uso
 
-Para testar o ATRIUM no Windows, baixe o código da [release v2.1.0](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.0), extraia o ZIP e dê duplo clique em **`ATRIUM.bat`**. O inicializador confere Node.js 24, Corepack, pnpm e Chromium, instala o que faltar e abre `http://127.0.0.1:4173`. Se o Windows ainda não tiver Node.js, o próprio inicializador oferece a instalação oficial pelo `winget`.
+Para testar o ATRIUM no Windows, baixe o código da [release v2.1.0](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.0), extraia o ZIP e dê duplo clique em **`ATRIUM.bat`**. O inicializador confere Node.js 24, Corepack, pnpm e Chromium, instala o que faltar e abre `http://127.0.0.1:4173`. Se o Windows ainda não tiver Node.js, o próprio inicializador oferece a instalação oficial pelo `winget`. O roteiro [Primeiros 10 minutos](docs/QUICK_START.md) foi escrito para testadores sem experiência técnica.
 
 No primeiro acesso:
 
-1. crie o administrador do escritório e conclua o segundo fator quando a tela solicitar;
-2. abra **Configurações** e informe a identidade do escritório, equipe e preferências;
-3. cadastre um contato e um processo pelo número CNJ, ou importe uma planilha pela prévia supervisionada;
-4. abra o processo para conferir publicações, tarefas, documentos e o botão **Adicionar tarefa** no painel lateral;
-5. para monitoramento judicial, informe somente os códigos solicitados pela própria tela (por exemplo, OAB/UF, credencial/TOTP do portal ou chave de acesso do processo). Eles ficam no cofre local cifrado e nunca devem ser colados no GitHub, em screenshots ou no README.
+1. crie o administrador do escritório com nome, e-mail, usuário e senha;
+2. na etapa seguinte, informe OAB/UF se for advogado e escolha explicitamente se deseja ativar o monitoramento automático;
+3. conclua o segundo fator quando a tela solicitar e guarde os códigos de recuperação;
+4. abra **Configurações** e informe a identidade do escritório, equipe e preferências;
+5. cadastre um contato e um processo pelo número CNJ, ou importe uma planilha pela prévia supervisionada;
+6. abra o processo para conferir publicações, tarefas, documentos e o botão **Criar tarefa** no painel lateral.
+
+Para monitoramento judicial, informe somente os códigos solicitados pela própria tela, como OAB/UF, credencial/TOTP do portal ou chave de acesso do processo. Eles ficam no cofre local cifrado e nunca devem ser colados no GitHub, em screenshots ou no README.
 
 O caminho de teste mais curto é: cadastrar um contato → cadastrar um processo → abrir **Publicações** → pesquisar pelo cliente ou CNJ → criar uma tarefa vinculada → conferir a mesma tarefa em **Gestão de tarefas**. O servidor precisa permanecer em execução; `Ctrl+C` encerra o processo.
 
@@ -209,6 +212,7 @@ A contagem de suítes pertence a cada execução do CI e não é fixada aqui. Te
 ## Documentação
 
 - [Instalação](docs/INSTALLATION.md)
+- [Primeiros 10 minutos](docs/QUICK_START.md)
 - [Manual do usuário](docs/USER_MANUAL.md)
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Segurança](.github/SECURITY.md)

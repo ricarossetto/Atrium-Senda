@@ -34,13 +34,13 @@ ATRIUM.bat --install-only
 
 ## 3. Primeira inicialização
 
-Na primeira execução, o backend cria somente os segredos locais ausentes e os acrescenta ao `.env`. Ele não substitui valores já existentes. Depois, o navegador mostra o cadastro do primeiro administrador e a configuração de TOTP quando exigida pelo fluxo.
+Na primeira execução, o backend cria somente os segredos locais ausentes e os acrescenta ao `.env`. Ele não substitui valores já existentes. Depois, o navegador mostra o cadastro do primeiro administrador, a escolha opcional de monitoramento por OAB/UF e a configuração de verificação em duas etapas.
 
 Mantenha a janela do ATRIUM aberta. `Ctrl+C` encerra o servidor. Não abra `server.mjs` e `collector/agent.mjs` separadamente: o servidor já é o runtime canônico e coordena as integrações necessárias.
 
 ## 4. Primeiro administrador
 
-Informe nome, usuário, e-mail e senha forte. Conclua o segundo fator conforme a tela. Em ambiente publicado, defina previamente `SETUP_BOOTSTRAP_TOKEN` e mantenha-o fora de mensagens, screenshots e logs.
+Informe nome, usuário, e-mail e senha forte. Na etapa profissional, preencha número e UF da OAB em conjunto ou deixe ambos vazios. Marcar **Ativar monitoramento automático** permite a primeira consulta às fontes disponíveis depois da entrada; sem essa marcação, a conta é criada normalmente e o monitoramento pode ser configurado depois. Conclua o segundo fator conforme a tela. Em ambiente publicado, defina previamente `SETUP_BOOTSTRAP_TOKEN` e mantenha-o fora de mensagens, screenshots e logs.
 
 Nunca compartilhe segredo TOTP, QR, código de recuperação ou cookie de sessão.
 

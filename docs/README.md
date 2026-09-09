@@ -4,6 +4,7 @@ Use esta página como índice quando receber o projeto pelo GitHub.
 
 ## Para instalar e usar
 
+- [Primeiros 10 minutos](QUICK_START.md)
 - [Instalação no Windows e manual](INSTALLATION.md)
 - [Manual do usuário](USER_MANUAL.md)
 - [Guia de teste](BETA_TESTER_GUIDE.md)

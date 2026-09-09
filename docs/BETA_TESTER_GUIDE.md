@@ -4,16 +4,20 @@ Este guia descreve o Beta técnico com a UI V2 como interface padrão e a UI Cl�
 
 ## 1. Iniciar no Windows
 
-1. Instale Node.js 24.
+1. Extraia todo o conteúdo do ZIP recebido.
 2. Dê duplo clique em `ATRIUM.bat` na raiz do pacote.
-3. O starter valida a versão do Node.js, prepara `pnpm@11.19.0`, instala as dependências pelo lockfile congelado se necessário e abre `http://127.0.0.1:4173`.
-4. Mantenha a janela do servidor aberta durante o uso.
+3. O inicializador valida o ambiente e, se necessário, oferece a instalação oficial do Node.js pelo Windows.
+4. Aguarde o navegador abrir em `http://127.0.0.1:4173` e mantenha a janela do ATRIUM aberta durante o uso.
+
+Para um roteiro sem termos técnicos, consulte [Primeiros 10 minutos](QUICK_START.md).
 
 ## 2. Primeiro acesso
 
-1. Cadastre o administrador com nome, usuário e senha forte.
-2. O TOTP RFC 6238 é configurável por usuário. Se ativá-lo, confirme o código no aplicativo autenticador e guarde os códigos de recuperação em local seguro.
-3. Nunca compartilhe senha, chave TOTP, código de recuperação ou certificado A1 em feedback ou diagnóstico.
+1. Cadastre o administrador com nome, e-mail, usuário e senha forte.
+2. Na segunda tela, informe OAB e UF se for advogado. A escolha de ativar o monitoramento é explícita; também é possível continuar e configurar isso depois.
+3. Se ativar o monitoramento, a primeira consulta às fontes disponíveis começa depois da entrada. Publicações abre em **Não tratadas** e no período dos dois dias mais recentes; o histórico permanece acessível pelo filtro.
+4. A verificação em duas etapas é configurável por usuário. Se ativá-la, confirme o código no aplicativo autenticador e guarde os códigos de recuperação em local seguro.
+5. Nunca compartilhe senha, chave do autenticador, código de recuperação ou certificado A1 em feedback ou diagnóstico.
 
 ## 3. Importar dados
 

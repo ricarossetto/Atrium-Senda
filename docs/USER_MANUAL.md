@@ -4,7 +4,9 @@ O ATRIUM organiza o trabalho do escritório em uma interface V2 responsiva. Este
 
 ## Primeiro acesso
 
-No primeiro uso, crie o administrador com uma senha forte e conclua o segundo fator quando solicitado. Guarde os códigos e segredos em local privado. O tour inicial apresenta as áreas do sistema sem criar dados automaticamente.
+No primeiro uso, crie o administrador com nome, e-mail, usuário e senha forte. A tela seguinte permite informar OAB e UF e escolher se o monitoramento automático será ativado. Quem não quiser configurar essa integração agora pode continuar sem monitoramento. Depois, conclua o segundo fator quando solicitado e guarde os códigos e segredos em local privado.
+
+Se o monitoramento for ativado, a primeira busca começa depois da entrada e usa somente as fontes disponíveis. A tela de Publicações abre nas ocorrências **Não tratadas** dos dois dias mais recentes; registros anteriores continuam disponíveis no filtro de histórico. O tour inicial apresenta as áreas do sistema sem criar tarefas, prazos ou atos automaticamente.
 
 Depois de entrar:
 
