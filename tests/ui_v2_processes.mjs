@@ -51,9 +51,10 @@ try {
     const runtimeBaseline = await page.evaluate(() => ({ intervals: window.__uiV2RuntimeProbe.intervals }));
     const fixture = await prepareUiV2ProcessesFixture(page);
     const requests = [];
+    let accessKeyConfigured = false;
     page.on('request', request => requests.push({ method: request.method(), url: request.url() }));
     await page.route('**/api/integrations/tjrs-sidecar/processes/access-key/status**', route => route.fulfill({
-      status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, configured: false })
+      status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, configured: accessKeyConfigured })
     }));
 
     assert.equal(await page.locator('#processTableBody [data-process-id]').count(), 2);
@@ -153,6 +154,28 @@ try {
     await page.locator('#toastRegion .toast.error', { hasText: 'Falha sintética controlada.' }).waitFor();
     assert.equal(tjrsRequests, 2, 'Cada ação explícita deve gerar uma operação TJRS.');
     assert.equal(await page.locator('#processInspectorTjrs').isDisabled(), false, 'Botão deve ser restaurado após falha.');
+
+    let accessKeyPayload;
+    await page.route('**/api/integrations/tjrs-sidecar/processes/access-key', async route => {
+      accessKeyPayload = route.request().postDataJSON();
+      accessKeyConfigured = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, configured: true, collected: true, message: 'Chave validada e consulta concluída.' })
+      });
+    });
+    tjrsMode = 'success';
+    await page.locator('[data-process-access-key]').click();
+    await page.locator('#processAccessKeyInput').fill('CHAVE-SINTETICA-UI');
+    await page.locator('#processAccessKeySave').click();
+    await page.locator('#toastRegion .toast.success', { hasText: 'Chave validada e processo atualizado' }).waitFor();
+    assert.equal(accessKeyPayload.processNumber, '5004321-12.2026.8.21.0001');
+    assert.equal(accessKeyPayload.accessKey, 'CHAVE-SINTETICA-UI');
+    assert.equal(tjrsRequests, 3, 'Guardar a chave deve incorporar automaticamente os dados recém-consultados.');
+    assert.equal(await page.locator('#processAccessKeyBackdrop.hidden').count(), 1);
+    assert.match(await page.locator('[data-process-access-key-status]').textContent(), /Chave cadastrada/);
+    assert.equal(await page.evaluate(() => JSON.stringify(window.Atrium.Store.state).includes('CHAVE-SINTETICA-UI')), false, 'A chave não pode entrar no Store do frontend.');
 
     await page.locator('[data-process-timeline="task:ui-v2-task-open:created"]').click();
     await page.locator('#modalBackdrop[data-modal-mode="task"]:not(.hidden)').waitFor();

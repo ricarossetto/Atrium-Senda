@@ -490,14 +490,14 @@ function renderJudicialContext(item, escapeHtml, formatDate) {
           .join('; ');
         return `<div><strong>${escapeHtml(party.name || 'Parte sem nome')}</strong><span>${escapeHtml(unique([party.role, lawyers]).join(' · '))}</span></div>`;
       }).join('')}</div>`
-    : '<p class="process-inspector-empty">O snapshot não contém partes identificadas.</p>';
+    : '<p class="process-inspector-empty">O TJRS não informou as partes deste processo.</p>';
   const diff = integration?.diff;
   const newMovsCount = Array.isArray(diff?.newMovements) ? diff.newMovements.length : (diff?.newMovements || 0);
   const collectorMeta = integration
     ? `<dl class="process-metadata-grid process-collector-metadata">
         ${definition('Fonte / Provedor', integration.source || 'Fonte não informada', escapeHtml)}
         ${integration.collectorVersion ? definition('Versão do coletor', integration.collectorVersion, escapeHtml) : ''}
-        ${integration.snapshotsCount != null ? definition('Snapshots locais', integration.snapshotsCount, escapeHtml) : ''}
+        ${integration.snapshotsCount != null ? definition('Consultas armazenadas', integration.snapshotsCount, escapeHtml) : ''}
         ${definition('Tribunal', integration.court || item.court || 'Oficial', escapeHtml)}
         ${definition('Última coleta', formatDate(integration.syncedAt), escapeHtml)}
         ${definition('Andamentos coletados', integration.movementsCount != null ? integration.movementsCount : (integration.movements?.length ?? '—'), escapeHtml)}
@@ -523,7 +523,7 @@ function renderAccessKeyAction(item) {
 function renderAutosAction(item, escapeHtml) {
   const isTjrs = String(item?.number || '').includes('.8.21.') || String(item?.court || '').toUpperCase().includes('TJRS');
   if (!isTjrs) return '';
-  return `<div class="process-autos-action"><div><strong>Caderno processual para consulta offline</strong><span>Gera PDFs derivados do snapshot e guarda tudo no acervo cifrado deste processo.</span></div><button type="button" class="button ghost" data-download-autos data-process-id="${escapeHtml(item.id || '')}">Gerar caderno em PDFs</button></div>`;
+  return `<div class="process-autos-action"><div><strong>Caderno processual para consulta offline</strong><span>Gera PDFs a partir dos dados já consultados no TJRS e guarda tudo no acervo cifrado deste processo.</span></div><button type="button" class="button ghost" data-download-autos data-process-id="${escapeHtml(item.id || '')}">Gerar caderno em PDFs</button></div>`;
 }
 
 function riskPresentation(value) {

@@ -198,7 +198,7 @@ export function createProcessesFeature({
 
         const nbChip = item.nb ? `<span class="nb-chip" title="Número do Benefício INSS">NB ${escapeHtml(item.nb)}</span>` : '';
         const riskChip = item.risk ? `<span class="risk-chip ${item.risk === 'remoto' ? 'remoto' : item.risk === 'possivel' ? 'possivel' : 'provavel'}" title="Probabilidade de Êxito">${item.risk === 'remoto' ? 'Risco Alto' : item.risk === 'possivel' ? 'Risco Médio' : 'Êxito Provável'}</span>` : '';
-        const tjrsButton = canConsultTjrs(item) ? `<button type="button" class="btn-tjrs-consult" data-tjrs-consult="${escapeHtml(item.number)}" title="Importar o último snapshot disponível no coletor TJRS local">${iconSvg('court')}Atualizar TJRS</button>` : '';
+        const tjrsButton = canConsultTjrs(item) ? `<button type="button" class="btn-tjrs-consult" data-tjrs-consult="${escapeHtml(item.number)}" title="Atualizar o processo com os dados disponíveis no TJRS">${iconSvg('court')}Atualizar TJRS</button>` : '';
 
         const clientPosition = item.clientPosition ? `<small style="color:var(--gold-soft);">${escapeHtml(item.clientPosition)}</small> ` : '';
         const opposingParty = item.opposingParty ? `<small> vs ${escapeHtml(item.opposingParty)}</small>` : '';
@@ -321,14 +321,30 @@ export function createProcessesFeature({
         const response = await secureFetch('/api/integrations/tjrs-sidecar/processes/access-key', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ processNumber: item.number, accessKey, chaveAcesso: accessKey })
+          body: JSON.stringify({ processNumber: item.number, accessKey })
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok) throw new Error(result.message || 'Não foi possível guardar a chave.');
         processAccessKeys.delete(item.id);
         this.closeAccessKeyDialog();
         await this.refreshAccessKeyStatus(item);
-        showToast?.(result.message || 'Chave guardada no cofre cifrado.', 'success');
+        try {
+          const syncResponse = await secureFetch('/api/integrations/tjrs-sidecar/processes/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ processId: item.id, processNumber: item.number, revision: store.revision })
+          });
+          const syncResult = await syncResponse.json().catch(() => ({}));
+          if (!syncResponse.ok || !syncResult.ok || !syncResult.process) throw new Error(syncResult.message || 'Use “Atualizar TJRS” para tentar novamente.');
+          const index = store.state.processes.findIndex(process => process.id === item.id);
+          if (index >= 0) store.state.processes[index] = syncResult.process;
+          store.revision = syncResult.revision || store.revision;
+          this.render(byId('processSearch')?.value || '');
+          if (index >= 0) getPresenter().open(store.state.processes[index], getProcessSummary(store.state.processes[index]), null);
+          showToast?.('Chave validada e processo atualizado com os dados do TJRS.', 'success');
+        } catch (syncError) {
+          showToast?.(`A chave foi validada e guardada. A atualização da ficha do processo ficou pendente: ${syncError.message}`, 'error');
+        }
         return true;
       } catch (error) {
         showToast?.(error.message || 'Não foi possível guardar a chave.', 'error');
@@ -399,7 +415,7 @@ export function createProcessesFeature({
       const originalLabel = button.textContent;
       const inspectorWasOpen = Boolean(byId('processInspectorBackdrop') && !byId('processInspectorBackdrop').classList.contains('hidden'));
       const isTjrs = normalizeCnj(processNumber).slice(13, 16) === '821';
-      showToast?.(isTjrs ? `Consultando o último snapshot local do TJRS para ${processNumber}…` : `Consultando fontes judiciais oficiais para ${processNumber}…`);
+      showToast?.(isTjrs ? `Buscando os dados mais recentes do processo ${processNumber} no TJRS…` : `Consultando fontes judiciais oficiais para ${processNumber}…`);
       button.disabled = true;
       button.textContent = 'Atualizando…';
       try {
@@ -418,9 +434,9 @@ export function createProcessesFeature({
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok || !result.process) {
           if (isTjrs && result.state === 'STALE') {
-            this.openAccessKeyDialog(process, { reason: 'Nenhum snapshot foi localizado e este processo ainda não possui uma chave confirmada. Informe a chave do eproc para tentar a consulta restrita.' });
+            this.openAccessKeyDialog(process, { reason: 'Este processo ainda não foi consultado pelo coletor. Informe a chave do eproc para fazer a primeira consulta ao TJRS.' });
           }
-          showToast?.(result.message || (isTjrs ? 'Não foi possível ler o snapshot local do TJRS.' : 'Não foi possível sincronizar com as fontes judiciais.'), 'error');
+          showToast?.(result.message || (isTjrs ? 'Não foi possível obter os dados deste processo no TJRS.' : 'Não foi possível sincronizar com as fontes judiciais.'), 'error');
           return false;
         }
         const index = store.state.processes.findIndex(item => item.id === process.id);
@@ -431,7 +447,7 @@ export function createProcessesFeature({
           const updated = store.state.processes[index];
           getPresenter().open(updated, getProcessSummary(updated), null);
         }
-        showToast?.(result.message || (isTjrs ? 'Snapshot local do TJRS incorporado ao processo.' : 'Dados judiciais incorporados ao processo.'), 'success');
+        showToast?.(result.message || (isTjrs ? 'Dados mais recentes do TJRS incorporados ao processo.' : 'Dados judiciais incorporados ao processo.'), 'success');
         return true;
       } catch (error) {
         showToast?.(isTjrs ? `Falha ao consultar o coletor TJRS local: ${error.message}` : `Falha ao consultar fontes judiciais: ${error.message}`, 'error');
@@ -509,8 +525,8 @@ export function createProcessesFeature({
       </section>` : '';
 
       const tjrsAssistHtml = `<section class="process-tjrs-assist" aria-labelledby="processTjrsAssistHeading">
-        <div><span>Cadastro assistido</span><strong id="processTjrsAssistHeading">Consultar snapshot local por CNJ</strong><p>Preenche somente dados judiciais disponíveis. Cliente e posição processual continuam sob sua revisão.</p></div>
-        <button type="button" class="button ghost" id="processTjrsPreview">Consultar dados locais</button>
+        <div><span>Cadastro assistido</span><strong id="processTjrsAssistHeading">Consultar processo no TJRS</strong><p>Preenche somente dados judiciais disponíveis. Cliente e posição processual continuam sob sua revisão.</p></div>
+        <button type="button" class="button ghost" id="processTjrsPreview">Consultar dados do TJRS</button>
         <div class="process-tjrs-assist-key">
           <label for="field-accessKey">Chave de acesso do eproc</label>
           <input type="password" id="field-accessKey" class="v2-input" autocomplete="off" maxlength="500" placeholder="Informe para processo em segredo de justiça">
@@ -592,12 +608,12 @@ export function createProcessesFeature({
         byId('field-number')?.focus();
         return false;
       }
-      const originalLabel = button?.textContent || 'Consultar dados locais';
+      const originalLabel = button?.textContent || 'Consultar dados do TJRS';
       if (button) {
         button.disabled = true;
         button.textContent = 'Consultando…';
       }
-      if (status) status.textContent = 'Consultando o snapshot já disponível no collector local…';
+      if (status) status.textContent = 'Consultando os dados disponíveis no TJRS…';
       try {
         const isTjrs = normalizeCnj(processNumber).slice(13, 16) === '821';
         const previewUrl = isTjrs ? '/api/integrations/tjrs-sidecar/processes/preview' : '/api/integrations/omni/processes/preview';
@@ -615,7 +631,7 @@ export function createProcessesFeature({
         if (byId('field-number') !== field || normalizeCnj(field?.value) !== normalizeCnj(processNumber)) return false;
         if (result.draft && normalizeCnj(result.draft.number) !== normalizeCnj(processNumber)) return false;
         if (!response.ok || !result.ok || !result.draft) {
-          if (status) status.textContent = result.message || 'Nenhum snapshot local pôde ser carregado.';
+          if (status) status.textContent = result.message || 'Ainda não foi possível carregar os dados deste processo.';
           return false;
         }
         const assistedFieldNames = ['court', 'county', 'courtUnit', 'actionType', 'registeredAt', 'lastMovementAt', 'lastMovement'];

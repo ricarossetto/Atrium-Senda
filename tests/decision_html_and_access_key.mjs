@@ -65,15 +65,21 @@ assert.match(artifacts.pieces[0].binary.toString('latin1'), /N.o substitui a pe.
 
 const clientRequests = [];
 const client = new TjrsSidecarClient({
-  fetchImpl: async url => {
-    clientRequests.push(new URL(String(url)));
+  fetchImpl: async (url, options = {}) => {
+    clientRequests.push({ url: new URL(String(url)), options });
+    if (options.method === 'POST') return responseJson({ status: 'success', data: snapshotPayload() });
     return responseJson(url.pathname === '/health'
       ? { status: 'ok', database: 'connected', collectorVersion: 'test', timestamp: '2026-09-05T10:00:00.000Z' }
       : snapshotPayload());
   }
 });
 await client.getProcess(FORMATTED_CNJ, { accessKey: 'CHAVE SINTÉTICA / 123' });
-assert.equal(clientRequests[0].searchParams.get('chaveAcesso'), 'CHAVE SINTÉTICA / 123');
+assert.equal(clientRequests[0].url.searchParams.get('chaveAcesso'), 'CHAVE SINTÉTICA / 123');
+await client.collectProcess(FORMATTED_CNJ, { accessKey: 'CHAVE SINTÉTICA / 123', forceLive: true });
+const collectionBody = JSON.parse(clientRequests[1].options.body);
+assert.equal(clientRequests[1].url.pathname, '/v1/processes/collect');
+assert.equal(collectionBody.forceLive, true);
+assert.equal(collectionBody.accessKey, 'CHAVE SINTÉTICA / 123');
 
 const storedKeys = new Map();
 const storedBlobs = new Map();
@@ -81,6 +87,7 @@ let savedState = null;
 const routeClientCalls = [];
 const routeClient = {
   async health() { return { state: 'AVAILABLE' }; },
+  async collectProcess(_cnj, options) { routeClientCalls.push({ kind: 'collect', ...(options || {}) }); return snapshotPayload(); },
   async getProcess(_cnj, options) { routeClientCalls.push(options || {}); return snapshotPayload(); },
   async getDiff() { return { cnj: CNJ, previousSnapshotTimestamp: '', currentSnapshotTimestamp: '', hasChanges: false, newMovements: [], unchangedMovements: [], changedMovements: [], possiblyMissingMovements: [] }; }
 };
@@ -102,7 +109,9 @@ const route = createTjrsSidecarHttpHandler({
 const keyResponse = {};
 await route({ method: 'POST', body: { processNumber: FORMATTED_CNJ, accessKey: 'CHAVE-PERSISTIDA-TESTE' } }, keyResponse, new URL('http://localhost/api/integrations/tjrs-sidecar/processes/access-key'));
 assert.equal(keyResponse.status, 200);
+assert.equal(keyResponse.payload.collected, true);
 assert.equal(storedKeys.get(`advogada_teste:${CNJ}`), 'CHAVE-PERSISTIDA-TESTE');
+assert.deepEqual(routeClientCalls[0], { kind: 'collect', accessKey: 'CHAVE-PERSISTIDA-TESTE', forceLive: true });
 assert.equal(JSON.stringify(keyResponse.payload).includes('CHAVE-PERSISTIDA-TESTE'), false, 'Resposta de cadastro não pode devolver a chave.');
 
 const keyStatusResponse = {};

@@ -7,7 +7,7 @@ import {
   formatCnj,
   reconcileTjrsSnapshot
 } from '../lib/judicial/tjrs-sidecar-client.mjs';
-import { createTjrsSidecarHttpHandler } from '../lib/http/tjrs-sidecar-routes.mjs';
+import { createTjrsSidecarHttpHandler, operationalError } from '../lib/http/tjrs-sidecar-routes.mjs';
 import { generateTotp } from '../lib/security.mjs';
 import { runStateMigrations } from '../lib/state-migrations.mjs';
 import { postJson, startTestServer } from './helpers.mjs';
@@ -92,9 +92,10 @@ assert.throws(() => new TjrsSidecarClient({ baseUrl: 'http://example.com:3100' }
 const requests = [];
 const client = new TjrsSidecarClient({
   baseUrl: 'http://127.0.0.1:3100',
-  fetchImpl: async url => {
-    requests.push(String(url));
+  fetchImpl: async (url, options = {}) => {
+    requests.push({ url: String(url), options });
     if (url.pathname === '/health') return jsonResponse({ status: 'ok', database: 'connected', collectorVersion: '0.1.0', timestamp: '2026-09-03T10:06:00Z' });
+    if (options.method === 'POST') return jsonResponse({ status: 'success', data: snapshotPayload });
     if (url.pathname.endsWith('/diff')) return jsonResponse(diffPayload);
     return jsonResponse(snapshotPayload);
   }
@@ -102,7 +103,11 @@ const client = new TjrsSidecarClient({
 assert.deepEqual(await client.health(), { state: 'AVAILABLE', collectorVersion: '0.1.0', timestamp: '2026-09-03T10:06:00.000Z' });
 const snapshot = await client.getProcess(FORMATTED_CNJ);
 const diff = await client.getDiff(FORMATTED_CNJ);
-assert.equal(requests.length, 3);
+const collected = await client.collectProcess(FORMATTED_CNJ, { accessKey: 'CHAVE-SINTETICA-TESTE', forceLive: true });
+assert.equal(requests.length, 4);
+assert.equal(requests[3].options.method, 'POST');
+assert.deepEqual(JSON.parse(requests[3].options.body), { cnj: CNJ, forceLive: true, accessKey: 'CHAVE-SINTETICA-TESTE' });
+assert.equal(collected.metadata.cnj, CNJ);
 assert.equal(snapshot.metadata.cnj, CNJ);
 assert.equal(snapshot.movements[0].source, 'TJRS_PUBLIC');
 assert.equal(diff.newMovements.length, 1);
@@ -137,12 +142,16 @@ const offlineClient = new TjrsSidecarClient({ fetchImpl: async () => { throw new
 await assert.rejects(() => offlineClient.health(), error => error instanceof TjrsSidecarError && error.code === 'UNAVAILABLE' && error.statusCode === 503);
 const missingClient = new TjrsSidecarClient({ fetchImpl: async () => jsonResponse({ error: 'missing' }, 404) });
 await assert.rejects(() => missingClient.getProcess(CNJ), error => error instanceof TjrsSidecarError && error.code === 'NOT_FOUND');
+assert.doesNotMatch(operationalError(new TjrsSidecarError('', { code: 'NOT_FOUND', statusCode: 404 })).message, /snapshot/i);
+assert.match(operationalError(new TjrsSidecarError('', { code: 'ACCESS_KEY_REJECTED', statusCode: 422 })).message, /chave informada/i);
+assert.match(operationalError(new TjrsSidecarError('', { code: 'COLLECTION_TIMEOUT', statusCode: 504 })).message, /chave não foi guardada/i);
 
 const routeState = {
   processes: [structuredClone(manualProcess)],
   audit: []
 };
 let savedState = null;
+const storedAccessKeys = new Map();
 const route = createTjrsSidecarHttpHandler({
   client,
   assertAuthenticated: (_req, requireCsrf) => ({ username: 'ricardo', displayName: 'Ricardo', requireCsrf }),
@@ -153,8 +162,18 @@ const route = createTjrsSidecarHttpHandler({
     savedState = state;
     return { revision: 'revision-2', updatedAt: '2026-09-03T10:07:00.000Z' };
   },
+  credentialManager: {
+    async saveProcessAccessKey(cnj, { accessKey, userId }) { storedAccessKeys.set(`${userId}:${cnj}`, accessKey); },
+    async getProcessAccessKey(cnj, userId) { return storedAccessKeys.get(`${userId}:${cnj}`) || null; }
+  },
   json: (res, status, payload) => Object.assign(res, { status, payload })
 });
+const accessKeyResponse = {};
+assert.equal(await route({ method: 'POST', body: { processNumber: FORMATTED_CNJ, accessKey: 'CHAVE-SINTETICA-ROTA' } }, accessKeyResponse, new URL('http://localhost/api/integrations/tjrs-sidecar/processes/access-key')), true);
+assert.equal(accessKeyResponse.status, 200);
+assert.equal(accessKeyResponse.payload.collected, true);
+assert.equal(storedAccessKeys.get(`ricardo:${CNJ}`), 'CHAVE-SINTETICA-ROTA');
+assert.equal(JSON.stringify(accessKeyResponse.payload).includes('CHAVE-SINTETICA-ROTA'), false);
 const routeResponse = {};
 const previewResponse = {};
 assert.equal(await route({ method: 'POST', body: { processNumber: FORMATTED_CNJ } }, previewResponse, new URL('http://localhost/api/integrations/tjrs-sidecar/processes/preview')), true);
@@ -176,6 +195,7 @@ assert.doesNotMatch(savedState.audit[0].detail, /CLIENTE SINTÉTICA|EMPRESA ADVE
 const mockSidecar = http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://127.0.0.1').pathname;
   if (pathname === '/health') return sendJson(res, 200, { status: 'ok', database: 'connected', collectorVersion: '0.1.0', timestamp: '2026-09-03T10:06:00.000Z' });
+  if (req.method === 'POST' && pathname === '/v1/processes/collect') return sendJson(res, 200, { status: 'success', source: 'live', data: snapshotPayload });
   if (pathname === `/v1/processes/${CNJ}`) return sendJson(res, 200, snapshotPayload);
   if (pathname === `/v1/processes/${CNJ}/diff`) return sendJson(res, 200, diffPayload);
   return sendJson(res, 404, { error: 'not found' });
