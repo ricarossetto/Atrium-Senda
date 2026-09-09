@@ -28,13 +28,8 @@
       byId('authSetupForm').addEventListener('submit', event => this.setup(event));
       const setupOab = byId('authSetupForm')?.elements?.oab;
       const setupOabUf = byId('authSetupForm')?.elements?.oabUf;
-      const syncSetupOabUf = () => {
-        if (!setupOabUf) return;
-        setupOabUf.required = Boolean(String(setupOab?.value || '').trim());
-        setupOabUf.setAttribute('aria-required', String(setupOabUf.required));
-      };
-      setupOab?.addEventListener('input', syncSetupOabUf);
-      syncSetupOabUf();
+      if (setupOab) { setupOab.required = true; setupOab.setAttribute('aria-required', 'true'); }
+      if (setupOabUf) { setupOabUf.required = true; setupOabUf.setAttribute('aria-required', 'true'); }
       byId('authTotpSetupForm').addEventListener('submit', event => this.verifySetup(event));
       byId('authLoginForm').addEventListener('submit', event => this.login(event));
       byId('authRegisterForm')?.addEventListener('submit', event => this.register(event));
@@ -137,7 +132,8 @@
       const formElement = event.currentTarget;
       const form = new FormData(formElement);
       if (form.get('password') !== form.get('confirmPassword')) return this.feedback('As senhas não coincidem.', 'error');
-      if (String(form.get('oab') || '').trim() && !form.get('oabUf')) return this.feedback('Selecione a UF da OAB informada.', 'error');
+      if (!String(form.get('oab') || '').trim()) return this.feedback('Informe o número da OAB que será monitorada.', 'error');
+      if (!form.get('oabUf')) return this.feedback('Selecione a UF da OAB que será monitorada.', 'error');
       this.busy(formElement, true);
       try {
         const result = await request('/api/auth/setup', { method: 'POST', body: {

@@ -17,6 +17,7 @@ Supervisionar cobertura judicial por identidade e portal, com estratégia explí
 - “Verificado” exige fonte pública canônica ou evidência explícita; demais portais ficam `experimental` ou `not_verified`.
 - Um único coletor gerenciado executa por vez no servidor.
 - Recarregar, abrir outra aba ou repetir a autenticação não repete a sincronização da mesma inicialização nem a execução diária já reivindicada.
+- No primeiro acesso pela interface, a OAB e a seccional são obrigatórias e formam o termo principal antes da sincronização automática de inicialização; a tela informa antecipadamente esse comportamento.
 
 ## Allowed operations
 

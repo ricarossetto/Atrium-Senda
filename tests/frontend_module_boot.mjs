@@ -80,7 +80,10 @@ try {
   });
 
   await page.locator('#authSetupForm [name="displayName"]').fill('Advogada Teste');
+  await page.locator('#authSetupForm [name="email"]').fill('advogada.modulo@example.test');
   await page.locator('#authSetupForm [name="username"]').fill('admin_modulo');
+  await page.locator('#authSetupForm [name="oab"]').fill('000200');
+  await page.locator('#authSetupForm [name="oabUf"]').selectOption('PR');
   await page.locator('#authSetupForm [name="password"]').fill('Senha-Teste-Modulo-2026!');
   await page.locator('#authSetupForm [name="confirmPassword"]').fill('Senha-Teste-Modulo-2026!');
   await page.locator('#authSetupForm button[type="submit"]').click();

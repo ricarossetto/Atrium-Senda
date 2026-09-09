@@ -55,7 +55,10 @@ try {
   });
 
   await page.locator('#authSetupForm [name="displayName"]').fill('Advogada Teste');
+  await page.locator('#authSetupForm [name="email"]').fill('advogada.store@example.test');
   await page.locator('#authSetupForm [name="username"]').fill('admin_store');
+  await page.locator('#authSetupForm [name="oab"]').fill('000321');
+  await page.locator('#authSetupForm [name="oabUf"]').selectOption('SC');
   await page.locator('#authSetupForm [name="password"]').fill('Senha-Teste-Store-2026!');
   await page.locator('#authSetupForm [name="confirmPassword"]').fill('Senha-Teste-Store-2026!');
   await page.locator('#authSetupForm button[type="submit"]').click();
@@ -85,6 +88,18 @@ try {
     kellerIdentity: true,
     stateStatus: 'NEW_INSTALL'
   }, 'Store exportado deve ser o objeto canônico e preservar NEW_INSTALL no primeiro boot.');
+
+  const monitoredIdentity = await page.evaluate(() => ({
+    term: window.Atrium.Store.state.terms[0],
+    lawyerOab: window.Atrium.Store.state.settings.lawyerOab,
+    lawyerEmail: window.Atrium.Store.state.settings.lawyerEmail
+  }));
+  assert.equal(monitoredIdentity.term.name, 'Advogada Teste');
+  assert.equal(monitoredIdentity.term.registration, 'OAB/SC 000321');
+  assert.equal(monitoredIdentity.term.oabNumber, '000321');
+  assert.equal(monitoredIdentity.term.oabUf, 'SC');
+  assert.equal(monitoredIdentity.lawyerOab, 'OAB/SC 000321');
+  assert.equal(monitoredIdentity.lawyerEmail, 'advogada.store@example.test');
 
   const persistedProbe = await page.evaluate(async () => {
     const store = window.Atrium.Store;

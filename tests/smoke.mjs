@@ -35,7 +35,10 @@ try {
   assert(response?.ok(), `A página respondeu com HTTP ${response?.status()}.`);
   await page.locator('#authSetupForm.active').waitFor();
   await page.locator('#authSetupForm [name="displayName"]').fill('Advogado Administrador');
+  await page.locator('#authSetupForm [name="email"]').fill('administrador@example.test');
   await page.locator('#authSetupForm [name="username"]').fill('admin');
+  await page.locator('#authSetupForm [name="oab"]').fill('000400');
+  await page.locator('#authSetupForm [name="oabUf"]').selectOption('RS');
   await page.locator('#authSetupForm [name="password"]').fill('Senha-Forte-JurisFlow-2026!');
   await page.locator('#authSetupForm [name="confirmPassword"]').fill('Senha-Forte-JurisFlow-2026!');
   const setupResponsePromise = page.waitForResponse(result => result.url().endsWith('/api/auth/setup') && result.request().method() === 'POST');
@@ -311,10 +314,12 @@ try {
   await capture('agenda-interactive');
 
   // Testar Tema Claro / Escuro
+  const initialTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme') || 'dark');
   await page.locator('#themeToggleButton').click();
-  assert(await page.evaluate(() => document.documentElement.getAttribute('data-theme')) === 'light', 'Tema claro não foi aplicado.');
+  const toggledTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme') || 'dark');
+  assert.notEqual(toggledTheme, initialTheme, 'O tema não foi alternado.');
   await page.locator('#themeToggleButton').click();
-  assert(await page.evaluate(() => document.documentElement.getAttribute('data-theme')) !== 'light', 'Tema escuro não foi restaurado.');
+  assert.equal(await page.evaluate(() => document.documentElement.getAttribute('data-theme') || 'dark'), initialTheme, 'O tema inicial não foi restaurado.');
 
   // Testar Visualização de Atendimentos / Leads
   await page.evaluate(() => window.Atrium.App.switchView('leads'));

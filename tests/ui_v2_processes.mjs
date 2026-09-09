@@ -96,9 +96,11 @@ try {
       'processInspectorCreateTask', 'processInspectorTjrs', 'processInspectorEdit', 'processInspectorExport',
       'processInspectorDocuments', 'processInspectorDownloadAutos', 'processInspectorAssistant', 'processInspectorDelete'
     ], 'Rodapé deve seguir a ordem operacional solicitada.');
+    assert.match(await page.locator('#processInspectorCreateTask').evaluate(element => getComputedStyle(element).backgroundColor), /194, 220, 234/, 'A ação principal do inspetor deve usar azul mineral no tema claro.');
     await page.locator('[data-process-access-key]').click();
     assert.equal(await page.locator('#processAccessKeyBackdrop:not(.hidden)').count(), 1);
     assert.equal(await page.locator('#processAccessKeyNumber').textContent(), '5004321-12.2026.8.21.0001');
+    assert.match(await page.locator('#processAccessKeySave').evaluate(element => getComputedStyle(element).backgroundColor), /194, 220, 234/, 'Salvar a chave deve usar azul mineral no tema claro.');
     await page.locator('#processAccessKeyCancel').click();
     assert.equal(await page.locator('#processAccessKeyBackdrop.hidden').count(), 1);
     await page.locator('#processInspectorExport').click();

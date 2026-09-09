@@ -14,7 +14,10 @@ try {
   
   await page.locator('#authSetupForm.active').waitFor();
   await page.locator('#authSetupForm [name="displayName"]').fill('Advogado Administrador');
+  await page.locator('#authSetupForm [name="email"]').fill('administrador@example.test');
   await page.locator('#authSetupForm [name="username"]').fill('admin');
+  await page.locator('#authSetupForm [name="oab"]').fill('000100');
+  await page.locator('#authSetupForm [name="oabUf"]').selectOption('RS');
   await page.locator('#authSetupForm [name="password"]').fill('Senha-Forte-JurisFlow-2026!');
   await page.locator('#authSetupForm [name="confirmPassword"]').fill('Senha-Forte-JurisFlow-2026!');
   const setupResponsePromise = page.waitForResponse(r => r.url().endsWith('/api/auth/setup') && r.request().method() === 'POST');

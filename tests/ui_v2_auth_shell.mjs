@@ -20,8 +20,9 @@ assert.match(indexSource, /css\/views\/ui-v2\/auth\.css/);
 assert.doesNotMatch(indexSource, /triagem autônoma/i);
 assert.match(indexSource, /class="theme-toggle-btn auth-theme-toggle" data-theme-toggle/);
 assert.match(indexSource, /Dados protegidos no seu computador/);
-assert.match(indexSource, /Verificação de acesso em duas etapas/);
-assert.match(indexSource, /Acesso restrito a usuários autorizados/);
+assert.match(indexSource, /Consulta judicial somente para leitura/);
+assert.match(indexSource, /Você confirma tarefas e prazos/);
+assert.match(indexSource, /A primeira sincronização inicia automaticamente/);
 assert.doesNotMatch(indexSource, /Criptografia AES-256-GCM|Segundo Fator TOTP \(RFC 6238\)|Sessão HttpOnly &amp; Zero Trust/);
 
 const SCENARIOS = [
@@ -164,7 +165,9 @@ try {
             return getComputedStyle(item).display === 'grid'
               && getComputedStyle(item).gridTemplateColumns.split(' ').length === 2
               && Boolean(text);
-          })
+          }),
+          oabRequired: document.querySelector('#authSetupForm [name="oab"]')?.required,
+          oabUfRequired: document.querySelector('#authSetupForm [name="oabUf"]')?.required
         };
       });
       const fullWidth = ['displayName', 'email', 'username', 'password', 'confirmPassword'].map(name => setupLayout[name]);
@@ -181,6 +184,8 @@ try {
       assert.ok(setupLayout.brandSubtitleSize < setupLayout.brandTitleSize * .8); assertions++;
       assert.ok(setupLayout.cardCenterOffset <= 2, `O cartão deve ficar centralizado verticalmente: desvio de ${setupLayout.cardCenterOffset}px.`); assertions++;
       assert.equal(setupLayout.securityItemsUseHangingIndent, true); assertions++;
+      assert.equal(setupLayout.oabRequired, true); assertions++;
+      assert.equal(setupLayout.oabUfRequired, true); assertions++;
     }
 
     const output = path.join(OUTPUT, scenario.file);

@@ -115,7 +115,7 @@ html[data-theme="light"] .auth-gate .auth-logo-frame {
   background: rgba(255, 255, 253, .72);
 }
 html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../assets/icons/atrium-logo-light.svg"); }
-.auth-gate .auth-visual-copy { max-width: 700px; margin: clamp(90px, 17vh, 180px) 0 clamp(54px, 9vh, 96px); }
+.auth-gate .auth-visual-copy { max-width: 700px; margin: clamp(62px, 11vh, 118px) 0 clamp(36px, 6vh, 68px); }
 
 .auth-gate .auth-visual-copy .eyebrow {
   margin: 0;
@@ -140,7 +140,22 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
   font-weight: 560;
   letter-spacing: -.01em;
 }
-.auth-gate .auth-visual-copy > p:last-child { max-width: 560px; margin: 0; color: var(--auth-muted); font-size: 15px; line-height: 1.72; }
+.auth-gate .auth-visual-copy > p { max-width: 610px; margin: 0; color: var(--auth-muted); font-size: 15px; line-height: 1.68; }
+
+.auth-gate .auth-intro-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-gate .auth-intro-flow li { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: start; gap: 9px; padding-top: 12px; border-top: 1px solid var(--auth-line); }
+.auth-gate .auth-intro-flow li > span { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--auth-primary-strong); border-radius: 50%; color: var(--auth-primary-strong); font-size: 11px; font-weight: 800; }
+.auth-gate .auth-intro-flow div { display: grid; gap: 4px; }
+.auth-gate .auth-intro-flow strong { color: var(--auth-text); font-size: 12px; line-height: 1.35; }
+.auth-gate .auth-intro-flow small { color: var(--auth-muted); font-size: 10px; line-height: 1.45; }
 
 .auth-gate .auth-security-list {
   display: grid;
@@ -218,7 +233,7 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 .auth-gate .auth-step > p:not(.eyebrow) { margin-bottom: 22px; color: var(--auth-muted); }
 
 .auth-gate #authSetupForm > .eyebrow { padding-right: 48px; }
-.auth-gate #authSetupForm > p:not(.eyebrow) { margin-bottom: 15px; line-height: 1.48; }
+.auth-gate #authSetupForm > p:not(.eyebrow) { margin-bottom: 10px; line-height: 1.45; }
 
 .auth-gate .auth-step label {
   gap: 7px;
@@ -257,6 +272,10 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 .auth-gate #authSetupForm .password-input-wrap input[type="password"] { height: 42px; padding-top: 10px; padding-bottom: 10px; }
 .auth-gate #authSetupForm .password-toggle { min-height: 40px; }
 .auth-gate #authSetupForm .auth-submit { min-height: 42px; margin-top: 12px; }
+.auth-gate .auth-setup-heading { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: start; gap: 12px; }
+.auth-gate .auth-setup-heading > span { min-height: 42px; display: grid; place-items: center; border: 1px solid var(--auth-line); border-radius: 50%; color: var(--auth-primary-strong); background: var(--auth-primary-soft); font-size: 10px; font-weight: 800; }
+.auth-gate .auth-setup-heading .eyebrow { margin: 1px 0 3px; }
+.auth-gate .auth-setup-heading h2 { margin: 0; }
 
 .auth-gate .auth-step input,
 .auth-gate .auth-step select {
@@ -372,6 +391,7 @@ html[data-theme="light"] .auth-gate .auth-feedback.success { color: #47644e; bac
   .auth-gate .auth-visual-copy { margin: 28px 0 8px; }
   .auth-gate .auth-visual-copy h1 { margin: 10px 0 12px; font-size: 40px; }
   .auth-gate .auth-visual-copy > p:last-child { max-width: 680px; }
+  .auth-gate .auth-intro-flow { grid-template-columns: 1fr; margin-top: 18px; }
   .auth-gate .auth-security-list { display: none; }
   .auth-gate .auth-panel { padding: 22px; }
   .auth-gate .auth-card { max-height: none; }
@@ -386,6 +406,7 @@ html[data-theme="light"] .auth-gate .auth-feedback.success { color: #47644e; bac
   .auth-gate .auth-visual-copy .eyebrow { font-size: 9px; }
   .auth-gate .auth-visual-copy h1 { font-size: 31px; }
   .auth-gate .auth-visual-copy > p:last-child { display: block; font-size: 12px; line-height: 1.5; }
+  .auth-gate .auth-intro-flow { display: none; }
   .auth-gate .auth-panel { padding: 12px; }
   .auth-gate .auth-card { padding: 22px 18px; border-radius: 14px; }
   .auth-gate .auth-tabs { display: grid; grid-template-columns: 1fr; }

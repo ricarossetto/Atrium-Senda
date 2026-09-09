@@ -302,6 +302,24 @@ export const Store = {
         this.state.settings.lawyerName = authUser.displayName;
       }
     }
+    const authOabNumber = String(authUser?.oab || '').trim().toUpperCase().replace(/\s+/g, '');
+    const authOabUf = String(authUser?.oabUf || '').trim().toUpperCase();
+    const primaryTerm = this.state.terms.find(term => term?.primary !== false) || this.state.terms[0];
+    const primaryRegistration = String(primaryTerm?.registration || '');
+    const primaryIsPlaceholder = primaryTerm && !primaryTerm.oabNumber
+      && (!primaryRegistration || /OAB\/UF\s+000000/i.test(primaryRegistration));
+    if (authOabNumber && /^[A-Z]{2}$/.test(authOabUf) && primaryIsPlaceholder) {
+      primaryTerm.name = authUser.displayName || primaryTerm.name;
+      primaryTerm.registration = `OAB/${authOabUf} ${authOabNumber}`;
+      primaryTerm.oabNumber = authOabNumber;
+      primaryTerm.oabUf = authOabUf;
+      primaryTerm.active = true;
+      primaryTerm.primary = true;
+      if (!this.state.settings.lawyerOab || /OAB\/UF\s+000000/i.test(this.state.settings.lawyerOab)) {
+        this.state.settings.lawyerOab = primaryTerm.registration;
+      }
+      if (!this.state.settings.lawyerEmail && authUser.email) this.state.settings.lawyerEmail = authUser.email;
+    }
   },
   save() {
     clearTimeout(this.saveTimer);

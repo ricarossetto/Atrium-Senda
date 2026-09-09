@@ -13,7 +13,7 @@ Permitir evolução compatível da API interna atual e preparar uma fronteira fu
 ## Inventory and classification
 
 - **Bootstrap de autenticação, não API pública**: `/api/auth/status`, setup, registro e login. São alcançáveis sem sessão somente para instalar/autenticar; rate limits, MFA e respostas sanitizadas continuam obrigatórios.
-- **Identidade do primeiro responsável**: o setup recebe nome, e-mail profissional, usuário e senha; número e UF da OAB são opcionais, mas devem ser informados em conjunto. Esses campos integram o perfil local cifrado e não tornam a rota pública nem autorizam consulta judicial automática.
+- **Identidade do primeiro responsável**: o primeiro acesso interativo exige nome, e-mail profissional, usuário, senha, número e UF da OAB. A API preserva compatibilidade com instalações e clientes internos anteriores, mas a interface não conclui a configuração sem a inscrição monitorada. Esses campos integram o perfil local cifrado; no primeiro carregamento, a identidade profissional alimenta o termo principal do Store antes da sincronização automática de inicialização.
 - **Frontend-facing internal**: estado, eventos, busca, documentos, publicações, tarefas, importação, IA, calendário e status operacional. Exigem sessão e, em mutações, CSRF/RBAC conforme o contrato existente.
 - **Integration-facing private**: `/api/ingest` com bearer privado e as famílias judicial, e-mail e calendário. Não são endpoints públicos para terceiros.
 - **Diagnostic/private**: `/api/system/*`, incluindo metadata, diagnóstico, backup, restore, feedback, recovery e rebuild. Metadata exige sessão; ações sensíveis preservam RBAC/CSRF.
