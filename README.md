@@ -4,8 +4,8 @@
 
 ### Gestão jurídica organizada, segura e supervisionada.
 
-[![Version 2.1.0](https://img.shields.io/badge/version-2.1.0-9b7a3c)](docs/CHANGELOG.md)
-[![Stable](https://img.shields.io/badge/status-stable-2f7d5b)](docs/RELEASE_NOTES_2.1.0.md)
+[![Version 2.1.1](https://img.shields.io/badge/version-2.1.1-9b7a3c)](docs/CHANGELOG.md)
+[![Stable](https://img.shields.io/badge/status-stable-2f7d5b)](docs/RELEASE_NOTES_2.1.1.md)
 [![Node.js 24](https://img.shields.io/badge/Node.js-%3E%3D24-3c873a?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Atrium CI](https://github.com/ricarossetto/Atrium-Senda/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ricarossetto/Atrium-Senda/actions/workflows/ci.yml)
@@ -22,7 +22,7 @@ A aplicação roda no computador ou na infraestrutura controlada pelo escritóri
 
 ## Comece aqui — primeiro uso
 
-Para testar o ATRIUM no Windows, baixe o código da [release v2.1.0](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.0), extraia o ZIP e dê duplo clique em **`ATRIUM.bat`**. O inicializador confere Node.js 24, Corepack, pnpm e Chromium, instala o que faltar e abre `http://127.0.0.1:4173`. Se o Windows ainda não tiver Node.js, o próprio inicializador oferece a instalação oficial pelo `winget`. O roteiro [Primeiros 10 minutos](docs/QUICK_START.md) foi escrito para testadores sem experiência técnica.
+Para testar o ATRIUM no Windows, baixe o código da [release v2.1.1](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.1), extraia o ZIP e dê duplo clique em **`ATRIUM.bat`**. O inicializador confere Node.js 24, Corepack, pnpm e Chromium, instala o que faltar e abre `http://127.0.0.1:4173`. Se o Windows ainda não tiver Node.js, o próprio inicializador oferece a instalação oficial pelo `winget`. O roteiro [Primeiros 10 minutos](docs/QUICK_START.md) foi escrito para testadores sem experiência técnica.
 
 No primeiro acesso:
 
@@ -63,7 +63,7 @@ Todas as imagens públicas foram produzidas em runtime isolado com dados fictíc
 
 ## Funcionalidades
 
-| Área | O que está disponível na versão 2.1.0 |
+| Área | O que está disponível na versão 2.1.1 |
 | --- | --- |
 | Dashboard | Visão operacional, indicadores, agenda, publicações e prioridades do escritório |
 | Processos | Cadastro CNJ, partes, classe, assunto, órgão, movimentos e navegação cruzada |
@@ -154,7 +154,7 @@ A interface V2 segue o sistema visual Mineral Editorial, com temas claro/escuro,
 
 ## Instalação rápida no Windows
 
-1. Na página da [release v2.1.0](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.0), baixe **Source code (zip)**.
+1. Na página da [release v2.1.1](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.1), baixe **Source code (zip)**.
 2. Extraia o ZIP para uma pasta comum do computador.
 3. Dê duplo clique em **`ATRIUM.bat`**.
 4. Conclua a criação do primeiro administrador no navegador.
@@ -218,7 +218,7 @@ A contagem de suítes pertence a cada execução do CI e não é fixada aqui. Te
 - [Segurança](.github/SECURITY.md)
 - [Especificações do produto](specs/README.md)
 - [Changelog](docs/CHANGELOG.md)
-- [Notas da release 2.1.0](docs/RELEASE_NOTES_2.1.0.md)
+- [Notas da release 2.1.1](docs/RELEASE_NOTES_2.1.1.md)
 - [Como contribuir](.github/CONTRIBUTING.md)
 
 ## Organização do repositório

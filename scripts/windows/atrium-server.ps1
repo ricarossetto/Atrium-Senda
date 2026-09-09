@@ -8,7 +8,7 @@ $AtriumRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 Set-Location -LiteralPath $AtriumRoot
 
 Write-Host '==============================================================='
-Write-Host '  ATRIUM 2.1.0 — SERVIDOR LOCAL'
+Write-Host '  ATRIUM 2.1.1 — SERVIDOR LOCAL'
 Write-Host '==============================================================='
 Write-Host 'Mantenha esta janela aberta enquanto estiver usando o ATRIUM.'
 Write-Host ''

@@ -67,7 +67,7 @@ await loadEnv(ENV_FILE);
 await ensureLocalSecrets(ENV_FILE);
 if (String(process.env.KELLER_SKIP_COLLECTOR_ENV).toLowerCase() !== 'true') await loadEnv(COLLECTOR_ENV_FILE);
 
-let APP_VERSION = '2.1.0';
+let APP_VERSION = '2.1.1';
 try {
   const pkg = JSON.parse(await readFile(path.join(ROOT, 'package.json'), 'utf8'));
   if (pkg.version) APP_VERSION = pkg.version;

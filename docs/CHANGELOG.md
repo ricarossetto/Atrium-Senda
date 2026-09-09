@@ -2,6 +2,21 @@
 
 As mudanças relevantes do ATRIUM são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## [2.1.1] - 2026-09-09
+
+### Fixed
+
+- Primeiro acesso separado entre criação da conta e escolha opcional de monitoramento por OAB/UF.
+- Decisão de monitoramento apresentada de forma explícita, sem aceitar cadastro profissional parcial.
+- Publicações abertas em “Não tratadas” com janela inicial dos dois dias mais recentes e histórico preservado.
+- Rodapé do processo sem sobreposição ou célula vazia, acesso por chave mais claro e exportação técnica identificada.
+- Origens DJEN/DataJud deduplicadas durante a consolidação e na apresentação de dados já existentes.
+
+### Changed
+
+- Importação do acervo autenticado aguarda o portal concluir antes da consolidação com DJEN/DataJud.
+- Documentação de instalação e primeiro uso ganhou um roteiro direto para testadores sem experiência técnica.
+
 ## [2.1.0] - 2026-09-08
 
 ### Added

@@ -1,4 +1,4 @@
-# Instalação do ATRIUM 2.1.0
+# Instalação do ATRIUM 2.1.1
 
 Este guia atende tanto quem deseja apenas abrir o ATRIUM no Windows quanto quem administra uma instalação manual. Leia também o [manual do usuário](USER_MANUAL.md) e o [modelo de segurança](../.github/SECURITY.md).
 
@@ -14,7 +14,7 @@ O ATRIUM fixa pnpm 11.19.0 pelo campo `packageManager` e pelo lockfile do projet
 
 ## 2. Instalação de um clique no Windows
 
-1. Abra a [release v2.1.0](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.0).
+1. Abra a [release v2.1.1](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.1).
 2. Baixe **Source code (zip)** e extraia todo o conteúdo.
 3. Abra a pasta extraída e dê duplo clique em `ATRIUM.bat`.
 4. Se o Node.js não existir e o `winget` estiver disponível, confirme a instalação do pacote oficial `OpenJS.NodeJS.LTS`. O inicializador não baixa executáveis de endereços arbitrários.

@@ -1,4 +1,4 @@
-# Arquitetura do ATRIUM 2.1.0
+# Arquitetura do ATRIUM 2.1.1
 
 Este documento apresenta as autoridades e fronteiras do sistema. Os contratos normativos detalhados estão em [`specs/`](../specs/README.md); em caso de dúvida, código, testes e specs devem convergir antes de uma mudança.
 

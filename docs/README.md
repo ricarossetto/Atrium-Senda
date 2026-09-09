@@ -8,7 +8,7 @@ Use esta página como índice quando receber o projeto pelo GitHub.
 - [Instalação no Windows e manual](INSTALLATION.md)
 - [Manual do usuário](USER_MANUAL.md)
 - [Guia de teste](BETA_TESTER_GUIDE.md)
-- [Notas da release 2.1.0](RELEASE_NOTES_2.1.0.md)
+- [Notas da release 2.1.1](RELEASE_NOTES_2.1.1.md)
 - [Changelog](CHANGELOG.md)
 
 ## Para entender o sistema
