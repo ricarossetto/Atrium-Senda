@@ -2,42 +2,47 @@ import { iconSvg } from '../views/ui-v2/primitives.js';
 
 export function createTheme({ showToast, onChange } = {}) {
   let initialized = false;
-  let currentTheme = 'dark';
+  let currentTheme = 'light';
 
   function init() {
     if (initialized) return;
     initialized = true;
-    const savedTheme = localStorage.getItem('atrium_theme') || localStorage.getItem('jurisflow_theme') || 'dark';
+    let savedTheme = 'light';
+    try {
+      savedTheme = localStorage.getItem('atrium_theme') || localStorage.getItem('jurisflow_theme') || 'light';
+    } catch {}
     setTheme(savedTheme);
-    document.getElementById('themeToggleButton')?.addEventListener('click', toggleTheme);
+    document.querySelectorAll('[data-theme-toggle]').forEach(button => button.addEventListener('click', toggleTheme));
   }
 
   function setTheme(theme) {
-    currentTheme = theme;
-    const icon = document.getElementById('themeToggleIcon');
-    const text = document.getElementById('themeToggleText');
-    const button = document.getElementById('themeToggleButton');
-    if (theme === 'light') {
+    currentTheme = theme === 'dark' ? 'dark' : 'light';
+    if (currentTheme === 'light') {
       document.documentElement.setAttribute('data-theme', 'light');
-      if (icon) icon.innerHTML = iconSvg('sun');
-      if (text) text.textContent = 'Tema Claro';
-      if (button) {
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+
+    document.querySelectorAll('[data-theme-toggle]').forEach(button => {
+      const icon = button.querySelector('[data-theme-toggle-icon]');
+      const text = button.querySelector('[data-theme-toggle-text]');
+      if (currentTheme === 'light') {
+        if (icon) icon.innerHTML = iconSvg('sun');
+        if (text) text.textContent = 'Tema Claro';
         button.title = 'Tema Claro ativo. Clique para alternar para o Modo Escuro';
         button.setAttribute('aria-label', 'Tema claro ativo. Alternar para tema escuro');
         button.setAttribute('aria-pressed', 'true');
-      }
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      if (icon) icon.innerHTML = iconSvg('moon');
-      if (text) text.textContent = 'Tema Escuro';
-      if (button) {
+      } else {
+        if (icon) icon.innerHTML = iconSvg('moon');
+        if (text) text.textContent = 'Tema Escuro';
         button.title = 'Tema Escuro ativo. Clique para alternar para o Modo Claro';
         button.setAttribute('aria-label', 'Tema escuro ativo. Alternar para tema claro');
         button.setAttribute('aria-pressed', 'false');
       }
-    }
-    localStorage.setItem('atrium_theme', theme);
-    onChange?.(theme);
+    });
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', currentTheme === 'light' ? '#eef1f1' : '#0c0c0b');
+    try { localStorage.setItem('atrium_theme', currentTheme); } catch {}
+    onChange?.(currentTheme);
   }
 
   function toggleTheme() {

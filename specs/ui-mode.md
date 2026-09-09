@@ -43,6 +43,10 @@ Preferência ausente ou inválida usa o default canônico sem bloquear o boot.
 
 Somente preferência local de UI; zero `Store.save()`, `Store.flush()` ou revision.
 
+O tema visual também é uma preferência local independente. Sem escolha salva, o ATRIUM inicia
+em tema claro. O seletor fica disponível desde a tela de autenticação e permanece sincronizado
+com o seletor da aplicação; a escolha `light` ou `dark` usa a chave `atrium_theme` no navegador.
+
 ## Relevant tests
 
 `tests/ui_v2_mode_contract.mjs`, `tests/ui_v2_final_parity.mjs`, `tests/ui_v2_runtime_hygiene.mjs`.

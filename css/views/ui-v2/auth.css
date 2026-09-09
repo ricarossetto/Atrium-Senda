@@ -35,6 +35,29 @@ html[data-theme="light"] .auth-gate {
   --auth-focus: #526d7c;
 }
 
+.auth-gate .auth-theme-toggle {
+  position: fixed;
+  z-index: 4;
+  top: 20px;
+  right: 20px;
+  order: initial;
+  min-height: 42px;
+  padding: 8px 13px;
+  color: var(--auth-text);
+  background: color-mix(in srgb, var(--auth-card) 88%, transparent);
+  border-color: var(--auth-line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+  backdrop-filter: blur(12px);
+}
+
+.auth-gate .auth-theme-toggle:hover {
+  color: var(--auth-text);
+  background: var(--auth-card-soft);
+  border-color: var(--auth-primary-strong);
+  transform: none;
+}
+
 .auth-gate .auth-visual {
   isolation: isolate;
   min-width: 0;
@@ -287,6 +310,8 @@ html[data-theme="light"] .auth-gate .auth-feedback.success { color: #47644e; bac
 }
 
 @media (max-width: 520px) {
+  .auth-gate .auth-theme-toggle { top: 12px; right: 12px; min-width: 44px; padding: 8px 11px; }
+  .auth-gate .auth-theme-toggle [data-theme-toggle-text] { display: none; }
   .auth-gate .auth-visual { padding: 18px; }
   .auth-gate .auth-logo-frame { min-height: 48px; padding: 7px 10px; }
   .auth-gate .auth-brand-svg { width: 158px; }

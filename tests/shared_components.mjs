@@ -71,6 +71,7 @@ try {
 async function authenticate() {
   await page.locator('#authSetupForm.active').waitFor();
   await page.locator('#authSetupForm [name="displayName"]').fill('Advogada Componentes');
+  await page.locator('#authSetupForm [name="email"]').fill('componentes@example.test');
   await page.locator('#authSetupForm [name="username"]').fill('admin_componentes');
   await page.locator('#authSetupForm [name="password"]').fill('Senha-Componentes-2026!');
   await page.locator('#authSetupForm [name="confirmPassword"]').fill('Senha-Componentes-2026!');

@@ -18,6 +18,7 @@ const endpoints = [...new Set(authSource.match(/\/api\/auth\/[a-z/]+/g) || [])].
 assert.deepEqual(endpoints, expectedEndpoints.toSorted());
 assert.match(indexSource, /css\/views\/ui-v2\/auth\.css/);
 assert.doesNotMatch(indexSource, /triagem autônoma/i);
+assert.match(indexSource, /class="theme-toggle-btn auth-theme-toggle" data-theme-toggle/);
 
 const SCENARIOS = [
   { file: '01-light-1440-loading.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'loading', configured: true },
@@ -145,6 +146,27 @@ try {
     return names;
   })();
   assert.deepEqual(fieldNames, ['code', 'confirmPassword', 'displayName', 'email', 'oab', 'oabUf', 'password', 'trustBrowser', 'username']);
+
+  const publicThemeControl = await (async () => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.route('**/api/auth/status', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"configured":false,"authenticated":false}' }));
+    await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
+    const button = page.locator('.auth-theme-toggle');
+    const initial = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, saved: localStorage.getItem('atrium_theme') }));
+    await button.click();
+    const dark = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme || 'dark', saved: localStorage.getItem('atrium_theme') }));
+    await button.click();
+    const light = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, saved: localStorage.getItem('atrium_theme') }));
+    const result = { initial, dark, light, visible: await button.isVisible(), label: await button.getAttribute('aria-label') };
+    await context.close();
+    return result;
+  })();
+  assert.deepEqual(publicThemeControl.initial, { theme: 'light', saved: 'light' });
+  assert.deepEqual(publicThemeControl.dark, { theme: 'dark', saved: 'dark' });
+  assert.deepEqual(publicThemeControl.light, { theme: 'light', saved: 'light' });
+  assert.equal(publicThemeControl.visible, true);
+  assert.equal(publicThemeControl.label, 'Tema claro ativo. Alternar para tema escuro');
 
   const avatarVisibility = await (async () => {
     const context = await browser.newContext();

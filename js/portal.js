@@ -1746,6 +1746,7 @@ import { createTasksFeature } from './features/tasks.js';
   window.JurisFlow = window.Atrium;
   window.KellerCentral = window.Atrium;
   window.portalApp = App;
+  getThemeComponent().init();
   window.addEventListener('keller:authenticated', boot);
   if (window.KellerAuth?.authenticated) boot();
 })();

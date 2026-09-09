@@ -37,6 +37,10 @@
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
+    <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle>
+      <span data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
+      <span data-theme-toggle-text>Tema Claro</span>
+    </button>
     <div class="auth-visual">
       <div class="auth-brand-logo">
         <div class="auth-logo-frame">
@@ -269,9 +273,9 @@
           </div>
         </div>
         <div class="topbar-actions">
-          <button type="button" class="theme-toggle-btn" id="themeToggleButton" title="Alternar entre tema Claro e Escuro">
-            <span id="themeToggleIcon"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
-            <span id="themeToggleText">Modo Claro</span>
+          <button type="button" class="theme-toggle-btn" id="themeToggleButton" data-theme-toggle title="Alternar entre tema Claro e Escuro">
+            <span id="themeToggleIcon" data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
+            <span id="themeToggleText" data-theme-toggle-text>Tema Claro</span>
           </button>
           <div class="global-search-container">
             <label class="global-search" for="globalSearch">
