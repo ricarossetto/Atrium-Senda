@@ -199,12 +199,14 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 }
 
 .auth-gate .auth-tab {
+  min-width: 0;
   min-height: 44px;
   padding: 8px 12px;
   border-radius: 7px;
   color: var(--auth-muted);
   letter-spacing: .045em;
   transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+  white-space: nowrap;
 }
 
 .auth-gate .auth-tab:hover { color: var(--auth-text); background: color-mix(in srgb, var(--auth-card) 70%, transparent); }
