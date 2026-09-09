@@ -38,6 +38,7 @@ export function createProcessesFeature({
   let processesPresenter;
   let pendingTjrsDraft = null;
   let pendingTjrsAppliedFields = new Map();
+  let pendingAccessKeyProcess = null;
   const processAccessKeys = new Map();
 
   const getPresenter = () => {
@@ -60,6 +61,8 @@ export function createProcessesFeature({
       },
       onFinancial: item => openFinancial?.(item),
       onAssistant: item => openAssistant?.(item),
+      onAccessKey: item => feature.openAccessKeyDialog(item),
+      onAccessKeyStatus: item => feature.refreshAccessKeyStatus(item),
       onCreateTask: item => {
         const linkedContact = (store.state.contacts || []).find(contact => String(contact.id) === String(item.contactId || ''))
           || (store.state.contacts || []).find(contact => normalizeText(contact.name) === normalizeText(item.client));
@@ -116,6 +119,18 @@ export function createProcessesFeature({
       byId('newProcessButton')?.addEventListener('click', () => this.openProcessModal());
       byId('processSearch')?.addEventListener('input', event => this.render(event.target.value));
       byId('processSuppressionButton')?.addEventListener('click', () => this.reenableProcessDiscovery());
+      byId('processAccessKeyCancel')?.addEventListener('click', () => this.closeAccessKeyDialog());
+      byId('processAccessKeyClose')?.addEventListener('click', () => this.closeAccessKeyDialog());
+      byId('processAccessKeyBackdrop')?.addEventListener('click', event => {
+        if (event.target === byId('processAccessKeyBackdrop')) this.closeAccessKeyDialog();
+      });
+      byId('processAccessKeyBackdrop')?.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeAccessKeyDialog();
+      });
+      byId('processAccessKeyForm')?.addEventListener('submit', event => this.saveAccessKey(event));
       getPresenter().init();
       return true;
     },
@@ -242,8 +257,85 @@ export function createProcessesFeature({
       const dossier = buildProcessDossier(store.state, item);
       const digits = String(item?.number || item?.id || 'sem-numero').replace(/\D/g, '') || 'sem-numero';
       exportJson?.(dossier, `processo-${digits}.json`);
+      item.dossierDownloadedAt = new Date().toISOString();
+      store.save();
+      const button = byId('processInspectorExport');
+      if (button) {
+        button.textContent = 'Processo baixado';
+        button.classList.add('is-complete');
+        button.title = 'Baixar novamente';
+      }
       showToast?.('Dossiê local do processo preparado para download.', 'success');
       return dossier;
+    },
+
+    async refreshAccessKeyStatus(item) {
+      const panel = byId('processInspectorContent')?.querySelector('[data-process-access-key-status]');
+      if (!panel || !item?.number) return false;
+      try {
+        const response = await secureFetch(`/api/integrations/tjrs-sidecar/processes/access-key/status?processNumber=${encodeURIComponent(item.number)}`, { headers: { Accept: 'application/json' } });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.message || 'Status indisponível.');
+        panel.dataset.processAccessKeyStatus = result.configured ? 'configured' : 'missing';
+        panel.querySelector('[data-process-access-key-copy]').textContent = result.configured
+          ? 'Chave cadastrada no cofre cifrado. Ela será usada automaticamente nas próximas consultas.'
+          : 'Chave ausente. Cadastre-a para consultar processos restritos e manter o monitoramento completo.';
+        panel.querySelector('[data-process-access-key]').textContent = result.configured ? 'Trocar chave' : 'Adicionar chave';
+        return result.configured;
+      } catch {
+        panel.dataset.processAccessKeyStatus = 'unknown';
+        panel.querySelector('[data-process-access-key-copy]').textContent = 'Não foi possível confirmar a chave no cofre local.';
+        return false;
+      }
+    },
+
+    openAccessKeyDialog(item, { reason = '' } = {}) {
+      if (!item?.id || !item?.number) return false;
+      pendingAccessKeyProcess = item;
+      byId('processAccessKeyNumber').textContent = item.number;
+      byId('processAccessKeyMessage').textContent = reason || 'Informe a chave exibida pelo eproc para liberar a consulta restrita deste processo.';
+      byId('processAccessKeyInput').value = '';
+      byId('processAccessKeyBackdrop').classList.remove('hidden');
+      queueMicrotask(() => byId('processAccessKeyInput')?.focus());
+      return true;
+    },
+
+    closeAccessKeyDialog() {
+      byId('processAccessKeyBackdrop')?.classList.add('hidden');
+      if (byId('processAccessKeyInput')) byId('processAccessKeyInput').value = '';
+      pendingAccessKeyProcess = null;
+      byId('processInspectorContent')?.querySelector('[data-process-access-key]')?.focus();
+    },
+
+    async saveAccessKey(event) {
+      event?.preventDefault?.();
+      const item = pendingAccessKeyProcess;
+      const accessKey = cleanAccessKey(byId('processAccessKeyInput')?.value);
+      if (!item || !accessKey) {
+        showToast?.('Informe a chave de acesso do processo.', 'error');
+        return false;
+      }
+      const submit = byId('processAccessKeySave');
+      if (submit) { submit.disabled = true; submit.textContent = 'Validando…'; }
+      try {
+        const response = await secureFetch('/api/integrations/tjrs-sidecar/processes/access-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ processNumber: item.number, accessKey, chaveAcesso: accessKey })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.message || 'Não foi possível guardar a chave.');
+        processAccessKeys.delete(item.id);
+        this.closeAccessKeyDialog();
+        await this.refreshAccessKeyStatus(item);
+        showToast?.(result.message || 'Chave guardada no cofre cifrado.', 'success');
+        return true;
+      } catch (error) {
+        showToast?.(error.message || 'Não foi possível guardar a chave.', 'error');
+        return false;
+      } finally {
+        if (submit) { submit.disabled = false; submit.textContent = 'Validar e guardar chave'; }
+      }
     },
 
     async deleteProcess(item) {
@@ -325,6 +417,9 @@ export function createProcessesFeature({
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok || !result.process) {
+          if (isTjrs && result.state === 'STALE') {
+            this.openAccessKeyDialog(process, { reason: 'Nenhum snapshot foi localizado e este processo ainda não possui uma chave confirmada. Informe a chave do eproc para tentar a consulta restrita.' });
+          }
           showToast?.(result.message || (isTjrs ? 'Não foi possível ler o snapshot local do TJRS.' : 'Não foi possível sincronizar com as fontes judiciais.'), 'error');
           return false;
         }

@@ -359,8 +359,10 @@ html[data-ui="v2"] .process-inspector-backdrop {
 }
 
 html[data-ui="v2"] .process-inspector {
+  position: relative;
   width: min(540px, 100%);
   height: 100dvh;
+  min-height: 100dvh;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   color: var(--v2-color-foreground);
@@ -422,6 +424,7 @@ html[data-ui="v2"] .process-inspector > footer .button {
 }
 
 html[data-ui="v2"] .process-inspector > footer .process-delete-action { grid-column: auto; }
+html[data-ui="v2"] .process-inspector > footer .is-complete { opacity: .58; }
 
 html[data-ui="v2"] .process-inspector > header p {
   margin: 0 0 2px;
@@ -733,6 +736,36 @@ html[data-ui="v2"] .process-autos-action > div { display: grid; gap: 3px; }
 html[data-ui="v2"] .process-autos-action strong { color: var(--v2-color-foreground); font-size: 12px; }
 html[data-ui="v2"] .process-autos-action span { color: var(--v2-color-foreground-secondary); font-size: 10px; line-height: 1.45; }
 html[data-ui="v2"] .process-autos-action .button { flex: 0 0 auto; }
+
+html[data-ui="v2"] .process-access-key-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-3);
+  margin-top: var(--v2-space-4);
+  padding: var(--v2-space-3);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface-inset);
+}
+html[data-ui="v2"] .process-access-key-action > div { display: grid; gap: 3px; }
+html[data-ui="v2"] .process-access-key-action strong { font-size: 12px; }
+html[data-ui="v2"] .process-access-key-action span { color: var(--v2-color-foreground-secondary); font-size: 10px; line-height: 1.45; }
+html[data-ui="v2"] .process-access-key-action[data-process-access-key-status="missing"] { border-color: color-mix(in srgb, var(--v2-color-warning) 70%, var(--v2-color-border)); background: color-mix(in srgb, var(--v2-color-warning) 8%, var(--v2-color-surface-inset)); }
+html[data-ui="v2"] .process-access-key-action[data-process-access-key-status="configured"] { border-color: color-mix(in srgb, var(--v2-color-success) 55%, var(--v2-color-border)); }
+
+html[data-ui="v2"] .process-access-key-backdrop { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: var(--v2-space-5); background: color-mix(in srgb, var(--v2-color-background) 76%, transparent); backdrop-filter: blur(3px); }
+html[data-ui="v2"] .process-access-key-backdrop.hidden { display: none; }
+html[data-ui="v2"] .process-access-key-dialog { position: relative; width: min(100%, 430px); display: grid; gap: var(--v2-space-3); padding: var(--v2-space-6); color: var(--v2-color-foreground); background: var(--v2-color-surface-elevated); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-lg); box-shadow: var(--v2-shadow-elevated); }
+html[data-ui="v2"] .process-access-key-dialog > .icon-button { position: absolute; top: var(--v2-space-3); right: var(--v2-space-3); }
+html[data-ui="v2"] .process-access-key-dialog > p { margin: 0; color: var(--v2-color-warning); font-size: 10px; font-weight: 800; letter-spacing: .09em; }
+html[data-ui="v2"] .process-access-key-dialog > h3 { margin: 0; font: 650 24px/30px var(--v2-font-interface); }
+html[data-ui="v2"] .process-access-key-dialog > strong { font-variant-numeric: tabular-nums; font-size: 13px; }
+html[data-ui="v2"] .process-access-key-dialog > span,
+html[data-ui="v2"] .process-access-key-dialog > small { color: var(--v2-color-foreground-secondary); font-size: 11px; line-height: 1.5; }
+html[data-ui="v2"] .process-access-key-dialog > label { margin-top: var(--v2-space-2); font-size: 11px; font-weight: 700; }
+html[data-ui="v2"] .process-access-key-dialog > input { min-height: 44px; padding: 0 var(--v2-space-3); color: var(--v2-color-foreground); background: var(--v2-color-surface-inset); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-md); }
+html[data-ui="v2"] .process-access-key-dialog > div { display: flex; justify-content: flex-end; gap: var(--v2-space-2); margin-top: var(--v2-space-2); }
 
 html[data-ui="v2"] .process-form-sections {
   display: grid;

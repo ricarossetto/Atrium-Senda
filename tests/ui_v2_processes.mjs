@@ -52,6 +52,9 @@ try {
     const fixture = await prepareUiV2ProcessesFixture(page);
     const requests = [];
     page.on('request', request => requests.push({ method: request.method(), url: request.url() }));
+    await page.route('**/api/integrations/tjrs-sidecar/processes/access-key/status**', route => route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, configured: false })
+    }));
 
     assert.equal(await page.locator('#processTableBody [data-process-id]').count(), 2);
     assert.equal(await page.locator('#processResultCount').textContent(), '2 processos');
@@ -87,6 +90,20 @@ try {
     assert.equal(await page.locator('#processInspectorTjrs').isVisible(), true);
     assert.equal(await page.locator('#processInspectorDownloadAutos').isVisible(), true);
     assert.equal(await page.locator('[data-download-autos]').isVisible(), true);
+    await page.locator('[data-process-access-key-status="missing"]').waitFor();
+    assert.match(await page.locator('[data-process-access-key-status]').textContent(), /Chave ausente/);
+    assert.deepEqual(await page.locator('#processInspector > footer > button:visible').evaluateAll(buttons => buttons.map(button => button.id)), [
+      'processInspectorCreateTask', 'processInspectorTjrs', 'processInspectorEdit', 'processInspectorExport',
+      'processInspectorDocuments', 'processInspectorDownloadAutos', 'processInspectorAssistant', 'processInspectorDelete'
+    ], 'Rodapé deve seguir a ordem operacional solicitada.');
+    await page.locator('[data-process-access-key]').click();
+    assert.equal(await page.locator('#processAccessKeyBackdrop:not(.hidden)').count(), 1);
+    assert.equal(await page.locator('#processAccessKeyNumber').textContent(), '5004321-12.2026.8.21.0001');
+    await page.locator('#processAccessKeyCancel').click();
+    assert.equal(await page.locator('#processAccessKeyBackdrop.hidden').count(), 1);
+    await page.locator('#processInspectorExport').click();
+    assert.equal(await page.locator('#processInspectorExport').textContent(), 'Processo baixado');
+    assert.equal(await page.locator('#processInspectorExport').getAttribute('title'), 'Baixar novamente');
     assert.equal(await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"]').getAttribute('aria-current'), 'true');
     assert.equal(requests.filter(request => /\/api\/tjrs\/consult/.test(request.url)).length, 0, 'Abrir inspector não consulta TJRS.');
 

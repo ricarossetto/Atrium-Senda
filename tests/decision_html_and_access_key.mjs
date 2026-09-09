@@ -103,6 +103,13 @@ const keyResponse = {};
 await route({ method: 'POST', body: { processNumber: FORMATTED_CNJ, accessKey: 'CHAVE-PERSISTIDA-TESTE' } }, keyResponse, new URL('http://localhost/api/integrations/tjrs-sidecar/processes/access-key'));
 assert.equal(keyResponse.status, 200);
 assert.equal(storedKeys.get(`advogada_teste:${CNJ}`), 'CHAVE-PERSISTIDA-TESTE');
+assert.equal(JSON.stringify(keyResponse.payload).includes('CHAVE-PERSISTIDA-TESTE'), false, 'Resposta de cadastro não pode devolver a chave.');
+
+const keyStatusResponse = {};
+await route({ method: 'GET' }, keyStatusResponse, new URL(`http://localhost/api/integrations/tjrs-sidecar/processes/access-key/status?processNumber=${encodeURIComponent(FORMATTED_CNJ)}`));
+assert.equal(keyStatusResponse.status, 200);
+assert.deepEqual(keyStatusResponse.payload, { ok: true, configured: true });
+assert.equal(JSON.stringify(keyStatusResponse.payload).includes('CHAVE-PERSISTIDA-TESTE'), false, 'Status não pode devolver a chave.');
 
 const downloadResponse = {};
 await route({ method: 'POST', body: { processId: processItem.id, processNumber: FORMATTED_CNJ, revision: 'revision-1' } }, downloadResponse, new URL('http://localhost/api/integrations/tjrs-sidecar/processes/download-autos'));

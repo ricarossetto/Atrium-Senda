@@ -1682,15 +1682,28 @@
       </header>
       <div class="process-inspector-content" id="processInspectorContent"></div>
       <footer>
-        <button type="button" class="button ghost" id="processInspectorAssistant">Usar no Assistente</button>
-        <button type="button" class="button ghost" id="processInspectorDocuments">Ver documentos</button>
-        <button type="button" class="button ghost" id="processInspectorExport">Baixar processo</button>
-        <button type="button" class="button ghost hidden" id="processInspectorDownloadAutos">Gerar caderno em PDFs</button>
+        <button type="button" class="button gold process-create-task-action" id="processInspectorCreateTask"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Criar tarefa</button>
         <button type="button" class="button ghost hidden" id="processInspectorTjrs">Atualizar TJRS</button>
         <button type="button" class="button process-edit-action" id="processInspectorEdit">Editar processo</button>
-        <button type="button" class="button gold process-create-task-action" id="processInspectorCreateTask"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Criar tarefa</button>
+        <button type="button" class="button ghost" id="processInspectorExport">Baixar processo</button>
+        <button type="button" class="button ghost" id="processInspectorDocuments">Ver documentos</button>
+        <button type="button" class="button ghost hidden" id="processInspectorDownloadAutos">Gerar caderno em PDFs</button>
+        <button type="button" class="button ghost" id="processInspectorAssistant">Usar no Assistente</button>
         <button type="button" class="button danger-outline process-delete-action" id="processInspectorDelete">Excluir processo</button>
       </footer>
+      <div class="process-access-key-backdrop hidden" id="processAccessKeyBackdrop" role="dialog" aria-modal="true" aria-labelledby="processAccessKeyTitle">
+        <form class="process-access-key-dialog" id="processAccessKeyForm">
+          <button type="button" class="icon-button" id="processAccessKeyClose" aria-label="Fechar cadastro de chave"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
+          <p>ACESSO RESTRITO</p>
+          <h3 id="processAccessKeyTitle">Chave ausente</h3>
+          <strong id="processAccessKeyNumber"></strong>
+          <span id="processAccessKeyMessage"></span>
+          <label for="processAccessKeyInput">Chave de acesso do eproc</label>
+          <input type="password" id="processAccessKeyInput" autocomplete="off" maxlength="500" required>
+          <small>A chave será validada e guardada somente no cofre cifrado local. Ela não aparece no processo nem nos logs.</small>
+          <div><button type="button" class="button ghost" id="processAccessKeyCancel">Cancelar</button><button type="submit" class="button gold" id="processAccessKeySave">Validar e guardar chave</button></div>
+        </form>
+      </div>
     </aside>
   </div>
 

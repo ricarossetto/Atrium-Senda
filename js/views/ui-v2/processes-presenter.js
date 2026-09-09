@@ -17,6 +17,8 @@ export function createProcessesV2Presenter({
   onAgenda,
   onFinancial,
   onAssistant,
+  onAccessKey,
+  onAccessKeyStatus,
   onCreateTask,
   onDelete
 } = {}) {
@@ -79,6 +81,8 @@ export function createProcessesV2Presenter({
         const item = selectedItem; close({ restoreFocus: false }); onFinancial?.(item);
       } else if (event.target.closest('[data-download-autos]')) {
         onDownloadAutos?.(event.target.closest('[data-download-autos]'), selectedItem);
+      } else if (event.target.closest('[data-process-access-key]')) {
+        onAccessKey?.(selectedItem);
       }
     });
     byId('processInspectorEdit')?.addEventListener('click', () => {
@@ -168,6 +172,12 @@ export function createProcessesV2Presenter({
     consultButton.classList.toggle('hidden', !summary.canConsultTjrs);
     consultButton.dataset.tjrsConsult = summary.canConsultTjrs ? String(item.number || '') : '';
     byId('processInspectorDownloadAutos')?.classList.toggle('hidden', !summary.canConsultTjrs);
+    const exportButton = byId('processInspectorExport');
+    if (exportButton) {
+      exportButton.textContent = item.dossierDownloadedAt ? 'Processo baixado' : 'Baixar processo';
+      exportButton.classList.toggle('is-complete', Boolean(item.dossierDownloadedAt));
+      exportButton.title = item.dossierDownloadedAt ? 'Baixar novamente' : 'Baixar o dossiê local do processo';
+    }
 
     documentRef.querySelectorAll('#processTableBody [data-process-id]').forEach(row => {
       const selected = row.dataset.processId === String(item.id);
@@ -181,6 +191,7 @@ export function createProcessesV2Presenter({
     byId('appShell')?.setAttribute('inert', '');
     if (documentRef.body) documentRef.body.style.overflow = 'hidden';
     queueMicrotask(() => byId('processInspectorClose')?.focus());
+    void onAccessKeyStatus?.(item);
     return true;
   }
 
@@ -470,7 +481,7 @@ function renderJudicialContext(item, escapeHtml, formatDate) {
   const parties = Array.isArray(item.judicialParties) && item.judicialParties.length
     ? item.judicialParties
     : (Array.isArray(integration?.parties) ? integration.parties : []);
-  if (!parties.length && !integration) return `<section class="process-inspector-section" aria-labelledby="processJudicialHeading"><h3 id="processJudicialHeading">Contexto judicial</h3><p class="process-inspector-empty">Nenhuma consulta judicial incorporada. Atualize o processo para consultar as fontes disponíveis.</p>${renderAutosAction(item, escapeHtml)}</section>`;
+  if (!parties.length && !integration) return `<section class="process-inspector-section" aria-labelledby="processJudicialHeading"><h3 id="processJudicialHeading">Contexto judicial</h3><p class="process-inspector-empty">Nenhuma consulta judicial incorporada. Atualize o processo para consultar as fontes disponíveis.</p>${renderAccessKeyAction(item)}${renderAutosAction(item, escapeHtml)}</section>`;
   const partyList = parties.length
     ? `<div class="process-linked-list process-judicial-parties">${parties.filter(Boolean).map(party => {
         const lawyers = (Array.isArray(party.lawyers) ? party.lawyers : []).filter(Boolean)
@@ -497,9 +508,16 @@ function renderJudicialContext(item, escapeHtml, formatDate) {
     <h3 id="processJudicialHeading">Contexto judicial coletado</h3>
     ${collectorMeta}
     ${partyList}
+    ${renderAccessKeyAction(item)}
     ${renderAutosAction(item, escapeHtml)}
     <p class="process-inspector-note">Leitura local e somente consulta. O vínculo do cliente continua sob controle do escritório.</p>
   </section>`;
+}
+
+function renderAccessKeyAction(item) {
+  const isTjrs = String(item?.number || '').includes('.8.21.') || String(item?.court || '').toUpperCase().includes('TJRS');
+  if (!isTjrs) return '';
+  return `<div class="process-access-key-action" data-process-access-key-status="loading"><div><strong>Chave de acesso do processo</strong><span data-process-access-key-copy>Verificando o cofre local…</span></div><button type="button" class="button ghost" data-process-access-key>Adicionar chave</button></div>`;
 }
 
 function renderAutosAction(item, escapeHtml) {

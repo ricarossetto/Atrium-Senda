@@ -8,6 +8,9 @@ import { prepareUiV2Page, prepareUiV2ProcessesFixture, startUiV2Session } from '
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUTPUT = path.join(ROOT, 'artifacts', 'visual-qa', 'ui-v2-processes');
 const CONFIGS = [
+  { name: '1920x1080', width: 1920, height: 1080, inspector: true, form: false },
+  { name: '1920x1200', width: 1920, height: 1200, inspector: true, form: false },
+  { name: '2560x1080', width: 2560, height: 1080, inspector: true, form: false },
   { name: '1440x900', width: 1440, height: 900, inspector: true, form: false },
   { name: '1280x800', width: 1280, height: 800, inspector: false, form: true },
   { name: '1024x768', width: 1024, height: 768, inspector: false, form: false },
@@ -99,6 +102,18 @@ try {
           const inspectorFile = path.join(OUTPUT, `${theme}-${config.name}-inspector.png`);
           await page.screenshot({ path: inspectorFile, fullPage: false });
           recordScreenshot(inspectorFile);
+          await page.locator('[data-process-access-key]').click();
+          await page.locator('#processAccessKeyBackdrop:not(.hidden)').waitFor();
+          const keyDialog = await page.locator('.process-access-key-dialog').evaluate(element => {
+            const rect = element.getBoundingClientRect();
+            return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, viewportWidth: innerWidth, viewportHeight: innerHeight };
+          });
+          assert.ok(keyDialog.left >= -2 && keyDialog.right <= keyDialog.viewportWidth + 2); assertions++;
+          assert.ok(keyDialog.top >= -2 && keyDialog.bottom <= keyDialog.viewportHeight + 2); assertions++;
+          const keyFile = path.join(OUTPUT, `${theme}-${config.name}-access-key.png`);
+          await page.screenshot({ path: keyFile, fullPage: false });
+          recordScreenshot(keyFile);
+          await page.locator('#processAccessKeyCancel').click();
           await page.locator('#processInspectorClose').click();
         }
 
