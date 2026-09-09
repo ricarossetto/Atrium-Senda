@@ -203,6 +203,27 @@ html[data-theme="light"] .auth-gate .auth-logo-frame {
   letter-spacing: .065em;
 }
 
+.auth-gate .auth-setup-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.auth-gate .auth-setup-grid > label,
+.auth-gate .auth-field-row label {
+  margin: 0 0 14px;
+}
+
+.auth-gate .auth-field-row {
+  grid-template-columns: minmax(0, 1fr) 136px;
+  align-items: end;
+  gap: 12px;
+}
+
+.auth-gate .auth-field-row input,
+.auth-gate .auth-field-row select {
+  min-height: 46px;
+}
+
 .auth-gate .auth-step input,
 .auth-gate .auth-step select {
   min-height: 46px;

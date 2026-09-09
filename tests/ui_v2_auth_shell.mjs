@@ -129,6 +129,25 @@ try {
       assert.equal(await page.locator('#authTabRegister').getAttribute('aria-selected'), 'true'); assertions++;
       assert.equal(await page.locator('#authTabLogin').getAttribute('aria-selected'), 'false'); assertions++;
     }
+    if (scenario.state === 'setup') {
+      const setupLayout = await page.evaluate(() => {
+        const rect = name => {
+          const element = document.querySelector(`#authSetupForm [name="${name}"]`);
+          const box = element.getBoundingClientRect();
+          return { top: box.top, left: box.left, right: box.right, width: box.width, height: box.height };
+        };
+        return {
+          displayName: rect('displayName'), email: rect('email'), username: rect('username'),
+          oab: rect('oab'), oabUf: rect('oabUf'), password: rect('password'), confirmPassword: rect('confirmPassword')
+        };
+      });
+      const fullWidth = ['displayName', 'email', 'username', 'password', 'confirmPassword'].map(name => setupLayout[name]);
+      assert.ok(fullWidth.every(box => Math.abs(box.left - fullWidth[0].left) <= 1 && Math.abs(box.width - fullWidth[0].width) <= 1)); assertions++;
+      assert.ok(setupLayout.displayName.top < setupLayout.email.top && setupLayout.email.top < setupLayout.username.top); assertions++;
+      assert.ok(setupLayout.username.top < setupLayout.oab.top && setupLayout.oab.top < setupLayout.password.top && setupLayout.password.top < setupLayout.confirmPassword.top); assertions++;
+      assert.ok(Math.abs(setupLayout.oab.top - setupLayout.oabUf.top) <= 1 && Math.abs(setupLayout.oab.height - setupLayout.oabUf.height) <= 1); assertions++;
+      assert.ok(setupLayout.oab.right < setupLayout.oabUf.left && setupLayout.oabUf.width >= 120); assertions++;
+    }
 
     const output = path.join(OUTPUT, scenario.file);
     await page.screenshot({ path: output, fullPage: false });
