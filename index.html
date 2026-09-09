@@ -61,6 +61,15 @@
         <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle data-theme-silent="true" aria-label="Tema claro ativo. Alternar para tema escuro">
           <span data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
         </button>
+
+        <div class="auth-card-brand hidden">
+          <img src="assets/icons/atrium-emblem.svg" alt="ATRIUM" class="auth-card-emblem">
+          <div class="auth-card-brand-meta">
+            <span class="auth-card-brand-name">ATRIUM</span>
+            <span class="auth-card-brand-tagline">Escritório Integrado</span>
+          </div>
+        </div>
+
         <div id="authLoading" class="auth-step active"><span class="auth-spinner"></span><h2>Verificando proteção…</h2><p>Validando a configuração de segurança.</p></div>
 
         <form id="authSetupForm" class="auth-step">
@@ -121,7 +130,6 @@
         <div class="auth-tabs" id="authTabs" role="tablist" aria-label="Escolher forma de acesso">
           <button type="button" class="auth-tab active" id="authTabLogin" role="tab" aria-selected="true" aria-controls="authLoginForm">Entrar na Conta</button>
           <button type="button" class="auth-tab" id="authTabRegister" role="tab" aria-selected="false" aria-controls="authRegisterForm">Criar conta</button>
-          <button type="button" class="auth-tab auth-tab-saas" id="authTabNewOffice" role="tab" aria-selected="false" title="Criar novo escritório exclusivo no ATRIUM">✨ Criar Escritório</button>
         </div>
 
         <form id="authRegisterForm" class="auth-step">
@@ -134,17 +142,35 @@
           <label>Senha de acesso<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <button class="button gold auth-submit" type="submit">Criar conta e solicitar acesso</button>
+          <div class="auth-register-footer">
+            <span>Já possui conta no Atrium?</span>
+            <button type="button" class="auth-link-action" id="authBackToLoginLink">Entrar na conta</button>
+          </div>
         </form>
 
         <form id="authLoginForm" class="auth-step">
-          <p class="eyebrow">Acesso restrito</p><h2>Entrar no Atrium</h2>
-          <p>Informe seu usuário e senha de acesso.</p>
-          <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="admin ou seu.usuario"></label>
-          <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
-          <label>Código do autenticador ou recuperação (se a proteção em 2 etapas estiver ativada)<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000 (opcional se 2FA inativo)"></label>
-          <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>O segundo fator não será exigido novamente neste dispositivo durante este período.</small></span></label>
+          <div class="auth-step-head">
+            <p class="eyebrow">Acesso restrito</p>
+            <h2>Entrar no Atrium</h2>
+            <p>Informe seu usuário e senha de acesso.</p>
+          </div>
+          <label>Usuário ou E-mail<input name="username" autocomplete="username" required maxlength="64" placeholder="Digite seu usuário ou e-mail"></label>
+          <label>Senha<input name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Digite sua senha"></label>
+          <label class="auth-field-code">Código do autenticador ou recuperação (se ativado)<input name="code" autocomplete="one-time-code" inputmode="text" maxlength="11" placeholder="000000 (opcional se 2FA inativo)"></label>
+          <div class="auth-login-options">
+            <label class="trust-browser-control"><input name="trustBrowser" type="checkbox" value="true"><span><strong>Confiar neste navegador por 30 dias</strong><small>O segundo fator não será exigido neste dispositivo durante este período.</small></span></label>
+            <button type="button" class="auth-forgot-password-link" id="authForgotPassLink">Esqueceu sua senha?</button>
+          </div>
           <button class="button gold auth-submit" type="submit">Entrar no Atrium</button>
         </form>
+
+        <div class="auth-card-footer" id="authCardFooter">
+          <div class="auth-footer-prompt">
+            <span>Ainda não tem conta no Atrium?</span>
+            <button type="button" class="auth-link-action" id="authTabNewOffice">Cadastre seu escritório</button>
+          </div>
+          <p class="auth-footer-legal">Ao entrar você concorda com os Termos de Uso e a Política de Privacidade do Atrium.</p>
+        </div>
 
         <div id="authFeedback" class="auth-feedback hidden" role="alert"></div>
         <p class="auth-local-note">Proteção ativa: dados e chaves criptografadas permanecem sob controle do seu ambiente.</p>

@@ -102,6 +102,14 @@
           }).catch(err => console.error('Erro ao carregar módulo SaaS:', err));
         }
       });
+      byId('authBackToLoginLink')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        byId('authTabLogin')?.click();
+      });
+      byId('authForgotPassLink')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.feedback('Para recuperar o acesso, utilize um de seus códigos de recuperação de uso único ou contate o administrador do seu escritório.', 'success');
+      });
       byId('skipMfaButton')?.addEventListener('click', async () => {
         this.feedback('');
         try {
@@ -146,6 +154,14 @@
       const tabs = byId('authTabs');
       if (tabs) {
         tabs.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
+      }
+      const footer = byId('authCardFooter');
+      if (footer) {
+        footer.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
+      }
+      const brand = document.querySelector('.auth-card-brand');
+      if (brand) {
+        brand.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
       }
       byId('authGate').classList.remove('hidden'); byId('appShell').classList.add('hidden');
       state.authenticated = false;

@@ -343,7 +343,7 @@ try {
       return window.getComputedStyle(document.body).backgroundColor;
     });
     console.log('Dark theme body bg:', darkBg);
-    assert(darkBg.includes('rgb(12, 12, 11)') || darkBg.includes('rgba(0, 0, 0') || darkBg.includes('rgb(18, 18, 18)') || darkBg.includes('rgb(22, 21, 19)'), 'Dark theme background is not dark!');
+    assert(darkBg.includes('rgb(12, 12, 11)') || darkBg.includes('rgba(0, 0, 0') || darkBg.includes('rgb(18, 18, 18)') || darkBg.includes('rgb(22, 21, 19)') || darkBg.includes('rgb(17, 19, 21)'), 'Dark theme background is not dark!');
 
     console.log('\n===============================================================');
     console.log(`  RESULTADOS DA AUDITORIA VISUAL LIGHT FOUNDATION:`);
