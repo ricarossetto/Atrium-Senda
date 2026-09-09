@@ -144,7 +144,7 @@ try {
     await context.close();
     return names;
   })();
-  assert.deepEqual(fieldNames, ['code', 'confirmPassword', 'displayName', 'email', 'oab', 'password', 'trustBrowser', 'username']);
+  assert.deepEqual(fieldNames, ['code', 'confirmPassword', 'displayName', 'email', 'oab', 'oabUf', 'password', 'trustBrowser', 'username']);
 
   const avatarVisibility = await (async () => {
     const context = await browser.newContext();

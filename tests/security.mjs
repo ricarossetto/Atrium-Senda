@@ -18,14 +18,19 @@ try {
   response = await fetch(`${server.baseUrl}/assets/fonts/inter-400.ttf`);
   assert(response.ok && response.headers.get('content-type') === 'font/ttf', 'Fonte local protegida não foi servida corretamente.');
 
-  response = await postJson(`${server.baseUrl}/api/auth/setup`, { username: 'admin', displayName: 'Advogado Administrador', password: 'Senha-202' });
+  response = await postJson(`${server.baseUrl}/api/auth/setup`, { username: 'admin', displayName: 'Advogado Administrador', email: 'admin@example.test', password: 'Senha-202' });
   assert(response.status === 400, 'Senha com menos de 10 caracteres foi aceita.');
-  response = await postJson(`${server.baseUrl}/api/auth/setup`, { username: 'admin', displayName: 'Advogado Administrador', password }); payload = await response.json();
+  response = await postJson(`${server.baseUrl}/api/auth/setup`, { username: 'admin', displayName: 'Advogado Administrador', email: 'email-invalido', password });
+  assert(response.status === 400, 'E-mail inválido foi aceito no primeiro acesso.');
+  response = await postJson(`${server.baseUrl}/api/auth/setup`, { username: 'admin', displayName: 'Advogado Administrador', email: 'admin@example.test', oab: '000000', password });
+  assert(response.status === 400, 'OAB sem UF foi aceita no primeiro acesso.');
+  response = await postJson(`${server.baseUrl}/api/auth/setup`, { username: 'admin', displayName: 'Advogado Administrador', email: 'admin@example.test', oab: '000000', oabUf: 'RS', password }); payload = await response.json();
   assert(response.ok && payload.setupToken && payload.manualSecret && payload.qrCode.startsWith('data:image/png'), 'Configuração TOTP não foi iniciada.');
 
   response = await postJson(`${server.baseUrl}/api/auth/setup/verify`, { setupToken: payload.setupToken, code: generateTotp(payload.manualSecret) });
   const verified = await response.json();
   assert(response.ok && verified.recoveryCodes.length === 8, 'Segundo fator não foi ativado.');
+  assert(verified.user.email === 'admin@example.test' && verified.user.oab === '000000' && verified.user.oabUf === 'RS', 'E-mail e OAB do responsável não foram preservados no perfil mestre.');
   const cookie = response.headers.get('set-cookie').split(';')[0]; const csrf = verified.csrfToken; const recovery = verified.recoveryCodes[0];
 
   const collaboratorPassword = 'Colaborador-2026!';

@@ -180,7 +180,8 @@ html[data-theme="light"] .auth-gate .auth-logo-frame {
   letter-spacing: .065em;
 }
 
-.auth-gate .auth-step input {
+.auth-gate .auth-step input,
+.auth-gate .auth-step select {
   min-height: 46px;
   border: 1px solid var(--auth-line);
   border-radius: 9px;
@@ -190,6 +191,7 @@ html[data-theme="light"] .auth-gate .auth-logo-frame {
 }
 
 .auth-gate .auth-step input:focus,
+.auth-gate .auth-step select:focus,
 .auth-gate .auth-tab:focus-visible,
 .auth-gate button:focus-visible,
 .auth-gate summary:focus-visible {

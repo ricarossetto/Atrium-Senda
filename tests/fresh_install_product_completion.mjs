@@ -9,7 +9,7 @@ const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });
 try {
   let response = await postJson(`${server.baseUrl}/api/auth/setup`, {
-    username: 'first.day.admin', displayName: 'Administradora Primeiro Dia', email: 'first-day@example.test', password: 'Senha-Primeiro-Dia-Sintetica-2026!'
+    username: 'first.day.admin', displayName: 'Administradora Primeiro Dia', email: 'first-day@example.test', oab: '000000', oabUf: 'RS', password: 'Senha-Primeiro-Dia-Sintetica-2026!'
   });
   assert.equal(response.status, 200);
   const setup = await response.json();

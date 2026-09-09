@@ -26,6 +26,15 @@
     },
     bind() {
       byId('authSetupForm').addEventListener('submit', event => this.setup(event));
+      const setupOab = byId('authSetupForm')?.elements?.oab;
+      const setupOabUf = byId('authSetupForm')?.elements?.oabUf;
+      const syncSetupOabUf = () => {
+        if (!setupOabUf) return;
+        setupOabUf.required = Boolean(String(setupOab?.value || '').trim());
+        setupOabUf.setAttribute('aria-required', String(setupOabUf.required));
+      };
+      setupOab?.addEventListener('input', syncSetupOabUf);
+      syncSetupOabUf();
       byId('authTotpSetupForm').addEventListener('submit', event => this.verifySetup(event));
       byId('authLoginForm').addEventListener('submit', event => this.login(event));
       byId('authRegisterForm')?.addEventListener('submit', event => this.register(event));
@@ -128,9 +137,17 @@
       const formElement = event.currentTarget;
       const form = new FormData(formElement);
       if (form.get('password') !== form.get('confirmPassword')) return this.feedback('As senhas não coincidem.', 'error');
+      if (String(form.get('oab') || '').trim() && !form.get('oabUf')) return this.feedback('Selecione a UF da OAB informada.', 'error');
       this.busy(formElement, true);
       try {
-        const result = await request('/api/auth/setup', { method: 'POST', body: { username: form.get('username'), displayName: form.get('displayName'), password: form.get('password') } });
+        const result = await request('/api/auth/setup', { method: 'POST', body: {
+          username: form.get('username'),
+          displayName: form.get('displayName'),
+          email: form.get('email'),
+          oab: form.get('oab'),
+          oabUf: form.get('oabUf'),
+          password: form.get('password')
+        } });
         state.setupToken = result.setupToken; byId('authQrCode').src = result.qrCode; byId('authManualSecret').textContent = result.manualSecret;
         formElement.reset(); this.show('authTotpSetupForm'); byId('authTotpSetupForm').elements.code.focus();
       } catch (error) { this.feedback(error.message, 'error'); }

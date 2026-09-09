@@ -911,8 +911,9 @@ td small { color: var(--text-secondary); }
 .auth-step h2{font-family:var(--font-serif);font-size:clamp(28px,3.5vw,38px);line-height:1.1;margin:8px 0 12px;color:var(--ivory)}
 .auth-step>p:not(.eyebrow){color:#a6a094;line-height:1.6;margin-bottom:24px;font-size:13.5px}
 .auth-step label{display:grid;gap:8px;margin:15px 0;color:#d8d3c8;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
-.auth-step input{width:100%;border:1px solid #36342e;border-radius:10px;background:#090908;color:#f7f4ee;padding:13px 15px;font:500 14.5px var(--font-sans);outline:none;transition:all .2s ease}
-.auth-step input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,175,55,.16)}
+.auth-step input,.auth-step select{width:100%;border:1px solid #36342e;border-radius:10px;background:#090908;color:#f7f4ee;padding:13px 15px;font:500 14.5px var(--font-sans);outline:none;transition:all .2s ease}
+.auth-step input:focus,.auth-step select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,175,55,.16)}
+.auth-setup-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px}.auth-setup-grid>label{margin-top:0}.auth-field-row{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:10px}.auth-field-row label{margin-top:0}
 .auth-step input:disabled,.auth-step button:disabled{opacity:.55;cursor:wait}
 .trust-browser-control{grid-template-columns:20px 1fr!important;align-items:start!important;gap:11px!important;margin-top:18px!important;padding:13px 14px;border:1px solid #2d2d29;border-radius:11px;background:rgba(255,255,255,.018);cursor:pointer;text-transform:none!important;letter-spacing:0!important}
 .trust-browser-control input{width:17px!important;height:17px!important;margin:2px 0 0!important;padding:0!important;accent-color:var(--gold);box-shadow:none!important}
@@ -932,7 +933,7 @@ td small { color: var(--text-secondary); }
 @keyframes authSpin{to{transform:rotate(360deg)}}
 @keyframes authReveal{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 @media(max-width:900px){.auth-gate{grid-template-columns:1fr}.auth-visual{min-height:300px;padding:34px}.auth-visual-copy{margin:52px 0 30px}.auth-visual-copy h1{font-size:48px}.auth-security-list{display:none}.auth-panel{padding:24px}.auth-card{padding:30px}.auth-logo{width:190px}}
-@media(max-width:520px){.auth-visual{min-height:235px}.auth-visual-copy{margin:34px 0 10px}.auth-visual-copy h1{font-size:39px}.auth-visual-copy>p:last-child{display:none}.auth-panel{padding:14px}.auth-card{border-radius:17px;padding:24px}.auth-qr{width:190px;height:190px}}
+@media(max-width:520px){.auth-visual{min-height:235px}.auth-visual-copy{margin:34px 0 10px}.auth-visual-copy h1{font-size:39px}.auth-visual-copy>p:last-child{display:none}.auth-panel{padding:14px}.auth-card{border-radius:17px;padding:24px}.auth-qr{width:190px;height:190px}.auth-setup-grid{grid-template-columns:1fr}.auth-field-row{grid-template-columns:minmax(0,1fr) 92px}}
 
 /* ==========================================================================
    4 Novas Funcionalidades Jurídicas: Classificador, Honorários, Minutas e Timesheet

@@ -13,6 +13,7 @@ Permitir evolução compatível da API interna atual e preparar uma fronteira fu
 ## Inventory and classification
 
 - **Bootstrap de autenticação, não API pública**: `/api/auth/status`, setup, registro e login. São alcançáveis sem sessão somente para instalar/autenticar; rate limits, MFA e respostas sanitizadas continuam obrigatórios.
+- **Identidade do primeiro responsável**: o setup recebe nome, e-mail profissional, usuário e senha; número e UF da OAB são opcionais, mas devem ser informados em conjunto. Esses campos integram o perfil local cifrado e não tornam a rota pública nem autorizam consulta judicial automática.
 - **Frontend-facing internal**: estado, eventos, busca, documentos, publicações, tarefas, importação, IA, calendário e status operacional. Exigem sessão e, em mutações, CSRF/RBAC conforme o contrato existente.
 - **Integration-facing private**: `/api/ingest` com bearer privado e as famílias judicial, e-mail e calendário. Não são endpoints públicos para terceiros.
 - **Diagnostic/private**: `/api/system/*`, incluindo metadata, diagnóstico, backup, restore, feedback, recovery e rebuild. Metadata exige sessão; ações sensíveis preservam RBAC/CSRF.
@@ -63,7 +64,7 @@ Versão desconhecida falha fechada com 401 sem sessão e 404 `UNSUPPORTED_API_VE
 
 ## Persistence semantics
 
-Não existe persistência nova. Headers e metadata são derivados em memória a cada resposta; a foundation não altera Store, schema, revision, backup ou runtime.
+Headers e metadata são derivados em memória a cada resposta; a foundation não cria Store, schema ou runtime paralelo. O bootstrap de autenticação preserva a identidade profissional no perfil mestre já cifrado em `security.json`, sob as mesmas regras de backup e acesso local.
 
 ## Relevant tests
 
