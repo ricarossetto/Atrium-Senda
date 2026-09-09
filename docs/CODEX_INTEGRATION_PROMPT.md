@@ -1,19 +1,25 @@
 # PROMPT E GUIA MESTRE DE INTEGRAÇÃO PARA O OPENAI CODEX / AGENTE
-> **Missão**: Integrar ao sistema ATRIUM em produção as novas funcionalidades desenvolvidas e testadas em laboratório no projeto `consulta tjrs atrium / TESTE INTEGRAÇÃO ATRIUM`, preservando 100% da integridade visual, dos componentes e sem reescrever código desnecessariamente (otimizando consumo de créditos).
+> **Missão**: Integrar ao sistema principal ATRIUM 2.1.1 (Commit `449be7f`) todas as funcionalidades desenvolvidas e validadas no laboratório `consulta tjrs atrium / TESTE INTEGRAÇÃO ATRIUM`, preservando 100% da integridade visual e estabilidade do sistema com máximo reaproveitamento e mínimo gasto de créditos.
+>
+> **Status de Validação Local**: Aprovado com 100% dos testes passando (`stable_release_contract`, `ui_v2_processes`, `ui_v2_tasks`, `ui_v2_documents`, `ui_v2_iconography`, `decision_html_and_access_key`, `smoke`).
+> **Servidor Local Rodando**: Porta 4188 (`http://127.0.0.1:4188`).
 
 ---
 
 ## 1. DIRETRIZES FUNDAMENTAIS PARA O CODEX (RESTRIÇÕES DE OURO)
 1. **Preservação Visual e Estrutural**: NÃO reescreva telas, layouts, paletas de cores ou menus existentes. O objetivo é estritamente **adicionar as features** descritas abaixo.
 2. **Reaproveitamento Máximo de Arquivos (Zero Desperdício de Créditos)**:
-   - A maioria dos módulos desenvolvidos pode ser simplesmente **copiada ou mesclada pontualmente** a partir do diretório de origem.
+   - Os arquivos integrados já estão prontos e testados diretamente no commit `4cc335b` (baseado no `449be7f`).
    - Caminho base de origem dos arquivos deste laboratório:
      `c:\projetos IA\consulta tjrs atrium\TESTE INTEGRAÇÃO ATRIUM\`
+   - O Codex pode aplicar diretamente o patch unificado:
+     `git apply "c:\projetos IA\consulta tjrs atrium\TESTE INTEGRAÇÃO ATRIUM\atrium-2.1.1-features.patch"`
+     ou copiar os arquivos listados na seção 2.
 3. **Pureza Arquitetural V2**:
    - Arquivos `*-presenter.js` (em especial `processes-presenter.js`) devem permanecer **puros**: NUNCA utilize `fetch`, `secureFetch`, `/api/` ou `Store` dentro do presenter. Todas as chamadas de dados devem vir via callbacks (`onPreviewDocument`, `onDownloadDocument`, etc.).
    - NUNCA introduza caracteres de emojis Unicode nos arquivos V2 (isso viola `tests/ui_v2_iconography.mjs` que possui allowlist restrita de 30 emojis clássicos). Utilize apenas símbolos seguros como `●` ou os ícones SVG do sprite oficial (`iconSvg(...)`).
 4. **Resolução de Conflitos e Ajustes Cirúrgicos**:
-   - O Codex está autorizado a fazer pequenas adaptações de imports ou nomes de instâncias locais se a versão atualizada do repositório de destino tiver pequenas divergências de nomenclatura, desde que preserve o contrato funcional.
+   - O Codex está autorizado a fazer pequenas adaptações de imports ou nomes de instâncias locais se a versão do repositório de destino tiver divergências pontuais, desde que preserve o contrato funcional e os 8 botões originais no rodapé do inspector.
 
 ---
 
