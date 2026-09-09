@@ -1,0 +1,89 @@
+/* =============================================================================
+   ATRIUM — UI V2 SAAS MULTI-TENANT ONBOARDING STYLES
+   ============================================================================= */
+
+.subdomain-input-group {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: 6px;
+  background: var(--bg-surface-elevated, #161a22);
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.subdomain-input-group:focus-within {
+  border-color: var(--gold-primary, #d4af37);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+.subdomain-input-group input {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-primary, #f0f3f6);
+}
+
+.subdomain-suffix {
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold-primary, #d4af37);
+  background: rgba(212, 175, 55, 0.08);
+  border-left: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  line-height: 38px;
+  user-select: none;
+}
+
+.field-feedback {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--text-muted, #8b949e);
+  transition: color 0.2s ease;
+}
+
+.field-feedback.success {
+  color: #3fb950;
+  font-weight: 500;
+}
+
+.field-feedback.error {
+  color: #f85149;
+  font-weight: 500;
+}
+
+.field-feedback.loading {
+  color: var(--gold-primary, #d4af37);
+  font-style: italic;
+}
+
+.oab-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.oab-input-group input {
+  flex: 2;
+}
+
+.oab-input-group select {
+  flex: 1;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: 6px;
+  background: var(--bg-surface-elevated, #161a22);
+  color: var(--text-primary, #f0f3f6);
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.saas-modal-window {
+  max-width: 580px;
+  width: 92%;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(212, 175, 55, 0.1);
+}

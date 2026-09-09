@@ -57,6 +57,8 @@ import {
   FutureSchemaError,
   CorruptedStateError
 } from './lib/state-migrations.mjs';
+import { TenantManager } from './lib/tenant/tenant-manager.mjs';
+import { TenantContextRegistry } from './lib/tenant/tenant-context.mjs';
 import ExcelJS from 'exceljs';
 import * as xlsxModule from 'xlsx';
 const XLSX = xlsxModule.default || xlsxModule;
@@ -152,6 +154,21 @@ const handleOmniRequest = createOmniHttpHandler({
   readStateEnvelope: readAppStateEnvelope,
   saveState: saveAppStateDirect,
   json
+});
+const tenantManager = new TenantManager({
+  dataDirectory: DATA_DIR,
+  sessionSecret: process.env.AUTH_SESSION_SECRET,
+  encryptionKey: process.env.AUTH_ENCRYPTION_KEY,
+  secureCookies: String(process.env.COOKIE_SECURE).toLowerCase() === 'true',
+  baseDomain: process.env.BASE_DOMAIN || 'atrium.adv.br'
+});
+await tenantManager.init();
+
+const tenantContextRegistry = new TenantContextRegistry(tenantManager, {
+  sessionSecret: process.env.AUTH_SESSION_SECRET,
+  encryptionKey: process.env.AUTH_ENCRYPTION_KEY,
+  secureCookies: String(process.env.COOKIE_SECURE).toLowerCase() === 'true',
+  portalsConfig: defaultPortalsList
 });
 let defaultSearchPrompts = [];
 try {
@@ -603,7 +620,18 @@ async function saveAppState(value, expectedRevision = null) {
   return saveAppStateDirect(value, expectedRevision);
 }
 
-async function saveClientAppState(value, expectedRevision, session) {
+async function saveClientAppState(value, expectedRevision, session, tenantCtx = null) {
+  if (tenantCtx) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
+    }
+    if (value.settings && typeof value.settings === 'object') delete value.settings.geminiApiKey;
+    const current = await tenantCtx.readStateEnvelope();
+    value.documents = Array.isArray(current.state?.documents) ? structuredClone(current.state.documents) : [];
+    if (!value.settings || typeof value.settings !== 'object' || Array.isArray(value.settings)) value.settings = {};
+    value.settings.documentNamingTemplate = String(current.state?.settings?.documentNamingTemplate || '');
+    return tenantCtx.saveStateDirect(value, expectedRevision);
+  }
   return enqueueAppStateMutation(async () => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       throw Object.assign(new Error('Estado da aplicação inválido.'), { statusCode: 400 });
@@ -708,7 +736,40 @@ async function appendServerAudit(action, detail, actor = 'Administrador') {
   } catch {}
 }
 
-async function readPublicAppStateEnvelope() {
+async function readPublicAppStateEnvelope(tenantCtx = null) {
+  if (tenantCtx) {
+    const envelope = await tenantCtx.readStateEnvelope();
+    if (!envelope.state) {
+      return {
+        stateStatus: 'NEW_INSTALL',
+        state: null,
+        revision: null,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        dataVersion: CURRENT_DATA_VERSION,
+        appVersion: APP_VERSION,
+        buildId: BUILD_ID,
+        tenant: {
+          id: tenantCtx.tenant.id,
+          name: tenantCtx.tenant.name,
+          slug: tenantCtx.tenant.slug
+        }
+      };
+    }
+    return {
+      stateStatus: 'READY',
+      state: envelope.state,
+      revision: envelope.revision,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      dataVersion: CURRENT_DATA_VERSION,
+      appVersion: APP_VERSION,
+      buildId: BUILD_ID,
+      tenant: {
+        id: tenantCtx.tenant.id,
+        name: tenantCtx.tenant.name,
+        slug: tenantCtx.tenant.slug
+      }
+    };
+  }
   if (serverStateStatus === 'RECOVERY_REQUIRED') {
     return {
       stateStatus: 'RECOVERY_REQUIRED',
@@ -1817,8 +1878,9 @@ function collectorAuthorized(req) {
   return authorization.length === expected.length && timingSafeEqual(Buffer.from(authorization), Buffer.from(expected));
 }
 function assertAuthenticated(req, requireCsrf = false) {
-  const session = security.requireSession(req);
-  if (requireCsrf) security.requireCsrf(req, session);
+  const sec = req.tenant?.security || security;
+  const session = sec.requireSession(req);
+  if (requireCsrf) sec.requireCsrf(req, session);
   return session;
 }
 function isPrivilegedRole(role) {
@@ -2207,6 +2269,66 @@ function updateSyncProgress({ step, totalSteps = 4, phase, label, detail, percen
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    let tenantCtx = null;
+    try {
+      tenantCtx = await tenantContextRegistry.resolveContextFromRequest(req);
+    } catch (err) {
+      console.warn('[Tenant Resolution Warn]:', err.message);
+    }
+    req.tenant = tenantCtx;
+    const sec = req.tenant?.security || security;
+
+    // ==========================================
+    // ROTAS SAAS & ONBOARDING MULTI-TENANT
+    // ==========================================
+    if (req.method === 'GET' && url.pathname === '/api/saas/check-slug') {
+      const slug = url.searchParams.get('slug') || '';
+      return json(res, 200, tenantManager.validateSlug(slug));
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/saas/register-office') {
+      const body = await readJson(req);
+      const result = await tenantManager.createTenant({
+        name: body.officeName || body.name,
+        slug: body.slug,
+        ownerName: body.ownerName,
+        ownerEmail: body.ownerEmail,
+        oab: body.lawyerOab || body.oab,
+        oabUf: body.oabUf,
+        password: body.adminPassword || body.password,
+        plan: body.plan || 'pro'
+      });
+      const newTenantCtx = await tenantContextRegistry.getContextForTenant(result.tenant);
+      const username = (body.ownerEmail || '').split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
+      const loginResult = await newTenantCtx.security.login({
+        username,
+        password: body.adminPassword || body.password
+      }, remoteAddress(req), req.headers['user-agent'] || '');
+
+      const cookies = [newTenantCtx.security.sessionCookie(loginResult.token)];
+      return json(res, 201, {
+        ok: true,
+        tenant: result.tenant,
+        user: loginResult.user,
+        csrfToken: loginResult.csrfToken,
+        url: result.url
+      }, { 'Set-Cookie': cookies });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/saas/info') {
+      const allTenants = tenantManager.listTenants();
+      return json(res, 200, {
+        multiTenant: true,
+        activeTenant: req.tenant ? {
+          id: req.tenant.tenant.id,
+          name: req.tenant.tenant.name,
+          slug: req.tenant.tenant.slug
+        } : null,
+        tenantCount: allTenants.length,
+        baseDomain: tenantManager.baseDomain
+      });
+    }
+
     if (url.pathname.startsWith('/api/') && url.pathname !== '/api/auth/status') {
     }
     if (req.method === 'GET' && url.pathname === '/api/system/api-metadata') {
@@ -2217,56 +2339,66 @@ const server = http.createServer(async (req, res) => {
       assertAuthenticated(req);
       return json(res, 404, { message: 'Versão de API não suportada.', code: 'UNSUPPORTED_API_VERSION' });
     }
-    if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, security.publicStatus(req));
-    if (req.method === 'POST' && url.pathname === '/api/auth/setup') return json(res, 200, await security.beginSetup(await readJson(req), remoteAddress(req)));
+    if (req.method === 'GET' && url.pathname === '/api/auth/status') {
+      const status = sec.publicStatus(req);
+      if (req.tenant) {
+        status.tenant = {
+          id: req.tenant.tenant.id,
+          name: req.tenant.tenant.name,
+          slug: req.tenant.tenant.slug
+        };
+      }
+      return json(res, 200, status);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/auth/setup') return json(res, 200, await sec.beginSetup(await readJson(req), remoteAddress(req)));
     if (req.method === 'POST' && url.pathname === '/api/auth/setup/verify') {
-      const result = await security.finishSetup(await readJson(req));
-      return json(res, 200, { authenticated: true, csrfToken: result.csrfToken, user: result.user, recoveryCodes: result.recoveryCodes }, { 'Set-Cookie': security.sessionCookie(result.token) });
+      const result = await sec.finishSetup(await readJson(req));
+      return json(res, 200, { authenticated: true, csrfToken: result.csrfToken, user: result.user, recoveryCodes: result.recoveryCodes }, { 'Set-Cookie': sec.sessionCookie(result.token) });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/login') {
-      const result = await security.login(await readJson(req), remoteAddress(req), req.headers['user-agent'] || '');
-      const cookies = [security.sessionCookie(result.token)];
-      if (result.trustedToken) cookies.push(security.trustedDeviceCookie(result.trustedToken));
+      const result = await sec.login(await readJson(req), remoteAddress(req), req.headers['user-agent'] || '');
+      const cookies = [sec.sessionCookie(result.token)];
+      if (result.trustedToken) cookies.push(sec.trustedDeviceCookie(result.trustedToken));
       return json(res, 200, { authenticated: true, csrfToken: result.csrfToken, user: result.user, trustedDevice: Boolean(result.trustedToken) }, { 'Set-Cookie': cookies });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
-      const session = assertAuthenticated(req, true); await security.logout(req);
-      return json(res, 200, { ok: true, user: session.username }, { 'Set-Cookie': [security.clearCookie(), security.clearTrustedDeviceCookie()] });
+      const session = assertAuthenticated(req, true); await sec.logout(req);
+      return json(res, 200, { ok: true, user: session.username }, { 'Set-Cookie': [sec.clearCookie(), sec.clearTrustedDeviceCookie()] });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/profile') {
       const session = assertAuthenticated(req, true);
-      const user = await security.updateCurrentUserProfile(session.username, await readJson(req));
+      const user = await sec.updateCurrentUserProfile(session.username, await readJson(req));
       return json(res, 200, { ok: true, user });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/register') {
-      const result = await security.registerUser(await readJson(req));
+      const result = await sec.registerUser(await readJson(req));
       return json(res, 200, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/register/verify') {
-      const result = await security.verifyRegisteredUser(await readJson(req));
+      const result = await sec.verifyRegisteredUser(await readJson(req));
       return json(res, 200, result);
     }
     if (req.method === 'GET' && url.pathname === '/api/auth/users') {
       const session = assertAuthenticated(req);
-      return json(res, 200, { users: security.listUsers(), currentRole: session.role || 'collaborator' });
+      return json(res, 200, { users: sec.listUsers(), currentRole: session.role || 'collaborator' });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/users/manage') {
       const session = assertAuthenticated(req, true);
       if (session.role !== 'master_admin') throw Object.assign(new Error('Apenas o administrador principal pode gerenciar usuários.'), { statusCode: 403 });
       const body = await readJson(req);
-      const user = await security.updateUserStatus(body.userId, body);
+      const user = await sec.updateUserStatus(body.userId, body);
       return json(res, 200, { ok: true, user });
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/mfa/enable') {
       const session = assertAuthenticated(req, true);
       const body = await readJson(req);
-      const result = await security.enableUserMfa(session.username, body);
+      const result = await sec.enableUserMfa(session.username, body);
       return json(res, 200, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/mfa/disable') {
       const session = assertAuthenticated(req, true);
       const body = await readJson(req);
-      const result = await security.disableUserMfa(session.username, body);
+      const result = await sec.disableUserMfa(session.username, body);
       return json(res, 200, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/integrations/judicial/sync') {
@@ -2279,8 +2411,8 @@ const server = http.createServer(async (req, res) => {
       return json(res, result.completed || result.skipped ? 200 : 202, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/trusted-device/revoke') {
-      assertAuthenticated(req, true); const revoked = await security.revokeTrustedDevice(req);
-      return json(res, 200, { ok: true, revoked }, { 'Set-Cookie': security.clearTrustedDeviceCookie() });
+      assertAuthenticated(req, true); const revoked = await sec.revokeTrustedDevice(req);
+      return json(res, 200, { ok: true, revoked }, { 'Set-Cookie': sec.clearTrustedDeviceCookie() });
     }
 
     if (await handleRegistryRequest(req, res, url)) return;
@@ -2595,11 +2727,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/api/events') { assertAuthenticated(req); return json(res, 200, await readRuntime()); }
-    if (req.method === 'GET' && url.pathname === '/api/state') { assertAuthenticated(req); return json(res, 200, await readPublicAppStateEnvelope()); }
+    if (req.method === 'GET' && url.pathname === '/api/state') { assertAuthenticated(req); return json(res, 200, await readPublicAppStateEnvelope(req.tenant)); }
     if (req.method === 'POST' && url.pathname === '/api/state') {
       const session = assertAuthenticated(req, true);
       const body = await readJson(req, 3_000_000);
-      const saved = await saveClientAppState(body.state, body.revision ?? null, session);
+      const saved = await saveClientAppState(body.state, body.revision ?? null, session, req.tenant);
       return json(res, 200, { ok: true, ...saved });
     }
 

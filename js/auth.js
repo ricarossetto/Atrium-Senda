@@ -14,6 +14,13 @@
       try {
         const status = await request('/api/auth/status');
         state.configured = status.configured;
+        if (status.tenant) {
+          state.tenant = status.tenant;
+          const eyebrow = document.querySelector('.auth-visual-copy .eyebrow');
+          if (eyebrow) eyebrow.textContent = `Escritório: ${status.tenant.name}`;
+          const authTabNewOffice = byId('authTabNewOffice');
+          if (authTabNewOffice) authTabNewOffice.style.display = 'none';
+        }
         if (status.authenticated) {
           state.csrfToken = status.csrfToken; state.trustedDevice = Boolean(status.trustedDevice); state.user = status.user;
           this.enter(status.user);
@@ -83,6 +90,17 @@
         byId('authTabRegister')?.setAttribute('aria-selected', 'true');
         byId('authTabLogin')?.setAttribute('aria-selected', 'false');
         this.show('authRegisterForm');
+      });
+      byId('authTabNewOffice')?.addEventListener('click', () => {
+        if (window.AtriumSaas?.renderSaasModal) {
+          window.AtriumSaas.renderSaasModal(document.body);
+        } else {
+          import('./features/saas-onboarding.js').then(module => {
+            const saas = module.createSaasOnboardingFeature();
+            window.AtriumSaas = saas;
+            saas.renderSaasModal(document.body);
+          }).catch(err => console.error('Erro ao carregar módulo SaaS:', err));
+        }
       });
       byId('skipMfaButton')?.addEventListener('click', async () => {
         this.feedback('');

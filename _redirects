@@ -1,0 +1,10 @@
+# =============================================================================
+# CLOUDFLARE PAGES — REVERSE PROXY & SPA ROUTING RULES
+# =============================================================================
+
+# Encaminha transparentemente todas as chamadas de API para o Backend VPS
+# Configurado para o domínio oficial atrium.adv.br
+/api/*  https://api.atrium.adv.br/api/:splat  200
+
+# Roteamento SPA do Frontend (evita 404 ao recarregar a página)
+/*      /index.html                                   200
