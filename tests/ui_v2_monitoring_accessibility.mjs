@@ -35,7 +35,7 @@ try {
   assert.equal(await page.locator('#appShell').getAttribute('inert'), '');
   assert.deepEqual(await page.locator('#modalFields fieldset legend').allTextContents(), ['Identidade', 'OAB', 'Documento']);
   assert.equal(await page.locator('#modalForm label').count(), 5);
-  assert.equal(await page.locator('#field-oabUf option').count(), 27);
+  assert.equal(await page.locator('#field-oabUf option').count(), 28);
   assert.equal(await page.locator('#field-oabNumber').isVisible(), true);
   assert.equal(await page.locator('#field-oabUf').isVisible(), true);
   assert.equal(await page.locator('#field-document').isVisible(), false);

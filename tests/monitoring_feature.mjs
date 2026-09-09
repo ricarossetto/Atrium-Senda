@@ -153,6 +153,7 @@ try {
 
     app.openTermModal();
     const documentForm = document.getElementById('modalForm');
+    const newTermDefaultUf = documentForm.elements.oabUf.value;
     documentForm.elements.name.value = 'Pessoa Documento Sintética';
     documentForm.elements.type.value = 'document';
     documentForm.elements.document.value = 'DOCUMENTO-SINTETICO-000';
@@ -184,6 +185,7 @@ try {
 
     return {
       ufOptions,
+      newTermDefaultUf,
       editedTerm,
       secondaryAfterEdit,
       documentTerm,
@@ -204,7 +206,9 @@ try {
   assert.equal(characterization.render.issueCount, '2');
   assert.equal(characterization.render.newCount, '2');
   assert.equal(characterization.termCount, 2);
-  assert.equal(records.ufOptions.length, 27);
+  assert.equal(records.ufOptions.length, 28);
+  assert.equal(records.ufOptions[0], '');
+  assert.equal(records.newTermDefaultUf, '');
   assert.equal(records.editedTerm.id, 'term-primary');
   assert.equal(records.editedTerm.registration, 'OAB/SC 001002');
   assert.equal(records.editedTerm.oabNumber, '001002');
@@ -220,7 +224,7 @@ try {
   assert.ok(records.flushes >= 5);
   const sourceHtmlHash = createHash('sha256').update(characterization.render.sourceHtml, 'utf8').digest('hex');
   assert.equal(sourceHtmlHash, 'ee161fa95a64d817ad5d9817221cab0db44f176e7381e529958fc904f976460a');
-  console.log(`✓ Feature modular de monitoramento preservada (${sourceHtmlHash.slice(0, 12)}, 27 UFs, múltiplos termos e flush seguro)`);
+  console.log(`✓ Feature modular de monitoramento preservada (${sourceHtmlHash.slice(0, 12)}, seleção explícita entre 27 UFs, múltiplos termos e flush seguro)`);
   await context.close();
 } finally {
   await browser.close();

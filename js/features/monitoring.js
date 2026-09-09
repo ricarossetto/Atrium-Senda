@@ -131,13 +131,13 @@ export function createMonitoringFeature({
       let defaultOab = defaults.oabNumber || '';
       let defaultUf = defaults.oabUf || '';
       if (!defaultOab && registration) {
-        const ufMatch = registration.match(/([A-Z]{2})/i);
+        const ufMatch = registration.match(/\bOAB\s*\/?\s*([A-Z]{2})\b/i);
         if (ufMatch) defaultUf = ufMatch[1].toUpperCase();
         const numberMatch = registration.replace(/\D/g, '');
         if (numberMatch) defaultOab = numberMatch;
       }
-      if (!defaultUf) defaultUf = 'RS';
       const ufOptions = [
+        { value: '', label: 'Selecione a UF' },
         { value: 'RS', label: 'RS — Rio Grande do Sul' }, { value: 'SP', label: 'SP — São Paulo' },
         { value: 'SC', label: 'SC — Santa Catarina' }, { value: 'PR', label: 'PR — Paraná' },
         { value: 'RJ', label: 'RJ — Rio de Janeiro' }, { value: 'MG', label: 'MG — Minas Gerais' },
@@ -157,18 +157,20 @@ export function createMonitoringFeature({
         { name: 'name', label: 'Nome completo ou razão social', required: true, full: true, placeholder: 'Ex: André da Silva', value: defaults.name || '' },
         { name: 'type', label: 'Tipo de identificador', type: 'select', full: true, options: [{ value: 'oab', label: 'Inscrição OAB (Advogado)' }, { value: 'document', label: 'CPF ou CNPJ' }, { value: 'name', label: 'Nome Textual' }] },
         { name: 'oabNumber', label: 'Número da OAB (somente números)', placeholder: 'Ex: 123456', note: 'Digite somente os números da sua OAB, preservando o zero à esquerda quando existir.' },
-        { name: 'oabUf', label: 'Estado / Seccional (UF)', type: 'select', value: defaultUf, options: ufOptions },
+        { name: 'oabUf', label: 'Estado / Seccional (UF)', type: 'select', required: true, value: defaultUf, options: ufOptions },
         { name: 'document', label: 'CPF ou CNPJ', placeholder: 'Ex: 000.000.000-00 ou 00.000.000/0001-00' }
       ], { type: 'oab', oabNumber: defaultOab, oabUf: defaultUf, ...defaults });
 
       const typeSelect = byId('field-type');
       const oabNumberField = byId('field-oabNumber')?.closest('.field');
       const oabUfField = byId('field-oabUf')?.closest('.field');
+      const oabUfSelect = byId('field-oabUf');
       const documentField = byId('field-document')?.closest('.field');
       const updateFieldsVisibility = () => {
         const value = typeSelect?.value || 'oab';
         if (oabNumberField) oabNumberField.style.display = value === 'oab' ? '' : 'none';
         if (oabUfField) oabUfField.style.display = value === 'oab' ? '' : 'none';
+        if (oabUfSelect) oabUfSelect.required = value === 'oab';
         if (documentField) documentField.style.display = value === 'document' ? '' : 'none';
       };
       typeSelect?.addEventListener('change', updateFieldsVisibility);
@@ -188,7 +190,11 @@ export function createMonitoringFeature({
       let registration = data.registration;
       const oabNumber = data.oabNumber ? String(data.oabNumber).replace(/\D/g, '') : '';
       const oabUf = data.oabUf ? String(data.oabUf).toUpperCase() : '';
-      if (data.type === 'oab' && oabNumber) registration = `OAB/${oabUf || 'RS'} ${oabNumber}`;
+      if (data.type === 'oab' && oabNumber && !oabUf) {
+        showToast('Selecione a UF da inscrição OAB.', 'error');
+        return null;
+      }
+      if (data.type === 'oab' && oabNumber) registration = `OAB/${oabUf} ${oabNumber}`;
       else if (!registration) registration = data.document || data.name;
       const record = {
         id: defaults.id || uid('term'), active: true, ...defaults, ...data, registration,

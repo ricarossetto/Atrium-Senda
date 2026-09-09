@@ -22,6 +22,7 @@ Delimitar toda integração judicial a consulta, descoberta e importação super
 - Upsert seguro preservando dados locais significativos e identidades estáveis; partes estruturadas podem formar contatos canônicos e relações processo-cliente sem sobrescrever curadoria manual.
 - Todo CNJ estruturado do DJEN pode criar um processo-base; o DataJud enriquece esse mesmo registro com tribunal, classe, assunto e movimentos quando localizado.
 - Destinatários estruturados do DJEN viram contatos. A classificação automática como cliente exige OAB monitorada associada à comunicação e um único polo destinatário; polos múltiplos permanecem pendentes de confirmação humana.
+- Novo termo por inscrição OAB começa sem UF predefinida e exige seleção explícita da seccional; o sistema não presume RS nem outra unidade federativa.
 
 ## Forbidden operations
 
@@ -46,4 +47,4 @@ Somente dados de consulta passam pelo ingest canônico; não há persistência d
 
 ## Relevant tests
 
-`tests/collector.mjs`, `tests/judicial_discovery.mjs`, `tests/judicial_integration_rbac.mjs`, `tests/publication_task_linking.mjs`.
+`tests/collector.mjs`, `tests/judicial_discovery.mjs`, `tests/judicial_integration_rbac.mjs`, `tests/monitoring_feature.mjs`, `tests/ui_v2_monitoring.mjs`, `tests/publication_task_linking.mjs`.

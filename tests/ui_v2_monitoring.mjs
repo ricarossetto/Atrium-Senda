@@ -141,7 +141,7 @@ try {
   const settingsBefore = await page.evaluate(() => structuredClone(window.Atrium.Store.state.settings));
   await page.locator('#primaryTermCard').click();
   assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(fields => fields.map(field => field.name)), ['name', 'type', 'oabNumber', 'oabUf', 'document']);
-  assert.equal(await page.locator('#field-oabUf option').count(), 27);
+  assert.equal(await page.locator('#field-oabUf option').count(), 28);
   await page.locator('#field-name').fill('Advogada Principal Editada');
   await page.locator('#field-oabNumber').fill('OAB 001.002');
   await page.locator('#field-oabUf').selectOption('SC');

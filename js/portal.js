@@ -1511,7 +1511,7 @@ import { createTasksFeature } from './features/tasks.js';
       } else if (this.modalMode.mode === 'configuration') {
         getConfigurationFeature().saveRecord(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'term') {
-        getMonitoringFeature().saveTerm(data, this.modalMode.defaults);
+        if (!getMonitoringFeature().saveTerm(data, this.modalMode.defaults)) return;
       } else if (this.modalMode.mode === 'lead') {
         getLeadsFeature().saveLead(data, this.modalMode.defaults);
       } else if (this.modalMode.mode === 'source') {
