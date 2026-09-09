@@ -511,7 +511,15 @@ function normalizeApiKey(value) { return String(value || '').replace(/^\s*(?:Aut
 function digits(value) { return String(value || '').replace(/\D/g, ''); }
 function formatProcessNumber(value) { const d = digits(value); return d.length === 20 ? `${d.slice(0, 7)}-${d.slice(7, 9)}.${d.slice(9, 13)}.${d.slice(13, 14)}.${d.slice(14, 16)}.${d.slice(16)}` : ''; }
 function normalizeText(value) { return String(value || '').replace(/\s+/g, ' ').trim(); }
-function mergeSources(left, right) { return [...new Set([...(String(left || '').split(' + ')), right].map(normalizeText).filter(Boolean))].join(' + '); }
+function mergeSources(left, right) {
+  const sources = [left, right].flatMap(value => String(value || '').split(' + ')).map(normalizeText).filter(Boolean);
+  const unique = new Map();
+  for (const source of sources) {
+    const key = source.toLocaleLowerCase('pt-BR');
+    if (!unique.has(key)) unique.set(key, source);
+  }
+  return [...unique.values()].join(' + ');
+}
 function timestamp(value) { const parsed = Date.parse(String(value || '')); return Number.isFinite(parsed) ? parsed : 0; }
 function toIso(value) { const parsed = timestamp(value); return parsed ? new Date(parsed).toISOString() : ''; }
 
@@ -525,6 +533,7 @@ async function fetchWithTimeout(fetchImpl, url, options, timeoutMs) {
 export const datajudInternals = {
   aliasForProcess,
   formatProcessNumber,
+  mergeSources,
   mergeDatajudRecord,
   normalizeApiKey,
   processNumbersFrom

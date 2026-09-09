@@ -155,7 +155,7 @@ export function createPublicationsFeature({
   const ensurePresentationFilter = () => {
     const mode = isV2() ? 'v2' : 'classic';
     if (inboxFilter === null || (!inboxFilterExplicit && inboxFilterMode !== mode)) {
-      inboxFilter = mode === 'v2' ? 'all' : 'untreated';
+      inboxFilter = 'untreated';
     }
     inboxFilterMode = mode;
   };

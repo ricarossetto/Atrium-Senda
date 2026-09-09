@@ -57,10 +57,13 @@ try {
   await page.locator('#authSetupForm [name="displayName"]').fill('Advogada Teste');
   await page.locator('#authSetupForm [name="email"]').fill('advogada.store@example.test');
   await page.locator('#authSetupForm [name="username"]').fill('admin_store');
-  await page.locator('#authSetupForm [name="oab"]').fill('000321');
-  await page.locator('#authSetupForm [name="oabUf"]').selectOption('SC');
   await page.locator('#authSetupForm [name="password"]').fill('Senha-Teste-Store-2026!');
   await page.locator('#authSetupForm [name="confirmPassword"]').fill('Senha-Teste-Store-2026!');
+  await page.locator('#authSetupNext').click();
+  await page.locator('#authMonitoringStep:not([hidden])').waitFor();
+  await page.locator('#authSetupForm [name="oab"]').fill('000321');
+  await page.locator('#authSetupForm [name="oabUf"]').selectOption('SC');
+  await page.locator('#authSetupForm [name="enableMonitoring"]').check();
   await page.locator('#authSetupForm button[type="submit"]').click();
   await page.locator('#authTotpSetupForm.active').waitFor();
   const secret = (await page.locator('#authManualSecret').textContent()).trim();

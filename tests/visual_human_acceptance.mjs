@@ -54,7 +54,7 @@ try {
     return { height: rect.height, paddingTop: style.paddingTop, paddingBottom: style.paddingBottom, lineHeight: style.lineHeight };
   }));
   assert.equal(passwordGeometry.length, 2); assertions++;
-  assert.deepEqual(passwordGeometry.map(item => item.height), [46, 46]); assertions++;
+  assert.deepEqual(passwordGeometry.map(item => item.height), [42, 42]); assertions++;
   await capture(page, 'A-login-password-closeup.png', page.locator('#authSetupForm'));
   await context.close();
 } finally {
@@ -243,6 +243,11 @@ try {
   const notificationContext = await session.createContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
   const { page: notificationPage, pageErrors: notificationErrors } = await prepareUiV2Page(notificationContext, session.server.baseUrl, { theme: 'light' });
   await prepareUiV2PublicationsFixture(notificationPage);
+  await notificationPage.evaluate(() => {
+    const current = window.Atrium.Store.state.intimations.find(item => item.id === 'ui-v2-publication-urgent');
+    current.publishedAt = new Date().toLocaleDateString('sv-SE');
+    window.Atrium.App.renderAll();
+  });
   await notificationPage.locator('#notificationButton').click();
   await notificationPage.locator('#notificationPanel:not(.hidden)').waitFor();
   assert.equal(await notificationPage.locator('#notificationButton').getAttribute('aria-expanded'), 'true'); assertions++;

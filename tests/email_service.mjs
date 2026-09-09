@@ -720,7 +720,7 @@ try {
     process: '5000000-00.2026.4.04.7000',
     client: 'Cliente Teste Secundário',
     court: 'TRF4 — Vara de Testes Automatizados',
-    publishedAt: '2026-08-27',
+    publishedAt: new Date().toISOString().slice(0, 10),
     source: 'DJEN Oficial',
     term: 'Advogada Teste · OAB/RS 000000',
     text: 'CONTEÚDO CANÔNICO SECUNDÁRIO DO BACKEND',

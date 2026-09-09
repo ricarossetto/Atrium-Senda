@@ -261,11 +261,11 @@ export function createProcessesFeature({
       store.save();
       const button = byId('processInspectorExport');
       if (button) {
-        button.textContent = 'Processo baixado';
+        button.textContent = 'Dados exportados';
         button.classList.add('is-complete');
-        button.title = 'Baixar novamente';
+        button.title = 'Exportar novamente o backup técnico deste processo';
       }
-      showToast?.('Dossiê local do processo preparado para download.', 'success');
+      showToast?.('Backup técnico exportado em JSON. Ele serve para guardar ou transferir os dados do processo; os autos em PDF ficam em “Gerar caderno em PDFs”.', 'success');
       return dossier;
     },
 
@@ -964,7 +964,16 @@ function resolveProcessClient(process, contacts = []) {
 }
 
 function mergeSources(left, right) {
-  return [...new Set([...(String(left || '').split(' + ')), right].map(value => String(value || '').trim()).filter(Boolean))].join(' + ');
+  const sources = [left, right]
+    .flatMap(value => String(value || '').split(' + '))
+    .map(value => value.trim())
+    .filter(Boolean);
+  const unique = new Map();
+  for (const source of sources) {
+    const key = source.toLocaleLowerCase('pt-BR');
+    if (!unique.has(key)) unique.set(key, source);
+  }
+  return [...unique.values()].join(' + ');
 }
 
 function timestamp(value) {

@@ -407,14 +407,15 @@ html[data-ui="v2"] .process-inspector > header {
 }
 
 html[data-ui="v2"] .process-inspector > footer {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--v2-space-2);
   padding: var(--v2-space-3);
   border-top: 1px solid var(--v2-color-border);
 }
 
 html[data-ui="v2"] .process-inspector > footer .button {
+  flex: 1 1 150px;
   min-width: 0;
   min-height: 36px;
   padding: 6px 7px;
@@ -423,7 +424,6 @@ html[data-ui="v2"] .process-inspector > footer .button {
   white-space: nowrap;
 }
 
-html[data-ui="v2"] .process-inspector > footer .process-delete-action { grid-column: auto; }
 html[data-ui="v2"] .process-inspector > footer .is-complete { opacity: .58; }
 
 html[data-ui="v2"] .process-inspector > header p {
@@ -766,6 +766,12 @@ html[data-ui="v2"] .process-access-key-dialog > small { color: var(--v2-color-fo
 html[data-ui="v2"] .process-access-key-dialog > label { margin-top: var(--v2-space-2); font-size: 11px; font-weight: 700; }
 html[data-ui="v2"] .process-access-key-dialog > input { min-height: 44px; padding: 0 var(--v2-space-3); color: var(--v2-color-foreground); background: var(--v2-color-surface-inset); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-md); }
 html[data-ui="v2"] .process-access-key-dialog > div { display: flex; justify-content: flex-end; gap: var(--v2-space-2); margin-top: var(--v2-space-2); }
+html[data-ui="v2"] .process-access-key-dialog .button.gold {
+  color: var(--v2-color-on-primary);
+  background: var(--v2-color-primary);
+  border-color: var(--v2-color-primary);
+  box-shadow: none;
+}
 
 html[data-ui="v2"] .process-form-sections {
   display: grid;
@@ -973,7 +979,7 @@ html[data-ui="v2"] .process-form-section .form-grid {
     min-height: 44px;
   }
 
-  html[data-ui="v2"] .process-inspector > footer { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html[data-ui="v2"] .process-inspector > footer .button { flex-basis: 132px; }
 
   html[data-ui="v2"] .process-inspector-metrics,
   html[data-ui="v2"] .process-metadata-grid {

@@ -308,7 +308,7 @@ export const Store = {
     const primaryRegistration = String(primaryTerm?.registration || '');
     const primaryIsPlaceholder = primaryTerm && !primaryTerm.oabNumber
       && (!primaryRegistration || /OAB\/UF\s+000000/i.test(primaryRegistration));
-    if (authOabNumber && /^[A-Z]{2}$/.test(authOabUf) && primaryIsPlaceholder) {
+    if (authUser?.judicialMonitoringEnabled !== false && authOabNumber && /^[A-Z]{2}$/.test(authOabUf) && primaryIsPlaceholder) {
       primaryTerm.name = authUser.displayName || primaryTerm.name;
       primaryTerm.registration = `OAB/${authOabUf} ${authOabNumber}`;
       primaryTerm.oabNumber = authOabNumber;

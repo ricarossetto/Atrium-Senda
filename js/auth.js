@@ -28,8 +28,27 @@
       byId('authSetupForm').addEventListener('submit', event => this.setup(event));
       const setupOab = byId('authSetupForm')?.elements?.oab;
       const setupOabUf = byId('authSetupForm')?.elements?.oabUf;
-      if (setupOab) { setupOab.required = true; setupOab.setAttribute('aria-required', 'true'); }
-      if (setupOabUf) { setupOabUf.required = true; setupOabUf.setAttribute('aria-required', 'true'); }
+      byId('authSetupNext').addEventListener('click', () => {
+        const form = byId('authSetupForm');
+        if (!form.reportValidity()) return;
+        if (form.elements.password.value !== form.elements.confirmPassword.value) return this.feedback('As senhas não coincidem.', 'error');
+        this.feedback('');
+        byId('authIdentityStep').hidden = true;
+        byId('authMonitoringStep').hidden = false;
+        setupOab.focus();
+      });
+      byId('authSetupBack').addEventListener('click', () => {
+        byId('authMonitoringStep').hidden = true;
+        byId('authIdentityStep').hidden = false;
+        byId('authSetupForm').elements.displayName.focus();
+      });
+      const updateMonitoringChoice = () => {
+        const ready = Boolean(setupOab.value.trim() && setupOabUf.value);
+        byId('authMonitoringChoice').hidden = !ready;
+        if (!ready) byId('authSetupForm').elements.enableMonitoring.checked = false;
+      };
+      setupOab.addEventListener('input', updateMonitoringChoice);
+      setupOabUf.addEventListener('change', updateMonitoringChoice);
       byId('authTotpSetupForm').addEventListener('submit', event => this.verifySetup(event));
       byId('authLoginForm').addEventListener('submit', event => this.login(event));
       byId('authRegisterForm')?.addEventListener('submit', event => this.register(event));
@@ -132,8 +151,9 @@
       const formElement = event.currentTarget;
       const form = new FormData(formElement);
       if (form.get('password') !== form.get('confirmPassword')) return this.feedback('As senhas não coincidem.', 'error');
-      if (!String(form.get('oab') || '').trim()) return this.feedback('Informe o número da OAB que será monitorada.', 'error');
-      if (!form.get('oabUf')) return this.feedback('Selecione a UF da OAB que será monitorada.', 'error');
+      if (!byId('authIdentityStep').hidden) { byId('authSetupNext').click(); return; }
+      const monitor = form.get('enableMonitoring') === 'on';
+      if (monitor && (!String(form.get('oab') || '').trim() || !form.get('oabUf'))) return this.feedback('Informe a OAB e a UF para ativar o monitoramento.', 'error');
       this.busy(formElement, true);
       try {
         const result = await request('/api/auth/setup', { method: 'POST', body: {
@@ -142,6 +162,7 @@
           email: form.get('email'),
           oab: form.get('oab'),
           oabUf: form.get('oabUf'),
+          enableMonitoring: monitor,
           password: form.get('password')
         } });
         state.setupToken = result.setupToken; byId('authQrCode').src = result.qrCode; byId('authManualSecret').textContent = result.manualSecret;

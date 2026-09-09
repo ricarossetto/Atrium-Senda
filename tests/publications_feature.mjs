@@ -118,6 +118,7 @@ assert.equal(ACT_RULES.some(rule => Object.hasOwn(rule, 'deadline') || Object.ha
 let listenerRegistrations = 0;
 const fakeElement = { addEventListener() { listenerRegistrations += 1; } };
 const fakeDocument = {
+  documentElement: { dataset: { ui: 'v2' } },
   getElementById(id) { return id === 'inboxFilters' ? fakeElement : null; },
   querySelectorAll() { return []; },
   body: { style: {} }
@@ -133,6 +134,7 @@ const isolatedFeature = createPublicationsFeature({
   formatDateTime: String,
   showToast() {}
 });
+assert.equal(isolatedFeature.inboxFilter, 'untreated', 'Publicações deve abrir em Não tratadas na apresentação v2.');
 
 fakeStore.state.intimations = [{
   id: 'external-preserve', externalId: 'djen:preserve', title: 'Título anterior', unread: false,

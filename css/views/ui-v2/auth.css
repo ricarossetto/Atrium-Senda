@@ -234,6 +234,8 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 
 .auth-gate #authSetupForm > .eyebrow { padding-right: 48px; }
 .auth-gate #authSetupForm > p:not(.eyebrow) { margin-bottom: 10px; line-height: 1.45; }
+.auth-gate :is(#authIdentityStep, #authMonitoringStep) > .eyebrow { padding-right: 48px; }
+.auth-gate :is(#authIdentityStep, #authMonitoringStep) > p:not(.eyebrow) { margin: 0 0 18px; color: var(--auth-muted); line-height: 1.45; }
 
 .auth-gate .auth-step label {
   gap: 7px;
@@ -418,3 +420,12 @@ html[data-theme="light"] .auth-gate .auth-feedback.success { color: #47644e; bac
   .auth-gate .auth-step.active { animation: none; }
   .auth-gate *, .auth-gate *::before, .auth-gate *::after { transition-duration: 1ms !important; }
 }
+
+/* Separate account creation from optional judicial monitoring. */
+.auth-gate [hidden] { display: none !important; }
+#authIdentityStep, #authMonitoringStep { animation: authSetupSlide .25s ease-out; }
+#authMonitoringStep > .auth-field-row { margin: 20px 0; }
+#authMonitoringChoice { margin: 16px 0; }
+#authSetupForm #authMonitoringChoice input { min-height: 20px; }
+@keyframes authSetupSlide { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { #authIdentityStep, #authMonitoringStep { animation: none; } }

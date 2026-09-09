@@ -4,7 +4,7 @@ import { buildLegalTimeline } from '../js/core/legal-timeline.js';
 const process = {
   id: 'process-timeline', number: '5000000-00.2026.8.21.0001', registeredAt: '2026-08-01',
   source: 'Cadastro sintético', feeStatus: 'em_dia', updatedAt: '2026-08-31T09:00:00.000Z',
-  movements: [{ id: 'movement-one', date: '2026-08-30T10:00:00.000Z', description: 'Movimentação sintética', source: 'TJRS_PUBLIC' }],
+  movements: [{ id: 'movement-one', date: '2026-08-30T10:00:00.000Z', description: 'Movimentação sintética', source: 'DJEN / CNJ Oficial + DataJud / CNJ + DJEN / CNJ Oficial + DataJud / CNJ' }],
   expenses: [{ id: 'expense-one', date: '2026-08-29', description: 'Despesa sintética', amount: 125.5 }],
   feeInstallments: [{ id: 'installment-one', dueDate: '2026-09-04', description: 'Parcela sintética', amount: 500, status: 'pendente' }],
   receipts: [{ id: 'receipt-one', date: '2026-09-02', description: 'Recebimento sintético', amount: 250, status: 'recebido' }]
@@ -34,6 +34,7 @@ assert.equal(timeline.find(event => event.id === 'document:document-one').target
 assert.equal(timeline.find(event => event.id === 'financial:process-timeline:expense:expense-one').detail, 'R$ 125,50');
 assert.equal(timeline.find(event => event.id === 'financial:process-timeline:installment:installment-one').detail, 'R$ 500,00 · pendente');
 assert.equal(timeline.find(event => event.id === 'financial:process-timeline:receipt:receipt-one').detail, 'R$ 250,00 · recebido');
+assert.equal(timeline.find(event => event.id.startsWith('movement:')).source, 'DJEN / CNJ Oficial + DataJud / CNJ', 'Origem composta não pode crescer com rótulos repetidos.');
 assert.equal(timeline.some(event => event.id === 'audit:audit-unrelated'), false, 'Auditoria de outro processo não pode contaminar a linha do tempo.');
 assert.equal(buildLegalTimeline(state, process, { limit: 3 }).length, 3);
 assert.deepEqual(buildLegalTimeline(null, process), []);

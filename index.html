@@ -44,14 +44,10 @@
         </div>
       </div>
       <div class="auth-visual-copy">
-        <p class="eyebrow">Seu escritório começa organizado</p>
+        <p class="eyebrow">Ambiente jurídico protegido</p>
         <h1>ATRIUM<br><em>Escritório Integrado.</em></h1>
-        <p>Informe sua OAB uma única vez. O ATRIUM prepara o monitoramento, procura seus processos e reúne as publicações recentes para conferência.</p>
-        <ol class="auth-intro-flow" aria-label="Como começar no ATRIUM">
-          <li><span>1</span><div><strong>Identifique sua atuação</strong><small>Nome, e-mail e inscrição profissional.</small></div></li>
-          <li><span>2</span><div><strong>Proteja seu acesso</strong><small>Senha forte e verificação em duas etapas.</small></div></li>
-          <li><span>3</span><div><strong>Comece com seus dados</strong><small>A primeira sincronização inicia automaticamente.</small></div></li>
-        </ol>
+        <p>Gestão jurídica organizada, segura e supervisionada para a rotina profissional do escritório.</p>
+
       </div>
       <div class="auth-security-list">
         <span><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg><span>Dados protegidos no seu computador</span></span>
@@ -67,15 +63,25 @@
         <div id="authLoading" class="auth-step active"><span class="auth-spinner"></span><h2>Verificando proteção…</h2><p>Validando a configuração de segurança.</p></div>
 
         <form id="authSetupForm" class="auth-step">
-          <div class="auth-setup-heading"><span>1 de 2</span><div><p class="eyebrow">Primeiro acesso</p><h2>Prepare seu ATRIUM</h2></div></div>
-          <p>Cadastre o responsável e a OAB que o sistema deverá monitorar. Depois, você escolherá a proteção em duas etapas.</p>
+          <div id="authIdentityStep"><p class="eyebrow">Primeiro acesso</p><h2>Crie seu acesso mestre</h2>
+          <p>Sua senha é privada e protegida com criptografia no dispositivo. Use uma frase forte e exclusiva.</p>
           <div class="auth-setup-grid">
             <label>Nome de exibição<input name="displayName" autocomplete="name" placeholder="Dr(a). Advogado(a) Titular" required maxlength="100"></label>
             <label>E-mail profissional<input name="email" type="email" autocomplete="email" placeholder="advogado@escritorio.adv.br" required maxlength="160"></label>
             <label>Usuário de acesso<input name="username" autocomplete="username" placeholder="admin" required pattern="[a-zA-Z0-9._\x2d]{3,64}" maxlength="64"></label>
+
+            <label>Senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+            <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+          </div>
+          <small class="auth-hint">Mínimo de 10 caracteres contendo letras maiúsculas, minúsculas, números e símbolos.</small>
+          <button class="button gold auth-submit" id="authSetupNext" type="button">Continuar</button>
+          </div>
+          <div id="authMonitoringStep" hidden>
+            <p class="eyebrow">Sua atuação profissional</p><h2>Conecte sua OAB</h2>
+            <p>Se você é advogado, informe sua inscrição para acompanhar suas publicações, intimações e processos. Você também pode configurar isso depois.</p>
             <div class="auth-field-row">
-              <label><span>Número da OAB</span><input name="oab" inputmode="text" autocomplete="off" placeholder="000000" maxlength="20" required aria-required="true"></label>
-              <label><span class="auth-uf-label">UF</span><select name="oabUf" aria-label="UF da OAB" required aria-required="true">
+              <label><span>Número da OAB</span><input name="oab" inputmode="text" autocomplete="off" placeholder="000000" maxlength="20"></label>
+              <label><span class="auth-uf-label">UF</span><select name="oabUf" aria-label="UF da OAB">
                 <option value="">Selecione</option>
                 <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option><option value="AM">AM</option>
                 <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>
@@ -86,11 +92,10 @@
                 <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
               </select></label>
             </div>
-            <label>Senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
-            <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+            <label class="trust-browser-control" id="authMonitoringChoice" hidden><input type="checkbox" name="enableMonitoring"><span><strong>Ativar monitoramento automático</strong><small>Ao entrar, o ATRIUM inicia a primeira busca nas fontes disponíveis. Tarefas e prazos continuam sob sua confirmação.</small></span></label>
+            <button class="button gold auth-submit" type="submit">Continuar para proteção do acesso</button>
+            <button class="button ghost" id="authSetupBack" type="button">Voltar ao cadastro</button>
           </div>
-          <small class="auth-hint">Mínimo de 10 caracteres contendo letras maiúsculas, minúsculas, números e símbolos.</small>
-          <button class="button gold auth-submit" type="submit">Continuar e ativar o monitoramento</button>
         </form>
 
         <form id="authTotpSetupForm" class="auth-step">
@@ -1690,7 +1695,7 @@
         <button type="button" class="button gold process-create-task-action" id="processInspectorCreateTask"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Criar tarefa</button>
         <button type="button" class="button ghost hidden" id="processInspectorTjrs">Atualizar TJRS</button>
         <button type="button" class="button process-edit-action" id="processInspectorEdit">Editar processo</button>
-        <button type="button" class="button ghost" id="processInspectorExport">Baixar processo</button>
+        <button type="button" class="button ghost" id="processInspectorExport">Exportar dados</button>
         <button type="button" class="button ghost" id="processInspectorDocuments">Ver documentos</button>
         <button type="button" class="button ghost hidden" id="processInspectorDownloadAutos">Gerar caderno em PDFs</button>
         <button type="button" class="button ghost" id="processInspectorAssistant">Usar no Assistente</button>

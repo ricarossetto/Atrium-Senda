@@ -62,6 +62,7 @@ assert.equal(datajudInternals.aliasForProcess('1234567-89.2026.8.21.0001'), 'tjr
 assert.equal(datajudInternals.aliasForProcess('1234567-89.2026.4.04.0001'), 'trf4');
 assert.equal(datajudInternals.aliasForProcess('1234567-89.2026.5.04.0001'), 'trt4');
 assert.equal(datajudInternals.normalizeApiKey('Authorization: APIKey chave-publica=='), 'chave-publica==');
+assert.equal(datajudInternals.mergeSources('DJEN / CNJ Oficial + DataJud / CNJ', 'DJEN / CNJ Oficial + DataJud / CNJ'), 'DJEN / CNJ Oficial + DataJud / CNJ');
 
 const datajudTarget = {
   events: [], tasks: [], intimations: [], contacts: [], sources: [],

@@ -1,3 +1,5 @@
+import { compactSourceLabel } from '../../core/legal-timeline.js';
+
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function createProcessesV2Presenter({
@@ -174,9 +176,11 @@ export function createProcessesV2Presenter({
     byId('processInspectorDownloadAutos')?.classList.toggle('hidden', !summary.canConsultTjrs);
     const exportButton = byId('processInspectorExport');
     if (exportButton) {
-      exportButton.textContent = item.dossierDownloadedAt ? 'Processo baixado' : 'Baixar processo';
+      exportButton.textContent = item.dossierDownloadedAt ? 'Dados exportados' : 'Exportar dados';
       exportButton.classList.toggle('is-complete', Boolean(item.dossierDownloadedAt));
-      exportButton.title = item.dossierDownloadedAt ? 'Baixar novamente' : 'Baixar o dossiê local do processo';
+      exportButton.title = item.dossierDownloadedAt
+        ? 'Exportar novamente o backup técnico deste processo'
+        : 'Exportar um arquivo JSON para backup ou transferência; não contém os autos em PDF';
     }
 
     documentRef.querySelectorAll('#processTableBody [data-process-id]').forEach(row => {
@@ -283,7 +287,7 @@ export function renderRow({ item, escapeHtml, formatDate }) {
     </td>
     <td class="process-cell-registration" data-label="Cadastro">
       <strong>${formatDate(registeredDate)}</strong>
-      <small>${escapeHtml(item.source || 'eproc / Cadastro')}</small>
+      <small>${escapeHtml(compactSourceLabel(item.source) || 'eproc / Cadastro')}</small>
     </td>
     <td class="process-cell-movement" data-label="Último andamento">
       <strong>${escapeHtml(item.lastMovement || 'Sem movimentação')}</strong>
@@ -358,7 +362,7 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
       ${definition('Etapa', item.stage, escapeHtml)}
       ${definition('Responsável', item.responsible, escapeHtml)}
       ${definition('Distribuição / cadastro', formatDate(item.registeredAt || item.createdAt), escapeHtml)}
-      ${definition('Fonte', item.source, escapeHtml)}
+      ${definition('Fonte', compactSourceLabel(item.source), escapeHtml)}
       ${definition('Monitoramento', monitoring, escapeHtml)}
       ${definition('Notas / contexto', item.notes, escapeHtml)}
     </dl>
@@ -495,7 +499,7 @@ function renderJudicialContext(item, escapeHtml, formatDate) {
   const newMovsCount = Array.isArray(diff?.newMovements) ? diff.newMovements.length : (diff?.newMovements || 0);
   const collectorMeta = integration
     ? `<dl class="process-metadata-grid process-collector-metadata">
-        ${definition('Fonte / Provedor', integration.source || 'Fonte não informada', escapeHtml)}
+        ${definition('Fonte / Provedor', compactSourceLabel(integration.source) || 'Fonte não informada', escapeHtml)}
         ${integration.collectorVersion ? definition('Versão do coletor', integration.collectorVersion, escapeHtml) : ''}
         ${integration.snapshotsCount != null ? definition('Consultas armazenadas', integration.snapshotsCount, escapeHtml) : ''}
         ${definition('Tribunal', integration.court || item.court || 'Oficial', escapeHtml)}

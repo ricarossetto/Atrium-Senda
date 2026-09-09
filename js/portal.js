@@ -923,8 +923,16 @@ import { createTasksFeature } from './features/tasks.js';
       document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
       if (Store.state.settings.dismissedBanner) document.getElementById('environmentBanner').classList.add('hidden');
       this.checkFirstAccessTour();
-      void this.syncAll({ silent: true, trigger: 'startup' });
-      this.scheduleDailySync();
+      const hasConfiguredMonitoring = (Store.state.terms || []).some(term => {
+        if (!term || term.active === false) return false;
+        const number = String(term.oabNumber || term.registration || '').replace(/\D/g, '');
+        const uf = String(term.oabUf || '').trim().toUpperCase();
+        return number.length >= 3 && number !== '000000' && /^[A-Z]{2}$/.test(uf);
+      });
+      if (window.KellerAuth?.currentUser?.judicialMonitoringEnabled !== false || hasConfiguredMonitoring) {
+        void this.syncAll({ silent: true, trigger: 'startup' });
+        this.scheduleDailySync();
+      }
     },
     initials(name) {
       if (!name) return 'AD';

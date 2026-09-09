@@ -42,3 +42,29 @@ Nenhuma consulta com chave real foi feita nesta auditoria. Não declarar resolu�
 5. O usuário não quer aguardar verificações do GitHub sem pedido direto. Fazer testes locais proporcionais, sem ciclos repetitivos desnecessários.
 
 Esta auditoria não alterou código funcional, não resetou dados, não trocou branch e não reiniciou servidores.
+
+## Retomada do lote interrompido — 09/09/2026
+
+Use o texto abaixo como primeira mensagem em outra instância do Codex:
+
+> Continue o ATRIUM no repositório `C:\Users\Ricardo PC\.codex\.chatgpt-projects\g-p-6a82f704d32881919c2abfb7ef8f806a\juris-flow`, partindo do checkpoint `1673fe4` e do estado local já preservado. Leia `AGENTS.md` e `CHECKPOINT-RETOMADA.md`, confira `git status` e não descarte nenhuma alteração local. O lote pendente separa o primeiro acesso em duas telas: cadastro mestre primeiro; OAB/UF e consentimento explícito para monitoramento na segunda; MFA depois. Também inicia Publicações em "Não tratadas", preserva a janela de dois dias, remove duplic duplicação de fontes, corrige o rodapé do inspetor de processos e esclarece a exportação JSON. Os testes dirigidos de autent autenticação, segurança, publicações, processos, coletor, timeline e Visual QA já passaram. Não execute nem acompanhe `pnpm test` por iniciativa própria: o usuário rodará a suíte completa e enviará o resultado. Corrija somente os testes antigos que ainda tentam preencher OAB na primeira tela e os consumidores que precisam escolher explicitamente o filtro histórico. Depois faça commits claros, envie `v2.1-dev`, valide o candidato com o resultado fornecido pelo usuário e promova para `main` conforme a autorização já dada. Preserve `data/`, `.env`, cofres e a porta 4188. Mantenha o servidor do ATRIUM na porta 4173.
+
+Estado no momento deste registro:
+
+- branch `v2.1-dev`, HEAD base `1673fe4`;
+- servidor ATRIUM em `127.0.0.1:4173`, PID 9016;
+- `pnpm check` passou;
+- testes dirigidos aprovados: `security`, `collector`, `legal_timeline`, `publications_feature`, `processes_feature`, `ui_v2_auth_shell` (154/154), `ui_v2_processes`, `ui_v2_publications`, acessibilidade de Processos/Publicações e Visual QA de Processos (235/235);
+- a suíte completa foi interrompida a pedido do usuário para economizar créditos;
+- falhas observadas antes da interrupção: testes legados de setup procuram OAB ainda na primeira tela (`configuration_persistence`, `frontend_module_boot`, `store_module`); navegação/dashboard/e-mail precisam selecionar o filtro adequado após o novo default `untreated`; `visual_human_acceptance` ainda espera altura antiga de 46 px, enquanto o layout atual aprovado mede 42 px; `document_storage` apresentou um timeout isolado e deve ser repetido sozinho antes de qualquer alteração.
+
+Quando o for necessária validação completa, peça ao usuário para executar no PowerShell da raiz do projeto:
+
+```powershell
+pnpm test 2>&1 | Tee-Object -FilePath artifacts\full-validation.log
+$atriumTestExit = $LASTEXITCODE
+Get-Content artifacts\full-validation.log -Tail 120
+Write-Output "EXIT_CODE=$atriumTestExit"
+```
+
+O usuário enviará as últimas linhas e o `EXIT_CODE`; o agente não deve manter uma sessão aberta apenas para observar a suíte longa.

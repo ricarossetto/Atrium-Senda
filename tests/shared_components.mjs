@@ -73,10 +73,13 @@ async function authenticate() {
   await page.locator('#authSetupForm [name="displayName"]').fill('Advogada Componentes');
   await page.locator('#authSetupForm [name="email"]').fill('componentes@example.test');
   await page.locator('#authSetupForm [name="username"]').fill('admin_componentes');
-  await page.locator('#authSetupForm [name="oab"]').fill('000300');
-  await page.locator('#authSetupForm [name="oabUf"]').selectOption('SP');
   await page.locator('#authSetupForm [name="password"]').fill('Senha-Componentes-2026!');
   await page.locator('#authSetupForm [name="confirmPassword"]').fill('Senha-Componentes-2026!');
+  await page.locator('#authSetupNext').click();
+  await page.locator('#authMonitoringStep:not([hidden])').waitFor();
+  await page.locator('#authSetupForm [name="oab"]').fill('000300');
+  await page.locator('#authSetupForm [name="oabUf"]').selectOption('SP');
+  await page.locator('#authSetupForm [name="enableMonitoring"]').check();
   await page.locator('#authSetupForm button[type="submit"]').click();
 
   await page.locator('#authTotpSetupForm.active').waitFor();

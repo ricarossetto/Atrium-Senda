@@ -26,7 +26,7 @@ export function buildLegalTimeline(state, process, { limit = 120 } = {}) {
       date: String(event.date || ''),
       title: String(event.title),
       detail: String(event.detail || ''),
-      source: String(event.source || ''),
+      source: compactSourceLabel(event.source),
       target: String(event.target || ''),
       entityId: String(event.entityId || '')
     }));
@@ -177,4 +177,13 @@ function financialAmount(value) {
 
 function financialStatus(value) {
   return String(value || '').replaceAll('_', ' ').trim();
+}
+
+export function compactSourceLabel(value) {
+  const unique = new Map();
+  for (const source of String(value || '').split(' + ').map(item => item.trim()).filter(Boolean)) {
+    const key = source.toLocaleLowerCase('pt-BR');
+    if (!unique.has(key)) unique.set(key, source);
+  }
+  return [...unique.values()].join(' + ');
 }

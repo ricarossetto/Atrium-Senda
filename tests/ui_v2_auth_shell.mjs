@@ -22,7 +22,9 @@ assert.match(indexSource, /class="theme-toggle-btn auth-theme-toggle" data-theme
 assert.match(indexSource, /Dados protegidos no seu computador/);
 assert.match(indexSource, /Consulta judicial somente para leitura/);
 assert.match(indexSource, /Você confirma tarefas e prazos/);
-assert.match(indexSource, /A primeira sincronização inicia automaticamente/);
+assert.match(indexSource, /Crie seu acesso mestre/);
+assert.match(indexSource, /Ativar monitoramento automático/);
+assert.match(indexSource, /inicia a primeira busca nas fontes disponíveis/);
 assert.doesNotMatch(indexSource, /Criptografia AES-256-GCM|Segundo Fator TOTP \(RFC 6238\)|Sessão HttpOnly &amp; Zero Trust/);
 
 const SCENARIOS = [
@@ -37,7 +39,8 @@ const SCENARIOS = [
   { file: '09-dark-390-register.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'register', configured: true },
   { file: '10-light-1920x1080-first-setup.png', theme: 'light', viewport: { width: 1920, height: 1080 }, state: 'setup', configured: false },
   { file: '11-dark-1920x1200-first-setup.png', theme: 'dark', viewport: { width: 1920, height: 1200 }, state: 'setup', configured: false },
-  { file: '12-light-2560x1080-first-setup.png', theme: 'light', viewport: { width: 2560, height: 1080 }, state: 'setup', configured: false }
+  { file: '12-light-2560x1080-first-setup.png', theme: 'light', viewport: { width: 2560, height: 1080 }, state: 'setup', configured: false },
+  { file: '13-light-1920x1080-monitoring-setup.png', theme: 'light', viewport: { width: 1920, height: 1080 }, state: 'setup-monitoring', configured: false }
 ];
 
 fs.mkdirSync(OUTPUT, { recursive: true });
@@ -80,9 +83,23 @@ try {
         window.KellerAuth.show('authRecoveryStep');
         document.getElementById('authRecoveryCodes').textContent = 'SYNTH-RECOVERY-01\nSYNTH-RECOVERY-02\nSYNTH-RECOVERY-03';
       }
+      if (state === 'setup-monitoring') {
+        const form = document.getElementById('authSetupForm');
+        window.KellerAuth.show('authSetupForm');
+        form.elements.displayName.value = 'Advogada Teste';
+        form.elements.email.value = 'advogada@example.test';
+        form.elements.username.value = 'advogada.teste';
+        form.elements.password.value = 'Senha-Sintetica-2026!';
+        form.elements.confirmPassword.value = 'Senha-Sintetica-2026!';
+        document.getElementById('authSetupNext').click();
+        form.elements.oab.value = '000000';
+        form.elements.oab.dispatchEvent(new Event('input', { bubbles: true }));
+        form.elements.oabUf.value = 'RS';
+        form.elements.oabUf.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     }, { state: scenario.state, theme: scenario.theme });
 
-    const expectedId = ({ loading: 'authLoading', login: 'authLoginForm', 'login-error': 'authLoginForm', register: 'authRegisterForm', setup: 'authSetupForm', totp: 'authTotpSetupForm', recovery: 'authRecoveryStep' })[scenario.state];
+    const expectedId = ({ loading: 'authLoading', login: 'authLoginForm', 'login-error': 'authLoginForm', register: 'authRegisterForm', setup: 'authSetupForm', 'setup-monitoring': 'authSetupForm', totp: 'authTotpSetupForm', recovery: 'authRecoveryStep' })[scenario.state];
     await page.locator(`#${expectedId}.active`).waitFor();
     await page.waitForFunction(() => [...document.querySelectorAll('#authGate *')]
       .flatMap(element => element.getAnimations())
@@ -151,11 +168,9 @@ try {
         const cardBox = card.getBoundingClientRect();
         return {
           displayName: rect('displayName'), email: rect('email'), username: rect('username'),
-          oab: rect('oab'), oabUf: rect('oabUf'), password: rect('password'), confirmPassword: rect('confirmPassword'),
+          password: rect('password'), confirmPassword: rect('confirmPassword'),
           cardOverflow: card.scrollHeight - card.clientHeight,
           themeControlInsideCard: document.querySelector('.auth-theme-toggle')?.parentElement === card,
-          ufLabelAlignment: getComputedStyle(document.querySelector('.auth-uf-label')).textAlign,
-          ufLabelPadding: Number.parseFloat(getComputedStyle(document.querySelector('.auth-uf-label')).paddingLeft),
           brandTitleSize: Number.parseFloat(getComputedStyle(brandTitle).fontSize),
           brandSubtitleSize: Number.parseFloat(getComputedStyle(brandSubtitle).fontSize),
           brandSubtitleStyle: getComputedStyle(brandSubtitle).fontStyle,
@@ -173,19 +188,42 @@ try {
       const fullWidth = ['displayName', 'email', 'username', 'password', 'confirmPassword'].map(name => setupLayout[name]);
       assert.ok(fullWidth.every(box => Math.abs(box.left - fullWidth[0].left) <= 1 && Math.abs(box.width - fullWidth[0].width) <= 1)); assertions++;
       assert.ok(setupLayout.displayName.top < setupLayout.email.top && setupLayout.email.top < setupLayout.username.top); assertions++;
-      assert.ok(setupLayout.username.top < setupLayout.oab.top && setupLayout.oab.top < setupLayout.password.top && setupLayout.password.top < setupLayout.confirmPassword.top); assertions++;
-      assert.ok(Math.abs(setupLayout.oab.top - setupLayout.oabUf.top) <= 1 && Math.abs(setupLayout.oab.height - setupLayout.oabUf.height) <= 1); assertions++;
-      assert.ok(setupLayout.oab.right < setupLayout.oabUf.left && setupLayout.oabUf.width >= 120); assertions++;
+      assert.ok(setupLayout.username.top < setupLayout.password.top && setupLayout.password.top < setupLayout.confirmPassword.top); assertions++;
       assert.ok(setupLayout.cardOverflow <= 2, `O primeiro acesso não deve exigir rolagem interna: ${setupLayout.cardOverflow}px.`); assertions++;
       assert.equal(setupLayout.themeControlInsideCard, true); assertions++;
-      assert.equal(setupLayout.ufLabelAlignment, 'left'); assertions++;
-      assert.equal(setupLayout.ufLabelPadding, 8); assertions++;
       assert.equal(setupLayout.brandSubtitleStyle, 'normal'); assertions++;
       assert.ok(setupLayout.brandSubtitleSize < setupLayout.brandTitleSize * .8); assertions++;
       assert.ok(setupLayout.cardCenterOffset <= 2, `O cartão deve ficar centralizado verticalmente: desvio de ${setupLayout.cardCenterOffset}px.`); assertions++;
       assert.equal(setupLayout.securityItemsUseHangingIndent, true); assertions++;
-      assert.equal(setupLayout.oabRequired, true); assertions++;
-      assert.equal(setupLayout.oabUfRequired, true); assertions++;
+      assert.equal(setupLayout.oabRequired, false); assertions++;
+      assert.equal(setupLayout.oabUfRequired, false); assertions++;
+      assert.equal(await page.locator('#authIdentityStep').isVisible(), true); assertions++;
+      assert.equal(await page.locator('#authMonitoringStep').isVisible(), false); assertions++;
+    }
+    if (scenario.state === 'setup-monitoring') {
+      const setupLayout = await page.evaluate(() => {
+        const rect = name => {
+          const box = document.querySelector(`#authSetupForm [name="${name}"]`).getBoundingClientRect();
+          return { top: box.top, left: box.left, right: box.right, width: box.width, height: box.height };
+        };
+        const card = document.querySelector('.auth-card').getBoundingClientRect();
+        return {
+          oab: rect('oab'),
+          oabUf: rect('oabUf'),
+          monitoringVisible: Boolean(document.getElementById('authMonitoringChoice').getClientRects().length),
+          cardCenterOffset: Math.abs(card.top + card.height / 2 - innerHeight / 2),
+          cardOverflow: document.querySelector('.auth-card').scrollHeight - document.querySelector('.auth-card').clientHeight,
+          ufLabelAlignment: getComputedStyle(document.querySelector('.auth-uf-label')).textAlign,
+          ufLabelPadding: Number.parseFloat(getComputedStyle(document.querySelector('.auth-uf-label')).paddingLeft)
+        };
+      });
+      assert.ok(Math.abs(setupLayout.oab.top - setupLayout.oabUf.top) <= 1 && Math.abs(setupLayout.oab.height - setupLayout.oabUf.height) <= 1); assertions++;
+      assert.ok(setupLayout.oab.right < setupLayout.oabUf.left && setupLayout.oabUf.width >= 120); assertions++;
+      assert.equal(setupLayout.monitoringVisible, true); assertions++;
+      assert.equal(setupLayout.ufLabelAlignment, 'left'); assertions++;
+      assert.equal(setupLayout.ufLabelPadding, 8); assertions++;
+      assert.ok(setupLayout.cardOverflow <= 2, `A etapa profissional não deve exigir rolagem interna: ${setupLayout.cardOverflow}px.`); assertions++;
+      assert.ok(setupLayout.cardCenterOffset <= 2, `O cartão profissional deve ficar centralizado: desvio de ${setupLayout.cardCenterOffset}px.`); assertions++;
     }
 
     const output = path.join(OUTPUT, scenario.file);
@@ -203,7 +241,7 @@ try {
     await context.close();
     return names;
   })();
-  assert.deepEqual(fieldNames, ['code', 'confirmPassword', 'displayName', 'email', 'oab', 'oabUf', 'password', 'trustBrowser', 'username']);
+  assert.deepEqual(fieldNames, ['code', 'confirmPassword', 'displayName', 'email', 'enableMonitoring', 'oab', 'oabUf', 'password', 'trustBrowser', 'username']);
 
   const publicThemeControl = await (async () => {
     const context = await browser.newContext();

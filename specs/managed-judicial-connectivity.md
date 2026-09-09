@@ -17,12 +17,12 @@ Supervisionar cobertura judicial por identidade e portal, com estratégia explí
 - “Verificado” exige fonte pública canônica ou evidência explícita; demais portais ficam `experimental` ou `not_verified`.
 - Um único coletor gerenciado executa por vez no servidor.
 - Recarregar, abrir outra aba ou repetir a autenticação não repete a sincronização da mesma inicialização nem a execução diária já reivindicada.
-- No primeiro acesso pela interface, a OAB e a seccional são obrigatórias e formam o termo principal antes da sincronização automática de inicialização; a tela informa antecipadamente esse comportamento.
+- No primeiro acesso, a criação da conta ocorre antes da configuração profissional. OAB e seccional são opcionais; quando informadas, o usuário decide explicitamente se deseja ativar o monitoramento automático. Somente a escolha afirmativa forma o termo principal e libera a sincronização automática de inicialização e a execução diária.
 
 ## Allowed operations
 
 - `authenticate`, `health`, `discoverCases`, `fetchMovements`, `fetchPublications`, `disconnect` em adapter declarado read-only.
-- Atualização manual explícita, uma sincronização por inicialização do servidor e uma execução diária às 10h no fuso `America/Sao_Paulo` enquanto o portal estiver aberto.
+- Atualização manual explícita; quando o monitoramento automático foi aceito, uma sincronização por inicialização do servidor e uma execução diária às 10h no fuso `America/Sao_Paulo` enquanto o portal estiver aberto.
 - Antes de consolidar o Store, a sincronização geral aguarda a leitura completa do acervo nos portais autenticados habilitados. Essa etapa descobre os processos do procurador independentemente de haver publicação recente; DJEN e DataJud continuam no encadeamento público posterior e não são executados em duplicidade pelo coletor gerenciado.
 - Sessão assistida explícita para portais habilitados; o usuário conclui login, CAPTCHA, TOTP ou confirmação humana exigida pelo tribunal.
 

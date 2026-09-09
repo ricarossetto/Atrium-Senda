@@ -16,6 +16,7 @@ Endpoints de tratamento em `server.mjs`, `js/features/publications.js` e migrati
 - Transições válidas são decididas no backend com ator autenticado e revision.
 - Tratada no ATRIUM não significa ciência no tribunal.
 - A triagem corrente usa automaticamente uma janela móvel de dois dias civis: hoje e ontem, segundo a data local do dispositivo.
+- Ao abrir Publicações, a lista inicia em `Não tratadas`; o histórico completo continua disponível por escolha explícita no filtro de período.
 - Métricas, badge lateral, alertas e Activity Inbox usam a mesma janela. "Todas as publicações (histórico)" permite consultar registros anteriores sem alterar seu tratamento.
 - Datas desconhecidas continuam visíveis para conferência. A janela de publicações nunca restringe a descoberta nem a atualização dos processos cadastrados.
 

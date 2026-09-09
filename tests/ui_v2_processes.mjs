@@ -97,6 +97,7 @@ try {
       'processInspectorCreateTask', 'processInspectorTjrs', 'processInspectorEdit', 'processInspectorExport',
       'processInspectorDocuments', 'processInspectorDownloadAutos', 'processInspectorAssistant', 'processInspectorDelete'
     ], 'Rodapé deve seguir a ordem operacional solicitada.');
+    assert.equal(await page.locator('#processInspector > footer').evaluate(element => getComputedStyle(element).display), 'flex', 'Rodapé deve distribuir as ações sem célula vazia.');
     assert.match(await page.locator('#processInspectorCreateTask').evaluate(element => getComputedStyle(element).backgroundColor), /194, 220, 234/, 'A ação principal do inspetor deve usar azul mineral no tema claro.');
     await page.locator('[data-process-access-key]').click();
     assert.equal(await page.locator('#processAccessKeyBackdrop:not(.hidden)').count(), 1);
@@ -105,8 +106,8 @@ try {
     await page.locator('#processAccessKeyCancel').click();
     assert.equal(await page.locator('#processAccessKeyBackdrop.hidden').count(), 1);
     await page.locator('#processInspectorExport').click();
-    assert.equal(await page.locator('#processInspectorExport').textContent(), 'Processo baixado');
-    assert.equal(await page.locator('#processInspectorExport').getAttribute('title'), 'Baixar novamente');
+    assert.equal(await page.locator('#processInspectorExport').textContent(), 'Dados exportados');
+    assert.match(await page.locator('#processInspectorExport').getAttribute('title'), /backup técnico/);
     assert.equal(await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"]').getAttribute('aria-current'), 'true');
     assert.equal(requests.filter(request => /\/api\/tjrs\/consult/.test(request.url)).length, 0, 'Abrir inspector não consulta TJRS.');
 

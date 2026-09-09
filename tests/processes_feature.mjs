@@ -181,6 +181,7 @@ const lifecycleStore = {
     settings: {}, audit: [], configuration: { actionTypes: [], actionGroups: [] }
   },
   audit(action, detail) { this.state.audit.unshift({ action, detail }); },
+  save() {},
   async flush() { return true; },
   upsert(collection, record) { this.state[collection].unshift(record); }
 };
@@ -194,6 +195,8 @@ const lifecycleFeature = createProcessesFeature({
   exportJson: dossier => { exportedDossier = dossier; }, confirmProcessDeletion: () => disposableNumber, requestProcessReenable: () => disposableNumber
 });
 lifecycleFeature.render = () => [];
+const mergedSources = lifecycleFeature.upsertExternalProcess({ ...disposableProcess, source: 'DataJud / CNJ + DJEN / CNJ Oficial + DataJud / CNJ' });
+assert.equal(mergedSources.source, 'DataJud / CNJ + DJEN / CNJ Oficial', 'Origens compostas devem ser achatadas e deduplicadas.');
 const dossier = lifecycleFeature.exportProcess(disposableProcess);
 assert.equal(dossier.scope.processNumber, disposableNumber);
 assert.equal(dossier.linked.tasks.length, 1);

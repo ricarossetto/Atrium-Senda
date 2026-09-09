@@ -93,7 +93,7 @@ const store = {
     processes,
     sources: [{ id: 'source-ok-1', status: 'ok', lastCheck: '2026-09-03T11:00:00.000Z' }, { id: 'source-attention', status: 'attention', name: 'Fonte em atenção', lastCheck: '2026-09-03T10:00:00.000Z' }, { id: 'source-ok-2', status: 'ok' }],
     intimations: [
-      { id: 'publication-pending', title: 'Publicação pendente', treatmentStatus: 'untreated', unread: true, publishedAt: '2026-09-03' },
+      { id: 'publication-pending', title: 'Publicação pendente', treatmentStatus: 'untreated', unread: true, publishedAt: new Date().toLocaleDateString('sv-SE') },
       { id: 'publication-treated', title: 'Publicação tratada', treatmentStatus: 'treated', treatmentStartedAt: '2026-09-02T10:00:00.000Z', treatedAt: '2026-09-02T11:00:00.000Z' },
       { id: 'publication-discarded', title: 'Publicação descartada', treatmentStatus: 'discarded', treatmentStartedAt: '2026-09-01T10:00:00.000Z', discardedAt: '2026-09-01T12:00:00.000Z' }
     ],
