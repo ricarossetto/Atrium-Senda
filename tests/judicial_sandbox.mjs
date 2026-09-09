@@ -209,56 +209,52 @@ try {
   assert.equal(missingRes.operational, false);
   assert.equal(missingRes.errorCode, A1_ERROR_CODES.PFX_NOT_FOUND);
 
-  if (process.platform !== 'win32') {
-    console.log('ℹ️  SKIPPED — Windows verification runs in dedicated CI job (Judicial A1 Windows Verification)');
-  } else {
-    // 4.2 Gerar PFX sintético com par de chaves RSA
-    let syntheticCert = null;
-    try {
-      syntheticCert = await generateSyntheticCertCrossPlatform();
-      console.log('Certificado sintético gerado com SHA-256:', syntheticCert.thumbprintSha256);
+  // 4.2 Gerar PFX sintético com par de chaves RSA
+  let syntheticCert = null;
+  try {
+    syntheticCert = await generateSyntheticCertCrossPlatform();
+    console.log('Certificado sintético gerado com SHA-256:', syntheticCert.thumbprintSha256);
 
-      // 4.3 Teste com senha errada
-      const wrongPwdRes = await runA1Sandbox({ pfxPath: syntheticCert.filePath, passphrase: 'WRONG_PASSWORD' });
-      if (wrongPwdRes.operational !== false) {
-        console.error('\n--- DIAGNÓSTICO: Senha errada retornou operacional: true inesperadamente ---');
-        console.error('Status:', wrongPwdRes.status);
-        console.error('ErrorCode:', wrongPwdRes.errorCode);
-        console.error('ErrorMessage:', wrongPwdRes.errorMessage);
-        console.error('Steps:', JSON.stringify(wrongPwdRes.steps, null, 2));
+    // 4.3 Teste com senha errada
+    const wrongPwdRes = await runA1Sandbox({ pfxPath: syntheticCert.filePath, passphrase: 'WRONG_PASSWORD' });
+    if (wrongPwdRes.operational !== false) {
+      console.error('\n--- DIAGNÓSTICO: Senha errada retornou operacional: true inesperadamente ---');
+      console.error('Status:', wrongPwdRes.status);
+      console.error('ErrorCode:', wrongPwdRes.errorCode);
+      console.error('ErrorMessage:', wrongPwdRes.errorMessage);
+      console.error('Steps:', JSON.stringify(wrongPwdRes.steps, null, 2));
+    }
+    assert.equal(wrongPwdRes.operational, false, 'PFX com senha incorreta deve retornar operational: false');
+    assert.equal(wrongPwdRes.errorCode, A1_ERROR_CODES.INVALID_PFX_PASSWORD);
+
+    // 4.4 Teste Sandbox Completo (Assinatura + HTTPS Efêmero + Playwright mTLS + Fingerprint Match)
+    const sandboxRes = await runA1Sandbox({ pfxPath: syntheticCert.filePath, passphrase: syntheticCert.passphrase });
+    if (!sandboxRes.operational) {
+      console.error('\n======================================================');
+      console.error('  DIAGNÓSTICO DE FALHA NO A1 SANDBOX');
+      console.error('======================================================');
+      console.error('Status:', sandboxRes.status);
+      console.error('ErrorCode:', sandboxRes.errorCode);
+      console.error('ErrorMessage:', sandboxRes.errorMessage);
+      console.error('Steps executados:');
+      for (const step of (sandboxRes.steps || [])) {
+        console.error(`  [${step.status}] ${step.name} (${step.id}): ${step.detail || 'Sem detalhe'} ${step.errorCode ? `[${step.errorCode}]` : ''}`);
       }
-      assert.equal(wrongPwdRes.operational, false, 'PFX com senha incorreta deve retornar operational: false');
-      assert.equal(wrongPwdRes.errorCode, A1_ERROR_CODES.INVALID_PFX_PASSWORD);
+      console.error('======================================================\n');
+    }
 
-      // 4.4 Teste Sandbox Completo (Assinatura + HTTPS Efêmero + Playwright mTLS + Fingerprint Match)
-      const sandboxRes = await runA1Sandbox({ pfxPath: syntheticCert.filePath, passphrase: syntheticCert.passphrase });
-      if (!sandboxRes.operational) {
-        console.error('\n======================================================');
-        console.error('  DIAGNÓSTICO DE FALHA NO A1 SANDBOX (WINDOWS RUNNER)');
-        console.error('======================================================');
-        console.error('Status:', sandboxRes.status);
-        console.error('ErrorCode:', sandboxRes.errorCode);
-        console.error('ErrorMessage:', sandboxRes.errorMessage);
-        console.error('Steps executados:');
-        for (const step of (sandboxRes.steps || [])) {
-          console.error(`  [${step.status}] ${step.name} (${step.id}): ${step.detail || 'Sem detalhe'} ${step.errorCode ? `[${step.errorCode}]` : ''}`);
-        }
-        console.error('======================================================\n');
-      }
+    assert.equal(sandboxRes.operational, true, `Sandbox deve retornar operacional. Erro: ${sandboxRes.errorMessage || sandboxRes.errorCode}`);
+    assert.equal(sandboxRes.status, 'A1 OPERATIONAL');
+    assert.equal(sandboxRes.errorCode, null);
+    assert.equal(sandboxRes.steps.length, 9);
+    assert.equal(sandboxRes.steps.every(s => s.status === 'OK'), true);
+    assert.ok(sandboxRes.summary.holder.includes('Atrium Teste Unitario'));
+    assert.ok(sandboxRes.summary.documentMasked.includes('***'));
 
-      assert.equal(sandboxRes.operational, true, `Sandbox deve retornar operacional. Erro: ${sandboxRes.errorMessage || sandboxRes.errorCode}`);
-      assert.equal(sandboxRes.status, 'A1 OPERATIONAL');
-      assert.equal(sandboxRes.errorCode, null);
-      assert.equal(sandboxRes.steps.length, 9);
-      assert.equal(sandboxRes.steps.every(s => s.status === 'OK'), true);
-      assert.ok(sandboxRes.summary.holder.includes('Atrium Teste Unitario'));
-      assert.ok(sandboxRes.summary.documentMasked.includes('***'));
-
-      console.log('✓ A1 Sandbox (mTLS + Playwright + Nonce Signature + Fingerprint Verification) 100% aprovado.');
-    } finally {
-      if (syntheticCert?.filePath) {
-        try { await unlink(syntheticCert.filePath); } catch {}
-      }
+    console.log('✓ A1 Sandbox (mTLS + Playwright + Nonce Signature + Fingerprint Verification) 100% aprovado.');
+  } finally {
+    if (syntheticCert?.filePath) {
+      try { await unlink(syntheticCert.filePath); } catch {}
     }
   }
 
