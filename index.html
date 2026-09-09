@@ -93,7 +93,8 @@
               </select></label>
             </div>
             <label class="trust-browser-control" id="authMonitoringChoice" hidden><input type="checkbox" name="enableMonitoring"><span><strong>Ativar monitoramento automático</strong><small>Ao entrar, o ATRIUM inicia a primeira busca nas fontes disponíveis. Tarefas e prazos continuam sob sua confirmação.</small></span></label>
-            <button class="button gold auth-submit" type="submit">Continuar para proteção do acesso</button>
+            <small class="auth-hint" id="authMonitoringDecisionHint" aria-live="polite">Você poderá ativar o monitoramento depois em Fontes monitoradas.</small>
+            <button class="button gold auth-submit" id="authMonitoringContinue" type="submit">Continuar sem monitoramento</button>
             <button class="button ghost" id="authSetupBack" type="button">Voltar ao cadastro</button>
           </div>
         </form>

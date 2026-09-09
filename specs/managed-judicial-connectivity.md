@@ -17,7 +17,7 @@ Supervisionar cobertura judicial por identidade e portal, com estratégia explí
 - “Verificado” exige fonte pública canônica ou evidência explícita; demais portais ficam `experimental` ou `not_verified`.
 - Um único coletor gerenciado executa por vez no servidor.
 - Recarregar, abrir outra aba ou repetir a autenticação não repete a sincronização da mesma inicialização nem a execução diária já reivindicada.
-- No primeiro acesso, a criação da conta ocorre antes da configuração profissional. OAB e seccional são opcionais; quando informadas, o usuário decide explicitamente se deseja ativar o monitoramento automático. Somente a escolha afirmativa forma o termo principal e libera a sincronização automática de inicialização e a execução diária.
+- No primeiro acesso, a criação da conta ocorre antes da configuração profissional. OAB e seccional são opcionais e devem ser preenchidas em conjunto; quando informadas, o usuário decide explicitamente se deseja ativar o monitoramento automático. A ação final distingue claramente continuar sem monitoramento de ativá-lo. Somente a escolha afirmativa forma o termo principal e libera a sincronização automática de inicialização e a execução diária.
 
 ## Allowed operations
 

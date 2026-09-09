@@ -211,6 +211,7 @@ try {
           oab: rect('oab'),
           oabUf: rect('oabUf'),
           monitoringVisible: Boolean(document.getElementById('authMonitoringChoice').getClientRects().length),
+          continueLabel: document.getElementById('authMonitoringContinue').textContent.trim(),
           cardCenterOffset: Math.abs(card.top + card.height / 2 - innerHeight / 2),
           cardOverflow: document.querySelector('.auth-card').scrollHeight - document.querySelector('.auth-card').clientHeight,
           ufLabelAlignment: getComputedStyle(document.querySelector('.auth-uf-label')).textAlign,
@@ -220,10 +221,14 @@ try {
       assert.ok(Math.abs(setupLayout.oab.top - setupLayout.oabUf.top) <= 1 && Math.abs(setupLayout.oab.height - setupLayout.oabUf.height) <= 1); assertions++;
       assert.ok(setupLayout.oab.right < setupLayout.oabUf.left && setupLayout.oabUf.width >= 120); assertions++;
       assert.equal(setupLayout.monitoringVisible, true); assertions++;
+      assert.equal(setupLayout.continueLabel, 'Continuar sem monitoramento'); assertions++;
       assert.equal(setupLayout.ufLabelAlignment, 'left'); assertions++;
       assert.equal(setupLayout.ufLabelPadding, 8); assertions++;
       assert.ok(setupLayout.cardOverflow <= 2, `A etapa profissional não deve exigir rolagem interna: ${setupLayout.cardOverflow}px.`); assertions++;
       assert.ok(setupLayout.cardCenterOffset <= 2, `O cartão profissional deve ficar centralizado: desvio de ${setupLayout.cardCenterOffset}px.`); assertions++;
+      await page.locator('#authMonitoringChoice input').check();
+      assert.equal(await page.locator('#authMonitoringContinue').textContent(), 'Ativar monitoramento e continuar'); assertions++;
+      assert.match(await page.locator('#authMonitoringDecisionHint').textContent(), /primeira busca começa automaticamente/i); assertions++;
     }
 
     const output = path.join(OUTPUT, scenario.file);

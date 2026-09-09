@@ -28,6 +28,9 @@
       byId('authSetupForm').addEventListener('submit', event => this.setup(event));
       const setupOab = byId('authSetupForm')?.elements?.oab;
       const setupOabUf = byId('authSetupForm')?.elements?.oabUf;
+      const setupMonitoringToggle = byId('authSetupForm')?.elements?.enableMonitoring;
+      const setupMonitoringContinue = byId('authMonitoringContinue');
+      const setupMonitoringDecisionHint = byId('authMonitoringDecisionHint');
       byId('authSetupNext').addEventListener('click', () => {
         const form = byId('authSetupForm');
         if (!form.reportValidity()) return;
@@ -43,12 +46,27 @@
         byId('authSetupForm').elements.displayName.focus();
       });
       const updateMonitoringChoice = () => {
-        const ready = Boolean(setupOab.value.trim() && setupOabUf.value);
+        const hasOab = Boolean(setupOab.value.trim());
+        const hasUf = Boolean(setupOabUf.value);
+        const ready = hasOab && hasUf;
         byId('authMonitoringChoice').hidden = !ready;
-        if (!ready) byId('authSetupForm').elements.enableMonitoring.checked = false;
+        if (!ready) setupMonitoringToggle.checked = false;
+        const monitoringEnabled = ready && setupMonitoringToggle.checked;
+        setupMonitoringContinue.textContent = monitoringEnabled
+          ? 'Ativar monitoramento e continuar'
+          : 'Continuar sem monitoramento';
+        setupMonitoringDecisionHint.textContent = hasOab !== hasUf
+          ? 'Complete o número e a UF da OAB ou limpe os campos para continuar sem monitoramento.'
+          : monitoringEnabled
+            ? 'A primeira busca começa automaticamente depois que você entrar.'
+            : ready
+              ? 'Sua OAB será salva, mas nenhuma busca automática será iniciada.'
+              : 'Você poderá ativar o monitoramento depois em Fontes monitoradas.';
       };
       setupOab.addEventListener('input', updateMonitoringChoice);
       setupOabUf.addEventListener('change', updateMonitoringChoice);
+      setupMonitoringToggle.addEventListener('change', updateMonitoringChoice);
+      updateMonitoringChoice();
       byId('authTotpSetupForm').addEventListener('submit', event => this.verifySetup(event));
       byId('authLoginForm').addEventListener('submit', event => this.login(event));
       byId('authRegisterForm')?.addEventListener('submit', event => this.register(event));
@@ -152,6 +170,9 @@
       const form = new FormData(formElement);
       if (form.get('password') !== form.get('confirmPassword')) return this.feedback('As senhas não coincidem.', 'error');
       if (!byId('authIdentityStep').hidden) { byId('authSetupNext').click(); return; }
+      const hasOab = Boolean(String(form.get('oab') || '').trim());
+      const hasOabUf = Boolean(form.get('oabUf'));
+      if (hasOab !== hasOabUf) return this.feedback('Complete o número e a UF da OAB ou limpe os dois campos para continuar sem monitoramento.', 'error');
       const monitor = form.get('enableMonitoring') === 'on';
       if (monitor && (!String(form.get('oab') || '').trim() || !form.get('oabUf'))) return this.feedback('Informe a OAB e a UF para ativar o monitoramento.', 'error');
       this.busy(formElement, true);
