@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { renderDashboardV2Summary } from '../js/views/ui-v2/dashboard.js';
+import { prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
 
 function makeElement() {
   return { textContent: '', innerHTML: '', dataset: {} };
@@ -57,5 +58,41 @@ assert.match(indexSource, /Triagem humana necessária/, 'A hierarquia deve expli
 assert.match(indexSource, /Confirme datas críticas/, 'A UI não pode apresentar prazo como inferência automática.');
 assert.match(indexSource, /Indicadores para decisão/, 'O dashboard deve expor somente indicadores úteis para decisão.');
 assert.match(indexSource, /Prazos em 7 dias/, 'Prazos de tarefas não podem ser rotulados como compromissos.');
+
+const responsiveSession = await startUiV2Session({ viewport: { width: 1635, height: 912 } });
+try {
+  for (const viewport of [{ width: 1635, height: 912 }, { width: 1440, height: 900 }]) {
+    const context = await responsiveSession.createContext({ viewport });
+    const { page, pageErrors } = await prepareUiV2Page(context, responsiveSession.server.baseUrl);
+    const layout = await page.evaluate(() => {
+      const rect = selector => document.querySelector(selector).getBoundingClientRect();
+      const tasks = rect('.dashboard-tasks-column');
+      const widgetsColumn = rect('.dashboard-widgets-column');
+      const filters = rect('#dashboardTaskFilters');
+      const controls = rect('.dashboard-tasks-header > div:last-child');
+      const title = rect('.dashboard-tasks-title');
+      return {
+        tasksRight: tasks.right,
+        tasksWidth: tasks.width,
+        widgetsLeft: widgetsColumn.left,
+        filtersRight: filters.right,
+        controlsTop: controls.top,
+        titleBottom: title.bottom,
+        globalOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth
+      };
+    });
+
+    assert.ok(layout.tasksRight < layout.widgetsLeft, `${viewport.width}px: tarefas não podem invadir Minhas atividades.`);
+    assert.ok(layout.filtersRight <= layout.tasksRight + 1, `${viewport.width}px: filtros devem permanecer dentro do cartão.`);
+    assert.ok(layout.globalOverflow <= 1, `${viewport.width}px: o ajuste não pode criar rolagem horizontal.`);
+    if (layout.tasksWidth <= 920) {
+      assert.ok(layout.controlsTop >= layout.titleBottom - 1, `${viewport.width}px: controles devem descer quando faltar largura.`);
+    }
+    assert.deepEqual(pageErrors, []);
+    await context.close();
+  }
+} finally {
+  await responsiveSession.stop();
+}
 
 console.log('✓ Dashboard V2 aprovado: atenção, agenda e panorama acionável usam somente dados derivados existentes.');

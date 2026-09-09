@@ -307,6 +307,9 @@ html[data-ui="v2"] #view-dashboard .dashboard-insight-card > small { align-self:
 html[data-ui="v2"] #view-dashboard .dashboard-insight-empty { margin: 0; color: var(--v2-color-muted-foreground); font-size: 11px; }
 
 html[data-ui="v2"] #view-dashboard .dashboard-tasks-column {
+  min-width: 0;
+  container-type: inline-size;
+  container-name: dashboard-tasks;
   gap: var(--v2-space-3);
   padding: var(--v2-space-4);
   background: var(--v2-color-surface-elevated);
@@ -476,6 +479,7 @@ html[data-ui="v2"] #view-dashboard .task-tag.audiencia { border-color: var(--v2-
 html[data-ui="v2"] #view-dashboard .task-tag.tarefa { border-color: var(--v2-color-success) !important; }
 
 html[data-ui="v2"] #view-dashboard .dashboard-widgets-column {
+  min-width: 0;
   gap: var(--v2-space-3);
 }
 
@@ -533,6 +537,23 @@ html[data-ui="v2"] #view-dashboard .dashboard-reminder-item:hover {
 
 html[data-ui="v2"] #view-dashboard .dashboard-reminder-date {
   color: var(--v2-color-foreground-secondary);
+}
+
+@container dashboard-tasks (max-width: 920px) {
+  html[data-ui="v2"] #view-dashboard .dashboard-tasks-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  html[data-ui="v2"] #view-dashboard .dashboard-tasks-header > div:last-child {
+    width: 100%;
+    flex-wrap: wrap !important;
+  }
+
+  html[data-ui="v2"] #dashboardTaskFilters {
+    max-width: 100%;
+    overflow-x: auto;
+  }
 }
 
 @media (max-width: 1260px) {
