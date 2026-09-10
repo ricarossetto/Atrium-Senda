@@ -4,5 +4,11 @@
   try {
     storedTheme = localStorage.getItem('atrium_theme') || localStorage.getItem('jurisflow_theme');
   } catch {}
-  if (storedTheme !== 'dark') document.documentElement.dataset.theme = 'light';
+  if (storedTheme === 'dark' || storedTheme === 'light') {
+    document.documentElement.dataset.theme = storedTheme;
+  } else if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.dataset.theme = 'dark';
+  } else {
+    document.documentElement.dataset.theme = 'light';
+  }
 })();

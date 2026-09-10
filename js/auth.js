@@ -50,7 +50,18 @@
           state.csrfToken = status.csrfToken; state.trustedDevice = Boolean(status.trustedDevice); state.user = status.user; state.workspace = status.workspace;
           this.enter(status.user);
         } else {
-          this.show(status.configured ? 'authLoginForm' : 'authSetupForm');
+          const urlParams = new URLSearchParams(globalThis.location.search);
+          const hash = String(globalThis.location.hash || '').toLowerCase();
+          const hasAuthIntent = urlParams.has('auth') || urlParams.has('login') || urlParams.has('register') || hash.includes('login') || hash.includes('register') || hash.includes('auth');
+          const landing = byId('landingPage');
+          if (hasAuthIntent || !landing || !status.configured) {
+            this.show(status.configured ? (urlParams.get('auth') === 'register' || hash.includes('register') ? 'authRegisterForm' : 'authLoginForm') : 'authSetupForm');
+          } else {
+            landing.classList.remove('hidden');
+            byId('authGate')?.classList.add('hidden');
+            byId('appShell')?.classList.add('hidden');
+            this.prepareSteps(status.configured ? 'authLoginForm' : 'authSetupForm');
+          }
         }
       } catch (error) {
         this.show('authLoading'); this.feedback(error.message || 'Não foi possível validar a proteção.', 'error');
@@ -246,8 +257,40 @@
       byId('authTabRegister')?.setAttribute('aria-selected', String(id === 'authRegisterForm'));
       byId('authTabInvite')?.classList.toggle('active', id === 'authInvitationForm');
       byId('authTabInvite')?.setAttribute('aria-selected', String(id === 'authInvitationForm'));
+      const landing = byId('landingPage');
+      if (landing) landing.classList.add('hidden');
       byId('authGate').classList.remove('hidden'); byId('appShell').classList.add('hidden');
       state.authenticated = false;
+    },
+    prepareSteps(id) {
+      document.querySelectorAll('.auth-step').forEach(element => element.classList.toggle('active', element.id === id));
+      const tabs = byId('authTabs');
+      if (tabs) {
+        tabs.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep' || Boolean(state.invitationToken));
+      }
+      byId('authTabLogin')?.classList.toggle('active', id === 'authLoginForm');
+      byId('authTabLogin')?.setAttribute('aria-selected', String(id === 'authLoginForm'));
+      byId('authTabRegister')?.classList.toggle('active', id === 'authRegisterForm');
+      byId('authTabRegister')?.setAttribute('aria-selected', String(id === 'authRegisterForm'));
+      byId('authTabInvite')?.classList.toggle('active', id === 'authInvitationForm');
+      byId('authTabInvite')?.setAttribute('aria-selected', String(id === 'authInvitationForm'));
+    },
+    showLanding() {
+      const landing = byId('landingPage');
+      if (landing) {
+        landing.classList.remove('hidden');
+        byId('authGate')?.classList.add('hidden');
+        byId('appShell')?.classList.add('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        this.show('authLoginForm');
+      }
+    },
+    showLogin() {
+      this.show('authLoginForm');
+    },
+    showRegister() {
+      this.show('authRegisterForm');
     },
     async acceptInvitation(event) {
       event.preventDefault();
@@ -400,7 +443,11 @@
     },
     enter(user) {
       state.authenticated = true; state.pendingUser = null; state.user = user;
-      byId('authGate').classList.add('hidden'); byId('appShell').classList.remove('hidden'); this.feedback('');
+      byId('authGate').classList.add('hidden');
+      const landing = byId('landingPage');
+      if (landing) landing.classList.add('hidden');
+      byId('appShell').classList.remove('hidden');
+      this.feedback('');
       this.applyProfile(user);
       window.dispatchEvent(new CustomEvent('keller:authenticated', { detail: user }));
     },
@@ -559,7 +606,8 @@
     async logout() {
       if (window.KellerCentral?.Store?.flush) await window.KellerCentral.Store.flush();
       try { await this.secureFetch('/api/auth/logout', { method: 'POST' }); } catch { /* a sessão será encerrada localmente mesmo assim */ }
-      state.authenticated = false; state.csrfToken = null; state.trustedDevice = false; sessionStorage.clear(); this.show('authLoginForm');
+      state.authenticated = false; state.csrfToken = null; state.trustedDevice = false; sessionStorage.clear();
+      this.show('authLoginForm');
       this.feedback('Sessão encerrada com segurança.', 'success');
     },
     async secureFetch(url, options = {}) {

@@ -37,6 +37,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=2.3.0">
   <link rel="stylesheet" href="css/views/ui-v2/saas.css?v=2.3.0">
   <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=2.3.5">
+  <link rel="stylesheet" href="css/views/ui-v2/landing.css?v=2.4.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=2.3.2">
   <link rel="stylesheet" href="css/views/ui-v2/icons.css?v=2.3.2">
   <style id="onboardingCriticalStyles">
@@ -1007,7 +1008,521 @@
   </style>
 </head>
 <body>
-  <section class="auth-gate" id="authGate" aria-live="polite">
+  <!-- =======================================================================
+       ATRIUM OFFICIAL LANDING PAGE (HIGH-CONVERSION MINERAL EDITORIAL UI)
+       ======================================================================= -->
+  <div id="landingPage" class="hidden">
+    <div class="landing-ambient-glow" aria-hidden="true"></div>
+
+    <header class="landing-header">
+      <div class="landing-container">
+        <nav class="landing-nav-bar" aria-label="Navegação principal">
+          <a href="#landingPage" class="landing-brand" aria-label="Ir para o topo da página do Atrium">
+            <img src="assets/icons/atrium-logo.svg" alt="ATRIUM" class="landing-brand-logo logo-dark">
+            <img src="assets/icons/atrium-logo-light.svg" alt="ATRIUM" class="landing-brand-logo logo-light">
+          </a>
+
+          <ul class="landing-nav-links">
+            <li><a href="#recursos" class="landing-nav-link">Recursos</a></li>
+            <li><a href="#showcase" class="landing-nav-link">Demonstração</a></li>
+            <li><a href="#comparativo" class="landing-nav-link">Comparativo</a></li>
+            <li><a href="#soberania" class="landing-nav-link">Soberania &amp; Cofre</a></li>
+            <li><a href="#faq" class="landing-nav-link">Dúvidas Frequentes</a></li>
+          </ul>
+
+          <div class="landing-nav-actions">
+            <button type="button" class="landing-theme-toggle" data-landing-theme-toggle aria-label="Alternar tema claro e escuro">
+              <svg class="atrium-icon" aria-hidden="true" focusable="false" style="width:18px;height:18px;"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg>
+            </button>
+            <button type="button" class="landing-btn-login" data-landing-action="login">Entrar</button>
+            <button type="button" class="landing-btn-primary landing-btn-nav" data-landing-action="register">
+              <span class="btn-text-full">Começar Grátis →</span>
+              <span class="btn-text-short">Começar →</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- HERO SECTION -->
+      <section class="landing-hero" id="hero">
+        <div class="landing-container">
+          <div class="landing-pill-badge">
+            <span class="landing-pulsing-dot" aria-hidden="true"></span>
+            <span>Versão 2.4.0 Disponível · 100% Soberano &amp; Local-First</span>
+          </div>
+
+          <h1 class="landing-hero-title">
+            A Plataforma Definitiva de Gestão Jurídica.
+            <em>Sem mensalidades abusivas por usuário.</em>
+          </h1>
+
+          <p class="landing-hero-desc">
+            Centralize processos do eproc TJRS, intimações do DJEN Nacional, agenda sincronizada, cofre criptográfico AES-256 e IA assistencial de redação em uma interface soberana, rápida e impecável.
+          </p>
+
+          <div class="landing-hero-cta-group">
+            <button type="button" class="landing-btn-primary landing-hero-cta-large" data-landing-action="register">
+              Criar Meu Escritório Gratuito →
+            </button>
+            <a href="#showcase" class="landing-btn-secondary">
+              Ver Recursos em Ação ↓
+            </a>
+          </div>
+
+          <div class="landing-hero-assurances">
+            <span><span class="landing-check-icon">✓</span> Sem cartão de crédito</span>
+            <span><span class="landing-check-icon">✓</span> Instalação e ativação em 2 min</span>
+            <span><span class="landing-check-icon">✓</span> Autos e chaves no cofre local da sua máquina</span>
+            <span><span class="landing-check-icon">✓</span> mTLS nativo com o tribunal</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- HERO SHOWCASE MOCKUP -->
+      <section class="landing-showcase-section" id="showcase" aria-label="Vitrine Interativa do Sistema">
+        <div class="landing-container">
+          <div class="landing-mockup-wrapper">
+            <div class="landing-mockup-topbar">
+              <div class="landing-mockup-dots" aria-hidden="true">
+                <span class="landing-mockup-dot red"></span>
+                <span class="landing-mockup-dot yellow"></span>
+                <span class="landing-mockup-dot green"></span>
+              </div>
+
+              <div class="landing-mockup-tabs" role="tablist" aria-label="Abas de visualização do Atrium">
+                <button type="button" class="landing-mockup-tab active" data-tab="dashboard" role="tab" aria-selected="true">Dashboard Operacional</button>
+                <button type="button" class="landing-mockup-tab" data-tab="processes" role="tab" aria-selected="false">Processos &amp; eproc TJRS</button>
+                <button type="button" class="landing-mockup-tab" data-tab="publications" role="tab" aria-selected="false">DJEN &amp; Intimações IA</button>
+                <button type="button" class="landing-mockup-tab" data-tab="contacts" role="tab" aria-selected="false">Contatos &amp; Clientes</button>
+                <button type="button" class="landing-mockup-tab" data-tab="integrations" role="tab" aria-selected="false">Conexões &amp; A1</button>
+              </div>
+
+              <div class="landing-mockup-badge">
+                <span class="landing-pulsing-dot" style="background:#98c379;" aria-hidden="true"></span>
+                <span>Tempo Real · Dados Sintéticos</span>
+              </div>
+            </div>
+
+            <div class="landing-mockup-viewport">
+              <img id="landingShowcaseImage" src="assets/images/dashboard-dark.png" alt="Visualização do Atrium Dashboard" class="landing-showcase-img active" width="1920" height="1080">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- METRICS STRIP -->
+      <section class="landing-metrics-section" aria-label="Indicadores e Métricas">
+        <div class="landing-container">
+          <div class="landing-metrics-grid">
+            <div class="landing-metric-card">
+              <div class="landing-metric-number">100%</div>
+              <div class="landing-metric-title">Soberania Local-First</div>
+              <div class="landing-metric-desc">Autos, peças e dados armazenados exclusivamente no seu equipamento.</div>
+            </div>
+
+            <div class="landing-metric-card">
+              <div class="landing-metric-number">AES-256</div>
+              <div class="landing-metric-title">Criptografia Militar</div>
+              <div class="landing-metric-desc">Chave privada e certificado A1 mTLS protegidos sem tocar a nuvem.</div>
+            </div>
+
+            <div class="landing-metric-card">
+              <div class="landing-metric-number">R$ 0</div>
+              <div class="landing-metric-title">Sem Custo por Usuário</div>
+              <div class="landing-metric-desc">Escale sua banca e estagiários sem cobrança progressiva por assento.</div>
+            </div>
+
+            <div class="landing-metric-card">
+              <div class="landing-metric-number">&lt; 3s</div>
+              <div class="landing-metric-title">Triagem Instantânea</div>
+              <div class="landing-metric-desc">Atualização ágil de andamentos do eproc TJRS e publicações do DJEN.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CORE MODULES -->
+      <section class="landing-section" id="recursos">
+        <div class="landing-container">
+          <div class="landing-section-header">
+            <span class="landing-section-eyebrow">RECURSOS COMPLETOS DE PONTA A PONTA</span>
+            <h2 class="landing-section-title">Tudo o que seu escritório precisa em um único ambiente soberano.</h2>
+            <p class="landing-section-subtitle">
+              Elimine a fragmentação entre sistemas lentos, planilhas desatualizadas e riscos de vazamento. O Atrium reúne a inteligência e o controle que a sua banca merece.
+            </p>
+          </div>
+
+          <div class="landing-modules-grid">
+            <!-- Card 1 -->
+            <div class="landing-module-card">
+              <div class="landing-module-icon-box">⚖️</div>
+              <h3 class="landing-module-title">Kanban Jurídico &amp; eproc TJRS</h3>
+              <p class="landing-module-desc">
+                Acompanhe o andamento dos processos judiciais por fases visuais. Sincronização direta com o eproc TJRS e DataJud Nacional com histórico unificado de movimentações.
+              </p>
+              <div class="landing-module-tags">
+                <span class="landing-module-tag">eproc TJRS</span>
+                <span class="landing-module-tag">DataJud</span>
+                <span class="landing-module-tag">Fases Visuais</span>
+              </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="landing-module-card">
+              <div class="landing-module-icon-box">📜</div>
+              <h3 class="landing-module-title">Triagem DJEN com Inteligência IA</h3>
+              <p class="landing-module-desc">
+                Varredura unificada do Diário da Justiça Eletrônico Nacional. Classificação semântica de intimações, destaque de prazos fatais e criação assistida de tarefas.
+              </p>
+              <div class="landing-module-tags">
+                <span class="landing-module-tag">DJEN Nacional</span>
+                <span class="landing-module-tag">Prazos Fatais</span>
+                <span class="landing-module-tag">Triagem Rápida</span>
+              </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="landing-module-card">
+              <div class="landing-module-icon-box">🔐</div>
+              <h3 class="landing-module-title">Cofre Local &amp; Certificado Digital A1</h3>
+              <p class="landing-module-desc">
+                Autenticação mTLS realizada diretamente no seu navegador ou estação local. Sua senha e chave privada (.pfx/.p12) nunca são expostas a servidores de terceiros.
+              </p>
+              <div class="landing-module-tags">
+                <span class="landing-module-tag">AES-256-GCM</span>
+                <span class="landing-module-tag">mTLS Local</span>
+                <span class="landing-module-tag">Sem Nuvem</span>
+              </div>
+            </div>
+
+            <!-- Card 4 -->
+            <div class="landing-module-card">
+              <div class="landing-module-icon-box">⚡</div>
+              <h3 class="landing-module-title">IA Assistencial &amp; Minutas Soberanas</h3>
+              <p class="landing-module-desc">
+                Assistente de redação para elaboração de minutas de petições, resumos executivos de decisões judiciais e conferência estruturada, mantendo o advogado no comando.
+              </p>
+              <div class="landing-module-tags">
+                <span class="landing-module-tag">Minutas Jurídicas</span>
+                <span class="landing-module-tag">OCR Integrado</span>
+                <span class="landing-module-tag">Supervisão Humana</span>
+              </div>
+            </div>
+
+            <!-- Card 5 -->
+            <div class="landing-module-card">
+              <div class="landing-module-icon-box">📅</div>
+              <h3 class="landing-module-title">Agenda &amp; Prazos Processuais</h3>
+              <p class="landing-module-desc">
+                Controle rigoroso de audiências, perícias e prazos regimentais com sincronização bidirecional iCal para Google Calendar, Apple Calendar e Microsoft Outlook.
+              </p>
+              <div class="landing-module-tags">
+                <span class="landing-module-tag">iCal / Google</span>
+                <span class="landing-module-tag">Audiências</span>
+                <span class="landing-module-tag">Alertas Automáticos</span>
+              </div>
+            </div>
+
+            <!-- Card 6 -->
+            <div class="landing-module-card">
+              <div class="landing-module-icon-box">💼</div>
+              <h3 class="landing-module-title">Gestão Financeira &amp; Honorários</h3>
+              <p class="landing-module-desc">
+                Controle completo de honorários contratuais e sucumbenciais, adiantamentos, custas processuais, reembolsos e acompanhamento de RPVs e precatórios.
+              </p>
+              <div class="landing-module-tags">
+                <span class="landing-module-tag">Honorários</span>
+                <span class="landing-module-tag">RPVs &amp; Alvarás</span>
+                <span class="landing-module-tag">DRE da Banca</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BRUTAL COMPARISON MATRIX -->
+      <section class="landing-section" id="comparativo" style="background: var(--v2-color-surface-secondary);">
+        <div class="landing-container">
+          <div class="landing-section-header">
+            <span class="landing-section-eyebrow">TRANSPARÊNCIA SEM FILTRO</span>
+            <h2 class="landing-section-title">Atrium vs. Softwares Jurídicos Legados em Nuvem</h2>
+            <p class="landing-section-subtitle">
+              Entenda por que advogados modernos estão abandonando modelos antigos de cobrança por usuário e armazenamento vulnerável em nuvem pública.
+            </p>
+          </div>
+
+          <div class="landing-comparison-wrapper">
+            <table class="landing-table" aria-label="Tabela comparativa Atrium versus softwares tradicionais">
+              <thead>
+                <tr>
+                  <th>Critério de Avaliação</th>
+                  <th>Softwares em Nuvem Legados (Advbox, Projuris, Astrea)</th>
+                  <th class="highlight-col">ATRIUM — Escritório Integrado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Modelo de Cobrança</strong></td>
+                  <td><span class="badge-loser">✕ Cobrança por usuário</span> (R$ 150 a R$ 400/mês por advogado)</td>
+                  <td class="highlight-col"><span class="badge-winner">✓ Sem taxa por usuário</span> (Escale sem limite de custos)</td>
+                </tr>
+                <tr>
+                  <td><strong>Privacidade dos Autos</strong></td>
+                  <td><span class="badge-loser">✕ Nuvem compartilhada</span> (Seus autos expostos em servidores terceiros)</td>
+                  <td class="highlight-col"><span class="badge-winner">✓ Cofre Local AES-256</span> (Dados isolados na sua máquina)</td>
+                </tr>
+                <tr>
+                  <td><strong>Certificado Digital A1</strong></td>
+                  <td><span class="badge-loser">✕ Chave enviada à nuvem</span> (Risco crítico de segurança da chave privada)</td>
+                  <td class="highlight-col"><span class="badge-winner">✓ mTLS 100% Local</span> (A chave privada nunca sai do computador)</td>
+                </tr>
+                <tr>
+                  <td><strong>Disponibilidade Offline</strong></td>
+                  <td><span class="badge-loser">✕ Bloqueado sem internet</span> (Se a conexão cair, o trabalho para)</td>
+                  <td class="highlight-col"><span class="badge-winner">✓ Acesso local imediato</span> (Consulte autos e peças mesmo offline)</td>
+                </tr>
+                <tr>
+                  <td><strong>Propriedade dos Dados</strong></td>
+                  <td><span class="badge-loser">✕ Formatos proprietários</span> (Dificuldade de exportação se cancelar)</td>
+                  <td class="highlight-col"><span class="badge-winner">✓ SQLite aberto &amp; Backups</span> (Seus dados pertencem a você)</td>
+                </tr>
+                <tr>
+                  <td><strong>Inteligência Artificial</strong></td>
+                  <td><span class="badge-loser">✕ Add-on caro ou restrito</span></td>
+                  <td class="highlight-col"><span class="badge-winner">✓ IA assistencial integrada</span> (Petições, resumos e OCR)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECURITY & LOCAL-FIRST MANIFESTO -->
+      <section class="landing-section" id="soberania">
+        <div class="landing-container">
+          <div class="landing-manifesto-card">
+            <div>
+              <span class="landing-manifesto-badge">SIGILO PROFISSIONAL &amp; LGPD</span>
+              <h2 class="landing-manifesto-title">Soberania digital e garantia inviolável do sigilo do cliente.</h2>
+              <p class="landing-manifesto-text">
+                O Artigo 7º, inciso II do Estatuto da Advocacia (Lei 8.906/94) assegura a inviolabilidade do escritório, de seus arquivos e dados. A arquitetura Local-First do Atrium garante que você não dependa de bancos de dados compartilhados para proteger o segredo dos seus clientes.
+              </p>
+
+              <div class="landing-manifesto-features">
+                <div class="landing-manifesto-item">
+                  <span class="landing-check-icon">✓</span>
+                  <span><strong>Criptografia em Repouso:</strong> AES-256-GCM sobre o cofre local de processos e documentos.</span>
+                </div>
+                <div class="landing-manifesto-item">
+                  <span class="landing-check-icon">✓</span>
+                  <span><strong>Conexão Direta:</strong> Consultas ao eproc TJRS e DJEN ocorrem sem intermediários interceptando credenciais.</span>
+                </div>
+                <div class="landing-manifesto-item">
+                  <span class="landing-check-icon">✓</span>
+                  <span><strong>Backup Cifrado Portátil:</strong> Exporte arquivos <code>.atrium-backup</code> com checksum SHA-256 a qualquer momento.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="landing-manifesto-art">
+              <div class="landing-vault-diagram">
+                <div class="landing-vault-node secure">
+                  <span>🖥️ Sua Estação de Trabalho</span>
+                  <span style="color:#98c379;">● Cofre AES-256 Ativo</span>
+                </div>
+                <div style="text-align:center; font-size:12px; color:var(--v2-color-gold); font-weight:700;">
+                  ⇅ mTLS Criptografado Direto
+                </div>
+                <div class="landing-vault-node">
+                  <span>🏛️ eproc TJRS &amp; DJEN Nacional</span>
+                  <span style="color:var(--v2-color-primary);">● Fontes Judiciais Oficiais</span>
+                </div>
+                <div style="font-size:11px; color:var(--v2-color-muted-foreground); text-align:center; margin-top:4px;">
+                  Zero intermediários na nuvem. Suas chaves nunca saem da banca.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ ACCORDION -->
+      <section class="landing-section" id="faq">
+        <div class="landing-container">
+          <div class="landing-section-header">
+            <span class="landing-section-eyebrow">RESPOSTAS DIRETAS</span>
+            <h2 class="landing-section-title">Perguntas Frequentes dos Advogados</h2>
+            <p class="landing-section-subtitle">Tudo o que você precisa saber sobre a transição para o Atrium.</p>
+          </div>
+
+          <div class="landing-faq-list">
+            <!-- FAQ 1 -->
+            <div class="landing-faq-item open">
+              <button type="button" class="landing-faq-button" aria-expanded="true">
+                <span>Como o Atrium protege meus dados e processos?</span>
+                <span class="landing-faq-icon">✕</span>
+              </button>
+              <div class="landing-faq-body">
+                <p>
+                  O Atrium opera sob arquitetura <em>Local-First</em>. Seus processos, clientes, documentos e certidões ficam gravados no banco de dados da sua máquina ou servidor privado com criptografia militar AES-256-GCM. Nenhum dado confidencial é enviado para servidores de terceiros sem seu consentimento explícito.
+                </p>
+              </div>
+            </div>
+
+            <!-- FAQ 2 -->
+            <div class="landing-faq-item">
+              <button type="button" class="landing-faq-button" aria-expanded="false">
+                <span>Preciso obrigatoriamente de Certificado A1 para usar o sistema?</span>
+                <span class="landing-faq-icon">+</span>
+              </button>
+              <div class="landing-faq-body">
+                <p>
+                  Não. O Atrium funciona perfeitamente em modo de consulta pública e monitoramento pelo DJEN Nacional. O Certificado A1 é opcional e recomendado apenas para quem deseja consultar autos em segredo de justiça no eproc TJRS com mTLS automático local.
+                </p>
+              </div>
+            </div>
+
+            <!-- FAQ 3 -->
+            <div class="landing-faq-item">
+              <button type="button" class="landing-faq-button" aria-expanded="false">
+                <span>Como funciona a sincronização com o eproc TJRS e o DJEN?</span>
+                <span class="landing-faq-icon">+</span>
+              </button>
+              <div class="landing-faq-body">
+                <p>
+                  A plataforma realiza consultas de leitura oficial às fontes públicas do tribunal e do Conselho Nacional de Justiça (DataJud e DJEN), integrando movimentações e intimações diretamente no seu painel operacional sem intervenção manual.
+                </p>
+              </div>
+            </div>
+
+            <!-- FAQ 4 -->
+            <div class="landing-faq-item">
+              <button type="button" class="landing-faq-button" aria-expanded="false">
+                <span>O Atrium cobra mensalidade por cada usuário ou advogado da equipe?</span>
+                <span class="landing-faq-icon">+</span>
+              </button>
+              <div class="landing-faq-body">
+                <p>
+                  Não. Diferente dos softwares legados que penalizam o crescimento do escritório cobrando R$ 150 a R$ 400 por usuário, o Atrium permite adicionar advogados e colaboradores livremente no seu ambiente privativo.
+                </p>
+              </div>
+            </div>
+
+            <!-- FAQ 5 -->
+            <div class="landing-faq-item">
+              <button type="button" class="landing-faq-button" aria-expanded="false">
+                <span>Posso importar processos e clientes que já possuo em planilhas?</span>
+                <span class="landing-faq-icon">+</span>
+              </button>
+              <div class="landing-faq-body">
+                <p>
+                  Sim. O Atrium possui um importador supervisionado com prévia em tempo real para arquivos CSV, JSON e planilhas, com validação inteligente de números CNJ, CPFs e CNPJs antes de gravar qualquer dado no sistema.
+                </p>
+              </div>
+            </div>
+
+            <!-- FAQ 6 -->
+            <div class="landing-faq-item">
+              <button type="button" class="landing-faq-button" aria-expanded="false">
+                <span>O sistema funciona no Windows, Mac e Linux?</span>
+                <span class="landing-faq-icon">+</span>
+              </button>
+              <div class="landing-faq-body">
+                <p>
+                  Sim. Você pode acessar a plataforma diretamente pela web em qualquer navegador moderno no endereço <strong>atrium.adv.br</strong> ou rodar localmente no Windows com um único clique através do inicializador <code>ATRIUM.bat</code>.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FINAL HIGH-CONVERSION CTA BANNER -->
+      <section class="landing-final-cta-section">
+        <div class="landing-container">
+          <div class="landing-final-cta-box">
+            <h2 class="landing-final-cta-title">
+              Pronto para transformar a gestão do seu escritório?
+            </h2>
+            <p class="landing-final-cta-desc">
+              Junte-se à nova geração de advogados que exigem velocidade de ponta, soberania sobre seus dados e zero mensalidades por usuário.
+            </p>
+            <button type="button" class="landing-btn-primary landing-hero-cta-large" data-landing-action="register">
+              Criar Meu Escritório Gratuito Agora →
+            </button>
+            <div style="margin-top: 18px; font-size: 13px; color: var(--v2-color-muted-foreground);">
+              Sem cartão de crédito · Ativação imediata em menos de 2 minutos
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- EDITORIAL FOOTER -->
+    <footer class="landing-footer">
+      <div class="landing-container">
+        <div class="landing-footer-grid">
+          <div class="landing-footer-brand-col">
+            <a href="#landingPage" class="landing-brand">
+              <img src="assets/icons/atrium-logo.svg" alt="ATRIUM" class="landing-brand-logo logo-dark">
+              <img src="assets/icons/atrium-logo-light.svg" alt="ATRIUM" class="landing-brand-logo logo-light">
+            </a>
+            <p>
+              Plataforma de gestão jurídica inteligente, soberana e local-first. Segurança criptográfica AES-256 para o advogado moderno.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="landing-footer-col-title">Plataforma</h3>
+            <ul class="landing-footer-links">
+              <li><a href="#recursos">Recursos</a></li>
+              <li><a href="#showcase">Demonstração</a></li>
+              <li><a href="#comparativo">Comparativo</a></li>
+              <li><a href="#soberania">Soberania &amp; Cofre</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="landing-footer-col-title">Segurança &amp; OAB</h3>
+            <ul class="landing-footer-links">
+              <li><a href="#soberania">Sigilo Profissional</a></li>
+              <li><a href="#soberania">Criptografia AES-256</a></li>
+              <li><a href="#faq">Dúvidas Frequentes</a></li>
+              <li><a href="https://github.com/ricarossetto/atrium-pro" target="_blank" rel="noopener">Código no GitHub</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="landing-footer-col-title">Acesso Direto</h3>
+            <ul class="landing-footer-links">
+              <li><a href="#" data-landing-action="login">Entrar na Conta</a></li>
+              <li><a href="#" data-landing-action="register">Criar Escritório</a></li>
+              <li><a href="#" data-landing-action="register">Ativar com Convite</a></li>
+              <li>
+                <div class="landing-status-badge" style="margin-top: 6px;">
+                  <span class="landing-status-dot"></span>
+                  <span>Sistemas Judiciais Operacionais</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="landing-footer-bottom">
+          <div>
+            &copy; 2026 ATRIUM — Escritório Integrado. Todos os direitos reservados. Licença Open-Source MIT.
+          </div>
+          <div>
+            Porto Alegre / RS · Conexão eproc TJRS, DJEN Nacional &amp; DataJud
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <section class="auth-gate hidden" id="authGate" aria-live="polite">
     <div class="auth-visual">
       <div class="auth-brand-logo">
         <div class="auth-logo-frame">
@@ -1028,6 +1543,7 @@
       </div>
     </div>
     <div class="auth-panel">
+      <button type="button" class="auth-back-to-landing" data-landing-action="back-to-landing" aria-label="Voltar para a página inicial">← Voltar ao Início</button>
       <button type="button" class="theme-toggle-btn auth-theme-toggle" data-theme-toggle data-theme-silent="true" aria-label="Tema claro ativo. Alternar para tema escuro">
         <span data-theme-toggle-icon><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg></span>
       </button>
@@ -4025,6 +4541,7 @@
   <script src="js/office-data.js?v=2.3.0" defer></script>
   <script src="js/runtime-config.js?v=2.3.0" defer></script>
   <script src="js/auth.js?v=2.3.0" defer></script>
+  <script src="js/components/landing.js?v=2.4.0" defer></script>
   <script type="module" src="js/app/bootstrap.js?v=2.3.3"></script>
 </body>
 </html>
