@@ -88,6 +88,7 @@
         const pathname = String(globalThis.location.pathname || '').toLowerCase();
         const urlParams = new URLSearchParams(globalThis.location.search);
         const isDiscover = pathname.includes('/discover') || pathname.includes('/landing') || urlParams.has('discover');
+        document.documentElement.dataset.route = isDiscover ? 'discover' : 'app';
         const landing = document.getElementById('landingPage');
         const authGate = document.getElementById('authGate');
         if (isDiscover) {
@@ -154,6 +155,7 @@
       const authGate = document.getElementById('authGate');
       if (!authGate) return;
 
+      document.documentElement.dataset.route = 'app';
       if (globalThis.history?.pushState) {
         globalThis.history.pushState(null, '', `/?auth=${tab}`);
       }
@@ -175,6 +177,7 @@
     closeAuthGate() {
       const landing = document.getElementById('landingPage');
       const authGate = document.getElementById('authGate');
+      document.documentElement.dataset.route = 'discover';
       if (globalThis.history?.pushState) {
         globalThis.history.pushState(null, '', '/discover');
       }

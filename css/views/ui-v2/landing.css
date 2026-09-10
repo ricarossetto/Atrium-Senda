@@ -17,6 +17,14 @@
               color var(--v2-duration-slow) var(--v2-ease-standard);
 }
 
+html[data-route="discover"] #landingPage {
+  display: block !important;
+}
+
+html[data-route="discover"] #authGate {
+  display: none !important;
+}
+
 #landingPage *,
 #landingPage *::before,
 #landingPage *::after {

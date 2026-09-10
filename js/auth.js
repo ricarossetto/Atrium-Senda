@@ -280,6 +280,7 @@
     showLanding() {
       const landing = byId('landingPage');
       if (landing) {
+        document.documentElement.dataset.route = 'discover';
         if (globalThis.history?.pushState) {
           globalThis.history.pushState(null, '', '/discover');
         }
@@ -292,12 +293,14 @@
       }
     },
     showLogin() {
+      document.documentElement.dataset.route = 'app';
       if (globalThis.history?.pushState) {
         globalThis.history.pushState(null, '', '/');
       }
       this.show('authLoginForm');
     },
     showRegister() {
+      document.documentElement.dataset.route = 'app';
       if (globalThis.history?.pushState) {
         globalThis.history.pushState(null, '', '/?auth=register');
       }

@@ -10,9 +10,18 @@
   <link rel="icon" href="assets/icons/favicon-32x32.png?v=2.3.0" type="image/png" sizes="32x32">
   <link rel="icon" href="assets/icons/favicon.svg?v=2.3.0" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2.3.0">
-  <link rel="shortcut icon" href="favicon.ico?v=2.3.0">
   <script src="js/views/ui-v2/preference-init.js"></script>
-  <link rel="stylesheet" href="css/portal.css?v=2.3.0">
+  <script>
+    (() => {
+      try {
+        const p = String(location.pathname || '').toLowerCase();
+        const s = new URLSearchParams(location.search);
+        const h = String(location.hash || '').toLowerCase();
+        const isDiscover = p.includes('/discover') || p.includes('/landing') || s.has('discover') || h.includes('discover');
+        document.documentElement.dataset.route = isDiscover ? 'discover' : 'app';
+      } catch {}
+    })();
+  </script>
   <link rel="stylesheet" href="css/views/ui-v2/tokens.css?v=2.3.0">
   <link rel="stylesheet" href="css/views/ui-v2/primitives.css?v=2.3.0">
   <link rel="stylesheet" href="css/views/ui-v2/motion.css?v=2.3.0">
@@ -1012,7 +1021,7 @@
   <!-- =======================================================================
        ATRIUM OFFICIAL LANDING PAGE (HIGH-CONVERSION MINERAL EDITORIAL UI)
        ======================================================================= -->
-  <div id="landingPage" class="landing-page">
+  <div id="landingPage" class="landing-page hidden">
     <div class="landing-ambient-glow" aria-hidden="true"></div>
 
     <header class="landing-header">
