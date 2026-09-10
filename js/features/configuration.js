@@ -278,7 +278,7 @@ export function createConfigurationFeature({
         const records = Array.isArray(store.state.configuration?.[configurationSection]) ? store.state.configuration[configurationSection] : [];
         if (records[index] !== undefined) feature.openModal(records[index], index);
       });
-      byId('modalBackdrop')?.addEventListener('click', event => {
+      byId('modalForm')?.addEventListener('click', event => {
         const modalIntegrationBtn = event.target.closest('[data-modal-open-dedicated-integration]');
         if (modalIntegrationBtn) {
           event.preventDefault();

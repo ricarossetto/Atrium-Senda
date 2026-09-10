@@ -90,7 +90,7 @@
   background: var(--scrollbar-track);
 }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: auto; }
 body {
   margin: 0;
   min-width: 320px;
@@ -370,13 +370,13 @@ html, body {
   padding: 0;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 .app-shell {
   display: block;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 .main-content {
   min-height: 100vh;
@@ -384,7 +384,7 @@ html, body {
   width: calc(100% - var(--sidebar-width));
   max-width: calc(100% - var(--sidebar-width));
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: clip;
   transition: margin-left 0.25s ease, width 0.25s ease, max-width 0.25s ease;
 }
 .topbar {
@@ -579,7 +579,7 @@ html, body {
 }
 .original-text::-webkit-scrollbar { width: 6px; }
 .original-text::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 4px; }
-.detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; position: sticky; bottom: 0; background: var(--surface); padding-top: 10px; border-top: 1px solid var(--border); }
+.detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; position: relative; background: var(--surface); padding-top: 10px; border-top: 1px solid var(--border); }
 
 .kanban-board { display: grid; grid-auto-columns: minmax(275px, 1fr); grid-auto-flow: column; gap: 13px; overflow-x: auto; padding: 1px 1px 12px; }
 .kanban-column { min-height: 590px; padding: 13px; background: rgba(255,255,255,.02); border: 1px solid var(--line); border-radius: 15px; }

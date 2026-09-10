@@ -62,7 +62,7 @@ export function createTasksFeature({
   let taskListSort = 'deadline';
 
   const byId = id => documentRef?.getElementById(id);
-  const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
+  const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2' && windowRef?.localStorage?.getItem?.('atrium:ui:mode') !== 'classic';
   const getColumns = () => {
     const saved = store.state.settings?.kanbanColumns;
     if (!Array.isArray(saved) || saved.length < 2) return TASK_COLUMNS.map(column => ({ ...column }));
@@ -220,7 +220,11 @@ export function createTasksFeature({
     },
 
     applyTaskViewMode() {
-      if (!isV2()) return;
+      if (!isV2()) {
+        byId('kanbanBoard')?.classList.remove('hidden');
+        byId('taskListPanel')?.classList.add('hidden');
+        return;
+      }
       const listMode = taskViewMode === 'list';
       byId('view-kanban')?.setAttribute('data-task-view', taskViewMode);
       byId('taskViewSwitch')?.setAttribute('data-active-mode', taskViewMode);
@@ -286,10 +290,14 @@ export function createTasksFeature({
         });
         this.renderTaskList();
         this.applyTaskViewMode();
-      } else board.innerHTML = getColumns().map(column => {
-        const tasks = store.state.tasks.filter(task => task.status === column.id);
-        return `<section class="kanban-column" data-column="${column.id}"><header class="column-header"><div class="column-title"><i class="column-dot" style="background:${column.color}"></i>${escapeHtml(column.title)}<span class="column-count">${tasks.length}</span></div><span>···</span></header><div class="column-cards">${tasks.length ? tasks.map(task => this.renderCard(task)).join('') : '<div class="empty-column">Arraste tarefas para cá</div>'}</div></section>`;
-      }).join('');
+      } else {
+        board.classList.remove('hidden');
+        byId('taskListPanel')?.classList.add('hidden');
+        board.innerHTML = getColumns().map(column => {
+          const tasks = store.state.tasks.filter(task => task.status === column.id);
+          return `<section class="kanban-column" data-column="${column.id}"><header class="column-header"><div class="column-title"><i class="column-dot" style="background:${column.color}"></i>${escapeHtml(column.title)}<span class="column-count">${tasks.length}</span></div><span>···</span></header><div class="column-cards">${tasks.length ? tasks.map(task => this.renderCard(task)).join('') : '<div class="empty-column">Arraste tarefas para cá</div>'}</div></section>`;
+        }).join('');
+      }
       board.querySelectorAll('.task-card').forEach(card => {
         card.addEventListener('dragstart', () => { card.classList.add('dragging'); card.dataset.dragging = 'true'; });
         card.addEventListener('dragend', () => { card.classList.remove('dragging'); delete card.dataset.dragging; });
@@ -534,7 +542,7 @@ export function createTasksFeature({
       }
 
       let linkedProcessBannerHtml = '';
-      if (linkedProcess) {
+      if (linkedProcess && isV2()) {
         const processDetails = [linkedProcess.client, linkedProcess.actionType || linkedProcess.subject, linkedProcess.court || linkedProcess.county].filter(Boolean).join(' · ');
         linkedProcessBannerHtml = `
         <div class="task-linked-process-banner">

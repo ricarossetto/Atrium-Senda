@@ -633,6 +633,9 @@ export function createPublicationsFeature({
           if (task) onOpenTask?.(task);
         });
       });
+      if (!isV2()) {
+        container.querySelector('.detail-actions')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+      }
     },
 
     async handleAction(item, action) {
