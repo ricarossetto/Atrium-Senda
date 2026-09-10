@@ -27,3 +27,5 @@ scripts/test-*
 scripts/inspect-*
 scripts/print-sample.mjs
 scripts/reconcile-target-process.mjs
+__pycache__/
+*.pyc

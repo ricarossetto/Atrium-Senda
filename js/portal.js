@@ -42,6 +42,7 @@ import { createExternalCalendarFeature } from './features/external-calendar.js';
 import { createFinancialFeature } from './features/financial.js';
 import { createImporterFeature } from './features/importer.js';
 import { createJudicialIntegrationsFeature } from './features/judicial-integrations.js';
+import { createInpiIntegrationFeature } from './features/inpi-integration.js';
 import { createLeadsFeature } from './features/leads.js';
 import { createLinksFeature } from './features/links.js';
 import { createMonitoringFeature } from './features/monitoring.js';
@@ -860,9 +861,23 @@ import { createTasksFeature } from './features/tasks.js';
       onOpenGeminiKeyModal: () => App.openGeminiKeyModal(),
       onOpenCalendarSetup: () => App.openCalendarConfigModal(),
       onOpenEmailConfigModal: () => App.openEmailConfigModal(),
+      onOpenInpiModal: () => App.openInpiModal(),
       presentation: getConfigurationAdminPresenter()
     });
     return configurationFeature;
+  }
+
+  let inpiIntegrationFeature = null;
+  function getInpiIntegrationFeature() {
+    if (!inpiIntegrationFeature) inpiIntegrationFeature = createInpiIntegrationFeature({
+      documentRef: document,
+      windowRef: window,
+      secureFetch: (...args) => window.KellerAuth.secureFetch(...args),
+      escapeHtml,
+      showToast: (message, type) => App.toast(message, type),
+      store: Store
+    });
+    return inpiIntegrationFeature;
   }
 
   const App = {
@@ -1567,6 +1582,8 @@ import { createTasksFeature } from './features/tasks.js';
     openEmailTestModal() { return getEmailIntegrationFeature().openTestModal(); },
     closeEmailTestModal() { return getEmailIntegrationFeature().closeTestModal(); },
     submitEmailTest(event) { return getEmailIntegrationFeature().submitTest(event); },
+    openInpiModal() { return getInpiIntegrationFeature().openModal(); },
+    closeInpiModal() { return getInpiIntegrationFeature().closeModal(); },
     openPublicationEmailModal(item) {
       return getPublicationsFeature().openPublicationEmailModal(item);
     },

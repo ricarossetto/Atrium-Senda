@@ -40,6 +40,7 @@
   <link rel="stylesheet" href="css/views/ui-v2/landing.css?v=2.4.0">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=2.3.2">
   <link rel="stylesheet" href="css/views/ui-v2/icons.css?v=2.3.2">
+  <link rel="stylesheet" href="css/views/ui-v2/inpi-panel.css?v=2.4.0">
   <style id="onboardingCriticalStyles">
     /* Core Onboarding Styling — Light Blue Mineral & Champagne Gold with Normalized Height & Slide Carousel */
     #guidedTourBackdrop {
@@ -4467,6 +4468,106 @@
           <button class="button gold" id="receiverSubmitBtn" type="submit">Salvar Destinatário</button>
         </footer>
       </form>
+    </section>
+  </div>
+
+  <!-- Modal Sidesystem INPI / RPI Marcas -->
+  <div class="modal-backdrop connection-backdrop hidden" id="inpiPanelBackdrop">
+    <section class="modal inpi-panel-modal" role="dialog" aria-modal="true" aria-labelledby="inpiPanelTitle" aria-describedby="inpiPanelSubtitle">
+      <header class="inpi-panel-header">
+        <div>
+          <p class="eyebrow">Seção V - Marcas · INPI</p>
+          <h2 id="inpiPanelTitle">Monitoramento de RPIs</h2>
+          <p id="inpiPanelSubtitle">Varredura semanal da Revista da Propriedade Industrial para advogados do escritório.</p>
+        </div>
+        <div class="inpi-header-actions">
+          <span id="inpiStatusPill" class="status-chip draft">Carregando</span>
+          <button class="button gold" id="btnInpiScanNow" type="button" title="Verificar RPI agora">
+            <svg class="atrium-icon" aria-hidden="true" focusable="false" style="width:14px; height:14px; margin-right:4px;"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-check"></use></svg>
+            <span>Verificar RPI Agora</span>
+          </button>
+          <button class="icon-button" id="inpiPanelClose" type="button" aria-label="Fechar painel"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
+        </div>
+      </header>
+
+      <div class="inpi-panel-content">
+        <!-- 1. Métricas Superiores -->
+        <div class="inpi-metrics-grid">
+          <div class="inpi-metric-card">
+            <span>Ocorrências Localizadas</span>
+            <strong id="inpiMetricMatches">0</strong>
+            <small>Total de despachos nas RPIs</small>
+          </div>
+          <div class="inpi-metric-card">
+            <span>Processos de Marcas</span>
+            <strong id="inpiMetricProcesses">0</strong>
+            <small>Processos distintos monitorados</small>
+          </div>
+          <div class="inpi-metric-card">
+            <span>Revistas Verificadas</span>
+            <strong id="inpiMetricRevistas">0</strong>
+            <small>Edições da RPI processadas</small>
+          </div>
+          <div class="inpi-metric-card">
+            <span>Última Publicação</span>
+            <strong id="inpiMetricLatest">—</strong>
+            <small>Publicação semanal (terças)</small>
+          </div>
+        </div>
+
+        <!-- 2. Advogados Detectados no Escritório -->
+        <div class="inpi-monitors-box">
+          <div class="inpi-monitors-header">
+            <h4>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false" style="width:14px; height:14px; color:var(--v2-color-gold,#c69f53);"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-contacts"></use></svg>
+              Advogados Monitorados na RPI
+            </h4>
+            <small id="inpiMonitorsCount">Detectando advogados do escritório...</small>
+          </div>
+          <div class="inpi-monitors-list" id="inpiMonitorsList"></div>
+        </div>
+
+        <!-- 3. Toolbar de Filtros & Pesquisa -->
+        <div class="inpi-toolbar" role="toolbar" aria-label="Filtros de publicações do INPI">
+          <div class="inpi-search-box">
+            <input type="search" id="inpiSearchInput" placeholder="Buscar marca, nº processo, advogado, requerente..." autocomplete="off">
+          </div>
+
+          <div class="inpi-filter-group">
+            <select id="inpiMonitorFilter" aria-label="Filtrar por advogado">
+              <option value="all">Todos os advogados</option>
+            </select>
+
+            <select id="inpiFieldFilter" aria-label="Filtrar por campo">
+              <option value="all">Todos os campos</option>
+              <option value="marca">Marca</option>
+              <option value="procurador">Procurador</option>
+              <option value="requerente">Requerente</option>
+              <option value="despacho">Despacho</option>
+              <option value="classe">Classe Nice</option>
+            </select>
+
+            <select id="inpiSortFilter" aria-label="Ordenar resultados">
+              <option value="recent">Mais recente (RPI)</option>
+              <option value="brand">Marca (A-Z)</option>
+              <option value="process">Nº do processo</option>
+            </select>
+
+            <button type="button" class="button ghost" id="inpiResetFilters" title="Limpar todos os filtros">Limpar</button>
+          </div>
+
+          <span class="inpi-count-badge" id="inpiResultCount" aria-live="polite">0 registros</span>
+        </div>
+
+        <!-- 4. Lista de Resultados / Cards -->
+        <div class="inpi-results-list" id="inpiResultsList" role="list" aria-label="Publicações encontradas na RPI"></div>
+
+        <!-- 5. Empty State -->
+        <div class="inpi-empty-state hidden" id="inpiEmptyState">
+          <h3>Nenhuma publicação encontrada</h3>
+          <p>Não foram localizados despachos correspondentes aos advogados monitorados com os filtros atuais.</p>
+        </div>
+      </div>
     </section>
   </div>
 

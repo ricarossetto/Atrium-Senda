@@ -153,6 +153,14 @@ function getDirectSetupTarget(name) {
       actionLabel: 'Configurar Contas de E-mail'
     };
   }
+  if (/inpi|rpi|marcas|propriedade industrial/.test(normalized)) {
+    return {
+      type: 'inpi',
+      badge: 'INPI / RPI Marcas',
+      description: 'Monitoramento semanal de marcas e publicações na Revista da Propriedade Industrial (RPI) para advogados do escritório.',
+      actionLabel: 'Abrir Painel RPI'
+    };
+  }
   return {
     type: 'general',
     badge: 'Integração de Sistema',
@@ -176,6 +184,7 @@ export function createConfigurationFeature({
   onOpenGeminiKeyModal = () => {},
   onOpenCalendarSetup = () => {},
   onOpenEmailConfigModal = () => {},
+  onOpenInpiModal = () => {},
   presentation = null,
   warn = () => {}
 } = {}) {
@@ -523,6 +532,10 @@ export function createConfigurationFeature({
         onOpenEmailConfigModal();
         return true;
       }
+      if (/inpi|rpi|marcas|propriedade industrial/.test(normalized)) {
+        onOpenInpiModal();
+        return true;
+      }
       showToast('Abra a edição deste item para configurar seus parâmetros.', 'info');
       return false;
     },
@@ -624,7 +637,9 @@ export function createConfigurationFeature({
         const statusClass = (item.status === 'Ativo' || item.status === 'ativo') ? 'success' : item.status === 'Preparado' ? 'neutral' : 'warning';
         const statusLabel = item.status || 'Ativo';
         meta = `<button type="button" class="configuration-status-pill ${statusClass}" data-toggle-integration="${index}" title="Alternar status da integração">${escapeHtml(statusLabel)}</button>`;
-        extraActions = `<button type="button" class="button ghost configuration-action-btn" data-direct-integration="${escapeHtml(primary)}" title="Configurar conexão de ${escapeHtml(primary)}">Configurar Conexão</button>`;
+        const directTarget = getDirectSetupTarget(primary);
+        const actionLabel = directTarget.type === 'inpi' ? 'Abrir Painel RPI' : (directTarget.type !== 'general' ? directTarget.actionLabel : 'Configurar Conexão');
+        extraActions = `<button type="button" class="button ghost configuration-action-btn" data-direct-integration="${escapeHtml(primary)}" title="${escapeHtml(actionLabel)} de ${escapeHtml(primary)}">${escapeHtml(actionLabel)}</button>`;
       } else if (effectiveSection === 'goals') {
         secondary = item.period ? `Período: ${item.period}` : (item.group || 'Geral');
         if (item.monthlyClosings == null && 'monthlyClosings' in item) {

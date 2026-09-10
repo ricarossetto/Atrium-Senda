@@ -379,7 +379,8 @@
     { name: 'DataJud / CNJ Metadados', status: 'Ativo', method: 'API Oficial Pública' },
     { name: 'Google Gemini Flash IA', status: 'Ativo', method: 'REST API' },
     { name: 'Webcal / Google Agenda', status: 'Ativo', method: 'Sincronização iCal' },
-    { name: 'Portais PJe / eproc (A1 + TOTP)', status: 'Preparado', method: 'Agente Local Seguro' }
+    { name: 'Portais PJe / eproc (A1 + TOTP)', status: 'Preparado', method: 'Agente Local Seguro' },
+    { name: 'INPI / RPI Marcas', status: 'Ativo', method: 'Varredura Semanal RPI (Terças)', syncFrequency: 'weekly', notes: 'Monitoramento semanal de marcas na Revista da Propriedade Industrial' }
   ];
 
   return {

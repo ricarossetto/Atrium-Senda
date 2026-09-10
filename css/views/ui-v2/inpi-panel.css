@@ -1,0 +1,433 @@
+/* INPI Sidesystem — Painel de Monitoramento de RPIs
+ * Alinhado às convenções de Processos, Tarefas e Contatos do ATRIUM UI v2
+ */
+
+.inpi-panel-modal {
+  max-width: 1240px;
+  width: 95%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--v2-color-surface, #12151a);
+  color: var(--v2-color-foreground, #f0f2f5);
+  border: 1px solid var(--v2-color-border, #262c36);
+  border-radius: 16px;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+}
+
+.inpi-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 28px 20px;
+  background: var(--v2-color-surface-secondary, rgba(255, 255, 255, 0.02));
+  border-bottom: 1px solid var(--v2-color-border, #262c36);
+}
+
+.inpi-panel-header .eyebrow {
+  margin: 0 0 4px;
+  color: var(--v2-color-gold, #c69f53);
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.inpi-panel-header h2 {
+  margin: 0 0 6px;
+  font: 600 clamp(20px, 2.5vw, 28px)/1.1 var(--v2-font-editorial, Georgia, serif);
+  color: var(--v2-color-foreground, #f0f2f5);
+  letter-spacing: -0.02em;
+}
+
+.inpi-panel-header p {
+  margin: 0;
+  color: var(--v2-color-muted-foreground, #8c96a5);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.inpi-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.inpi-panel-content {
+  padding: 24px 28px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Métricas Superiores */
+.inpi-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.inpi-metric-card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px;
+  background: var(--v2-color-surface-elevated, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--v2-color-border, #262c36);
+  border-radius: 12px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.inpi-metric-card:hover {
+  border-color: var(--v2-color-border-hover, #3a4352);
+}
+
+.inpi-metric-card span {
+  font-size: 11.5px;
+  color: var(--v2-color-muted-foreground, #8c96a5);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.inpi-metric-card strong {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--v2-color-foreground, #f0f2f5);
+  letter-spacing: -0.03em;
+  font-feature-settings: "tnum";
+}
+
+.inpi-metric-card small {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--v2-color-muted-foreground, #8c96a5);
+}
+
+/* Cartão de Advogados Monitorados */
+.inpi-monitors-box {
+  padding: 16px 18px;
+  background: var(--v2-color-surface-elevated, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--v2-color-border, #262c36);
+  border-radius: 12px;
+}
+
+.inpi-monitors-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.inpi-monitors-header h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--v2-color-foreground, #f0f2f5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inpi-monitors-header small {
+  color: var(--v2-color-muted-foreground, #8c96a5);
+  font-size: 11.5px;
+}
+
+.inpi-monitors-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.inpi-monitor-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--v2-color-surface-secondary, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--v2-color-border, #262c36);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--v2-color-foreground, #f0f2f5);
+}
+
+.inpi-monitor-tag b {
+  color: var(--v2-color-gold, #c69f53);
+  font-weight: 600;
+}
+
+.inpi-monitor-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(198, 159, 83, 0.15);
+  color: var(--v2-color-gold, #c69f53);
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inpi-monitor-hits {
+  font-size: 11px;
+  color: var(--v2-color-muted-foreground, #8c96a5);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Toolbar de Filtros (Padrão Processos/Tarefas/Contatos) */
+.inpi-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--v2-color-surface-secondary, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--v2-color-border, #262c36);
+  border-radius: 12px;
+}
+
+.inpi-search-box {
+  flex: 1 1 260px;
+  position: relative;
+}
+
+.inpi-search-box input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 14px;
+  background: var(--v2-color-surface-input, rgba(0, 0, 0, 0.25));
+  border: 1px solid var(--v2-color-border, #262c36);
+  border-radius: 8px;
+  color: var(--v2-color-foreground, #f0f2f5);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.inpi-search-box input:focus {
+  outline: none;
+  border-color: var(--v2-color-gold, #c69f53);
+  box-shadow: 0 0 0 2px rgba(198, 159, 83, 0.2);
+}
+
+.inpi-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inpi-filter-group select {
+  min-height: 40px;
+  padding: 8px 12px;
+  background: var(--v2-color-surface-input, rgba(0, 0, 0, 0.25));
+  border: 1px solid var(--v2-color-border, #262c36);
+  border-radius: 8px;
+  color: var(--v2-color-foreground, #f0f2f5);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.inpi-filter-group select:focus {
+  outline: none;
+  border-color: var(--v2-color-gold, #c69f53);
+}
+
+.inpi-count-badge {
+  font-size: 12px;
+  color: var(--v2-color-muted-foreground, #8c96a5);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Lista de Resultados (Cards no padrão Processos/Publicações) */
+.inpi-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inpi-result-card {
+  padding: 18px 20px;
+  background: var(--v2-color-surface-card, rgba(255, 255, 255, 0.025));
+  border: 1px solid var(--v2-color-border, #262c36);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.inpi-result-card:hover {
+  border-color: var(--v2-color-border-hover, #3a4352);
+  background: var(--v2-color-surface-card-hover, rgba(255, 255, 255, 0.04));
+}
+
+.inpi-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 10px;
+}
+
+.inpi-card-headline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.inpi-process-pill {
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: monospace;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--v2-color-border, #262c36);
+  border-radius: 6px;
+  color: var(--v2-color-foreground-secondary, #d2d6dc);
+}
+
+.inpi-brand-name {
+  font-size: 16px;
+  font-weight: 750;
+  color: var(--v2-color-gold, #c69f53);
+  letter-spacing: -0.01em;
+}
+
+.inpi-rpi-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(56, 161, 105, 0.15);
+  border: 1px solid rgba(56, 161, 105, 0.3);
+  color: #38a169;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.inpi-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.inpi-card-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inpi-card-block span.label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--v2-color-muted-foreground, #8c96a5);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.inpi-card-block p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--v2-color-foreground, #f0f2f5);
+  line-height: 1.45;
+}
+
+.inpi-dispatch-box {
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 3px solid var(--v2-color-gold, #c69f53);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--v2-color-foreground-secondary, #d2d6dc);
+}
+
+.inpi-dispatch-box strong {
+  color: var(--v2-color-foreground, #f0f2f5);
+}
+
+.inpi-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.inpi-hits-summary {
+  font-size: 11.5px;
+  color: var(--v2-color-muted-foreground, #8c96a5);
+}
+
+.inpi-hits-summary b {
+  color: var(--v2-color-foreground, #f0f2f5);
+}
+
+.inpi-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inpi-action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--v2-color-foreground, #f0f2f5);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--v2-color-border, #262c36);
+  transition: all 0.2s ease;
+}
+
+.inpi-action-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--v2-color-gold, #c69f53);
+  color: var(--v2-color-gold, #c69f53);
+}
+
+.inpi-action-link.primary {
+  background: rgba(198, 159, 83, 0.18);
+  border-color: rgba(198, 159, 83, 0.4);
+  color: var(--v2-color-gold, #c69f53);
+}
+
+.inpi-action-link.primary:hover {
+  background: rgba(198, 159, 83, 0.3);
+}
+
+/* Empty State */
+.inpi-empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--v2-color-surface-elevated, rgba(255, 255, 255, 0.02));
+  border: 1px dashed var(--v2-color-border, #262c36);
+  border-radius: 12px;
+}
+
+.inpi-empty-state h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: var(--v2-color-foreground, #f0f2f5);
+}
+
+.inpi-empty-state p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--v2-color-muted-foreground, #8c96a5);
+}

@@ -32,6 +32,8 @@ import { normalizeDocumentMetadata } from './lib/documents/document-metadata.mjs
 import { SearchIndex, parseDefaultPromptsSource } from './lib/search-index.mjs';
 import { RegistryService } from './lib/registry/registry-service.mjs';
 import { createRegistryHttpHandler } from './lib/http/registry-routes.mjs';
+import { InpiService } from './lib/inpi/inpi-service.mjs';
+import { createInpiHttpHandler } from './lib/http/inpi-routes.mjs';
 import { TjrsSidecarClient } from './lib/judicial/tjrs-sidecar-client.mjs';
 import { refreshMonitoredTjrsProcesses } from './lib/judicial/tjrs-monitoring.mjs';
 import { createTjrsSidecarHttpHandler } from './lib/http/tjrs-sidecar-routes.mjs';
@@ -256,6 +258,14 @@ await documentStorage.init();
 const documentIntelligence = new DocumentIntelligenceService();
 const registryService = new RegistryService();
 const handleRegistryRequest = createRegistryHttpHandler({ service: registryService, assertAuthenticated, json });
+const inpiService = new InpiService({ dataDir: DATA_DIR, timeZone: SYNC_TIME_ZONE });
+const handleInpiRequest = createInpiHttpHandler({
+  service: inpiService,
+  assertAuthenticated,
+  readStateEnvelope: readAppStateEnvelope,
+  readJson,
+  json
+});
 const tjrsSidecarClient = new TjrsSidecarClient();
 const handleTjrsSidecarRequest = createTjrsSidecarHttpHandler({
   client: tjrsSidecarClient,
@@ -2641,6 +2651,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (await handleRegistryRequest(req, res, url)) return;
+    if (await handleInpiRequest(req, res, url)) return;
     if (url.pathname.startsWith('/api/integrations/tjrs-sidecar/')) {
       assertAuthenticated(req);
       const allowSidecar = !CLOUD_MODE || process.env.ALLOW_SHARED_SIDECAR === 'true' || currentWorkspaceId() === security.state.defaultWorkspaceId;
@@ -4796,6 +4807,11 @@ console.log(`[ATRIUM Persistência]: Estado inicializado com status "${stateInit
 await judicialOrchestratorForCurrentWorkspace();
 await readRuntime();
 console.log(`[ATRIUM Runtime]: Estado derivado inicializado com status "${runtimeHealth().status}".`);
+
+inpiService.startScheduler({
+  getState: () => state(),
+  audit: (action, detail) => audit(action, detail)
+});
 
 server.listen(PORT, HOST, () => {
   console.log(`ATRIUM ${APP_VERSION} — Escritório Integrado: http://${HOST}:${PORT}`);
