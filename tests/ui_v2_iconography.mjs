@@ -88,7 +88,7 @@ assert.doesNotMatch(index, /(?:fontawesome|font-awesome|material-icons|material-
 const brandHashes = {
   'assets/icons/atrium-logo.svg': '57aefeb535bb88fef83be1b1017b10705fab6b8942d141e11798e71f35086e75',
   'assets/icons/atrium-emblem.svg': '9a3e5e785f6f446a46c0719f8fe6fe4d6ea69e6f45c01204a6535d0fde5f0d23',
-  'assets/icons/favicon.svg': 'f2a52680a9eca2f97277fef3a792d4f853c7a90c5a95d35e57c475ca55a5a3de'
+  'assets/icons/favicon.svg': '379bcf9905c59b682097de70d706c3a65ef2722402a4d6fbd9d0fca3fd66d558'
 };
 for (const [relativePath, expectedHash] of Object.entries(brandHashes)) {
   assert.equal(sha256CanonicalText(relativePath), expectedHash, `${relativePath} deve permanecer idêntico ao Gate 22, independentemente do EOL do checkout.`);

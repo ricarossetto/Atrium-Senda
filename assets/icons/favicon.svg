@@ -9,12 +9,11 @@
       <stop offset="0%" stop-color="#FFFDF0"/>
       <stop offset="100%" stop-color="#E5C794"/>
     </linearGradient>
-    <filter id="goldGlow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.35"/>
-    </filter>
   </defs>
 
-  <g transform="translate(12, 10)" filter="url(#goldGlow)">
+  <rect width="120" height="120" rx="26" fill="#121517"/>
+
+  <g transform="translate(12, 10)">
     <!-- Pedimento Triangular -->
     <path d="M48 6 L90 66 L75 66 L48 24 L21 66 L6 66 Z" fill="url(#favGoldGrad)"/>
     
