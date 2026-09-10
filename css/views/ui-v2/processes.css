@@ -250,7 +250,7 @@ html[data-ui="v2"] #processTable tbody tr.is-selected .process-cell-number::befo
 
 html[data-ui="v2"] #processTable td > strong,
 html[data-ui="v2"] #processTable td > small,
-html[data-ui="v2"] #processTable td > span {
+html[data-ui="v2"] #processTable td > span:not(.process-enrichment-flag):not(.process-secrecy) {
   min-width: 0;
   display: block;
 }
@@ -443,10 +443,16 @@ html[data-ui="v2"] .process-inspector > footer #processInspectorAccessKey.is-ava
   color: #92400e;
 }
 
+html[data-ui="v2"] .process-inspector > footer .button:disabled:not(.is-configured):not(.is-complete) {
+  opacity: 0.40;
+  cursor: not-allowed;
+}
+
 html[data-ui="v2"] .process-inspector > footer #processInspectorDownloadEprocA1.is-complete,
 html[data-ui="v2"] .process-inspector > footer #processInspectorAccessKey.is-complete,
 html[data-ui="v2"] .process-inspector > footer #processInspectorAccessKey.is-configured,
-html[data-ui="v2"] .process-inspector > footer #processInspectorAccessKey:disabled {
+html[data-ui="v2"] .process-inspector > footer #processInspectorAccessKey.is-configured:disabled,
+html[data-ui="v2"] .process-inspector > footer #processInspectorAccessKey.is-complete:disabled {
   opacity: 0.70;
   background: rgba(16, 185, 129, 0.08);
   color: #047857;
@@ -464,7 +470,8 @@ html[data-ui="v2"][data-theme="dark"] .process-inspector > footer #processInspec
 html[data-ui="v2"][data-theme="dark"] .process-inspector > footer #processInspectorDownloadEprocA1.is-complete,
 html[data-ui="v2"][data-theme="dark"] .process-inspector > footer #processInspectorAccessKey.is-complete,
 html[data-ui="v2"][data-theme="dark"] .process-inspector > footer #processInspectorAccessKey.is-configured,
-html[data-ui="v2"][data-theme="dark"] .process-inspector > footer #processInspectorAccessKey:disabled {
+html[data-ui="v2"][data-theme="dark"] .process-inspector > footer #processInspectorAccessKey.is-configured:disabled,
+html[data-ui="v2"][data-theme="dark"] .process-inspector > footer #processInspectorAccessKey.is-complete:disabled {
   opacity: 0.70;
   background: rgba(16, 185, 129, 0.14);
   color: #34d399;
@@ -1320,28 +1327,41 @@ html[data-ui="v2"] .process-documents-empty {
   color: var(--v2-color-muted-foreground);
 }
 
+html[data-ui="v2"] #processTable td > span.process-enrichment-flag,
+html[data-ui="v2"] #processTable .process-cell-number .process-enrichment-flag,
 html[data-ui="v2"] .process-enrichment-flag {
-  display: inline-flex;
-  width: fit-content;
-  max-width: max-content;
-  align-items: center;
-  gap: 4px;
-  margin-top: 3px;
-  padding: 1px 6px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .02em;
-  border-radius: 4px;
-  background: rgba(217, 119, 6, 0.08);
-  color: #c98a28;
-  border: 1px solid rgba(217, 119, 6, 0.22);
-  line-height: 14px;
-  white-space: nowrap;
+  display: inline-flex !important;
+  width: fit-content !important;
+  max-width: fit-content !important;
+  align-items: center !important;
+  gap: 3px !important;
+  margin-top: 3px !important;
+  padding: 1px 5px !important;
+  font-size: 9.5px !important;
+  font-weight: 500 !important;
+  line-height: 13px !important;
+  letter-spacing: .01em !important;
+  border-radius: 3px !important;
+  background: rgba(217, 119, 6, 0.07) !important;
+  color: #b45309 !important;
+  border: 1px solid rgba(217, 119, 6, 0.20) !important;
+  white-space: nowrap !important;
+  opacity: 0.85 !important;
+  box-sizing: border-box !important;
+}
+
+html[data-ui="v2"][data-theme="dark"] #processTable td > span.process-enrichment-flag,
+html[data-ui="v2"][data-theme="dark"] #processTable .process-cell-number .process-enrichment-flag,
+html[data-ui="v2"][data-theme="dark"] .process-enrichment-flag {
+  background: rgba(245, 158, 11, 0.08) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.22) !important;
+  opacity: 0.80 !important;
 }
 
 html[data-ui="v2"] .process-enrichment-flag > span {
-  font-size: 7px;
-  opacity: 0.75;
+  font-size: 6px !important;
+  opacity: 0.65 !important;
 }
 
 html[data-ui="v2"] .process-enrichment-banner {

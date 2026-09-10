@@ -220,7 +220,7 @@ try {
 
     await page.locator('#processTableBody [data-process-id="ui-v2-process-inactive"] [data-process-details]').click();
     await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
-    assert.equal(await page.locator('#processInspectorTjrs').isHidden(), true, 'TJRS só deve aparecer quando aplicável.');
+    assert.equal(await page.locator('#processInspectorTjrs').isDisabled(), true, 'TJRS deve estar desabilitado para processos de outros tribunais mantendo a grade 3x3.');
     await page.locator('#processInspectorClose').click();
     await page.locator('#processInspectorBackdrop.hidden').waitFor({ state: 'attached' });
 

@@ -219,14 +219,26 @@ export function createProcessesV2Presenter({
 
     const a1Button = byId('processInspectorDownloadEprocA1');
     if (a1Button) {
-      a1Button.classList.toggle('hidden', !isTjrs || !hasA1);
+      a1Button.classList.remove('hidden');
       const isDownloaded = Boolean(item.dossierDownloadedAt || item.documentsDownloadedAt || (selectedDocuments || []).some(d => (d.metadata?.origin || '').includes('eproc') || (d.metadata?.tags || []).includes('a1-oficial') || d.documentType === 'Índice de Autos Oficiais'));
       if (isDownloaded) {
+        a1Button.disabled = false;
         a1Button.textContent = 'Autos baixados';
         a1Button.classList.remove('is-available');
         a1Button.classList.add('is-complete');
         a1Button.title = 'Autos oficiais já baixados do eproc TJRS via Certificado A1.';
+      } else if (!isTjrs) {
+        a1Button.disabled = true;
+        a1Button.textContent = 'Baixar Autos com A1';
+        a1Button.classList.remove('is-available', 'is-complete');
+        a1Button.title = 'Baixar autos com A1 disponível apenas para processos do TJRS (eproc).';
+      } else if (!hasA1) {
+        a1Button.disabled = true;
+        a1Button.textContent = 'Baixar Autos com A1';
+        a1Button.classList.remove('is-available', 'is-complete');
+        a1Button.title = 'Requer Certificado Digital A1 ativo nas configurações do escritório.';
       } else {
+        a1Button.disabled = false;
         a1Button.textContent = 'Baixar Autos com A1';
         a1Button.classList.add('is-available');
         a1Button.classList.remove('is-complete');
@@ -236,37 +248,44 @@ export function createProcessesV2Presenter({
 
     const consultButton = byId('processInspectorTjrs');
     if (consultButton) {
-      consultButton.classList.toggle('hidden', !summary.canConsultTjrs);
-      consultButton.dataset.tjrsConsult = summary.canConsultTjrs ? String(item.number || '') : '';
-    }
-    byId('processInspectorDownloadAutos')?.classList.toggle('hidden', true);
-
-    const keyButton = byId('processInspectorAccessKey');
-    if (keyButton) {
-      keyButton.classList.toggle('hidden', !isTjrs);
-      const hasKey = Boolean(item.accessKey || item.chaveAcesso);
-      if (hasKey) {
-        keyButton.textContent = 'Chave cadastrada';
-        keyButton.disabled = true;
-        keyButton.classList.remove('is-available');
-        keyButton.classList.add('is-configured', 'is-complete');
-        keyButton.title = 'Chave de acesso do eproc já cadastrada para este processo.';
+      consultButton.classList.remove('hidden');
+      if (!isTjrs) {
+        consultButton.disabled = true;
+        consultButton.dataset.tjrsConsult = '';
+        consultButton.title = 'Atualização automática disponível apenas para processos TJRS.';
       } else {
-        keyButton.textContent = 'Adicionar Chave';
-        keyButton.disabled = false;
-        keyButton.classList.add('is-available');
-        keyButton.classList.remove('is-configured', 'is-complete');
-        keyButton.title = 'Adicionar chave de acesso para consulta restrita e autos.';
+        consultButton.disabled = !summary.canConsultTjrs;
+        consultButton.dataset.tjrsConsult = summary.canConsultTjrs ? String(item.number || '') : '';
+        consultButton.title = summary.canConsultTjrs
+          ? 'Consultar e atualizar movimentações no TJRS'
+          : 'Consulta TJRS indisponível para este número';
       }
     }
 
-    const exportButton = byId('processInspectorExport');
-    if (exportButton) {
-      exportButton.textContent = item.dossierDownloadedAt ? 'Dados exportados' : 'Exportar dados';
-      exportButton.classList.toggle('is-complete', Boolean(item.dossierDownloadedAt));
-      exportButton.title = item.dossierDownloadedAt
-        ? 'Exportar novamente o backup técnico deste processo'
-        : 'Exportar um arquivo JSON para backup ou transferência; não contém os autos em PDF';
+    const keyButton = byId('processInspectorAccessKey');
+    if (keyButton) {
+      keyButton.classList.remove('hidden');
+      if (!isTjrs) {
+        keyButton.disabled = true;
+        keyButton.textContent = 'Chave eproc';
+        keyButton.classList.remove('is-available', 'is-configured', 'is-complete');
+        keyButton.title = 'Chave de acesso aplicável a processos do eproc TJRS.';
+      } else {
+        const hasKey = Boolean(item.accessKey || item.chaveAcesso);
+        if (hasKey) {
+          keyButton.textContent = 'Chave cadastrada';
+          keyButton.disabled = true;
+          keyButton.classList.remove('is-available');
+          keyButton.classList.add('is-configured', 'is-complete');
+          keyButton.title = 'Chave de acesso do eproc já cadastrada para este processo.';
+        } else {
+          keyButton.textContent = 'Adicionar Chave';
+          keyButton.disabled = false;
+          keyButton.classList.add('is-available');
+          keyButton.classList.remove('is-configured', 'is-complete');
+          keyButton.title = 'Adicionar chave de acesso para consulta restrita e autos.';
+        }
+      }
     }
 
     documentRef.querySelectorAll('#processTableBody [data-process-id]').forEach(row => {
