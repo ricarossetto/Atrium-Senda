@@ -36,6 +36,8 @@
             state.workspace = result.invitation.workspace;
             byId('authInvitationWorkspace').textContent = result.invitation.workspace.name;
             byId('authInvitationPerson').textContent = `${result.invitation.displayName} · ${result.invitation.email}`;
+            if (byId('authInvitationIdentityBox')) byId('authInvitationIdentityBox').style.display = 'grid';
+            if (byId('authInviteInputGroup')) byId('authInviteInputGroup').style.display = 'none';
             this.show('authInvitationForm');
             byId('authInvitationForm').elements.username.focus();
           } catch (error) {
@@ -101,20 +103,28 @@
       byId('authLoginForm').addEventListener('submit', event => this.login(event));
       byId('authRegisterForm')?.addEventListener('submit', event => this.register(event));
       byId('authInvitationForm')?.addEventListener('submit', event => this.acceptInvitation(event));
+      const setTabActive = (activeTabId) => {
+        ['authTabLogin', 'authTabRegister', 'authTabInvite'].forEach(tabId => {
+          const tab = byId(tabId);
+          if (!tab) return;
+          const isActive = tabId === activeTabId;
+          tab.classList.toggle('active', isActive);
+          tab.setAttribute('aria-selected', String(isActive));
+        });
+      };
+
       byId('authTabLogin')?.addEventListener('click', () => {
-        byId('authTabLogin')?.classList.add('active');
-        byId('authTabRegister')?.classList.remove('active');
-        byId('authTabLogin')?.setAttribute('aria-selected', 'true');
-        byId('authTabRegister')?.setAttribute('aria-selected', 'false');
+        setTabActive('authTabLogin');
         this.show('authLoginForm');
       });
       byId('authTabRegister')?.addEventListener('click', () => {
         if (!state.workspaceRegistrationEnabled) return;
-        byId('authTabRegister')?.classList.add('active');
-        byId('authTabLogin')?.classList.remove('active');
-        byId('authTabRegister')?.setAttribute('aria-selected', 'true');
-        byId('authTabLogin')?.setAttribute('aria-selected', 'false');
+        setTabActive('authTabRegister');
         this.show('authRegisterForm');
+      });
+      byId('authTabInvite')?.addEventListener('click', () => {
+        setTabActive('authTabInvite');
+        this.show('authInvitationForm');
       });
       byId('authBackToLoginLink')?.addEventListener('click', (event) => {
         event.preventDefault();
@@ -126,20 +136,39 @@
       });
       byId('authFooterInviteBtn')?.addEventListener('click', (event) => {
         event.preventDefault();
-        byId('authTabLogin')?.classList.remove('active');
-        byId('authTabRegister')?.classList.remove('active');
-        byId('authTabLogin')?.setAttribute('aria-selected', 'false');
-        byId('authTabRegister')?.setAttribute('aria-selected', 'false');
-        this.show('authInvitationForm');
+        byId('authTabInvite')?.click();
       });
       byId('authInvitationBackBtn')?.addEventListener('click', (event) => {
         event.preventDefault();
         byId('authTabLogin')?.click();
       });
+      byId('authValidateInviteBtn')?.addEventListener('click', async () => {
+        const raw = byId('authInviteTokenInput')?.value?.trim();
+        if (!raw) return this.feedback('Informe o código ou link de convite.', 'error');
+        let token = raw;
+        try {
+          if (raw.includes('invite=')) {
+            const parsed = new URL(raw, globalThis.location.origin);
+            token = parsed.searchParams.get('invite') || token;
+          }
+        } catch {}
+        try {
+          this.feedback('Validando convite...', 'info');
+          const result = await request(`/api/auth/invitations/accept?token=${encodeURIComponent(token)}`);
+          state.invitationToken = token;
+          state.workspace = result.invitation.workspace;
+          byId('authInvitationWorkspace').textContent = result.invitation.workspace.name;
+          byId('authInvitationPerson').textContent = `${result.invitation.displayName} · ${result.invitation.email}`;
+          if (byId('authInvitationIdentityBox')) byId('authInvitationIdentityBox').style.display = 'grid';
+          if (byId('authInviteInputGroup')) byId('authInviteInputGroup').style.display = 'none';
+          this.feedback('Convite validado com sucesso. Crie seu usuário e senha.', 'success');
+          byId('authInvitationForm').elements.username.focus();
+        } catch (err) {
+          this.feedback(err.message || 'Convite inválido ou expirado.', 'error');
+        }
+      });
       byId('authTabNewOffice')?.addEventListener('click', () => {
-        if (state.workspaceRegistrationEnabled) {
-          byId('authTabRegister')?.click();
-        } else if (window.AtriumSaas?.renderSaasModal) {
+        if (window.AtriumSaas?.renderSaasModal) {
           window.AtriumSaas.renderSaasModal(document.body);
         } else {
           import('./features/saas-onboarding.js?v=2.2.1').then(module => {
@@ -152,11 +181,22 @@
       byId('skipMfaButton')?.addEventListener('click', async () => {
         this.feedback('');
         try {
+          if (state.workspaceSetupToken) {
+            const result = await request('/api/auth/workspaces/register/verify', { method: 'POST', body: { setupToken: state.workspaceSetupToken, skipMfa: true } });
+            state.workspaceSetupToken = null;
+            state.authenticated = true; state.csrfToken = result.csrfToken; state.pendingUser = result.user; state.workspace = result.workspace;
+            byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
+            sessionStorage.setItem('atrium_pending_a1_onboarding', 'true');
+            this.enter(result.user);
+            return;
+          }
           if (state.setupToken) {
             const result = await request('/api/auth/setup/verify', { method: 'POST', body: { setupToken: state.setupToken, skipMfa: true } });
+            state.setupToken = null;
             state.authenticated = true; state.csrfToken = result.csrfToken; state.user = result.user;
             byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
             this.enter(result.user);
+            return;
           }
         } catch (error) { this.feedback(error.message, 'error'); }
       });
@@ -187,17 +227,25 @@
         state.profileAvatarDraft = '';
         this.renderProfileAvatar('', byId('profileSettingsPreviewImage'), byId('profileSettingsPreviewInitials'));
       });
+      byId('btnProfileReset')?.addEventListener('click', () => this.resetProfile());
+      byId('btnProfileDelete')?.addEventListener('click', () => this.deleteProfile());
     },
     show(id) {
       document.querySelectorAll('.auth-step').forEach(element => element.classList.toggle('active', element.id === id));
       const tabs = byId('authTabs');
       if (tabs) {
-        tabs.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authInvitationForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
+        tabs.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep' || Boolean(state.invitationToken));
       }
       const footer = byId('authCardFooter');
       if (footer) {
-        footer.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authInvitationForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep');
+        footer.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep' || Boolean(state.invitationToken));
       }
+      byId('authTabLogin')?.classList.toggle('active', id === 'authLoginForm');
+      byId('authTabLogin')?.setAttribute('aria-selected', String(id === 'authLoginForm'));
+      byId('authTabRegister')?.classList.toggle('active', id === 'authRegisterForm');
+      byId('authTabRegister')?.setAttribute('aria-selected', String(id === 'authRegisterForm'));
+      byId('authTabInvite')?.classList.toggle('active', id === 'authInvitationForm');
+      byId('authTabInvite')?.setAttribute('aria-selected', String(id === 'authInvitationForm'));
       byId('authGate').classList.remove('hidden'); byId('appShell').classList.add('hidden');
       state.authenticated = false;
     },
@@ -252,7 +300,10 @@
             displayName: form.get('displayName'),
             email: form.get('email'),
             username: form.get('username'),
-            password: form.get('password')
+            password: form.get('password'),
+            oab: form.get('oab') || '',
+            oabUf: form.get('oabUf') || '',
+            enableMonitoring: form.get('enableMonitoring') === 'on' || form.get('enableMonitoring') === 'true'
           }
         });
         state.workspaceSetupToken = result.setupToken;
@@ -260,8 +311,8 @@
         byId('authManualSecret').textContent = result.manualSecret;
         formElement.reset();
         this.show('authTotpSetupForm');
-        byId('skipMfaButton').hidden = true;
-        this.feedback('Vincule o autenticador para proteger o novo escritório.', 'success');
+        if (byId('skipMfaButton')) byId('skipMfaButton').hidden = false;
+        this.feedback('Vincule o autenticador ou entre sem 2FA para prosseguir.', 'success');
         byId('authTotpSetupForm').elements.code.focus();
       } catch (error) {
         this.feedback(error.message, 'error');
@@ -322,6 +373,7 @@
             byId('authRecoveryCodes').textContent = result.recoveryCodes.join('\n');
             this.show('authRecoveryStep');
           } else {
+            sessionStorage.setItem('atrium_pending_a1_onboarding', 'true');
             this.enter(result.user);
           }
           return;
@@ -452,6 +504,50 @@
         this.profileFeedback(error.message, 'error');
       } finally {
         this.busy(form, false);
+      }
+    },
+    async resetProfile() {
+      if (!window.confirm('Deseja realmente redefinir as preferências e foto do seu perfil para os padrões iniciais?')) return;
+      this.profileFeedback('Redefinindo…');
+      try {
+        const response = await this.secureFetch('/api/auth/profile/reset', {
+          method: 'POST',
+          headers: { Accept: 'application/json' }
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível redefinir o perfil.');
+        state.profileAvatarDraft = '';
+        this.applyProfile(payload.user);
+        this.openProfile();
+        this.profileFeedback('Perfil redefinido com sucesso.', 'success');
+        window.dispatchEvent(new CustomEvent('keller:profile-updated', { detail: payload.user }));
+      } catch (error) {
+        this.profileFeedback(error.message, 'error');
+      }
+    },
+    async deleteProfile() {
+      const isMaster = state.user?.role === 'master_admin';
+      const promptMsg = isMaster
+        ? 'ATENÇÃO: Você é o Administrador titular deste escritório. Excluir este perfil apagará seu acesso e, caso não haja outros administradores, reinicializará as credenciais do sistema.\n\nDeseja realmente prosseguir com a exclusão?'
+        : 'ATENÇÃO: Deseja realmente excluir permanentemente seu perfil de acesso? Esta ação não pode ser desfeita.';
+      if (!window.confirm(promptMsg)) return;
+      this.profileFeedback('Excluindo perfil…');
+      try {
+        const response = await this.secureFetch('/api/auth/profile/delete', {
+          method: 'POST',
+          headers: { Accept: 'application/json' }
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível excluir o perfil.');
+        state.authenticated = false;
+        state.csrfToken = null;
+        state.trustedDevice = false;
+        sessionStorage.clear();
+        this.closeProfile({ force: true });
+        this.show('authLoginForm');
+        this.feedback('Perfil excluído com sucesso.', 'success');
+      } catch (error) {
+        this.profileFeedback(error.message, 'error');
       }
     },
     profileFeedback(message, type = '') {

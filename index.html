@@ -43,7 +43,8 @@
     <div class="auth-visual">
       <div class="auth-brand-logo">
         <div class="auth-logo-frame">
-          <img src="assets/icons/atrium-logo.svg" alt="ATRIUM — Escritório Integrado" class="auth-brand-svg">
+          <img src="assets/icons/atrium-logo.svg" alt="ATRIUM — Escritório Integrado" class="auth-brand-svg auth-brand-dark">
+          <img src="assets/icons/atrium-logo-light.svg" alt="ATRIUM — Escritório Integrado" class="auth-brand-svg auth-brand-light">
         </div>
       </div>
       <div class="auth-visual-copy">
@@ -122,25 +123,35 @@
           <button class="button gold auth-submit" id="finishRecovery" type="button">Já guardei — entrar no Atrium</button>
         </div>
 
+        <div class="auth-tabs" id="authTabs" role="tablist" aria-label="Escolher forma de acesso">
+          <button type="button" class="auth-tab active" id="authTabLogin" role="tab" aria-selected="true" aria-controls="authLoginForm">Entrar</button>
+          <button type="button" class="auth-tab" id="authTabRegister" role="tab" aria-selected="false" aria-controls="authRegisterForm">Criar Escritório</button>
+          <button type="button" class="auth-tab" id="authTabInvite" role="tab" aria-selected="false" aria-controls="authInvitationForm">Com Convite</button>
+        </div>
+
         <form id="authInvitationForm" class="auth-step">
-          <p class="eyebrow">Convite de equipe</p><h2>Entre no escritório</h2>
-          <p id="authInvitationSummary">Confirme seus dados e crie suas credenciais pessoais de colaborador.</p>
-          <div class="auth-invitation-identity">
+          <p class="eyebrow">Convite de equipe</p><h2>Criar Usuário no Escritório</h2>
+          <p id="authInvitationSummary">Ative seu acesso individual como advogado ou colaborador em um escritório já cadastrado.</p>
+          <div class="auth-invitation-identity" id="authInvitationIdentityBox" style="display:none;">
             <strong id="authInvitationWorkspace"></strong>
             <span id="authInvitationPerson"></span>
           </div>
-          <label>Seu usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._\x2d]{3,64}" maxlength="64" placeholder="nome.sobrenome"></label>
-          <label>Crie uma senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
-          <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
-          <small class="auth-hint">O convite funciona uma única vez. Depois, você ativará a proteção em duas etapas.</small>
-          <button class="button gold auth-submit" type="submit">Criar meu acesso</button>
-          <button type="button" class="button ghost auth-submit" id="authInvitationBackBtn" style="margin-top: 8px;">Voltar ao login</button>
+          <div id="authInviteInputGroup">
+            <label>Link ou Código do Convite<input id="authInviteTokenInput" autocomplete="off" placeholder="Cole aqui o link ou código recebido"></label>
+            <button type="button" class="button ghost" id="authValidateInviteBtn" style="margin-top:4px; width:100%;">Validar convite</button>
+          </div>
+          <div id="authInviteFieldsGroup">
+            <label>Seu usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._\x2d]{3,64}" maxlength="64" placeholder="nome.sobrenome"></label>
+            <label>Crie uma senha forte<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+            <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+            <small class="auth-hint">O convite funciona uma única vez. Depois, você ativará a proteção em duas etapas.</small>
+            <button class="button gold auth-submit" type="submit">Criar meu acesso</button>
+          </div>
+          <div class="auth-register-footer">
+            <span>Já possui acesso configurado?</span>
+            <button type="button" class="auth-link-action" id="authInvitationBackBtn" style="background:none; border:none; padding:4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Entrar na conta</button>
+          </div>
         </form>
-
-        <div class="auth-tabs" id="authTabs" role="tablist" aria-label="Escolher forma de acesso">
-          <button type="button" class="auth-tab active" id="authTabLogin" role="tab" aria-selected="true" aria-controls="authLoginForm">Entrar na Conta</button>
-          <button type="button" class="auth-tab" id="authTabRegister" role="tab" aria-selected="false" aria-controls="authRegisterForm">Criar Novo Escritório</button>
-        </div>
 
         <form id="authRegisterForm" class="auth-step">
           <p class="eyebrow">Fundação de Banca</p><h2>Cadastrar Novo Escritório</h2>
@@ -163,6 +174,30 @@
           <label>Usuário de acesso<input name="username" autocomplete="username" required pattern="[a-zA-Z0-9._\x2d]{3,64}" placeholder="nome.sobrenome" maxlength="64"></label>
           <label>Senha de acesso<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
           <label>Confirmar senha<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>
+
+          <div class="auth-field-row">
+            <label><span>Número da OAB</span><input name="oab" inputmode="text" autocomplete="off" placeholder="000000" maxlength="20"></label>
+            <label><span class="auth-uf-label">UF</span><select name="oabUf" aria-label="UF da OAB">
+              <option value="">UF</option>
+              <option value="RS" selected>RS</option>
+              <option value="SC">SC</option><option value="PR">PR</option><option value="SP">SP</option><option value="RJ">RJ</option>
+              <option value="MG">MG</option><option value="DF">DF</option><option value="BA">BA</option><option value="GO">GO</option>
+              <option value="PE">PE</option><option value="CE">CE</option><option value="AC">AC</option><option value="AL">AL</option>
+              <option value="AP">AP</option><option value="AM">AM</option><option value="ES">ES</option><option value="MA">MA</option>
+              <option value="MT">MT</option><option value="MS">MS</option><option value="PA">PA</option><option value="PB">PB</option>
+              <option value="PI">PI</option><option value="RN">RN</option><option value="RO">RO</option><option value="RR">RR</option>
+              <option value="SE">SE</option><option value="TO">TO</option>
+            </select></label>
+          </div>
+
+          <label class="trust-browser-control" id="registerMonitoringChoice">
+            <input type="checkbox" name="enableMonitoring" checked>
+            <span>
+              <strong>Ativar sincronização automática da OAB</strong>
+              <small>Ao entrar, o ATRIUM inicia a busca de publicações e processos vinculados à sua OAB no DJEN/DataJud.</small>
+            </span>
+          </label>
+
           <button class="button gold auth-submit" type="submit">Cadastrar escritório</button>
           <div class="auth-register-footer">
             <span>Já possui conta no Atrium?</span>
@@ -185,12 +220,8 @@
 
         <div class="auth-card-footer" id="authCardFooter">
           <div class="auth-footer-prompt">
-            <span>Advogado com convite de equipe?</span>
-            <button type="button" class="auth-link-action" id="authFooterInviteBtn" style="background:none; border:none; padding:2px 4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Ativar acesso de colaborador</button>
-          </div>
-          <div class="auth-footer-prompt" style="margin-top: 6px;">
-            <span>Deseja fundar uma nova banca?</span>
-            <button type="button" class="auth-link-action" id="authTabNewOffice" style="background:none; border:none; padding:2px 4px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer; text-decoration:underline;">Cadastrar novo escritório</button>
+            <button type="button" class="auth-link-action" id="authTabNewOffice" style="background:none; border:none; padding:2px 4px; font-family:inherit; font-size:12px; font-weight:600; color:var(--auth-muted); cursor:pointer; text-decoration:underline;">Planos e limites para novos escritórios</button>
+            <button type="button" class="hidden" id="authFooterInviteBtn" style="display:none;" aria-hidden="true">Ativar acesso de colaborador</button>
           </div>
           <p class="auth-footer-legal">Ao entrar você concorda com os Termos de Uso e a Política de Privacidade do Atrium.</p>
         </div>
@@ -825,8 +856,8 @@
               <div class="inbox-sort-control">
                 <label for="inboxSortSelect">Ordenar:</label>
                 <select id="inboxSortSelect">
-                  <option value="priority-urgent" selected>Atenção / Urgentes primeiro</option>
-                  <option value="date-desc">Data (mais recentes)</option>
+                  <option value="date-desc" selected>Data (mais recentes)</option>
+                  <option value="priority-urgent">Atenção / Urgentes primeiro</option>
                   <option value="date-asc">Data (mais antigas)</option>
                   <option value="process">Por Processo</option>
                 </select>
@@ -894,6 +925,10 @@
           </div>
           <div class="toolbar-actions">
             <button class="button ghost v2-only hidden" id="processSuppressionButton" type="button">Reativar descoberta (0)</button>
+            <button class="button ghost" id="btnSyncEprocA1" title="Sincronizar processos do TJRS com Certificado Digital A1 e revelar clientes em segredo de justiça">
+              <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-refresh"></use></svg>
+              <span>Sincronizar eproc A1</span>
+            </button>
             <button class="button ghost" data-view-link="importer">
               <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-importer"></use></svg>
               <span>Importar planilha</span>
@@ -1233,7 +1268,7 @@
         </header>
         <div class="section-toolbar configuration-toolbar">
           <div class="filter-tabs config-tabs" id="configurationTabs"></div>
-          <div class="toolbar-actions config-actions"><div class="table-search compact-search"><input id="configurationSearch" type="search" aria-label="Buscar nesta configuração" placeholder="Buscar nesta configuração"></div><button class="button ghost" id="btnOpenTourFromConfig" type="button" title="Ver apresentação do ATRIUM">Ver apresentação</button><button class="button gold" id="newConfigurationButton" type="button">Novo item</button></div>
+          <div class="toolbar-actions config-actions"><div class="table-search compact-search"><input id="configurationSearch" type="search" aria-label="Buscar nesta configuração" placeholder="Buscar nesta configuração"></div><button class="button ghost" id="btnConfigMyProfile" type="button" title="Gerenciar meu perfil de acesso"><svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-contacts"></use></svg><span>Meu perfil</span></button><button class="button ghost" id="btnOpenTourFromConfig" type="button" title="Ver apresentação do ATRIUM">Ver apresentação</button><button class="button gold" id="newConfigurationButton" type="button">Novo item</button></div>
         </div>
         <div class="configuration-metrics" id="configurationMetrics"></div>
         <article class="card config-catalog">
@@ -1744,13 +1779,17 @@
       </header>
       <div class="process-inspector-content" id="processInspectorContent"></div>
       <footer>
+        <!-- Linha 1 -->
         <button type="button" class="button gold process-create-task-action" id="processInspectorCreateTask"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Criar tarefa</button>
+        <button type="button" class="button is-available hidden" id="processInspectorDownloadEprocA1" data-download-eproc-a1>Baixar Autos com A1</button>
         <button type="button" class="button ghost hidden" id="processInspectorTjrs">Atualizar TJRS</button>
+        <!-- Linha 2 -->
         <button type="button" class="button process-edit-action" id="processInspectorEdit">Editar processo</button>
-        <button type="button" class="button ghost" id="processInspectorExport">Exportar dados</button>
         <button type="button" class="button ghost" id="processInspectorDocuments">Ver documentos</button>
-        <button type="button" class="button ghost hidden" id="processInspectorDownloadAutos">Gerar caderno em PDFs</button>
+        <button type="button" class="button ghost" id="processInspectorTasks">Ver tarefas relacionadas</button>
+        <!-- Linha 3 -->
         <button type="button" class="button ghost" id="processInspectorAssistant">Usar no Assistente</button>
+        <button type="button" class="button is-available" id="processInspectorAccessKey">Adicionar Chave</button>
         <button type="button" class="button danger-outline process-delete-action" id="processInspectorDelete">Excluir processo</button>
       </footer>
       <div class="process-access-key-backdrop hidden" id="processAccessKeyBackdrop" role="dialog" aria-modal="true" aria-labelledby="processAccessKeyTitle">
@@ -1823,6 +1862,16 @@
           <label class="field full" for="profileDisplayName"><span>Nome completo</span><input id="profileDisplayName" name="displayName" minlength="3" maxlength="100" required></label>
           <label class="field" for="profileEmail"><span>E-mail</span><input id="profileEmail" name="email" type="email" maxlength="160" autocomplete="email"></label>
           <label class="field" for="profilePhone"><span>Telefone de contato</span><input id="profilePhone" name="phone" type="tel" maxlength="32" autocomplete="tel" placeholder="(51) 99999-9999"></label>
+        </div>
+        <div class="profile-settings-danger-zone" style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <button class="button ghost" id="btnProfileReset" type="button" title="Redefinir foto e dados de contato para o padrão">
+            <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-sync"></use></svg>
+            <span>Redefinir perfil</span>
+          </button>
+          <button class="button ghost danger-button" id="btnProfileDelete" type="button" title="Excluir permanentemente este perfil de acesso" style="color: var(--danger, #ef4444);">
+            <svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-delete"></use></svg>
+            <span>Apagar perfil</span>
+          </button>
         </div>
         <p class="profile-settings-feedback hidden" id="profileSettingsFeedback" role="status" aria-live="polite"></p>
         <footer><button class="button ghost" id="profileSettingsCancel" type="button">Cancelar</button><button class="button gold" type="submit">Salvar perfil</button></footer>
@@ -2709,6 +2758,69 @@
           <button class="button gold" id="receiverSubmitBtn" type="submit">Salvar Destinatário</button>
         </footer>
       </form>
+    </section>
+  </div>
+
+  <div id="onboardingCertificateBackdrop" class="modal-backdrop hidden" style="z-index: 9999;">
+    <section class="modal card" role="dialog" aria-modal="true" aria-labelledby="onboardingCertTitle" style="max-width: 520px; width: 92%; border-radius: 16px; border: 1px solid var(--border, #2a2a2e); background: var(--surface-overlay, #18181b); color: var(--text-primary, #f4f4f5); box-shadow: 0 20px 60px rgba(0,0,0,0.7); overflow: hidden;">
+      <header class="modal-header" style="padding: 20px 24px; border-bottom: 1px solid var(--border, #2a2a2e); display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <p class="eyebrow" style="margin: 0 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gold, #d4af37);">Integração Judicial eproc</p>
+          <h3 id="onboardingCertTitle" style="margin: 0; font-size: 20px; font-family: var(--font-serif, Georgia, serif); color: var(--text-primary, #f4f4f5);">Você possui Certificado Digital A1?</h3>
+        </div>
+      </header>
+      <div class="modal-body" style="padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
+        <p style="font-size: 13px; color: var(--text-secondary, #a1a1aa); line-height: 1.5; margin: 0;">
+          O Certificado A1 (.pfx ou .p12) é utilizado para consultar o eproc TJRS, ler processos em segredo de justiça e baixar os autos na íntegra.
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- Opção COM A1 -->
+          <div class="cert-choice-card" id="certChoiceYesBox" style="padding: 14px; border: 1px solid var(--border, #2a2a2e); border-radius: 10px; background: rgba(255,255,255,0.03); cursor: pointer;">
+            <label style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer; user-select: none;">
+              <input type="radio" name="certChoice" id="certChoiceYes" value="yes" style="margin-top: 3px;">
+              <div>
+                <strong style="font-size: 14px; color: var(--text-primary, #f4f4f5); display: block;">Sim, possuo Certificado A1 (.pfx / .p12)</strong>
+                <small style="font-size: 12px; color: var(--text-secondary, #a1a1aa); display: block; margin-top: 2px;">Vincular agora para sincronizar autos e processos em segredo de justiça.</small>
+              </div>
+            </label>
+
+            <!-- Form de upload quando selecionado 'Sim' -->
+            <div id="certUploadFields" class="hidden" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border, #2a2a2e); display: flex; flex-direction: column; gap: 12px;">
+              <label style="display: flex; flex-direction: column; gap: 6px;">
+                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary, #a1a1aa);">Arquivo do Certificado (.pfx / .p12) *</span>
+                <div style="border: 1px dashed var(--gold, #d4af37); border-radius: 8px; padding: 14px; text-align: center; background: rgba(212,175,55,0.05); cursor: pointer;" id="certDropzone">
+                  <input type="file" id="onboardingCertFileInput" accept=".pfx,.p12" style="display: none;">
+                  <span id="onboardingCertFileName" style="font-size: 13px; color: var(--gold, #d4af37); font-weight: 600;">Clique para selecionar o arquivo .pfx / .p12</span>
+                </div>
+              </label>
+
+              <label style="display: flex; flex-direction: column; gap: 6px;">
+                <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary, #a1a1aa);">Senha do Certificado *</span>
+                <input type="password" id="onboardingCertPassword" placeholder="Digite a senha do certificado" style="width: 100%; min-height: 40px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border, #2a2a2e); background: var(--surface-input, #222226); color: var(--text-primary, #f4f4f5); font-size: 13px; box-sizing: border-box;">
+              </label>
+
+              <div id="onboardingCertFeedback" class="hidden" style="font-size: 12px; padding: 8px 12px; border-radius: 6px;"></div>
+
+              <button type="button" class="button gold" id="btnSubmitOnboardingCert" style="width: 100%; min-height: 40px;">Instalar e Sincronizar Agora</button>
+            </div>
+          </div>
+
+          <!-- Opção SEM A1 -->
+          <div class="cert-choice-card" id="certChoiceNoBox" style="padding: 14px; border: 1px solid var(--border, #2a2a2e); border-radius: 10px; background: rgba(255,255,255,0.03); cursor: pointer;">
+            <label style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer; user-select: none;">
+              <input type="radio" name="certChoice" id="certChoiceNo" value="no" checked style="margin-top: 3px;">
+              <div>
+                <strong style="font-size: 14px; color: var(--text-primary, #f4f4f5); display: block;">Não possuo Certificado Digital A1</strong>
+                <small style="font-size: 12px; color: var(--text-secondary, #a1a1aa); display: block; margin-top: 2px;">O ATRIUM funcionará em modo de consulta pública. Avisos de enriquecimento eproc e opções de A1 não serão exibidos.</small>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+      <footer class="modal-footer" style="display: flex; justify-content: flex-end; padding: 16px 24px; border-top: 1px solid var(--border, #2a2a2e); background: rgba(0,0,0,0.2);">
+        <button type="button" class="button ghost" id="btnContinueWithoutCert" style="min-height: 40px;">Continuar sem Certificado Digital</button>
+      </footer>
     </section>
   </div>
 

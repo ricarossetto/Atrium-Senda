@@ -411,6 +411,9 @@ export async function prepareUiV2ConfigurationAdminFixture(page, {
       const request = safeRequest(url, options);
       if (url === '/api/auth/users') return response({ currentRole, users: authUsers });
       if (url === '/api/auth/users/manage') return response({ ok: true });
+      if (url === '/api/auth/users/delete') return response({ ok: true, deleted: true });
+      if (url === '/api/auth/profile/reset') return response({ ok: true, user: authUsers[0] });
+      if (url === '/api/auth/profile/delete') return response({ ok: true, deleted: true });
       if (url === '/api/system/rebuild-runtime') return response({ ok: true, message: 'Runtime sintético reconstruído.' });
       if (url === '/api/system/backup/create') return response({
         ok: true,

@@ -37,8 +37,8 @@ html[data-theme="light"] .auth-gate {
 
 .auth-gate .auth-theme-toggle {
   position: absolute;
-  z-index: 10;
-  top: 20px;
+  z-index: 20;
+  top: 18px;
   right: 24px;
   order: initial;
   width: 42px;
@@ -111,11 +111,14 @@ html[data-theme="light"] .auth-gate {
 }
 
 .auth-gate .auth-brand-svg { width: clamp(210px, 22vw, 300px); height: auto; }
+.auth-gate .auth-brand-light { display: none; }
+.auth-gate .auth-brand-dark { display: block; }
 html[data-theme="light"] .auth-gate .auth-logo-frame {
   border-color: var(--auth-line);
   background: rgba(255, 255, 253, .72);
 }
-html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../assets/icons/atrium-logo-light.svg"); }
+html[data-theme="light"] .auth-gate .auth-brand-light { display: block; }
+html[data-theme="light"] .auth-gate .auth-brand-dark { display: none; }
 .auth-gate .auth-visual-copy { max-width: 700px; margin: clamp(62px, 11vh, 118px) 0 clamp(36px, 6vh, 68px); }
 
 .auth-gate .auth-visual-copy .eyebrow {
@@ -187,10 +190,14 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 
 .auth-gate .auth-panel {
   position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px clamp(28px, 5vw, 66px);
+  padding: 24px clamp(24px, 4vw, 56px);
   background: var(--auth-panel);
+  box-sizing: border-box;
 }
 
 .auth-gate .auth-card {
@@ -208,6 +215,8 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 }
 
 .auth-gate .auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   margin-bottom: 16px;
   padding: 4px;
@@ -278,13 +287,18 @@ html[data-theme="light"] .auth-gate .auth-brand-svg { content: url("../../../ass
 
 .auth-gate .auth-tab {
   min-width: 0;
-  min-height: 44px;
-  padding: 8px 12px;
+  min-height: 38px;
+  padding: 6px 4px;
   border-radius: 7px;
   color: var(--auth-muted);
-  letter-spacing: .045em;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-align: center;
   transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .auth-gate .auth-tab:hover { color: var(--auth-text); background: color-mix(in srgb, var(--auth-card) 70%, transparent); }
@@ -549,6 +563,8 @@ html[data-theme="light"] .auth-gate #authSetupForm select[name="oabUf"] {
 .auth-gate #authInvitationForm { gap: 12px; }
 .auth-gate #authInvitationForm > p { margin: 0; }
 .auth-gate .auth-invitation-identity { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--auth-line); border-radius: 10px; background: var(--auth-card-soft); }
+.auth-gate .auth-invitation-identity:empty,
+.auth-gate .auth-invitation-identity:not(:has(strong:not(:empty))) { display: none !important; }
 .auth-gate .auth-invitation-identity span { color: var(--auth-muted); overflow-wrap: anywhere; }
 .auth-gate .auth-feedback.error { border-color: #8e514c; color: #efbbb5; background: rgba(112, 49, 43, .18); }
 .auth-gate .auth-feedback.success { border-color: #587460; color: #b8d5bf; background: rgba(64, 101, 74, .17); }

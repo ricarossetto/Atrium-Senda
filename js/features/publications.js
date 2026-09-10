@@ -144,7 +144,7 @@ export function createPublicationsFeature({
   let inboxFilter = null;
   let inboxFilterExplicit = false;
   let inboxFilterMode = null;
-  let inboxSort = 'priority-urgent';
+  let inboxSort = 'date-desc';
   let inboxCutoff = '2days';
   let currentEmailBulletin = null;
   let publicationsPresenter;
@@ -244,6 +244,7 @@ export function createPublicationsFeature({
         inboxSort = event.target.value;
         this.renderInbox();
       });
+      if (byId('inboxSortSelect')) byId('inboxSortSelect').value = inboxSort;
       byId('inboxCutoffSelect')?.addEventListener('change', event => {
         inboxCutoff = event.target.value;
         this.renderInbox();

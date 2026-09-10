@@ -97,10 +97,7 @@ export function createTasksFeature({
     init() {
       if (initialized) return false;
       initialized = true;
-      try {
-        const savedMode = windowRef?.localStorage?.getItem('atrium:tasks:view');
-        if (['list', 'kanban'].includes(savedMode)) taskViewMode = savedMode;
-      } catch {}
+      taskViewMode = 'list';
       byId('newTaskButton')?.addEventListener('click', () => this.openTaskModal());
       byId('editKanbanColumnsButton')?.addEventListener('click', () => this.openColumnsEditor());
       byId('taskListViewButton')?.addEventListener('click', () => this.setTaskViewMode('list'));

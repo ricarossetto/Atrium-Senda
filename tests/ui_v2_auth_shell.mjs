@@ -13,7 +13,7 @@ const indexSource = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const expectedEndpoints = [
   '/api/auth/status', '/api/auth/setup', '/api/auth/setup/verify', '/api/auth/workspaces/register',
   '/api/auth/workspaces/register/verify', '/api/auth/invitations/accept', '/api/auth/register/verify',
-  '/api/auth/login', '/api/auth/logout', '/api/auth/profile'
+  '/api/auth/login', '/api/auth/logout', '/api/auth/profile', '/api/auth/profile/reset', '/api/auth/profile/delete'
 ];
 const endpoints = [...new Set(authSource.match(/\/api\/auth\/[a-z/]+/g) || [])].sort();
 assert.deepEqual(endpoints, expectedEndpoints.toSorted());

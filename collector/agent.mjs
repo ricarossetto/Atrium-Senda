@@ -193,7 +193,8 @@ try {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(process.env.COLLECTOR_INGEST_TOKEN ? { Authorization: `Bearer ${process.env.COLLECTOR_INGEST_TOKEN}` } : {})
+      ...(process.env.COLLECTOR_INGEST_TOKEN ? { Authorization: `Bearer ${process.env.COLLECTOR_INGEST_TOKEN}` } : {}),
+      ...(process.env.ATRIUM_WORKSPACE_ID ? { 'X-ATRIUM-Workspace-ID': process.env.ATRIUM_WORKSPACE_ID } : {})
     },
     body: JSON.stringify(payload)
   });

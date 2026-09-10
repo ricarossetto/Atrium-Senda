@@ -48,7 +48,7 @@ try {
   await page.locator('#authSetupForm:not(.hidden)').waitFor();
   await page.locator('#authSetupForm [name="password"]').fill('Synthetic-Visual-2026!');
   await page.locator('#authSetupForm [name="confirmPassword"]').fill('Synthetic-Visual-2026!');
-  const passwordGeometry = await page.locator('#authSetupForm input[type="password"]').evaluateAll(inputs => inputs.map(input => {
+  const passwordGeometry = await page.locator('#authSetupForm input[type="password"]:visible').evaluateAll(inputs => inputs.map(input => {
     const rect = input.getBoundingClientRect();
     const style = getComputedStyle(input);
     return { height: rect.height, paddingTop: style.paddingTop, paddingBottom: style.paddingBottom, lineHeight: style.lineHeight };

@@ -10,7 +10,7 @@ const EVENT_ORDER = Object.freeze({
   process: 9
 });
 
-export function buildLegalTimeline(state, process, { limit = 120 } = {}) {
+export function buildLegalTimeline(state, process, { limit = 120, order = 'desc' } = {}) {
   if (!state || !process) return [];
   const processId = String(process.id || '');
   const processNumber = normalizeProcessNumber(process.number || process.protocol);
@@ -28,26 +28,32 @@ export function buildLegalTimeline(state, process, { limit = 120 } = {}) {
       detail: String(event.detail || ''),
       source: compactSourceLabel(event.source),
       target: String(event.target || ''),
-      entityId: String(event.entityId || '')
+      entityId: String(event.entityId || ''),
+      eventNumber: event.eventNumber != null && Number.isFinite(Number(event.eventNumber)) ? Number(event.eventNumber) : null
     }));
   };
 
   if (process.registeredAt || process.createdAt) add({
     id: `process:${processId}:registered`, type: 'process', date: process.registeredAt || process.createdAt,
-    title: 'Processo cadastrado', detail: process.actionType || process.subject || '', source: process.source || 'Cadastro'
+    title: 'Processo cadastrado', detail: process.actionType || process.subject || '', source: process.source || 'Cadastro',
+    eventNumber: 0
   });
 
   const movements = Array.isArray(process.movements) && process.movements.length
     ? process.movements
     : process.lastMovement ? [{ description: process.lastMovement, date: process.lastMovementAt }] : [];
-  movements.forEach((movement, index) => add({
-    id: `movement:${processId}:${movement.id || movement.eventNumber || movement.code || index}`,
-    type: 'movement',
-    date: movement.date || movement.at || movement.occurredAt || movement.createdAt,
-    title: movement.description || movement.text || movement.name || 'Movimentação processual',
-    detail: movement.complement || movement.detail || '',
-    source: movement.source || process.source || 'Processo'
-  }));
+  movements.forEach((movement, index) => {
+    const evNum = extractEventNumber(movement.eventNumber) ?? extractEventNumber(movement.id) ?? extractEventNumber(movement.description) ?? extractEventNumber(movement.text) ?? null;
+    add({
+      id: `movement:${processId}:${movement.id || movement.eventNumber || movement.code || index}`,
+      type: 'movement',
+      date: movement.date || movement.at || movement.occurredAt || movement.createdAt,
+      title: movement.description || movement.text || movement.name || 'Movimentação processual',
+      detail: movement.complement || movement.detail || '',
+      source: movement.source || process.source || 'Processo',
+      eventNumber: evNum
+    });
+  });
 
   (state.intimations || []).filter(linked).forEach(publication => {
     add({
@@ -99,12 +105,16 @@ export function buildLegalTimeline(state, process, { limit = 120 } = {}) {
     source: appointment.source || 'Agenda', target: 'agenda', entityId: appointment.id
   }));
 
-  (state.documents || []).filter(linked).forEach(document => add({
-    id: `document:${document.id}`, type: 'document', date: document.createdAt || document.updatedAt,
-    title: document.name || document.fileName || document.title || 'Documento vinculado',
-    detail: document.documentType || document.type || document.mimeType || '', source: document.source || 'Documentos',
-    target: 'document', entityId: document.id
-  }));
+  (state.documents || []).filter(linked).forEach(document => {
+    const evNum = extractEventNumber(document.name) ?? extractEventNumber(document.metadata?.event) ?? null;
+    add({
+      id: `document:${document.id}`, type: 'document', date: document.createdAt || document.updatedAt,
+      title: document.name || document.fileName || document.title || 'Documento vinculado',
+      detail: document.documentType || document.type || document.mimeType || '', source: document.source || 'Documentos',
+      target: 'document', entityId: document.id,
+      eventNumber: evNum
+    });
+  });
 
   (Array.isArray(process.expenses) ? process.expenses : []).forEach((expense, index) => add({
     id: `financial:${processId}:expense:${expense.id || index}`, type: 'financial', date: expense.date || expense.createdAt,
@@ -132,11 +142,42 @@ export function buildLegalTimeline(state, process, { limit = 120 } = {}) {
     title: entry.action || 'Registro de auditoria', detail: entry.actor || '', source: 'Auditoria'
   }));
 
+  if (order === 'autos' || order === 'asc') {
+    return events
+      .sort((left, right) => {
+        const hasLeftNum = left.eventNumber != null;
+        const hasRightNum = right.eventNumber != null;
+        if (hasLeftNum && hasRightNum && left.eventNumber !== right.eventNumber) {
+          return left.eventNumber - right.eventNumber;
+        }
+        const leftTime = eventTimestamp(left.date);
+        const rightTime = eventTimestamp(right.date);
+        if (leftTime !== rightTime) {
+          return leftTime - rightTime;
+        }
+        if (hasLeftNum !== hasRightNum) {
+          return hasLeftNum ? -1 : 1;
+        }
+        return (EVENT_ORDER[left.type] || 99) - (EVENT_ORDER[right.type] || 99)
+          || left.id.localeCompare(right.id);
+      })
+      .slice(0, Math.max(1, Math.min(Number(limit) || 120, 500)));
+  }
+
   return events
     .sort((left, right) => eventTimestamp(right.date) - eventTimestamp(left.date)
       || (EVENT_ORDER[left.type] || 99) - (EVENT_ORDER[right.type] || 99)
       || left.id.localeCompare(right.id))
     .slice(0, Math.max(1, Math.min(Number(limit) || 120, 500)));
+}
+
+export function extractEventNumber(value) {
+  if (value == null) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const str = String(value).trim();
+  const match = str.match(/(?:evento|ev\.?)\s*(\d{1,6})/i) || str.match(/^(\d{1,6})\s*[-_.]/);
+  if (match) return parseInt(match[1], 10);
+  return null;
 }
 
 function normalizeProcessNumber(value) {

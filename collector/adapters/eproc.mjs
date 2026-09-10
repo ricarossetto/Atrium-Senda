@@ -284,7 +284,7 @@ export async function collectEprocDeadlines(page) {
   const results = { openDeadlines: [], pendingIntimations: [] };
 
   // 1. Prazos em aberto
-  const openLink = page.locator('a[href*="acao=citacao_intimacao_prazo_aberto_listar"]').first();
+  const openLink = page.locator('a[href*="acao=citacao_intimacao_prazo_aberto_listar"], a:has-text("prazo em aberto"), a:has-text("Prazos em aberto"), a:has-text("Prazos em Aberto")').first();
   if (await openLink.count() > 0) {
     const href = await openLink.getAttribute('href');
     if (href) {
@@ -295,7 +295,7 @@ export async function collectEprocDeadlines(page) {
 
   // 2. Intimações pendentes
   await navigateToEprocPanel(page);
-  const pendingLink = page.locator('a[href*="acao=citacao_intimacao_pendente_listar"]').first();
+  const pendingLink = page.locator('a[href*="acao=citacao_intimacao_pendente_listar"], a:has-text("pendentes de citação"), a:has-text("pendente de citação"), a:has-text("Pendentes de Intimação")').first();
   if (await pendingLink.count() > 0) {
     const href = await pendingLink.getAttribute('href');
     if (href) {
@@ -313,24 +313,42 @@ export async function collectEprocDeadlines(page) {
 export async function readEprocDeadlineRows(page) {
   return page.locator('table').evaluateAll(tables => {
     const table = tables.find(candidate => {
-      const headers = [...candidate.querySelectorAll('th')].map(cell => cell.textContent.trim());
-      return headers.includes('Processo') && headers.includes('Evento e Prazo');
-    });
+      const headers = [...candidate.querySelectorAll('th, td')].map(cell => cell.textContent.trim());
+      return headers.some(h => /Processo/i.test(h)) && headers.some(h => /Evento|Prazo/i.test(h));
+    }) || tables.find(candidate => candidate.innerText && /\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/.test(candidate.innerText));
     if (!table) return [];
+
+    const firstRowCells = [...(table.querySelector('tr') ? table.querySelector('tr').querySelectorAll('th, td') : [])];
+    const headerTexts = firstRowCells.map(c => c.innerText.trim());
+    const classIdx = headerTexts.findIndex(h => /Classe/i.test(h));
+    const subjectIdx = headerTexts.findIndex(h => /Assunto/i.test(h));
+    const eventIdx = headerTexts.findIndex(h => /Evento/i.test(h));
+    const sentIdx = headerTexts.findIndex(h => /Expedi|Envio|Data/i.test(h));
+    const startsIdx = headerTexts.findIndex(h => /Início|Ciência|Abertura/i.test(h));
+    const deadlineIdx = headerTexts.findIndex(h => /Fim|Final|Término|Limite|Prazo/i.test(h));
+
     return [...table.rows].slice(1).map(row => {
       const cells = [...row.cells].map(cell => cell.innerText.trim().replace(/\s+/g, ' '));
-      const processMatch = (cells[1] || '').match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/);
+      const rowText = row.innerText.trim().replace(/\s+/g, ' ');
+      const processMatch = rowText.match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/);
+      if (!processMatch) return null;
+
+      const dateMatches = rowText.match(/\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2}(?::\d{2})?)?/g) || [];
+      const rawDeadline = deadlineIdx >= 0 && cells[deadlineIdx] ? cells[deadlineIdx] : (dateMatches[dateMatches.length - 1] || '');
+      const rawSent = sentIdx >= 0 && cells[sentIdx] ? cells[sentIdx] : (dateMatches[0] || '');
+      const rawStarts = startsIdx >= 0 && cells[startsIdx] ? cells[startsIdx] : (dateMatches[1] || dateMatches[0] || '');
+
       return {
-        processNumber: processMatch ? processMatch[0] : '',
-        processDetails: cells[1] || '',
-        className: cells[2] || '',
-        subject: cells[3] || '',
-        event: cells[4] || 'Intimação eletrônica',
-        sentAt: cells[5] || '',
-        startsAt: cells[6] || '',
-        deadlineAt: cells[7] || ''
+        processNumber: processMatch[0],
+        processDetails: cells[1] || rowText.slice(0, 300),
+        className: classIdx >= 0 && cells[classIdx] ? cells[classIdx] : (cells[2] || ''),
+        subject: subjectIdx >= 0 && cells[subjectIdx] ? cells[subjectIdx] : (cells[3] || ''),
+        event: eventIdx >= 0 && cells[eventIdx] ? cells[eventIdx] : (cells[4] || 'Intimação eletrônica'),
+        sentAt: rawSent,
+        startsAt: rawStarts,
+        deadlineAt: rawDeadline
       };
-    }).filter(r => r.processNumber);
+    }).filter(Boolean);
   });
 }
 

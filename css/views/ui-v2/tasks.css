@@ -1,5 +1,10 @@
-html[data-ui="v2"] #view-kanban {
+html[data-ui="v2"] #view-kanban,
+html[data-ui="v2"] .main-content {
   min-width: 0;
+  scrollbar-gutter: stable;
+}
+
+html[data-ui="v2"] #view-kanban {
   padding: var(--v2-space-5);
   font-family: var(--v2-font-interface);
 }
@@ -70,7 +75,7 @@ html[data-ui="v2"] #view-kanban .toolbar-actions .button {
 html[data-ui="v2"] .task-view-switch {
   position: relative;
   display: inline-grid;
-  grid-template-columns: repeat(2, minmax(84px, 1fr));
+  grid-template-columns: repeat(2, 87px);
   align-self: center;
   padding: 4px;
   background: var(--v2-color-surface-secondary);
@@ -86,18 +91,18 @@ html[data-ui="v2"] .task-view-switch::before {
   top: 4px;
   bottom: 4px;
   left: 4px;
-  width: calc(50% - 4px);
+  width: 87px;
   background: var(--v2-color-surface-elevated);
   border-radius: var(--v2-radius-round);
   box-shadow: var(--v2-shadow-subtle), 0 1px 3px rgba(0, 0, 0, 0.12);
-  transition: transform 260ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
   z-index: 1;
 }
 
 html[data-ui="v2"] .task-view-switch[data-active-mode="kanban"]::before,
 html[data-ui="v2"] #view-kanban[data-task-view="kanban"] .task-view-switch::before {
-  transform: translateX(100%);
+  transform: translateX(87px);
 }
 
 html[data-ui="v2"] .task-view-switch[data-active-mode="list"]::before,

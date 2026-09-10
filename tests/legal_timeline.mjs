@@ -40,4 +40,9 @@ assert.equal(buildLegalTimeline(state, process, { limit: 3 }).length, 3);
 assert.deepEqual(buildLegalTimeline(null, process), []);
 assert.equal(buildLegalTimeline({ tasks: [{ id: 'unlinked', title: 'Sem vínculo' }], audit: [{ id: 'unlinked-audit', action: 'Sem vínculo' }] }, { number: '5001111-00.2026.8.21.0001' }).some(event => /unlinked/.test(event.id)), false, 'Processo sem ID não pode capturar registros também sem vínculo.');
 
-console.log('Linha do tempo jurídica aprovada: derivação canônica, ordenação, escopo e destinos navegáveis.');
+const autosTimeline = buildLegalTimeline(state, process, { order: 'autos' });
+assert.equal(autosTimeline[0].id, 'process:process-timeline:registered', 'Na ordem dos autos, o evento 0 (cadastro) deve ser o primeiro.');
+assert.equal(autosTimeline[autosTimeline.length - 1].id, 'deadline:task-one', 'Na ordem cronológica dos autos, o último prazo deve ficar ao final.');
+assert.ok(autosTimeline.findIndex(e => e.id === 'document:document-one') < autosTimeline.findIndex(e => e.id === 'movement:process-timeline:movement-one'), 'Autos devem seguir ordem cronológica crescente.');
+
+console.log('Linha do tempo jurídica aprovada: derivação canônica, ordenação por data e ordem dos autos (0 a N), escopo e destinos navegáveis.');

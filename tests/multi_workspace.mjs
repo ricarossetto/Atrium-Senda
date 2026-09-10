@@ -2,7 +2,13 @@ import { generateTotp } from '../lib/security.mjs';
 import { postJson, startTestServer } from './helpers.mjs';
 
 const frontendOrigin = 'https://app.atrium.example.test';
-const server = await startTestServer({ env: { ATRIUM_FRONTEND_ORIGINS: frontendOrigin } });
+const server = await startTestServer({
+  env: {
+    ATRIUM_FRONTEND_ORIGINS: frontendOrigin,
+    JURISFLOW_CLOUD_MODE: 'true',
+    ATRIUM_PUBLIC_SIGNUP: 'true'
+  }
+});
 const password = 'Senha-Multi-2026!';
 
 try {

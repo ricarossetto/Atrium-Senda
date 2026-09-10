@@ -25,7 +25,8 @@ export function createProcessesV2Presenter({
   onAccessKey,
   onAccessKeyStatus,
   onCreateTask,
-  onDelete
+  onDelete,
+  getHasA1Certificate = () => false
 } = {}) {
   let initialized = false;
   let selectedItem = null;
@@ -106,11 +107,23 @@ export function createProcessesV2Presenter({
       close({ restoreFocus: false });
       onCreateTask?.(item);
     });
+    byId('processInspectorDownloadEprocA1')?.addEventListener('click', event => {
+      if (selectedItem) onDownloadEprocA1?.(event.currentTarget, selectedItem);
+    });
     byId('processInspectorTjrs')?.addEventListener('click', event => {
       if (selectedItem) onConsult?.(event.currentTarget, selectedItem);
     });
     byId('processInspectorDownloadAutos')?.addEventListener('click', event => {
       if (selectedItem) onDownloadAutos?.(event.currentTarget, selectedItem);
+    });
+    byId('processInspectorAccessKey')?.addEventListener('click', () => {
+      if (selectedItem) onAccessKey?.(selectedItem);
+    });
+    byId('processInspectorTasks')?.addEventListener('click', () => {
+      if (!selectedItem) return;
+      const item = selectedItem;
+      close({ restoreFocus: false });
+      onTasks?.(item);
     });
     byId('processInspectorDocuments')?.addEventListener('click', () => {
       if (!selectedItem) return;
@@ -160,7 +173,8 @@ export function createProcessesV2Presenter({
   }
 
   function renderRows(records) {
-    return records.map(item => renderRow({ item, escapeHtml, formatDate })).join('');
+    const hasA1 = typeof getHasA1Certificate === 'function' ? Boolean(getHasA1Certificate()) : false;
+    return records.map(item => renderRow({ item, escapeHtml, formatDate, hasA1Certificate: hasA1 })).join('');
   }
 
   function renderEmpty({ hasProcesses, query }) {
@@ -198,13 +212,54 @@ export function createProcessesV2Presenter({
     previousBodyOverflow = documentRef.body?.style.overflow || '';
 
     const number = item.number || item.protocol || 'Processo sem número';
+    const isTjrs = String(item.number || '').includes('.8.21.') || String(item.court || '').toUpperCase().includes('TJRS');
+    const hasA1 = typeof getHasA1Certificate === 'function' ? Boolean(getHasA1Certificate()) : false;
     byId('processInspectorTitle').textContent = number;
-    byId('processInspectorContent').innerHTML = renderInspector({ item, summary, escapeHtml, formatDate, formatMinutes });
+    byId('processInspectorContent').innerHTML = renderInspector({ item, summary, escapeHtml, formatDate, formatMinutes, hasA1Certificate: hasA1 });
+
+    const a1Button = byId('processInspectorDownloadEprocA1');
+    if (a1Button) {
+      a1Button.classList.toggle('hidden', !isTjrs || !hasA1);
+      const isDownloaded = Boolean(item.dossierDownloadedAt || item.documentsDownloadedAt || (selectedDocuments || []).some(d => (d.metadata?.origin || '').includes('eproc') || (d.metadata?.tags || []).includes('a1-oficial') || d.documentType === 'Índice de Autos Oficiais'));
+      if (isDownloaded) {
+        a1Button.textContent = 'Autos baixados';
+        a1Button.classList.remove('is-available');
+        a1Button.classList.add('is-complete');
+        a1Button.title = 'Autos oficiais já baixados do eproc TJRS via Certificado A1.';
+      } else {
+        a1Button.textContent = 'Baixar Autos com A1';
+        a1Button.classList.add('is-available');
+        a1Button.classList.remove('is-complete');
+        a1Button.title = 'Baixar peças oficiais e autos integrais do eproc TJRS via Certificado A1.';
+      }
+    }
 
     const consultButton = byId('processInspectorTjrs');
-    consultButton.classList.toggle('hidden', !summary.canConsultTjrs);
-    consultButton.dataset.tjrsConsult = summary.canConsultTjrs ? String(item.number || '') : '';
-    byId('processInspectorDownloadAutos')?.classList.toggle('hidden', !summary.canConsultTjrs);
+    if (consultButton) {
+      consultButton.classList.toggle('hidden', !summary.canConsultTjrs);
+      consultButton.dataset.tjrsConsult = summary.canConsultTjrs ? String(item.number || '') : '';
+    }
+    byId('processInspectorDownloadAutos')?.classList.toggle('hidden', true);
+
+    const keyButton = byId('processInspectorAccessKey');
+    if (keyButton) {
+      keyButton.classList.toggle('hidden', !isTjrs);
+      const hasKey = Boolean(item.accessKey || item.chaveAcesso);
+      if (hasKey) {
+        keyButton.textContent = 'Chave cadastrada';
+        keyButton.disabled = true;
+        keyButton.classList.remove('is-available');
+        keyButton.classList.add('is-configured', 'is-complete');
+        keyButton.title = 'Chave de acesso do eproc já cadastrada para este processo.';
+      } else {
+        keyButton.textContent = 'Adicionar Chave';
+        keyButton.disabled = false;
+        keyButton.classList.add('is-available');
+        keyButton.classList.remove('is-configured', 'is-complete');
+        keyButton.title = 'Adicionar chave de acesso para consulta restrita e autos.';
+      }
+    }
+
     const exportButton = byId('processInspectorExport');
     if (exportButton) {
       exportButton.textContent = item.dossierDownloadedAt ? 'Dados exportados' : 'Exportar dados';
@@ -451,8 +506,9 @@ export function createProcessesV2Presenter({
   return Object.freeze({ init, renderRows, renderEmpty, updateCount, open, close, openProcessDocuments, closeProcessDocuments });
 }
 
-export function isProcessEnrichmentCandidate(item) {
-  if (!item) return false;
+export function isProcessEnrichmentCandidate(item, hasA1 = true) {
+  if (!item || hasA1 === false) return false;
+
   const isTjrs = String(item.number || '').includes('.8.21.') || String(item.court || '').toUpperCase().includes('TJRS');
   if (!isTjrs) return false;
   const client = String(item.client || '').trim();
@@ -461,7 +517,7 @@ export function isProcessEnrichmentCandidate(item) {
   return isMissingClient || isSecrecy;
 }
 
-export function renderRow({ item, escapeHtml, formatDate }) {
+export function renderRow({ item, escapeHtml, formatDate, hasA1Certificate = false }) {
   const number = item.number || item.protocol || 'Sem número';
   const tribunal = item.court || 'TJRS';
   const phase = item.judicialPhase || item.stage || 'Fase não informada';
@@ -477,7 +533,7 @@ export function renderRow({ item, escapeHtml, formatDate }) {
   const secrecy = item.secrecy
     ? '<span class="process-secrecy"><span aria-hidden="true">●</span> Segredo de justiça</span>'
     : '';
-  const needsEnrichment = isProcessEnrichmentCandidate(item);
+  const needsEnrichment = isProcessEnrichmentCandidate(item, hasA1Certificate);
   const enrichmentFlag = needsEnrichment
     ? '<span class="process-enrichment-flag" title="Processo necessita de enriquecimento eproc TJRS (Segredo ou Cliente ausente)"><span aria-hidden="true">●</span> Enriquecimento eproc</span>'
     : '';
@@ -514,12 +570,12 @@ export function renderRow({ item, escapeHtml, formatDate }) {
   </tr>`;
 }
 
-export function renderInspector({ item, summary, escapeHtml, formatDate, formatMinutes }) {
+export function renderInspector({ item, summary, escapeHtml, formatDate, formatMinutes, hasA1Certificate = false }) {
   const number = item.number || item.protocol || 'Processo sem número';
   const secrecy = item.secrecy
     ? '<span class="process-secrecy"><span aria-hidden="true">●</span> Segredo de justiça</span>'
     : '<span class="process-visibility">Consulta pública</span>';
-  const needsEnrichment = isProcessEnrichmentCandidate(item);
+  const needsEnrichment = isProcessEnrichmentCandidate(item, hasA1Certificate);
   const enrichmentFlag = needsEnrichment
     ? '<span class="process-enrichment-flag" title="Processo necessita de enriquecimento eproc TJRS (Segredo ou Cliente ausente)"><span aria-hidden="true">●</span> Enriquecimento eproc</span>'
     : '';
@@ -702,7 +758,8 @@ function renderLegalTimeline(events, escapeHtml, formatDate) {
     document: 'Documento', financial: 'Financeiro', audit: 'Auditoria', process: 'Processo'
   };
   return `<ol class="legal-timeline">${events.map(event => {
-    const content = `<span class="legal-timeline-marker" aria-hidden="true"></span><div class="legal-timeline-date"><time>${escapeHtml(event.date ? formatDate(event.date) : 'Sem data')}</time><span>${escapeHtml(labels[event.type] || 'Evento')}</span></div><div class="legal-timeline-copy"><strong>${escapeHtml(event.title)}</strong>${event.detail ? `<small>${escapeHtml(event.detail)}</small>` : ''}${event.source ? `<em>${escapeHtml(event.source)}</em>` : ''}</div>`;
+    const eventBadge = event.eventNumber != null ? `<span class="legal-timeline-event-badge">Ev. ${escapeHtml(event.eventNumber)}</span>` : '';
+    const content = `<span class="legal-timeline-marker" aria-hidden="true"></span><div class="legal-timeline-date"><time>${escapeHtml(event.date ? formatDate(event.date) : 'Sem data')}</time><span>${escapeHtml(labels[event.type] || 'Evento')}</span>${eventBadge}</div><div class="legal-timeline-copy"><strong>${escapeHtml(event.title)}</strong>${event.detail ? `<small>${escapeHtml(event.detail)}</small>` : ''}${event.source ? `<em>${escapeHtml(event.source)}</em>` : ''}</div>`;
     return `<li class="is-${escapeHtml(event.type)}">${event.target ? `<button type="button" data-process-timeline="${escapeHtml(event.id)}" aria-label="Abrir ${escapeHtml(labels[event.type] || 'evento')}: ${escapeHtml(event.title)}">${content}<span class="legal-timeline-open" aria-hidden="true">→</span></button>` : `<div>${content}</div>`}</li>`;
   }).join('')}</ol>`;
 }
@@ -758,24 +815,7 @@ function renderAccessKeyAction(item) {
 }
 
 function renderAutosAction(item, escapeHtml) {
-  const isTjrs = String(item?.number || '').includes('.8.21.') || String(item?.court || '').toUpperCase().includes('TJRS');
-  if (!isTjrs) return '';
-  return `
-    <div class="process-autos-action" style="border-left: 3px solid var(--v2-color-primary, #2563eb); margin-bottom: 8px;">
-      <div>
-        <strong>Autos oficiais completos via Certificado A1 (eproc TJRS)</strong>
-        <span>Baixa as peças originais oficiais (petições, decisões, certidões) autenticando com seu Certificado Digital A1 + 2FA no tribunal.</span>
-      </div>
-      <button type="button" class="button primary" data-download-eproc-a1 data-process-id="${escapeHtml(item.id || '')}">Baixar Autos com A1</button>
-    </div>
-    <div class="process-autos-action">
-      <div>
-        <strong>Caderno processual para consulta offline</strong>
-        <span>Gera PDFs a partir dos dados já consultados no TJRS e guarda tudo no acervo cifrado deste processo.</span>
-      </div>
-      <button type="button" class="button ghost" data-download-autos data-process-id="${escapeHtml(item.id || '')}">Gerar caderno em PDFs</button>
-    </div>
-  `;
+  return '';
 }
 
 function riskPresentation(value) {

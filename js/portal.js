@@ -930,6 +930,7 @@ import { createTasksFeature } from './features/tasks.js';
       document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
       if (Store.state.settings.dismissedBanner) document.getElementById('environmentBanner').classList.add('hidden');
       this.checkFirstAccessTour();
+      this.checkA1Onboarding();
       const hasConfiguredMonitoring = (Store.state.terms || []).some(term => {
         if (!term || term.active === false) return false;
         const number = String(term.oabNumber || term.registration || '').replace(/\D/g, '');
@@ -1085,6 +1086,135 @@ import { createTasksFeature } from './features/tasks.js';
     showTourSlide(index) {
       getOnboardingComponent().showSlide(index);
     },
+    checkA1Onboarding() {
+      const isMaster = window.KellerAuth?.currentUser?.role === 'master_admin';
+      if (!isMaster) return;
+      if (Store.state.settings?.hasA1Certificate !== undefined) return;
+      const isPending = sessionStorage.getItem('atrium_pending_a1_onboarding') === 'true';
+      if (!isPending) return;
+      sessionStorage.removeItem('atrium_pending_a1_onboarding');
+      setTimeout(() => this.openA1OnboardingModal(), 600);
+    },
+    openA1OnboardingModal() {
+      const backdrop = document.getElementById('onboardingCertificateBackdrop');
+      if (!backdrop) return;
+      backdrop.classList.remove('hidden');
+
+      const radioYes = document.getElementById('certChoiceYes');
+      const radioNo = document.getElementById('certChoiceNo');
+      const uploadFields = document.getElementById('certUploadFields');
+      const fileInput = document.getElementById('onboardingCertFileInput');
+      const fileName = document.getElementById('onboardingCertFileName');
+      const passInput = document.getElementById('onboardingCertPassword');
+      const btnSubmit = document.getElementById('btnSubmitOnboardingCert');
+      const btnContinueNo = document.getElementById('btnContinueWithoutCert');
+      const feedback = document.getElementById('onboardingCertFeedback');
+      const dropzone = document.getElementById('certDropzone');
+
+      const updateChoice = () => {
+        if (uploadFields) uploadFields.classList.toggle('hidden', !radioYes.checked);
+        if (btnContinueNo) btnContinueNo.textContent = radioYes.checked ? 'Cancelar e continuar sem certificado' : 'Continuar sem Certificado Digital';
+      };
+
+      radioYes?.addEventListener('change', updateChoice);
+      radioNo?.addEventListener('change', updateChoice);
+      document.getElementById('certChoiceYesBox')?.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'INPUT') {
+          radioYes.checked = true;
+          updateChoice();
+        }
+      });
+      document.getElementById('certChoiceNoBox')?.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'INPUT') {
+          radioNo.checked = true;
+          updateChoice();
+        }
+      });
+
+      dropzone?.addEventListener('click', () => fileInput?.click());
+      fileInput?.addEventListener('change', (e) => {
+        const f = e.target.files?.[0];
+        if (fileName) fileName.textContent = f?.name || 'Clique para selecionar o arquivo .pfx / .p12';
+      });
+
+      const closeWithNo = async () => {
+        Store.state.settings = Store.state.settings || {};
+        Store.state.settings.hasA1Certificate = false;
+        await Store.save();
+        await Store.flush();
+        backdrop.classList.add('hidden');
+        this.renderAll();
+        this.toast('Configurado para consulta pública sem A1.', 'success');
+      };
+
+      btnContinueNo?.addEventListener('click', closeWithNo);
+
+      btnSubmit?.addEventListener('click', async () => {
+        const file = fileInput?.files?.[0];
+        const pass = passInput?.value;
+        if (!file) {
+          if (feedback) {
+            feedback.textContent = 'Selecione o arquivo do certificado (.pfx ou .p12).';
+            feedback.className = 'error';
+            feedback.classList.remove('hidden');
+          }
+          return;
+        }
+        if (!pass) {
+          if (feedback) {
+            feedback.textContent = 'Digite a senha do certificado.';
+            feedback.className = 'error';
+            feedback.classList.remove('hidden');
+          }
+          return;
+        }
+
+        btnSubmit.disabled = true;
+        if (feedback) {
+          feedback.textContent = 'Validando certificado e vinculando…';
+          feedback.className = 'working';
+          feedback.classList.remove('hidden');
+        }
+
+        try {
+          const reader = new FileReader();
+          reader.onload = async () => {
+            try {
+              const pfxBase64 = reader.result.split(',')[1];
+              const res = await window.KellerAuth?.secureFetch?.('/api/integrations/judicial/certificate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ fileName: file.name, pfxBase64, passphrase: pass })
+              });
+              const payload = await res?.json().catch(() => ({}));
+              if (!res?.ok) throw new Error(payload?.message || 'Falha ao validar certificado.');
+
+              Store.state.settings = Store.state.settings || {};
+              Store.state.settings.hasA1Certificate = true;
+              await Store.save();
+              await Store.flush();
+              backdrop.classList.add('hidden');
+              this.renderAll();
+              this.toast('Certificado A1 instalado com sucesso! Sincronização iniciada.', 'success');
+              window.KellerAuth?.secureFetch?.('/api/integrations/eproc/sync', { method: 'POST' }).catch(() => {});
+            } catch (err) {
+              if (feedback) {
+                feedback.textContent = err.message;
+                feedback.className = 'error';
+              }
+              btnSubmit.disabled = false;
+            }
+          };
+          reader.readAsDataURL(file);
+        } catch (err) {
+          if (feedback) {
+            feedback.textContent = err.message;
+            feedback.className = 'error';
+          }
+          btnSubmit.disabled = false;
+        }
+      });
+    },
     renderDashboard() { return getDashboardFeature().render(); },
     renderMetrics() { return getDashboardFeature().renderMetrics(); },
     renderPublicationsMetrics() {
@@ -1202,6 +1332,7 @@ import { createTasksFeature } from './features/tasks.js';
     },
     async triggerAutoEnrichEproc() {
       if (this._autoEnrichmentInFlight || this._autoEnrichmentDone) return;
+      if (Store.state?.settings?.hasA1Certificate === false || !Store.state?.settings?.hasA1Certificate) return;
       const candidates = (Store.state.processes || []).filter(p => {
         const isTjrs = String(p.number || '').includes('.8.21.') || String(p.court || '').toUpperCase().includes('TJRS');
         if (!isTjrs) return false;

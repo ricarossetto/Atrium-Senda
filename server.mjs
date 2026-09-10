@@ -36,6 +36,7 @@ import { TjrsSidecarClient } from './lib/judicial/tjrs-sidecar-client.mjs';
 import { refreshMonitoredTjrsProcesses } from './lib/judicial/tjrs-monitoring.mjs';
 import { createTjrsSidecarHttpHandler } from './lib/http/tjrs-sidecar-routes.mjs';
 import { downloadProcessWithA1, sweepAndEnrichProcessesWithA1 } from './lib/judicial/eproc-a1-downloader.mjs';
+import { ingestEprocDownloadsIfPresent } from './lib/judicial/eproc-downloads-ingester.mjs';
 import { OmniStorage } from './lib/judicial/omni/storage.mjs';
 import { TjrsAdapter } from './lib/judicial/omni/adapters/tjrs-adapter.mjs';
 import { OmniCollectorHub } from './lib/judicial/omni/hub.mjs';
@@ -95,6 +96,50 @@ const HOST = process.env.HOST || '127.0.0.1';
 const SERVER_STARTED_AT = new Date().toISOString();
 const SYNC_TIME_ZONE = process.env.ATRIUM_TIME_ZONE || 'America/Sao_Paulo';
 const PROCESS_RE = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/;
+
+let eprocLockInfo = {
+  active: false,
+  op: null,
+  cnj: null,
+  startedAt: 0,
+  workspaceId: null
+};
+const EPROC_LOCK_TTL_MS = 120_000;
+
+function isEprocBusy() {
+  if (!eprocLockInfo.active) return false;
+  const elapsed = Date.now() - eprocLockInfo.startedAt;
+  if (elapsed > EPROC_LOCK_TTL_MS) {
+    console.warn(`⚠️ [eproc lock] Trava da operação "${eprocLockInfo.op}" (${eprocLockInfo.cnj || 'geral'}) expirou após ${Math.round(elapsed / 1000)}s. Liberando trava.`);
+    eprocLockInfo = { active: false, op: null, cnj: null, startedAt: 0, workspaceId: null };
+    return false;
+  }
+  return true;
+}
+
+function acquireEprocLock(op, cnj = null, workspaceId = null) {
+  if (isEprocBusy()) {
+    const elapsedSec = Math.round((Date.now() - eprocLockInfo.startedAt) / 1000);
+    const targetDesc = eprocLockInfo.cnj ? ` (Processo: ${eprocLockInfo.cnj})` : '';
+    return {
+      acquired: false,
+      message: `Já existe uma operação com o eproc TJRS em andamento${targetDesc}, iniciada há ${elapsedSec}s. Aguarde a conclusão anterior.`
+    };
+  }
+  eprocLockInfo = {
+    active: true,
+    op: String(op || 'operação'),
+    cnj: cnj ? String(cnj).trim() : null,
+    startedAt: Date.now(),
+    workspaceId: workspaceId || null
+  };
+  return { acquired: true };
+}
+
+function releaseEprocLock() {
+  eprocLockInfo = { active: false, op: null, cnj: null, startedAt: 0, workspaceId: null };
+}
+
 let isEprocDownloadActive = false;
 const security = new SecurityManager({
   dataDirectory: DATA_DIR,
@@ -229,7 +274,7 @@ async function omniServicesForCurrentWorkspace() {
     omniServiceInstances.set(workspaceId, (async () => {
       const storage = new OmniStorage({ dataDirectory: workspaceDataDirectory(workspaceId), securityManager: security });
       await storage.init();
-      return { storage, hub: new OmniCollectorHub({ storage, adapters: { tjrs: new TjrsAdapter({ allowSidecar: !CLOUD_MODE && workspaceId === security.state.defaultWorkspaceId }) } }) };
+      return { storage, hub: new OmniCollectorHub({ storage, adapters: { tjrs: new TjrsAdapter({ allowSidecar: (!CLOUD_MODE || process.env.ALLOW_SHARED_SIDECAR === 'true') || workspaceId === security.state.defaultWorkspaceId }) } }) };
     })());
   }
   return omniServiceInstances.get(workspaceId);
@@ -1267,7 +1312,7 @@ async function updatePortalCoverage(enabledIds) {
 }
 
 async function resetJudicialConnections() {
-  if (currentWorkspaceId() !== security.state.defaultWorkspaceId) throw Object.assign(new Error('Use o agente local pareado com este escritório.'), { statusCode: 503 });
+  if (CLOUD_MODE && currentWorkspaceId() !== security.state.defaultWorkspaceId) throw Object.assign(new Error('Use o agente local pareado com este escritório.'), { statusCode: 503 });
   if (CLOUD_MODE) throw Object.assign(new Error('As sessões judiciais só podem ser zeradas no agente local protegido.'), { statusCode: 503 });
   if (interactiveCollector && interactiveCollector.exitCode === null) {
     throw Object.assign(new Error('Encerre a primeira conexão em andamento antes de zerar os acessos.'), { statusCode: 409 });
@@ -1302,7 +1347,7 @@ async function resetJudicialConnections() {
 }
 
 async function startInteractiveCollector(portalIds) {
-  if (currentWorkspaceId() !== security.state.defaultWorkspaceId) throw Object.assign(new Error('Use o agente local pareado com este escritório.'), { statusCode: 503 });
+  if (CLOUD_MODE && currentWorkspaceId() !== security.state.defaultWorkspaceId) throw Object.assign(new Error('Use o agente local pareado com este escritório.'), { statusCode: 503 });
   if (CLOUD_MODE) throw Object.assign(new Error('A primeira conexão com tribunais deve ser iniciada no agente local com PJeOffice.'), { statusCode: 503 });
   if (interactiveCollector && interactiveCollector.exitCode === null) throw Object.assign(new Error('Já existe uma primeira conexão em andamento.'), { statusCode: 409 });
   const config = await readPortalConfiguration();
@@ -1353,7 +1398,7 @@ function managedPortfolioPortalIds(config) {
 }
 
 async function startManagedPortfolioCollector({ waitForCompletion = false } = {}) {
-  if (CLOUD_MODE || currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+  if (CLOUD_MODE && currentWorkspaceId() !== security.state.defaultWorkspaceId) {
     return { ok: true, skipped: true, cloud: true, portalCount: 0, message: 'O acervo autenticado é coletado pelo agente local do escritório.' };
   }
   if (String(process.env.KELLER_SKIP_COLLECTOR_ENV).toLowerCase() === 'true') {
@@ -1375,12 +1420,14 @@ async function startManagedPortfolioCollector({ waitForCompletion = false } = {}
   if (!enabledIds.length) {
     return { ok: true, skipped: true, portalCount: 0, message: 'Nenhum portal autenticado está habilitado para leitura do acervo.' };
   }
+  const targetWorkspaceId = currentWorkspaceId();
   const identity = extractOabAndUf(config.monitoredTerm);
   const child = spawn(process.execPath, [COLLECTOR_AGENT_FILE], {
     cwd: ROOT,
     env: {
       ...process.env,
       CENTRAL_URL: `http://${HOST}:${PORT}`,
+      ATRIUM_WORKSPACE_ID: targetWorkspaceId,
       COLLECTOR_HEADLESS: 'true',
       COLLECTOR_INTERACTIVE: 'false',
       LOGIN_WAIT_SECONDS: '90',
@@ -2032,8 +2079,13 @@ function collectorWorkspace(req) {
   const paired = security.authenticateCollector(token, workspaceId);
   if (paired) return paired;
   const legacyToken = String(process.env.COLLECTOR_INGEST_TOKEN || '');
-  if (!workspaceId && token && legacyToken && constantTimeTextEqual(token, legacyToken)) {
-    return { id: security.state.defaultWorkspaceId };
+  if (token && legacyToken && constantTimeTextEqual(token, legacyToken)) {
+    if (!CLOUD_MODE && workspaceId && (security.state.workspaces || []).some(w => w.id === workspaceId)) {
+      return { id: workspaceId };
+    }
+    if (!workspaceId || !CLOUD_MODE) {
+      return { id: security.state.defaultWorkspaceId };
+    }
   }
   return null;
 }
@@ -2501,6 +2553,16 @@ const server = http.createServer(async (req, res) => {
       const user = await security.updateCurrentUserProfile(session.username, await readJson(req));
       return json(res, 200, { ok: true, user });
     }
+    if (req.method === 'POST' && url.pathname === '/api/auth/profile/reset') {
+      const session = assertAuthenticated(req, true);
+      const user = await security.resetCurrentUserProfile(session.username);
+      return json(res, 200, { ok: true, user, message: 'Perfil redefinido para as configurações padrão com sucesso.' });
+    }
+    if ((req.method === 'POST' || req.method === 'DELETE') && (url.pathname === '/api/auth/profile/delete' || url.pathname === '/api/auth/profile')) {
+      const session = assertAuthenticated(req, true);
+      const result = await security.deleteCurrentUserAccount(session.username, session);
+      return json(res, 200, result, { 'Set-Cookie': [security.clearCookie(), security.clearTrustedDeviceCookie()] });
+    }
     if (req.method === 'GET' && url.pathname === '/api/auth/invitations/accept') {
       return json(res, 200, { ok: true, invitation: security.validateTeamInvitation(url.searchParams.get('token')) });
     }
@@ -2545,6 +2607,13 @@ const server = http.createServer(async (req, res) => {
       const user = await security.updateUserStatus(body.userId, body, session.workspaceId);
       return json(res, 200, { ok: true, user });
     }
+    if (req.method === 'POST' && url.pathname === '/api/auth/users/delete') {
+      const session = assertAuthenticated(req, true);
+      if (session.role !== 'master_admin') throw Object.assign(new Error('Apenas o administrador principal pode excluir usuários.'), { statusCode: 403 });
+      const body = await readJson(req);
+      const result = await security.deleteUser(body.userId, session.workspaceId);
+      return json(res, 200, result);
+    }
     if (req.method === 'POST' && url.pathname === '/api/auth/mfa/enable') {
       const session = assertAuthenticated(req, true);
       const body = await readJson(req);
@@ -2574,7 +2643,8 @@ const server = http.createServer(async (req, res) => {
     if (await handleRegistryRequest(req, res, url)) return;
     if (url.pathname.startsWith('/api/integrations/tjrs-sidecar/')) {
       assertAuthenticated(req);
-      if (CLOUD_MODE || currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+      const allowSidecar = !CLOUD_MODE || process.env.ALLOW_SHARED_SIDECAR === 'true' || currentWorkspaceId() === security.state.defaultWorkspaceId;
+      if (!allowSidecar) {
         return json(res, 503, { ok: false, state: 'LOCAL_AGENT_REQUIRED', message: 'Esta consulta exige o agente local deste escritório. O coletor compartilhado do servidor não pode acessar seus processos privados.' });
       }
       if (await handleTjrsSidecarRequest(req, res, url)) return;
@@ -2583,14 +2653,16 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/integrations/eproc/sweep') {
       assertAuthenticated(req);
-      if (CLOUD_MODE && currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+      const allowSweep = !CLOUD_MODE || process.env.ALLOW_SHARED_SIDECAR === 'true' || currentWorkspaceId() === security.state.defaultWorkspaceId;
+      if (!allowSweep) {
         return json(res, 503, { ok: false, state: 'LOCAL_AGENT_REQUIRED', message: 'A varredura eproc via A1 exige o agente local deste escritório.' });
       }
       const body = await readJson(req).catch(() => ({}));
-      const maxProcesses = Number(body.maxProcesses) || 50;
+      const maxProcesses = Math.min(Number(body.maxProcesses) || 10, 20);
 
-      if (isEprocDownloadActive) {
-        throw Object.assign(new Error('Já existe uma operação com o eproc TJRS em andamento via Certificado A1. Aguarde a conclusão anterior.'), { statusCode: 409 });
+      const sweepLock = acquireEprocLock('Varredura e enriquecimento eproc', body.processNumber || body.cnj, currentWorkspaceId());
+      if (!sweepLock.acquired) {
+        throw Object.assign(new Error(sweepLock.message), { statusCode: 409 });
       }
 
       isEprocDownloadActive = true;
@@ -2606,12 +2678,14 @@ const server = http.createServer(async (req, res) => {
         return json(res, 200, sweepResult);
       } finally {
         isEprocDownloadActive = false;
+        releaseEprocLock();
       }
     }
 
     if (req.method === 'POST' && (url.pathname === '/api/integrations/eproc/processes/download-autos' || url.pathname === '/api/integrations/eproc/download-autos' || url.pathname === '/api/integrations/tjrs-sidecar/processes/download-autos')) {
       assertAuthenticated(req);
-      if (CLOUD_MODE && currentWorkspaceId() !== security.state.defaultWorkspaceId) {
+      const allowDownload = !CLOUD_MODE || process.env.ALLOW_SHARED_SIDECAR === 'true' || currentWorkspaceId() === security.state.defaultWorkspaceId;
+      if (!allowDownload) {
         return json(res, 503, { ok: false, state: 'LOCAL_AGENT_REQUIRED', message: 'O download de autos via A1 exige o agente local deste escritório.' });
       }
       const body = await readJson(req).catch(() => ({}));
@@ -2625,8 +2699,9 @@ const server = http.createServer(async (req, res) => {
 
       if (!targetCnj) throw Object.assign(new Error('Número de processo CNJ obrigatório.'), { statusCode: 400 });
 
-      if (isEprocDownloadActive) {
-        throw Object.assign(new Error('Já existe um download de autos em andamento no eproc TJRS. Aguarde a conclusão.'), { statusCode: 409 });
+      const downloadLock = acquireEprocLock('Download de autos integrais', targetCnj, currentWorkspaceId());
+      if (!downloadLock.acquired) {
+        throw Object.assign(new Error(downloadLock.message), { statusCode: 409 });
       }
 
       isEprocDownloadActive = true;
@@ -2652,7 +2727,15 @@ const server = http.createServer(async (req, res) => {
         });
       } finally {
         isEprocDownloadActive = false;
+        releaseEprocLock();
       }
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/integrations/eproc/reset-lock') {
+      assertAuthenticated(req);
+      releaseEprocLock();
+      isEprocDownloadActive = false;
+      return json(res, 200, { ok: true, message: 'Trava de concorrência do eproc liberada com sucesso.' });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/tjrs/consult') {
@@ -4102,6 +4185,44 @@ Diretrizes essenciais:
         passphrase
       });
 
+      // Dispara varredura eproc em segundo plano para processos com segredo de justiça ou cliente pendente
+      const targetWorkspaceId = currentWorkspaceId();
+      setTimeout(async () => {
+        await workspaceRequestContext.run({ workspaceId: targetWorkspaceId }, async () => {
+          try {
+            const { sweepAndEnrichProcessesWithA1 } = await import('./lib/judicial/eproc-a1-downloader.mjs');
+            const envelope = await readStateEnvelope().catch(() => null);
+            const state = envelope?.state;
+            if (state && Array.isArray(state.processes)) {
+              const hasCandidates = state.processes.some(p => {
+                const isTjrs = String(p.number || '').includes('.8.21.') || String(p.court || '').toUpperCase().includes('TJRS');
+                if (!isTjrs) return false;
+                const client = String(p.client || '').trim();
+                const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
+                const isSecrecy = Boolean(p.secrecy) || /sigilo|segredo/i.test(client);
+                return isMissingClient || isSecrecy;
+              });
+              if (hasCandidates) {
+                console.log('[eproc auto-sweep] Iniciando varredura eproc automática após upload de Certificado A1...');
+                const orch = await judicialOrchestratorForCurrentWorkspace();
+                await sweepAndEnrichProcessesWithA1({
+                  state,
+                  credManager: orch.credentialManager,
+                  maxProcesses: 10,
+                  saveState: async (updatedState, rev) => {
+                    return await saveStateEnvelope({ state: updatedState, revision: rev });
+                  },
+                  readStateEnvelope,
+                  headed: false
+                }).catch(err => console.warn('[eproc auto-sweep] Aviso:', err.message));
+              }
+            }
+          } catch (err) {
+            console.warn('[eproc auto-sweep] Erro:', err.message);
+          }
+        });
+      }, 1000);
+
       return json(res, 200, {
         ok: true,
         certificate: {
@@ -4468,51 +4589,81 @@ Diretrizes essenciais:
           });
         }
 
-        // Auto-enriquecimento eproc TJRS: verifica se há processos sem cliente ou em segredo de justiça
+        // Ingestão local de relatórios/painel eproc baixados pelo advogado (apenas para workspace local)
         if (currentWorkspaceId() === security.state.defaultWorkspaceId) {
           try {
-            const orch = await judicialOrchestratorForCurrentWorkspace();
-            const rawSecrets = await orch?.credentialManager?.readRawSecrets?.().catch(() => ({}));
-            const hasA1 = Boolean(rawSecrets?.certificate?.path || process.env.A1_PFX_PATH);
-            const hasTotp = Boolean(rawSecrets?.totpSecrets && Object.keys(rawSecrets.totpSecrets).length > 0);
-            if (hasA1 && hasTotp && !isEprocDownloadActive) {
-              const hasEnrichmentCandidates = (target.processes || []).some(p => {
-                const num = String(p.number || '');
-                const court = String(p.court || '').toUpperCase();
-                const isTjrs = num.includes('.8.21.') || court.includes('TJRS') || p.source === 'eproc-tjrs';
-                if (!isTjrs) return false;
-                const client = String(p.client || '').trim();
-                const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
-                const isSecrecy = Boolean(p.secrecy) || /sigilo|segredo/i.test(client);
-                return isMissingClient || isSecrecy;
-              });
+            const downRes = ingestEprocDownloadsIfPresent(target);
+            if (downRes?.imported?.tasks > 0 || downRes?.imported?.intimations > 0) {
+              console.log(`  ✓ Painel eproc (relatórios locais): +${downRes.imported.intimations} intimação(ões) e +${downRes.imported.tasks} prazo(s) lançados em tarefas.`);
+            }
+          } catch (downErr) {
+            console.warn('  ⚠️ Aviso importador eproc downloads:', downErr.message);
+          }
+        }
 
-              if (hasEnrichmentCandidates) {
-                console.log('\n[Etapa 2.5/4] 🔐 Auto-enriquecimento eproc TJRS para processos com Segredo ou Cliente pendente...');
-                isEprocDownloadActive = true;
-                try {
-                  const sweepRes = await sweepAndEnrichProcessesWithA1({
-                    securityManager: security,
-                    readStateEnvelope: readAppStateEnvelope,
-                    saveState: saveAppStateDirect,
-                    maxProcesses: 10
+        // Sincronização do painel do advogado no eproc TJRS via A1 + 2FA TOTP
+        try {
+          const orch = await judicialOrchestratorForCurrentWorkspace();
+          const rawSecrets = await orch?.credentialManager?.readRawSecrets?.().catch(() => ({}));
+          const hasA1 = Boolean(rawSecrets?.certificate?.path || process.env.A1_PFX_PATH);
+          const hasTotp = Boolean(rawSecrets?.totpSecrets && Object.keys(rawSecrets.totpSecrets).length > 0);
+          if (hasA1 && hasTotp && !isEprocBusy()) {
+            const bgLock = acquireEprocLock('Sincronização agendada do painel eproc', null, currentWorkspaceId());
+            if (bgLock.acquired) {
+              console.log('\n[Etapa 2.5/4] 🔐 Sincronizando painel do advogado no eproc TJRS (prazos, intimações e acervo)...');
+              updateSyncProgress({
+                step: 2,
+                totalSteps: 4,
+                phase: 'eproc_sweep',
+                label: 'Consultando painel eproc TJRS…',
+                detail: 'Importando prazos em aberto e intimações pendentes…',
+                percent: 75
+              });
+              isEprocDownloadActive = true;
+              try {
+                const sweepRes = await sweepAndEnrichProcessesWithA1({
+                  securityManager: security,
+                  readStateEnvelope: readAppStateEnvelope,
+                  saveState: saveAppStateDirect,
+                  maxProcesses: 10
+                });
+                if (sweepRes) {
+                  console.log(`  ✓ eproc TJRS: ${sweepRes.message || 'Sincronização concluída'}`);
+                  setSource(['eproc-tjrs', 'eproc'], {
+                    id: 'eproc-tjrs',
+                    name: 'eproc TJRS',
+                    short: 'EPR',
+                    method: 'Painel do Advogado (A1 + 2FA)',
+                    status: 'ok',
+                    lastCheck: new Date().toISOString(),
+                    detail: `${sweepRes.newIntimationsCount || 0} nova(s) intimação(ões); ${sweepRes.newTasksCount || 0} prazo(s) em tarefas; ${sweepRes.enrichedCount || 0} processo(s) enriquecido(s)`
                   });
-                  if (sweepRes?.enrichedCount > 0) {
-                    console.log(`  ✓ Auto-enriquecimento eproc: ${sweepRes.enrichedCount} processo(s) atualizado(s) automaticamente.`);
-                    const freshEnvelope = await readAppStateEnvelope();
-                    if (freshEnvelope?.state?.processes) {
-                      target.processes = freshEnvelope.state.processes;
-                      target.contacts = freshEnvelope.state.contacts || target.contacts;
-                    }
+                  const freshEnvelope = await readAppStateEnvelope();
+                  if (freshEnvelope?.state) {
+                    target.processes = freshEnvelope.state.processes || target.processes;
+                    target.contacts = freshEnvelope.state.contacts || target.contacts;
+                    target.intimations = freshEnvelope.state.intimations || target.intimations;
+                    target.tasks = freshEnvelope.state.tasks || target.tasks;
+                    target.events = freshEnvelope.state.events || target.events;
                   }
-                } finally {
-                  isEprocDownloadActive = false;
                 }
+              } finally {
+                isEprocDownloadActive = false;
+                releaseEprocLock();
               }
             }
-          } catch (enrichErr) {
-            console.warn('  ⚠️ Aviso auto-enriquecimento eproc TJRS:', enrichErr.message);
           }
+        } catch (enrichErr) {
+          console.warn('  ⚠️ Aviso sincronização eproc TJRS:', enrichErr.message);
+          setSource(['eproc-tjrs', 'eproc'], {
+            id: 'eproc-tjrs',
+            name: 'eproc TJRS',
+            short: 'EPR',
+            method: 'Painel do Advogado (A1 + 2FA)',
+            status: 'attention',
+            lastCheck: new Date().toISOString(),
+            detail: `Aviso eproc: ${String(enrichErr.message).slice(0, 120)}`
+          });
         }
 
         console.log('\n[Etapa 3/4] 🔗 Consolidando intimações e processos...');

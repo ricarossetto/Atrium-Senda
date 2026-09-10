@@ -22,3 +22,8 @@ dist/
 artifacts/
 .DS_Store
 Thumbs.db
+scripts/debug-*
+scripts/test-*
+scripts/inspect-*
+scripts/print-sample.mjs
+scripts/reconcile-target-process.mjs

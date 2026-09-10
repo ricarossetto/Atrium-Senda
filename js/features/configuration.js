@@ -207,6 +207,10 @@ export function createConfigurationFeature({
         else feature.render();
       });
       byId('newConfigurationButton')?.addEventListener('click', () => feature.openModal());
+      byId('btnConfigMyProfile')?.addEventListener('click', () => {
+        if (window.KellerAuth?.openProfile) window.KellerAuth.openProfile();
+        else byId('profileButton')?.click();
+      });
       byId('configurationList')?.addEventListener('click', event => {
         const registryAction = event.target.closest('[data-registry-config-action]')?.dataset.registryConfigAction;
         if (registryAction) {
@@ -242,6 +246,22 @@ export function createConfigurationFeature({
           event.preventDefault();
           event.stopPropagation();
           feature.deleteRecord(Number(deleteButton.dataset.deleteConfig));
+          return;
+        }
+        const authDeleteButton = event.target.closest('[data-auth-user-delete]');
+        if (authDeleteButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          const userId = authDeleteButton.dataset.authUserDelete;
+          if (userId) feature.deleteAuthUser(userId);
+          return;
+        }
+        const openProfileBtn = event.target.closest('[data-open-my-profile]');
+        if (openProfileBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (window.KellerAuth?.openProfile) window.KellerAuth.openProfile();
+          else byId('profileButton')?.click();
           return;
         }
         const authStatusButton = event.target.closest('[data-auth-user-status]');
@@ -315,6 +335,26 @@ export function createConfigurationFeature({
       }
     },
 
+    async deleteAuthUser(userId) {
+      if (!window.confirm('Deseja realmente excluir permanentemente este usuário do escritório?')) return false;
+      try {
+        const response = await secureFetch('/api/auth/users/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível excluir o usuário.');
+        await feature.loadAuthUsers();
+        feature.render();
+        showToast('Usuário excluído com sucesso.', 'success');
+        return true;
+      } catch (error) {
+        showToast(error.message, 'error');
+        return false;
+      }
+    },
+
     authUserRow(user) {
       const labels = { active: 'Ativo', inactive: 'Suspenso', pending_approval: 'Aguardando aprovação' };
       const canManage = currentAuthRole === 'master_admin' && user.role !== 'master_admin';
@@ -326,12 +366,12 @@ export function createConfigurationFeature({
         return `<article class="configuration-row configuration-user-row" role="listitem" data-auth-user-id="${escapeHtml(user.id)}" data-auth-user-state="${escapeHtml(user.status || 'active')}">
           <div class="config-row-info"><strong>${escapeHtml(user.displayName || user.username)}</strong><span>${escapeHtml(user.email || user.username)}</span><small>${escapeHtml(roleLabel)}</small></div>
           <span class="configuration-user-status status-${escapeHtml(user.status || 'active')}">${escapeHtml(statusLabel)}</span>
-          <div class="configuration-row-actions">${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}" aria-label="${actionLabel} acesso de ${escapeHtml(user.displayName || user.username)}">${actionLabel}</button>` : '<span class="configuration-protected-access">Acesso protegido</span>'}</div>
+          <div class="configuration-row-actions">${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}" aria-label="${actionLabel} acesso de ${escapeHtml(user.displayName || user.username)}">${actionLabel}</button><button type="button" class="button ghost danger-text" data-auth-user-delete="${escapeHtml(user.id)}" aria-label="Excluir usuário ${escapeHtml(user.displayName || user.username)}">Excluir</button>` : '<button type="button" class="button ghost" data-open-my-profile="true" title="Abrir configurações, redefinir ou apagar meu perfil">Meu perfil</button>'}</div>
         </article>`;
       }
       return `<div class="configuration-row" data-auth-user-id="${escapeHtml(user.id)}">
         <div class="config-row-info"><strong>${escapeHtml(user.displayName || user.username)}</strong><span>${escapeHtml(user.email || user.username)} · ${user.role === 'master_admin' ? 'Administrador' : 'Colaborador'}</span><small>${escapeHtml(labels[user.status] || user.status || 'Ativo')}</small></div>
-        ${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}">${actionLabel}</button>` : ''}
+        ${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}">${actionLabel}</button><button type="button" class="button ghost danger-text" data-auth-user-delete="${escapeHtml(user.id)}">Excluir</button>` : '<button type="button" class="button ghost" data-open-my-profile="true">Meu perfil</button>'}
       </div>`;
     },
 

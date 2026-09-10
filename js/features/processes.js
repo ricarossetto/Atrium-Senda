@@ -47,6 +47,7 @@ export function createProcessesFeature({
       escapeHtml,
       formatDate,
       formatMinutes,
+      getHasA1Certificate: () => store.state?.settings?.hasA1Certificate !== false,
       onEdit: item => feature.openProcessModal(item),
       onConsult: (button, item) => feature.consultTjrs(button, item),
       onDownloadAutos: (button, item) => feature.downloadAutos(button, item),
@@ -146,7 +147,7 @@ export function createProcessesFeature({
       linkedAppointments,
       linkedDocuments,
       movements: Array.isArray(item.movements) ? item.movements : [],
-      timeline: buildLegalTimeline(store.state, item),
+      timeline: buildLegalTimeline(store.state, item, { order: 'autos' }),
       canConsultTjrs: canConsultTjrs(item)
     });
   };
@@ -156,6 +157,7 @@ export function createProcessesFeature({
       if (initialized) return false;
       initialized = true;
       byId('newProcessButton')?.addEventListener('click', () => this.openProcessModal());
+      byId('btnSyncEprocA1')?.addEventListener('click', () => this.syncEprocA1());
       byId('processSearch')?.addEventListener('input', event => this.render(event.target.value));
       byId('processSuppressionButton')?.addEventListener('click', () => this.reenableProcessDiscovery());
       byId('processAccessKeyCancel')?.addEventListener('click', () => this.closeAccessKeyDialog());
@@ -171,6 +173,22 @@ export function createProcessesFeature({
       });
       byId('processAccessKeyForm')?.addEventListener('submit', event => this.saveAccessKey(event));
       getPresenter().init();
+      if (typeof globalThis.setTimeout === 'function') {
+        globalThis.setTimeout(() => {
+          const candidates = (store.state.processes || []).filter(p => {
+            const isTjrs = String(p.number || '').includes('.8.21.') || String(p.court || '').toUpperCase().includes('TJRS');
+            if (!isTjrs) return false;
+            const client = String(p.client || '').trim();
+            const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
+            const isSecrecy = Boolean(p.secrecy) || /sigilo|segredo/i.test(client);
+            return isMissingClient || isSecrecy;
+          });
+          if (candidates.length > 0 && !this._autoSyncDone) {
+            this._autoSyncDone = true;
+            this.syncEprocA1({ silent: true }).catch(() => {});
+          }
+        }, 3500);
+      }
       return true;
     },
 
@@ -207,6 +225,11 @@ export function createProcessesFeature({
       if (suppressionButton) {
         suppressionButton.classList.toggle('hidden', suppressions.length === 0);
         suppressionButton.textContent = `Reativar descoberta (${suppressions.length})`;
+      }
+      const btnSyncEproc = byId('btnSyncEprocA1');
+      if (btnSyncEproc) {
+        const hasA1 = store.state?.settings?.hasA1Certificate !== false;
+        btnSyncEproc.classList.toggle('hidden', !hasA1);
       }
       let records = allProcesses
         .map(item => ({ ...item, resolvedClient: resolveProcessClient(item, store.state.contacts) }))
@@ -310,20 +333,40 @@ export function createProcessesFeature({
 
     async refreshAccessKeyStatus(item) {
       const panel = byId('processInspectorContent')?.querySelector('[data-process-access-key-status]');
-      if (!panel || !item?.number) return false;
+      const keyButton = byId('processInspectorAccessKey');
+      if (!item?.number) return false;
       try {
         const response = await secureFetch(`/api/integrations/tjrs-sidecar/processes/access-key/status?processNumber=${encodeURIComponent(item.number)}`, { headers: { Accept: 'application/json' } });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok) throw new Error(result.message || 'Status indisponível.');
-        panel.dataset.processAccessKeyStatus = result.configured ? 'configured' : 'missing';
-        panel.querySelector('[data-process-access-key-copy]').textContent = result.configured
-          ? 'Chave cadastrada no cofre cifrado. Ela será usada automaticamente nas próximas consultas.'
-          : 'Chave ausente. Cadastre-a para consultar processos restritos e manter o monitoramento completo.';
-        panel.querySelector('[data-process-access-key]').textContent = result.configured ? 'Trocar chave' : 'Adicionar chave';
+        if (panel) {
+          panel.dataset.processAccessKeyStatus = result.configured ? 'configured' : 'missing';
+          panel.querySelector('[data-process-access-key-copy]').textContent = result.configured
+            ? 'Chave cadastrada no cofre cifrado. Ela será usada automaticamente nas próximas consultas.'
+            : 'Chave ausente. Cadastre-a para consultar processos restritos e manter o monitoramento completo.';
+          panel.querySelector('[data-process-access-key]').textContent = result.configured ? 'Trocar chave' : 'Adicionar chave';
+        }
+        if (keyButton) {
+          if (result.configured) {
+            keyButton.textContent = 'Chave cadastrada';
+            keyButton.disabled = true;
+            keyButton.classList.remove('is-available');
+            keyButton.classList.add('is-configured', 'is-complete');
+            keyButton.title = 'Chave de acesso do eproc já cadastrada para este processo.';
+          } else {
+            keyButton.textContent = 'Adicionar Chave';
+            keyButton.disabled = false;
+            keyButton.classList.add('is-available');
+            keyButton.classList.remove('is-configured', 'is-complete');
+            keyButton.title = 'Adicionar chave de acesso para consulta restrita e autos.';
+          }
+        }
         return result.configured;
       } catch {
-        panel.dataset.processAccessKeyStatus = 'unknown';
-        panel.querySelector('[data-process-access-key-copy]').textContent = 'Não foi possível confirmar a chave no cofre local.';
+        if (panel) {
+          panel.dataset.processAccessKeyStatus = 'unknown';
+          panel.querySelector('[data-process-access-key-copy]').textContent = 'Não foi possível confirmar a chave no cofre local.';
+        }
         return false;
       }
     },
@@ -579,6 +622,50 @@ export function createProcessesFeature({
         if (button) {
           button.disabled = false;
           button.innerHTML = originalHtml;
+        }
+      }
+    },
+
+    async syncEprocA1({ silent = false } = {}) {
+      if (this._syncEprocInFlight) return false;
+      const btn = byId('btnSyncEprocA1');
+      const originalHtml = btn?.innerHTML;
+      this._syncEprocInFlight = true;
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('is-busy');
+        btn.innerHTML = `<span class="auth-spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;margin-right:6px;"></span><span>Sincronizando eproc A1...</span>`;
+      }
+      try {
+        if (!silent) showToast?.('Iniciando varredura com Certificado Digital A1 no eproc TJRS...', 'info');
+        const response = await secureFetch('/api/integrations/eproc/sweep', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ maxProcesses: 10 })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || 'Erro ao sincronizar com o eproc TJRS.');
+        }
+        await store.fetchState?.();
+        this.render(byId('processSearch')?.value || '');
+        const count = result.enrichedCount || 0;
+        if (count > 0) {
+          showToast?.(`${count} processo(s) TJRS sincronizado(s) e enriquecido(s) via Certificado A1!`, 'success');
+        } else if (!silent) {
+          showToast?.(result.message || 'Varredura eproc concluída. Todos os processos já estão enriquecidos.', 'info');
+        }
+        return true;
+      } catch (err) {
+        if (!silent) showToast?.(`Falha na sincronização eproc A1: ${err.message}`, 'error');
+        console.warn('[processes] Erro ao sincronizar eproc A1:', err);
+        return false;
+      } finally {
+        this._syncEprocInFlight = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('is-busy');
+          if (originalHtml) btn.innerHTML = originalHtml;
         }
       }
     },
