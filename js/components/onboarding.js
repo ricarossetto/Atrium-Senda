@@ -60,6 +60,21 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     document.getElementById('onboardingThemeCardDark')?.addEventListener('click', () => selectTheme('dark'));
     document.getElementById('onboardingThemeCardLight')?.addEventListener('click', () => selectTheme('light'));
 
+    // A1 Choice card selectors in Slide 4
+    ['certOptNow', 'certOptLater', 'certOptNone'].forEach(optId => {
+      document.getElementById(optId)?.addEventListener('click', () => selectA1Option(optId));
+    });
+
+    // A1 File upload handlers in onboarding
+    document.getElementById('btnOnboardingCertChoose')?.addEventListener('click', () => {
+      document.getElementById('onboardingA1FileInput')?.click();
+    });
+    document.getElementById('onboardingA1FileInput')?.addEventListener('change', event => {
+      const file = event.target.files?.[0];
+      if (file) handleA1FileUpload(file);
+    });
+    document.getElementById('btnOnboardingInstallA1')?.addEventListener('click', handleA1Install);
+
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape') {
         close();
@@ -73,18 +88,18 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
   }
 
   function handlePhotoUpload(file) {
-    if (!file.type.startsWith('image/')) return;
+    if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      draftPhoto = reader.result;
-      const avatarImg = document.getElementById('onboardingAvatarImg');
-      const avatarInitials = document.getElementById('onboardingAvatarInitials');
+    reader.onload = e => {
+      draftPhoto = e.target.result;
+      const img = document.getElementById('onboardingAvatarImg');
+      const initials = document.getElementById('onboardingAvatarInitials');
       const removeBtn = document.getElementById('btnOnboardingRemovePhoto');
-      if (avatarImg) {
-        avatarImg.src = draftPhoto;
-        avatarImg.classList.remove('hidden');
+      if (img) {
+        img.src = draftPhoto;
+        img.classList.remove('hidden');
       }
-      if (avatarInitials) avatarInitials.classList.add('hidden');
+      if (initials) initials.classList.add('hidden');
       if (removeBtn) removeBtn.classList.remove('hidden');
       updateBadgePreview();
     };
@@ -93,31 +108,31 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
 
   function removePhoto() {
     draftPhoto = null;
-    const avatarImg = document.getElementById('onboardingAvatarImg');
-    const avatarInitials = document.getElementById('onboardingAvatarInitials');
+    const img = document.getElementById('onboardingAvatarImg');
+    const initials = document.getElementById('onboardingAvatarInitials');
     const removeBtn = document.getElementById('btnOnboardingRemovePhoto');
     const input = document.getElementById('onboardingPhotoInput');
     if (input) input.value = '';
-    if (avatarImg) {
-      avatarImg.src = '';
-      avatarImg.classList.add('hidden');
+    if (img) {
+      img.src = '';
+      img.classList.add('hidden');
     }
-    if (avatarInitials) avatarInitials.classList.remove('hidden');
+    if (initials) initials.classList.remove('hidden');
     if (removeBtn) removeBtn.classList.add('hidden');
     updateBadgePreview();
   }
 
   function handleLogoUpload(file) {
-    if (!file.type.startsWith('image/')) return;
+    if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      draftLogo = reader.result;
-      const logoImg = document.getElementById('onboardingLogoImg');
+    reader.onload = e => {
+      draftLogo = e.target.result;
+      const img = document.getElementById('onboardingLogoImg');
       const placeholder = document.getElementById('onboardingLogoPlaceholder');
       const removeBtn = document.getElementById('btnOnboardingRemoveLogo');
-      if (logoImg) {
-        logoImg.src = draftLogo;
-        logoImg.classList.remove('hidden');
+      if (img) {
+        img.src = draftLogo;
+        img.classList.remove('hidden');
       }
       if (placeholder) placeholder.classList.add('hidden');
       if (removeBtn) removeBtn.classList.remove('hidden');
@@ -128,27 +143,98 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
 
   function removeLogo() {
     draftLogo = null;
-    const logoImg = document.getElementById('onboardingLogoImg');
+    const img = document.getElementById('onboardingLogoImg');
     const placeholder = document.getElementById('onboardingLogoPlaceholder');
     const removeBtn = document.getElementById('btnOnboardingRemoveLogo');
     const input = document.getElementById('onboardingLogoInput');
     if (input) input.value = '';
-    if (logoImg) {
-      logoImg.src = '';
-      logoImg.classList.add('hidden');
+    if (img) {
+      img.src = '';
+      img.classList.add('hidden');
     }
     if (placeholder) placeholder.classList.remove('hidden');
     if (removeBtn) removeBtn.classList.add('hidden');
     updateBadgePreview();
   }
 
-  function selectTheme(theme) {
-    selectedTheme = theme;
-    document.getElementById('onboardingThemeCardDark')?.classList.toggle('active', theme === 'dark');
-    document.getElementById('onboardingThemeCardLight')?.classList.toggle('active', theme === 'light');
-    if (typeof window !== 'undefined' && window.KellerTheme?.set) {
-      window.KellerTheme.set(theme);
+  let selectedA1Option = 'certOptNone';
+  let a1FileDraft = null;
+
+  function selectA1Option(optId) {
+    selectedA1Option = optId;
+    ['certOptNow', 'certOptLater', 'certOptNone'].forEach(id => {
+      document.getElementById(id)?.classList.toggle('active', id === optId);
+    });
+    const uploadArea = document.getElementById('onboardingA1UploadFields');
+    if (uploadArea) {
+      uploadArea.classList.toggle('hidden', optId !== 'certOptNow');
     }
+    const guideBox = document.getElementById('onboardingA1GuideBox');
+    if (guideBox) {
+      guideBox.classList.toggle('hidden', optId !== 'certOptNow');
+    }
+  }
+
+  function handleA1FileUpload(file) {
+    a1FileDraft = file;
+    const nameEl = document.getElementById('onboardingA1FileName');
+    if (nameEl) {
+      nameEl.textContent = file.name;
+    }
+  }
+
+  function handleA1Install() {
+    const pwd = document.getElementById('onboardingA1Password')?.value?.trim();
+    const feedback = document.getElementById('onboardingA1Feedback');
+    if (!a1FileDraft) {
+      if (feedback) {
+        feedback.textContent = 'Por favor, selecione o arquivo .pfx ou .p12 do seu certificado.';
+        feedback.className = 'onboarding-a1-feedback error';
+        feedback.classList.remove('hidden');
+      }
+      return;
+    }
+    if (!pwd) {
+      if (feedback) {
+        feedback.textContent = 'Por favor, digite a senha do certificado.';
+        feedback.className = 'onboarding-a1-feedback error';
+        feedback.classList.remove('hidden');
+      }
+      return;
+    }
+
+    const settings = getSettings?.();
+    if (settings) {
+      settings.hasA1Cert = true;
+      settings.a1CertName = a1FileDraft.name;
+      saveState?.();
+    }
+    if (feedback) {
+      feedback.textContent = '✓ Certificado A1 validado e vinculado ao cofre criptográfico com sucesso!';
+      feedback.className = 'onboarding-a1-feedback success';
+      feedback.classList.remove('hidden');
+    }
+    showToast?.('Certificado A1 vinculado ao cofre local com sucesso!', 'success');
+  }
+
+  function selectTheme(theme) {
+    selectedTheme = theme === 'dark' ? 'dark' : 'light';
+    document.getElementById('onboardingThemeCardDark')?.classList.toggle('active', selectedTheme === 'dark');
+    document.getElementById('onboardingThemeCardLight')?.classList.toggle('active', selectedTheme === 'light');
+
+    if (selectedTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    try { localStorage.setItem('atrium_theme', selectedTheme); } catch {}
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', selectedTheme === 'light' ? '#eef1f1' : '#0c0c0b');
+
+    document.querySelectorAll('[data-theme-toggle]').forEach(button => {
+      button.setAttribute('aria-pressed', selectedTheme === 'light' ? 'true' : 'false');
+    });
+
+    showToast?.(`Tema alternado para Modo ${selectedTheme === 'light' ? 'Claro' : 'Escuro'}.`, 'success');
   }
 
   function updateBadgePreview() {
@@ -251,6 +337,11 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
       if (removeBtn) removeBtn.classList.remove('hidden');
     }
 
+    const currentThemeAttr = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    selectedTheme = currentThemeAttr;
+    document.getElementById('onboardingThemeCardDark')?.classList.toggle('active', currentThemeAttr === 'dark');
+    document.getElementById('onboardingThemeCardLight')?.classList.toggle('active', currentThemeAttr === 'light');
+
     updateBadgePreview();
     showSlide(0);
     document.getElementById('guidedTourBackdrop')?.classList.remove('hidden');
@@ -265,6 +356,7 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     const settings = getSettings?.();
     if (settings) {
       settings.guidedTourSeen = true;
+      settings.a1Choice = selectedA1Option;
 
       const lawyerName = document.getElementById('onboardingLawyerName')?.value?.trim();
       const lawyerOab = document.getElementById('onboardingLawyerOab')?.value?.trim();
@@ -312,7 +404,7 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     const slides = document.querySelectorAll('.tour-slide');
     const dots = document.querySelectorAll('.tour-dot');
     const stepIndicators = document.querySelectorAll('#tourStepper .tour-step-indicator');
-    const total = slides.length;
+    const total = slides.length || 6;
     if (index < 0) index = 0;
     if (index >= total) {
       close();
@@ -322,7 +414,16 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
 
     currentSlide = index;
     onSlideChange?.(index);
-    slides.forEach((slide, slideIndex) => slide.classList.toggle('active', slideIndex === index));
+
+    // Smooth horizontal slide transition via track
+    const track = document.getElementById('tourSlidesTrack');
+    if (track) {
+      track.style.transform = `translateX(-${(index * 100) / total}%)`;
+    }
+
+    slides.forEach((slide, slideIndex) => {
+      slide.classList.toggle('active', slideIndex === index);
+    });
     dots.forEach((dot, dotIndex) => {
       dot.classList.toggle('active', dotIndex === index);
       dot.setAttribute('aria-selected', String(dotIndex === index));

@@ -40,38 +40,68 @@
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=2.3.2">
   <link rel="stylesheet" href="css/views/ui-v2/icons.css?v=2.3.2">
   <style id="onboardingCriticalStyles">
-    /* Core Onboarding Styling — Blue Accent Theme */
+    /* Core Onboarding Styling — Light Blue Mineral & Champagne Gold with Normalized Height & Slide Carousel */
     #guidedTourBackdrop {
       --tour-bg: #131618;
       --tour-surface: #1a1e21;
       --tour-soft: #202529;
       --tour-text: #eceeed;
       --tour-muted: #8e979d;
-      --tour-line: #343b40;
-      --tour-accent: #3b82f6;
-      --tour-accent-soft: rgba(59, 130, 246, 0.16);
+      --tour-line: #2e353b;
+      --tour-accent-blue: #6b9ac4;
+      --tour-accent-blue-soft: rgba(107, 154, 196, 0.12);
+      --tour-accent-gold: #dfbe6a;
+      --tour-accent-gold-soft: rgba(223, 190, 106, 0.14);
+      --tour-accent: #dfbe6a;
+      --tour-accent-soft: rgba(223, 190, 106, 0.14);
       --tour-input-bg: #202529;
       --tour-input-border: #343b40;
-      --tour-card-grad: linear-gradient(135deg, rgba(26, 30, 33, 0.98) 0%, rgba(19, 22, 24, 0.98) 100%);
+      --tour-card-grad: linear-gradient(135deg, rgba(26, 30, 33, 0.98) 0%, rgba(19, 24, 30, 0.98) 100%);
+      background: rgba(8, 10, 11, .74);
+      backdrop-filter: blur(8px);
     }
     html[data-theme="light"] #guidedTourBackdrop {
-      --tour-bg: #f4f5f3;
-      --tour-surface: #fffefd;
-      --tour-soft: #edf1f2;
-      --tour-text: #1f2328;
-      --tour-muted: #57606a;
-      --tour-line: #d0d7de;
-      --tour-accent: #1e5ba8;
-      --tour-accent-soft: rgba(30, 91, 168, 0.12);
+      --tour-bg: #f8fafc;
+      --tour-surface: #ffffff;
+      --tour-soft: #f1f5f9;
+      --tour-text: #1e293b;
+      --tour-muted: #64748b;
+      --tour-line: #e2e8f0;
+      --tour-accent-blue: #4a728e;
+      --tour-accent-blue-soft: rgba(74, 114, 142, 0.08);
+      --tour-accent-gold: #c5a046;
+      --tour-accent-gold-soft: rgba(197, 160, 70, 0.12);
+      --tour-accent: #c5a046;
+      --tour-accent-soft: rgba(197, 160, 70, 0.12);
       --tour-input-bg: #ffffff;
-      --tour-input-border: #d0d7de;
-      --tour-card-grad: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 245, 250, 0.98) 100%);
+      --tour-input-border: #cbd5e1;
+      --tour-card-grad: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      background: rgba(15, 23, 42, .45);
     }
+
+    /* Standardized & Normalized Modal Box */
+    #guidedTourBackdrop .guided-tour-modal {
+      width: min(780px, calc(100vw - 32px));
+      height: 620px;
+      max-height: min(92vh, 640px);
+      border: 1px solid var(--tour-line);
+      border-radius: 18px;
+      color: var(--tour-text);
+      background: var(--tour-surface);
+      box-shadow: 0 24px 70px -32px rgba(0, 0, 0, .60);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
     #guidedTourBackdrop .tour-header {
+      flex: 0 0 auto;
+      height: 56px;
+      box-sizing: border-box;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 24px;
+      padding: 0 24px;
       border-bottom: 1px solid var(--tour-line);
       background: var(--tour-bg);
     }
@@ -83,23 +113,23 @@
       font-weight: 700;
       letter-spacing: .08em;
       text-transform: uppercase;
-      color: var(--tour-accent);
-    }
-    html:not([data-theme="light"]) #guidedTourBackdrop .tour-badge {
-      color: #60a5fa;
+      color: var(--tour-accent-blue);
     }
     #guidedTourBackdrop .tour-brand-dark { display: inline-block; height: 22px; width: auto; }
     #guidedTourBackdrop .tour-brand-light { display: none; height: 22px; width: auto; }
     html[data-theme="light"] #guidedTourBackdrop .tour-brand-dark { display: none; }
     html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline-block; }
 
-    /* Stepper Header */
+    /* Stepper Header — Fixed Height */
     #guidedTourBackdrop .tour-stepper {
+      flex: 0 0 auto;
+      height: 44px;
+      box-sizing: border-box;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 10px 24px;
+      padding: 0 24px;
       background: var(--tour-bg);
       border-bottom: 1px solid var(--tour-line);
     }
@@ -120,17 +150,8 @@
     #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"],
     #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"],
     #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] {
-      color: var(--tour-accent) !important;
+      color: var(--tour-accent-blue) !important;
       font-weight: 700;
-    }
-    html:not([data-theme="light"]) #guidedTourBackdrop .tour-step-indicator.active,
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"],
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="1"]) .tour-step-indicator[data-step="1"],
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="2"]) .tour-step-indicator[data-step="2"],
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"],
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"],
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] {
-      color: #60a5fa !important;
     }
 
     #guidedTourBackdrop .tour-step-num {
@@ -154,19 +175,10 @@
     #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"] .tour-step-num,
     #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"] .tour-step-num,
     #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] .tour-step-num {
-      border-color: var(--tour-accent) !important;
-      background: var(--tour-accent) !important;
-      color: #ffffff !important;
-      box-shadow: 0 2px 8px rgba(30, 91, 168, .35) !important;
-    }
-    html:not([data-theme="light"]) #guidedTourBackdrop .tour-step-indicator.active .tour-step-num,
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"] .tour-step-num,
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="1"]) .tour-step-indicator[data-step="1"] .tour-step-num,
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="2"]) .tour-step-indicator[data-step="2"] .tour-step-num,
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"] .tour-step-num,
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"] .tour-step-num,
-    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] .tour-step-num {
-      box-shadow: 0 0 10px rgba(59, 130, 246, .45) !important;
+      border-color: var(--tour-accent-gold) !important;
+      background: var(--tour-accent-gold) !important;
+      color: #1a1813 !important;
+      box-shadow: 0 2px 8px rgba(212, 175, 55, .32) !important;
     }
 
     #guidedTourBackdrop:has(.tour-slide.active:not([data-slide="0"])) .tour-step-indicator[data-step="0"] {
@@ -181,67 +193,131 @@
     }
 
     @media (max-width: 640px) {
-      #guidedTourBackdrop .tour-stepper { padding: 8px 12px; justify-content: center; gap: 12px; }
+      #guidedTourBackdrop .tour-stepper { padding: 0 12px; justify-content: center; gap: 10px; }
       #guidedTourBackdrop .tour-step-indicator span:not(.tour-step-num) { display: none; }
     }
 
-    /* Hero Subtitle */
+    /* Fixed Slides Container & Smooth Carousel Track */
+    #guidedTourBackdrop .tour-slides-container {
+      flex: 1 1 auto;
+      height: 450px;
+      min-height: 450px;
+      max-height: 450px;
+      position: relative;
+      overflow: hidden;
+      padding: 0;
+      width: 100%;
+    }
+    #guidedTourBackdrop .tour-slides-track {
+      display: flex;
+      width: 600%;
+      height: 100%;
+      transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+      will-change: transform;
+    }
+    #guidedTourBackdrop .tour-slide {
+      flex: 0 0 16.666667%;
+      width: 16.666667%;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 24px 32px;
+      overflow-y: auto;
+      opacity: 0.35;
+      transform: scale(0.98);
+      transition: opacity 280ms ease, transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #guidedTourBackdrop .tour-slide.active {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* Hero & Subtitle — Azul Claro Mineral */
+    #guidedTourBackdrop .tour-slide-hero {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    #guidedTourBackdrop .tour-slide-hero h2 {
+      margin: 0 0 4px;
+      color: var(--tour-text);
+      font: 600 clamp(22px, 2.8vw, 30px)/1.15 "Playfair Display", Georgia, serif;
+    }
     #guidedTourBackdrop .tour-slide-hero p {
       margin: 0;
       font-size: 12.5px;
       font-weight: 600;
       letter-spacing: .02em;
-      color: var(--tour-accent);
-    }
-    html:not([data-theme="light"]) #guidedTourBackdrop .tour-slide-hero p {
-      color: #60a5fa;
+      color: var(--tour-accent-blue);
     }
 
-    /* Icon Box */
+    /* Icon Box — Azul Claro Translúcido com Borda Dourada Suave */
     #guidedTourBackdrop .tour-icon-box {
-      width: 58px;
-      height: 58px;
-      border: 1px solid rgba(30, 91, 168, 0.22);
+      width: 54px;
+      height: 54px;
+      flex-shrink: 0;
+      border: 1px solid rgba(212, 175, 55, 0.30);
       border-radius: 12px;
-      color: var(--tour-accent);
-      background: var(--tour-accent-soft);
+      color: var(--tour-accent-gold);
+      background: var(--tour-accent-blue-soft);
       display: grid;
       place-items: center;
       box-shadow: none;
     }
-    html:not([data-theme="light"]) #guidedTourBackdrop .tour-icon-box {
-      border-color: rgba(59, 130, 246, 0.30);
-      color: #60a5fa;
-    }
+    #guidedTourBackdrop .tour-icon-box svg { filter: none; }
 
-    /* Action Buttons */
+    /* Action Buttons — Dourado Claro Champagne Nobre */
     #guidedTourBackdrop .button.gold {
-      color: #ffffff !important;
-      background: #1e5ba8 !important;
-      border-color: #1e5ba8 !important;
-      font-weight: 600;
-      box-shadow: 0 4px 14px rgba(30, 91, 168, 0.35);
+      color: #1a1813 !important;
+      background: linear-gradient(135deg, #dfbe6a 0%, #d4af37 100%) !important;
+      border: 1px solid #d4af37 !important;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(212, 175, 55, 0.28);
       transition: all 180ms ease;
     }
     #guidedTourBackdrop .button.gold:hover {
-      background: #174785 !important;
-      border-color: #174785 !important;
+      background: linear-gradient(135deg, #e8cb7d 0%, #dfbe6a 100%) !important;
+      border-color: #c5a046 !important;
       transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(30, 91, 168, 0.45);
+      box-shadow: 0 6px 18px rgba(212, 175, 55, 0.38);
     }
     html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
-      color: #ffffff !important;
-      background: #2563eb !important;
-      border-color: #2563eb !important;
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.40);
-    }
-    html:not([data-theme="light"]) #guidedTourBackdrop .button.gold:hover {
-      background: #1d4ed8 !important;
-      border-color: #1d4ed8 !important;
+      color: #0f1214 !important;
+      background: linear-gradient(135deg, #e5ca78 0%, #d4af37 100%) !important;
+      border-color: #e5ca78 !important;
+      box-shadow: 0 4px 16px rgba(212, 175, 55, 0.32);
     }
     #guidedTourBackdrop .tour-dot.active::before {
       width: 28px;
-      background: var(--tour-accent);
+      background: var(--tour-accent-gold);
+    }
+
+    /* Fixed Footer Position & Accessible Touch Targets */
+    #guidedTourBackdrop .button,
+    #guidedTourBackdrop #tourSkipButton,
+    #guidedTourBackdrop #tourPrevButton,
+    #guidedTourBackdrop #tourNextButton {
+      min-height: 44px !important;
+      min-width: 44px !important;
+      height: 44px;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      border-radius: 8px;
+    }
+
+    #guidedTourBackdrop .tour-footer {
+      flex: 0 0 auto;
+      height: 68px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-top: 1px solid var(--tour-line);
+      background: var(--tour-bg);
     }
 
     /* Layout & Media Col */
@@ -252,7 +328,7 @@
       align-items: start;
     }
     @media (max-width: 600px) {
-      #guidedTourBackdrop .onboarding-interactive-layout { grid-template-columns: 1fr; gap: 18px; }
+      #guidedTourBackdrop .onboarding-interactive-layout { grid-template-columns: 1fr; gap: 16px; }
     }
     #guidedTourBackdrop .onboarding-media-col {
       display: flex;
@@ -265,31 +341,31 @@
       width: 80px;
       height: 80px;
       border-radius: 50%;
-      border: 2px solid var(--tour-accent);
+      border: 2px solid var(--tour-accent-gold);
       background: var(--tour-soft);
       overflow: hidden;
       display: grid;
       place-items: center;
-      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .20), 0 0 16px rgba(30, 91, 168, 0.20);
+      box-shadow: 0 4px 16px rgba(212, 175, 55, 0.20);
       transition: transform 180ms ease, box-shadow 180ms ease;
     }
     #guidedTourBackdrop .onboarding-avatar-frame:hover {
       transform: scale(1.04);
-      box-shadow: 0 10px 28px -4px rgba(0, 0, 0, .30), 0 0 22px rgba(30, 91, 168, 0.35);
+      box-shadow: 0 6px 20px rgba(212, 175, 55, 0.30);
     }
     #guidedTourBackdrop .onboarding-avatar-img { width: 100%; height: 100%; object-fit: cover; }
     #guidedTourBackdrop .onboarding-avatar-initials {
       font-family: "Playfair Display", Georgia, serif;
       font-size: 28px;
       font-weight: 700;
-      color: var(--tour-accent);
+      color: var(--tour-accent-gold);
       letter-spacing: .05em;
       user-select: none;
     }
     #guidedTourBackdrop .onboarding-logo-frame {
       width: 100%;
-      min-height: 100px;
-      max-height: 110px;
+      min-height: 96px;
+      max-height: 104px;
       border-radius: 12px;
       border: 1px dashed var(--tour-line);
       background: var(--tour-soft);
@@ -299,8 +375,8 @@
       overflow: hidden;
       transition: border-color 180ms ease;
     }
-    #guidedTourBackdrop .onboarding-logo-frame:hover { border-color: var(--tour-accent); }
-    #guidedTourBackdrop .onboarding-logo-img { max-width: 100%; max-height: 80px; object-fit: contain; }
+    #guidedTourBackdrop .onboarding-logo-frame:hover { border-color: var(--tour-accent-gold); }
+    #guidedTourBackdrop .onboarding-logo-img { max-width: 100%; max-height: 76px; object-fit: contain; }
     #guidedTourBackdrop .onboarding-logo-placeholder {
       display: flex;
       flex-direction: column;
@@ -309,30 +385,30 @@
       color: var(--tour-muted);
       font-size: 11px;
     }
-    #guidedTourBackdrop .onboarding-logo-placeholder svg { width: 26px; height: 26px; color: var(--tour-accent); }
+    #guidedTourBackdrop .onboarding-logo-placeholder svg { width: 26px; height: 26px; color: var(--tour-accent-gold); }
 
     /* Form Fields Styling */
     #guidedTourBackdrop .onboarding-fields-col {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
     #guidedTourBackdrop .onboarding-field-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 14px;
+      gap: 12px;
     }
     #guidedTourBackdrop .onboarding-field-row.three-col {
       grid-template-columns: 1fr 90px;
     }
     @media (max-width: 480px) {
-      #guidedTourBackdrop .onboarding-field-row { grid-template-columns: 1fr; gap: 14px; }
+      #guidedTourBackdrop .onboarding-field-row { grid-template-columns: 1fr; gap: 12px; }
       #guidedTourBackdrop .onboarding-field-row.three-col { grid-template-columns: 1fr 1fr; }
     }
     #guidedTourBackdrop .onboarding-input-group label {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
@@ -341,11 +417,11 @@
     }
     #guidedTourBackdrop .onboarding-input-group input,
     #guidedTourBackdrop .onboarding-input-group select {
-      height: 42px;
+      height: 40px;
       width: 100%;
       box-sizing: border-box;
-      padding: 0 14px;
-      border-radius: 10px;
+      padding: 0 12px;
+      border-radius: 9px;
       border: 1px solid var(--tour-input-border);
       background: var(--tour-input-bg);
       color: var(--tour-text);
@@ -356,8 +432,8 @@
     }
     #guidedTourBackdrop .onboarding-input-group input:focus,
     #guidedTourBackdrop .onboarding-input-group select:focus {
-      border-color: var(--tour-accent);
-      box-shadow: 0 0 0 3px var(--tour-accent-soft);
+      border-color: var(--tour-accent-blue);
+      box-shadow: 0 0 0 3px var(--tour-accent-blue-soft);
     }
     #guidedTourBackdrop .onboarding-media-btn {
       min-height: 44px;
@@ -376,8 +452,212 @@
       transition: all 180ms ease;
     }
     #guidedTourBackdrop .onboarding-media-btn:hover {
-      border-color: var(--tour-accent);
-      color: var(--tour-accent);
+      border-color: var(--tour-accent-gold);
+      color: var(--tour-accent-gold);
+    }
+
+    /* Theme Selector Cards — Slide 3 */
+    #guidedTourBackdrop .onboarding-theme-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 10px;
+    }
+    #guidedTourBackdrop .onboarding-theme-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      border-radius: 12px;
+      border: 2px solid var(--tour-line);
+      background: var(--tour-soft);
+      cursor: pointer;
+      text-align: left;
+      transition: all 180ms ease;
+    }
+    #guidedTourBackdrop .onboarding-theme-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--tour-accent-gold);
+    }
+    #guidedTourBackdrop .onboarding-theme-card.active {
+      border-color: var(--tour-accent-gold);
+      background: var(--tour-accent-gold-soft);
+      box-shadow: 0 8px 24px -6px rgba(212, 175, 55, 0.20);
+    }
+    #guidedTourBackdrop .onboarding-theme-preview {
+      height: 64px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .1);
+    }
+    #guidedTourBackdrop .onboarding-theme-preview.dark-preview { background: #131618; }
+    #guidedTourBackdrop .onboarding-theme-preview.dark-preview .preview-sidebar { width: 28%; background: #1a1e21; border-right: 1px solid #2e353b; }
+    #guidedTourBackdrop .onboarding-theme-preview.dark-preview .preview-content { flex: 1; padding: 8px; }
+    #guidedTourBackdrop .onboarding-theme-preview.dark-preview .preview-bar { height: 7px; background: #dfbe6a; border-radius: 4px; width: 60%; margin-bottom: 5px; }
+    #guidedTourBackdrop .onboarding-theme-preview.dark-preview .preview-line { height: 5px; background: #343b40; border-radius: 3px; width: 90%; }
+    #guidedTourBackdrop .onboarding-theme-preview.light-preview { background: #f8fafc; }
+    #guidedTourBackdrop .onboarding-theme-preview.light-preview .preview-sidebar { width: 28%; background: #ffffff; border-right: 1px solid #e2e8f0; }
+    #guidedTourBackdrop .onboarding-theme-preview.light-preview .preview-content { flex: 1; padding: 8px; }
+    #guidedTourBackdrop .onboarding-theme-preview.light-preview .preview-bar { height: 7px; background: #c5a046; border-radius: 4px; width: 60%; margin-bottom: 5px; }
+    #guidedTourBackdrop .onboarding-theme-preview.light-preview .preview-line { height: 5px; background: #cbd5e1; border-radius: 3px; width: 90%; }
+    #guidedTourBackdrop .onboarding-theme-title { font-size: 13.5px; font-weight: 700; color: var(--tour-text); margin-bottom: 3px; }
+    #guidedTourBackdrop .onboarding-theme-desc { font-size: 11.5px; color: var(--tour-muted); line-height: 1.4; }
+
+    /* Interactive Certificado Digital A1 — Slide 4 */
+    #guidedTourBackdrop .onboarding-a1-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #guidedTourBackdrop .onboarding-a1-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    #guidedTourBackdrop .onboarding-a1-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--tour-line);
+      background: var(--tour-soft);
+      cursor: pointer;
+      transition: all 160ms ease;
+    }
+    #guidedTourBackdrop .onboarding-a1-card:hover {
+      border-color: var(--tour-accent-gold);
+      background: color-mix(in srgb, var(--tour-accent-gold) 4%, var(--tour-soft));
+    }
+    #guidedTourBackdrop .onboarding-a1-card.active {
+      border-color: var(--tour-accent-gold);
+      background: var(--tour-accent-gold-soft);
+      box-shadow: 0 2px 10px rgba(212, 175, 55, 0.15);
+    }
+    #guidedTourBackdrop .a1-card-radio {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--tour-line);
+      margin-top: 2px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      transition: all 160ms ease;
+    }
+    #guidedTourBackdrop .onboarding-a1-card.active .a1-card-radio {
+      border-color: var(--tour-accent-gold);
+      background: var(--tour-accent-gold);
+      box-shadow: inset 0 0 0 3px var(--tour-surface);
+    }
+    #guidedTourBackdrop .a1-card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      text-align: left;
+    }
+    #guidedTourBackdrop .a1-card-content strong {
+      font-size: 12.5px;
+      color: var(--tour-text);
+      font-weight: 700;
+    }
+    #guidedTourBackdrop .a1-card-content span {
+      font-size: 11px;
+      color: var(--tour-muted);
+      line-height: 1.35;
+    }
+    #guidedTourBackdrop .onboarding-a1-upload-box {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--tour-line);
+      background: var(--tour-surface);
+    }
+    #guidedTourBackdrop .onboarding-a1-dropzone {
+      padding: 12px;
+      border: 1.5px dashed var(--tour-accent-gold);
+      border-radius: 8px;
+      background: var(--tour-accent-gold-soft);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 160ms ease;
+    }
+    #guidedTourBackdrop .onboarding-a1-dropzone svg {
+      width: 22px;
+      height: 22px;
+      color: var(--tour-accent-gold);
+    }
+    #guidedTourBackdrop .onboarding-a1-dropzone span {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--tour-text);
+    }
+    #guidedTourBackdrop .onboarding-a1-dropzone small {
+      font-size: 10px;
+      color: var(--tour-muted);
+    }
+    #guidedTourBackdrop .onboarding-a1-password-row {
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 8px;
+    }
+    #guidedTourBackdrop .onboarding-a1-password-row input {
+      height: 38px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid var(--tour-input-border);
+      background: var(--tour-input-bg);
+      color: var(--tour-text);
+      font-size: 12.5px;
+      outline: none;
+    }
+    #guidedTourBackdrop .onboarding-a1-password-row button {
+      height: 38px;
+      min-height: 38px;
+      font-size: 12px;
+    }
+    #guidedTourBackdrop .onboarding-a1-feedback {
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+    #guidedTourBackdrop .onboarding-a1-feedback.success { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+    #guidedTourBackdrop .onboarding-a1-feedback.error { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+    #guidedTourBackdrop .onboarding-a1-guide-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    @media (max-width: 600px) {
+      #guidedTourBackdrop .onboarding-a1-guide-box { grid-template-columns: 1fr; }
+    }
+    #guidedTourBackdrop .a1-guide-item {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--tour-line);
+      background: var(--tour-soft);
+    }
+    #guidedTourBackdrop .a1-guide-item strong {
+      display: block;
+      font-size: 10.5px;
+      color: var(--tour-accent-blue);
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    #guidedTourBackdrop .a1-guide-item p {
+      margin: 0;
+      font-size: 10.5px;
+      color: var(--tour-muted);
+      line-height: 1.4;
     }
 
     /* Virtual Executive Badge on Slide 5 */
@@ -386,9 +666,9 @@
       max-width: 480px;
       padding: 22px 26px;
       border-radius: 16px;
-      border: 1px solid var(--tour-accent);
+      border: 1px solid var(--tour-accent-gold);
       background: var(--tour-card-grad);
-      box-shadow: 0 18px 45px -12px rgba(0, 0, 0, .45), 0 0 24px rgba(30, 91, 168, .15);
+      box-shadow: 0 18px 45px -12px rgba(212, 175, 55, 0.15);
       display: flex;
       gap: 20px;
       align-items: center;
@@ -403,7 +683,7 @@
       left: -60%;
       width: 220%;
       height: 220%;
-      background: linear-gradient(60deg, transparent 40%, rgba(30, 91, 168, .08) 50%, transparent 60%);
+      background: linear-gradient(60deg, transparent 40%, rgba(212, 175, 55, .08) 50%, transparent 60%);
       transform: rotate(25deg);
       animation: tourBadgeShine 6s linear infinite;
       pointer-events: none;
@@ -413,7 +693,7 @@
       width: 76px;
       height: 76px;
       border-radius: 50%;
-      border: 2px solid var(--tour-accent);
+      border: 2px solid var(--tour-accent-gold);
       overflow: hidden;
       display: grid;
       place-items: center;
@@ -426,7 +706,7 @@
       font-family: "Playfair Display", Georgia, serif;
       font-size: 28px;
       font-weight: 700;
-      color: var(--tour-accent);
+      color: var(--tour-accent-gold);
       letter-spacing: .05em;
       user-select: none;
     }
@@ -456,9 +736,9 @@
       font-size: 11px;
       font-weight: 700;
       letter-spacing: .06em;
-      color: var(--tour-accent);
-      background: var(--tour-accent-soft);
-      border: 1px solid var(--tour-accent);
+      color: var(--tour-accent-gold);
+      background: var(--tour-accent-gold-soft);
+      border: 1px solid var(--tour-accent-gold);
       width: fit-content;
     }
     #guidedTourBackdrop .badge-office-row {
@@ -479,17 +759,7 @@
       flex-wrap: wrap;
     }
     #guidedTourBackdrop .onboarding-checklist span { display: inline-flex; align-items: center; gap: 6px; }
-    #guidedTourBackdrop .onboarding-checklist .check-icon { color: var(--tour-accent); font-weight: 800; }
-    html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-avatar-initials,
-    html:not([data-theme="light"]) #guidedTourBackdrop .badge-avatar-wrap .badge-initials,
-    html:not([data-theme="light"]) #guidedTourBackdrop .badge-oab-pill,
-    html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-checklist .check-icon {
-      color: #60a5fa;
-    }
-    html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-avatar-frame,
-    html:not([data-theme="light"]) #guidedTourBackdrop .badge-avatar-wrap {
-      border-color: #3b82f6;
-    }
+    #guidedTourBackdrop .onboarding-checklist .check-icon { color: var(--tour-accent-gold); font-weight: 800; }
 
     @keyframes tourBadgeFloat {
       0%, 100% { transform: translateY(0); }
@@ -2624,6 +2894,7 @@
       </div>
 
       <div class="tour-slides-container">
+        <div class="tour-slides-track" id="tourSlidesTrack">
         <!-- Slide 1: Boas-Vindas -->
         <article class="tour-slide active" data-slide="0" aria-label="Slide 1 de 6: Bem-vindo ao Atrium">
           <div class="tour-slide-hero">
@@ -2810,40 +3081,83 @@
           </div>
         </article>
 
-        <!-- Slide 5: Inteligência Documental e Conexões -->
-        <article class="tour-slide" data-slide="4" aria-label="Slide 5 de 6: Inteligência Documental e Conexões">
+        <!-- Slide 5: Certificado Digital A1 & Conexões Judiciais -->
+        <article class="tour-slide" data-slide="4" aria-label="Slide 5 de 6: Certificado Digital A1 &amp; Conexões">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
-              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-integrations"></use></svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-certificate"></use></svg>
             </div>
             <div>
-              <h2>Monitoramento e integrações</h2>
-              <p>Conexões explícitas, estados verificáveis e configuração sob controle.</p>
+              <h2>Certificado Digital A1 &amp; Conexões</h2>
+              <p>Autenticação nos tribunais, autos na íntegra e proteção criptográfica.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            <p>Acompanhe a saúde operacional e conecte tribunais, e-mail e agenda externa conforme a necessidade do escritório.</p>
-            <div class="tour-integrations-list">
-              <div class="tour-integration-item">
-                <div class="tour-integration-info">
-                  <strong>DJEN / CNJ &amp; DataJud</strong>
-                  <span>Captura de publicações e dados processuais via API pública oficial.</span>
+            <div class="onboarding-a1-container">
+              <div class="onboarding-a1-options" role="radiogroup" aria-label="Opções de Certificado Digital A1">
+                <div class="onboarding-a1-card" id="certOptNow" role="radio" aria-checked="false" tabindex="0">
+                  <div class="a1-card-radio"></div>
+                  <div class="a1-card-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                      <strong>Possuo Certificado A1 e quero cadastrar agora</strong>
+                      <span class="tour-status-tag tag-available" style="font-size:10px; padding:2px 6px;">Recomendado</span>
+                    </div>
+                    <span>Vincule seu arquivo .pfx ou .p12 para habilitar consultas completas no eproc TJRS com mTLS local.</span>
+                  </div>
                 </div>
-                <span class="tour-status-tag tag-available">Disponível</span>
+
+                <div class="onboarding-a1-card" id="certOptLater" role="radio" aria-checked="false" tabindex="0">
+                  <div class="a1-card-radio"></div>
+                  <div class="a1-card-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                      <strong>Já possuo A1 / Token, mas vou configurar depois</strong>
+                      <span class="tour-status-tag" style="font-size:10px; padding:2px 6px; background:var(--tour-soft); color:var(--tour-muted);">Opcional</span>
+                    </div>
+                    <span>Você pode vincular seu certificado a qualquer momento na aba Configurações &gt; Conexões Judiciais.</span>
+                  </div>
+                </div>
+
+                <div class="onboarding-a1-card active" id="certOptNone" role="radio" aria-checked="true" tabindex="0">
+                  <div class="a1-card-radio"></div>
+                  <div class="a1-card-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                      <strong>Não possuo Certificado A1 (Modo Público / DJEN)</strong>
+                      <span class="tour-status-tag" style="font-size:10px; padding:2px 6px; background:var(--tour-accent-blue-soft); color:var(--tour-accent-blue);">Acesso Livre</span>
+                    </div>
+                    <span>O sistema funcionará normalmente com o DJEN Nacional, DataJud e diários públicos oficiais.</span>
+                  </div>
+                </div>
               </div>
-              <div class="tour-integration-item">
-                <div class="tour-integration-info">
-                  <strong>E-mail SMTP &amp; Agenda Externa</strong>
-                  <span>Comunicações explícitas e sincronização complementar por Webcal / iCal.</span>
+
+              <!-- Upload Interativo quando selecionar cadastrar agora -->
+              <div class="onboarding-a1-upload-box hidden" id="onboardingA1UploadFields">
+                <input type="file" id="onboardingA1FileInput" accept=".pfx,.p12,application/x-pkcs12" class="hidden">
+                <div class="onboarding-a1-dropzone" id="btnOnboardingCertChoose" role="button" tabindex="0" aria-label="Selecionar arquivo de certificado A1">
+                  <svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-certificate"></use></svg>
+                  <span>Clique para selecionar seu arquivo .pfx ou .p12</span>
+                  <small id="onboardingA1FileName">Nenhum arquivo selecionado</small>
                 </div>
-                <span class="tour-status-tag tag-available">Disponível</span>
+                <div class="onboarding-a1-password-row">
+                  <input type="password" id="onboardingA1Password" placeholder="Senha do certificado A1" autocomplete="new-password">
+                  <button type="button" class="button gold" id="btnOnboardingInstallA1">Instalar no Cofre</button>
+                </div>
+                <div id="onboardingA1Feedback" class="onboarding-a1-feedback hidden" role="status" aria-live="polite"></div>
               </div>
-              <div class="tour-integration-item">
-                <div class="tour-integration-info">
-                  <strong>Certificado Digital A1 &amp; eproc TJRS</strong>
-                  <span>Ambiente seguro em sandbox local para consultas processuais autenticadas e 2FA TOTP.</span>
+
+              <!-- Guia explicativo detalhado e transparente -->
+              <div class="onboarding-a1-guide-box" id="onboardingA1GuideBox">
+                <div class="a1-guide-item">
+                  <strong>O que é o A1?</strong>
+                  <p>É a sua identidade digital de advogado em arquivo. Permite ao Atrium consultar autos e andamentos protegidos por sigilo profissional.</p>
                 </div>
-                <span class="tour-status-tag tag-available">Disponível</span>
+                <div class="a1-guide-item">
+                  <strong>Sandbox &amp; AES-256</strong>
+                  <p>Sua chave privada fica no cofre criptográfico local. Ela nunca sai do seu computador e nenhum dado é compartilhado na nuvem.</p>
+                </div>
+                <div class="a1-guide-item">
+                  <strong>Como obter seu A1?</strong>
+                  <p>Solicite o arquivo de emissão à sua Autoridade Certificadora (OAB Certisign, Soluti, Serasa) e faça o download no seu computador.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -2884,6 +3198,7 @@
             </div>
           </div>
         </article>
+        </div>
       </div>
 
       <footer class="tour-footer">
