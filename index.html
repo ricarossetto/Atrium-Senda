@@ -2156,6 +2156,15 @@
         <button class="icon-button" id="tourCloseButton" aria-label="Fechar apresentação"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
       </header>
 
+      <div class="tour-stepper" id="tourStepper" aria-hidden="true">
+        <span class="tour-step-indicator active" data-step="0"><span class="tour-step-num">1</span><span>Apresentação</span></span>
+        <span class="tour-step-indicator" data-step="1"><span class="tour-step-num">2</span><span>Advogado</span></span>
+        <span class="tour-step-indicator" data-step="2"><span class="tour-step-num">3</span><span>Escritório</span></span>
+        <span class="tour-step-indicator" data-step="3"><span class="tour-step-num">4</span><span>Tema</span></span>
+        <span class="tour-step-indicator" data-step="4"><span class="tour-step-num">5</span><span>Conexões</span></span>
+        <span class="tour-step-indicator" data-step="5"><span class="tour-step-num">6</span><span>Ativação</span></span>
+      </div>
+
       <div class="tour-slides-container">
         <!-- Slide 1: Boas-Vindas -->
         <article class="tour-slide active" data-slide="0" aria-label="Slide 1 de 6: Bem-vindo ao Atrium">
@@ -2169,103 +2178,186 @@
             </div>
             <div>
               <h2>Bem-vindo ao Atrium</h2>
-              <p>Seu escritório jurídico em um único ambiente.</p>
+              <p>Seu escritório jurídico em um único ambiente, inteligente e seguro.</p>
             </div>
           </div>
           <div class="tour-slide-body">
             <p>O Atrium reúne processos, publicações, tarefas, agenda, documentos, contatos, financeiro e integrações em uma interface centralizada para a rotina do escritório.</p>
             <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Gestão Integrada</strong><span>Processos, tarefas, agenda, documentos e financeiro no mesmo ambiente.</span></div>
+              <div class="tour-feature-card"><strong>Gestão Integrada &amp; IA</strong><span>Processos, tarefas, agenda, documentos e financeiro no mesmo ambiente soberano.</span></div>
               <div class="tour-feature-card"><strong>Segurança &amp; Proteção</strong><span>Dados persistidos com proteção criptográfica, controle de acesso e autenticação em duas etapas quando ativada.</span></div>
             </div>
-          </div>
-        </article>
-
-        <!-- Slide 2: Processos e Publicações -->
-        <article class="tour-slide" data-slide="1" aria-label="Slide 2 de 6: Processos e Publicações">
-          <div class="tour-slide-hero">
-            <div class="tour-icon-box">
-              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-processes"></use></svg>
-            </div>
-            <div>
-              <h2>Processos e publicações</h2>
-              <p>Leitura rápida do acervo e triagem judicial supervisionada.</p>
-            </div>
-          </div>
-          <div class="tour-slide-body">
-            <p>Consulte o contexto de cada processo e trate publicações sem confundir leitura, análise e providência profissional.</p>
-            <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Carteira processual</strong><span>Dados essenciais, andamentos e relações em superfícies de leitura antes da edição.</span></div>
-              <div class="tour-feature-card"><strong>Publicações</strong><span>Texto oficial preservado, filtros de tratamento e ações sempre explícitas.</span></div>
+            <div class="tour-note" style="margin-top: 14px;">
+              <small><em>Personalização Guiada:</em> Nos próximos passos, você poderá configurar sua foto, dados da OAB e logomarca do escritório em poucos segundos.</small>
             </div>
           </div>
         </article>
 
-        <!-- Slide 3: Tarefas e Agenda -->
-        <article class="tour-slide" data-slide="2" aria-label="Slide 3 de 6: Tarefas e Agenda">
-          <div class="tour-slide-hero">
-            <div class="tour-icon-box">
-              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-tasks"></use></svg>
-            </div>
-            <div>
-              <h2>Tarefas e agenda</h2>
-              <p>Trabalho distribuído e compromissos em uma linha operacional clara.</p>
-            </div>
-          </div>
-          <div class="tour-slide-body">
-            <p>Organize providências no Kanban e acompanhe compromissos na agenda integrada, mantendo responsáveis, prioridades e datas informadas.</p>
-            <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Gestão de tarefas</strong><span>Alterne entre Lista e Kanban sem perder o vínculo de cada tarefa com sua origem.</span></div>
-              <div class="tour-feature-card"><strong>Agenda integrada</strong><span>Reuniões, audiências e prazos explicitamente cadastrados em visão diária e mensal.</span></div>
-            </div>
-            <div class="tour-note">
-              <small><em>Nota:</em> O tratamento de publicações no Atrium organiza o fluxo interno do escritório e não substitui nem equivale a ciência judicial nos tribunais.</small>
-            </div>
-          </div>
-        </article>
-
-        <!-- Slide 4: Contatos e Atendimentos -->
-        <article class="tour-slide" data-slide="3" aria-label="Slide 4 de 6: Contatos e Atendimentos">
+        <!-- Slide 2: Perfil do Advogado Titular -->
+        <article class="tour-slide" data-slide="1" aria-label="Slide 2 de 6: Perfil do Advogado Titular">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-contacts"></use></svg>
             </div>
             <div>
-              <h2>Contatos e atendimentos</h2>
-              <p>Relacionamentos e captação organizados sem duplicar pessoas.</p>
+              <h2>Perfil do Advogado Titular</h2>
+              <p>Personalize sua identificação profissional no sistema e nas minutas.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            <p>Consulte clientes, testemunhas, peritos e demais papéis em uma base única, enquanto os atendimentos acompanham oportunidades e próximos passos.</p>
-            <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Pessoas</strong><span>Dados de contato, identificação e relacionamento com hierarquia profissional.</span></div>
-              <div class="tour-feature-card"><strong>Atendimentos</strong><span>Origem, etapa, interesse e histórico de interação em fluxo supervisionado.</span></div>
+            <div class="onboarding-interactive-layout">
+              <div class="onboarding-media-col">
+                <div class="onboarding-avatar-frame" id="onboardingAvatarFrame" title="Foto do Advogado">
+                  <img id="onboardingAvatarImg" class="onboarding-avatar-img hidden" alt="Foto do perfil">
+                  <span id="onboardingAvatarInitials" class="onboarding-avatar-initials">DR</span>
+                </div>
+                <input type="file" id="onboardingPhotoInput" accept="image/png,image/jpeg,image/webp" class="hidden">
+                <button type="button" class="button ghost" id="btnOnboardingChoosePhoto" style="font-size:11.5px; padding:4px 10px; min-height:32px;">Escolher foto</button>
+                <button type="button" class="button ghost hidden" id="btnOnboardingRemovePhoto" style="font-size:10.5px; padding:2px 8px; min-height:28px;">Remover</button>
+                <small style="font-size:10.5px; color:var(--tour-muted);">PNG, JPG ou WebP</small>
+              </div>
+              <div class="onboarding-fields-col">
+                <div class="onboarding-input-group">
+                  <label><span>Nome Completo do Titular</span>
+                    <input type="text" id="onboardingLawyerName" placeholder="Dr(a). Advogado(a) Titular" maxlength="100">
+                  </label>
+                </div>
+                <div class="onboarding-field-row three-col">
+                  <div class="onboarding-input-group">
+                    <label><span>Inscrição OAB</span>
+                      <input type="text" id="onboardingLawyerOab" placeholder="Ex: 000000" maxlength="20">
+                    </label>
+                  </div>
+                  <div class="onboarding-input-group">
+                    <label><span>UF</span>
+                      <select id="onboardingLawyerUf">
+                        <option value="RS" selected>RS</option>
+                        <option value="SC">SC</option><option value="PR">PR</option><option value="SP">SP</option><option value="RJ">RJ</option>
+                        <option value="MG">MG</option><option value="DF">DF</option><option value="BA">BA</option><option value="GO">GO</option>
+                        <option value="PE">PE</option><option value="CE">CE</option><option value="AC">AC</option><option value="AL">AL</option>
+                        <option value="AP">AP</option><option value="AM">AM</option><option value="ES">ES</option><option value="MA">MA</option>
+                        <option value="MT">MT</option><option value="MS">MS</option><option value="PA">PA</option><option value="PB">PB</option>
+                        <option value="PI">PI</option><option value="RN">RN</option><option value="RO">RO</option><option value="RR">RR</option>
+                        <option value="SE">SE</option><option value="TO">TO</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+                <div class="onboarding-field-row">
+                  <div class="onboarding-input-group">
+                    <label><span>Telefone / WhatsApp</span>
+                      <input type="tel" id="onboardingLawyerPhone" placeholder="(51) 99999-9999" maxlength="32">
+                    </label>
+                  </div>
+                  <div class="onboarding-input-group">
+                    <label><span>E-mail Profissional</span>
+                      <input type="email" id="onboardingLawyerEmail" placeholder="advogado@escritorio.adv.br" maxlength="120">
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </article>
 
-        <!-- Slide 5: Documentos e Inteligência Assistida -->
-        <article class="tour-slide" data-slide="4" aria-label="Slide 5 de 6: Documentos e Inteligência Assistida">
+        <!-- Slide 3: Identidade do Escritório -->
+        <article class="tour-slide" data-slide="2" aria-label="Slide 3 de 6: Identidade do Escritório">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
-              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-assistant"></use></svg>
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-office"></use></svg>
             </div>
             <div>
-              <h2>Documentos e inteligência assistida</h2>
-              <p>Minutas recorrentes, assistência jurídica e prompts sob revisão profissional.</p>
+              <h2>Identidade do Escritório</h2>
+              <p>Assinatura visual da banca para documentos e cabeçalhos institucionais.</p>
             </div>
           </div>
           <div class="tour-slide-body">
-            <p>Gere documentos a partir dos dados cadastrados e use o Assistente e a Biblioteca de Prompts como apoio à análise e à redação.</p>
-            <div class="tour-features-grid">
-              <div class="tour-feature-card"><strong>Modelos e minutas</strong><span>Preview editável, cópia e download dos textos jurídicos canônicos.</span></div>
-              <div class="tour-feature-card"><strong>Apoio supervisionado</strong><span>Respostas e templates permanecem sujeitos à conferência do profissional responsável.</span></div>
+            <div class="onboarding-interactive-layout">
+              <div class="onboarding-media-col">
+                <div class="onboarding-logo-frame" id="onboardingLogoFrame">
+                  <img id="onboardingLogoImg" class="onboarding-logo-img hidden" alt="Logomarca do escritório">
+                  <div id="onboardingLogoPlaceholder" class="onboarding-logo-placeholder">
+                    <svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-office"></use></svg>
+                    <span>Logomarca da Banca</span>
+                  </div>
+                </div>
+                <input type="file" id="onboardingLogoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" class="hidden">
+                <button type="button" class="button ghost" id="btnOnboardingChooseLogo" style="font-size:11.5px; padding:4px 10px; min-height:32px;">Escolher logo</button>
+                <button type="button" class="button ghost hidden" id="btnOnboardingRemoveLogo" style="font-size:10.5px; padding:2px 8px; min-height:28px;">Remover</button>
+                <small style="font-size:10.5px; color:var(--tour-muted);">PNG, SVG ou JPG (máx. 2MB)</small>
+              </div>
+              <div class="onboarding-fields-col">
+                <div class="onboarding-input-group">
+                  <label><span>Nome da Banca / Sociedade</span>
+                    <input type="text" id="onboardingOfficeName" placeholder="Ex: Rossetto &amp; Associados Advocacia" maxlength="120">
+                  </label>
+                </div>
+                <div class="onboarding-input-group">
+                  <label><span>Slogan Institucional</span>
+                    <input type="text" id="onboardingOfficeSlogan" placeholder="Ex: Sociedade de Advogados" maxlength="100">
+                  </label>
+                </div>
+                <div class="onboarding-field-row">
+                  <div class="onboarding-input-group">
+                    <label><span>Endereço da Sede</span>
+                      <input type="text" id="onboardingOfficeAddress" placeholder="Rua, Número, Sala" maxlength="150">
+                    </label>
+                  </div>
+                  <div class="onboarding-input-group">
+                    <label><span>Cidade / UF</span>
+                      <input type="text" id="onboardingOfficeCity" placeholder="Ex: Porto Alegre / RS" maxlength="80">
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </article>
 
-        <!-- Slide 6: Monitoramento, Integrações e Configurações -->
-        <article class="tour-slide" data-slide="5" aria-label="Slide 6 de 6: Monitoramento, Integrações e Configurações">
+        <!-- Slide 4: Atmosfera e Tema de Trabalho -->
+        <article class="tour-slide" data-slide="3" aria-label="Slide 4 de 6: Atmosfera e Tema de Trabalho">
+          <div class="tour-slide-hero">
+            <div class="tour-icon-box">
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-theme-light"></use></svg>
+            </div>
+            <div>
+              <h2>Atmosfera de trabalho</h2>
+              <p>Escolha a paleta visual que melhor se adapta à sua rotina.</p>
+            </div>
+          </div>
+          <div class="tour-slide-body">
+            <div class="onboarding-theme-grid">
+              <div class="onboarding-theme-card active" id="onboardingThemeCardDark" data-theme-choice="dark">
+                <div class="onboarding-theme-preview dark-preview">
+                  <div class="preview-sidebar"></div>
+                  <div class="preview-content">
+                    <div class="preview-bar"></div>
+                    <div class="preview-line"></div>
+                  </div>
+                </div>
+                <strong class="onboarding-theme-title">Modo Escuro Imersivo</strong>
+                <span class="onboarding-theme-desc">Paleta Black &amp; Gold. Menor cansaço visual, alto contraste e foco profissional.</span>
+              </div>
+              <div class="onboarding-theme-card" id="onboardingThemeCardLight" data-theme-choice="light">
+                <div class="onboarding-theme-preview light-preview">
+                  <div class="preview-sidebar"></div>
+                  <div class="preview-content">
+                    <div class="preview-bar"></div>
+                    <div class="preview-line"></div>
+                  </div>
+                </div>
+                <strong class="onboarding-theme-title">Modo Claro Executivo</strong>
+                <span class="onboarding-theme-desc">Paleta Pérola &amp; Ouro. Alta luminosidade, ideal para leitura em ambientes claros.</span>
+              </div>
+            </div>
+            <div class="tour-note" style="margin-top: 14px;">
+              <small><em>Flexibilidade total:</em> Você pode alternar o tema a qualquer momento pelo atalho no canto superior do sistema.</small>
+            </div>
+          </div>
+        </article>
+
+        <!-- Slide 5: Inteligência Documental e Conexões -->
+        <article class="tour-slide" data-slide="4" aria-label="Slide 5 de 6: Inteligência Documental e Conexões">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
               <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-integrations"></use></svg>
@@ -2294,11 +2386,51 @@
               </div>
               <div class="tour-integration-item">
                 <div class="tour-integration-info">
-                  <strong>Certificado Digital A1 &amp; Agente</strong>
-                  <span>Ambiente seguro em sandbox local para consultas processuais autenticadas.</span>
+                  <strong>Certificado Digital A1 &amp; eproc TJRS</strong>
+                  <span>Ambiente seguro em sandbox local para consultas processuais autenticadas e 2FA TOTP.</span>
                 </div>
-                <span class="tour-status-tag tag-configuring">Em Configuração</span>
+                <span class="tour-status-tag tag-available">Disponível</span>
               </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Slide 6: Celebração e Ativação -->
+        <article class="tour-slide" data-slide="5" aria-label="Slide 6 de 6: Celebração e Ativação">
+          <div class="tour-slide-hero">
+            <div class="tour-icon-box">
+              <svg class="brand-monogram-svg" style="width:40px;height:40px;" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="#D4AF37"/>
+                <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="#FFF5D0"/>
+                <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="#D4AF37"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Tudo pronto para seu escritório</h2>
+              <p>Sua identidade está configurada e protegida com criptografia local.</p>
+            </div>
+          </div>
+          <div class="tour-slide-body">
+            <!-- Crachá Executivo Virtual Dinâmico -->
+            <div class="onboarding-badge-card" id="onboardingBadgeCard">
+              <div class="badge-avatar-wrap">
+                <img id="badgeAvatarImg" class="hidden" alt="Avatar">
+                <span id="badgeAvatarInitials" class="badge-initials">DR</span>
+              </div>
+              <div class="badge-info">
+                <h3 class="badge-lawyer-name" id="badgeLawyerName">Dr(a). Advogado(a) Titular</h3>
+                <div class="badge-oab" id="badgeLawyerOab">OAB/RS 000000</div>
+                <div class="badge-office-row">
+                  <img id="badgeOfficeLogoMini" class="badge-office-logo-mini hidden" alt="Logo">
+                  <span id="badgeOfficeName">Meu Escritório</span>
+                  <span id="badgeOfficeCity">· Porto Alegre / RS</span>
+                </div>
+              </div>
+            </div>
+            <div class="onboarding-checklist">
+              <span><strong class="check-icon">✓</strong> Titularidade configurada</span>
+              <span><strong class="check-icon">✓</strong> Identidade da banca personalizada</span>
+              <span><strong class="check-icon">✓</strong> Cofre criptográfico AES-256 ativo</span>
             </div>
           </div>
         </article>

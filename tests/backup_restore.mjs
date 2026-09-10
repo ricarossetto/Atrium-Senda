@@ -334,7 +334,7 @@ async function setupCollaborator(baseUrl, master) {
     displayName: 'Pessoa Colaboradora Restore',
     email: 'colaborador.restore@example.test',
     password
-  });
+  }, master.headers);
   const registration = await response.json();
   assert.equal(response.status, 200);
   response = await postJson(`${baseUrl}/api/auth/register/verify`, {

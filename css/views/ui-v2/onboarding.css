@@ -119,9 +119,431 @@ html[data-theme="light"] #guidedTourBackdrop .tour-status-tag.tag-available { co
 html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510; }
 #guidedTourBackdrop .button.ghost { color: var(--tour-text); border-color: var(--tour-line); background: transparent; }
 
+#guidedTourBackdrop .tour-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 10px 22px;
+  border-bottom: 1px solid var(--tour-line);
+  background: color-mix(in srgb, var(--tour-bg) 80%, transparent);
+}
+
+#guidedTourBackdrop .tour-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tour-muted);
+  letter-spacing: .02em;
+  transition: color 180ms ease;
+}
+
+#guidedTourBackdrop .tour-step-indicator.active {
+  color: var(--tour-accent);
+}
+
+#guidedTourBackdrop .tour-step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid var(--tour-line);
+  background: var(--tour-soft);
+  color: var(--tour-muted);
+  transition: all 180ms ease;
+}
+
+#guidedTourBackdrop .tour-step-indicator.active .tour-step-num {
+  border-color: var(--tour-accent);
+  background: var(--tour-accent);
+  color: #121517;
+  box-shadow: 0 0 10px rgba(212, 175, 55, .35);
+}
+
+/* Onboarding Interactive Form Layout */
+#guidedTourBackdrop .onboarding-interactive-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 24px;
+  margin-top: 14px;
+  align-items: start;
+}
+
+#guidedTourBackdrop .onboarding-media-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+#guidedTourBackdrop .onboarding-avatar-frame {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 2px solid var(--tour-accent);
+  background: var(--tour-soft);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .45), 0 0 16px rgba(212, 175, 55, .20);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+#guidedTourBackdrop .onboarding-avatar-frame:hover {
+  transform: scale(1.03);
+  box-shadow: 0 10px 28px -4px rgba(0, 0, 0, .55), 0 0 22px rgba(212, 175, 55, .35);
+}
+
+#guidedTourBackdrop .onboarding-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#guidedTourBackdrop .onboarding-avatar-initials {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--tour-accent);
+  letter-spacing: .05em;
+  user-select: none;
+}
+
+#guidedTourBackdrop .onboarding-logo-frame {
+  width: 100%;
+  min-height: 100px;
+  max-height: 110px;
+  border-radius: 12px;
+  border: 1px dashed var(--tour-line);
+  background: var(--tour-soft);
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  overflow: hidden;
+  transition: border-color 180ms ease;
+}
+
+#guidedTourBackdrop .onboarding-logo-frame:hover {
+  border-color: var(--tour-accent);
+}
+
+#guidedTourBackdrop .onboarding-logo-img {
+  max-width: 100%;
+  max-height: 80px;
+  object-fit: contain;
+}
+
+#guidedTourBackdrop .onboarding-logo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--tour-muted);
+  font-size: 11px;
+}
+
+#guidedTourBackdrop .onboarding-logo-placeholder svg {
+  width: 28px;
+  height: 28px;
+  color: var(--tour-accent);
+}
+
+#guidedTourBackdrop .onboarding-fields-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#guidedTourBackdrop .onboarding-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+#guidedTourBackdrop .onboarding-field-row.three-col {
+  grid-template-columns: 1fr 90px;
+}
+
+#guidedTourBackdrop .onboarding-input-group label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tour-text);
+}
+
+#guidedTourBackdrop .onboarding-input-group input,
+#guidedTourBackdrop .onboarding-input-group select {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--tour-line);
+  background: var(--tour-soft);
+  color: var(--tour-text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+#guidedTourBackdrop .onboarding-input-group input:focus,
+#guidedTourBackdrop .onboarding-input-group select:focus {
+  border-color: var(--tour-accent);
+  box-shadow: 0 0 0 3px var(--tour-accent-soft);
+}
+
+/* Theme Selector Cards */
+#guidedTourBackdrop .onboarding-theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+#guidedTourBackdrop .onboarding-theme-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid var(--tour-line);
+  background: var(--tour-soft);
+  cursor: pointer;
+  text-align: left;
+  transition: all 180ms ease;
+}
+
+#guidedTourBackdrop .onboarding-theme-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--tour-accent);
+}
+
+#guidedTourBackdrop .onboarding-theme-card.active {
+  border-color: var(--tour-accent);
+  background: color-mix(in srgb, var(--tour-accent) 8%, var(--tour-soft));
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .40), 0 0 18px rgba(212, 175, 55, .18);
+}
+
+#guidedTourBackdrop .onboarding-theme-preview {
+  height: 70px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .1);
+}
+
+#guidedTourBackdrop .onboarding-theme-preview.dark-preview {
+  background: #131618;
+}
+
+#guidedTourBackdrop .onboarding-theme-preview.dark-preview .preview-sidebar {
+  width: 28%;
+  background: #1a1e21;
+  border-right: 1px solid #343b40;
+}
+
+#guidedTourBackdrop .onboarding-theme-preview.dark-preview .preview-content {
+  flex: 1;
+  padding: 8px;
+}
+
+#guidedTourBackdrop .onboarding-theme-preview.dark-preview .preview-bar {
+  height: 8px;
+  background: #b79a5d;
+  border-radius: 4px;
+  width: 60%;
+  margin-bottom: 6px;
+}
+
+#guidedTourBackdrop .onboarding-theme-preview.dark-preview .preview-line {
+  height: 5px;
+  background: #343b40;
+  border-radius: 3px;
+  width: 90%;
+}
+
+#guidedTourBackdrop .onboarding-theme-preview.light-preview {
+  background: #f4f5f3;
+}
+
+#guidedTourBackdrop .onboarding-theme-preview.light-preview .preview-sidebar {
+  width: 28%;
+  background: #ffffff;
+  border-right: 1px solid #d2d8da;
+}
+
+#guidedTourBackdrop .onboarding-theme-preview.light-preview .preview-content {
+  flex: 1;
+  padding: 8px;
+}
+
+#guidedTourBackdrop .onboarding-theme-preview.light-preview .preview-bar {
+  height: 8px;
+  background: #688493;
+  border-radius: 4px;
+  width: 60%;
+  margin-bottom: 6px;
+}
+
+#guidedTourBackdrop .onboarding-theme-preview.light-preview .preview-line {
+  height: 5px;
+  background: #d2d8da;
+  border-radius: 3px;
+  width: 90%;
+}
+
+#guidedTourBackdrop .onboarding-theme-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--tour-text);
+  margin-bottom: 4px;
+}
+
+#guidedTourBackdrop .onboarding-theme-desc {
+  font-size: 11.5px;
+  color: var(--tour-muted);
+  line-height: 1.4;
+}
+
+/* Virtual Executive Badge on Final Slide */
+#guidedTourBackdrop .onboarding-badge-card {
+  margin: 16px auto 14px;
+  max-width: 460px;
+  padding: 20px 24px;
+  border-radius: 16px;
+  border: 1px solid var(--tour-accent);
+  background: linear-gradient(135deg, rgba(26, 30, 33, .95) 0%, rgba(19, 22, 24, .95) 100%);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .70), 0 0 28px rgba(212, 175, 55, .15);
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  animation: tourBadgeFloat 4s ease-in-out infinite;
+}
+
+html[data-theme="light"] #guidedTourBackdrop .onboarding-badge-card {
+  background: linear-gradient(135deg, rgba(255, 254, 253, .96) 0%, rgba(244, 245, 243, .96) 100%);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .15), 0 0 28px rgba(104, 132, 147, .15);
+}
+
+#guidedTourBackdrop .onboarding-badge-card::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(60deg, transparent 40%, rgba(212, 175, 55, .08) 50%, transparent 60%);
+  transform: rotate(25deg);
+  animation: tourBadgeShine 6s linear infinite;
+  pointer-events: none;
+}
+
+#guidedTourBackdrop .badge-avatar-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid var(--tour-accent);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--tour-soft);
+  flex-shrink: 0;
+}
+
+#guidedTourBackdrop .badge-avatar-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#guidedTourBackdrop .badge-avatar-wrap .badge-initials {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--tour-accent);
+}
+
+#guidedTourBackdrop .badge-info {
+  flex: 1;
+  min-width: 0;
+}
+
+#guidedTourBackdrop .badge-lawyer-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tour-text);
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#guidedTourBackdrop .badge-oab {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tour-accent);
+  letter-spacing: .04em;
+  margin-bottom: 6px;
+}
+
+#guidedTourBackdrop .badge-office-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--tour-muted);
+}
+
+#guidedTourBackdrop .badge-office-logo-mini {
+  max-width: 24px;
+  max-height: 24px;
+  object-fit: contain;
+}
+
+#guidedTourBackdrop .onboarding-checklist {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  color: var(--tour-muted);
+}
+
+#guidedTourBackdrop .onboarding-checklist span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#guidedTourBackdrop .onboarding-checklist .check-icon {
+  color: #10b981;
+  font-weight: 800;
+}
+
 @keyframes tourMineralReveal {
-  from { opacity: 0; transform: translateX(5px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(6px); filter: blur(2px); }
+  to { opacity: 1; transform: translateX(0); filter: blur(0); }
+}
+
+@keyframes tourBadgeFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes tourBadgeShine {
+  0% { transform: translateX(-100%) rotate(25deg); }
+  100% { transform: translateX(100%) rotate(25deg); }
 }
 
 @media (max-width: 600px) {

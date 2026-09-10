@@ -493,7 +493,7 @@ try {
     displayName: 'Pessoa Colaboradora',
     email: 'colaborador@escritorio.adv.br',
     password: collaboratorPassword
-  });
+  }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
   const regData = await res.json();
   res = await postJson(`${server.baseUrl}/api/auth/register/verify`, {
     setupToken: regData.setupToken,
@@ -947,7 +947,7 @@ try {
       displayName: 'Admin Secundário',
       email: 'admin2@escritorio.adv.br',
       password: admin2Password
-    });
+    }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
     const reg2Data = await regRes.json();
     await postJson(`${server.baseUrl}/api/auth/register/verify`, {
       setupToken: reg2Data.setupToken,

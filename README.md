@@ -4,11 +4,11 @@
 
 ### Gestão jurídica organizada, segura e supervisionada.
 
-[![Version 2.1.1](https://img.shields.io/badge/version-2.1.1-9b7a3c)](docs/CHANGELOG.md)
-[![Stable](https://img.shields.io/badge/status-stable-2f7d5b)](docs/RELEASE_NOTES_2.1.1.md)
+[![Version 2.3.0](https://img.shields.io/badge/version-2.3.0-9b7a3c)](docs/RELEASE_NOTES_2.3.0.md)
+[![Live Site](https://img.shields.io/badge/site-atrium.adv.br-d4af37?logo=cloudflare&logoColor=white)](https://atrium.adv.br)
+[![API Central](https://img.shields.io/badge/API-api.atrium.adv.br-2f7d5b?logo=oracle&logoColor=white)](https://api.atrium.adv.br/api/health)
 [![Node.js 24](https://img.shields.io/badge/Node.js-%3E%3D24-3c873a?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Atrium CI](https://github.com/ricarossetto/Atrium-Senda/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ricarossetto/Atrium-Senda/actions/workflows/ci.yml)
 [![Local-first](https://img.shields.io/badge/arquitetura-local--first-344955)](#princípios-do-produto)
 [![AES-256-GCM](https://img.shields.io/badge/dados-AES--256--GCM-5d6b73)](#segurança)
 
@@ -16,13 +16,14 @@
 
 ## O que é o ATRIUM
 
-O ATRIUM é um workspace jurídico open source e local-first para escritórios brasileiros. Ele reúne processos, publicações, contatos e clientes, CRM, tarefas, agenda, financeiro, documentos, pesquisa, auditoria, assistência por IA e integrações judiciais em um único sistema canônico.
+O **ATRIUM** é uma plataforma de gestão jurídica e workspace soberano (*local-first*) para escritórios de advocacia no Brasil. Ele reúne processos, publicações, contatos e clientes, CRM, tarefas (Kanban), agenda, financeiro, documentos com OCR derivado local, auditoria e integrações judiciais oficiais (eproc TJRS, DJEN e DataJud) em um único ambiente canônico.
 
-A aplicação roda no computador ou na infraestrutura controlada pelo escritório. A interface V2 é a única interface oferecida ao usuário na versão estável. Decisões jurídicas, confirmação de prazos e atos oficiais continuam sob responsabilidade humana.
+A plataforma pode ser acessada diretamente na nuvem em **[https://atrium.adv.br](https://atrium.adv.br)** ou executada localmente no computador do escritório. Decisões jurídicas, confirmação de prazos e atos oficiais continuam sob responsabilidade humana.
 
 ## Comece aqui — primeiro uso
 
-Para testar o ATRIUM no Windows, baixe o código da [release v2.1.1](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.1), extraia o ZIP e dê duplo clique em **`ATRIUM.bat`**. O inicializador confere Node.js 24, Corepack, pnpm e Chromium, instala o que faltar e abre `http://127.0.0.1:4173`. Se o Windows ainda não tiver Node.js, o próprio inicializador oferece a instalação oficial pelo `winget`. O roteiro [Primeiros 10 minutos](docs/QUICK_START.md) foi escrito para testadores sem experiência técnica.
+- **Ambiente Online:** Acesse **[https://atrium.adv.br](https://atrium.adv.br)** e crie sua banca para iniciar a degustação de 14 dias com o novo **Onboarding Show** interativo.
+- **Ambiente Local (Windows):** Baixe o código da [release v2.3.0](https://github.com/ricarossetto/atrium-pro/releases/tag/v2.3.0), extraia o ZIP e execute **`ATRIUM.bat`**. O inicializador confere Node.js 24, Corepack, pnpm e Chromium, instala o que faltar e abre `http://127.0.0.1:4173`. Se o Windows ainda não tiver Node.js, o instalador oferece instalação pelo `winget`.
 
 No primeiro acesso:
 
