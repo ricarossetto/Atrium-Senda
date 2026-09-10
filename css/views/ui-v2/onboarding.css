@@ -39,9 +39,20 @@ html[data-theme="light"] #guidedTourBackdrop {
   background: var(--tour-bg);
 }
 
-#guidedTourBackdrop .tour-header { padding: 17px 22px; }
-#guidedTourBackdrop .tour-badge { color: var(--tour-accent); letter-spacing: .105em; }
-#guidedTourBackdrop .tour-badge .brand-monogram-svg { filter: none; }
+#guidedTourBackdrop .tour-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--tour-accent);
+  letter-spacing: .08em;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+#guidedTourBackdrop .tour-brand-dark { display: inline-block; height: 22px; width: auto; }
+#guidedTourBackdrop .tour-brand-light { display: none; height: 22px; width: auto; }
+html[data-theme="light"] #guidedTourBackdrop .tour-brand-dark { display: none; }
+html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline-block; }
 #guidedTourBackdrop .tour-header .icon-button { min-width: 44px; min-height: 44px; color: var(--tour-muted); border-color: transparent; }
 #guidedTourBackdrop .tour-header .icon-button:hover { color: var(--tour-text); border-color: var(--tour-line); background: var(--tour-soft); transform: none; }
 
@@ -510,11 +521,19 @@ html[data-theme="light"] #guidedTourBackdrop .onboarding-badge-card {
   text-overflow: ellipsis;
 }
 
-#guidedTourBackdrop .badge-oab {
-  font-size: 12px;
+#guidedTourBackdrop .badge-oab,
+#guidedTourBackdrop .badge-oab-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: .06em;
   color: var(--tour-accent);
-  letter-spacing: .04em;
+  background: var(--tour-accent-soft);
+  border: 1px solid var(--tour-accent);
+  width: fit-content;
   margin-bottom: 6px;
 }
 

@@ -36,9 +36,354 @@
   <link rel="stylesheet" href="css/views/ui-v2/links.css?v=2.3.0">
   <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=2.3.0">
   <link rel="stylesheet" href="css/views/ui-v2/saas.css?v=2.3.0">
-  <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=2.3.0">
-  <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=2.3.0">
-  <link rel="stylesheet" href="css/views/ui-v2/icons.css?v=2.3.0">
+  <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=2.3.2">
+  <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=2.3.2">
+  <link rel="stylesheet" href="css/views/ui-v2/icons.css?v=2.3.2">
+  <style id="onboardingCriticalStyles">
+    /* Core Onboarding Styling — Zero Dependence on External Cache */
+    #guidedTourBackdrop {
+      --tour-bg: #131618;
+      --tour-surface: #1a1e21;
+      --tour-soft: #202529;
+      --tour-text: #eceeed;
+      --tour-muted: #8e979d;
+      --tour-line: #343b40;
+      --tour-accent: #c5a880;
+      --tour-accent-soft: rgba(197, 168, 128, 0.16);
+      --tour-input-bg: #202529;
+      --tour-input-border: #343b40;
+      --tour-card-grad: linear-gradient(135deg, rgba(26, 30, 33, 0.98) 0%, rgba(19, 22, 24, 0.98) 100%);
+    }
+    html[data-theme="light"] #guidedTourBackdrop {
+      --tour-bg: #f4f5f3;
+      --tour-surface: #fffefd;
+      --tour-soft: #edf1f2;
+      --tour-text: #1f2328;
+      --tour-muted: #57606a;
+      --tour-line: #d0d7de;
+      --tour-accent: #8c7322;
+      --tour-accent-soft: rgba(140, 115, 34, 0.14);
+      --tour-input-bg: #ffffff;
+      --tour-input-border: #d0d7de;
+      --tour-card-grad: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 248, 250, 0.98) 100%);
+    }
+    #guidedTourBackdrop .tour-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--tour-line);
+      background: var(--tour-bg);
+    }
+    #guidedTourBackdrop .tour-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--tour-accent);
+    }
+    #guidedTourBackdrop .tour-brand-dark { display: inline-block; height: 22px; width: auto; }
+    #guidedTourBackdrop .tour-brand-light { display: none; height: 22px; width: auto; }
+    html[data-theme="light"] #guidedTourBackdrop .tour-brand-dark { display: none; }
+    html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline-block; }
+
+    /* Stepper Header */
+    #guidedTourBackdrop .tour-stepper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 24px;
+      background: var(--tour-bg);
+      border-bottom: 1px solid var(--tour-line);
+    }
+    #guidedTourBackdrop .tour-step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--tour-muted);
+      letter-spacing: .02em;
+      transition: all 180ms ease;
+    }
+    #guidedTourBackdrop .tour-step-indicator.active {
+      color: var(--tour-accent);
+    }
+    #guidedTourBackdrop .tour-step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      font-size: 10.5px;
+      font-weight: 700;
+      border: 1px solid var(--tour-line);
+      background: var(--tour-soft);
+      color: var(--tour-muted);
+      transition: all 180ms ease;
+    }
+    #guidedTourBackdrop .tour-step-indicator.active .tour-step-num {
+      border-color: var(--tour-accent);
+      background: var(--tour-accent);
+      color: #121517;
+      box-shadow: 0 0 10px rgba(197, 168, 128, .45);
+    }
+    @media (max-width: 640px) {
+      #guidedTourBackdrop .tour-stepper { padding: 8px 12px; justify-content: center; gap: 12px; }
+      #guidedTourBackdrop .tour-step-indicator span:not(.tour-step-num) { display: none; }
+    }
+
+    /* Layout & Media Col */
+    #guidedTourBackdrop .onboarding-interactive-layout {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 600px) {
+      #guidedTourBackdrop .onboarding-interactive-layout { grid-template-columns: 1fr; gap: 18px; }
+    }
+    #guidedTourBackdrop .onboarding-media-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+    }
+    #guidedTourBackdrop .onboarding-avatar-frame {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 2px solid var(--tour-accent);
+      background: var(--tour-soft);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .45), 0 0 16px rgba(197, 168, 128, .25);
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+    #guidedTourBackdrop .onboarding-avatar-frame:hover {
+      transform: scale(1.04);
+      box-shadow: 0 10px 28px -4px rgba(0, 0, 0, .55), 0 0 22px rgba(197, 168, 128, .40);
+    }
+    #guidedTourBackdrop .onboarding-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+    #guidedTourBackdrop .onboarding-avatar-initials {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--tour-accent);
+      letter-spacing: .05em;
+      user-select: none;
+    }
+    #guidedTourBackdrop .onboarding-logo-frame {
+      width: 100%;
+      min-height: 100px;
+      max-height: 110px;
+      border-radius: 12px;
+      border: 1px dashed var(--tour-line);
+      background: var(--tour-soft);
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      overflow: hidden;
+      transition: border-color 180ms ease;
+    }
+    #guidedTourBackdrop .onboarding-logo-frame:hover { border-color: var(--tour-accent); }
+    #guidedTourBackdrop .onboarding-logo-img { max-width: 100%; max-height: 80px; object-fit: contain; }
+    #guidedTourBackdrop .onboarding-logo-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: var(--tour-muted);
+      font-size: 11px;
+    }
+    #guidedTourBackdrop .onboarding-logo-placeholder svg { width: 26px; height: 26px; color: var(--tour-accent); }
+
+    /* Form Fields Styling */
+    #guidedTourBackdrop .onboarding-fields-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    #guidedTourBackdrop .onboarding-field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    #guidedTourBackdrop .onboarding-field-row.three-col {
+      grid-template-columns: 1fr 90px;
+    }
+    @media (max-width: 480px) {
+      #guidedTourBackdrop .onboarding-field-row { grid-template-columns: 1fr; gap: 14px; }
+      #guidedTourBackdrop .onboarding-field-row.three-col { grid-template-columns: 1fr 1fr; }
+    }
+    #guidedTourBackdrop .onboarding-input-group label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--tour-muted);
+    }
+    #guidedTourBackdrop .onboarding-input-group input,
+    #guidedTourBackdrop .onboarding-input-group select {
+      height: 42px;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 1px solid var(--tour-input-border);
+      background: var(--tour-input-bg);
+      color: var(--tour-text);
+      font-size: 13.5px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+    }
+    #guidedTourBackdrop .onboarding-input-group input:focus,
+    #guidedTourBackdrop .onboarding-input-group select:focus {
+      border-color: var(--tour-accent);
+      box-shadow: 0 0 0 3px var(--tour-accent-soft);
+    }
+    #guidedTourBackdrop .onboarding-media-btn {
+      min-height: 44px;
+      min-width: 44px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--tour-line);
+      background: var(--tour-soft);
+      color: var(--tour-text);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 180ms ease;
+    }
+    #guidedTourBackdrop .onboarding-media-btn:hover {
+      border-color: var(--tour-accent);
+      color: var(--tour-accent);
+    }
+
+    /* Virtual Executive Badge on Slide 5 */
+    #guidedTourBackdrop .onboarding-badge-card {
+      margin: 16px auto 18px;
+      max-width: 480px;
+      padding: 22px 26px;
+      border-radius: 16px;
+      border: 1px solid var(--tour-accent);
+      background: var(--tour-card-grad);
+      box-shadow: 0 18px 45px -12px rgba(0, 0, 0, .65), 0 0 24px rgba(197, 168, 128, .20);
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      animation: tourBadgeFloat 4s ease-in-out infinite;
+    }
+    #guidedTourBackdrop .onboarding-badge-card::after {
+      content: "";
+      position: absolute;
+      top: -60%;
+      left: -60%;
+      width: 220%;
+      height: 220%;
+      background: linear-gradient(60deg, transparent 40%, rgba(197, 168, 128, .12) 50%, transparent 60%);
+      transform: rotate(25deg);
+      animation: tourBadgeShine 6s linear infinite;
+      pointer-events: none;
+    }
+    #guidedTourBackdrop .badge-avatar-wrap {
+      position: relative;
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      border: 2px solid var(--tour-accent);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      background: var(--tour-soft);
+      flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+    }
+    #guidedTourBackdrop .badge-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    #guidedTourBackdrop .badge-avatar-wrap .badge-initials {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--tour-accent);
+      letter-spacing: .05em;
+      user-select: none;
+    }
+    #guidedTourBackdrop .badge-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      text-align: left;
+    }
+    #guidedTourBackdrop .badge-lawyer-name {
+      margin: 0;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--tour-text);
+      letter-spacing: -.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #guidedTourBackdrop .badge-oab-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      color: var(--tour-accent);
+      background: var(--tour-accent-soft);
+      border: 1px solid var(--tour-accent);
+      width: fit-content;
+    }
+    #guidedTourBackdrop .badge-office-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--tour-muted);
+    }
+    #guidedTourBackdrop .badge-office-logo-mini { width: 20px; height: 20px; object-fit: contain; border-radius: 4px; }
+    #guidedTourBackdrop .onboarding-checklist {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--tour-muted);
+      flex-wrap: wrap;
+    }
+    #guidedTourBackdrop .onboarding-checklist span { display: inline-flex; align-items: center; gap: 6px; }
+    #guidedTourBackdrop .onboarding-checklist .check-icon { color: var(--tour-accent); font-weight: 800; }
+
+    @keyframes tourBadgeFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    @keyframes tourBadgeShine {
+      0% { transform: rotate(25deg) translate(-100%, -100%); }
+      100% { transform: rotate(25deg) translate(100%, 100%); }
+    }
+  </style>
 </head>
 <body>
   <section class="auth-gate" id="authGate" aria-live="polite">
@@ -2146,11 +2491,8 @@
     <section class="modal guided-tour-modal" role="dialog" aria-modal="true" aria-labelledby="tourModalTitle">
       <header class="tour-header">
         <div class="tour-badge">
-          <svg class="brand-monogram-svg" style="width:22px;height:22px;" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="#D4AF37"/>
-            <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="#FFF5D0"/>
-            <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="#D4AF37"/>
-          </svg>
+          <img src="assets/icons/atrium-logo.svg" alt="ATRIUM" class="tour-brand-dark" style="height:22px; width:auto;">
+          <img src="assets/icons/atrium-logo-light.svg" alt="ATRIUM" class="tour-brand-light" style="height:22px; width:auto;">
           <span id="tourModalTitle">Apresentação do Atrium · Escritório Integrado</span>
         </div>
         <button class="icon-button" id="tourCloseButton" aria-label="Fechar apresentação"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
@@ -2170,11 +2512,7 @@
         <article class="tour-slide active" data-slide="0" aria-label="Slide 1 de 6: Bem-vindo ao Atrium">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
-              <svg class="brand-monogram-svg" style="width:40px;height:40px;" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="#D4AF37"/>
-                <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="#FFF5D0"/>
-                <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="#D4AF37"/>
-              </svg>
+              <img src="assets/icons/atrium-emblem.svg" alt="ATRIUM" style="width:36px;height:36px;">
             </div>
             <div>
               <h2>Bem-vindo ao Atrium</h2>
@@ -2399,11 +2737,7 @@
         <article class="tour-slide" data-slide="5" aria-label="Slide 6 de 6: Celebração e Ativação">
           <div class="tour-slide-hero">
             <div class="tour-icon-box">
-              <svg class="brand-monogram-svg" style="width:40px;height:40px;" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M50 8 L18 84 H32 L44 54 C46 48 48 42 50 34 C52 42 54 48 56 54 L68 84 H82 L50 8 Z" fill="#D4AF37"/>
-                <path d="M43 84 C41 72 52 64 48 50 C45 40 49 32 50 26 C51 32 55 40 52 50 C48 64 59 72 57 84 H43 Z" fill="#FFF5D0"/>
-                <path d="M40 24 C55 16 84 20 84 38 C84 52 60 54 60 64 C60 74 76 76 86 68 L88 78 C74 88 46 84 46 66 C46 50 70 48 70 38 C70 30 56 28 42 34 Z" fill="#D4AF37"/>
-              </svg>
+              <img src="assets/icons/atrium-emblem.svg" alt="ATRIUM" style="width:36px;height:36px;">
             </div>
             <div>
               <h2>Tudo pronto para seu escritório</h2>
@@ -2419,7 +2753,7 @@
               </div>
               <div class="badge-info">
                 <h3 class="badge-lawyer-name" id="badgeLawyerName">Dr(a). Advogado(a) Titular</h3>
-                <div class="badge-oab" id="badgeLawyerOab">OAB/RS 000000</div>
+                <span class="badge-oab-pill" id="badgeLawyerOab">OAB/RS 000000</span>
                 <div class="badge-office-row">
                   <img id="badgeOfficeLogoMini" class="badge-office-logo-mini hidden" alt="Logo">
                   <span id="badgeOfficeName">Meu Escritório</span>
