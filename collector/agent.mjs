@@ -28,7 +28,9 @@ const sessionManager = new JudicialSessionManager({ dataDirectory: DATA_DIR });
 await sessionManager.init();
 
 const CENTRAL_URL = process.env.CENTRAL_URL || 'http://127.0.0.1:4173';
-const headless = String(process.env.COLLECTOR_HEADLESS).toLowerCase() === 'true';
+const headless = process.env.COLLECTOR_HEADLESS !== undefined
+  ? String(process.env.COLLECTOR_HEADLESS).toLowerCase() === 'true'
+  : (!process.env.DISPLAY && process.platform !== 'win32');
 const interactive = String(process.env.COLLECTOR_INTERACTIVE ?? 'true').toLowerCase() === 'true';
 const loginWaitMs = Math.max(0, Number(process.env.LOGIN_WAIT_SECONDS || 900)) * 1000;
 const judicialIdentityId = String(process.env.JUDICIAL_IDENTITY_ID || 'office-primary').replace(/[^a-zA-Z0-9_-]/g, '_');

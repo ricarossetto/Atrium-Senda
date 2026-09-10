@@ -18,6 +18,12 @@ const notFoundClient = {
       statusCode: 404
     });
   },
+  async collectProcess() {
+    throw new TjrsSidecarError('Processo não disponível no coletor.', {
+      code: 'UNAVAILABLE',
+      statusCode: 503
+    });
+  },
   async getDiff() {
     throw new TjrsSidecarError('Diff não encontrado.', { code: 'NOT_FOUND', statusCode: 404 });
   }
