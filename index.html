@@ -36,11 +36,11 @@
   <link rel="stylesheet" href="css/views/ui-v2/links.css?v=2.3.0">
   <link rel="stylesheet" href="css/views/ui-v2/auth.css?v=2.3.0">
   <link rel="stylesheet" href="css/views/ui-v2/saas.css?v=2.3.0">
-  <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=2.3.2">
+  <link rel="stylesheet" href="css/views/ui-v2/onboarding.css?v=2.3.3">
   <link rel="stylesheet" href="css/views/ui-v2/action-system.css?v=2.3.2">
   <link rel="stylesheet" href="css/views/ui-v2/icons.css?v=2.3.2">
   <style id="onboardingCriticalStyles">
-    /* Core Onboarding Styling — Zero Dependence on External Cache */
+    /* Core Onboarding Styling — Blue Accent Theme */
     #guidedTourBackdrop {
       --tour-bg: #131618;
       --tour-surface: #1a1e21;
@@ -48,8 +48,8 @@
       --tour-text: #eceeed;
       --tour-muted: #8e979d;
       --tour-line: #343b40;
-      --tour-accent: #c5a880;
-      --tour-accent-soft: rgba(197, 168, 128, 0.16);
+      --tour-accent: #3b82f6;
+      --tour-accent-soft: rgba(59, 130, 246, 0.16);
       --tour-input-bg: #202529;
       --tour-input-border: #343b40;
       --tour-card-grad: linear-gradient(135deg, rgba(26, 30, 33, 0.98) 0%, rgba(19, 22, 24, 0.98) 100%);
@@ -61,11 +61,11 @@
       --tour-text: #1f2328;
       --tour-muted: #57606a;
       --tour-line: #d0d7de;
-      --tour-accent: #8c7322;
-      --tour-accent-soft: rgba(140, 115, 34, 0.14);
+      --tour-accent: #1e5ba8;
+      --tour-accent-soft: rgba(30, 91, 168, 0.12);
       --tour-input-bg: #ffffff;
       --tour-input-border: #d0d7de;
-      --tour-card-grad: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 248, 250, 0.98) 100%);
+      --tour-card-grad: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 245, 250, 0.98) 100%);
     }
     #guidedTourBackdrop .tour-header {
       display: flex;
@@ -84,6 +84,9 @@
       letter-spacing: .08em;
       text-transform: uppercase;
       color: var(--tour-accent);
+    }
+    html:not([data-theme="light"]) #guidedTourBackdrop .tour-badge {
+      color: #60a5fa;
     }
     #guidedTourBackdrop .tour-brand-dark { display: inline-block; height: 22px; width: auto; }
     #guidedTourBackdrop .tour-brand-light { display: none; height: 22px; width: auto; }
@@ -110,9 +113,26 @@
       letter-spacing: .02em;
       transition: all 180ms ease;
     }
-    #guidedTourBackdrop .tour-step-indicator.active {
-      color: var(--tour-accent);
+    #guidedTourBackdrop .tour-step-indicator.active,
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"],
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="1"]) .tour-step-indicator[data-step="1"],
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="2"]) .tour-step-indicator[data-step="2"],
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"],
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"],
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] {
+      color: var(--tour-accent) !important;
+      font-weight: 700;
     }
+    html:not([data-theme="light"]) #guidedTourBackdrop .tour-step-indicator.active,
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"],
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="1"]) .tour-step-indicator[data-step="1"],
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="2"]) .tour-step-indicator[data-step="2"],
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"],
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"],
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] {
+      color: #60a5fa !important;
+    }
+
     #guidedTourBackdrop .tour-step-num {
       display: inline-flex;
       align-items: center;
@@ -127,15 +147,101 @@
       color: var(--tour-muted);
       transition: all 180ms ease;
     }
-    #guidedTourBackdrop .tour-step-indicator.active .tour-step-num {
-      border-color: var(--tour-accent);
-      background: var(--tour-accent);
-      color: #121517;
-      box-shadow: 0 0 10px rgba(197, 168, 128, .45);
+    #guidedTourBackdrop .tour-step-indicator.active .tour-step-num,
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"] .tour-step-num,
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="1"]) .tour-step-indicator[data-step="1"] .tour-step-num,
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="2"]) .tour-step-indicator[data-step="2"] .tour-step-num,
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"] .tour-step-num,
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"] .tour-step-num,
+    #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] .tour-step-num {
+      border-color: var(--tour-accent) !important;
+      background: var(--tour-accent) !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 8px rgba(30, 91, 168, .35) !important;
     }
+    html:not([data-theme="light"]) #guidedTourBackdrop .tour-step-indicator.active .tour-step-num,
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"] .tour-step-num,
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="1"]) .tour-step-indicator[data-step="1"] .tour-step-num,
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="2"]) .tour-step-indicator[data-step="2"] .tour-step-num,
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"] .tour-step-num,
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"] .tour-step-num,
+    html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] .tour-step-num {
+      box-shadow: 0 0 10px rgba(59, 130, 246, .45) !important;
+    }
+
+    #guidedTourBackdrop:has(.tour-slide.active:not([data-slide="0"])) .tour-step-indicator[data-step="0"] {
+      color: var(--tour-muted) !important;
+      font-weight: 600 !important;
+    }
+    #guidedTourBackdrop:has(.tour-slide.active:not([data-slide="0"])) .tour-step-indicator[data-step="0"] .tour-step-num {
+      border-color: var(--tour-line) !important;
+      background: var(--tour-soft) !important;
+      color: var(--tour-muted) !important;
+      box-shadow: none !important;
+    }
+
     @media (max-width: 640px) {
       #guidedTourBackdrop .tour-stepper { padding: 8px 12px; justify-content: center; gap: 12px; }
       #guidedTourBackdrop .tour-step-indicator span:not(.tour-step-num) { display: none; }
+    }
+
+    /* Hero Subtitle */
+    #guidedTourBackdrop .tour-slide-hero p {
+      margin: 0;
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      color: var(--tour-accent);
+    }
+    html:not([data-theme="light"]) #guidedTourBackdrop .tour-slide-hero p {
+      color: #60a5fa;
+    }
+
+    /* Icon Box */
+    #guidedTourBackdrop .tour-icon-box {
+      width: 58px;
+      height: 58px;
+      border: 1px solid rgba(30, 91, 168, 0.22);
+      border-radius: 12px;
+      color: var(--tour-accent);
+      background: var(--tour-accent-soft);
+      display: grid;
+      place-items: center;
+      box-shadow: none;
+    }
+    html:not([data-theme="light"]) #guidedTourBackdrop .tour-icon-box {
+      border-color: rgba(59, 130, 246, 0.30);
+      color: #60a5fa;
+    }
+
+    /* Action Buttons */
+    #guidedTourBackdrop .button.gold {
+      color: #ffffff !important;
+      background: #1e5ba8 !important;
+      border-color: #1e5ba8 !important;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(30, 91, 168, 0.35);
+      transition: all 180ms ease;
+    }
+    #guidedTourBackdrop .button.gold:hover {
+      background: #174785 !important;
+      border-color: #174785 !important;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(30, 91, 168, 0.45);
+    }
+    html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
+      color: #ffffff !important;
+      background: #2563eb !important;
+      border-color: #2563eb !important;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.40);
+    }
+    html:not([data-theme="light"]) #guidedTourBackdrop .button.gold:hover {
+      background: #1d4ed8 !important;
+      border-color: #1d4ed8 !important;
+    }
+    #guidedTourBackdrop .tour-dot.active::before {
+      width: 28px;
+      background: var(--tour-accent);
     }
 
     /* Layout & Media Col */
@@ -164,12 +270,12 @@
       overflow: hidden;
       display: grid;
       place-items: center;
-      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .45), 0 0 16px rgba(197, 168, 128, .25);
+      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .20), 0 0 16px rgba(30, 91, 168, 0.20);
       transition: transform 180ms ease, box-shadow 180ms ease;
     }
     #guidedTourBackdrop .onboarding-avatar-frame:hover {
       transform: scale(1.04);
-      box-shadow: 0 10px 28px -4px rgba(0, 0, 0, .55), 0 0 22px rgba(197, 168, 128, .40);
+      box-shadow: 0 10px 28px -4px rgba(0, 0, 0, .30), 0 0 22px rgba(30, 91, 168, 0.35);
     }
     #guidedTourBackdrop .onboarding-avatar-img { width: 100%; height: 100%; object-fit: cover; }
     #guidedTourBackdrop .onboarding-avatar-initials {
@@ -282,7 +388,7 @@
       border-radius: 16px;
       border: 1px solid var(--tour-accent);
       background: var(--tour-card-grad);
-      box-shadow: 0 18px 45px -12px rgba(0, 0, 0, .65), 0 0 24px rgba(197, 168, 128, .20);
+      box-shadow: 0 18px 45px -12px rgba(0, 0, 0, .45), 0 0 24px rgba(30, 91, 168, .15);
       display: flex;
       gap: 20px;
       align-items: center;
@@ -297,7 +403,7 @@
       left: -60%;
       width: 220%;
       height: 220%;
-      background: linear-gradient(60deg, transparent 40%, rgba(197, 168, 128, .12) 50%, transparent 60%);
+      background: linear-gradient(60deg, transparent 40%, rgba(30, 91, 168, .08) 50%, transparent 60%);
       transform: rotate(25deg);
       animation: tourBadgeShine 6s linear infinite;
       pointer-events: none;
@@ -313,7 +419,7 @@
       place-items: center;
       background: var(--tour-soft);
       flex-shrink: 0;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .15);
     }
     #guidedTourBackdrop .badge-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
     #guidedTourBackdrop .badge-avatar-wrap .badge-initials {
@@ -374,6 +480,16 @@
     }
     #guidedTourBackdrop .onboarding-checklist span { display: inline-flex; align-items: center; gap: 6px; }
     #guidedTourBackdrop .onboarding-checklist .check-icon { color: var(--tour-accent); font-weight: 800; }
+    html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-avatar-initials,
+    html:not([data-theme="light"]) #guidedTourBackdrop .badge-avatar-wrap .badge-initials,
+    html:not([data-theme="light"]) #guidedTourBackdrop .badge-oab-pill,
+    html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-checklist .check-icon {
+      color: #60a5fa;
+    }
+    html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-avatar-frame,
+    html:not([data-theme="light"]) #guidedTourBackdrop .badge-avatar-wrap {
+      border-color: #3b82f6;
+    }
 
     @keyframes tourBadgeFloat {
       0%, 100% { transform: translateY(0); }
@@ -3300,6 +3416,6 @@
   <script src="js/office-data.js?v=2.3.0" defer></script>
   <script src="js/runtime-config.js?v=2.3.0" defer></script>
   <script src="js/auth.js?v=2.3.0" defer></script>
-  <script type="module" src="js/app/bootstrap.js?v=2.3.0"></script>
+  <script type="module" src="js/app/bootstrap.js?v=2.3.3"></script>
 </body>
 </html>

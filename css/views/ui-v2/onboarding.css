@@ -3,10 +3,12 @@
   --tour-surface: #1a1e21;
   --tour-soft: #202529;
   --tour-text: #eceeed;
-  --tour-muted: #aeb5b8;
+  --tour-muted: #8e979d;
   --tour-line: #343b40;
-  --tour-accent: #b79a5d;
-  --tour-accent-soft: rgba(183, 154, 93, .13);
+  --tour-accent: #3b82f6;
+  --tour-accent-hover: #2563eb;
+  --tour-accent-soft: rgba(59, 130, 246, .16);
+  --tour-card-grad: linear-gradient(135deg, rgba(26, 30, 33, .98) 0%, rgba(19, 24, 30, .98) 100%);
   background: rgba(8, 10, 11, .74);
   backdrop-filter: blur(8px);
 }
@@ -15,11 +17,13 @@ html[data-theme="light"] #guidedTourBackdrop {
   --tour-bg: #f4f5f3;
   --tour-surface: #fffefd;
   --tour-soft: #edf1f2;
-  --tour-text: #252a2e;
-  --tour-muted: #606970;
-  --tour-line: #d2d8da;
-  --tour-accent: #688493;
-  --tour-accent-soft: rgba(164, 196, 211, .22);
+  --tour-text: #1f2328;
+  --tour-muted: #57606a;
+  --tour-line: #d0d7de;
+  --tour-accent: #1e5ba8;
+  --tour-accent-hover: #174785;
+  --tour-accent-soft: rgba(30, 91, 168, .12);
+  --tour-card-grad: linear-gradient(135deg, rgba(255, 255, 255, .98) 0%, rgba(240, 246, 253, .98) 100%);
   background: rgba(41, 49, 54, .38);
 }
 
@@ -63,16 +67,20 @@ html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline
 #guidedTourBackdrop .tour-icon-box {
   width: 58px;
   height: 58px;
-  border: 1px solid var(--tour-line);
+  border: 1px solid rgba(30, 91, 168, 0.22);
   border-radius: 12px;
   color: var(--tour-accent);
   background: var(--tour-accent-soft);
   box-shadow: none;
 }
+html:not([data-theme="light"]) #guidedTourBackdrop .tour-icon-box {
+  border-color: rgba(59, 130, 246, 0.30);
+}
 
 #guidedTourBackdrop .tour-icon-box svg { filter: none; }
 #guidedTourBackdrop .tour-slide-hero h2 { margin: 0 0 6px; color: var(--tour-text); font: 600 clamp(24px, 3vw, 34px)/1.12 "Playfair Display", Georgia, serif; }
-#guidedTourBackdrop .tour-slide-hero p { color: var(--tour-accent); font-size: 12px; font-weight: 700; letter-spacing: .035em; }
+#guidedTourBackdrop .tour-slide-hero p { color: var(--tour-accent); font-size: 12.5px; font-weight: 600; letter-spacing: .02em; }
+html:not([data-theme="light"]) #guidedTourBackdrop .tour-slide-hero p { color: #60a5fa; }
 #guidedTourBackdrop .tour-slide-body { color: var(--tour-muted); font-size: 14px; line-height: 1.65; }
 
 #guidedTourBackdrop .tour-features-grid { gap: 12px; margin-top: 18px; }
@@ -124,10 +132,32 @@ html[data-theme="light"] #guidedTourBackdrop .tour-status-tag.tag-available { co
 #guidedTourBackdrop .tour-dot:focus-visible,
 #guidedTourBackdrop button:focus-visible { outline: 2px solid var(--tour-accent); outline-offset: 3px; }
 
-#guidedTourBackdrop .button { min-height: 44px; border-radius: 8px; box-shadow: none; }
+#guidedTourBackdrop .button { min-height: 44px; border-radius: 8px; box-shadow: none; font-weight: 600; }
 #guidedTourBackdrop .button:hover { transform: none; box-shadow: none; }
-#guidedTourBackdrop .button.gold { color: #172028; border-color: var(--tour-accent); background: var(--tour-accent); }
-html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510; }
+#guidedTourBackdrop .button.gold {
+  color: #ffffff !important;
+  background: #1e5ba8 !important;
+  border-color: #1e5ba8 !important;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(30, 91, 168, 0.35);
+  transition: all 180ms ease;
+}
+#guidedTourBackdrop .button.gold:hover {
+  background: #174785 !important;
+  border-color: #174785 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(30, 91, 168, 0.45);
+}
+html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
+  color: #ffffff !important;
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.40);
+}
+html:not([data-theme="light"]) #guidedTourBackdrop .button.gold:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+}
 #guidedTourBackdrop .button.ghost { color: var(--tour-text); border-color: var(--tour-line); background: transparent; }
 
 #guidedTourBackdrop .tour-stepper {
@@ -151,8 +181,24 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510
   transition: color 180ms ease;
 }
 
-#guidedTourBackdrop .tour-step-indicator.active {
-  color: var(--tour-accent);
+#guidedTourBackdrop .tour-step-indicator.active,
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"],
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="1"]) .tour-step-indicator[data-step="1"],
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="2"]) .tour-step-indicator[data-step="2"],
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"],
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"],
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] {
+  color: var(--tour-accent) !important;
+  font-weight: 700;
+}
+html:not([data-theme="light"]) #guidedTourBackdrop .tour-step-indicator.active,
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"],
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="1"]) .tour-step-indicator[data-step="1"],
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="2"]) .tour-step-indicator[data-step="2"],
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"],
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"],
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] {
+  color: #60a5fa !important;
 }
 
 #guidedTourBackdrop .tour-step-num {
@@ -169,11 +215,37 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510
   transition: all 180ms ease;
 }
 
-#guidedTourBackdrop .tour-step-indicator.active .tour-step-num {
-  border-color: var(--tour-accent);
-  background: var(--tour-accent);
-  color: #121517;
-  box-shadow: 0 0 10px rgba(212, 175, 55, .35);
+#guidedTourBackdrop .tour-step-indicator.active .tour-step-num,
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"] .tour-step-num,
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="1"]) .tour-step-indicator[data-step="1"] .tour-step-num,
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="2"]) .tour-step-indicator[data-step="2"] .tour-step-num,
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"] .tour-step-num,
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"] .tour-step-num,
+#guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] .tour-step-num {
+  border-color: var(--tour-accent) !important;
+  background: var(--tour-accent) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(30, 91, 168, .35) !important;
+}
+html:not([data-theme="light"]) #guidedTourBackdrop .tour-step-indicator.active .tour-step-num,
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"] .tour-step-num,
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="1"]) .tour-step-indicator[data-step="1"] .tour-step-num,
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="2"]) .tour-step-indicator[data-step="2"] .tour-step-num,
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"] .tour-step-num,
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"] .tour-step-num,
+html:not([data-theme="light"]) #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] .tour-step-num {
+  box-shadow: 0 0 10px rgba(59, 130, 246, .45) !important;
+}
+
+#guidedTourBackdrop:has(.tour-slide.active:not([data-slide="0"])) .tour-step-indicator[data-step="0"] {
+  color: var(--tour-muted) !important;
+  font-weight: 600 !important;
+}
+#guidedTourBackdrop:has(.tour-slide.active:not([data-slide="0"])) .tour-step-indicator[data-step="0"] .tour-step-num {
+  border-color: var(--tour-line) !important;
+  background: var(--tour-soft) !important;
+  color: var(--tour-muted) !important;
+  box-shadow: none !important;
 }
 
 @media (max-width: 600px) {
@@ -224,13 +296,19 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510
   display: grid;
   place-items: center;
   overflow: hidden;
-  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .45), 0 0 16px rgba(212, 175, 55, .20);
+  box-shadow: 0 4px 16px rgba(30, 91, 168, .20);
   transition: transform 180ms ease, box-shadow 180ms ease;
+}
+html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-avatar-frame {
+  box-shadow: 0 0 20px rgba(59, 130, 246, .25);
 }
 
 #guidedTourBackdrop .onboarding-avatar-frame:hover {
   transform: scale(1.03);
-  box-shadow: 0 10px 28px -4px rgba(0, 0, 0, .55), 0 0 22px rgba(212, 175, 55, .35);
+  box-shadow: 0 8px 24px rgba(30, 91, 168, .30);
+}
+html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-avatar-frame:hover {
+  box-shadow: 0 0 28px rgba(59, 130, 246, .40);
 }
 
 #guidedTourBackdrop .onboarding-avatar-img {
@@ -246,6 +324,9 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510
   color: var(--tour-accent);
   letter-spacing: .05em;
   user-select: none;
+}
+html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-avatar-initials {
+  color: #60a5fa;
 }
 
 #guidedTourBackdrop .onboarding-logo-frame {
@@ -360,7 +441,10 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510
 #guidedTourBackdrop .onboarding-theme-card.active {
   border-color: var(--tour-accent);
   background: color-mix(in srgb, var(--tour-accent) 8%, var(--tour-soft));
-  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .40), 0 0 18px rgba(212, 175, 55, .18);
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .20), 0 0 18px rgba(30, 91, 168, .18);
+}
+html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-theme-card.active {
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .40), 0 0 18px rgba(59, 130, 246, .25);
 }
 
 #guidedTourBackdrop .onboarding-theme-preview {
@@ -389,7 +473,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510
 
 #guidedTourBackdrop .onboarding-theme-preview.dark-preview .preview-bar {
   height: 8px;
-  background: #b79a5d;
+  background: #3b82f6;
   border-radius: 4px;
   width: 60%;
   margin-bottom: 6px;
@@ -419,7 +503,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510
 
 #guidedTourBackdrop .onboarding-theme-preview.light-preview .preview-bar {
   height: 8px;
-  background: #688493;
+  background: #1e5ba8;
   border-radius: 4px;
   width: 60%;
   margin-bottom: 6px;
@@ -452,8 +536,8 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510
   padding: 20px 24px;
   border-radius: 16px;
   border: 1px solid var(--tour-accent);
-  background: linear-gradient(135deg, rgba(26, 30, 33, .95) 0%, rgba(19, 22, 24, .95) 100%);
-  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .70), 0 0 28px rgba(212, 175, 55, .15);
+  background: var(--tour-card-grad);
+  box-shadow: 0 16px 40px -12px rgba(30, 91, 168, .20);
   display: flex;
   gap: 18px;
   align-items: center;
@@ -462,9 +546,8 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold { color: #171510
   animation: tourBadgeFloat 4s ease-in-out infinite;
 }
 
-html[data-theme="light"] #guidedTourBackdrop .onboarding-badge-card {
-  background: linear-gradient(135deg, rgba(255, 254, 253, .96) 0%, rgba(244, 245, 243, .96) 100%);
-  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .15), 0 0 28px rgba(104, 132, 147, .15);
+html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-badge-card {
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .70), 0 0 28px rgba(59, 130, 246, .22);
 }
 
 #guidedTourBackdrop .onboarding-badge-card::after {
@@ -474,10 +557,13 @@ html[data-theme="light"] #guidedTourBackdrop .onboarding-badge-card {
   left: -50%;
   width: 200%;
   height: 200%;
-  background: linear-gradient(60deg, transparent 40%, rgba(212, 175, 55, .08) 50%, transparent 60%);
+  background: linear-gradient(60deg, transparent 40%, rgba(30, 91, 168, .08) 50%, transparent 60%);
   transform: rotate(25deg);
   animation: tourBadgeShine 6s linear infinite;
   pointer-events: none;
+}
+html:not([data-theme="light"]) #guidedTourBackdrop .onboarding-badge-card::after {
+  background: linear-gradient(60deg, transparent 40%, rgba(59, 130, 246, .12) 50%, transparent 60%);
 }
 
 #guidedTourBackdrop .badge-avatar-wrap {
