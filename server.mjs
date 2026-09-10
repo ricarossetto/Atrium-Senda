@@ -4815,8 +4815,7 @@ await readRuntime();
 console.log(`[ATRIUM Runtime]: Estado derivado inicializado com status "${runtimeHealth().status}".`);
 
 inpiService.startScheduler({
-  getState: () => state(),
-  audit: (action, detail) => audit(action, detail)
+  getState: async () => (await readAppStateEnvelope()).state || {}
 });
 
 server.listen(PORT, HOST, () => {
