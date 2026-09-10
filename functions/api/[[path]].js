@@ -6,6 +6,7 @@ export async function onRequest(context) {
   const url = new URL(context.request.url);
   const targetUrl = new URL(url.pathname + url.search, 'https://api.atrium.adv.br');
 
+  // Clona a requisição preservando método, headers e body
   const headers = new Headers(context.request.headers);
   headers.set('X-Forwarded-Host', url.host);
   headers.set('X-Forwarded-Proto', url.protocol.replace(':', ''));
