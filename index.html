@@ -4515,15 +4515,45 @@
           </div>
         </div>
 
-        <!-- 2. Advogados Detectados no Escritório -->
+        <!-- 2. Termos & Advogados Monitorados -->
         <div class="inpi-monitors-box">
           <div class="inpi-monitors-header">
-            <h4>
-              <svg class="atrium-icon" aria-hidden="true" focusable="false" style="width:14px; height:14px; color:var(--v2-color-gold,#c69f53);"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-contacts"></use></svg>
-              Advogados Monitorados na RPI
-            </h4>
-            <small id="inpiMonitorsCount">Detectando advogados do escritório...</small>
+            <div class="inpi-monitors-title-group">
+              <h4>
+                <svg class="atrium-icon" aria-hidden="true" focusable="false" style="width:14px; height:14px; color:var(--v2-color-gold,#c69f53);"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-contacts"></use></svg>
+                Termos &amp; Advogados Monitorados na RPI
+              </h4>
+              <small id="inpiMonitorsCount">Detectando termos...</small>
+            </div>
+            <button type="button" class="button ghost inpi-btn-add-term" id="btnInpiToggleAddTerm">
+              <svg class="atrium-icon" aria-hidden="true" focusable="false" style="width:12px; height:12px; margin-right:4px;"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>
+              <span>+ Adicionar Termo</span>
+            </button>
           </div>
+
+          <!-- Formulário Inline para Adicionar Termo Personalizado -->
+          <form class="inpi-add-term-form hidden" id="inpiAddTermForm">
+            <div class="inpi-add-term-row">
+              <div class="inpi-input-field inpi-flex-2">
+                <label for="inpiNewTermInput">Termo a monitorar</label>
+                <input type="text" id="inpiNewTermInput" placeholder="Ex: Nome de marca, nº de processo INPI, outro advogado..." required autocomplete="off">
+              </div>
+              <div class="inpi-input-field inpi-flex-1">
+                <label for="inpiNewTermType">Tipo do termo</label>
+                <select id="inpiNewTermType">
+                  <option value="marca">Marca (Nome de Marca)</option>
+                  <option value="processo">Nº do Processo INPI</option>
+                  <option value="advogado">Advogado / Procurador</option>
+                  <option value="geral">Termo Geral / Titular</option>
+                </select>
+              </div>
+              <div class="inpi-add-term-actions">
+                <button type="submit" class="button gold" id="btnInpiSaveTerm">Adicionar</button>
+                <button type="button" class="button ghost" id="btnInpiCancelAddTerm">Cancelar</button>
+              </div>
+            </div>
+          </form>
+
           <div class="inpi-monitors-list" id="inpiMonitorsList"></div>
         </div>
 

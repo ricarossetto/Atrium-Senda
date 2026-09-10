@@ -13,6 +13,7 @@ export function createInpiIntegrationFeature({
   let initialized = false;
   let inpiData = null;
   let inpiStatus = null;
+  let monitorsData = null;
   let isScanning = false;
 
   const state = {
@@ -148,22 +149,28 @@ export function createInpiIntegrationFeature({
   }
 
   function renderMonitors() {
-    const monitors = inpiStatus?.monitors || inpiData?.lastRun?.monitors || [];
+    const autoMonitors = monitorsData?.automatic || inpiStatus?.monitors || inpiData?.lastRun?.monitors || [];
+    const customMonitors = monitorsData?.custom || [];
     const matches = inpiData?.matches || [];
     const container = byId('inpiMonitorsList');
     const countEl = byId('inpiMonitorsCount');
-    if (countEl) countEl.textContent = `${monitors.length} advogado(s) do escritório`;
+
+    const totalCount = autoMonitors.length + customMonitors.length;
+    if (countEl) {
+      countEl.textContent = `${autoMonitors.length} advogado(s) do escritório · ${customMonitors.length} termo(s) personalizado(s)`;
+    }
     if (!container) return;
 
-    if (!monitors.length) {
-      container.innerHTML = '<p style="color:var(--v2-color-muted-foreground,#8c96a5); font-size:12px; margin:0;">Nenhum advogado detectado no escritório. Verifique as configurações de Identidade do Escritório ou Termos.</p>';
+    if (!totalCount) {
+      container.innerHTML = '<p style="color:var(--v2-color-muted-foreground,#8c96a5); font-size:12px; margin:0;">Nenhum termo ou advogado cadastrado. Clique em "+ Adicionar Termo" para monitorar marcas, processos ou outros advogados.</p>';
       return;
     }
 
-    container.innerHTML = monitors.map(monitor => {
+    const autoHtml = autoMonitors.map(monitor => {
       const hits = matches.filter(m => (m.monitores || []).some(hit => hit.id === monitor.id)).length;
       return `
         <div class="inpi-monitor-tag">
+          <span class="inpi-monitor-type-badge inpi-type-advogado">Advogado</span>
           <b>${escapeHtml(monitor.label)}</b>
           ${monitor.oab ? `<span class="inpi-monitor-badge">${escapeHtml(monitor.oab)}</span>` : ''}
           <span class="inpi-monitor-hits">${formatNumber(hits)} ocorrência${hits === 1 ? '' : 's'}</span>
@@ -171,13 +178,38 @@ export function createInpiIntegrationFeature({
       `;
     }).join('');
 
+    const customHtml = customMonitors.map(monitor => {
+      const hits = matches.filter(m => (m.monitores || []).some(hit => hit.id === monitor.id)).length;
+      const typeClass = `inpi-type-${monitor.type || 'marca'}`;
+      const typeLabel = monitor.type === 'processo' ? 'Processo' : monitor.type === 'advogado' ? 'Advogado' : monitor.type === 'geral' ? 'Geral' : 'Marca';
+      return `
+        <div class="inpi-monitor-tag">
+          <span class="inpi-monitor-type-badge ${typeClass}">${typeLabel}</span>
+          <b>${escapeHtml(monitor.label || monitor.term)}</b>
+          <span class="inpi-monitor-hits">${formatNumber(hits)} ocorrência${hits === 1 ? '' : 's'}</span>
+          <button type="button" class="inpi-remove-term-btn" data-delete-monitor-id="${escapeHtml(monitor.id)}" title="Remover termo ${escapeHtml(monitor.term)}" aria-label="Remover termo ${escapeHtml(monitor.term)}">×</button>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = autoHtml + customHtml;
+
     // Atualiza opções do select
     const select = byId('inpiMonitorFilter');
     if (select) {
       const current = state.monitor;
-      select.innerHTML = '<option value="all">Todos os advogados</option>' + monitors.map(m => `
-        <option value="${escapeHtml(m.id)}" ${m.id === current ? 'selected' : ''}>${escapeHtml(m.label)}</option>
-      `).join('');
+      let optionsHtml = '<option value="all">Todos os termos e advogados</option>';
+      if (autoMonitors.length) {
+        optionsHtml += `<optgroup label="Advogados do Escritório">${autoMonitors.map(m => `
+          <option value="${escapeHtml(m.id)}" ${m.id === current ? 'selected' : ''}>${escapeHtml(m.label)}</option>
+        `).join('')}</optgroup>`;
+      }
+      if (customMonitors.length) {
+        optionsHtml += `<optgroup label="Termos Personalizados">${customMonitors.map(m => `
+          <option value="${escapeHtml(m.id)}" ${m.id === current ? 'selected' : ''}>[${(m.type || 'marca').toUpperCase()}] ${escapeHtml(m.label || m.term)}</option>
+        `).join('')}</optgroup>`;
+      }
+      select.innerHTML = optionsHtml;
     }
   }
 
@@ -306,17 +338,91 @@ export function createInpiIntegrationFeature({
         render();
       });
 
+      byId('btnInpiToggleAddTerm')?.addEventListener('click', () => {
+        const form = byId('inpiAddTermForm');
+        if (form) {
+          form.classList.toggle('hidden');
+          if (!form.classList.contains('hidden')) {
+            byId('inpiNewTermInput')?.focus();
+          }
+        }
+      });
+
+      byId('btnInpiCancelAddTerm')?.addEventListener('click', () => {
+        byId('inpiAddTermForm')?.classList.add('hidden');
+      });
+
+      byId('inpiAddTermForm')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        const input = byId('inpiNewTermInput');
+        const typeSelect = byId('inpiNewTermType');
+        const term = input?.value?.trim();
+        const type = typeSelect?.value || 'marca';
+        if (!term) return;
+
+        try {
+          const res = await secureFetch('/api/integrations/inpi/custom-monitors', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ term, type })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.message || 'Falha ao salvar termo.');
+          showToast(`Termo "${term}" adicionado ao monitoramento da RPI.`, 'success');
+          if (input) input.value = '';
+          byId('inpiAddTermForm')?.classList.add('hidden');
+          await this.loadMonitors();
+          render();
+        } catch (err) {
+          showToast(err.message || 'Não foi possível salvar o termo.', 'error');
+        }
+      });
+
+      byId('inpiMonitorsList')?.addEventListener('click', async event => {
+        const deleteBtn = event.target.closest('[data-delete-monitor-id]');
+        if (deleteBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          const id = deleteBtn.dataset.deleteMonitorId;
+          if (!id) return;
+          try {
+            const res = await secureFetch('/api/integrations/inpi/custom-monitors/delete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({ id })
+            });
+            if (!res.ok) throw new Error('Falha ao remover termo.');
+            showToast('Termo removido do monitoramento.', 'info');
+            await this.loadMonitors();
+            render();
+          } catch (err) {
+            showToast(err.message || 'Erro ao remover termo.', 'error');
+          }
+        }
+      });
+
       return true;
+    },
+
+    async loadMonitors() {
+      try {
+        const res = await secureFetch('/api/integrations/inpi/monitors', { headers: { Accept: 'application/json' } });
+        if (res.ok) {
+          monitorsData = await res.json();
+        }
+      } catch {}
     },
 
     async loadData() {
       try {
-        const [dataRes, statusRes] = await Promise.all([
+        const [dataRes, statusRes, monitorsRes] = await Promise.all([
           secureFetch('/api/integrations/inpi/data', { headers: { Accept: 'application/json' } }),
-          secureFetch('/api/integrations/inpi/status', { headers: { Accept: 'application/json' } })
+          secureFetch('/api/integrations/inpi/status', { headers: { Accept: 'application/json' } }),
+          secureFetch('/api/integrations/inpi/monitors', { headers: { Accept: 'application/json' } })
         ]);
         if (dataRes.ok) inpiData = await dataRes.json();
         if (statusRes.ok) inpiStatus = await statusRes.json();
+        if (monitorsRes.ok) monitorsData = await monitorsRes.json();
         render();
       } catch (err) {
         showToast('Não foi possível carregar os dados do INPI.', 'error');

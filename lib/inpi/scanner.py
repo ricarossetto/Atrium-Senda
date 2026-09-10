@@ -326,7 +326,9 @@ def process_to_record(element: ET.Element, revista: dict[str, str]) -> dict[str,
             procuradores.append(nome)
 
     raw_text = raw_process_text(element)
+    processo_num = clean(element.attrib.get("numero"))
     fields = {
+        "processo": processo_num,
         "marca": marca_nome,
         "procurador": " ".join(procuradores),
         "requerente": " ".join(item["nome"] for item in titulares),
@@ -334,7 +336,7 @@ def process_to_record(element: ET.Element, revista: dict[str, str]) -> dict[str,
             f"{item.get('codigo', '')} {item.get('nome', '')} {item.get('texto', '')}" for item in despachos
         ),
         "classe": " ".join(f"{item.get('codigo', '')} {item.get('status', '')} {item.get('especificacao', '')}" for item in classes),
-        "texto": raw_text,
+        "texto": f"{processo_num} {raw_text}".strip(),
     }
 
     return {
@@ -379,7 +381,7 @@ def match_monitors(record: dict[str, Any], monitors: list[dict[str, Any]]) -> li
     fields = {
         name: value
         for name, value in record["fields"].items()
-        if name in {"marca", "procurador", "requerente", "despacho", "texto"}
+        if name in {"marca", "procurador", "requerente", "despacho", "texto", "processo"}
     }
     prepared_fields = {
         name: {

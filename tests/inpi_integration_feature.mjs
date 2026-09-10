@@ -69,6 +69,14 @@ test('INPI HTTP Routes - Contratos das rotas sob /api/integrations/inpi/*', asyn
     getStatus: async () => ({ ok: true, sidesystem: 'INPI_RPI_MONITOR', monitorsCount: 2 }),
     getDashboardData: async () => ({ ok: true, matches: [{ id: 'match-1', marca: { nome: 'PULO' } }], statistics: { totalMatches: 1 } }),
     extractLawyerMonitors: () => [{ id: 'adv-1', label: 'Dr. Teste' }],
+    getAllMonitors: async () => ({
+      automatic: [{ id: 'adv-1', label: 'Dr. Teste' }],
+      custom: [{ id: 'custom-1', term: 'MARCA X', type: 'marca', label: 'MARCA X' }],
+      all: [{ id: 'adv-1', label: 'Dr. Teste' }, { id: 'custom-1', label: 'MARCA X' }]
+    }),
+    saveCustomMonitor: async ({ term, type }) => ({ id: 'custom-new', term, type }),
+    getCustomMonitors: async () => [{ id: 'custom-1', term: 'MARCA X', type: 'marca' }],
+    deleteCustomMonitor: async () => [],
     runScan: async () => { scanCalled = true; return { ok: true, message: 'Sucesso' }; }
   };
 
@@ -102,7 +110,9 @@ test('INPI HTTP Routes - Contratos das rotas sob /api/integrations/inpi/*', asyn
   const handledMonitors = await handler({ method: 'GET' }, resMonitors, new URL('http://localhost/api/integrations/inpi/monitors'));
   assert.equal(handledMonitors, true);
   assert.equal(resMonitors.statusCode, 200);
-  assert.equal(resMonitors.body.count, 1);
+  assert.equal(resMonitors.body.count, 2);
+  assert.equal(resMonitors.body.automatic.length, 1);
+  assert.equal(resMonitors.body.custom.length, 1);
 
   // Teste POST scan
   const resScan = {};
@@ -187,4 +197,50 @@ test('INPI Frontend Feature - Lógica de filtros, ordenação e exibição de re
   assert.ok(elResults.innerHTML.includes('PULO PARK'), 'Card deve renderizar a marca');
   assert.ok(elResults.innerHTML.includes('912345678'), 'Card deve conter o número do processo');
   assert.ok(elResults.innerHTML.includes('RPI 2827'), 'Card deve exibir o número da RPI');
+});
+
+test('INPI Service - Gestão de termos personalizados (marcas, processos, outros advogados)', async () => {
+  const testDir = path.resolve('data', 'test-inpi-custom');
+  const service = new InpiService({ dataDir: testDir });
+
+  // 1. Salvar monitor de marca
+  const marcaMon = await service.saveCustomMonitor({ term: 'ATRIUM PRO', type: 'marca' });
+  assert.ok(marcaMon.id.startsWith('custom-'));
+  assert.equal(marcaMon.term, 'ATRIUM PRO');
+  assert.equal(marcaMon.type, 'marca');
+
+  // 2. Salvar monitor de processo
+  const procMon = await service.saveCustomMonitor({ term: '930.123.456', type: 'processo' });
+  assert.equal(procMon.type, 'processo');
+
+  // 3. Salvar monitor de outro advogado
+  const advMon = await service.saveCustomMonitor({ term: 'Dra. Maria Advogada', type: 'advogado' });
+  assert.equal(advMon.type, 'advogado');
+
+  // 4. Listar
+  const customList = await service.getCustomMonitors();
+  assert.equal(customList.length, 3);
+
+  // 5. Obter todos os monitores combinados
+  const mockState = {
+    settings: { lawyerName: 'Ricardo de Luca Rossetto', lawyerOab: '135294' }
+  };
+  const allResult = await service.getAllMonitors(mockState);
+  assert.equal(allResult.automatic.length, 1);
+  assert.equal(allResult.custom.length, 3);
+  assert.equal(allResult.all.length, 4);
+
+  // Verifica termos gerados para o processo (com e sem pontuação)
+  const preparedProc = allResult.all.find(m => m.id === procMon.id);
+  assert.ok(preparedProc.terms.includes('930.123.456'));
+  assert.ok(preparedProc.terms.includes('930123456'));
+
+  // 6. Excluir monitor
+  const afterDelete = await service.deleteCustomMonitor(marcaMon.id);
+  assert.equal(afterDelete.length, 2);
+  assert.ok(!afterDelete.some(m => m.id === marcaMon.id));
+
+  // Limpeza
+  await service.deleteCustomMonitor(procMon.id);
+  await service.deleteCustomMonitor(advMon.id);
 });

@@ -258,7 +258,11 @@ await documentStorage.init();
 const documentIntelligence = new DocumentIntelligenceService();
 const registryService = new RegistryService();
 const handleRegistryRequest = createRegistryHttpHandler({ service: registryService, assertAuthenticated, json });
-const inpiService = new InpiService({ dataDir: DATA_DIR, timeZone: SYNC_TIME_ZONE });
+const inpiService = new InpiService({
+  dataDir: DATA_DIR,
+  resolveDataDir: () => workspaceDataDirectory(),
+  timeZone: SYNC_TIME_ZONE
+});
 const handleInpiRequest = createInpiHttpHandler({
   service: inpiService,
   assertAuthenticated,
@@ -2426,7 +2430,9 @@ async function serveStatic(req, res) {
   if (normalized.includes('\0') || segments.some(segment => segment === '.' || segment === '..')) {
     return json(res, 404, { message: 'Arquivo não encontrado.' });
   }
-  const relative = normalized === '/' ? 'index.html' : normalized.replace(/^\/+/, '');
+  const cleanRoute = normalized.replace(/^\/+/, '');
+  const isSpaRoute = normalized === '/' || ['discover', 'landing', 'app'].includes(cleanRoute);
+  const relative = isSpaRoute ? 'index.html' : cleanRoute;
   const allowed = publicFiles.has(relative)
     || publicDirectories.some(directory => relative.startsWith(directory))
     || isExplicitlyPublicFrontendFile(relative);
