@@ -1101,6 +1101,10 @@ html[data-ui="v2"] .process-documents-backdrop {
   animation: v2-overlay-in var(--v2-duration-base) var(--v2-ease-standard) both;
 }
 
+html[data-ui="v2"] .process-documents-backdrop.hidden {
+  display: none !important;
+}
+
 html[data-ui="v2"] .process-documents-drawer {
   width: min(620px, 100%);
   height: 100dvh;

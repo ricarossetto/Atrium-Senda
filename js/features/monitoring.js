@@ -11,6 +11,7 @@ export function createMonitoringFeature({
   getFilteredIntimations = () => store.state.intimations || [],
   onOpenJudicialSetup = () => {},
   onOpenCalendarConfig = () => {},
+  onOpenInpiPanel = () => {},
   renderV2Presentation = null
 } = {}) {
   let initialized = false;
@@ -97,6 +98,8 @@ export function createMonitoringFeature({
         feature.openTermModal(store.state.terms[0] || {});
       } else if (routeKind === 'datajud') {
         feature.openDataJudConfigModal();
+      } else if (routeKind === 'inpi') {
+        onOpenInpiPanel();
       } else {
         if (store.state.sources.some(item => item.id === sourceId)) feature.openSourceModal(source);
       }
@@ -106,6 +109,8 @@ export function createMonitoringFeature({
       const sourceId = String(source.id || '').toLowerCase();
       const haystack = [source.id, source.name, source.short, source.method, source.detail]
         .map(value => String(value || '').toLowerCase()).join(' ');
+      if (sourceId === 'inpi-rpi' || sourceId === 'inpi'
+        || /\b(?:inpi|rpi)\b|propriedade industrial|marcas/.test(haystack)) return 'inpi';
       if (sourceId === 'external-calendar' || /\b(?:webcal|ical)\b|agenda externa/.test(haystack)) return 'calendar';
       if (sourceId === 'datajud-cnj' || sourceId === 'datajud' || /\bdatajud\b/.test(haystack)) return 'datajud';
       if (sourceId === 'djen-cnj' || sourceId === 'djen' || /\bdjen\b|comunica pje/.test(haystack)) return 'term';

@@ -45,7 +45,8 @@ const sampleState = {
     { ...EXTERNAL_CALENDAR_DEFAULT_SOURCE },
     { id: 'djen-cnj', name: 'DJEN / CNJ Oficial', short: 'CNJ', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Conector de diários e publicações' },
     { id: 'datajud-cnj', name: 'DataJud / CNJ', short: 'DJD', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Enriquecimento de andamentos processuais' },
-    { id: 'a1', name: 'Portais com certificado A1 / PJe', short: 'A1', method: 'Agente local seguro', status: 'off', lastCheck: null, detail: 'Integração direta com tribunais' }
+    { id: 'a1', name: 'Portais com certificado A1 / PJe', short: 'A1', method: 'Agente local seguro', status: 'off', lastCheck: null, detail: 'Integração direta com tribunais' },
+    { id: 'inpi-rpi', name: 'INPI / RPI Marcas', short: 'INPI', method: 'RPI Semanal (Terças)', status: 'ok', lastCheck: null, detail: 'Monitoramento semanal de marcas, despachos e termos' }
   ],
   intimations: [
     {
@@ -293,7 +294,8 @@ export const Store = {
         { ...EXTERNAL_CALENDAR_DEFAULT_SOURCE },
         { id: 'djen-cnj', name: 'DJEN / CNJ Oficial', short: 'CNJ', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Conector de diários e publicações' },
         { id: 'datajud-cnj', name: 'DataJud / CNJ', short: 'DJD', method: 'API pública oficial', status: 'planned', lastCheck: null, detail: 'Enriquecimento de andamentos processuais' },
-        { id: 'a1', name: 'Portais com certificado A1 / PJe', short: 'A1', method: 'Agente local seguro', status: 'off', lastCheck: null, detail: 'Integração direta com tribunais' }
+        { id: 'a1', name: 'Portais com certificado A1 / PJe', short: 'A1', method: 'Agente local seguro', status: 'off', lastCheck: null, detail: 'Integração direta com tribunais' },
+        { id: 'inpi-rpi', name: 'INPI / RPI Marcas', short: 'INPI', method: 'RPI Semanal (Terças)', status: 'ok', lastCheck: null, detail: 'Monitoramento semanal de marcas, despachos e termos' }
       ];
       defaultSources.forEach(ds => {
         if (!this.state.sources.some(s => s.id === ds.id)) {

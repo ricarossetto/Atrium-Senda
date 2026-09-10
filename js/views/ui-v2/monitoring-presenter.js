@@ -14,7 +14,8 @@ function sourceRouteLabel(source = {}) {
     .map(value => String(value || '').toLowerCase()).join(' ');
   return sourceId === 'a1' || sourceId === 'pje' || sourceId === 'external-calendar'
     || sourceId === 'djen-cnj' || sourceId === 'djen' || sourceId === 'datajud-cnj' || sourceId === 'datajud'
-    || /\beproc\b|pjeoffice|certificado|sess[aã]o local|portal judicial|\b(?:webcal|ical|datajud|djen)\b|comunica pje/.test(haystack)
+    || sourceId === 'inpi-rpi' || sourceId === 'inpi'
+    || /\beproc\b|pjeoffice|certificado|sess[aã]o local|portal judicial|\b(?:webcal|ical|datajud|djen|inpi|rpi)\b|comunica pje/.test(haystack)
     ? 'Configurar'
     : 'Ver detalhes';
 }
