@@ -30,7 +30,7 @@ export const isoDate = (offset = 0, baseDate = new Date()) => {
 
 export const uid = prefix => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-const sampleState = {
+export const sampleState = {
   version: 1,
   terms: [{
     id: 'term-principal',

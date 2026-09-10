@@ -2538,8 +2538,10 @@
             <h2>Fontes monitoradas</h2>
             <small>Confira identidades, fontes públicas e o resultado das coletas. Credenciais e conexões são gerenciadas em Integrações &amp; A1.</small>
           </div>
-          <div class="toolbar-copy"><p>Monitore nomes e inscrições profissionais. Reconexões com certificado sempre exigem validação humana.</p></div>
-          <button class="button gold" id="newTermButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Adicionar termo</button>
+          <div class="monitoring-toolbar-actions" style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="button ghost" id="btnOpenInpiFromMonitoring" title="Acompanhamento semanal da RPI no INPI"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-monitoring"></use></svg>Painel INPI / RPI</button>
+            <button class="button gold" id="newTermButton"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-add"></use></svg>Adicionar termo</button>
+          </div>
         </div>
         <article class="monitor-hero card" id="primaryTermCard" tabindex="0" title="Clique para editar o termo monitorado">
           <div class="monitor-avatar" id="primaryTermAvatar">AD</div>
@@ -2573,6 +2575,17 @@
               <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-monitoring"></use></svg>
             </div>
             <div class="integration-copy"><span class="status-chip planned">Oficial</span><h3>DJEN e DataJud (CNJ)</h3><p>Camada de conferência de publicações e andamentos do Diário de Justiça Eletrônico Nacional.</p><button class="button ghost v2-connection-primary" data-view-link="monitoring">Ver fontes</button></div>
+          </article>
+          <article class="integration-card card connection-integration-card inpi-integration-card">
+            <div class="integration-logo inpi-card-logo">
+              <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-monitoring"></use></svg>
+            </div>
+            <div class="integration-copy">
+              <span class="status-chip connected" id="inpiIntegrationCardStatus">Ativo · Semanal</span>
+              <h3>INPI / RPI Marcas</h3>
+              <p id="inpiIntegrationDetail">Monitoramento da Revista da Propriedade Industrial (Seção V: Marcas) para acompanhamento de marcas, despachos e termos do escritório.</p>
+              <button type="button" class="button gold v2-connection-primary" id="btnOpenInpiFromIntegrations">Abrir painel RPI</button>
+            </div>
           </article>
           <article class="integration-card card judicial-integration-card">
             <div class="integration-logo certificate-logo">

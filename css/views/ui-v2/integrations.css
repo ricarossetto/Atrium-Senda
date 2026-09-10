@@ -457,6 +457,20 @@ html[data-ui="v2"] #view-integrations .connection-integration-card .integration-
   border-radius: var(--v2-radius-lg);
 }
 
+html[data-ui="v2"] #view-integrations .inpi-integration-card {
+  border-color: color-mix(in srgb, var(--v2-color-gold, #c69f53) 25%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] #view-integrations .inpi-integration-card::before {
+  background: var(--v2-color-gold, #c69f53);
+}
+
+html[data-ui="v2"] #view-integrations .inpi-integration-card .integration-logo {
+  color: var(--v2-color-gold, #c69f53);
+  background: rgba(198, 159, 83, 0.12);
+  border: 1px solid rgba(198, 159, 83, 0.28);
+}
+
 html[data-ui="v2"] #view-integrations .email-integration-card {
   grid-column: 1 / -1;
   display: grid;

@@ -823,6 +823,7 @@ import { createTasksFeature } from './features/tasks.js';
       getFilteredIntimations: () => App.filteredIntimations(),
       onOpenJudicialSetup: () => getJudicialIntegrationsFeature().open(),
       onOpenCalendarConfig: () => getExternalCalendarFeature().open(),
+      onOpenInpiPanel: () => App.openInpiModal(),
       renderV2Presentation: renderMonitoringV2Presentation
     });
     return monitoringFeature;
@@ -998,6 +999,7 @@ import { createTasksFeature } from './features/tasks.js';
           this.closeGeminiKeyModal();
           this.closeFinancialEntryModal();
           this.closePublicationEmailModal();
+          getInpiIntegrationFeature().closeModal();
         }
         if (event.key === 'Enter') {
           const interactive = event.target.closest('[data-view-link], [data-process-id], [data-contact-id], [data-agenda-id], [data-source-id], #primaryTermCard, .sidebar-office');
@@ -1033,7 +1035,11 @@ import { createTasksFeature } from './features/tasks.js';
       getEmailIntegrationFeature().init();
       getExternalCalendarFeature().init();
       getImporterFeature().init();
+      getInpiIntegrationFeature().init();
       getGlobalSearchComponent().init();
+
+      byId('btnOpenInpiFromIntegrations')?.addEventListener('click', () => this.openInpiModal());
+      byId('btnOpenInpiFromMonitoring')?.addEventListener('click', () => this.openInpiModal());
 
       byId('kanbanFilterButton').addEventListener('click', event => { event.currentTarget.classList.toggle('active'); this.toast('Filtro pessoal aplicado ao quadro.', 'success'); });
       document.querySelectorAll('th[data-sort-table]').forEach(th => {

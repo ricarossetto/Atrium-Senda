@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { InpiService } from '../lib/inpi/inpi-service.mjs';
 import { createInpiHttpHandler } from '../lib/http/inpi-routes.mjs';
 import { createInpiIntegrationFeature } from '../js/features/inpi-integration.js';
@@ -244,3 +245,41 @@ test('INPI Service - Gestão de termos personalizados (marcas, processos, outros
   await service.deleteCustomMonitor(procMon.id);
   await service.deleteCustomMonitor(advMon.id);
 });
+
+test('INPI - Integração completa nos menus Fontes Monitoradas e Integrações', async () => {
+  // 1. Verifica presença do inpi-rpi nas fontes padrão do Store
+  const { sampleState } = await import('../js/core/store.js');
+  assert.ok(Array.isArray(sampleState.sources), 'sampleState.sources deve ser array');
+  const inpiSource = sampleState.sources.find(s => s.id === 'inpi-rpi');
+  assert.ok(inpiSource, 'Fonte inpi-rpi deve estar registrada nas fontes padrão do Store');
+  assert.equal(inpiSource.short, 'INPI');
+  assert.equal(inpiSource.status, 'ok');
+
+  // 2. Roteamento de fontes monitoradas
+  const { createMonitoringFeature } = await import('../js/features/monitoring.js');
+  let inpiPanelOpened = false;
+  const monitoring = createMonitoringFeature({
+    store: {
+      state: {
+        terms: [{ id: 'term-1', name: 'Dr. Teste', registration: 'OAB/RS 1234' }],
+        sources: [inpiSource],
+        settings: {},
+        intimations: []
+      }
+    },
+    documentRef: { getElementById: () => null, documentElement: { dataset: { ui: 'v2' } } },
+    onOpenInpiPanel: () => { inpiPanelOpened = true; }
+  });
+
+  assert.equal(monitoring.sourceRouteKind(inpiSource), 'inpi', 'sourceRouteKind deve classificar inpi-rpi como inpi');
+  monitoring.routeSource('inpi-rpi');
+  assert.equal(inpiPanelOpened, true, 'routeSource deve abrir o painel INPI');
+
+  // 3. Verificação de elementos no index.html
+  const html = await readFile(path.resolve('index.html'), 'utf8');
+  assert.ok(html.includes('id="btnOpenInpiFromIntegrations"'), 'index.html deve conter botão para abrir INPI no menu Integrações');
+  assert.ok(html.includes('id="btnOpenInpiFromMonitoring"'), 'index.html deve conter botão para abrir INPI no menu Fontes Monitoradas');
+  assert.ok(html.includes('id="inpiIntegrationCardStatus"'), 'index.html deve conter status badge do card INPI em Integrações');
+  assert.ok(html.includes('class="integration-card card connection-integration-card inpi-integration-card"'), 'index.html deve conter o card INPI em view-integrations');
+});
+

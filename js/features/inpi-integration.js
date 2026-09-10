@@ -305,6 +305,8 @@ export function createInpiIntegrationFeature({
       });
 
       byId('btnInpiScanNow')?.addEventListener('click', () => this.triggerScan());
+      byId('btnOpenInpiFromIntegrations')?.addEventListener('click', () => this.openModal());
+      byId('btnOpenInpiFromMonitoring')?.addEventListener('click', () => this.openModal());
 
       byId('inpiSearchInput')?.addEventListener('input', event => {
         state.search = event.target.value;
@@ -423,6 +425,24 @@ export function createInpiIntegrationFeature({
         if (dataRes.ok) inpiData = await dataRes.json();
         if (statusRes.ok) inpiStatus = await statusRes.json();
         if (monitorsRes.ok) monitorsData = await monitorsRes.json();
+        if (inpiData) {
+          const inpiSource = store?.state?.sources?.find(s => s.id === 'inpi-rpi');
+          if (inpiSource) {
+            inpiSource.lastCheck = inpiData.lastRun?.startedAt || inpiData.generatedAt || inpiSource.lastCheck;
+            inpiSource.status = 'ok';
+            const total = inpiData.statistics?.totalMatches || 0;
+            const revNum = inpiData.statistics?.latestRevista?.numero;
+            if (total > 0 && revNum) {
+              inpiSource.detail = `${total} ocorrência${total === 1 ? '' : 's'} na RPI ${revNum}`;
+            }
+          }
+          const cardStatus = byId('inpiIntegrationCardStatus');
+          if (cardStatus && inpiData.statistics) {
+            const total = inpiData.statistics.totalMatches || 0;
+            const revNum = inpiData.statistics.latestRevista?.numero;
+            cardStatus.textContent = total > 0 ? `Ativo · ${total} ocorrência${total === 1 ? '' : 's'} (RPI ${revNum})` : 'Ativo · Semanal';
+          }
+        }
         render();
       } catch (err) {
         showToast('Não foi possível carregar os dados do INPI.', 'error');
