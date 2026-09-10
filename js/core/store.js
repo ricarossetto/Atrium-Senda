@@ -274,6 +274,14 @@ export const Store = {
         }
       }
     }
+    if (Array.isArray(this.state.configuration?.integrations) && this.state.configuration.integrations.length > 0) {
+      const defaultIntegrations = Array.isArray(defaultOffice.integrations) ? defaultOffice.integrations : [];
+      defaultIntegrations.forEach(di => {
+        if (di && di.name && !this.state.configuration.integrations.some(item => (item?.name || '').toLowerCase() === di.name.toLowerCase())) {
+          this.state.configuration.integrations.push(deepClone(di));
+        }
+      });
+    }
     this.state.settings = { ...sampleState.settings, ...(this.state.settings || {}) };
     if (Array.isArray(this.state.sources)) {
       this.state.sources = normalizeExternalCalendarSources(this.state.sources);

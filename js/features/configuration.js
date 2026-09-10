@@ -427,6 +427,19 @@ export function createConfigurationFeature({
         return;
       }
 
+      if (configurationSection === 'integrations') {
+        const defaultIntegrations = Array.isArray(globalThis.OFFICE_DEFAULT_DATA?.integrations) ? globalThis.OFFICE_DEFAULT_DATA.integrations : [];
+        if (!Array.isArray(config.integrations)) config.integrations = [];
+        let added = false;
+        defaultIntegrations.forEach(di => {
+          if (di && di.name && !config.integrations.some(item => (item?.name || '').toLowerCase() === di.name.toLowerCase())) {
+            config.integrations.push(JSON.parse(JSON.stringify(di)));
+            added = true;
+          }
+        });
+        if (added) store.save?.();
+      }
+
       const raw = isAuthUsers ? authUsers : (Array.isArray(config[configurationSection]) ? config[configurationSection] : []);
       const needle = normalizeText(query);
       const records = raw.map((item, index) => ({ item, index })).filter(({ item }) => !needle || normalizeText(typeof item === 'string' ? item : Object.values(item || {}).flat().join(' ')).includes(needle));
