@@ -1370,6 +1370,10 @@ td small { color: var(--text-secondary); }
   animation: fadeInSlide 0.22s ease;
 }
 
+#guidedTourBackdrop .tour-slide {
+  display: block !important;
+}
+
 .tour-slide.active {
   display: block;
 }

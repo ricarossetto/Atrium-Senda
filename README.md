@@ -4,7 +4,7 @@
 
 ### Gestão jurídica organizada, segura e supervisionada.
 
-[![Version 2.3.0](https://img.shields.io/badge/version-2.3.0-9b7a3c)](docs/RELEASE_NOTES_2.3.0.md)
+[![Version 2.4.0](https://img.shields.io/badge/version-2.4.0-9b7a3c)](docs/RELEASE_NOTES_2.4.0.md)
 [![Live Site](https://img.shields.io/badge/site-atrium.adv.br-d4af37?logo=cloudflare&logoColor=white)](https://atrium.adv.br)
 [![API Central](https://img.shields.io/badge/API-api.atrium.adv.br-2f7d5b?logo=oracle&logoColor=white)](https://api.atrium.adv.br/api/health)
 [![Node.js 24](https://img.shields.io/badge/Node.js-%3E%3D24-3c873a?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
@@ -23,7 +23,7 @@ A plataforma pode ser acessada diretamente na nuvem em **[https://atrium.adv.br]
 ## Comece aqui — primeiro uso
 
 - **Ambiente Online:** Acesse **[https://atrium.adv.br](https://atrium.adv.br)** e crie sua banca para iniciar a degustação de 14 dias com o novo **Onboarding Show** interativo.
-- **Ambiente Local (Windows):** Baixe o código da [release v2.3.0](https://github.com/ricarossetto/atrium-pro/releases/tag/v2.3.0), extraia o ZIP e execute **`ATRIUM.bat`**. O inicializador confere Node.js 24, Corepack, pnpm e Chromium, instala o que faltar e abre `http://127.0.0.1:4173`. Se o Windows ainda não tiver Node.js, o instalador oferece instalação pelo `winget`.
+- **Ambiente Local (Windows):** Baixe o código da [release v2.4.0](https://github.com/ricarossetto/atrium-pro/releases/tag/v2.4.0), extraia o ZIP e execute **`ATRIUM.bat`**. O inicializador confere Node.js 24, Corepack, pnpm e Chromium, instala o que faltar e abre `http://127.0.0.1:4173`. Se o Windows ainda não tiver Node.js, o instalador oferece instalação pelo `winget`.
 
 No primeiro acesso:
 
