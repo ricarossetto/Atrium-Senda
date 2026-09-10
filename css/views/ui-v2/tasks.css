@@ -243,7 +243,7 @@ html[data-ui="v2"] .task-list-row {
   position: relative;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .8fr) minmax(0, .9fr) minmax(0, .75fr);
+  grid-template-columns: 24px minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .8fr) minmax(0, .9fr) minmax(0, .75fr);
   align-items: center;
   gap: var(--v2-space-3);
   padding: var(--v2-space-3) var(--v2-space-4);
@@ -252,6 +252,72 @@ html[data-ui="v2"] .task-list-row {
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-md);
   box-shadow: var(--v2-shadow-subtle);
+}
+
+html[data-ui="v2"] .task-list-check-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html[data-ui="v2"] .task-row-checkbox-label,
+html[data-ui="v2"] .task-card-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0;
+  padding: 2px;
+}
+
+html[data-ui="v2"] .task-row-checkbox,
+html[data-ui="v2"] .task-card-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--v2-color-border-subtle);
+  border-radius: 4px;
+  background: var(--v2-color-surface-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: all var(--v2-duration-fast) var(--v2-ease-standard);
+  margin: 0;
+}
+
+html[data-ui="v2"] .task-row-checkbox:hover,
+html[data-ui="v2"] .task-card-checkbox:hover {
+  border-color: var(--v2-color-gold);
+}
+
+html[data-ui="v2"] .task-row-checkbox:checked,
+html[data-ui="v2"] .task-card-checkbox:checked {
+  background: var(--v2-color-gold);
+  border-color: var(--v2-color-gold);
+}
+
+html[data-ui="v2"] .task-row-checkbox:checked::after,
+html[data-ui="v2"] .task-card-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 5px;
+  height: 9px;
+  border: solid #111315;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+html[data-ui="v2"] .task-top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-ui="v2"] .task-client-unlinked {
+  color: var(--v2-color-muted-foreground) !important;
+  font-weight: 500 !important;
 }
 
 html[data-ui="v2"] .task-list-row::before {

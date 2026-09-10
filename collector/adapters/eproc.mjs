@@ -555,9 +555,16 @@ export async function extractProcessDetails(page) {
     let opposingPartyDocument = '';
     let opposingPosition = '';
 
-    const lawyerRe = /RICARDO DE LUCA ROSSETTO|LEANDRO RICARDO ROSSETTO|RS135294|RS034110|04276712050|029238|057243|KELLER/i;
+    // Detecta o advogado conectado na sessão do eproc para identificar o polo representado
+    const loggedUserText = (document.querySelector('#txtUsuario, #lblNomeAdvogado, .infraUsuario, span[title*="advogado"], .usuario-logado')?.innerText || '').trim();
+    const defaultLawyerRe = /RICARDO DE LUCA ROSSETTO|LEANDRO RICARDO ROSSETTO|RS135294|RS034110|04276712050|029238|057243|KELLER/i;
+    let lawyerRe = defaultLawyerRe;
+    if (loggedUserText && loggedUserText.length > 3) {
+      const escaped = loggedUserText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      lawyerRe = new RegExp(`(?:${defaultLawyerRe.source})|${escaped}`, 'i');
+    }
 
-    const partesTable = document.querySelector('#tblPartesERepresentantes');
+    const partesTable = document.querySelector('#tblPartesERepresentantes, #tblPartes, table[summary*="Partes"], .infraTablePartes, .infraCapaTabela');
     if (partesTable) {
       const ths = [...partesTable.querySelectorAll('th')];
       const trs = [...partesTable.querySelectorAll('tr')];
@@ -638,7 +645,7 @@ export async function extractProcessDetails(page) {
                   .replace(/\s*\(Sucessor.*?\).*/i, '')
                   .replace(/\s*-\s*Pessoa.*|\s*JG.*|\s*RS\d+.*/i, '')
                   .trim();
-                if (clean && clean.length > 2 && !/^(AUTOR|RÉU|EXEQUENTE|EXECUTADO|REQUERENTE|REQUERIDO)$/i.test(clean)) {
+                if (clean.length > 2 && !/^(AUTOR|RÉU|EXEQUENTE|EXECUTADO|REQUERENTE|REQUERIDO)$/i.test(clean)) {
                   clientName = clean;
                   break;
                 }
@@ -658,11 +665,15 @@ export async function extractProcessDetails(page) {
           .split('(')[0].split('-')[0].trim();
       }
     }
-    if (!clientName) clientName = 'Cliente Geral';
+    // Jamais gerar falso positivo "Cliente Geral" ou genérico fictício
+    if (!clientName || /^(?:cliente\s+)?(?:geral|modelo|do\s+escrit[oó]rio)$/i.test(clientName.trim())) {
+      clientName = '';
+    }
 
     return {
       number,
       clientName,
+      clientIdentified: Boolean(clientName),
       clientDocument,
       clientPosition,
       opposingParty,
@@ -691,12 +702,12 @@ export async function extractProcessDetails(page) {
  */
 export async function downloadAndOrganizeProcessDocuments(page, {
   cnj,
-  clientName = 'Cliente Geral',
+  clientName = '',
   targetBaseDir,
   state = null,
   maxPieces = 25
 }) {
-  const safeClient = sanitizeDocumentFilename(clientName).trim() || 'Cliente';
+  const safeClient = sanitizeDocumentFilename(clientName).trim() || 'Processos';
   const safeCnj = cnj.replace(/[^\w.-]/g, '_');
   const storageDir = targetBaseDir || path.join(process.cwd(), 'data', 'storage', 'processos', safeClient, safeCnj);
   await mkdir(storageDir, { recursive: true });

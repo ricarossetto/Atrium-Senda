@@ -332,6 +332,35 @@ export const Store = {
       }
       if (!this.state.settings.lawyerEmail && authUser.email) this.state.settings.lawyerEmail = authUser.email;
     }
+
+    // Reconciliação e higienização automática de clientes reais nos processos, tarefas e intimações
+    const isGenericClient = (c) => !c || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(String(c).trim());
+    (this.state.processes || []).forEach(proc => {
+      if (isGenericClient(proc.client)) {
+        if (proc.author && !isGenericClient(proc.author)) proc.client = proc.author;
+        else if (proc.clientName && !isGenericClient(proc.clientName)) proc.client = proc.clientName;
+      }
+    });
+    (this.state.tasks || []).forEach(task => {
+      if (isGenericClient(task.client)) {
+        const taskCnjNorm = String(task.process || task.processNumber || '').replace(/\D/g, '');
+        const proc = (this.state.processes || []).find(p => (task.processId && String(p.id) === String(task.processId)) || (taskCnjNorm && String(p.number || '').replace(/\D/g, '') === taskCnjNorm));
+        if (proc && !isGenericClient(proc.client)) {
+          task.client = proc.client;
+          if (!task.processId && proc.id) task.processId = proc.id;
+        }
+      }
+    });
+    (this.state.intimations || []).forEach(item => {
+      if (isGenericClient(item.client)) {
+        const itemCnjNorm = String(item.process || item.processNumber || '').replace(/\D/g, '');
+        const proc = (this.state.processes || []).find(p => (item.processId && String(p.id) === String(item.processId)) || (itemCnjNorm && String(p.number || '').replace(/\D/g, '') === itemCnjNorm));
+        if (proc && !isGenericClient(proc.client)) {
+          item.client = proc.client;
+          if (!item.processId && proc.id) item.processId = proc.id;
+        }
+      }
+    });
   },
   save() {
     clearTimeout(this.saveTimer);

@@ -214,8 +214,8 @@ async function main() {
       });
 
       // Baixa os documentos e organiza na pasta do sistema
-      const clientName = details.clientName || 'Cliente Geral';
-      console.log(`\nBaixando documentos e organizando na pasta do cliente (${clientName})...`);
+      const clientName = details.clientName || '';
+      console.log(`\nBaixando documentos e organizando na pasta (${clientName || 'Processos'})...`);
 
       const downloadResult = await downloadAndOrganizeProcessDocuments(page, {
         cnj: details.number || targetCnj,

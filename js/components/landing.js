@@ -76,11 +76,27 @@
       });
 
       // Return from auth gate back to landing page
-      document.querySelectorAll('[data-landing-action="back-to-landing"]').forEach(btn => {
+      document.querySelectorAll('[data-landing-action="back-to-landing"], [data-landing-action="discover"]').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
           this.closeAuthGate();
         });
+      });
+
+      // Synchronize browser history navigation between /discover and /
+      window.addEventListener('popstate', () => {
+        const pathname = String(globalThis.location.pathname || '').toLowerCase();
+        const urlParams = new URLSearchParams(globalThis.location.search);
+        const isDiscover = pathname.includes('/discover') || pathname.includes('/landing') || urlParams.has('discover');
+        const landing = document.getElementById('landingPage');
+        const authGate = document.getElementById('authGate');
+        if (isDiscover) {
+          if (authGate) authGate.classList.add('hidden');
+          if (landing) landing.classList.remove('hidden');
+        } else {
+          if (landing) landing.classList.add('hidden');
+          if (authGate) authGate.classList.remove('hidden');
+        }
       });
 
       // Watch for system / external theme mutations
@@ -138,6 +154,10 @@
       const authGate = document.getElementById('authGate');
       if (!authGate) return;
 
+      if (globalThis.history?.pushState) {
+        globalThis.history.pushState(null, '', `/?auth=${tab}`);
+      }
+
       if (landing) landing.classList.add('hidden');
       authGate.classList.remove('hidden');
 
@@ -155,6 +175,9 @@
     closeAuthGate() {
       const landing = document.getElementById('landingPage');
       const authGate = document.getElementById('authGate');
+      if (globalThis.history?.pushState) {
+        globalThis.history.pushState(null, '', '/discover');
+      }
       if (authGate) authGate.classList.add('hidden');
       if (landing) landing.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'instant' });

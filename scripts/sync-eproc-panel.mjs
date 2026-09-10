@@ -169,7 +169,8 @@ for (const d of extracted.deadlines) {
     if (parts.length === 3) isoDeadline = `${parts[2]}-${parts[1]}-${parts[0]}`;
   }
 
-  const clientName = d.autor || 'Cliente do Escritório';
+  const existingProc = (state.processes || []).find(p => (p.number || '').replace(/\D/g, '') === d.cnj.replace(/\D/g, ''));
+  const clientName = d.autor || existingProc?.client || '';
   const title = `Cumprir Prazo Processual (${d.dias ? `${d.dias} dias` : 'Fatal'}): ${d.cnj}`;
   const desc = `Juízo: ${d.juizo || 'Vara Cível'}\nClasse: ${d.classe || 'Procedimento Judicial'}\nPartes: ${d.autor || 'Autor'} X ${d.reu || 'Réu'}\nInício do Prazo: ${d.startDate || '—'}\nFinal do Prazo: ${d.endDate || '—'}`;
 
@@ -227,11 +228,12 @@ for (const p of extracted.pending) {
   const intId = `int-pendente-${p.cnj.replace(/\D/g, '')}-${(p.sentDate || '').replace(/\D/g, '')}`;
   const existing = state.intimations.find(i => i.id === intId || (i.processNumber === p.cnj && i.status === 'pendente_confirmacao'));
   if (!existing) {
+    const existingProc = (state.processes || []).find(proc => (proc.number || '').replace(/\D/g, '') === p.cnj.replace(/\D/g, ''));
     state.intimations.push({
       id: intId,
       processNumber: p.cnj,
       process: p.cnj,
-      client: p.autor || 'Cliente do Escritório',
+      client: p.autor || existingProc?.client || '',
       title: `Intimação Eletrônica Pendente de Ciência (${p.dias || '15'} dias)`,
       court: p.juizo || 'TJRS · eproc 1º grau',
       source: 'eproc TJRS',

@@ -50,17 +50,19 @@
           state.csrfToken = status.csrfToken; state.trustedDevice = Boolean(status.trustedDevice); state.user = status.user; state.workspace = status.workspace;
           this.enter(status.user);
         } else {
+          const pathname = String(globalThis.location.pathname || '').toLowerCase();
           const urlParams = new URLSearchParams(globalThis.location.search);
           const hash = String(globalThis.location.hash || '').toLowerCase();
-          const hasAuthIntent = urlParams.has('auth') || urlParams.has('login') || urlParams.has('register') || hash.includes('login') || hash.includes('register') || hash.includes('auth');
+          const isDiscoverRoute = pathname.includes('/discover') || pathname.includes('/landing') || urlParams.has('discover') || hash.includes('discover');
           const landing = byId('landingPage');
-          if (hasAuthIntent || !landing || !status.configured) {
-            this.show(status.configured ? (urlParams.get('auth') === 'register' || hash.includes('register') ? 'authRegisterForm' : 'authLoginForm') : 'authSetupForm');
-          } else {
+          if (isDiscoverRoute && landing && status.configured) {
             landing.classList.remove('hidden');
             byId('authGate')?.classList.add('hidden');
             byId('appShell')?.classList.add('hidden');
             this.prepareSteps(status.configured ? 'authLoginForm' : 'authSetupForm');
+          } else {
+            if (landing) landing.classList.add('hidden');
+            this.show(status.configured ? (urlParams.get('auth') === 'register' || hash.includes('register') ? 'authRegisterForm' : 'authLoginForm') : 'authSetupForm');
           }
         }
       } catch (error) {
@@ -278,6 +280,9 @@
     showLanding() {
       const landing = byId('landingPage');
       if (landing) {
+        if (globalThis.history?.pushState) {
+          globalThis.history.pushState(null, '', '/discover');
+        }
         landing.classList.remove('hidden');
         byId('authGate')?.classList.add('hidden');
         byId('appShell')?.classList.add('hidden');
@@ -287,9 +292,15 @@
       }
     },
     showLogin() {
+      if (globalThis.history?.pushState) {
+        globalThis.history.pushState(null, '', '/');
+      }
       this.show('authLoginForm');
     },
     showRegister() {
+      if (globalThis.history?.pushState) {
+        globalThis.history.pushState(null, '', '/?auth=register');
+      }
       this.show('authRegisterForm');
     },
     async acceptInvitation(event) {

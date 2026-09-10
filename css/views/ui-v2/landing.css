@@ -306,6 +306,13 @@ html[data-theme="light"] .landing-btn-primary {
   align-items: center;
 }
 
+.landing-hero .landing-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
 .landing-pill-badge {
   display: inline-flex;
   align-items: center;
@@ -344,16 +351,22 @@ html[data-theme="light"] .landing-btn-primary {
   line-height: 1.12;
   letter-spacing: -0.02em;
   color: var(--v2-color-foreground);
-  margin: 0 0 18px;
+  margin: 0 auto 20px;
   max-width: 960px;
+  text-align: center;
 }
 
 .landing-hero-title em {
   font-style: normal;
   display: block;
-  background: linear-gradient(135deg, var(--v2-color-gold) 0%, #8297a6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--v2-color-gold, #dfbe6a);
+  background: none;
+  -webkit-background-clip: unset;
+  -webkit-text-fill-color: initial;
+}
+
+html[data-theme="light"] .landing-hero-title em {
+  color: var(--v2-color-gold-strong, #a7894d);
 }
 
 .landing-hero-desc {

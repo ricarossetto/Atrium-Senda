@@ -126,6 +126,26 @@ export function createTasksFeature({
         if (event.target.closest('[data-task-list-timesheet-stop]')) this.stopTimeSheet();
       });
       byId('taskList')?.addEventListener('change', async event => {
+        const checkbox = event.target.closest('[data-task-complete]');
+        if (checkbox) {
+          event.stopPropagation();
+          const taskId = checkbox.dataset.taskComplete;
+          const task = store.state.tasks.find(item => String(item.id) === String(taskId));
+          if (!task) return;
+          checkbox.disabled = true;
+          const isDone = task.status === 'concluida';
+          const targetStatus = isDone ? 'triagem' : 'concluida';
+          const moved = await this.moveTask(task.id, targetStatus);
+          if (moved) {
+            showToast?.(isDone ? 'Tarefa reaberta.' : 'Tarefa concluída com sucesso!', 'success');
+            this.renderTaskList();
+            this.renderKanban();
+          } else {
+            checkbox.disabled = false;
+            checkbox.checked = isDone;
+          }
+          return;
+        }
         const select = event.target.closest('[data-task-list-move]');
         if (!select) return;
         const task = store.state.tasks.find(item => String(item.id) === String(select.dataset.taskListMove));
@@ -272,7 +292,9 @@ export function createTasksFeature({
         columns: getColumns(),
         activeTaskId: activeTimeSheetTaskId,
         elapsedLabel: this.formatElapsedTimer(),
-        sourceLabel: taskSourceLabel
+        sourceLabel: taskSourceLabel,
+        processes: store.state.processes || [],
+        contacts: store.state.contacts || []
       });
     },
 
@@ -286,7 +308,9 @@ export function createTasksFeature({
           columns: getColumns(),
           activeTaskId: activeTimeSheetTaskId,
           elapsedLabel: this.formatElapsedTimer(),
-          sourceLabel: taskSourceLabel
+          sourceLabel: taskSourceLabel,
+          processes: store.state.processes || [],
+          contacts: store.state.contacts || []
         });
         this.renderTaskList();
         this.applyTaskViewMode();
@@ -302,9 +326,30 @@ export function createTasksFeature({
         card.addEventListener('dragstart', () => { card.classList.add('dragging'); card.dataset.dragging = 'true'; });
         card.addEventListener('dragend', () => { card.classList.remove('dragging'); delete card.dataset.dragging; });
         card.addEventListener('click', event => {
-          if (event.target.closest('.timesheet-btn, [data-task-move]')) return;
+          if (event.target.closest('.timesheet-btn, [data-task-move], [data-task-complete], .task-card-checkbox-label')) return;
           const task = store.state.tasks.find(item => item.id === card.dataset.taskId);
           if (task) this.openTaskModal(task);
+        });
+      });
+      board.querySelectorAll('[data-task-complete]').forEach(checkbox => {
+        checkbox.addEventListener('click', event => event.stopPropagation());
+        checkbox.addEventListener('change', async event => {
+          event.stopPropagation();
+          const taskId = checkbox.dataset.taskComplete;
+          const task = store.state.tasks.find(item => String(item.id) === String(taskId));
+          if (!task) return;
+          checkbox.disabled = true;
+          const isDone = task.status === 'concluida';
+          const targetStatus = isDone ? 'triagem' : 'concluida';
+          const moved = await this.moveTask(task.id, targetStatus);
+          if (moved) {
+            showToast?.(isDone ? 'Tarefa reaberta.' : 'Tarefa concluída com sucesso!', 'success');
+            this.renderTaskList();
+            this.renderKanban();
+          } else {
+            checkbox.disabled = false;
+            checkbox.checked = isDone;
+          }
         });
       });
       board.querySelectorAll('[data-task-open]').forEach(button => {

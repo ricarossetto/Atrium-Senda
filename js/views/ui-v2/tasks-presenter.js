@@ -1,3 +1,37 @@
+export function resolveTaskClient(task, processes = [], contacts = [], intimations = []) {
+  const isGeneric = (c) => !c || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(String(c).trim());
+
+  if (task.client && !isGeneric(task.client)) return String(task.client).trim();
+
+  const taskCnjNorm = String(task.process || task.processNumber || '').replace(/\D/g, '');
+  const taskProcId = String(task.processId || '').trim();
+
+  let proc = null;
+  if (taskProcId) {
+    proc = (processes || []).find(p => String(p.id) === taskProcId || String(p.externalId) === taskProcId);
+  }
+  if (!proc && taskCnjNorm) {
+    proc = (processes || []).find(p => String(p.number || '').replace(/\D/g, '') === taskCnjNorm);
+  }
+
+  if (proc) {
+    if (proc.client && !isGeneric(proc.client)) return String(proc.client).trim();
+    if (proc.author && !isGeneric(proc.author)) return String(proc.author).trim();
+    if (proc.clientName && !isGeneric(proc.clientName)) return String(proc.clientName).trim();
+    if (proc.contactId) {
+      const contact = (contacts || []).find(c => String(c.id) === String(proc.contactId));
+      if (contact?.name && !isGeneric(contact.name)) return String(contact.name).trim();
+    }
+  }
+
+  if (task.intimationId && Array.isArray(intimations) && intimations.length > 0) {
+    const int = intimations.find(i => i.id === task.intimationId);
+    if (int?.client && !isGeneric(int.client)) return String(int.client).trim();
+  }
+
+  return '';
+}
+
 export function createTasksV2Presenter({
   documentRef = globalThis.document,
   escapeHtml,
@@ -9,7 +43,7 @@ export function createTasksV2Presenter({
 } = {}) {
   const byId = id => documentRef?.getElementById(id);
 
-  function render({ board, tasks, columns, activeTaskId, elapsedLabel, sourceLabel }) {
+  function render({ board, tasks, columns, activeTaskId, elapsedLabel, sourceLabel, processes = [], contacts = [] }) {
     if (!board) return;
     board.innerHTML = columns.map(column => {
       const columnTasks = tasks.filter(task => task.status === column.id);
@@ -29,7 +63,9 @@ export function createTasksV2Presenter({
               formatMinutes,
               totalTimeMinutes,
               daysUntil,
-              initials
+              initials,
+              processes,
+              contacts
             })).join('')
           : '<div class="empty-column"><strong>Nenhuma tarefa nesta etapa.</strong><span>Use “Mover para” ou arraste uma tarefa para cá.</span></div>'}</div>
       </section>`;
@@ -42,7 +78,7 @@ export function createTasksV2Presenter({
     if (count) count.textContent = `${total} tarefa${total === 1 ? '' : 's'}`;
   }
 
-  function renderList({ container, summary, tasks, allTasks, columns, activeTaskId, elapsedLabel, sourceLabel }) {
+  function renderList({ container, summary, tasks, allTasks, columns, activeTaskId, elapsedLabel, sourceLabel, processes = [], contacts = [] }) {
     if (!container) return;
     const openTasks = allTasks.filter(task => task.status !== 'concluida');
     const overdueTasks = openTasks.filter(task => {
@@ -74,7 +110,9 @@ export function createTasksV2Presenter({
           formatDate,
           formatMinutes,
           totalTimeMinutes,
-          daysUntil
+          daysUntil,
+          processes,
+          contacts
         })).join('')
       : '<div class="task-list-empty"><strong>Nenhuma tarefa encontrada.</strong><span>Ajuste a busca ou os filtros para consultar outra parte da fila.</span></div>';
     updateCount(allTasks.length);
@@ -98,7 +136,9 @@ function renderTaskListRow({
   formatDate,
   formatMinutes,
   totalTimeMinutes,
-  daysUntil
+  daysUntil,
+  processes = [],
+  contacts = []
 }) {
   const isDone = task.status === 'concluida';
   const deadline = task.fatalDeadline || task.deadline;
@@ -111,12 +151,25 @@ function renderTaskListRow({
     : isTimerRunning
       ? `<button type="button" class="timesheet-btn active task-list-timesheet-live" data-task-list-timesheet-stop="${escapeHtml(task.id)}" aria-label="Pausar cronômetro da tarefa ${escapeHtml(task.title)}">⏹ <span>${escapeHtml(elapsedLabel)}</span></button>`
       : `<button type="button" class="timesheet-btn" data-task-list-timesheet-start="${escapeHtml(task.id)}" aria-label="Iniciar cronômetro da tarefa ${escapeHtml(task.title)}">▶ <span>Iniciar</span></button>`;
+
+  const clientResolved = resolveTaskClient(task, processes, contacts);
+
   return `<article class="task-list-row ${overdue ? 'is-overdue' : ''} ${isDone ? 'is-complete' : ''}" data-task-list-id="${escapeHtml(task.id)}" role="listitem">
+    <div class="task-list-check-col">
+      <label class="task-row-checkbox-label" title="${isDone ? 'Reabrir tarefa' : 'Concluir tarefa'}">
+        <input type="checkbox" class="task-row-checkbox" data-task-complete="${escapeHtml(task.id)}" ${isDone ? 'checked' : ''} aria-label="Marcar tarefa ${escapeHtml(task.title || '')} como concluída">
+        <span class="task-checkbox-custom" aria-hidden="true"></span>
+      </label>
+    </div>
     <div class="task-list-primary">
       <span class="task-list-kicker">${escapeHtml(sourceLabel)} · <b class="task-priority priority-${escapeHtml(task.priority || 'normal')}">${escapeHtml(priority)}</b></span>
       <button type="button" data-task-list-open="${escapeHtml(task.id)}" aria-label="Editar tarefa ${escapeHtml(task.title || 'sem título')}"><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><span>${escapeHtml(task.description || 'Sem descrição')}</span></button>
     </div>
-    <div class="task-list-context"><span>Vínculos</span><strong>${escapeHtml(task.client || 'Cliente não informado')}</strong><small>${escapeHtml(task.process || 'Processo não informado')}</small></div>
+    <div class="task-list-context">
+      <span>Vínculos</span>
+      <strong class="${clientResolved ? '' : 'task-client-unlinked'}">${escapeHtml(clientResolved || 'Cliente não informado')}</strong>
+      <small>${escapeHtml(task.process || 'Processo não informado')}</small>
+    </div>
     <label class="task-list-stage"><span>Etapa</span><select data-task-list-move="${escapeHtml(task.id)}" aria-label="Mover ${escapeHtml(task.title || 'tarefa')} para outra etapa">${columns.map(column => `<option value="${escapeHtml(column.id)}" ${column.id === task.status ? 'selected' : ''}>${escapeHtml(column.title)}</option>`).join('')}</select></label>
     <div class="task-list-deadline"><span>${task.fatalDeadline ? 'Prazo fatal' : 'Prazo interno'}</span><strong class="${overdue ? 'overdue' : ''}">${deadline ? escapeHtml(formatDate(deadline)) : 'Não informado'}</strong><small>${overdue ? 'Atrasada' : isDone ? 'Concluída' : 'Sob conferência'}</small></div>
     <div class="task-list-owner"><span>Responsável</span><strong>${escapeHtml(task.responsible || 'Não informado')}</strong><small>${Number(task.points) || 0} pontos</small></div>
@@ -135,7 +188,9 @@ export function renderTaskCard({
   formatMinutes,
   totalTimeMinutes,
   daysUntil,
-  initials
+  initials,
+  processes = [],
+  contacts = []
 }) {
   const isDone = task.status === 'concluida';
   const overdue = Boolean(task.deadline) && daysUntil(task.deadline) < 0 && !isDone;
@@ -148,9 +203,17 @@ export function renderTaskCard({
     ? `<button type="button" class="timesheet-btn active timesheet-live" data-timesheet-stop="${escapeHtml(task.id)}" aria-label="Pausar cronômetro da tarefa ${escapeHtml(task.title)}">⏹ <span>${escapeHtml(elapsedLabel)}</span></button>`
     : `<button type="button" class="timesheet-btn" data-timesheet-start="${escapeHtml(task.id)}" aria-label="Iniciar cronômetro da tarefa ${escapeHtml(task.title)}">▶ <span>Iniciar tempo</span></button>`;
 
+  const clientResolved = resolveTaskClient(task, processes, contacts);
+
   return `<article class="task-card ${isTimerRunning ? 'timer-active' : ''} ${overdue ? 'is-overdue' : ''} ${isDone ? 'is-complete' : ''}" draggable="true" data-task-id="${escapeHtml(task.id)}" role="listitem">
     <div class="task-top">
-      <span class="task-source">${escapeHtml(sourceLabel)}</span>
+      <div class="task-top-left">
+        <label class="task-card-checkbox-label" title="${isDone ? 'Reabrir tarefa' : 'Concluir tarefa'}">
+          <input type="checkbox" class="task-card-checkbox" data-task-complete="${escapeHtml(task.id)}" ${isDone ? 'checked' : ''} aria-label="Concluir tarefa">
+          <span class="task-checkbox-custom" aria-hidden="true"></span>
+        </label>
+        <span class="task-source">${escapeHtml(sourceLabel)}</span>
+      </div>
       <span class="task-badges">
         <span class="task-priority priority-${escapeHtml(task.priority || 'normal')}">${escapeHtml(priority)}</span>
         <b class="task-points" title="Pontuação informada">${points} pts</b>
@@ -162,7 +225,7 @@ export function renderTaskCard({
       <span class="task-card-action">Editar tarefa <b aria-hidden="true">→</b></span>
     </button>
     <div class="task-context">
-      ${task.client ? `<span class="task-client">${escapeHtml(task.client)}</span>` : ''}
+      <span class="task-client ${clientResolved ? '' : 'task-client-unlinked'}">${escapeHtml(clientResolved || 'Cliente não vinculado')}</span>
       ${task.process ? `<span class="task-process">${escapeHtml(task.process)}</span>` : ''}
     </div>
     <div class="task-deadlines">

@@ -629,35 +629,118 @@ export function createProcessesFeature({
     async syncEprocA1({ silent = false } = {}) {
       if (this._syncEprocInFlight) return false;
       const btn = byId('btnSyncEprocA1');
+      const topSyncBtn = byId('syncButton');
       const originalHtml = btn?.innerHTML;
       this._syncEprocInFlight = true;
+
+      // Ativa visualmente o botão do topo e o botão local
       if (btn) {
         btn.disabled = true;
         btn.classList.add('is-busy');
-        btn.innerHTML = `<span class="auth-spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;margin-right:6px;"></span><span>Sincronizando eproc A1...</span>`;
+        btn.innerHTML = `<span class="auth-spinner" style="width:13px;height:13px;border-width:2px;display:inline-block;margin-right:6px;"></span><span>Sincronizando no topo...</span>`;
       }
+      if (topSyncBtn) {
+        topSyncBtn.disabled = true;
+        topSyncBtn.setAttribute('aria-busy', 'true');
+      }
+
+      // Função auxiliar para atualizar a barra de status do topo
+      const updateTopProgress = (label, detail, percent) => {
+        const bar = byId('systemStatusBar');
+        if (!bar) return;
+        bar.classList.remove('is-transient-hidden');
+        bar.dataset.status = 'syncing';
+        bar.dataset.tone = 'info';
+        const lbl = byId('systemStatusLabel');
+        const det = byId('systemStatusDetail');
+        const track = byId('systemStatusProgressTrack');
+        const fill = byId('systemStatusProgressFill');
+        if (lbl) lbl.textContent = `${label} (${Math.round(percent)}%)`;
+        if (det) det.textContent = detail;
+        if (track && fill) {
+          track.classList.remove('hidden');
+          track.removeAttribute('aria-hidden');
+          fill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+        }
+      };
+
+      const completeTopProgress = (tone, label, detail) => {
+        const bar = byId('systemStatusBar');
+        if (!bar) return;
+        bar.dataset.status = tone === 'success' ? 'saved' : 'error';
+        bar.dataset.tone = tone;
+        const lbl = byId('systemStatusLabel');
+        const det = byId('systemStatusDetail');
+        const track = byId('systemStatusProgressTrack');
+        const fill = byId('systemStatusProgressFill');
+        if (lbl) lbl.textContent = label;
+        if (det) det.textContent = detail;
+        if (track && fill) {
+          fill.style.width = tone === 'success' ? '100%' : '0%';
+          setTimeout(() => track.classList.add('hidden'), 1500);
+        }
+        if (tone === 'success') {
+          setTimeout(() => bar.classList.add('is-transient-hidden'), 3500);
+        }
+      };
+
+      // Fases progressivas sintetizadas para dar sensação real e detalhada de andamento
+      const stages = [
+        { percent: 15, label: 'Sincronizando eproc TJRS', detail: 'Conectando ao tribunal via canal seguro mTLS...' },
+        { percent: 35, label: 'Sincronizando eproc TJRS', detail: 'Autenticando sessão com Certificado A1 e 2FA TOTP...' },
+        { percent: 55, label: 'Sincronizando eproc TJRS', detail: 'Acessando Painel do Advogado e consultando prazos judiciais...' },
+        { percent: 75, label: 'Sincronizando eproc TJRS', detail: 'Varrendo processos e coletando dados de partes (Pólo Ativo e Passivo)...' },
+        { percent: 90, label: 'Sincronizando eproc TJRS', detail: 'Enriquecendo autos e vinculando clientes reais às tarefas...' }
+      ];
+
+      let stageIndex = 0;
+      let timerId = null;
+      let isCancelled = false;
+      const advanceStage = () => {
+        if (isCancelled) return;
+        stageIndex++;
+        if (stageIndex < stages.length) {
+          updateTopProgress(stages[stageIndex].label, stages[stageIndex].detail, stages[stageIndex].percent);
+          timerId = setTimeout(advanceStage, 1200);
+        }
+      };
+      updateTopProgress(stages[0].label, stages[0].detail, stages[0].percent);
+      timerId = setTimeout(advanceStage, 1200);
+
       try {
-        if (!silent) showToast?.('Iniciando varredura com Certificado Digital A1 no eproc TJRS...', 'info');
+        if (!silent) showToast?.('Iniciando sincronização com Certificado A1 no eproc TJRS...', 'info');
         const response = await secureFetch('/api/integrations/eproc/sweep', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({ maxProcesses: 10 })
         });
         const result = await response.json().catch(() => ({}));
+        isCancelled = true;
+        if (timerId) clearTimeout(timerId);
+
         if (!response.ok || !result.ok) {
           throw new Error(result.message || 'Erro ao sincronizar com o eproc TJRS.');
         }
+
         await store.fetchState?.();
         this.render(byId('processSearch')?.value || '');
+        globalThis.App?.renderTasks?.();
+        globalThis.App?.renderDashboard?.();
+
         const count = result.enrichedCount || 0;
-        if (count > 0) {
-          showToast?.(`${count} processo(s) TJRS sincronizado(s) e enriquecido(s) via Certificado A1!`, 'success');
-        } else if (!silent) {
-          showToast?.(result.message || 'Varredura eproc concluída. Todos os processos já estão enriquecidos.', 'info');
-        }
+        const msg = count > 0
+          ? `${count} processo(s) TJRS sincronizado(s) e enriquecido(s) com sucesso!`
+          : (result.message || 'Varredura eproc concluída com sucesso.');
+
+        completeTopProgress('success', 'Sincronização Concluída', msg);
+        showToast?.(msg, 'success');
         return true;
       } catch (err) {
-        if (!silent) showToast?.(`Falha na sincronização eproc A1: ${err.message}`, 'error');
+        isCancelled = true;
+        if (timerId) clearTimeout(timerId);
+        const errMsg = err.message || 'Falha na sincronização eproc A1.';
+        completeTopProgress('danger', 'Falha na Sincronização', errMsg);
+        if (!silent) showToast?.(`Falha na sincronização eproc A1: ${errMsg}`, 'error');
         console.warn('[processes] Erro ao sincronizar eproc A1:', err);
         return false;
       } finally {
@@ -666,6 +749,10 @@ export function createProcessesFeature({
           btn.disabled = false;
           btn.classList.remove('is-busy');
           if (originalHtml) btn.innerHTML = originalHtml;
+        }
+        if (topSyncBtn) {
+          topSyncBtn.disabled = false;
+          topSyncBtn.removeAttribute('aria-busy');
         }
       }
     },
@@ -871,6 +958,34 @@ export function createProcessesFeature({
         updatedAt: new Date().toISOString()
       };
       store.upsert('processes', record);
+
+      // Propaga o cliente real para todas as tarefas, intimações e agenda vinculadas a este processo
+      if (record.client && !/^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(record.client.trim())) {
+        const normProc = (record.number || record.protocol || '').replace(/\D/g, '');
+        (store.state.tasks || []).forEach(task => {
+          const taskNorm = (task.process || task.processNumber || '').replace(/\D/g, '');
+          if (task.processId === record.id || (normProc && taskNorm === normProc)) {
+            task.client = record.client;
+            if (!task.processId) task.processId = record.id;
+            if (record.contactId && !task.contactId) task.contactId = record.contactId;
+          }
+        });
+        (store.state.intimations || []).forEach(item => {
+          const itemNorm = (item.process || item.processNumber || '').replace(/\D/g, '');
+          if (item.processId === record.id || (normProc && itemNorm === normProc)) {
+            item.client = record.client;
+            if (!item.processId) item.processId = record.id;
+          }
+        });
+        (store.state.agenda || []).forEach(evt => {
+          const evtNorm = (evt.process || evt.processNumber || '').replace(/\D/g, '');
+          if (evt.processId === record.id || (normProc && evtNorm === normProc)) {
+            evt.client = record.client;
+            if (!evt.processId) evt.processId = record.id;
+          }
+        });
+      }
+
       const persistedRecord = store.state.processes.find(item => item.id === record.id) || record;
       delete persistedRecord.accessKey;
       delete persistedRecord.chaveAcesso;
