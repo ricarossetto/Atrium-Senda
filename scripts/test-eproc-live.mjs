@@ -266,6 +266,12 @@ async function main() {
               proc.lastSyncAt = nowIso;
               proc.movementsCount = details.movementsCount || proc.movementsCount;
               proc.client = clientName;
+              if (details.accessKey) {
+                proc.accessKey = details.accessKey;
+                proc.chaveAcesso = details.accessKey;
+                if (!Array.isArray(proc.tags)) proc.tags = [];
+                if (!proc.tags.includes('chave-disponivel')) proc.tags.push('chave-disponivel');
+              }
               console.log(`[ATRIUM] Metadados do processo ${targetCnj} sincronizados com sucesso.`);
             }
           }

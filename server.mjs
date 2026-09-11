@@ -4217,7 +4217,8 @@ Diretrizes essenciais:
                 const client = String(p.client || '').trim();
                 const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
                 const isSecrecy = Boolean(p.secrecy) || /sigilo|segredo/i.test(client);
-                return isMissingClient || isSecrecy;
+                const isMissingKey = !p.accessKey && !p.chaveAcesso;
+                return isMissingClient || isSecrecy || isMissingKey;
               });
               if (hasCandidates) {
                 console.log('[eproc auto-sweep] Iniciando varredura eproc automática após upload de Certificado A1...');

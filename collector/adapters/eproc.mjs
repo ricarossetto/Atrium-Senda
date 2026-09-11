@@ -418,11 +418,29 @@ export async function collectEprocProcessReport(page, maxPages = 5) {
  * Extrai todos os dados estruturados e a lista de movimentações (eventos) da página de detalhes
  */
 export async function extractProcessDetails(page) {
-  // 1. Expande o painel "Informações Adicionais" se a chave/conteúdo ainda não estiver visível
+  // 1. Interceptador de diálogo (alert/prompt) caso o eproc exiba a chave em popup ao clicar no ícone
+  let dialogKey = '';
+  const onDialog = dialog => {
+    try {
+      const msg = String(dialog.message() || '');
+      const m = msg.match(/(?:chave\s*(?:do\s+processo|de\s+acesso|de\s+consulta|para\s+consulta)?|chave|acesso)[\s:eé=]+([a-zA-Z0-9]{6,32})/i)
+        || msg.match(/\b([0-9]{6,32})\b/);
+      if (m && m[1].length >= 6) {
+        const candidate = m[1].trim();
+        if (!/^(?:processo|acesso|chave)$/i.test(candidate)) {
+          dialogKey = candidate;
+        }
+      }
+      dialog.dismiss().catch(() => {});
+    } catch {}
+  };
+  if (page.on) page.on('dialog', onDialog);
+
+  // 2. Expande o painel "Informações Adicionais" se a chave/conteúdo ainda não estiver visível
   try {
-    const isChaveVisible = await page.locator('#imgChaveProcesso, #spnChaveProcesso').first().isVisible().catch(() => false);
+    const isChaveVisible = await page.locator('#imgChaveProcesso, #spnChaveProcesso, [id*="ChaveProcesso" i]').first().isVisible().catch(() => false);
     if (!isChaveVisible) {
-      const infAdicionalBtn = page.locator('#imgStatusInfAdicional, [title*="Informações Adicionais" i], #fldInformacoesAdicionais legend, legend:has-text("Informações Adicionais")').first();
+      const infAdicionalBtn = page.locator('#imgStatusInfAdicional, [title*="Informações Adicionais" i], #fldInformacoesAdicionais legend, legend:has-text("Informações Adicionais"), #fldDadosProcesso legend').first();
       if (await infAdicionalBtn.count() > 0) {
         await infAdicionalBtn.click().catch(() => {});
         await page.waitForTimeout(500);
@@ -430,15 +448,16 @@ export async function extractProcessDetails(page) {
     }
   } catch {}
 
-  // 2. Clica no ícone de chave/cadeado para buscar/revelar a Chave do Processo se ainda não estiver preenchida
+  // 3. Clica no ícone de chave/cadeado para buscar/revelar a Chave do Processo se ainda não estiver preenchida
   try {
     const hasKeyVal = await page.evaluate(() => {
-      const s = document.querySelector('#spnChaveProcesso');
-      return Boolean(s && s.innerText && s.innerText.replace(/\D/g, '').length >= 6);
+      const s = document.querySelector('#spnChaveProcesso, [id*="ChaveProcesso" i], #txtChaveProcesso');
+      const val = (s ? (s.value || s.innerText) : '').trim();
+      return Boolean(val && val.length >= 6);
     }).catch(() => false);
 
     if (!hasKeyVal) {
-      const chaveBtn = page.locator('#imgChaveProcesso, [title*="Chave do Processo" i], [title*="Buscar Chave" i], [onclick*="buscarChaveProcesso" i]').first();
+      const chaveBtn = page.locator('#imgChaveProcesso, #btnChaveProcesso, [title*="Chave do Processo" i], [title*="Buscar Chave" i], [title*="Chave de Acesso" i], [onclick*="buscarChaveProcesso" i], [onclick*="consultarChaveProcesso" i], [onclick*="ChaveProcesso" i]').first();
       if (await chaveBtn.count() > 0 && await chaveBtn.isVisible().catch(() => false)) {
         await chaveBtn.click().catch(() => {});
         await page.waitForTimeout(800);
@@ -446,7 +465,7 @@ export async function extractProcessDetails(page) {
     }
   } catch {}
 
-  return page.evaluate(() => {
+  const result = await page.evaluate(() => {
     const getText = (selector) => {
       const el = document.querySelector(selector);
       return el ? el.innerText.trim().replace(/\s+/g, ' ') : '';
@@ -479,15 +498,54 @@ export async function extractProcessDetails(page) {
       caseValue = findField('Valor da Causa');
     }
 
-    // Chave do Processo
+    // Chave do Processo (Busca em spans, inputs, botões onclick e texto)
     let accessKey = '';
-    const spnKey = document.querySelector('#spnChaveProcesso, [id*="ChaveProcesso"]');
-    if (spnKey && spnKey.innerText.trim()) {
-      const digits = spnKey.innerText.trim().replace(/\D/g, '');
-      if (digits.length >= 6) accessKey = digits;
+    const spnKey = document.querySelector('#spnChaveProcesso, [id*="ChaveProcesso" i], [id*="chave_processo" i], #txtChaveProcesso, input[name*="chave" i]');
+    if (spnKey) {
+      const val = (spnKey.value || spnKey.innerText || '').trim();
+      const cleanVal = val.replace(/\s+/g, '');
+      if (cleanVal.length >= 6) accessKey = cleanVal;
     }
+
+    // Busca no onclick de links ou botões de chave (ex: buscarChaveProcesso('123456789012'))
     if (!accessKey) {
-      const mKey = bodyText.match(/Chave\s*(?:do)?\s*Processo[:\s]*[\r\n\s]*(\d{6,30})/i);
+      const keyElements = document.querySelectorAll('[onclick*="chave" i], [onclick*="Chave" i], [data-chave], [data-key]');
+      for (const el of keyElements) {
+        const dataKey = el.dataset?.chave || el.dataset?.key;
+        if (dataKey && dataKey.trim().length >= 6) {
+          accessKey = dataKey.trim();
+          break;
+        }
+        const onclickAttr = el.getAttribute('onclick') || '';
+        const mClick = onclickAttr.match(/['"]([a-zA-Z0-9]{6,32})['"]/);
+        if (mClick) {
+          accessKey = mClick[1].trim();
+          break;
+        }
+      }
+    }
+
+    // Busca estruturada em células de tabela e dt/dd
+    if (!accessKey) {
+      const labels = document.querySelectorAll('td, th, dt, label, b, strong');
+      for (const el of labels) {
+        if (/chave\s*(?:do\s+processo|de\s+acesso|de\s+consulta|do\s+processo\s+judicial)?/i.test(el.innerText)) {
+          const next = el.nextElementSibling || el.parentElement?.querySelector('dd, td:last-child, span');
+          if (next && next !== el) {
+            const val = next.innerText.trim().replace(/\s+/g, '');
+            if (/^[a-zA-Z0-9]{6,32}$/.test(val)) {
+              accessKey = val;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Busca no texto completo da página via regex abrangente
+    if (!accessKey) {
+      const mKey = bodyText.match(/(?:Chave\s*(?:do\s+processo|de\s+acesso|de\s+consulta|para\s+consulta|do\s+processo\s+judicial|eletr[oô]nica)?|Chave\s*Processo)[:\s]+([a-zA-Z0-9]{6,32})/i)
+        || bodyText.match(/Chave[:\s]*[\r\n\s]+([a-zA-Z0-9]{6,32})/i);
       if (mKey) accessKey = mKey[1].trim();
     }
 
@@ -687,6 +745,7 @@ export async function extractProcessDetails(page) {
       status,
       caseValue,
       accessKey,
+      chaveAcesso: accessKey,
       secrecy: isSecrecy,
       secrecyLevel,
       partiesSummary: parties.slice(0, 10).join(' | '),
@@ -694,6 +753,17 @@ export async function extractProcessDetails(page) {
       movements
     };
   });
+
+  try {
+    if (page.off) page.off('dialog', onDialog);
+  } catch {}
+
+  const finalKey = (result?.accessKey || dialogKey || '').trim();
+  if (result) {
+    result.accessKey = finalKey;
+    result.chaveAcesso = finalKey;
+  }
+  return result;
 }
 
 /**
