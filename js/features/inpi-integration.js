@@ -187,7 +187,7 @@ export function createInpiIntegrationFeature({
           <span class="inpi-monitor-type-badge ${typeClass}">${typeLabel}</span>
           <b>${escapeHtml(monitor.label || monitor.term)}</b>
           <span class="inpi-monitor-hits">${formatNumber(hits)} ocorrência${hits === 1 ? '' : 's'}</span>
-          <button type="button" class="inpi-remove-term-btn" data-delete-monitor-id="${escapeHtml(monitor.id)}" title="Remover termo ${escapeHtml(monitor.term)}" aria-label="Remover termo ${escapeHtml(monitor.term)}">×</button>
+          <button type="button" class="inpi-remove-term-btn" data-delete-monitor-id="${escapeHtml(monitor.id)}" title="Remover termo ${escapeHtml(monitor.term)}" aria-label="Remover termo ${escapeHtml(monitor.term)}"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
         </div>
       `;
     }).join('');

@@ -210,7 +210,7 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
       saveState?.();
     }
     if (feedback) {
-      feedback.textContent = '✓ Certificado A1 validado e vinculado ao cofre criptográfico com sucesso!';
+      feedback.textContent = 'Certificado A1 validado e vinculado ao cofre criptográfico com sucesso!';
       feedback.className = 'onboarding-a1-feedback success';
       feedback.classList.remove('hidden');
     }
