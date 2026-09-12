@@ -415,14 +415,23 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     currentSlide = index;
     onSlideChange?.(index);
 
-    // Smooth horizontal slide transition via track
+    // Slide transition
     const track = document.getElementById('tourSlidesTrack');
     if (track) {
-      track.style.transform = `translateX(-${(index * 100) / total}%)`;
+      track.style.transform = 'none';
+    }
+
+    const container = document.querySelector('.tour-slides-container');
+    if (container) {
+      container.scrollTop = 0;
     }
 
     slides.forEach((slide, slideIndex) => {
-      slide.classList.toggle('active', slideIndex === index);
+      const isActive = slideIndex === index;
+      slide.classList.toggle('active', isActive);
+      if (isActive) {
+        slide.scrollTop = 0;
+      }
     });
     dots.forEach((dot, dotIndex) => {
       dot.classList.toggle('active', dotIndex === index);

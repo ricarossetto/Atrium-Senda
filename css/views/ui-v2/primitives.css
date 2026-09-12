@@ -262,21 +262,23 @@ html[data-ui="v2"] .system-status-bar {
 html[data-ui="v2"] #systemStatusDetail { min-width: 0; overflow-wrap: anywhere; }
 html[data-ui="v2"] .system-status-bar[data-status="syncing"] .system-status-icon svg,
 html[data-ui="v2"] #syncButton[aria-busy="true"] svg {
-  animation: v2-sync-spin 1.2s linear 1;
+  animation: v2-sync-spin 1s linear infinite;
   transform-origin: center;
   overflow: visible;
 }
 @keyframes v2-sync-spin { to { transform: rotate(360deg); } }
 
 html[data-ui="v2"] .system-status-progress-track {
-  width: 140px;
-  height: 6px;
-  background: color-mix(in srgb, var(--v2-color-surface-inset) 80%, var(--v2-color-border));
+  width: 160px;
+  min-width: 140px;
+  height: 8px;
+  background: color-mix(in srgb, var(--v2-color-surface-inset) 75%, var(--v2-color-border));
   border-radius: 999px;
   overflow: hidden;
   display: flex;
   align-items: center;
   margin-left: auto;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 html[data-ui="v2"] .system-status-progress-track.hidden {
@@ -286,9 +288,21 @@ html[data-ui="v2"] .system-status-progress-track.hidden {
 html[data-ui="v2"] .system-status-progress-fill {
   height: 100%;
   width: 0%;
-  background: var(--v2-color-gold);
+  min-width: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--v2-color-gold) 0%,
+    color-mix(in srgb, var(--v2-color-gold) 60%, #fff) 50%,
+    var(--v2-color-gold) 100%
+  );
+  background-size: 200% 100%;
   border-radius: 999px;
-  transition: width var(--v2-duration-base) var(--v2-ease-standard);
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: v2-progress-shimmer 1.5s infinite linear;
+}
+@keyframes v2-progress-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
 }
 
 html[data-ui="v2"] .system-status-bar.is-transient-hidden {

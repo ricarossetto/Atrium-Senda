@@ -40,7 +40,7 @@ try {
     const pageErrors = [];
     page.on('pageerror', err => pageErrors.push(err.message));
 
-    await page.goto(server.baseUrl);
+    await page.goto(`${server.baseUrl}/discover`);
     await page.evaluate(() => {
       document.documentElement.dataset.theme = 'dark';
     });
@@ -82,7 +82,7 @@ try {
     const pageErrors = [];
     page.on('pageerror', err => pageErrors.push(err.message));
 
-    await page.goto(server.baseUrl);
+    await page.goto(`${server.baseUrl}/discover`);
     await page.evaluate(() => {
       document.documentElement.dataset.theme = 'light';
     });
@@ -119,7 +119,7 @@ try {
     const pageErrors = [];
     page.on('pageerror', err => pageErrors.push(err.message));
 
-    await page.goto(server.baseUrl);
+    await page.goto(`${server.baseUrl}/discover`);
     await page.waitForTimeout(400);
 
     // Verifica overflow horizontal em mobile
@@ -155,7 +155,7 @@ try {
     const page = await context.newPage();
     await mockConfiguredVisitor(page);
 
-    await page.goto(server.baseUrl);
+    await page.goto(`${server.baseUrl}/discover`);
     await page.waitForTimeout(300);
 
     // 1. Testa alternância de abas da vitrine

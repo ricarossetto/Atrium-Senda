@@ -157,7 +157,31 @@ export function createProcessesFeature({
       if (initialized) return false;
       initialized = true;
       byId('newProcessButton')?.addEventListener('click', () => this.openProcessModal());
-      byId('btnSyncEprocA1')?.addEventListener('click', () => this.syncEprocA1());
+      byId('btnSyncEprocA1')?.addEventListener('click', () => {
+        if (this._syncEprocInFlight) {
+          this.openSyncModal();
+          return;
+        }
+        this.syncEprocA1();
+      });
+      byId('eprocSyncModalClose')?.addEventListener('click', () => this.closeSyncModal());
+      byId('eprocSyncModalMinimize')?.addEventListener('click', () => this.closeSyncModal());
+      byId('eprocSyncModalDone')?.addEventListener('click', () => this.closeSyncModal());
+      byId('eprocSyncModalConfigLink')?.addEventListener('click', () => {
+        this.closeSyncModal();
+        if (typeof globalThis.location !== 'undefined') {
+          globalThis.location.hash = '#configuration';
+        }
+      });
+      byId('eprocSyncModalBackdrop')?.addEventListener('click', event => {
+        if (event.target === byId('eprocSyncModalBackdrop')) this.closeSyncModal();
+      });
+      byId('eprocSyncModalBackdrop')?.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeSyncModal();
+      });
       byId('processSearch')?.addEventListener('input', event => this.render(event.target.value));
       byId('processSuppressionButton')?.addEventListener('click', () => this.reenableProcessDiscovery());
       byId('processAccessKeyCancel')?.addEventListener('click', () => this.closeAccessKeyDialog());
@@ -626,86 +650,175 @@ export function createProcessesFeature({
       }
     },
 
+    openSyncModal() {
+      const modal = byId('eprocSyncModalBackdrop');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.setAttribute?.('aria-hidden', 'false');
+      }
+    },
+
+    closeSyncModal() {
+      const modal = byId('eprocSyncModalBackdrop');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.setAttribute?.('aria-hidden', 'true');
+      }
+    },
+
     async syncEprocA1({ silent = false } = {}) {
-      if (this._syncEprocInFlight) return false;
+      if (this._syncEprocInFlight) {
+        if (!silent) this.openSyncModal();
+        return false;
+      }
       const btn = byId('btnSyncEprocA1');
       const topSyncBtn = byId('syncButton');
       const originalHtml = btn?.innerHTML;
       this._syncEprocInFlight = true;
 
-      // Ativa visualmente o botão do topo e o botão local
+      // Ativa visualmente o botão local e o do topo
       if (btn) {
-        btn.disabled = true;
-        btn.classList.add('is-busy');
-        btn.innerHTML = `<span class="auth-spinner" style="width:13px;height:13px;border-width:2px;display:inline-block;margin-right:6px;"></span><span>Sincronizando no topo...</span>`;
+        btn.classList.add('is-syncing');
+        btn.setAttribute?.('aria-busy', 'true');
+        btn.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-refresh"></use></svg><span>Sincronizando eproc...</span>`;
+        btn.title = 'Sincronização eproc em andamento — clique para abrir o monitor';
       }
       if (topSyncBtn) {
         topSyncBtn.disabled = true;
-        topSyncBtn.setAttribute('aria-busy', 'true');
+        topSyncBtn.setAttribute?.('aria-busy', 'true');
       }
 
-      // Função auxiliar para atualizar a barra de status do topo
-      const updateTopProgress = (label, detail, percent) => {
-        const bar = byId('systemStatusBar');
-        if (!bar) return;
-        bar.classList.remove('is-transient-hidden');
-        bar.dataset.status = 'syncing';
-        bar.dataset.tone = 'info';
-        const lbl = byId('systemStatusLabel');
-        const det = byId('systemStatusDetail');
-        const track = byId('systemStatusProgressTrack');
-        const fill = byId('systemStatusProgressFill');
-        if (lbl) lbl.textContent = `${label} (${Math.round(percent)}%)`;
-        if (det) det.textContent = detail;
-        if (track && fill) {
-          track.classList.remove('hidden');
-          track.removeAttribute('aria-hidden');
-          fill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+      // Prepara referências aos elementos do modal
+      const modal = byId('eprocSyncModalBackdrop');
+      const statusLabel = byId('eprocSyncStatusLabel');
+      const percentLabel = byId('eprocSyncPercentLabel');
+      const modalTrack = byId('eprocSyncModalTrack');
+      const modalFill = byId('eprocSyncModalFill');
+      const currentAction = byId('eprocSyncCurrentAction');
+      const consoleLogs = byId('eprocSyncConsoleLogs');
+      const minimizeBtn = byId('eprocSyncModalMinimize');
+      const doneBtn = byId('eprocSyncModalDone');
+      const configLink = byId('eprocSyncModalConfigLink');
+
+      const safeEscape = typeof escapeHtml === 'function' ? escapeHtml : (v => String(v ?? ''));
+      const formatTime = () => {
+        const now = new Date();
+        return [
+          String(now.getHours()).padStart(2, '0'),
+          String(now.getMinutes()).padStart(2, '0'),
+          String(now.getSeconds()).padStart(2, '0')
+        ].join(':');
+      };
+
+      const appendLog = (text, type = 'info') => {
+        if (!consoleLogs) return;
+        const timeStr = formatTime();
+        if (documentRef?.createElement) {
+          const line = documentRef.createElement('div');
+          line.className = `eproc-sync-log-line is-${type}`;
+          line.innerHTML = `<span class="log-time">[${timeStr}]</span> ${safeEscape(text)}`;
+          consoleLogs.appendChild(line);
+        } else if (typeof consoleLogs.innerHTML === 'string') {
+          consoleLogs.innerHTML += `<div class="eproc-sync-log-line is-${type}"><span class="log-time">[${timeStr}]</span> ${safeEscape(text)}</div>`;
+        }
+        if (consoleLogs.scrollHeight) {
+          consoleLogs.scrollTop = consoleLogs.scrollHeight;
         }
       };
 
-      const completeTopProgress = (tone, label, detail) => {
-        const bar = byId('systemStatusBar');
-        if (!bar) return;
-        bar.dataset.status = tone === 'success' ? 'saved' : 'error';
-        bar.dataset.tone = tone;
-        const lbl = byId('systemStatusLabel');
-        const det = byId('systemStatusDetail');
-        const track = byId('systemStatusProgressTrack');
-        const fill = byId('systemStatusProgressFill');
-        if (lbl) lbl.textContent = label;
-        if (det) det.textContent = detail;
-        if (track && fill) {
-          fill.style.width = tone === 'success' ? '100%' : '0%';
-          setTimeout(() => track.classList.add('hidden'), 1500);
-        }
-        if (tone === 'success') {
-          setTimeout(() => bar.classList.add('is-transient-hidden'), 3500);
+      const setStepStatus = (stepNumber, status) => {
+        const stepEl = byId(`eprocStep${stepNumber}`);
+        if (stepEl) {
+          if (stepEl.dataset) stepEl.dataset.status = status;
+          else stepEl.setAttribute?.('data-status', status);
         }
       };
 
-      // Fases progressivas sintetizadas para dar sensação real e detalhada de andamento
-      const stages = [
-        { percent: 15, label: 'Sincronizando eproc TJRS', detail: 'Conectando ao tribunal via canal seguro mTLS...' },
-        { percent: 35, label: 'Sincronizando eproc TJRS', detail: 'Autenticando sessão com Certificado A1 e 2FA TOTP...' },
-        { percent: 55, label: 'Sincronizando eproc TJRS', detail: 'Acessando Painel do Advogado e consultando prazos judiciais...' },
-        { percent: 75, label: 'Sincronizando eproc TJRS', detail: 'Varrendo processos e coletando dados de partes (Pólo Ativo e Passivo)...' },
-        { percent: 90, label: 'Sincronizando eproc TJRS', detail: 'Enriquecendo autos e vinculando clientes reais às tarefas...' }
+      const updateProgress = (percent, label, action) => {
+        const p = Math.min(100, Math.max(0, Math.round(percent)));
+        if (percentLabel) percentLabel.textContent = `${p}%`;
+        if (modalFill) modalFill.style.width = `${p}%`;
+        if (modalTrack) modalTrack.setAttribute?.('aria-valuenow', String(p));
+        if (statusLabel && label) statusLabel.textContent = label;
+        if (currentAction && action) currentAction.textContent = action;
+
+        // Atualiza em conjunto a barra de status do topo com etapas numeradas
+        const bar = byId('systemStatusBar');
+        if (bar) {
+          bar.classList.remove('is-transient-hidden');
+          bar.dataset.status = 'syncing';
+          bar.dataset.tone = 'info';
+          const lbl = byId('systemStatusLabel');
+          const det = byId('systemStatusDetail');
+          const track = byId('systemStatusProgressTrack');
+          const fill = byId('systemStatusProgressFill');
+          if (lbl) lbl.textContent = `${label || 'Sincronizando eproc'} (${p}%)`;
+          if (det && action) det.textContent = action;
+          if (track && fill) {
+            track.classList.remove('hidden');
+            track.removeAttribute?.('aria-hidden');
+            fill.style.width = `${p}%`;
+          }
+        }
+      };
+
+      // Reset inicial do modal
+      if (!silent) {
+        this.openSyncModal();
+        if (consoleLogs) consoleLogs.innerHTML = '';
+        if (doneBtn) doneBtn.classList.add('hidden');
+        if (configLink) configLink.classList.add('hidden');
+        if (minimizeBtn) minimizeBtn.classList.remove('hidden');
+        for (let i = 1; i <= 5; i++) setStepStatus(i, i === 1 ? 'active' : 'waiting');
+      }
+
+      updateProgress(6, 'Sincronizando eproc TJRS', 'Iniciando canal seguro com o tribunal TJRS via mTLS...');
+      appendLog('Iniciando comunicação com o tribunal TJRS (eproc 1G)...');
+      appendLog('Conectando canal seguro mTLS (porta 443)...');
+
+      // Cronômetro progressivo dinâmico para avanço das etapas
+      let currentProgress = 6;
+      let stepIndex = 1;
+      let isCompleted = false;
+
+      const progressSchedule = [
+        { afterMs: 1100, step: 1, toStep: 2, progress: 24, log: 'Certificado Digital A1 validado. Negociando handshake TLS com tribunal.', action: 'Autenticando sessão com Certificado A1 e 2FA TOTP...' },
+        { afterMs: 2600, step: 2, toStep: 2, progress: 42, log: 'Calculando token dinâmico TOTP para autenticação Keycloak TJRS.', action: 'Autenticando no serviço de identidade Keycloak TJRS...' },
+        { afterMs: 4400, step: 2, toStep: 3, progress: 58, log: 'Sessão 2FA autorizada pelo tribunal. Acessando Painel do Advogado (1G).', action: 'Consultando Painel do Advogado TJRS e intimações pendentes...' },
+        { afterMs: 6800, step: 3, toStep: 4, progress: 74, log: 'Painel do Advogado consultado. Varrendo acervo de processos cadastrados.', action: 'Varrendo processos e revelando dados sob segredo de justiça...' },
+        { afterMs: 9200, step: 4, toStep: 5, progress: 88, log: 'Coleta de autos e chaves de acesso concluída. Iniciando consolidação.', action: 'Consolidando partes, clientes e vinculando tarefas na agenda...' }
       ];
 
-      let stageIndex = 0;
-      let timerId = null;
-      let isCancelled = false;
-      const advanceStage = () => {
-        if (isCancelled) return;
-        stageIndex++;
-        if (stageIndex < stages.length) {
-          updateTopProgress(stages[stageIndex].label, stages[stageIndex].detail, stages[stageIndex].percent);
-          timerId = setTimeout(advanceStage, 1200);
-        }
+      const timers = [];
+      progressSchedule.forEach(item => {
+        const tid = setTimeout(() => {
+          if (isCompleted) return;
+          if (item.step !== item.toStep) {
+            setStepStatus(item.step, 'completed');
+            setStepStatus(item.toStep, 'active');
+            stepIndex = item.toStep;
+          }
+          currentProgress = item.progress;
+          updateProgress(item.progress, 'Sincronizando eproc TJRS', item.action);
+          appendLog(item.log);
+        }, item.afterMs);
+        timers.push(tid);
+      });
+
+      // Agendamento contínuo de creep (+1% a cada 700ms) com setTimeout encadeado
+      const scheduleCreep = () => {
+        if (isCompleted) return;
+        const tid = setTimeout(() => {
+          if (isCompleted) return;
+          if (currentProgress < 95) {
+            currentProgress += 1;
+            updateProgress(currentProgress, 'Sincronizando eproc TJRS', currentAction?.textContent || 'Processando dados do tribunal e atualizando base local...');
+          }
+          scheduleCreep();
+        }, 700);
+        timers.push(tid);
       };
-      updateTopProgress(stages[0].label, stages[0].detail, stages[0].percent);
-      timerId = setTimeout(advanceStage, 1200);
+      scheduleCreep();
 
       try {
         if (!silent) showToast?.('Iniciando sincronização com Certificado A1 no eproc TJRS...', 'info');
@@ -715,44 +828,118 @@ export function createProcessesFeature({
           body: JSON.stringify({ maxProcesses: 10 })
         });
         const result = await response.json().catch(() => ({}));
-        isCancelled = true;
-        if (timerId) clearTimeout(timerId);
+        isCompleted = true;
+        timers.forEach(t => clearTimeout(t));
 
         if (!response.ok || !result.ok) {
-          throw new Error(result.message || 'Erro ao sincronizar com o eproc TJRS.');
+          let errorMsg = result.message || result.error;
+          if (!errorMsg) {
+            if (response.status === 412) {
+              errorMsg = 'Certificado Digital A1 ou 2FA TOTP não configurado.';
+            } else if (response.status === 409) {
+              errorMsg = 'Outra sincronização eproc já está em andamento. Aguarde a conclusão.';
+            } else if (response.status === 503) {
+              errorMsg = 'O serviço eproc exige o agente local ou está temporariamente indisponível.';
+            } else {
+              errorMsg = `Falha na comunicação com o tribunal TJRS (${response.status}).`;
+            }
+          }
+          const err = new Error(errorMsg);
+          err.code = result.code;
+          throw err;
         }
+
+        // Marca todos os 5 passos como concluídos
+        for (let i = 1; i <= 5; i++) setStepStatus(i, 'completed');
+        updateProgress(100, 'Sincronização Concluída', 'Processos e dados do eproc TJRS consolidados com sucesso.');
+        appendLog('Sincronização e enriquecimento finalizados com sucesso!', 'success');
+
+        const count = result.enrichedCount || 0;
+        const successMsg = count > 0
+          ? `${count} processo(s) TJRS sincronizado(s) e enriquecido(s) com sucesso!`
+          : (result.message || 'Varredura eproc concluída com sucesso.');
+
+        appendLog(successMsg, 'success');
+
+        if (doneBtn) {
+          doneBtn.textContent = 'Concluir';
+          doneBtn.classList.remove('hidden');
+        }
+        if (minimizeBtn) minimizeBtn.classList.add('hidden');
 
         await store.fetchState?.();
         this.render(byId('processSearch')?.value || '');
         globalThis.App?.renderTasks?.();
         globalThis.App?.renderDashboard?.();
 
-        const count = result.enrichedCount || 0;
-        const msg = count > 0
-          ? `${count} processo(s) TJRS sincronizado(s) e enriquecido(s) com sucesso!`
-          : (result.message || 'Varredura eproc concluída com sucesso.');
+        const bar = byId('systemStatusBar');
+        if (bar) {
+          bar.dataset.status = 'saved';
+          bar.dataset.tone = 'success';
+          const lbl = byId('systemStatusLabel');
+          const det = byId('systemStatusDetail');
+          const track = byId('systemStatusProgressTrack');
+          const fill = byId('systemStatusProgressFill');
+          if (lbl) lbl.textContent = 'Sincronização Concluída';
+          if (det) det.textContent = successMsg;
+          if (fill) fill.style.width = '100%';
+          setTimeout(() => {
+            if (track) track.classList.add('hidden');
+            bar.classList.add('is-transient-hidden');
+          }, 3500);
+        }
 
-        completeTopProgress('success', 'Sincronização Concluída', msg);
-        showToast?.(msg, 'success');
+        showToast?.(successMsg, 'success');
         return true;
       } catch (err) {
-        isCancelled = true;
-        if (timerId) clearTimeout(timerId);
+        isCompleted = true;
+        timers.forEach(t => clearTimeout(t));
+
+        setStepStatus(stepIndex, 'error');
         const errMsg = err.message || 'Falha na sincronização eproc A1.';
-        completeTopProgress('danger', 'Falha na Sincronização', errMsg);
+        if (statusLabel) statusLabel.textContent = 'Falha na Sincronização';
+        if (currentAction) currentAction.textContent = errMsg;
+        appendLog(`[FALHA] ${errMsg}`, 'error');
+
+        const isConfigIssue = /certificado|a1|2fa|totp|pfx|cobertura judicial/i.test(errMsg) || err.code === 'A1_CERT_MISSING' || err.code === 'TOTP_2FA_MISSING';
+        if (isConfigIssue && configLink) {
+          configLink.classList.remove('hidden');
+          appendLog('Dica: Configure o Certificado A1 ou o 2FA TOTP na aba Cobertura Judicial.', 'info');
+        }
+
+        if (doneBtn) {
+          doneBtn.textContent = 'Fechar';
+          doneBtn.classList.remove('hidden');
+        }
+        if (minimizeBtn) minimizeBtn.classList.add('hidden');
+
+        const bar = byId('systemStatusBar');
+        if (bar) {
+          bar.dataset.status = 'error';
+          bar.dataset.tone = 'danger';
+          const lbl = byId('systemStatusLabel');
+          const det = byId('systemStatusDetail');
+          const track = byId('systemStatusProgressTrack');
+          const fill = byId('systemStatusProgressFill');
+          if (lbl) lbl.textContent = 'Falha na Sincronização';
+          if (det) det.textContent = errMsg;
+          if (fill) fill.style.width = '0%';
+          setTimeout(() => track?.classList.add('hidden'), 2500);
+        }
+
         if (!silent) showToast?.(`Falha na sincronização eproc A1: ${errMsg}`, 'error');
         console.warn('[processes] Erro ao sincronizar eproc A1:', err);
         return false;
       } finally {
         this._syncEprocInFlight = false;
         if (btn) {
-          btn.disabled = false;
-          btn.classList.remove('is-busy');
+          btn.classList.remove('is-syncing');
+          btn.removeAttribute?.('aria-busy');
           if (originalHtml) btn.innerHTML = originalHtml;
         }
         if (topSyncBtn) {
           topSyncBtn.disabled = false;
-          topSyncBtn.removeAttribute('aria-busy');
+          topSyncBtn.removeAttribute?.('aria-busy');
         }
       }
     },

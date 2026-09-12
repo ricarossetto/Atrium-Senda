@@ -1434,6 +1434,14 @@ async function startManagedPortfolioCollector({ waitForCompletion = false } = {}
   if (!enabledIds.length) {
     return { ok: true, skipped: true, portalCount: 0, message: 'Nenhum portal autenticado está habilitado para leitura do acervo.' };
   }
+  updateSyncProgress({
+    step: 1,
+    totalSteps: 4,
+    phase: 'portals',
+    label: 'Portais Autenticados…',
+    detail: `[1/4] Conectando aos portais autenticados habilitados (${enabledIds.join(', ')})...`,
+    percent: 8
+  });
   const targetWorkspaceId = currentWorkspaceId();
   const identity = extractOabAndUf(config.monitoredTerm);
   const child = spawn(process.execPath, [COLLECTOR_AGENT_FILE], {
@@ -1469,11 +1477,32 @@ async function startManagedPortfolioCollector({ waitForCompletion = false } = {}
   if (!waitForCompletion) {
     return { ok: true, started: true, readOnly: true, portalCount: enabledIds.length, message: 'Leitura do acervo autenticado iniciada em segundo plano.' };
   }
-  const completion = await managedCollectorRun;
-  if (completion.error || completion.exitCode !== 0) {
-    throw Object.assign(new Error(completion.error || 'O coletor do acervo autenticado não concluiu a leitura.'), { statusCode: 502 });
+  let collectorHeartbeatTimer = null;
+  if (waitForCompletion) {
+    let tick = 0;
+    collectorHeartbeatTimer = setInterval(() => {
+      tick += 1;
+      const pct = Math.min(14, 8 + Math.floor(tick / 2));
+      const elapsedSec = tick * 2;
+      updateSyncProgress({
+        step: 1,
+        totalSteps: 4,
+        phase: 'portals',
+        label: `Sincronizando (${pct}%)`,
+        detail: `[1/4] Coletando acervo autenticado de ${enabledIds.join(', ')} (${elapsedSec}s decorridos)…`,
+        percent: pct
+      });
+    }, 2000);
   }
-  return { ok: true, started: true, completed: true, readOnly: true, portalCount: enabledIds.length };
+  try {
+    const completion = await managedCollectorRun;
+    if (completion.error || completion.exitCode !== 0) {
+      throw Object.assign(new Error(completion.error || 'O coletor do acervo autenticado não concluiu a leitura.'), { statusCode: 502 });
+    }
+    return { ok: true, started: true, completed: true, readOnly: true, portalCount: enabledIds.length };
+  } finally {
+    if (collectorHeartbeatTimer) clearInterval(collectorHeartbeatTimer);
+  }
 }
 
 function applySecurityHeaders(res) {
@@ -4379,8 +4408,8 @@ Diretrizes essenciais:
         totalSteps: 4,
         phase: 'starting',
         label: 'Iniciando sincronização…',
-        detail: 'Lendo o acervo dos portais autenticados habilitados…',
-        percent: 5
+        detail: '[1/4] Inicializando conexão e preparando consulta de publicações…',
+        percent: 6
       });
       await startManagedPortfolioCollector({ waitForCompletion: true });
       const runtime = await readRuntime();
@@ -4433,8 +4462,8 @@ Diretrizes essenciais:
           totalSteps: 4,
           phase: 'djen',
           label: 'Consultando DJEN…',
-          detail: `Consultando comunicações no DJEN (${monitoredTerms.length} termo(s))…`,
-          percent: 10
+          detail: `[1/4] DJEN: Consultando ComunicaAPI do CNJ (${monitoredTerms.length} termo(s) monitorado(s))…`,
+          percent: 15
         });
 
         for (const term of monitoredTerms) {
@@ -4444,8 +4473,8 @@ Diretrizes essenciais:
               totalSteps: 4,
               phase: 'djen',
               label: 'Consultando DJEN…',
-              detail: `Conectando ao DJEN para OAB/${term.oabUf} ${term.oabNumber}…`,
-              percent: 15
+              detail: `[1/4] DJEN: Buscando publicações de OAB/${term.oabUf} ${term.oabNumber}…`,
+              percent: 18
             });
             const result = await collectDjen({
               id: 'djen-cnj',
@@ -4458,15 +4487,16 @@ Diretrizes essenciais:
               numeroOab: term.oabNumber,
               timeoutMs: 25_000
             }, { monitoredTerm: term, monitoredTerms }, target, {
-              onProgress: ({ page, items, total }) => {
-                const termPct = total ? Math.min(18, Math.round((items / total) * 18)) : 10;
+              onProgress: ({ page, items, total, status }) => {
+                const termPct = total ? Math.min(16, Math.round((items / total) * 16)) : (items ? 12 : 6);
+                const info = status === 'fetching' ? 'consultando página' : 'lidas';
                 updateSyncProgress({
                   step: 1,
                   totalSteps: 4,
                   phase: 'djen',
-                  label: `Consultando DJEN (${15 + termPct}%)`,
-                  percent: 15 + termPct,
-                  detail: `DJEN Pág. ${page}: ${items}${total ? `/${total}` : ''} intimações (OAB/${term.oabUf} ${term.oabNumber})`
+                  label: `Consultando DJEN (${18 + termPct}%)`,
+                  percent: 18 + termPct,
+                  detail: `[1/4] DJEN: Pág. ${page} — ${items}${total ? `/${total}` : ''} intimações (${info}) para OAB/${term.oabUf} ${term.oabNumber}`
                 });
               }
             });
@@ -4482,7 +4512,7 @@ Diretrizes essenciais:
           totalSteps: 4,
           phase: 'djen-done',
           label: 'DJEN Concluído',
-          detail: `${djenRecords} intimações localizadas no DJEN.`,
+          detail: `[1/4] DJEN concluído: ${djenRecords} intimação(ões) localizada(s).`,
           percent: 34
         });
 
@@ -4526,7 +4556,7 @@ Diretrizes essenciais:
             totalSteps: 4,
             phase: 'datajud',
             label: 'Consultando DataJud…',
-            detail: `Consultando 0/${processNumbers.length} processos no DataJud…`,
+            detail: `[2/4] DataJud: Enriquecendo andamentos de ${processNumbers.length} processos no CNJ…`,
             percent: 36
           });
           try {
@@ -4543,13 +4573,13 @@ Diretrizes essenciais:
               apiKey: appState?.settings?.datajudApiKey,
               processNumbers,
               onProgress: ({ current, total, number }) => {
-                const scaledPct = Math.round(36 + (current / total) * 50);
+                const scaledPct = Math.round(36 + (current / total) * 35);
                 updateSyncProgress({
                   step: 2,
                   totalSteps: 4,
                   phase: 'datajud',
                   label: `Sincronizando (${scaledPct}%)`,
-                  detail: `DataJud: ${current}/${total} (${number})`,
+                  detail: `[2/4] DataJud: Processo ${current}/${total} (${number})`,
                   percent: scaledPct
                 });
               }
@@ -4589,8 +4619,8 @@ Diretrizes essenciais:
             totalSteps: 4,
             phase: 'tjrs-monitoring',
             label: 'Monitorando processos TJRS…',
-            detail: `TJRS: ${current}/${total} (${number})`,
-            percent: Math.round(80 + (current / Math.max(total, 1)) * 7)
+            detail: `[2/4] TJRS: Processo ${current}/${total} (${number})`,
+            percent: Math.round(72 + (current / Math.max(total, 1)) * 5)
           })
         });
         target.processes = tjrsMonitoring.processes;
@@ -4633,9 +4663,9 @@ Diretrizes essenciais:
                 step: 2,
                 totalSteps: 4,
                 phase: 'eproc_sweep',
-                label: 'Consultando painel eproc TJRS…',
-                detail: 'Importando prazos em aberto e intimações pendentes…',
-                percent: 75
+                label: 'Painel eproc TJRS…',
+                detail: '[2.5/4] eproc TJRS: Conectando com Certificado A1 + 2FA e lendo painel do advogado…',
+                percent: 78
               });
               isEprocDownloadActive = true;
               try {
@@ -4690,7 +4720,7 @@ Diretrizes essenciais:
           totalSteps: 4,
           phase: 'consolidating',
           label: 'Consolidando acervo…',
-          detail: 'Vinculando partes e processos…',
+          detail: '[3/4] Consolidando publicações, processos e vinculando prazos às tarefas…',
           percent: 88
         });
         intimations = target.intimations;
@@ -4740,8 +4770,8 @@ Diretrizes essenciais:
         totalSteps: 4,
         phase: 'persisting',
         label: 'Gravando acervo local…',
-        detail: 'Persistindo dados no banco de dados local…',
-        percent: 94
+        detail: '[4/4] Gravando acervo no banco de dados local e atualizando agenda…',
+        percent: 95
       });
       await mutateRuntime(current => ({
         ...current,

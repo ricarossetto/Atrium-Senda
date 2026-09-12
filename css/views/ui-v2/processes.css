@@ -1399,3 +1399,311 @@ html[data-ui="v2"] .process-enrichment-icon {
   margin-top: 1px;
 }
 
+/* Sincronizar eproc A1 Button Active Styles */
+html[data-ui="v2"] #btnSyncEprocA1.is-syncing {
+  border-color: var(--v2-color-gold) !important;
+  color: var(--v2-color-gold) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--v2-color-gold) 35%, transparent);
+  cursor: wait;
+}
+
+html[data-ui="v2"] #btnSyncEprocA1.is-syncing svg {
+  animation: v2-sync-spin 1s linear infinite;
+}
+
+/* Modal de Sincronização eproc A1 */
+html[data-ui="v2"] .eproc-sync-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--v2-space-4);
+  transition: opacity 0.25s ease;
+}
+
+html[data-ui="v2"] .eproc-sync-modal-backdrop.hidden {
+  display: none !important;
+}
+
+html[data-ui="v2"] .eproc-sync-modal-dialog {
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  width: 100%;
+  max-width: 620px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: eprocModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes eprocModalPop {
+  0% { opacity: 0; transform: scale(0.96) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+html[data-ui="v2"] .eproc-sync-modal-header {
+  padding: var(--v2-space-4) var(--v2-space-5);
+  border-bottom: 1px solid var(--v2-color-border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  background: color-mix(in srgb, var(--v2-color-surface-elevated) 90%, var(--v2-color-surface-secondary));
+}
+
+html[data-ui="v2"] .eproc-sync-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--v2-color-gold);
+  margin-bottom: var(--v2-space-1);
+}
+
+html[data-ui="v2"] .eproc-sync-modal-header h3 {
+  margin: 0 0 2px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--v2-color-foreground);
+}
+
+html[data-ui="v2"] .eproc-sync-modal-header p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--v2-color-foreground-secondary);
+}
+
+html[data-ui="v2"] .eproc-sync-modal-body {
+  padding: var(--v2-space-4) var(--v2-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--v2-space-4);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Card de Progresso */
+html[data-ui="v2"] .eproc-sync-progress-card {
+  background: color-mix(in srgb, var(--v2-color-surface-secondary) 75%, var(--v2-color-surface-elevated));
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  padding: var(--v2-space-3) var(--v2-space-4);
+}
+
+html[data-ui="v2"] .eproc-sync-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--v2-space-2);
+}
+
+html[data-ui="v2"] .eproc-sync-progress-header strong {
+  font-size: 13px;
+  color: var(--v2-color-foreground);
+}
+
+html[data-ui="v2"] #eprocSyncPercentLabel {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--v2-color-gold);
+}
+
+html[data-ui="v2"] .eproc-sync-modal-track {
+  height: 10px;
+  width: 100%;
+  background: color-mix(in srgb, var(--v2-color-surface-inset) 75%, var(--v2-color-border));
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+  margin-bottom: var(--v2-space-2);
+}
+
+html[data-ui="v2"] .eproc-sync-modal-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(
+    90deg,
+    var(--v2-color-gold) 0%,
+    color-mix(in srgb, var(--v2-color-gold) 65%, #fff) 50%,
+    var(--v2-color-gold) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: 999px;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: v2-progress-shimmer 1.5s infinite linear;
+}
+
+html[data-ui="v2"] .eproc-sync-current-action {
+  margin: 0;
+  font-size: 12px;
+  color: var(--v2-color-foreground-secondary);
+}
+
+/* Lista de 5 Passos */
+html[data-ui="v2"] .eproc-sync-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+html[data-ui="v2"] .eproc-sync-step-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--v2-radius-md);
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--v2-color-surface-secondary) 40%, transparent);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+html[data-ui="v2"] .eproc-sync-step-item[data-status="active"] {
+  background: color-mix(in srgb, var(--v2-color-gold) 10%, var(--v2-color-surface-secondary));
+  border-color: color-mix(in srgb, var(--v2-color-gold) 35%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .eproc-sync-step-item[data-status="completed"] {
+  background: color-mix(in srgb, var(--v2-color-success) 8%, var(--v2-color-surface-secondary));
+  border-color: color-mix(in srgb, var(--v2-color-success) 30%, transparent);
+}
+
+html[data-ui="v2"] .eproc-sync-step-item[data-status="error"] {
+  background: color-mix(in srgb, var(--v2-color-danger) 10%, var(--v2-color-surface-secondary));
+  border-color: color-mix(in srgb, var(--v2-color-danger) 35%, transparent);
+}
+
+html[data-ui="v2"] .eproc-sync-step-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+html[data-ui="v2"] .eproc-sync-step-item[data-status="waiting"] .eproc-sync-step-icon::before {
+  content: "⏳";
+  opacity: 0.45;
+}
+
+html[data-ui="v2"] .eproc-sync-step-item[data-status="active"] .eproc-sync-step-icon::before {
+  content: "🔄";
+  display: inline-block;
+  animation: v2-sync-spin 1s linear infinite;
+}
+
+html[data-ui="v2"] .eproc-sync-step-item[data-status="completed"] .eproc-sync-step-icon::before {
+  content: "✅";
+}
+
+html[data-ui="v2"] .eproc-sync-step-item[data-status="error"] .eproc-sync-step-icon::before {
+  content: "❌";
+}
+
+html[data-ui="v2"] .eproc-sync-step-copy strong {
+  display: block;
+  font-size: 13px;
+  color: var(--v2-color-foreground);
+}
+
+html[data-ui="v2"] .eproc-sync-step-copy p {
+  margin: 1px 0 0;
+  font-size: 11px;
+  color: var(--v2-color-foreground-secondary);
+}
+
+/* Feed de Atividades Mineral Editorial (Sem caixa preta de terminal) */
+html[data-ui="v2"] .eproc-sync-console-container {
+  border-radius: var(--v2-radius-md);
+  border: 1px solid var(--v2-color-border);
+  background: color-mix(in srgb, var(--v2-color-surface-secondary) 50%, var(--v2-color-surface-elevated));
+  overflow: hidden;
+}
+
+html[data-ui="v2"] .eproc-sync-console-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: color-mix(in srgb, var(--v2-color-surface-secondary) 85%, var(--v2-color-surface-elevated));
+  border-bottom: 1px solid var(--v2-color-border);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--v2-color-foreground-secondary);
+}
+
+html[data-ui="v2"] .eproc-sync-console-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--v2-color-success);
+  background: color-mix(in srgb, var(--v2-color-success) 12%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+html[data-ui="v2"] .eproc-sync-console-logs {
+  padding: 10px 14px;
+  max-height: 120px;
+  min-height: 70px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--v2-color-foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+html[data-ui="v2"] .eproc-sync-log-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  word-break: break-word;
+  font-size: 12px;
+}
+
+html[data-ui="v2"] .eproc-sync-log-line .log-time {
+  font-size: 11px;
+  color: var(--v2-color-foreground-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+html[data-ui="v2"] .eproc-sync-log-line.is-info {
+  color: var(--v2-color-foreground);
+}
+
+html[data-ui="v2"] .eproc-sync-log-line.is-success {
+  color: var(--v2-color-success);
+  font-weight: 500;
+}
+
+html[data-ui="v2"] .eproc-sync-log-line.is-error {
+  color: var(--v2-color-danger);
+  font-weight: 500;
+}
+
+/* Footer do Modal */
+html[data-ui="v2"] .eproc-sync-modal-footer {
+  padding: var(--v2-space-3) var(--v2-space-5);
+  border-top: 1px solid var(--v2-color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--v2-space-3);
+  background: color-mix(in srgb, var(--v2-color-surface-elevated) 90%, var(--v2-color-surface-secondary));
+}
+

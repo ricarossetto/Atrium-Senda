@@ -1359,7 +1359,7 @@ td small { color: var(--text-secondary); }
 }
 
 .tour-slides-container {
-  padding: 24px 28px 20px;
+  padding: 0;
   overflow-y: auto;
   flex: 1 1 auto;
   min-height: 280px;
@@ -1371,11 +1371,13 @@ td small { color: var(--text-secondary); }
 }
 
 #guidedTourBackdrop .tour-slide {
-  display: block !important;
+  display: none !important;
 }
 
+#guidedTourBackdrop .tour-slide.active,
 .tour-slide.active {
-  display: block;
+  display: block !important;
+  animation: fadeInSlide 0.22s ease;
 }
 
 @keyframes fadeInSlide {

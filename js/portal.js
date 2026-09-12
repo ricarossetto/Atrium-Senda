@@ -1347,9 +1347,7 @@ import { createTasksFeature } from './features/tasks.js';
       return getTasksFeature().moveTask(taskId, status);
     },
     renderProcesses(query = '') {
-      const rendered = getProcessesFeature().render(query);
-      this.triggerAutoEnrichEproc();
-      return rendered;
+      return getProcessesFeature().render(query);
     },
     async triggerAutoEnrichEproc() {
       if (this._autoEnrichmentInFlight || this._autoEnrichmentDone) return;
@@ -1838,7 +1836,17 @@ import { createTasksFeature } from './features/tasks.js';
           headers: { Accept: 'application/json', 'X-Atrium-Sync-Trigger': trigger }
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'Servidor de integração indisponível.');
+        if (!response.ok) {
+          let errorMsg = data.message || data.error;
+          if (!errorMsg) {
+            if (response.status === 409) errorMsg = 'Outra sincronização já está em andamento. Aguarde a conclusão.';
+            else if (response.status === 412) errorMsg = 'Certificado Digital A1 ou credenciais 2FA pendentes de configuração.';
+            else if (response.status === 503) errorMsg = 'Serviço de integração judicial temporariamente indisponível.';
+            else if (response.status >= 500) errorMsg = `Servidor de integração retornou erro (${response.status}).`;
+            else errorMsg = `Falha na sincronização (${response.status}).`;
+          }
+          throw new Error(errorMsg);
+        }
         if (data.skipped) {
           getSystemStatusComponent().setState('ready', data.message || 'Sincronização automática já realizada neste período.');
           return true;
@@ -1867,9 +1875,13 @@ import { createTasksFeature } from './features/tasks.js';
           : 'Sincronização concluída com sucesso.', 'success');
         return true;
       } catch (error) {
-        const message = error.message || 'Não foi possível sincronizar.';
+        const rawMsg = error?.message || '';
+        const isNetworkError = /failed to fetch|networkerror|load failed|econnrefused/i.test(rawMsg);
+        const message = isNetworkError
+          ? 'Servidor Atrium local inacessível. Verifique se o servidor está ativo.'
+          : (rawMsg || 'Não foi possível sincronizar.');
         getSystemStatusComponent().setState(/sessão|autent/i.test(message) ? 'reauth' : 'error', message);
-        if (!silent) this.toast(error.message || 'Não foi possível sincronizar.', 'error');
+        if (!silent) this.toast(message, 'error');
         return false;
       } finally {
         pollClosed = true;

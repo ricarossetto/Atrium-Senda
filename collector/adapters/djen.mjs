@@ -47,6 +47,10 @@ async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl
       itensPorPagina: String(pageSize)
     }).toString();
 
+    if (typeof onProgress === 'function') {
+      try { onProgress({ page: pagina, items: items.length, total: count, status: 'fetching' }); } catch {}
+    }
+
     let response;
     try {
       response = await fetchWithTimeout(fetchImpl, url, Number(portal.timeoutMs || 20_000));
@@ -76,7 +80,12 @@ async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl
     const pageItems = Array.isArray(payload.items) ? payload.items.filter(validDjenItem) : [];
 
     if (!pageItems.length) {
-      if (items.length >= count) break;
+      if (items.length >= count) {
+        if (typeof onProgress === 'function') {
+          try { onProgress({ page: pagina, items: items.length, total: count, status: 'done' }); } catch {}
+        }
+        break;
+      }
       if (pageRetries >= 2) return { items, count, complete: false };
       pageRetries += 1;
       pagina -= 1;
@@ -89,7 +98,7 @@ async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl
     const countDisplay = count !== null ? ` de ${count}` : '';
     console.log(`  -> DJEN Página ${pagina}: +${pageItems.length} publicação(ões) lida(s) (total acumulado: ${items.length}${countDisplay})`);
     if (typeof onProgress === 'function') {
-      try { onProgress({ page: pagina, items: items.length, total: count }); } catch {}
+      try { onProgress({ page: pagina, items: items.length, total: count, status: 'received' }); } catch {}
     }
     if (items.length >= count) break;
     await sleep(Number(portal.requestSpacingMs || 400));

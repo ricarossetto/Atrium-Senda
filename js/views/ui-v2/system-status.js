@@ -18,6 +18,40 @@ export function createSystemStatusBar({
   let initialized = false;
   let currentState = 'ready';
   let dismissTimer = null;
+  let creepTimer = null;
+  let activeVisualPercent = 0;
+
+  function stopCreep() {
+    if (creepTimer && windowRef?.clearInterval) {
+      windowRef.clearInterval(creepTimer);
+      creepTimer = null;
+    }
+  }
+
+  function startCreep(definition) {
+    if (creepTimer || !windowRef?.setInterval) return;
+    creepTimer = windowRef.setInterval(() => {
+      if (currentState !== 'syncing') {
+        stopCreep();
+        return;
+      }
+      if (activeVisualPercent < 94) {
+        activeVisualPercent += 1;
+        const label = documentRef?.getElementById?.('systemStatusLabel');
+        const progressFill = documentRef?.getElementById?.('systemStatusProgressFill');
+        const progressTrack = documentRef?.getElementById?.('systemStatusProgressTrack');
+        if (label) {
+          label.textContent = `${definition.label} (${activeVisualPercent}%)`;
+        }
+        if (progressFill) {
+          progressFill.style.width = `${activeVisualPercent}%`;
+        }
+        if (progressTrack) {
+          progressTrack.setAttribute('aria-valuenow', String(activeVisualPercent));
+        }
+      }
+    }, 650);
+  }
 
   function setState(state, detail, percent = null) {
     const definition = SYSTEM_STATUS_STATES[state] || SYSTEM_STATUS_STATES.ready;
@@ -34,29 +68,41 @@ export function createSystemStatusBar({
     const progressTrack = documentRef?.getElementById?.('systemStatusProgressTrack');
     const progressFill = documentRef?.getElementById?.('systemStatusProgressFill');
 
-    if (icon && icon.dataset.statusIcon !== definition.icon) {
+    if (icon && icon.dataset?.statusIcon !== definition.icon) {
       icon.innerHTML = iconSvg(definition.icon);
-      icon.dataset.statusIcon = definition.icon;
+      if (icon.dataset) icon.dataset.statusIcon = definition.icon;
     }
-    if (label) {
-      if (currentState === 'syncing' && typeof percent === 'number' && Number.isFinite(percent)) {
-        label.textContent = `${definition.label} (${Math.min(100, Math.max(0, Math.round(percent)))}%)`;
-      } else {
+
+    if (currentState === 'syncing') {
+      if (typeof percent === 'number' && Number.isFinite(percent)) {
+        activeVisualPercent = Math.min(100, Math.max(0, Math.round(percent)));
+      } else if (!activeVisualPercent) {
+        activeVisualPercent = 5;
+      }
+      if (label) {
+        label.textContent = `${definition.label} (${activeVisualPercent}%)`;
+      }
+      startCreep(definition);
+    } else {
+      stopCreep();
+      activeVisualPercent = 0;
+      if (label) {
         label.textContent = definition.label;
       }
     }
+
     if (message) message.textContent = String(detail || definition.detail);
 
     if (progressTrack && progressFill) {
-      if (currentState === 'syncing' && typeof percent === 'number' && Number.isFinite(percent)) {
+      if (currentState === 'syncing') {
         progressTrack.classList.remove('hidden');
         progressTrack.removeAttribute('aria-hidden');
         progressTrack.setAttribute('role', 'progressbar');
         progressTrack.setAttribute('aria-label', 'Progresso da sincronização');
         progressTrack.setAttribute('aria-valuemin', '0');
         progressTrack.setAttribute('aria-valuemax', '100');
-        progressTrack.setAttribute('aria-valuenow', String(Math.min(100, Math.max(0, Math.round(percent)))));
-        progressFill.style.width = `${Math.min(100, Math.max(0, Math.round(percent)))}%`;
+        progressTrack.setAttribute('aria-valuenow', String(activeVisualPercent));
+        progressFill.style.width = `${activeVisualPercent}%`;
       } else {
         progressTrack.classList.add('hidden');
         progressTrack.setAttribute('aria-hidden', 'true');
