@@ -74,7 +74,7 @@ import { createEprocRuntimeExecutor } from './lib/judicial/eproc/runtime-executo
 import { createEprocPublicSearchRuntime } from './lib/judicial/eproc/enrichment/public-search-runtime.mjs';
 import { buildEprocIntegrationHealth } from './lib/judicial/eproc-integration-health.mjs';
 import { getCandidateEprocPortalsForCnj, getCredentialScopeForPortal, normalizePortalId } from './lib/judicial/eproc/portal-registry.mjs';
-import { PjeSyncService, PJE_JOB_STATUS, runPjePortalPipeline, applyPjeInventoryToState, listPjeCommunicationsFromState, buildPjePortalsStatus, computeDuePjePortals } from './lib/judicial/pje/sync/pje-sync-service.mjs';
+import { PjeSyncService, PJE_JOB_STATUS, runPjePortalPipeline, applyPjeInventoryToState, listPjeCommunicationsFromState, buildPjePortalsStatus } from './lib/judicial/pje/sync/pje-sync-service.mjs';
 import { listPjePortals, getPjePortalById, resolvePjeCollector } from './lib/judicial/pje/portal-registry.mjs';
 import { openPjeBrowserSession } from './lib/judicial/pje/runtime/index.mjs';
 import { isProcessPortalCompatible } from './lib/judicial/eproc/sync/portal-process-match.mjs';
@@ -162,7 +162,6 @@ import { NotificationDatabase } from './lib/notifications/db.mjs';
 import { NotificationService, EVENT_TYPES, CADENCES } from './lib/notifications/notification-service.mjs';
 import { normalizeCadence } from './lib/notifications/event-types.mjs';
 import { NotificationWorker } from './lib/notifications/worker.mjs';
-import { EmailBulletinScheduler } from './lib/notifications/bulletin-scheduler.mjs';
 import { ResendProvider } from './lib/notifications/providers/resend-provider.mjs';
 import { processResendWebhook } from './lib/notifications/webhook-handler.mjs';
 import { CONTROL_PLANE_ENTRIES, FactoryResetService, recoverInterruptedFactoryResets } from './lib/workspaces/factory-reset-service.mjs';
@@ -5598,42 +5597,7 @@ async function recordScheduledSourceCheck(sourceId, { status, detail }) {
   }
 }
 
-async function runScheduledDjenSync(workspaceId) {
-  const appState = (await readAppStateEnvelope()).state;
-  if (!appState) return { skipped: 'no-state' };
-  const allMonitoredTerms = monitoredTermsByWorkspacePolicy(monitoredTermsFromState(appState), workspaceId);
-  if (!allMonitoredTerms.length) return { skipped: 'no-terms' };
-  const counterList = [];
-  let monitoredTerms = [];
-  // Cada escopo tem marcador e orçamento próprios: uma captura inicial de 60
-  // dias do escritório não muda a janela do escopo privado (e vice-versa).
-  for (const [scope, terms] of monitoredTermsByScope(allMonitoredTerms)) {
-    const marker = await readDjenSyncMarker(scope);
-    // Orçamento por run com rotação durável: um escritório com muitos termos não
-    // monopoliza o laço compartilhado do agendador; a próxima run continua do cursor.
-    const selection = selectDjenTermsForRun(terms, marker);
-    const scopeTerms = selection.terms;
-    const { counters } = await collectAndPersistDjenTerms({ appState, monitoredTerms: scopeTerms, marker, trigger: 'scheduled' });
-    counterList.push(counters);
-    monitoredTerms = monitoredTerms.concat(scopeTerms);
-    if (counters.failures.length < counters.termCount) {
-      await saveDjenSyncMarker(nextDjenMarker(marker, {
-        completedAt: counters.completedAt,
-        termCursor: selection.nextCursor,
-        // A captura inicial só é declarada concluída quando todos os termos foram
-        // cobertos ao menos uma vez (a janela de 60 dias permanece ativa lá).
-        initialCaptureCompleted: selection.fullCycleCompleted
-      }), scope);
-    }
-  }
-  const counters = mergeDjenCounters(counterList);
-  await recordScheduledSourceCheck('djen-cnj', {
-    status: counters.failures?.length ? 'attention' : 'ok',
-    detail: `${counters.records} publicação(ões) lida(s) (+${counters.inboxAdded} nova(s)) na coleta agendada${counters.failures?.length ? `; ${counters.failures.length} termo(s) com falha` : ''}.`
-  });
-  console.log(`[DjenScheduler] Workspace "${workspaceId}": ${counters.records} lida(s) · +${counters.inboxAdded} nova(s) · ${counters.inboxUpdated} atualizada(s) · janela ${counters.lookbackDays}d${counters.initialCapture ? ' (captura inicial)' : ''} · termos ${monitoredTerms.length}/${allMonitoredTerms.length}${counters.failures.length ? ` · ${counters.failures.length} termo(s) com falha` : ''}.`);
-  return counters;
-}
+
 
 function updateSyncProgress({ step, totalSteps = 4, phase, label, detail, percent }) {
   const currentSyncProgress = syncState().progress;
@@ -8805,34 +8769,12 @@ for (const workspace of (security.state.workspaces || [{ id: security.state.defa
   }
 }
 
-// H3: o agendador INPI roda por workspace elegível (nunca fixo no default).
-// No beta, BETA_DISABLE_AUTOMATIONS contém varreduras externas automáticas; a
-// coleta continua disponível apenas por ação manual autenticada.
+// Edição aberta: sem varreduras automáticas. A coleta judicial e INPI acontece
+// apenas por ação manual autenticada (botão ou rota), e o Domicílio Eletrônico
+// roda mediante sync manual — nunca por ciclo agendado.
 if (!BETA_STATUS.featureFlags.BETA_DISABLE_AUTOMATIONS) startGoogleCalendarScheduler();
-if (!BETA_STATUS.featureFlags.BETA_DISABLE_AUTOMATIONS) {
-  inpiService.startScheduler({
-    listWorkspaceIds: () => collectableWorkspaces().map(workspace => workspace.id),
-    withWorkspace: (workspaceId, operation) => workspaceRequestContext.run({ workspaceId }, operation),
-    getState: async () => (await readAppStateEnvelope()).state || {}
-  });
-} else {
-  console.log('[BETA] Agendador INPI desativado por BETA_DISABLE_AUTOMATIONS.');
-}
 
-// Agendamento Judicial Eproc: 07:00 e 19:00 America/Sao_Paulo (Zero sweeps no login)
-// Sweeps agendados (eproc/PJe) também lançam Chromium a partir deste processo.
-// O watchdog rebaixa os navegadores de automação para a API manter a vez.
-function startChromiumPriorityWatchdog() {
-  if (process.platform !== 'linux') return null;
-  const interval = setInterval(() => {
-    try {
-      const child = spawn('bash', ['-lc', 'renice 10 -p $(pgrep -f chrome-headless-shell 2>/dev/null | tr "\\n" " ") >/dev/null 2>&1 || true'], { stdio: 'ignore' });
-      child.on('error', () => {});
-    } catch {}
-  }, 60_000);
-  interval.unref?.();
-  return interval;
-}
+
 
 // HTTP/2 do fetch global (undici) sofre abort() nativo em sessão zumbi sob escrita
 // concorrente (nodejs/node#61304). A API externa em uso não exige H2; fixamos H1/1.1.
@@ -8872,161 +8814,9 @@ function startGoogleCalendarScheduler() {
   return interval;
 }
 
-function startEprocSchedulerRuntime() {
-  const interval = setInterval(async () => {
-    try {
-      const now = new Date();
-      for (const ws of collectableWorkspaces()) {
-        if (factoryResetWorkspaces.has(ws.id)) continue;
-        await workspaceRequestContext.run({ workspaceId: ws.id }, async () => {
-          const orch = await judicialOrchestratorForCurrentWorkspace();
-          if (orch.syncScheduler.shouldRunScheduledSync(ws.id, now)) {
-            console.log(`[EprocSyncScheduler] Horário de sincronização automática detectado (07:00/12:00/19:00 BRT) para workspace "${ws.id}".`);
-            try {
-              await runScheduledDjenSync(ws.id);
-            } catch (djenErr) {
-              console.warn('[DjenScheduler] Falha na coleta agendada de publicações:', djenErr?.message || djenErr);
-            }
-            await orch.requestEprocSync({
-              workspaceId: ws.id,
-              trigger: 'scheduled'
-            });
-            // Domicílio Eletrônico no próprio servidor (cloud-first): roda depois do
-            // sweep para não disputar navegador/CPU. Sem A1 o ciclo é pulado com
-            // motivo claro; interação humana exigida nunca é contornada.
-            try {
-              const domicilioResult = await runDomicilioCaptureForWorkspace(ws.id);
-              if (domicilioResult.status === 'COMPLETED' || domicilioResult.status === 'PARTIAL') {
-                console.log(`[DomicilioScheduler] ${domicilioResult.status}: ${domicilioResult.resumo.normalizadas} comunicação(ões) na janela ${domicilioResult.window.dataInicio} a ${domicilioResult.window.dataFim}.`);
-              } else if (!['SKIPPED_NO_CERTIFICATE', 'SKIPPED_NO_CREDENTIALS'].includes(domicilioResult.status)) {
-                console.warn(`[DomicilioScheduler] ${domicilioResult.status}: ${domicilioResult.error?.message || 'sem detalhe'}`);
-              }
-            } catch (domicilioError) {
-              console.warn('[DomicilioScheduler] Falha na captura agendada do Domicílio:', domicilioError?.message || domicilioError);
-            }
-          }
-        });
-      }
-    } catch (schedErr) {
-      console.warn('[EprocSyncScheduler] Erro no ciclo de verificação:', schedErr.message);
-    }
-  }, 30_000);
-  interval.unref?.();
-  return interval;
-}
-
-if (BETA_STATUS.featureFlags.BETA_DISABLE_AUTOMATIONS) {
-  console.log('[BETA] Agendador judicial/DJEN desativado por BETA_DISABLE_AUTOMATIONS.');
-} else {
-  startEprocSchedulerRuntime();
-}
-startChromiumPriorityWatchdog();
 void disableUndiciHttp2();
 
-// Agendamento Judicial PJe: intervalo por workspace/portal com stagger e single-flight.
-const pjeJobStatusSeen = new Map();
-// Motivo do ciclo quando nada é agendado, declarado só quando muda (o tick é a cada 60s e o
-// journal não pode virar ruído): sem isso, "nada sincroniza" ficava sem explicação no log.
-const pjeSchedulerDecisionSeen = new Map();
-function logPjeSchedulerDecision(workspaceId, reason = '') {
-  const previous = pjeSchedulerDecisionSeen.get(workspaceId) || '';
-  if (previous === reason) return;
-  pjeSchedulerDecisionSeen.set(workspaceId, reason);
-  if (reason) console.log(`[PjeScheduler] Nada agendado para ${workspaceId}: ${reason}.`);
-}
-function trackPjeJobCompletions(workspaceId, jobs = []) {
-  for (const job of jobs) {
-    // `listJobs` devolve `jobId`; ler `id` deixava a lista inteira passar batido e o digest de
-    // movimentações do PJe nunca era publicado (painel e e-mail precisam convergir, §31).
-    const jobId = job?.jobId || job?.id || '';
-    if (!jobId || !job.status) continue;
-    const key = `${workspaceId}:${jobId}`;
-    const previous = pjeJobStatusSeen.get(key);
-    pjeJobStatusSeen.set(key, job.status);
-    if (previous && previous !== PJE_JOB_STATUS.COMPLETED && job.status === PJE_JOB_STATUS.COMPLETED) {
-      void publishMovementDigestForWorkspace(workspaceId, 'pje')
-        .catch(error => console.warn('[NotificationEngine] Digest de movimentações PJe falhou:', error.message));
-    }
-  }
-  if (pjeJobStatusSeen.size > 400) {
-    for (const key of [...pjeJobStatusSeen.keys()].slice(0, pjeJobStatusSeen.size - 200)) pjeJobStatusSeen.delete(key);
-  }
-}
-
-function startPjeSchedulerRuntime() {
-  const interval = setInterval(async () => {
-    try {
-      const now = Date.now();
-      for (const ws of collectableWorkspaces()) {
-        if (factoryResetWorkspaces.has(ws.id)) continue;
-        await workspaceRequestContext.run({ workspaceId: ws.id }, async () => {
-          const config = await readPjeWorkspaceConfig();
-          if (!config.pjeEnabled || !config.automaticSyncEnabled) {
-            logPjeSchedulerDecision(ws.id, config.pjeEnabled ? 'sincronização automática desligada' : 'PJe desabilitado');
-            return;
-          }
-          const service = await pjeSyncServiceForCurrentWorkspace();
-          const jobs = service.listJobs(ws.id);
-          trackPjeJobCompletions(ws.id, jobs);
-          const decision = computeDuePjePortals({
-            config,
-            portals: listPjePortals(),
-            jobs,
-            nowMs: now
-          });
-          if (decision.due.length === 0) {
-            const pulados = Object.entries(decision.skipped || {})
-              .map(([portalId, motivo]) => `${portalId} (${motivo})`)
-              .join(', ');
-            logPjeSchedulerDecision(ws.id, pulados || decision.reason || 'nenhum portal elegível');
-          } else {
-            logPjeSchedulerDecision(ws.id, '');
-          }
-          for (const portalId of decision.due) {
-            const portal = getPjePortalById(portalId);
-            if (!portal) continue;
-            try {
-              const result = service.requestSync({
-                workspaceId: ws.id,
-                portalId,
-                portal,
-                runtime: config.runtimePreference || 'auto',
-                trigger: 'scheduled'
-              });
-              console.log('[PjeScheduler] Sync agendado de ' + portalId + ' (job ' + result.jobId + ', joined=' + result.joinedExisting + ').');
-            } catch (portalError) {
-              console.warn('[PjeScheduler] Falha ao agendar ' + portalId + ':', portalError?.message || portalError);
-            }
-            await new Promise(resolve => setTimeout(resolve, 5_000));
-          }
-        });
-      }
-    } catch (schedulerError) {
-      console.warn('[PjeScheduler] Erro no ciclo de verificação:', schedulerError?.message || schedulerError);
-    }
-  }, 60_000);
-  interval.unref?.();
-  return interval;
-}
-
-startPjeSchedulerRuntime();
-
 server.listen(PORT, HOST, () => {
-  emailBulletinScheduler = new EmailBulletinScheduler({
-    listWorkspaces: () => security.state.configured ? security.state.workspaces || [] : [],
-    isWorkspaceActive: id => !globalThis.__atriumGracefulShutdown.isShuttingDown()
-      && !factoryResetWorkspaces.has(id)
-      && security.state.workspaces?.some(workspace => workspace.id === id && workspace.status === 'active'),
-    withWorkspace: (workspaceId, operation) => workspaceRequestContext.run({ workspaceId }, operation),
-    getUsers: workspaceId => security.listUsers(workspaceId),
-    getState: async () => {
-      const envelope = await readAppStateEnvelope();
-      if (envelope.status) throw new Error('BULLETIN_STATE_UNAVAILABLE');
-      return envelope.state || {};
-    },
-    getService: notificationServiceForWorkspace
-  });
-  void emailBulletinScheduler.start();
   console.log(`ATRIUM ${APP_VERSION} — Escritório Integrado: http://${HOST}:${PORT}`);
   console.log('Autenticação segura ativa (AES-256-GCM + TOTP 2FA).');
 });
