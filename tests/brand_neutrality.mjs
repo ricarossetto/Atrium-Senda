@@ -18,7 +18,8 @@ const forbiddenBrands = [
   { name: 'calendar-reference', pattern: /advbox/gi },
   { name: 'management-reference', pattern: /projuris/gi },
   { name: 'suite-reference', pattern: /legal one|legal-one|legalone/gi },
-  { name: 'inherited-task-term', pattern: /taskscore/gi }
+  { name: 'inherited-task-term', pattern: /taskscore/gi },
+  { name: 'skills-brand-reference', pattern: /minutaia/gi }
 ];
 
 const trackedFiles = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: ROOT })

@@ -31,10 +31,10 @@ O ATRIUM é um produto único com duas edições. A edição aberta — esta —
 - **Planos Basic / Pro / Pro IA e cobrança** (incluindo a chave global de IA e os webhooks de pagamento);
 - **Plano de administração da plataforma** (`/api/platform/*`): chaves globais do operador, telemetria de frota e suporte avançado;
 - **E-mails de ciclo de vida e campanhas**;
-- **Base de habilidades MinutaIA** (o acervo calibrado do Assistente);
+- **Base de habilidades jurídicas calibrada** (o acervo calibrado do Assistente);
 - **Página pública /discover e os aplicativos móveis**.
 
-O Assistente de IA continua na edição aberta, com chave própria do escritório (Google Gemini ou provedor compatível). O acervo MinutaIA está disponível exclusivamente no produto hospedado.
+O Assistente de IA continua na edição aberta, com chave própria do escritório (Google Gemini ou provedor compatível). A base de habilidades calibrada está disponível exclusivamente no produto hospedado.
 
 ### Segurança e privacidade
 

@@ -114,7 +114,7 @@ import { callHeadlessCmd, CMD_PROVIDER_MODEL, JEV_PROVIDER_API_URL, schemaToSyst
 import { normalizeCalibrationStore } from './lib/jev-beta/calibration.mjs';
 import { normalizeFinancialTriageStore, FINANCIAL_TRIAGE_BATCH_LIMIT } from './lib/financial/financial-triage-suggestions.mjs';
 import { buildProviderDecisionPrompt, parseProviderDecision } from './lib/jev-beta/provider-transport.mjs';
-import { skillsBaseInfo } from './lib/skills/minutaia-knowledge.mjs';
+import { skillsBaseInfo } from './lib/skills/knowledge-base.mjs';
 import { normalizePublicationTriageStore, PUBLICATION_TRIAGE_BATCH_LIMIT } from './lib/publications/publication-triage-suggestions.mjs';
 import { normalizeTaskTriageStore, TASK_TRIAGE_BATCH_LIMIT } from './lib/tasks/task-triage-suggestions.mjs';
 import { normalizeDuplicateReviewStore, DUPLICATE_REVIEW_BATCH_LIMIT } from './lib/publications/duplicate-review.mjs';

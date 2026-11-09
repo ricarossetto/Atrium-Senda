@@ -19,7 +19,7 @@ Esta versão marca o retorno do ATRIUM Senda como projeto aberto ativo, recompos
 - **Camada comercial do produto hospedado**: papéis Basic/Pro/Pro IA, cobrança, cortesia e verificação de assinatura por escritório.
 - **Plano de administração da plataforma hospedada** (`/api/platform/*`, painel `/admin.html`): configurações de instância, chaves globais, suporte e telemetria interna — exclusivos da operação do serviço hospedado.
 - **E-mails de ciclo de vida e comerciais** (trilhas de ativação e novidades).
-- **Base de habilidades MinutaIA** (acervo de habilidades jurídicas) do Assistente. O Assistente permanece disponível com chave própria do escritório; a assistência calibrada é exclusiva do produto hospedado.
+- **Base de habilidades jurídicas calibrada** do Assistente. O Assistente permanece disponível com chave própria do escritório; a assistência calibrada é exclusiva do produto hospedado.
 - **Página pública /discover e aplicativos móveis** desta edição aberta.
 
 ### Segurança e privacidade

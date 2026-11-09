@@ -314,7 +314,7 @@ const checkFiles = [
   'tests/publication_brief_task.mjs',
   'tests/publication_private_task.mjs',
   'tests/ai_task_undo_store.test.mjs',
-  'lib/skills/minutaia-knowledge.mjs',
+  'lib/skills/knowledge-base.mjs',
   'tests/contact_auto_link.mjs',
   'tests/ui_v2_assistive_visual_sweep.mjs',
   'tests/eproc-spreadsheet-download-fallback.mjs',

@@ -53,7 +53,7 @@ Abra `http://127.0.0.1:4173`. No Windows, o `ATRIUM.bat` automatiza as verifica�
 O que **não** está nesta edição (e faz diferença na prática hospedada):
 
 - Serviço hospedado com disponibilidade gerenciada (o ATRIUM em [atrium.adv.br](https://atrium.adv.br), operado pela mesma equipe).
-- Assistência jurídica com a base de habilidades MinutaIA e o acervo de 2 mil+ habilidades jurídicas calibradas (disponível no produto hospedado).
+- Assistência jurídica com a base completa de habilidades jurídicas calibradas (disponível no produto hospedado).
 - Suporte, backups gerenciados e evolução contínua assistida.
 
 Esta edição continua funcionando 100% offline para leitura e gestão do escritório; a IA é opcional e depende de chave própria.
