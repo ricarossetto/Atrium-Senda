@@ -20,6 +20,7 @@ page.on('request', request => {
   if (pathname === '/api/sync' && request.method() === 'POST') syncRequests += 1;
 });
 
+await page.addInitScript(() => localStorage.setItem('atrium_product_tour_off', 'true'));
 await page.addInitScript(() => {
   const probe = {
     authenticatedListeners: 0,
@@ -70,7 +71,7 @@ await page.addInitScript(() => {
 try {
   const bootstrapResponse = await fetch(`${server.baseUrl}/js/app/bootstrap.js`);
   assert.equal(bootstrapResponse.status, 200, 'bootstrap.js deve responder com HTTP 200.');
-  assert.match(await bootstrapResponse.text(), /import ['"]\.\.\/portal\.js['"]/, 'bootstrap.js deve controlar o carregamento de portal.js pelo grafo ES module.');
+  assert.match(await bootstrapResponse.text(), /import ['"]\.\.\/portal\.js(?:\?[^'"]*)?['"]/, 'bootstrap.js deve controlar o carregamento de portal.js pelo grafo ES module.');
 
   await navigateAndAssertSingleModuleGraph();
   await page.locator('#authSetupForm.active').waitFor();
@@ -102,14 +103,18 @@ try {
 
   await assertApplicationReady();
   assert.equal(stateReads, 1, 'Store.load deve fazer uma única leitura inicial de estado.');
-  assert.equal(syncRequests, 1, 'O sync inicial deve disparar uma única vez.');
+  assert.equal(syncRequests, 1, 'O primeiro acesso (conta recém-criada) deve disparar uma única sincronização completa.');
 
   const firstBootProbe = await readProbe();
   assert.equal(firstBootProbe.authenticatedListeners, 1, 'portal.js deve registrar um único listener de autenticação.');
   assert.equal(firstBootProbe.foundationEvents, 1, 'A fundação modular deve ser anunciada uma única vez.');
   assert.equal(firstBootProbe.fiveMinuteIntervals, 0, 'App.init não pode registrar sincronização a cada cinco minutos.');
-  const firstScheduledSync = await page.evaluate(() => window.portalApp.nextAutomaticSyncAt);
-  assert.equal(new Date(firstScheduledSync).getHours(), 10, 'A próxima sincronização automática deve ser agendada para as 10h.');
+  const firstBootSchedule = await page.evaluate(() => ({
+    timer: window.portalApp.autoSyncTimer,
+    next: window.portalApp.nextAutomaticSyncAt
+  }));
+  assert.equal(firstBootSchedule.timer, undefined, 'O navegador não pode agendar sincronização automática.');
+  assert.equal(firstBootSchedule.next, undefined, 'Não existe próxima sincronização agendada no navegador.');
   assert.ok(firstBootProbe.navigationListeners >= 2, 'A navegação principal não foi vinculada.');
   assert.deepEqual(firstBootProbe.dependencySnapshots, [{
     auth: true,
@@ -140,23 +145,26 @@ try {
   scriptRequests = [];
   stateReads = 0;
   syncRequests = 0;
-  const reloadSyncRequest = page.waitForRequest(isInitialSyncRequest);
   await page.reload({ waitUntil: 'networkidle' });
-  await reloadSyncRequest;
   await assertSingleScriptGraph();
   await assertApplicationReady();
+  await page.waitForTimeout(400);
   assert.equal(stateReads, 1, 'Reload deve inicializar um único Store.');
-  assert.equal(syncRequests, 1, 'Reload deve disparar um único sync inicial.');
+  assert.equal(syncRequests, 0, 'Recarregar a página (F5) nunca pode disparar sincronização com os tribunais.');
 
   const reloadProbe = await readProbe();
   assert.equal(reloadProbe.authenticatedListeners, 1, 'Reload deve registrar uma única fronteira de autenticação.');
   assert.equal(reloadProbe.foundationEvents, 1, 'Reload deve anunciar a fundação uma única vez.');
   assert.equal(reloadProbe.fiveMinuteIntervals, 0, 'Reload não pode reintroduzir sincronização a cada cinco minutos.');
-  const reloadScheduledSync = await page.evaluate(() => window.portalApp.nextAutomaticSyncAt);
-  assert.equal(new Date(reloadScheduledSync).getHours(), 10, 'Reload deve manter a próxima execução automática às 10h.');
+  const reloadSchedule = await page.evaluate(() => ({
+    timer: window.portalApp.autoSyncTimer,
+    next: window.portalApp.nextAutomaticSyncAt
+  }));
+  assert.equal(reloadSchedule.timer, undefined, 'Reload não pode recriar timer de sincronização.');
+  assert.equal(reloadSchedule.next, undefined, 'Reload não pode agendar próxima sincronização.');
   assert.deepEqual(pageErrors, [], `O boot modular gerou pageerror: ${pageErrors.join(' | ')}`);
 
-  console.log('✓ Boot modular aprovado: portal único, ordem determinística, auth, Store, App, navegação, globals e reload.');
+  console.log('✓ Boot modular aprovado: portal único, ordem determinística, auth, Store, App, navegação, globals, primeiro acesso e F5 sem sync.');
 } finally {
   await browser.close();
   await server.stop();

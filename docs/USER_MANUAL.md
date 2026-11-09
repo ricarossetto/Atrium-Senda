@@ -1,4 +1,4 @@
-# Manual do usuário — ATRIUM 2.1.1
+# Manual do usuário — ATRIUM 3.0.0
 
 O ATRIUM organiza o trabalho do escritório em uma interface V2 responsiva. Este manual descreve os fluxos atuais e os limites de supervisão. Para preparar o ambiente, veja [Instalação](INSTALLATION.md).
 
@@ -36,7 +36,7 @@ QSA pode sugerir novos contatos com papel `outro`. Sugestões de duplicidade ou 
 
 ## Processos
 
-Abra **Processos e casos** para pesquisar e ordenar a lista. Selecione um registro para ler o inspector antes de editar. O número CNJ, quando disponível, é a identidade processual canônica.
+Abra **Processos e casos** para pesquisar e ordenar a lista. Selecione um registro para ler o inspector antes de editar. O número CNJ, quando disponível, é a identidade processual oficial.
 
 O inspector reúne:
 
@@ -46,7 +46,7 @@ O inspector reúne:
 - publicações e tarefas vinculadas;
 - documentos e metadados cadastrados.
 
-O nome do cliente abre o contato canônico. Tarefas vinculadas podem ser abertas na área de trabalho. Dados trazidos por DJEN/DataJud complementam o processo sem apagar campos locais significativos.
+O nome do cliente abre o contato oficial. Tarefas vinculadas podem ser abertas na área de trabalho. Dados trazidos por DJEN/DataJud complementam o processo sem apagar campos locais significativos.
 
 ## Publicações e intimações
 
@@ -71,7 +71,7 @@ Datas sugeridas, movimentos e texto de publicação não confirmam prazo jurídi
 
 ## Tarefas, Kanban e apontamentos
 
-O Kanban organiza tarefas por status. Crie ou edite título, prioridade, responsável, vínculo processual e datas. O arraste altera o status canônico da mesma tarefa; não cria uma cópia.
+O Kanban organiza tarefas por status. Crie ou edite título, prioridade, responsável, vínculo processual e datas. O arraste altera o status oficial da mesma tarefa; não cria uma cópia.
 
 Use o apontamento de tempo quando disponível para registrar trabalho efetivamente realizado. O timer é uma ferramenta operacional e não altera automaticamente honorários ou prazo.
 
@@ -79,14 +79,14 @@ Use o apontamento de tempo quando disponível para registrar trabalho efetivamen
 
 A Agenda reúne compromissos, tarefas com data e publicações relacionadas. Use filtros e navegação por período. A integração iCalendar/Webcal é opcional e de leitura; o calendário externo não se torna autoridade sobre o Store jurídico.
 
-Datas processuais só devem aparecer como prazo quando o campo canônico correspondente tiver sido explicitamente preenchido.
+Datas processuais só devem aparecer como prazo quando o campo oficial correspondente tiver sido explicitamente preenchido.
 
 ## Documentos e minutas
 
 Há duas superfícies complementares:
 
 - **Modelos e minutas:** seleciona tipo, contato e processo, gera preview editável temporário e permite copiar ou baixar Markdown.
-- **Acervo documental:** armazena arquivos privados, metadados e relações canônicas.
+- **Acervo documental:** armazena arquivos privados, metadados e relações oficiais.
 
 No acervo, upload e download passam pelo backend. Preview segue política segura por tipo. Exclusão lógica permite restaurar; expurgo é explícito. Arquivos iguais podem ser detectados por checksum.
 
@@ -98,11 +98,11 @@ Quando Tesseract e `pdftoppm` estão configurados localmente, o ATRIUM pode exec
 
 Pressione `Ctrl+K` (Windows/Linux) ou `Cmd+K` (macOS). Digite nome, número, termo ou conteúdo. A busca cobre processos, contatos, publicações, tarefas, documentos/OCR, prompts e metadados de auditoria adequados.
 
-Use as setas e `Enter` para abrir o resultado. `Escape` fecha a paleta. O índice é reconstruível em memória; o registro aberto continua sendo a fonte canônica.
+Use as setas e `Enter` para abrir o resultado. `Escape` fecha a paleta. O índice é reconstruível em memória; o registro aberto continua sendo a fonte oficial.
 
 ## CRM e oportunidades
 
-Em **Atendimentos**, cadastre a oportunidade e escolha o cliente/interessado pelo seletor de contatos canônicos. A escolha guarda a identidade do contato, evitando vínculo baseado apenas no nome. Atualize etapa, responsável, origem, serviço e notas conforme o atendimento evolui.
+Em **Atendimentos**, cadastre a oportunidade e escolha o cliente/interessado pelo seletor de contatos oficiais. A escolha guarda a identidade do contato, evitando vínculo baseado apenas no nome. Atualize etapa, responsável, origem, serviço e notas conforme o atendimento evolui.
 
 Converter ou relacionar entidades exige ação explícita; a tela não transforma leads em clientes silenciosamente.
 
@@ -132,7 +132,7 @@ Exportações administrativas geram arquivos locais. Revise o conteúdo antes de
 
 Monitoramento apresenta saúde do Store, runtime derivado, fontes e integrações. Estados de atenção devem ser investigados; não apague arquivos de recovery/quarentena para fazer o aviso desaparecer.
 
-Use **Recriar dados derivados** apenas quando indicado. Essa ação não substitui processos, contatos ou tarefas canônicos.
+Use **Recriar dados derivados** apenas quando indicado. Essa ação não substitui processos, contatos ou tarefas oficiais.
 
 ## Integrações judiciais
 
@@ -192,13 +192,12 @@ Use o botão de tema na barra superior. A preferência é apenas visual e local 
 
 ## Problemas comuns
 
-- **ATRIUM não abre:** execute `ATRIUM.bat --doctor` e confira Node 24/Corepack.
-- **Porta ocupada:** se outro ATRIUM responde, o launcher apenas o abre; para outro serviço, encerre-o ou use porta manual.
-- **Dados não aparecem:** confira `JURISFLOW_DATA_DIR`, usuário e ambiente antes de restaurar qualquer arquivo.
-- **Integração judicial pede ação:** abra a sessão assistida e conclua login/TOTP/CAPTCHA manualmente.
+- **ATRIUM não abre:** confira a conexão e o estado informado na página; acione o suporte autorizado se persistir.
+- **Dados não aparecem:** confira o escritório e o usuário autenticados; não restaure backups sem análise administrativa.
+- **Integração judicial pede ação:** siga a orientação da interface; autenticação humana no portal permanece supervisionada.
 - **DataJud não encontrou:** o dado base do DJEN é preservado; não invente complementos.
 - **OCR não funciona:** confira Tesseract, `pdftoppm`, idioma e permissões do arquivo.
 - **Gemini não configurado:** valide a chave na área do Assistente; não a registre em logs.
 - **Conflito de salvamento:** recarregue o estado mais recente e reaplique conscientemente sua alteração; não force a revisão.
 
-Para problemas de ambiente, consulte [Solução de problemas de instalação](INSTALLATION.md#18-solução-de-problemas). Para reportar vulnerabilidade, siga [SECURITY.md](../.github/SECURITY.md).
+Para informações sobre operação hospedada e desenvolvimento, consulte [acesso e ambiente](INSTALLATION.md). Para reportar vulnerabilidade, siga [SECURITY.md](../.github/SECURITY.md).

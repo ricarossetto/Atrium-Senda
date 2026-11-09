@@ -15,12 +15,13 @@ Manter ledger de ações relevantes com ator autoritativo, minimização de PII 
 - Novos registros são ordenados do mais recente para o mais antigo.
 - Backend usa ator autenticado em mutações autoritativas.
 - Filtros/busca/exportação não mutam o ledger.
+- O ledger renderiza no máximo uma página por vez (padrão 100 por página; opções 100, 500 ou 1000 no rodapé) para preservar a responsividade com milhares de eventos, sem reordenar nem apagar. Paginação é preferência de apresentação local: filtros, busca e tamanho resetam para a página 1; a navegação entre páginas a preserva. Exportação segue integral.
 - Audit de contatos não inclui CPF/RG/telefone/e-mail/endereço/notas.
 
 ## Allowed operations
 
 - Acrescentar evento com ação, detalhe minimizado, ator e timestamp.
-- Filtrar, buscar e exportar o conjunto canônico.
+- Filtrar, buscar e exportar o conjunto oficial.
 
 ## Forbidden operations
 
@@ -34,7 +35,7 @@ Entradas imutáveis por ID com `at`, `action`, `detail` e `actor`; limites de re
 
 ## Security boundary
 
-Detalhes são escapados na UI e minimizados antes da persistência; export respeita o ledger visível/canônico sem executar HTML.
+Detalhes são escapados na UI e minimizados antes da persistência; export respeita o ledger visível/oficial sem executar HTML.
 
 ## Failure semantics
 
@@ -46,4 +47,4 @@ Audit integra o estado revisionado ou append autoritativo do servidor, conforme 
 
 ## Relevant tests
 
-`tests/audit_feature.mjs`, `tests/ui_v2_audit.mjs`, `tests/ui_v2_audit_accessibility.mjs`, `tests/contacts_feature.mjs`.
+`tests/audit_feature.mjs`, `tests/ui_v2_audit.mjs`, `tests/ui_v2_audit_accessibility.mjs`, `tests/ui_v2_audit_pagination.mjs`, `tests/contacts_feature.mjs`.

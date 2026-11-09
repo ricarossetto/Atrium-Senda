@@ -26,6 +26,8 @@ Permitir evolução compatível da API interna atual e preparar uma fronteira fu
 - `/api/system/api-metadata` é autenticado, determinístico e não enumera rotas nem capacidades sensíveis.
 - Prefixo versionado desconhecido exige autenticação e falha com 404/código estável; nunca faz fallback para arquivo estático ou rota interna.
 - Headers de versão descrevem o contrato, não compatibilidade pública nem garantia de suporte externo.
+- **Comandos assíncronos (202 + `idCommand`)**: operações longas que não devem segurar a conexão podem responder `202 { ok, idCommand, status, statusUrl }` e são consultadas em `GET /api/commands/:idCommand` (sessão; escopo por workspace). O registro é em memória (`lib/http/async-commands.mjs`), com TTL de 30 minutos, teto de 50 comandos e estados `running`/`done`/`error`; `done` carrega exatamente o payload da rota síncrona e `error` a mensagem real — nunca sucesso fabricado. A adoção é opt-in por rota (`?async=1` ou `body.async === true`), preservando o contrato síncrono existente; o retry da fila DJEN é o primeiro consumidor.
+- **Relato de erro**: `POST /api/system/error-report` (sessão + CSRF + limite de 20/hora por workspace) recebe `{ scope, message, details }`, reaplica a redação no servidor, devolve `{ code, stored, emailStatus }` e nunca responde sucesso quando o registro falha; detalhes do contrato de privacidade em `security-boundaries.md`.
 
 ## Compatibility policy
 
@@ -68,4 +70,4 @@ Headers e metadata são derivados em memória a cada resposta; a foundation não
 
 ## Relevant tests
 
-`tests/api_evolution_foundation.mjs`, `tests/security.mjs`, `tests/deployment.mjs`, `tests/store_module.mjs` e `tests/smoke.mjs`.
+`tests/api_evolution_foundation.mjs`, `tests/async-commands.test.mjs`, `tests/security.mjs`, `tests/deployment.mjs`, `tests/store_module.mjs` e `tests/smoke.mjs`.

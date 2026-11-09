@@ -1,6 +1,18 @@
 (() => {
   document.documentElement.dataset.ui = 'v2';
   try {
+    const host = String(location.hostname || '').toLowerCase();
+    const basicHost = host === 'basic.atrium.adv.br' || host.endsWith('.basic.atrium.adv.br');
+    let density = null;
+    try { density = String(localStorage.getItem('atrium_ui_density') || '').trim().toLowerCase(); } catch {}
+    if (density !== 'basic' && density !== 'pro') {
+      density = basicHost ? 'basic' : 'pro';
+    }
+    document.documentElement.dataset.uiDensity = density;
+  } catch {
+    document.documentElement.dataset.uiDensity = 'pro';
+  }
+  try {
     const p = String(location.pathname || '').toLowerCase();
     const s = new URLSearchParams(location.search);
     const h = String(location.hash || '').toLowerCase();
@@ -18,5 +30,6 @@
   } else {
     document.documentElement.dataset.theme = 'light';
   }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', document.documentElement.dataset.theme === 'dark' ? '#0c0c0b' : '#eef1f1');
 })();
 

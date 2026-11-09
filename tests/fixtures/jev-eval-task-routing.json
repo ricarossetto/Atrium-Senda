@@ -1,0 +1,8 @@
+[
+  { "expectedRoute": "proceed_fast", "highRisk": false, "id": "tr-trivial", "objective": "Informar o número do processo da pasta de acompanhamento.", "stakes": "low", "taskType": "lookup" },
+  { "expectedRoute": "deep_review", "highRisk": true, "id": "tr-review", "objective": "Analisar sentença sintética para avaliar cabimento de apelação.", "stakes": "high", "taskType": "analise_processual" },
+  { "expectedRoute": "split_task", "highRisk": false, "id": "tr-split", "objective": "Analisar lote sintético de 200 documentos para due diligence.", "stakes": "low", "taskType": "analise_lote" },
+  { "expectedRoute": "block", "highRisk": true, "id": "tr-block", "objective": "Excluir permanentemente documentos do acervo sem conferência.", "stakes": "high", "taskType": "exclusao" },
+  { "expectedRoute": "proceed_fast", "highRisk": false, "id": "tr-fast2", "objective": "Corrigir erro de digitação no título de tarefa interna.", "stakes": "low", "taskType": "edicao_simples" },
+  { "expectedRoute": "deep_review", "highRisk": true, "id": "tr-ambiguous", "objective": "Avaliar tese sintética com jurisprudência conflitante entre turmas.", "stakes": "high", "taskType": "analise_tese" }
+]

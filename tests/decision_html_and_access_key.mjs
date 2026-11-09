@@ -157,7 +157,7 @@ assert.equal(monitoringCalls.length, 2);
 assert.equal(monitoringCalls.every(call => call.options.accessKey === 'CHAVE-PERSISTIDA-TESTE'), true);
 assert.equal(JSON.stringify(monitoring).includes('CHAVE-PERSISTIDA-TESTE'), false, 'Resumo do monitoramento não pode expor a chave.');
 
-console.log('PASS HTML sanitizado, chave cifrável reutilizada no monitoramento e PDFs registrados no acervo canônico.');
+console.log('PASS HTML sanitizado, chave cifrável reutilizada no monitoramento e PDFs registrados no acervo oficial.');
 
 function snapshotPayload() {
   return {

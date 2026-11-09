@@ -33,6 +33,8 @@ try {
   await credentials.init();
   await sessions.init();
 
+  await credentials.savePortalTotp('eproc-sandbox', { secret: 'JBSWY3DPEHPK3PXP', label: 'eproc Sandbox Sintético' });
+
   await credentials.savePortalCredentials('eproc-sandbox', {
     username: 'identity-a', password: passwordMarker, oab: '000000', uf: 'RS', identityId: 'identity-a'
   });
@@ -156,7 +158,12 @@ try {
   assert.equal(coverage[0].authStrategy, 'username-password-plus-totp');
   assert.equal(coverage[0].verification, 'verified');
   assert.equal(coverage[0].readOnly, true);
+  assert.equal(coverage[0].totpConfigured, true);
   assert.equal(Object.hasOwn(coverage[0], 'credential'), false);
+
+  const removedTotp = await credentials.removePortalTotp('eproc-sandbox');
+  assert.equal(removedTotp.removed, true);
+  assert.equal(await credentials.getPortalTotpSecret('eproc-sandbox'), null);
 
   assert.equal(normalizeCnjNumber('5000000-00.2026.8.21.0001'), '50000000020268210001');
   assert.equal(normalizeCnjNumber('inválido'), '');

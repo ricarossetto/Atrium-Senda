@@ -3,8 +3,12 @@ import { createCipheriv, randomBytes } from 'node:crypto';
 import { access, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { generateTotp } from '../lib/security.mjs';
 import { postJson, startTestServer } from './helpers.mjs';
+import { serverSourceText } from './server-source.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 console.log('\n=== RUNTIME RECOVERY: AUSÊNCIA, MIGRAÇÃO E QUARENTENA ===\n');
 
@@ -206,6 +210,35 @@ for (const scenario of [
     const diagnostic = await (await fetch(`${server.baseUrl}/api/system/state-diagnostics`, { headers })).json();
     assert.equal(diagnostic.runtimeStateStatus, 'QUARANTINED');
     assert.equal(diagnostic.runtimeRecoveryDetails.reason, scenario.expectedReason);
+  } finally {
+    await server.stop();
+    await cleanScenarioDirectory(dataDirectory);
+  }
+}
+
+// 6. Coleções do runtime têm teto agregado: crescimento ilimitado não é servido.
+{
+  const dataDirectory = await createScenarioDirectory();
+  const encryptionKey = randomBytes(32).toString('base64');
+  const oversized = {
+    events: Array.from({ length: 2500 }, (_, index) => ({ id: `event-${index}`, title: `Evento sintético ${index}` })),
+    tasks: [],
+    intimations: [],
+    processes: [],
+    contacts: [],
+    sources: [],
+    updatedAt: '2026-09-20T00:00:00.000Z'
+  };
+  await writeFile(path.join(dataDirectory, 'runtime.json'), JSON.stringify(runtimeEnvelope(oversized, encryptionKey), null, 2), { mode: 0o600 });
+  const server = await startScenario(dataDirectory, encryptionKey);
+  try {
+    const headers = await setupAuth(server, 'runtime-caps');
+    const runtime = await (await fetch(`${server.baseUrl}/api/events`, { headers })).json();
+    assert.equal(runtime.events.length, 2000, `Runtime não pode devolver mais de 2000 eventos (recebido ${runtime.events.length}).`);
+    assert.equal(runtime.events[0].id, 'event-0', 'O corte preserva os itens mais recentes (início da coleção).');
+    assert.equal(runtime.events.at(-1).id, 'event-1999', 'O corte descarta os itens mais antigos.');
+    const serverSource = serverSourceText;
+    assert.match(serverSource, /capRuntimeCollections\(/, 'Toda escrita do runtime deve passar pelo teto agregado.');
   } finally {
     await server.stop();
     await cleanScenarioDirectory(dataDirectory);

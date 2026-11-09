@@ -1,5 +1,35 @@
-import { Store, isoDate, uid } from '../core/store.js';
-import { createAgendaPresenter } from '../views/ui-v2/agenda-presenter.js';
+import { Store, isoDate, uid } from '../core/store.js?v=3.0.0';
+import {
+  RECURRENCE_FREQUENCIES,
+  applyRecurrenceEdit,
+  describeRecurrence,
+  materializeCollection,
+  parseOccurrenceId
+} from '../core/recurrence.js?v=3.0.0';
+import { createAgendaPresenter } from '../views/ui-v2/agenda-presenter.js?v=3.0.0';
+const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
+
+function addDaysIso(dateOnly, days) {
+  const date = new Date(`${dateOnly}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function deadlineKickerHint(task) {
+  const source = String(task?.deadlineSource || task?.sourceReportedDeadlineSource || '').trim().toLowerCase();
+  if (source === 'pje') return 'Data limite prevista para manifestação, declarada pelo PJe';
+  if (source === 'eproc') return 'Prazo declarado pelo eproc (fonte oficial)';
+  if (source === 'domicilio') return 'Data informada pelo Domicílio Eletrônico: é referência, o prazo oficial vem do eproc';
+  return 'Data definida por pessoa nesta tarefa';
+}
+
+function deadlineKicker(task) {
+  const source = String(task?.deadlineSource || task?.sourceReportedDeadlineSource || '').trim().toLowerCase();
+  if (source === 'pje') return 'Data limite PJe';
+  if (source === 'eproc') return 'Prazo eproc';
+  if (source === 'domicilio') return 'Referência do Domicílio';
+  return 'Prazo da tarefa';
+}
 
 export function collectAgendaActivities({
   agenda = [],
@@ -10,6 +40,7 @@ export function collectAgendaActivities({
   today = isoDate(),
   classifyIntimation,
   getIntimationParties,
+  getTeamMember = () => null,
   totalTimeMinutes
 } = {}) {
   let events = agenda.map(event => ({
@@ -18,8 +49,9 @@ export function collectAgendaActivities({
     date: event.date,
     time: event.time || 'Dia inteiro',
     title: event.title,
-    subtitle: `${event.client || event.process || 'Compromisso interno'}${event.location ? ` · ${event.location}` : ''}`,
+    subtitle: `${event.client || event.process || (event.source === 'Agenda pessoal' ? 'Agenda pessoal' : 'Compromisso interno')}${event.location ? ` · ${event.location}` : ''}${event.seriesId || event.recurrence?.exceptionOf ? ' · Série recorrente' : ''}`,
     source: event.source || 'Interna',
+    recurring: Boolean(event.seriesId || event.recurrence?.seriesId),
     raw: event
   }));
 
@@ -27,17 +59,21 @@ export function collectAgendaActivities({
     const isFatal = Boolean(task.fatalDeadline);
     const targetDate = task.fatalDeadline || task.deadline;
     const timeMins = totalTimeMinutes(task.timeLogs);
+    const rawTime = String(task.time || '').trim();
+    const shortTime = /^\d{1,2}:\d{2}/.test(rawTime) ? rawTime.slice(0, 5) : '';
     return {
       type: 'task',
       id: task.id,
       date: targetDate,
-      time: isFatal ? 'Prazo fatal' : (task.time || 'Prazo interno'),
+      time: isFatal ? 'Prazo fatal' : (shortTime || deadlineKicker(task)),
+      timeHint: isFatal ? 'Prazo fatal definido por pessoa nesta tarefa' : deadlineKickerHint(task),
       title: task.title,
       subtitle: `${task.process ? `${task.process} · ` : ''}${task.client || 'Tarefa interna'}${task.points ? ` · ${task.points} pts` : ''}`,
       isFatal,
       status: task.status,
       timeMins,
       source: isFatal ? 'Fatal' : 'Tarefa',
+      member: getTeamMember(task) || null,
       raw: task
     };
   });
@@ -87,6 +123,7 @@ export function createAgendaFeature({
   totalTimeMinutes,
   classifyIntimation,
   getIntimationParties,
+  getTeamMember = () => null,
   openModal,
   showToast,
   onOpenTask,
@@ -139,39 +176,123 @@ export function createAgendaFeature({
     },
 
     openModal(defaults = {}) {
-      openModal?.('agenda', defaults.id ? 'Detalhes do compromisso' : 'Novo compromisso', 'Agenda jurídica', [
+      const occurrence = parseOccurrenceId(defaults.id || '');
+      const isMaster = Boolean(defaults.recurrence?.seriesId && !defaults.recurrence?.exceptionOf);
+      const fields = [
         { name: 'title', label: 'Compromisso', required: true, full: true }, { name: 'date', label: 'Data', type: 'date', required: true }, { name: 'time', label: 'Horário', type: 'time' },
         { name: 'client', label: 'Cliente / partes', type: 'combobox', identityName: 'contactId', suggestions: (store.state.contacts || []).map(contact => ({ id: contact.id, value: contact.name, label: 'Contato / cliente' })) },
         { name: 'process', label: 'Processo', type: 'combobox', identityName: 'processId', suggestions: (store.state.processes || []).map(process => ({ id: process.id, value: process.number || process.client || 'Processo sem número', label: process.client || 'Processo' })) }, { name: 'location', label: 'Local' },
-        { name: 'source', label: 'Origem', type: 'select', options: [{value:'Interna',label:'Interna'},{value:'Agenda externa',label:'Agenda externa'},{value:'Importação',label:'Importação'}] },
+        { name: 'source', label: 'Origem', type: 'select', options: [{value:'Interna',label:'Interna'},{value:'Agenda externa',label:'Agenda externa'},{value:'Importação',label:'Importação'},...(defaults.source === 'Agenda pessoal' ? [{value:'Agenda pessoal',label:'Agenda pessoal'}] : [])] },
         { name: 'description', label: 'Observações', type: 'textarea', full: true }
-      ], { date: isoDate(), source: 'Interna', ...defaults });
+      ];
+      if (occurrence) {
+        fields.push({
+          name: 'recurrenceScope',
+          label: 'Aplicar alteração a',
+          type: 'select',
+          full: true,
+          options: [
+            { value: 'single', label: 'Somente esta ocorrência' },
+            { value: 'following', label: 'Esta e as seguintes' },
+            { value: 'series', label: 'Toda a série' }
+          ],
+          note: `Ocorrência de série recorrente (${describeRecurrence(defaults.recurrence?.rule)}).`
+        });
+      } else if (!defaults.id || isMaster) {
+        fields.push({
+          name: 'recurrenceFrequency',
+          label: 'Repetição',
+          type: 'select',
+          full: true,
+          options: [
+            { value: '', label: 'Não repetir' },
+            { value: 'daily', label: 'Diária' },
+            { value: 'weekly', label: 'Semanal' },
+            { value: 'monthly', label: 'Mensal' },
+            { value: 'yearly', label: 'Anual' }
+          ],
+          note: 'Séries podem ser editadas por ocorrência, pelas seguintes ou inteiras.'
+        });
+      }
+      openModal?.('agenda', defaults.id ? 'Detalhes do compromisso' : 'Novo compromisso', 'Agenda jurídica', fields, {
+        date: isoDate(),
+        source: 'Interna',
+        recurrenceFrequency: defaults.recurrence?.rule?.frequency || '',
+        recurrenceScope: 'series',
+        ...defaults
+      });
     },
 
     saveRecord(data, defaults = {}) {
       const editing = Boolean(defaults.id);
+      const occurrence = parseOccurrenceId(defaults.id || '');
+      const { recurrenceFrequency = '', recurrenceScope = 'series', ...fields } = data;
+      if (occurrence) {
+        const scope = ['single', 'following', 'series'].includes(recurrenceScope) ? recurrenceScope : 'series';
+        const result = applyRecurrenceEdit({
+          items: store.state.agenda || [],
+          masterId: occurrence.seriesId,
+          occurrenceDate: occurrence.date,
+          scope,
+          patch: fields,
+          createId: prefix => uid(prefix)
+        });
+        if (!result.ok) return null;
+        for (const id of result.changedIds || []) {
+          const record = result.items.find(item => item.id === id);
+          if (record) store.upsert('agenda', record);
+        }
+        const labels = {
+          single: 'Compromisso atualizado (ocorrência da série)',
+          following: 'Série de compromissos dividida',
+          series: 'Série de compromissos atualizada'
+        };
+        store.audit(labels[scope], `${fields.title || defaults.title || 'Compromisso'} · ${formatDate(occurrence.date)} · ${describeRecurrence(defaults.recurrence?.rule)}`);
+        return result.items.find(item => item.id === (result.exceptionId || result.newSeriesId || result.seriesId)) || null;
+      }
       const record = {
         id: defaults.id || uid('agenda'),
         externalId: defaults.externalId || null,
         ...defaults,
-        ...data,
+        ...fields,
         updatedAt: new Date().toISOString()
       };
+      const frequency = RECURRENCE_FREQUENCIES.includes(recurrenceFrequency) ? recurrenceFrequency : null;
+      if (frequency) {
+        record.recurrence = {
+          rule: { ...(defaults.recurrence?.rule || {}), frequency, interval: defaults.recurrence?.rule?.interval || 1 },
+          seriesId: defaults.recurrence?.seriesId || record.id,
+          startDate: defaults.recurrence?.startDate || record.date
+        };
+      } else if (defaults.recurrence && !defaults.recurrence.exceptionOf) {
+        delete record.recurrence;
+      }
       store.upsert('agenda', record);
-      store.audit(editing ? 'Compromisso atualizado' : 'Compromisso cadastrado', `${record.title} · ${formatDate(record.date)}`);
+      store.audit(
+        editing
+          ? (frequency ? 'Série de compromissos atualizada' : 'Compromisso atualizado')
+          : (frequency ? 'Compromisso recorrente cadastrado' : 'Compromisso cadastrado'),
+        `${record.title} · ${formatDate(record.date)}${frequency ? ` · ${describeRecurrence(record.recurrence?.rule)}` : ''}`
+      );
       return record;
     },
 
     render() {
+      const today = isoDate();
+      const agendaWindow = selectedDate
+        ? { from: selectedDate, to: selectedDate }
+        : { from: today, to: addDaysIso(today, 120) };
+      const materializedAgenda = materializeCollection(store.state.agenda || [], agendaWindow);
       const result = collectAgendaActivities({
-        agenda: store.state.agenda,
-        tasks: store.state.tasks,
+        agenda: materializedAgenda,
+        tasks: (store.state.tasks || []).filter(task => task && task.active !== false),
         intimations: store.state.intimations,
         selectedDate,
         typeFilter,
-        today: isoDate(),
+        today,
         classifyIntimation,
         getIntimationParties,
+        getTeamMember,
         totalTimeMinutes
       });
       const { events, tasks, intimations, activities } = result;
@@ -198,9 +319,9 @@ export function createAgendaFeature({
       }
       if (badgesEl) {
         badgesEl.innerHTML = isV2() ? presenter.renderSummary({ events, tasks, intimations }) : `
-          <span class="status-chip planned">${events.length} evento(s)</span>
-          <span class="status-chip connected">${tasks.length} prazo(s)/tarefa(s)</span>
-          <span class="status-chip warning">${intimations.length} intimação(ões)</span>
+          <span class="status-chip planned">${plural(events.length, 'evento', 'eventos')}</span>
+          <span class="status-chip connected">${plural(tasks.length, 'prazo ou tarefa', 'prazos ou tarefas')}</span>
+          <span class="status-chip warning">${plural(intimations.length, 'intimação', 'intimações')}</span>
         `;
       }
 
@@ -288,8 +409,12 @@ export function createAgendaFeature({
         days.push('<span class="calendar-day muted"></span>');
       }
 
-      const agendaEvents = store.state.agenda || [];
-      const tasks = store.state.tasks || [];
+      const monthPad = value => String(value).padStart(2, '0');
+      const agendaEvents = materializeCollection(store.state.agenda || [], {
+        from: `${year}-${monthPad(month + 1)}-01`,
+        to: `${year}-${monthPad(month + 1)}-${monthPad(last.getDate())}`
+      });
+      const tasks = (store.state.tasks || []).filter(task => task && task.active !== false);
       const intimations = store.state.intimations || [];
 
       for (let day = 1; day <= last.getDate(); day++) {

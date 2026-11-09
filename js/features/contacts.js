@@ -1,6 +1,19 @@
-import { Store, isoDate, uid } from '../core/store.js';
-import { buildClientContext } from '../core/client-context.js';
-import { renderContactsV2Workspace } from '../views/ui-v2/contacts-presenter.js';
+import { Store, isoDate, uid } from '../core/store.js?v=3.0.0';
+import { buildClientContext } from '../core/client-context.js?v=3.0.0';
+import { findStrongDuplicateIndexes, pickKeeperIndex } from '../core/contact-identity.js?v=3.0.0';
+import { renderContactsV2Workspace } from '../views/ui-v2/contacts-presenter.js?v=3.0.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.0';
+import { installPanelSizeToggleFor, isPanelMaximized, resetPanelSize, setPanelSize, syncPanelSizeControl } from '../components/panel-size.js?v=3.0.0';
+const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
+
+export const CONTACT_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
+export const CONTACT_DEFAULT_PAGE_SIZE = 25;
+export const CONTACT_SEARCH_DEBOUNCE_MS = 150;
+
+function contactTotalPages(total, size) {
+  const safeSize = CONTACT_PAGE_SIZES.includes(size) ? size : CONTACT_DEFAULT_PAGE_SIZE;
+  return Math.max(1, Math.ceil((Number(total) || 0) / safeSize));
+}
 
 export function createContactsFeature({
   store = Store,
@@ -27,29 +40,110 @@ export function createContactsFeature({
   let roleFilter = 'all';
   let selectedContactId = null;
   let restoreContactId = null;
+  let currentPage = 1;
+  let pageSize = CONTACT_DEFAULT_PAGE_SIZE;
+  let lastFilteredTotal = 0;
+  let searchDebounceTimer = 0;
+  let contactsDataVersion = 0;
+  let lastListRef = null;
+  let lastListLength = -1;
+  let lastDataVersion = -1;
+  let lastNeedle = null;
+  let lastRole = null;
+  let lastSortField = null;
+  let lastSortDir = null;
+  let lastFilteredSorted = null;
   const inspectorInertElements = new Set();
   const byId = id => documentRef?.getElementById(id);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
+
+  const readContacts = () => (Array.isArray(store.state.contacts) ? store.state.contacts : []);
+  // Reaproveita filtro+sort entre navegações de página sem alterar resultado:
+  // a chave inclui identidade/tamanho do array, versão de escritas da feature,
+  // busca, papel e ordenação. Hidratacões e substituicões trocam a referência;
+  // escritas externas elemento a elemento não existem fora desta feature.
+  const getFilteredSorted = needle => {
+    const list = readContacts();
+    if (lastFilteredSorted
+      && lastListRef === list
+      && lastListLength === list.length
+      && lastDataVersion === contactsDataVersion
+      && lastNeedle === needle
+      && lastRole === roleFilter
+      && lastSortField === sort.field
+      && lastSortDir === sort.direction) return lastFilteredSorted;
+    const filtered = sortRecords(list.filter(item => !needle || normalizeText(`${item.name} ${item.document} ${item.mobile} ${item.phone} ${item.email} ${item.origin} ${item.contactRole || ''} ${item.leadOrigin || ''} ${item.city || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle)), sort);
+    lastListRef = list;
+    lastListLength = list.length;
+    lastDataVersion = contactsDataVersion;
+    lastNeedle = needle;
+    lastRole = roleFilter;
+    lastSortField = sort.field;
+    lastSortDir = sort.direction;
+    lastFilteredSorted = filtered;
+    return filtered;
+  };
 
   const feature = {
     init() {
       if (initialized) return false;
       initialized = true;
       byId('newContactButton')?.addEventListener('click', () => this.openContactModal());
-      byId('contactSearch')?.addEventListener('input', event => this.render(event.target.value));
+      byId('contactSearch')?.addEventListener('input', event => {
+        const value = event.target.value;
+        if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+          searchDebounceTimer = 0;
+          this.render(value, { resetPage: true });
+        }, CONTACT_SEARCH_DEBOUNCE_MS);
+      });
+      installPanelSizeToggleFor(byId('contactsV2Workspace'), '#contactInspector');
       byId('contactsV2Workspace')?.addEventListener('click', event => this.handleWorkspaceClick(event));
       byId('contactsV2Workspace')?.addEventListener('keydown', event => this.handleWorkspaceKeydown(event));
+      byId('view-contacts')?.addEventListener('click', event => this.handlePaginationClick(event));
       return true;
     },
 
     get roleFilter() { return roleFilter; },
     get selectedContactId() { return selectedContactId; },
+    get page() { return currentPage; },
+    get pageSize() { return pageSize; },
+    get pagination() {
+      return {
+        page: currentPage,
+        pageSize,
+        total: lastFilteredTotal,
+        totalPages: contactTotalPages(lastFilteredTotal, pageSize)
+      };
+    },
+
+    setPageSize(value) {
+      const size = Number(value);
+      if (!CONTACT_PAGE_SIZES.includes(size) || size === pageSize) return pageSize;
+      pageSize = size;
+      currentPage = 1;
+      this.render(byId('contactSearch')?.value || '', { resetPage: false });
+      return pageSize;
+    },
+
+    setPage(value) {
+      const pages = contactTotalPages(lastFilteredTotal, pageSize);
+      let next = currentPage;
+      if (value === 'first') next = 1;
+      else if (value === 'prev') next = currentPage - 1;
+      else if (value === 'next') next = currentPage + 1;
+      else if (value === 'last') next = pages;
+      else if (Number.isFinite(Number(value))) next = Math.trunc(Number(value));
+      currentPage = Math.max(1, Math.min(pages, next || 1));
+      this.render(byId('contactSearch')?.value || '');
+      return currentPage;
+    },
 
     setRoleFilter(value) {
       const allowed = ['all', 'cliente', 'testemunha', 'perito', 'adverso', 'correspondente', 'preposto', 'outro'];
       roleFilter = allowed.includes(value) ? value : 'all';
       selectedContactId = null;
-      this.render(byId('contactSearch')?.value || '');
+      this.render(byId('contactSearch')?.value || '', { resetPage: true });
       return roleFilter;
     },
 
@@ -58,6 +152,10 @@ export function createContactsFeature({
       if (!item) return null;
       selectedContactId = item.id;
       restoreContactId = item.id;
+      const needle = normalizeText(byId('contactSearch')?.value || '');
+      const scoped = (roleFilter === 'all' ? getFilteredSorted(needle) : getFilteredSorted(needle).filter(candidate => candidate.contactRole === roleFilter));
+      const index = scoped.findIndex(candidate => String(candidate.id) === String(item.id));
+      if (index >= 0) currentPage = Math.floor(index / pageSize) + 1;
       this.render(byId('contactSearch')?.value || '');
       if (focusInspector) queueMicrotask(() => {
         const target = byId('contactInspector')?.querySelector('[data-contact-inspector-close]');
@@ -69,6 +167,7 @@ export function createContactsFeature({
     closeInspector({ restoreFocus = true } = {}) {
       const contactId = restoreContactId;
       selectedContactId = null;
+      resetPanelSize(byId('contactInspector'));
       this.render(byId('contactSearch')?.value || '');
       if (restoreFocus && contactId) queueMicrotask(() => {
         [...documentRef.querySelectorAll('#contactsV2Workspace [data-contact-id]')]
@@ -84,7 +183,7 @@ export function createContactsFeature({
         sort.field = field;
         sort.direction = field.includes('At') || field.includes('date') ? 'desc' : 'asc';
       }
-      this.render(byId('contactSearch')?.value || '');
+      this.render(byId('contactSearch')?.value || '', { resetPage: true });
       return { ...sort };
     },
 
@@ -93,43 +192,97 @@ export function createContactsFeature({
       if (!meaningful(incoming.name)) return null;
       store.state.contacts = Array.isArray(store.state.contacts) ? store.state.contacts : [];
       const index = contactMatchIndex(store.state.contacts, incoming);
+      if (index < 0) {
+        // Colapso de duplicados fortes: 2+ registros com o mesmo documento ou
+        // externalId fundem o recebido no mais antigo em vez de gerar outro.
+        // Homônimos só por nome continuam criando registro próprio.
+        const strong = findStrongDuplicateIndexes(store.state.contacts, incoming);
+        if (strong.length > 1) {
+          const keeperIndex = pickKeeperIndex(store.state.contacts, strong);
+          const merged = mergeExternalContact(store.state.contacts[keeperIndex], incoming);
+          if (!merged.id) merged.id = incoming.id || String(store.state.contacts[keeperIndex]?.id || '') || uid('contact');
+          if (!meaningful(merged.contactRole) && isExternalContact(incoming)) merged.contactRole = 'outro';
+          store.state.contacts[keeperIndex] = merged;
+          contactsDataVersion++;
+          return merged;
+        }
+      }
       const merged = mergeExternalContact(index >= 0 ? store.state.contacts[index] : null, incoming);
       if (!merged.id) merged.id = incoming.id || uid('contact');
       if (!meaningful(merged.contactRole) && isExternalContact(incoming)) merged.contactRole = 'outro';
       if (index >= 0) store.state.contacts[index] = merged;
       else store.state.contacts.unshift(merged);
+      contactsDataVersion++;
       return merged;
     },
 
-    render(query = '') {
+    render(query = '', { resetPage = false } = {}) {
+      if (resetPage) currentPage = 1;
       const needle = normalizeText(query);
-      let records = store.state.contacts.filter(item => !needle || normalizeText(`${item.name} ${item.document} ${item.mobile} ${item.phone} ${item.email} ${item.origin} ${item.contactRole || ''} ${item.leadOrigin || ''} ${item.city || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle));
-      records = sortRecords(records, sort);
+      const records = getFilteredSorted(needle);
       updateTableSortHeaders('contactTable', sort);
-      byId('contactCount').textContent = `${store.state.contacts.length} contatos`;
+      const countTarget = byId('contactCount');
+      if (countTarget) countTarget.textContent = `${store.state.contacts.length} contatos`;
       if (isV2()) {
-        const visibleRecords = roleFilter === 'all'
+        const visibleFiltered = roleFilter === 'all'
           ? records
           : records.filter(item => item.contactRole === roleFilter);
-        if (selectedContactId && !visibleRecords.some(item => String(item.id) === String(selectedContactId))) selectedContactId = null;
-        byId('contactTableBody').innerHTML = '';
-        byId('contactsV2Workspace').innerHTML = renderContactsV2Workspace({
-          records: visibleRecords,
+        if (selectedContactId && !visibleFiltered.some(item => String(item.id) === String(selectedContactId))) selectedContactId = null;
+        lastFilteredTotal = visibleFiltered.length;
+        const totalPages = contactTotalPages(visibleFiltered.length, pageSize);
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+        const start = (currentPage - 1) * pageSize;
+        const pageRecords = visibleFiltered.slice(start, start + pageSize);
+        const pagination = { page: currentPage, pageSize, total: visibleFiltered.length, totalPages };
+        const previousFilterScroll = byId('contactsV2Workspace')?.querySelector('.contact-role-filters')?.scrollLeft || 0;
+        const tableBody = byId('contactTableBody');
+        if (tableBody) tableBody.innerHTML = '';
+        const workspace = byId('contactsV2Workspace');
+        const inspectorWasMaximized = isPanelMaximized(byId('contactInspector'));
+        if (workspace) workspace.innerHTML = renderContactsV2Workspace({
+          records: pageRecords,
           allRecords: store.state.contacts,
           selectedId: selectedContactId,
           selectedContext: buildClientContext(store.state, store.state.contacts.find(item => String(item.id) === String(selectedContactId || ''))),
           roleFilter,
           query,
           sort,
+          pagination,
           escapeHtml,
           formatDate
         });
+        const renderedInspector = byId('contactInspector');
+        if (renderedInspector) {
+          if (inspectorWasMaximized) setPanelSize(renderedInspector, true);
+          syncPanelSizeControl(renderedInspector);
+        }
+        const filterStrip = byId('contactsV2Workspace')?.querySelector('.contact-role-filters');
+        if (filterStrip) {
+          filterStrip.scrollLeft = previousFilterScroll;
+          const activeFilter = filterStrip.querySelector('.contact-role-filter.is-active');
+          if (activeFilter && filterStrip.clientWidth < filterStrip.scrollWidth) {
+            const left = activeFilter.offsetLeft - filterStrip.offsetLeft;
+            const right = left + activeFilter.offsetWidth;
+            if (left < filterStrip.scrollLeft) filterStrip.scrollLeft = left;
+            else if (right > filterStrip.scrollLeft + filterStrip.clientWidth) filterStrip.scrollLeft = right - filterStrip.clientWidth;
+          }
+        }
         this.syncInspectorSemantics();
-        return visibleRecords;
+        return pageRecords;
       }
-      byId('contactsV2Workspace').innerHTML = '';
+      lastFilteredTotal = records.length;
+      const classicTotalPages = contactTotalPages(records.length, pageSize);
+      if (currentPage > classicTotalPages) currentPage = classicTotalPages;
+      if (currentPage < 1) currentPage = 1;
+      const classicStart = (currentPage - 1) * pageSize;
+      const classicPage = records.slice(classicStart, classicStart + pageSize);
+      const classicPagination = { page: currentPage, pageSize, total: records.length, totalPages: classicTotalPages };
+      const workspace = byId('contactsV2Workspace');
+      if (workspace) workspace.innerHTML = '';
       const roleMap = { cliente: 'Cliente', testemunha: 'Testemunha', perito: 'Perito Judicial', adverso: 'Adv. Adverso', correspondente: 'Correspondente', preposto: 'Preposto', outro: 'Outro' };
-      byId('contactTableBody').innerHTML = records.length ? records.map(item => {
+      const tableBody = byId('contactTableBody');
+      if (tableBody) tableBody.innerHTML = classicPage.length ? classicPage.map(item => {
         const registeredDate = item.registeredAt || item.createdAt;
         const roleLabel = roleMap[item.contactRole] || (item.contactRole ? escapeHtml(item.contactRole) : 'Cliente');
         const roleBadge = `<span class="fee-chip fixo" style="font-size:0.72rem;padding:2px 6px;margin-right:4px;">${roleLabel}</span>`;
@@ -143,19 +296,80 @@ export function createContactsFeature({
           <td><strong>${escapeHtml(item.document || '—')}</strong><small>${escapeHtml(item.rg || '')}</small></td>
           <td><strong>${escapeHtml(item.mobile || item.phone || '—')}</strong><small>${escapeHtml(item.email || '')}</small></td>
           <td><strong>${escapeHtml(item.city || '—')}</strong><small>${escapeHtml([item.state, item.country].filter(Boolean).join(' · '))}</small></td>
-          <td><strong>${formatDate(registeredDate)}</strong><small>${item.externalId ? `ID ${escapeHtml(item.externalId)}` : 'Manual'}</small></td>
+          <td><strong>${escapeHtml(formatDate(registeredDate))}</strong><small>${item.externalId ? `ID ${escapeHtml(item.externalId)}` : 'Manual'}</small></td>
           <td>${originLabel}</td>
         </tr>`;
       }).join('') : '<tr><td colspan="6">Nenhum contato encontrado.</td></tr>';
+      this.renderClassicPagination(classicPagination);
       documentRef.querySelectorAll('#contactTableBody [data-contact-id]').forEach(row => row.addEventListener('click', () => {
         const item = store.state.contacts.find(record => record.id === row.dataset.contactId);
         if (item) this.openContactModal(item);
       }));
-      return records;
+      return classicPage;
+    },
+
+    renderClassicPagination(pagination) {
+      const table = byId('contactTable');
+      if (!table) return false;
+      let container = byId('contactsClassicPagination');
+      if (!container) {
+        container = documentRef.createElement?.('div');
+        if (!container) return false;
+        container.id = 'contactsClassicPagination';
+        container.className = 'contacts-classic-pagination classic-only';
+        table.parentElement?.appendChild(container);
+      }
+      const totalLabel = Number(pagination.total).toLocaleString('pt-BR');
+      container.innerHTML = `<nav class="contact-pagination is-classic" aria-label="Paginação de contatos">`
+        + `<p class="contact-pagination-status">Página ${pagination.page} de ${pagination.totalPages} · ${totalLabel} no filtro</p>`
+        + `<div class="contact-pagination-nav" role="group" aria-label="Navegar páginas">`
+        + `<button type="button" class="button ghost" data-contact-page="first"${pagination.page <= 1 ? ' disabled' : ''} aria-label="Primeira página">Primeira</button>`
+        + `<button type="button" class="button ghost" data-contact-page="prev"${pagination.page <= 1 ? ' disabled' : ''} aria-label="Página anterior">Anterior</button>`
+        + `<button type="button" class="button ghost" data-contact-page="next"${pagination.page >= pagination.totalPages ? ' disabled' : ''} aria-label="Próxima página">Próxima</button>`
+        + `<button type="button" class="button ghost" data-contact-page="last"${pagination.page >= pagination.totalPages ? ' disabled' : ''} aria-label="Última página">Última</button>`
+        + `</div>`
+        + `<div class="contact-page-size" role="group" aria-label="Contatos por página"><span>Por página</span>`
+        + CONTACT_PAGE_SIZES.map(size => `<button type="button" class="${size === pagination.pageSize ? 'button gold' : 'button ghost'}" data-contact-page-size="${size}" aria-pressed="${size === pagination.pageSize}">${size}</button>`).join('')
+        + `</div></nav>`;
+      return true;
+    },
+
+    async handlePaginationClick(event) {
+      const sizeTarget = event.target.closest?.('[data-contact-page-size]');
+      if (sizeTarget) {
+        const size = Number(sizeTarget.dataset.contactPageSize);
+        if (!CONTACT_PAGE_SIZES.includes(size) || size === pageSize) return true;
+        pageSize = size;
+        currentPage = 1;
+        this.render(byId('contactSearch')?.value || '');
+        queueMicrotask(() => {
+          documentRef.querySelector?.(`#view-contacts [data-contact-page-size="${size}"]`)?.focus({ preventScroll: true });
+        });
+        return true;
+      }
+      const pageTarget = event.target.closest?.('[data-contact-page]');
+      if (!pageTarget) return false;
+      const pages = contactTotalPages(lastFilteredTotal, pageSize);
+      const action = pageTarget.dataset.contactPage;
+      let next = currentPage;
+      if (action === 'first') next = 1;
+      else if (action === 'prev') next = currentPage - 1;
+      else if (action === 'next') next = currentPage + 1;
+      else if (action === 'last') next = pages;
+      else if (Number.isFinite(Number(action))) next = Math.trunc(Number(action));
+      next = Math.max(1, Math.min(pages, next || 1));
+      if (next === currentPage) return true;
+      const direction = Math.sign(next - currentPage);
+      currentPage = next;
+      await transitionPageContent(documentRef, { v2: '#contactsV2Workspace .contact-record-list' }, direction,
+        () => this.render(byId('contactSearch')?.value || ''));
+      focusPageControl(documentRef, '#view-contacts', 'data-contact-page', action, direction > 0 ? 'prev' : 'next');
+      return true;
     },
 
     handleWorkspaceClick(event) {
       if (event.target.hasAttribute?.('data-contact-backdrop')) { this.closeInspector(); return; }
+      if (event.target.closest?.('[data-contact-page],[data-contact-page-size]')) return;
       const target = event.target.closest('button');
       if (!target) return;
       if (target.dataset.contactRoleFilter) {
@@ -392,7 +606,7 @@ export function createContactsFeature({
           }
           modalDefaults.registryProvenance = mergeRegistryProvenance(modalDefaults.registryProvenance, currentResult, appliedFields);
           store.audit('Campos cadastrais revisados', `${appliedFields.join(', ')} · aplicação humana`);
-          setStatus(`${appliedFields.length} campo(s) aplicado(s). O salvamento continua sob sua confirmação.`, 'success');
+          setStatus(`${plural(appliedFields.length, 'campo aplicado', 'campos aplicados')}. O salvamento continua sob sua confirmação.`, 'success');
           return;
         }
         if (action === 'keep-current' || action === 'cancel-review') {
@@ -436,6 +650,7 @@ export function createContactsFeature({
         updatedAt: new Date().toISOString()
       };
       store.upsert('contacts', record);
+      contactsDataVersion++;
       store.audit(editing ? 'Contato atualizado' : 'Contato cadastrado', record.name);
       for (const partner of pendingQsaImports) {
         if (!partner?.name || registryPartnerMatch(store.state.contacts, partner.name)) continue;
@@ -448,7 +663,7 @@ export function createContactsFeature({
         store.upsert('contacts', related);
         store.audit('Contato cadastrado', related.name);
       }
-      if (pendingQsaImports.length) showToast(`${pendingQsaImports.length} vínculo(s) societário(s) revisado(s) no cadastro.`, 'success');
+      if (pendingQsaImports.length) showToast(`${plural(pendingQsaImports.length, 'vínculo societário revisado', 'vínculos societários revisados')} no cadastro.`, 'success');
       return record;
     }
   };

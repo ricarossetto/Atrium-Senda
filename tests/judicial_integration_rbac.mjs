@@ -2,6 +2,14 @@ import assert from 'node:assert/strict';
 import { generateTotp } from '../lib/security.mjs';
 import { postJson, startTestServer } from './helpers.mjs';
 
+let masterStepUsed = 0;
+function masterStepUpCode(secret) {
+  const current = Math.floor(Date.now() / 30000);
+  const step = Math.max(current - 1, masterStepUsed + 1);
+  masterStepUsed = step;
+  return generateTotp(secret, step);
+}
+
 const server = await startTestServer({ env: { JURISFLOW_CLOUD_MODE: 'true' } });
 
 try {
@@ -55,18 +63,22 @@ try {
   assert.equal(response.status, 200, 'Diagnósticos judiciais de leitura não devem ganhar restrição administrativa.');
 
   response = await postJson(`${server.baseUrl}/api/integrations/judicial/sync`, {}, collaborator.headers);
-  assert.equal(response.status, 200, 'Sincronização judicial deve continuar disponível ao colaborador autenticado.');
+  assert.equal(response.status, 503, 'Rota legada de sync deve falhar fechada na nuvem sem barrar o colaborador com 401/403.');
+  const syncBody = await response.json();
+  assert.equal(syncBody.ok, false, 'Rota legada não pode afirmar sucesso sem iniciar coleta na nuvem.');
+  assert.equal(syncBody.state, 'NOT_AVAILABLE', 'Resposta deve declarar indisponibilidade explícita do runtime cloud-only.');
 
-  console.log('Judicial integration RBAC test aprovado: 401, 403, CSRF, admin, master_admin e rotas não administrativas preservadas.');
+  console.log('Judicial integration RBAC test aprovado: 401, 403, CSRF, admin, master_admin e rotas não administrativas preservadas (sync legado fail-closed na nuvem).');
 } finally {
   await server.stop();
 }
 
 async function setupMaster(baseUrl) {
+  const password = 'Master-Judicial-2026!';
   let response = await postJson(`${baseUrl}/api/auth/setup`, {
     username: 'master.judicial',
     displayName: 'Administradora Principal Teste',
-    password: 'Master-Judicial-2026!'
+    password
   });
   const setup = await response.json();
   assert.equal(response.status, 200);
@@ -80,7 +92,9 @@ async function setupMaster(baseUrl) {
   const cookie = response.headers.get('set-cookie').split(';')[0];
   return {
     cookie,
-    headers: { Cookie: cookie, 'X-CSRF-Token': verified.csrfToken }
+    headers: { Cookie: cookie, 'X-CSRF-Token': verified.csrfToken },
+    manualSecret: setup.manualSecret,
+    password
   };
 }
 
@@ -104,7 +118,9 @@ async function setupUser(baseUrl, master, { username, displayName, email, role }
   response = await postJson(`${baseUrl}/api/auth/users/manage`, {
     userId: user.id,
     status: 'active',
-    role
+    role,
+    password: master.password,
+    code: masterStepUpCode(master.manualSecret)
   }, master.headers);
   assert.equal(response.status, 200);
 

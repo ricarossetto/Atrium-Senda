@@ -117,6 +117,29 @@ try {
         assert.ok(layout.intimationReader?.height >= 220, `Leitor da publicação reduzido em ${scenario.file}: ${JSON.stringify(layout.intimationReader)}.`); assertions++;
         assert.ok(layout.intimationReader.left >= -2 && layout.intimationReader.right <= layout.intimationReader.width + 2, `Leitor fora do viewport em ${scenario.file}: ${JSON.stringify(layout.intimationReader)}.`); assertions++;
       }
+      if (scenario.state === 'selected' && scenario.viewport.width <= 390) {
+        const mobile = await page.evaluate(() => {
+          const wrap = document.getElementById('agendaDayBadges');
+          const counts = wrap.getBoundingClientRect();
+          const card = document.querySelector('.agenda-list-card').getBoundingClientRect();
+          const list = document.getElementById('agendaList').getBoundingClientRect();
+          const nav = document.getElementById('v2MobileNav').getBoundingClientRect();
+          return {
+            counts: { left: counts.left, right: counts.right, top: counts.top, bottom: counts.bottom },
+            items: wrap.querySelectorAll('.agenda-summary-item').length,
+            overflow: wrap.scrollWidth - wrap.clientWidth,
+            card: { left: card.left, right: card.right },
+            listTop: list.top,
+            navTop: nav.top,
+            pageOverflow: document.documentElement.scrollWidth - innerWidth
+          };
+        });
+        assert.equal(mobile.items, 3, 'As três contagens do dia devem permanecer disponíveis.'); assertions++;
+        assert.ok(mobile.overflow <= 2, `Contagens sem vazamento no celular: ${JSON.stringify(mobile)}.`); assertions++;
+        assert.ok(mobile.counts.left >= mobile.card.left - 1 && mobile.counts.right <= mobile.card.right + 1, 'Contagens contidas no cartão.'); assertions++;
+        assert.ok(mobile.counts.bottom <= mobile.listTop + 1, 'Contagens precedem as atividades sem sobreposição.'); assertions++;
+        assert.ok(mobile.navTop > 0 && mobile.pageOverflow <= 2, 'Navegação inferior e ausência de overflow global.'); assertions++;
+      }
 
       const output = path.join(OUTPUT, scenario.file);
       await page.screenshot({ path: output, fullPage: false });

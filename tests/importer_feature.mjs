@@ -123,7 +123,7 @@ assert.deepEqual(requests.at(-1), {
 assert.deepEqual(store.state, initialState, 'Preview não pode mutar Store antes da confirmação.');
 assert.equal(elements.importerPreviewCard.classList.contains('hidden'), false);
 assert.equal(elements.importerFileLabel.textContent, 'Arquivo: parsed.csv');
-assert.equal(elements.importerSummaryTitle.textContent, '3 linha(s) identificada(s)');
+assert.equal(elements.importerSummaryTitle.textContent, '3 linhas identificadas');
 assert.match(elements.importerPreviewHead.innerHTML, /Processo[\s\S]*Cliente/);
 assert.match(elements.importerPreviewBody.innerHTML, /5000000-00\.2026\.8\.21\.0001[\s\S]*Cliente Importado/);
 
@@ -157,7 +157,7 @@ feature.data = {
 };
 events.length = 0;
 assert.equal(await feature.commit(), true);
-assert.equal(store.state.processes.length, 1, 'Processo deve ser deduplicado pela identidade canônica.');
+assert.equal(store.state.processes.length, 1, 'Processo deve ser deduplicado pela identidade oficial.');
 assert.equal(store.state.processes[0].client, 'Cliente Manual Preservado');
 assert.equal(store.state.processes[0].court, 'Vara Manual');
 assert.equal(store.state.processes[0].lastMovement, 'Movimento novo');
@@ -172,7 +172,7 @@ assert.equal(store.state.tasks[0].fatalDeadline, '');
 assert.equal(store.state.tasks[0].notes, 'Nota manual preservada');
 assert.deepEqual(store.state.tasks[0].timeLogs, [{ minutes: 30 }]);
 assert.deepEqual(events.find(event => event.type === 'audit'), {
-  type: 'audit', action: 'Importação de planilha concluída', detail: '1 processos, 1 contatos e 1 tarefas consolidados.'
+  type: 'audit', action: 'Importação de planilha concluída', detail: '1 processo, 1 contato e 1 tarefa importados.'
 });
 const flushIndex = events.findIndex(event => event.type === 'flush');
 const renderIndex = events.findIndex(event => event.type === 'render');
@@ -205,4 +205,4 @@ assert.equal(failureNavigation, false);
 assert.equal(failureToasts.some(item => item.type === 'success'), false);
 
 assert.deepEqual([...new Set(requests.map(request => request.url))], ['/api/import/spreadsheet']);
-console.log('✓ Feature modular do Importador de Planilhas aprovada: CSV/base64, preview, cancelamento, consolidação, dados manuais, prazo vazio e flush antes do sucesso.');
+console.log('✓ Feature modular do Importador de planilhas aprovada: CSV/base64, preview, cancelamento, consolidação, dados manuais, prazo vazio e flush antes do sucesso.');

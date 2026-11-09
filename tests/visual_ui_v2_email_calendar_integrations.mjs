@@ -44,15 +44,13 @@ try {
 
       let activeBackdrop = null;
       if (scenario.state === 'smtp-config') {
-        activeBackdrop = 'emailConfigBackdrop';
-        await page.locator('#btnConfigureEmail').click();
+        const legacyConfig = page.locator('#btnConfigureEmail');
+        assert.ok((await legacyConfig.count()) === 0 || await legacyConfig.isHidden(), 'Configuração SMTP legada não é exposta na UI V2.'); assertions++;
       } else if (scenario.state === 'smtp-test') {
-        activeBackdrop = 'emailTestBackdrop';
-        await page.locator('#btnTestEmail').click();
+        assert.equal(await page.locator('#btnTestEmail').count(), 0, 'Teste SMTP legado não é exposto na UI V2.'); assertions++;
       } else if (scenario.state === 'receiver-new') {
         activeBackdrop = 'emailReceiverModalBackdrop';
-        await page.locator('#btnAddEmailReceiver').click();
-        await page.locator('#receiverTypeExternal').check();
+        await page.locator('#btnAddExternalRecipient').click();
         await page.locator('#receiverNameInput').fill('Secretaria Externa Sintética');
         await page.locator('#receiverEmailInput').fill('secretaria@synthetic.example.test');
       } else if (scenario.state === 'calendar' || scenario.state === 'calendar-error') {

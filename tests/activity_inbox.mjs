@@ -18,6 +18,17 @@ const state = {
       payloadHash: 'c'.repeat(64),
       diff: { hasChanges: true, newMovements: 1, changedMovements: 0, possiblyMissingMovements: 0 }
     }
+  }, {
+    id: 'process-plural',
+    number: '5000000-00.2026.8.21.0002',
+    client: 'Cliente Plural',
+    lastMovement: 'Movimentação plural',
+    tjrsCollector: {
+      status: 'AVAILABLE',
+      syncedAt: '2026-09-03T12:00:00.000Z',
+      payloadHash: 'e'.repeat(64),
+      diff: { hasChanges: true, newMovements: 5, changedMovements: 0, possiblyMissingMovements: 0 }
+    }
   }],
   intimations: [
     { id: 'publication-new', title: 'Publicação sintética', process: '5000000-00.2026.8.21.0001', unread: true, treatmentStatus: 'untreated', publishedAt: '2026-09-03', source: 'DJEN Sintético' },
@@ -54,10 +65,10 @@ assert.equal(items.find(item => item.key === 'task:task-overdue').priority, 3);
 assert.equal(items.find(item => item.key === 'task:task-upcoming').origin, 'Publicação vinculada');
 assert.equal(items.some(item => item.key === 'agenda:agenda-near'), true);
 assert.equal(items.some(item => item.key === 'document:doc-review'), true);
-assert.equal(items.some(item => item.key === 'document:doc-metadata-review'), true, 'Classificação canônica aninhada deve alimentar a mesma caixa de atividades.');
+assert.equal(items.some(item => item.key === 'document:doc-metadata-review'), true, 'Classificação oficial aninhada deve alimentar a mesma caixa de atividades.');
 assert.equal(items.some(item => item.key === 'document:doc-ready'), false);
 assert.equal(items.some(item => item.key === 'reconciliation:suggestion-1'), true);
-assert.equal(items.some(item => item.key === 'reconciliation:suggestion-orphan'), false, 'Sugestão sem processo canônico não pode gerar atividade sem destino.');
+assert.equal(items.some(item => item.key === 'reconciliation:suggestion-orphan'), false, 'Sugestão sem processo oficial não pode gerar atividade sem destino.');
 assert.equal(items.some(item => item.key === 'collector:process-synthetic'), true);
 assert.equal(items.some(item => item.key === 'source:source-error'), true);
 assert.equal(items.some(item => item.key === 'source:source-ok'), false);
@@ -65,6 +76,8 @@ assert.equal(items.every(item => item.origin && item.type && item.context && ite
 assert.equal(items.some(item => item.type === 'judicial-event' && /prazo/i.test(item.title)), false, 'Movimentação não pode virar prazo por inferência.');
 
 const collectorItem = items.find(item => item.key === 'collector:process-synthetic');
+assert.equal(collectorItem.title, '1 alteração judicial detectada', 'Singular deve ser “alteração judicial detectada”.');
+assert.equal(items.find(item => item.key === 'collector:process-plural').title, '5 alterações judiciais detectadas', 'Plural deve ser “alterações judiciais detectadas”.');
 assert.equal(acknowledgeActivity(state, collectorItem), true);
 assert.equal(acknowledgeActivity(state, collectorItem), false, 'Reconhecer a mesma versão deve ser idempotente.');
 const afterAcknowledge = buildActivityInbox(state, { now: new Date(2026, 8, 3, 14, 0, 0) });
@@ -73,6 +86,6 @@ state.processes[0].tjrsCollector.payloadHash = 'd'.repeat(64);
 const afterNewSnapshot = buildActivityInbox(state, { now: new Date(2026, 8, 3, 14, 0, 0) });
 assert.equal(afterNewSnapshot.some(item => item.key === collectorItem.key), true, 'Nova evidência deve reaparecer na caixa.');
 
-console.log('✓ Caixa agrega fatos reais sem duplicar estruturas canônicas.');
+console.log('✓ Caixa agrega fatos reais sem duplicar estruturas oficiais.');
 console.log('✓ Prioridade decorre de datas/status objetivos, sem score jurídico por IA.');
 console.log('✓ Eventos judiciais e falhas podem ser reconhecidos por versão.\n');

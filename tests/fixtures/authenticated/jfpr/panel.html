@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="iso-8859-1">
+  <title>:: eproc - JFPR - Painel do Advogado ::</title>
+  <link rel="stylesheet" href="css/dist/bundle-bs4.css">
+</head>
+<body class="bootstrap-styles instancia-1g">
+  <div id="divInfraAreaGlobal">
+    <div id="divInfraBarraLocalizacao">
+      <h1>Painel do Advogado - Justiça Federal do Paraná</h1>
+    </div>
+
+    <!-- Navegação Topo -->
+    <div class="navbar navbar-expand-lg">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="controlador.php?acao=relatorio_processo_procurador_listar&hash=sanitized_hash_pr">Relação de processos</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="controlador.php?acao=processo_ultimas_movimentacoes_listar&hash=sanitized_hash_pr">Últimas movimentações</a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Cards do Painel -->
+    <div class="row mt-3">
+      <!-- Card Citações / Intimações -->
+      <div class="col-md-6">
+        <div class="card" id="fldCitacaoIntimacaoAdvogado">
+          <div class="card-header font-weight-bold">
+            Citações/Intimações
+          </div>
+          <div class="card-body">
+            <table class="table table-sm infraTable">
+              <tbody>
+                <tr>
+                  <td><a href="controlador.php?acao=citacao_intimacao_prazo_aberto_listar&tipo=urgente">Processos com prazo em aberto - urgente</a></td>
+                  <td class="text-right"><a href="controlador.php?acao=citacao_intimacao_prazo_aberto_listar&tipo=urgente">2</a></td>
+                </tr>
+                <tr>
+                  <td><a href="controlador.php?acao=citacao_intimacao_prazo_aberto_listar">Processos com prazo em aberto</a></td>
+                  <td class="text-right"><a href="controlador.php?acao=citacao_intimacao_prazo_aberto_listar">14</a></td>
+                </tr>
+                <tr>
+                  <td><a href="controlador.php?acao=citacao_intimacao_pendente_listar">Processos pendentes de citação/intimação</a></td>
+                  <td class="text-right"><a href="controlador.php?acao=citacao_intimacao_pendente_listar">5</a></td>
+                </tr>
+                <tr>
+                  <td><a href="controlador.php?acao=citacao_intimacao_decurso_prazo_listar">Decursos de prazo nos últimos 30 dias</a></td>
+                  <td class="text-right"><a href="controlador.php?acao=citacao_intimacao_decurso_prazo_listar">19</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card Área de Trabalho & Audiências -->
+      <div class="col-md-6">
+        <div class="card" id="fldConciliacoes">
+          <div class="card-header font-weight-bold">
+            Área de trabalho & Audiências
+          </div>
+          <div class="card-body">
+            <table class="table table-sm infraTable">
+              <tbody>
+                <tr>
+                  <td><a href="controlador.php?acao=audiencia_listar">Audiências Futuras</a></td>
+                  <td class="text-right"><a href="controlador.php?acao=audiencia_listar">3</a></td>
+                </tr>
+                <tr>
+                  <td><a href="controlador.php?acao=custas_pagar_listar">Custas a pagar</a></td>
+                  <td class="text-right"><a href="controlador.php?acao=custas_pagar_listar">0</a></td>
+                </tr>
+                <tr>
+                  <td><a href="controlador.php?acao=deposito_judicial_aberto_listar">Depósitos judiciais em Aberto</a></td>
+                  <td class="text-right"><a href="controlador.php?acao=deposito_judicial_aberto_listar">0</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,52 @@
+/**
+ * ATRIUM — Geometria de painéis laterais maximizados.
+ *
+ * Um painel marcado com `data-panel-size="maximized"` ocupa toda a área disponível
+ * do seu contexto (viewport para os painéis fixos e para os modais laterais).
+ * A regra é única e genérica; cada domínio mantém a largura normal no seu próprio CSS.
+ *
+ * `!important` é necessário porque as larguras normais dos painéis já usam `!important`
+ * nos respectivos domínios (ex.: financeiro e conexões) e a maximização precisa vencer
+ * a cascata sem empilhar overrides por família.
+ */
+
+html[data-ui="v2"] [data-panel-size="maximized"] {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+html[data-ui="v2"] [data-panel-size="maximized"][data-panel-size-anchor="fixed"] {
+  inset: 0 !important;
+}
+
+html[data-ui="v2"] .modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--v2-space-2);
+  flex: 0 0 auto;
+}
+
+@keyframes v2-panel-size-shift {
+  from { transform: translateX(5%); opacity: 0.96; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+html[data-ui="v2"] .is-panel-size-shifting {
+  animation: v2-panel-size-shift var(--v2-duration-base) var(--v2-ease-emphasized) both;
+}
+
+@media (max-width: 767px) {
+  html[data-ui="v2"] [data-panel-size-toggle] {
+    display: none !important;
+  }
+  html[data-ui="v2"] [data-panel-size="maximized"] {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    max-height: none !important;
+  }
+}

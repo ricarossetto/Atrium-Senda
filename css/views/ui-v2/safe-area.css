@@ -1,0 +1,23 @@
+/* ATRIUM — endurecimento de safe-area (iOS notch / home indicator).
+   Carregado por último para vencer as regras por modo dos sheets. As variáveis
+   --atrium-safe-* ficam em tokens.css e são 0 fora de aparelhos com recorte,
+   de modo que desktop e aparelhos sem notch permanecem inalterados.
+   Só se aplica no mobile; o topbar do shell é tratado em shell.css. */
+
+@media (max-width: 860px) {
+  /* Cabeçalhos fixos dos sheets não podem ficar sob o notch. */
+  html[data-ui="v2"] #modalBackdrop[data-modal-mode] :is(.modal > header, .modal-header),
+  html[data-ui="v2"] .office-setup-modal > header,
+  html[data-ui="v2"] .doc-generator-modal > header,
+  html[data-ui="v2"] .kanban-columns-modal > header {
+    padding-top: calc(var(--v2-space-5) + var(--atrium-safe-top));
+  }
+
+  /* Rodapés fixos dos sheets não podem ficar sob o home indicator. */
+  html[data-ui="v2"] #modalBackdrop[data-modal-mode] :is(#modalForm > footer, .modal > footer, .modal-footer),
+  html[data-ui="v2"] .doc-generator-modal > footer,
+  html[data-ui="v2"] .error-report-modal footer,
+  html[data-ui="v2"] body > .connection-backdrop .connection-sheet .modal-footer {
+    padding-bottom: calc(var(--v2-space-4) + var(--atrium-safe-bottom));
+  }
+}

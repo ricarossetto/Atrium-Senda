@@ -26,12 +26,12 @@ for (const forbiddenConcern of ['state.contacts', "upsert('contacts'", 'state.pr
 for (const forbiddenSideEffect of ['console.log', 'fetch(', 'XMLHttpRequest', 'WebSocket']) {
   assert.equal(leadsSource.includes(forbiddenSideEffect), false, `Leads não pode introduzir ${forbiddenSideEffect}.`);
 }
-assert.match(leadsSource, /^import \{ Store, isoDate, uid \} from '\.\.\/core\/store\.js';/);
-assert.match(portalSource, /import \{ createLeadsFeature \} from '\.\/features\/leads\.js';/);
+assert.match(leadsSource, /^import \{ Store, isoDate, uid \} from '\.\.\/core\/store\.js(\?v=[^']*)?';/);
+assert.match(portalSource, /import \{ createLeadsFeature \} from '\.\/features\/leads\.js(\?v=[^']*)?';/);
 assert.equal((portalSource.match(/createLeadsFeature\(/g) || []).length, 1, 'Portal deve instanciar Leads uma única vez.');
 assert.equal(portalSource.includes('this.leadStatusFilter'), false, 'Portal não pode manter shadow state de filtro de Leads.');
-assert.equal(portalSource.includes("Store.upsert('leads', record)"), false, 'Save canônico não pode permanecer no portal.');
-assert.equal(portalSource.includes("const statusMap = {\n          novo: '<span class=\"lead-status-chip"), false, 'Render canônico não pode permanecer no portal.');
+assert.equal(portalSource.includes("Store.upsert('leads', record)"), false, 'Save oficial não pode permanecer no portal.');
+assert.equal(portalSource.includes("const statusMap = {\n          novo: '<span class=\"lead-status-chip"), false, 'Render oficial não pode permanecer no portal.');
 assert.match(portalSource, /renderLeads\(query = ''\) \{\s*return getLeadsFeature\(\)\.render\(query\);\s*\}/);
 assert.match(portalSource, /openLeadModal\(defaults = \{\}\) \{\s*return getLeadsFeature\(\)\.openLeadModal\(defaults\);\s*\}/);
 assert.match(portalSource, /modalMode\.mode === 'lead'\) \{\s*getLeadsFeature\(\)\.saveLead\(data, this\.modalMode\.defaults\);/);
@@ -51,13 +51,21 @@ const fakeElements = {
 };
 const unitAudits = [];
 const unitStore = {
-  state: { leads: [] },
+  flushResult: true,
+  state: { leads: [], audit: [] },
   upsert(collection, record) {
     const index = this.state[collection].findIndex(item => item.id === record.id);
     if (index >= 0) this.state[collection][index] = { ...this.state[collection][index], ...record };
     else this.state[collection].push(record);
   },
-  audit(action, detail) { unitAudits.push({ action, detail }); }
+  audit(action, detail) {
+    const entry = { id: `unit-audit-${unitAudits.length + 1}`, action, detail };
+    unitAudits.push({ action, detail });
+    this.state.audit = [...(this.state.audit || []), entry];
+    return entry;
+  },
+  save() {},
+  async flush() { return this.flushResult; }
 };
 let unitOpenCount = 0;
 const unitRenders = [];
@@ -88,7 +96,7 @@ for (const button of filterButtons) {
 assert.equal(unitOpenCount, 1);
 assert.deepEqual(unitRenders, ['busca unitária', undefined, undefined, undefined, undefined, undefined, undefined]);
 
-const unitCreated = unitFeature.saveLead({ client: 'Lead Unitário', serviceType: 'Serviço Unitário', estimatedFee: '2500' });
+const unitCreated = unitFeature.saveLead({ client: 'Lead Unitário', serviceType: 'Serviço Unitário', estimatedFee: '2500', status: 'novo' });
 assert.ok(unitCreated.id.startsWith('lead-'));
 assert.match(unitCreated.registeredAt, /^\d{4}-\d{2}-\d{2}$/);
 assert.equal(unitCreated.estimatedFee, 2500);
@@ -99,6 +107,17 @@ assert.equal(unitEdited.id, unitCreated.id);
 assert.equal(unitEdited.registeredAt, unitCreated.registeredAt);
 assert.equal(unitEdited.estimatedFee, null);
 assert.deepEqual(unitAudits.at(-1), { action: 'Atendimento atualizado', detail: 'Lead Unitário Editado · Serviço Unitário' });
+
+// Kanban: mudança de estágio pelo fluxo oficial, com rollback em falha de flush.
+const movedLead = await unitFeature.moveLead(unitCreated.id, 'proposta');
+assert.equal(movedLead.status, 'proposta');
+assert.deepEqual(unitAudits.at(-1), { action: 'Atendimento movimentado', detail: 'Lead Unitário Editado · novo → proposta' });
+unitStore.flushResult = false;
+const failedMove = await unitFeature.moveLead(unitCreated.id, 'fechado');
+assert.equal(failedMove, null);
+assert.equal(unitStore.state.leads.find(lead => lead.id === unitCreated.id).status, 'proposta', 'Falha de flush restaura o estágio anterior.');
+assert.equal(unitStore.state.audit.some(entry => entry.detail.includes('fechado')), false, 'Auditoria de falha não pode permanecer.');
+unitStore.flushResult = true;
 
 const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });
@@ -189,7 +208,7 @@ try {
   await page.screenshot({ path: path.join(visualArtifactsDir, 'leads-mobile-dark.png'), fullPage: true });
   await page.setViewportSize({ width: 1440, height: 900 });
   assert.deepEqual(await page.locator('#leadStatusFilters button').evaluateAll(buttons => buttons.map(button => [button.dataset.leadFilter, button.textContent.trim()])), [
-    ['all', 'Todos'], ['novo', 'Novos'], ['em_analise', 'Em Análise'], ['proposta', 'Proposta Enviada'], ['fechado', 'Fechados'], ['declinado', 'Declinados']
+    ['all', 'Todos'], ['novo', 'Novos'], ['em_analise', 'Em análise'], ['proposta', 'Proposta Enviada'], ['fechado', 'Fechados'], ['declinado', 'Declinados']
   ]);
 
   const novoRow = page.locator('#leadTableBody [data-lead-id="lead-novo"]');
@@ -212,7 +231,7 @@ try {
     window.Atrium.Store.state.leads = window.Atrium.Store.state.leads.filter(item => item.id !== 'lead-fallback');
     window.portalApp.renderLeads();
   });
-  const statusExpectations = { novo: 'Novo', em_analise: 'Em Análise', proposta: 'Proposta Enviada', fechado: 'Fechado', declinado: 'Declinado' };
+  const statusExpectations = { novo: 'Novo', em_analise: 'Em análise', proposta: 'Proposta Enviada', fechado: 'Fechado', declinado: 'Declinado' };
   for (const [status, label] of Object.entries(statusExpectations)) {
     const button = page.locator(`#leadStatusFilters [data-lead-filter="${status}"]`);
     await button.click();
@@ -270,7 +289,7 @@ try {
   assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Atendimento atualizado' && item.detail === 'Caio Proposta Editado · Benefício Previdenciário')), true);
 
   await page.click('#newLeadButton');
-  await page.locator('#modalTitle', { hasText: 'Novo Atendimento / Oportunidade' }).waitFor();
+  await page.locator('#modalTitle', { hasText: 'Novo atendimento / Oportunidade' }).waitFor();
   assert.equal(await page.locator('#field-status').inputValue(), 'novo');
   assert.equal(await page.locator('#field-origin').inputValue(), 'Indicação de Cliente');
   assert.equal(await page.locator('#field-responsible').inputValue(), 'Advogada Leads');
@@ -306,7 +325,7 @@ try {
   await page.locator('#globalSearch').fill('Lead CRUD Fechado Sintético');
   const leadSearchResult = page.locator('[data-search-target="lead"]');
   await leadSearchResult.waitFor();
-  assert.equal(await leadSearchResult.count(), 1, 'Global Search deve localizar o atendimento canônico pelo novo domínio CRM.');
+  assert.equal(await leadSearchResult.count(), 1, 'Global Search deve localizar o atendimento oficial pelo novo domínio CRM.');
   await page.locator('#globalSearch').fill('');
 
   const duplicateOpenCount = await page.evaluate(() => {
@@ -334,8 +353,14 @@ try {
   assert.equal(persisted.closed.estimatedFee, 4321);
   assert.equal(persisted.closed.status, 'fechado');
   assert.equal(persisted.edited.client, 'Caio Proposta Editado');
-  assert.equal(JSON.stringify(persisted.contacts), JSON.parse(JSON.stringify(isolationBefore.contacts)));
-  assert.equal(JSON.stringify(persisted.processes), JSON.parse(JSON.stringify(isolationBefore.processes)));
+  // O servidor canoniza o escopo de monitoramento do contato no flush; a proteção é que o conteúdo não mude.
+  const stripScope = list => JSON.parse(JSON.stringify(list, (key, value) =>
+    ['scope', 'privateOwnerUserId', 'ownerUserId'].includes(key) ? undefined : value));
+  assert.equal(JSON.stringify(stripScope(persisted.contacts)), JSON.stringify(stripScope(JSON.parse(isolationBefore.contacts))));
+  // O backend canoniza `responsibleUserIds` no flush; a proteção é que nada mais do processo mude.
+  const stripDerived = list => JSON.parse(JSON.stringify(list, (key, value) =>
+    ['responsibleUserIds', 'scope', 'privateOwnerUserId', 'ownerUserId'].includes(key) ? undefined : value));
+  assert.equal(JSON.stringify(stripDerived(persisted.processes)), JSON.stringify(stripDerived(JSON.parse(isolationBefore.processes))));
   assert.deepEqual(pageErrors, [], `Erros de página: ${pageErrors.join(' | ')}`);
 
   await context.close();

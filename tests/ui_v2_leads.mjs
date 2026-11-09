@@ -49,7 +49,8 @@ try {
   assert.equal(await page.locator('#leadCount').textContent(), '7 atendimentos');
   assert.equal(await page.locator('#leadTableBody [data-lead-id]').count(), 0, 'Classic não pode formar segunda árvore operacional em V2.');
   assert.equal(await page.locator('#leadsV2Workspace [data-lead-id]').count(), 7);
-  assert.deepEqual(await page.locator('.lead-pipeline-item strong').allTextContents(), ['2', '1', '1', '1', '1']);
+  // Estágio desconhecido conta como Novo, igual ao chip do cartão e à coluna do Kanban.
+  assert.deepEqual(await page.locator('.lead-pipeline-item strong').allTextContents(), ['3', '1', '1', '1', '1']);
 
   const fallback = await page.locator('[data-lead-id="lead-v2-unknown"]').textContent();
   for (const expected of ['Interessado', 'Consulta inicial', 'Direto', 'Advogado(a)', 'A definir', 'Novo']) assert.match(fallback, new RegExp(expected.replace(/[()]/g, '\\$&')));
@@ -120,7 +121,7 @@ try {
   await page.locator('#field-client').fill('Contato Sintético');
   await page.locator('[data-combobox-option]', { hasText: 'Contato Sintético Intacto' }).click();
   assert.equal(await page.locator('[name="contactId"]').inputValue(), 'lead-contact-isolation');
-  await page.locator('#field-serviceType').fill('Consulta canônica sintética');
+  await page.locator('#field-serviceType').fill('Consulta oficial sintética');
   await page.locator('#modalForm button[type="submit"]').click();
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   const canonicalLead = await page.evaluate(() => window.Atrium.Store.state.leads.find(lead => lead.contactId === 'lead-contact-isolation'));

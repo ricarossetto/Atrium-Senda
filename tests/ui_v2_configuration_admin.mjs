@@ -26,9 +26,11 @@ assert.equal((portalSource.match(/createConfigurationFeature\s*\(/g) || []).leng
 assert.equal((portalSource.match(/createOfficeIdentityFeature\s*\(/g) || []).length, 1);
 assert.equal((portalSource.match(/createSystemAdminFeature\s*\(/g) || []).length, 1);
 assert.equal((portalSource.match(/createConfigurationAdminPresenter\s*\(/g) || []).length, 1);
-assert.doesNotMatch(configurationSource, /^\s*import\s/m);
+const configurationImports = configurationSource.match(/^\s*import\s.*$/gm) || [];
+assert.equal(configurationImports.length, 1, 'Configuration só importa o helper compartilhado de avatar.');
+assert.match(configurationImports[0], /core\/member-avatar\.js/);
 assert.doesNotMatch(configurationSource, /\bfetch\s*\(/);
-assert.match(officeSource, /^import \{ Store \} from '\.\.\/core\/store\.js';/m);
+assert.match(officeSource, /^import \{ Store \} from '\.\.\/core\/store\.js(\?v=[^']*)?';/m);
 assert.doesNotMatch(officeSource, /\b(?:fetch|secureFetch|XMLHttpRequest)\b/);
 assert.doesNotMatch(systemAdminSource, /^\s*import\s/m);
 assert.match(systemAdminSource, /fetchFn\('\/api\/system\/diagnostic', \{ credentials: 'same-origin' \}\)/);
@@ -51,9 +53,9 @@ try {
   assert.equal(initialEvidence.ops, 0);
   assert.equal(initialEvidence.requests, 0, 'Render inicial de Configurações não deve disparar requests.');
 
-  assert.equal(await page.locator('.configuration-v2-header h2').textContent(), 'Configurações do Escritório');
+  assert.equal(await page.locator('.configuration-v2-header h2').textContent(), 'Configurações do escritório');
   assert.deepEqual(await page.locator('.configuration-nav-heading').allTextContents(), ['Estrutura', 'Equipe', 'Fluxo', 'Sistema']);
-  assert.equal(await page.locator('#configurationTabs [data-config-section]').count(), 13);
+  assert.equal(await page.locator('#configurationTabs [data-config-section]').count(), 15);
   assert.equal(await page.locator('#openOfficeIdentityFromConfiguration').count(), 1);
   assert.equal(await page.locator('#uiModeControl, [data-ui-mode]').count(), 0);
   assert.equal(await page.locator('.configuration-metric').count(), 5);

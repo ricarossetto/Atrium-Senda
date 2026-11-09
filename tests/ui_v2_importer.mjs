@@ -68,7 +68,7 @@ try {
     body: { filename: 'lote-supervisionado-sintetico.csv', content: 'Nome,Tipo\nPessoa Sintética,Contato' }
   });
   assert.equal(await page.evaluate(() => JSON.stringify(window.Atrium.Store.state)), stateBeforePreview, 'Preview V2 não pode mutar o Store.');
-  assert.equal(await page.locator('#importerSummaryTitle').textContent(), '4 linha(s) identificada(s)');
+  assert.equal(await page.locator('#importerSummaryTitle').textContent(), '4 linhas identificadas');
   assert.deepEqual(await page.locator('.importer-count strong').allTextContents(), ['1', '1', '1']);
   assert.equal(await page.locator('#importerPreviewHead th').count(), 4);
   assert.equal(await page.locator('#importerPreviewBody tr').count(), 4);
@@ -81,6 +81,74 @@ try {
   assert.equal(await page.locator('#importerFileInput').inputValue(), '');
   assert.equal(await page.evaluate(() => window.Atrium.App.importedSpreadsheetData), null);
   assert.equal(await page.evaluate(() => JSON.stringify(window.Atrium.Store.state)), stateBeforePreview);
+
+  // Lote com múltiplos arquivos: prévia consolidada, por arquivo, e commit único.
+  await page.evaluate(() => {
+    window.__uiV2ImporterRequests.length = 0;
+    const fixture = window.__uiV2ImporterFixture;
+    window.KellerAuth.secureFetch = async (url, options = {}) => {
+      if (url !== '/api/import/spreadsheet') return { ok: false, status: 404, async json() { return {}; } };
+      const body = JSON.parse(options.body || '{}');
+      window.__uiV2ImporterRequests.push({ url: String(url), method: options.method || 'GET', filename: body.filename });
+      if (body.filename === 'lote-c.csv') {
+        return { ok: false, status: 422, async json() { return { message: 'Planilha sintética ilegível.' }; } };
+      }
+      const payload = body.filename === 'lote-b.csv'
+        ? { filename: 'lote-b.csv', totalRows: 2, preview: [], processes: [], contacts: [], tasks: [] }
+        : structuredClone(fixture);
+      return { ok: true, async json() { return structuredClone(payload); } };
+    };
+  });
+  await page.locator('#importerFileInput').setInputFiles([
+    { name: 'lote-a.csv', mimeType: 'text/csv', buffer: Buffer.from('Nome\nA') },
+    { name: 'lote-b.csv', mimeType: 'text/csv', buffer: Buffer.from('Nome\nB') }
+  ]);
+  await page.waitForFunction(() => window.__uiV2ImporterRequests.length === 2);
+  await page.locator('#importerPreviewCard:not(.hidden)').waitFor();
+  assert.equal(await page.locator('#importerSummaryTitle').textContent(), '6 linhas identificadas em 2 arquivos');
+  assert.equal(await page.locator('#importerFileList .importer-file-item').count(), 2);
+  assert.match(await page.locator('#importerFileList .importer-file-item').nth(1).textContent(), /0 processos/);
+  assert.deepEqual(await page.locator('.importer-count strong').allTextContents(), ['1', '1', '1']);
+  await page.evaluate(() => { window.__uiV2ImporterOps.length = 0; });
+  await page.locator('#importerCommitButton').click();
+  await page.waitForFunction(() => window.__uiV2ImporterOps.some(operation => operation.type === 'flush'));
+  const batchEvidence = await page.evaluate(() => ({
+    audit: window.__uiV2ImporterOps.filter(operation => operation.type === 'audit').at(-1),
+    toasts: window.__uiV2ImporterToasts.map(toast => toast.type),
+    cardHidden: document.getElementById('importerPreviewCard').classList.contains('hidden')
+  }));
+  assert.match(batchEvidence.audit.detail, /importados de 2 arquivos/);
+  assert.equal(batchEvidence.audit.detail.includes('com falha'), false);
+  assert.ok(batchEvidence.toasts.includes('success'));
+  assert.equal(batchEvidence.cardHidden, true, 'Lote íntegro encerra a revisão após a confirmação.');
+
+  // Lote com arquivo ilegível: resultado parcial honesto, sem esconder a falha.
+  await page.evaluate(() => {
+    window.Atrium.App.switchView('importer');
+    window.__uiV2ImporterToasts.length = 0;
+    window.__uiV2ImporterOps.length = 0;
+  });
+  await page.locator('#importerFileInput').setInputFiles([
+    { name: 'lote-a.csv', mimeType: 'text/csv', buffer: Buffer.from('Nome\nA') },
+    { name: 'lote-c.csv', mimeType: 'text/csv', buffer: Buffer.from('Nome\nC') }
+  ]);
+  await page.waitForFunction(() => window.__uiV2ImporterRequests.length === 4);
+  await page.locator('#importerPreviewCard:not(.hidden)').waitFor();
+  assert.equal(await page.locator('#importerFileList .importer-file-item.is-error').count(), 1);
+  assert.match(await page.locator('#importerFileList .importer-file-item.is-error').textContent(), /Planilha sintética ilegível/);
+  await page.evaluate(() => { window.__uiV2ImporterOps.length = 0; });
+  await page.locator('#importerCommitButton').click();
+  await page.waitForFunction(() => window.__uiV2ImporterOps.some(operation => operation.type === 'flush'));
+  const partialEvidence = await page.evaluate(() => ({
+    audit: window.__uiV2ImporterOps.filter(operation => operation.type === 'audit').at(-1),
+    toasts: window.__uiV2ImporterToasts,
+    cardHidden: document.getElementById('importerPreviewCard').classList.contains('hidden')
+  }));
+  assert.match(partialEvidence.audit.detail, /1 arquivo com falha/);
+  assert.ok(partialEvidence.toasts.some(toast => toast.type === 'warning' && toast.message.includes('pendências')));
+  assert.equal(partialEvidence.cardHidden, false, 'Falha parcial mantém a revisão aberta com o resultado real.');
+  await page.locator('#importerCancelButton').click();
+  assert.equal(await page.locator('#importerFileList .importer-file-item').count(), 0);
 
   await page.evaluate(fixture => {
     window.__uiV2ImporterOps.length = 0;
@@ -101,7 +169,7 @@ try {
   }));
   assert.deepEqual(commitEvidence.state, { processes: 1, contacts: 1, tasks: 1 });
   assert.deepEqual(commitEvidence.ops.find(operation => operation.type === 'audit'), {
-    type: 'audit', action: 'Importação de planilha concluída', detail: '1 processos, 1 contatos e 1 tarefas consolidados.'
+    type: 'audit', action: 'Importação de planilha concluída', detail: '1 processo, 1 contato e 1 tarefa importados.'
   });
   const flushIndex = commitEvidence.ops.findIndex(operation => operation.type === 'flush');
   const renderIndex = commitEvidence.ops.findIndex(operation => operation.type === 'render');
@@ -152,4 +220,4 @@ try {
   await session.stop();
 }
 
-console.log('✓ UI V2 Importador: arquitetura única, preview transitório, commit canônico e flush-before-success PASS.');
+console.log('✓ UI V2 Importador: arquitetura única, preview transitório, commit oficial e flush-before-success PASS.');

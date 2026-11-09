@@ -8,13 +8,13 @@ Definir o contrato do gerador de minutas e do acervo documental vinculado a clie
 
 ## Canonical authority
 
-`js/features/documents.js`, `lib/documents/document-service.mjs`, `lib/documents/document-storage-provider.mjs`, `lib/documents/document-intelligence.mjs`, as rotas `/api/documents*` de `server.mjs`, `state.documents` e os nove generators canônicos.
+`js/features/documents.js`, `lib/documents/document-service.mjs`, `lib/documents/document-storage-provider.mjs`, `lib/documents/document-intelligence.mjs`, as rotas `/api/documents*` de `server.mjs`, `state.documents` e os nove generators oficiais.
 
 ## Invariants
 
 - Existe uma única `createDocumentsFeature`, com 9 tipos, 4 aliases e 5 cards de catálogo.
 - Textos jurídicos permanecem byte a byte protegidos por hashes; preview continua temporário.
-- Metadata canônica vive em `state.documents`; bytes nunca são duplicados dentro do estado.
+- Metadata oficial vive em `state.documents`; bytes nunca são duplicados dentro do estado.
 - Cada documento pertence diretamente a exatamente um `contact` ou `process` existente.
 - Conteúdo idêntico usa um único blob SHA-256, mesmo quando há referências legítimas por proprietários distintos.
 - Regras documentais dependem do contrato `put/get/exists/delete/metadata/health`, não de paths ou filesystem; o provider CURRENT é local, privado e cifrado.
@@ -23,6 +23,7 @@ Definir o contrato do gerador de minutas e do acervo documental vinculado a clie
 - Preview, OCR e conversão são sempre ações explícitas; renderizar o acervo não inicia processamento.
 - OCR nunca substitui o original: o texto derivado usa blob cifrado próprio e metadata rastreia source, checksum, data, motor/versão, idioma, páginas e supervisão.
 - Preview decide o formato por magic bytes/conteúdo, não por MIME fornecido pelo navegador, e nunca executa HTML, SVG ou script.
+- O acervo renderiza no máximo uma página por vez (padrão 100 por página; opções 100, 500 ou 1000 no rodapé) para preservar a responsividade com milhares de metadatas. Paginação é preferência de apresentação local, sem Store paralelo, revision, request, auditoria ou timer: filtros de Ativos/Lixeira e de proprietário resetam para a página 1; a navegação entre páginas a preserva. O contador do cabeçalho segue exibindo o total do recorte; o foco profundo (`focusDocument`) ajusta a página do documento.
 - Conversão PDF deste contrato aceita somente texto UTF-8/Markdown inerte e cria novo documento derivado; não promete conversão universal.
 
 ## Allowed operations
@@ -66,4 +67,4 @@ Metadata e auditoria são gravadas atomicamente no estado criptografado com revi
 
 ## Relevant tests
 
-`tests/documents_feature.mjs`, `tests/document_type_ids.mjs`, `tests/document_storage_provider.mjs`, `tests/document_storage.mjs`, `tests/document_intelligence.mjs`, `tests/ui_v2_documents.mjs`, `tests/ui_v2_documents_accessibility.mjs`, `tests/ui_v2_document_storage.mjs`, `tests/ui_v2_document_intelligence.mjs`, `tests/visual_ui_v2_documents.mjs` e `tests/state_migrations.mjs`.
+`tests/documents_feature.mjs`, `tests/document_type_ids.mjs`, `tests/document_storage_provider.mjs`, `tests/document_storage.mjs`, `tests/document_intelligence.mjs`, `tests/ui_v2_documents.mjs`, `tests/ui_v2_documents_accessibility.mjs`, `tests/ui_v2_document_storage.mjs`, `tests/ui_v2_document_intelligence.mjs`, `tests/visual_ui_v2_documents.mjs`, `tests/ui_v2_documents_pagination.mjs` e `tests/state_migrations.mjs`.

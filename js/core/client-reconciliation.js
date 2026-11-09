@@ -32,9 +32,11 @@ export function applyClientReconciliation(state, links = []) {
     const contactById = link.contactId ? contacts.find(item => String(item.id || '') === String(link.contactId)) : null;
     const contactByName = contacts.find(item => normalizedName(item.name) === normalizedName(clientName));
     const contact = contactById || contactByName;
-    if (contact && (contact.contactRole !== 'cliente' || normalizedName(contact.name) !== normalizedName(clientName))) continue;
-    process.client = contact?.name || clientName;
-    if (contact?.id) process.contactId = contact.id;
+    // Vínculo durável exige contato oficial com papel 'cliente' e nome coincidente;
+    // nome sugerido pelo modelo sem contato correspondente não é gravado.
+    if (!contact || contact.contactRole !== 'cliente' || normalizedName(contact.name) !== normalizedName(clientName)) continue;
+    process.client = contact.name;
+    if (contact.id) process.contactId = contact.id;
     process.clientLinkProvenance = {
       method: link.method || 'ai-grounded',
       confidence,

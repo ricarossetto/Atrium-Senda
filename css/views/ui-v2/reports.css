@@ -1,0 +1,210 @@
+/* ATRIUM — Relatórios (produtividade de tarefas) — Mineral Editorial */
+html[data-ui="v2"] #view-reports .reports-toolbar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-3) var(--v2-space-4);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+}
+html[data-ui="v2"] #view-reports .reports-filter {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+html[data-ui="v2"] #view-reports .reports-filter span {
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+html[data-ui="v2"] #view-reports .reports-filter select,
+html[data-ui="v2"] #view-reports .reports-filter input {
+  min-height: 38px;
+  min-width: 150px;
+  padding: 0 var(--v2-space-2);
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  font: 13px var(--v2-font-interface);
+}
+html[data-ui="v2"] #view-reports .reports-filter input { min-width: 140px; }
+html[data-ui="v2"] #view-reports .reports-toolbar .button { min-height: 40px; }
+
+html[data-ui="v2"] #view-reports .reports-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--v2-space-2);
+  margin-top: var(--v2-space-4);
+}
+html[data-ui="v2"] #view-reports .reports-kpi {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: var(--v2-space-3);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+}
+html[data-ui="v2"] #view-reports .reports-kpi span {
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+html[data-ui="v2"] #view-reports .reports-kpi strong {
+  color: var(--v2-color-foreground);
+  font-size: 20px;
+  line-height: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui="v2"] #view-reports .reports-range {
+  margin: var(--v2-space-2) 0 0;
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] #view-reports .reports-block {
+  margin-top: var(--v2-space-5);
+  padding: var(--v2-space-4);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  box-shadow: var(--v2-shadow-card);
+}
+html[data-ui="v2"] #view-reports .reports-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--v2-space-3);
+  margin-bottom: var(--v2-space-3);
+}
+html[data-ui="v2"] #view-reports .reports-block-head h3 {
+  margin: 0;
+  color: var(--v2-color-foreground);
+  font: 700 18px/22px var(--v2-font-editorial);
+}
+html[data-ui="v2"] #view-reports .reports-block-head span {
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] #view-reports .reports-table-wrap {
+  overflow-x: auto;
+}
+html[data-ui="v2"] #view-reports .reports-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+html[data-ui="v2"] #view-reports .reports-table th {
+  padding: 0 0 6px;
+  border-bottom: 1px solid var(--v2-color-border);
+  text-align: left;
+  vertical-align: bottom;
+}
+html[data-ui="v2"] #view-reports .reports-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+  color: var(--v2-color-foreground);
+  font-size: 12px;
+}
+html[data-ui="v2"] #view-reports .reports-table tbody tr:hover td { background: color-mix(in srgb, var(--v2-color-surface-secondary) 55%, transparent); }
+html[data-ui="v2"] #view-reports .reports-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+html[data-ui="v2"] #view-reports .reports-table th.reports-number { text-align: right; }
+
+html[data-ui="v2"] #view-reports .reports-sort {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px;
+  color: var(--v2-color-muted-foreground);
+  background: transparent;
+  border: 0;
+  font: 700 12px/1.3 var(--v2-font-interface);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+html[data-ui="v2"] #view-reports .reports-sort[aria-pressed="true"] { color: var(--v2-color-foreground); }
+html[data-ui="v2"] #view-reports .reports-sort:hover { color: var(--v2-color-foreground); }
+html[data-ui="v2"] #view-reports .reports-sort:focus-visible {
+  outline: 2px solid var(--v2-color-primary);
+  outline-offset: 2px;
+}
+
+html[data-ui="v2"] #view-reports .reports-ranking {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+html[data-ui="v2"] #view-reports .reports-ranking li {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-2);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+}
+html[data-ui="v2"] #view-reports .reports-ranking span {
+  overflow: hidden;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-ui="v2"] #view-reports .reports-ranking strong {
+  min-width: 24px;
+  color: var(--v2-color-foreground);
+  font-size: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui="v2"] #view-reports .reports-empty {
+  margin: 0;
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+}
+html[data-ui="v2"] #view-reports .reports-note {
+  margin: var(--v2-space-5) 0 0;
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+@media (max-width: 1260px) {
+  html[data-ui="v2"] #view-reports .reports-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 860px) {
+  html[data-ui="v2"] #view-reports .reports-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-ui="v2"] #view-reports .reports-filter select,
+  html[data-ui="v2"] #view-reports .reports-filter input { min-width: 120px; }
+  html[data-ui="v2"] #view-reports .reports-block { padding: var(--v2-space-3); }
+  html[data-ui="v2"] #view-reports .reports-table { min-width: 1040px; }
+  html[data-ui="v2"] #view-reports .reports-table td { padding-inline: 10px; white-space: nowrap; }
+  html[data-ui="v2"] #view-reports .reports-table th { padding: 0 10px 8px; white-space: nowrap; }
+}
+@media (max-width: 620px) {
+  /* Uma coluna: lado a lado o select "Todos (responsável)" era cortado no fechamento do
+     parêntese. Empilhado o rótulo inteiro aparece. */
+  html[data-ui="v2"] #view-reports .reports-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--v2-space-3); }
+  html[data-ui="v2"] #view-reports .reports-toolbar .button { grid-column: 1 / -1; min-height: 44px; }
+  html[data-ui="v2"] #view-reports .reports-filter select,
+  html[data-ui="v2"] #view-reports .reports-filter input { width: 100%; min-width: 0; }
+  html[data-ui="v2"] #view-reports .reports-toolbar .reports-filter:nth-of-type(3) { grid-column: 1 / -1; }
+  /* "PENDENTES 52 (2 em atraso)" quebra em duas linhas e a linha ficava mais alta. */
+  html[data-ui="v2"] #view-reports .reports-kpis { grid-auto-rows: 1fr; }
+}

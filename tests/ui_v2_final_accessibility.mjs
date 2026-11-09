@@ -53,6 +53,8 @@ try {
     await page.waitForFunction(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement));
     await page.locator('#modalForm button[type="submit"]').focus();
     await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'modalSizeToggle');
+    await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'modalClose');
     await page.keyboard.press('Escape');
     await page.locator('#modalBackdrop.hidden').waitFor({ state: 'attached' });
@@ -65,6 +67,8 @@ try {
     await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
     await page.waitForFunction(() => document.querySelector('#processInspector')?.contains(document.activeElement));
     await page.locator('#processInspectorDelete').focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.matches('[data-panel-size-toggle]')), true, 'O controle de tamanho vem antes de fechar.');
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'processInspectorClose');
     await page.keyboard.press('Escape');

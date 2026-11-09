@@ -1,0 +1,616 @@
+[
+  {
+    "id": "sh-com-014",
+    "objective": "Fundamentar tese sintética 14.",
+    "completedWork": "Tese redigida com doutrina.",
+    "verification": "Falta validar a jurisprudência citada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-015",
+    "objective": "Fundamentar tese sintética 15.",
+    "completedWork": "Tese redigida com doutrina.",
+    "verification": "Falta validar a jurisprudência citada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-050",
+    "objective": "Concluir análise sintética 50.",
+    "completedWork": "Análise parcial.",
+    "verification": "Pendente.",
+    "knownGaps": [
+      "Documento central não analisado"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-029",
+    "objective": "Consultar base sintética 29.",
+    "completedWork": "Consulta enviada, sem resposta até o momento.",
+    "verification": "Aguardando retorno da fonte.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-024",
+    "objective": "Coletar peças sintéticas 24.",
+    "completedWork": "Coleta parcial com falha registrada.",
+    "verification": "Subtarefa de download falhou.",
+    "knownGaps": [
+      "Peça central não coletada"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-028",
+    "objective": "Consultar base sintética 28.",
+    "completedWork": "Consulta enviada, sem resposta até o momento.",
+    "verification": "Aguardando retorno da fonte.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-012",
+    "objective": "Mapear autos sintéticos 12.",
+    "completedWork": "Autos parcialmente mapeados.",
+    "verification": "Conferência parcial.",
+    "knownGaps": [
+      "Falta analisar o documento principal"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-057",
+    "objective": "Fechar checklist sintético 57.",
+    "completedWork": "Metade dos itens marcada.",
+    "verification": "Itens restantes sem evidência.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-045",
+    "objective": "Minutar peça sintética 45.",
+    "completedWork": "Minuta redigida.",
+    "verification": "Revisão de citações ainda não executada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-039",
+    "objective": "Levantar julgados sintéticos 39.",
+    "completedWork": "Levantamento parcial com 2 de 5 fontes.",
+    "verification": "Faltam 3 fontes.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-027",
+    "objective": "Coletar peças sintéticas 27.",
+    "completedWork": "Coleta parcial com falha registrada.",
+    "verification": "Subtarefa de download falhou.",
+    "knownGaps": [
+      "Peça central não coletada"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-047",
+    "objective": "Concluir análise sintética 47.",
+    "completedWork": "Análise parcial.",
+    "verification": "Pendente.",
+    "knownGaps": [
+      "Documento central não analisado"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-020",
+    "objective": "Checar fonte sintética 20.",
+    "completedWork": "Checagem parcial concluída.",
+    "verification": "Fonte primária ainda não verificada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-059",
+    "objective": "Fechar checklist sintético 59.",
+    "completedWork": "Metade dos itens marcada.",
+    "verification": "Itens restantes sem evidência.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-062",
+    "objective": "Novo escopo sintético 62 após mudança.",
+    "completedWork": "Trabalho do escopo anterior concluído.",
+    "verification": "Escopo novo ainda não confrontado com o trabalho.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-016",
+    "objective": "Fundamentar tese sintética 16.",
+    "completedWork": "Tese redigida com doutrina.",
+    "verification": "Falta validar a jurisprudência citada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-023",
+    "objective": "Coletar peças sintéticas 23.",
+    "completedWork": "Coleta parcial com falha registrada.",
+    "verification": "Subtarefa de download falhou.",
+    "knownGaps": [
+      "Peça central não coletada"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-007",
+    "objective": "Mapear autos sintéticos 7.",
+    "completedWork": "Autos parcialmente mapeados.",
+    "verification": "Conferência parcial.",
+    "knownGaps": [
+      "Falta analisar o documento principal"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-031",
+    "objective": "Consultar base sintética 31.",
+    "completedWork": "Consulta enviada, sem resposta até o momento.",
+    "verification": "Aguardando retorno da fonte.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-055",
+    "objective": "Fechar checklist sintético 55.",
+    "completedWork": "Todos os itens marcados e evidenciados.",
+    "verification": "Checklist completo conferido item a item.",
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-033",
+    "objective": "Pesquisar tese sintética 33.",
+    "completedWork": "Pesquisa executada.",
+    "verification": "Zero resultados retornados; ampliar termos.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-042",
+    "objective": "Minutar peça sintética 42.",
+    "completedWork": "Minuta redigida.",
+    "verification": "Revisão de citações ainda não executada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-021",
+    "objective": "Checar fonte sintética 21.",
+    "completedWork": "Checagem parcial concluída.",
+    "verification": "Fonte primária ainda não verificada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-065",
+    "objective": "Novo escopo sintético 65 após mudança.",
+    "completedWork": "Trabalho do escopo anterior concluído.",
+    "verification": "Escopo novo ainda não confrontado com o trabalho.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-002",
+    "objective": "Redigir minuta sintética 2.",
+    "completedWork": "Minuta sintética redigida com capítulos e citações conferidas.",
+    "verification": "Gates PASS, citações verificadas nas fontes.",
+    "knownGaps": [],
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-068",
+    "objective": "Encerrar rotina sintética 68.",
+    "completedWork": "Rotina executada.",
+    "verification": "",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-004",
+    "objective": "Redigir minuta sintética 4.",
+    "completedWork": "Minuta sintética redigida com capítulos e citações conferidas.",
+    "verification": "Gates PASS, citações verificadas nas fontes.",
+    "knownGaps": [],
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-038",
+    "objective": "Levantar julgados sintéticos 38.",
+    "completedWork": "Levantamento parcial com 2 de 5 fontes.",
+    "verification": "Faltam 3 fontes.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-018",
+    "objective": "Checar fonte sintética 18.",
+    "completedWork": "Checagem parcial concluída.",
+    "verification": "Fonte primária ainda não verificada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-036",
+    "objective": "Levantar julgados sintéticos 36.",
+    "completedWork": "Levantamento parcial com 2 de 5 fontes.",
+    "verification": "Faltam 3 fontes.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-053",
+    "objective": "Fechar checklist sintético 53.",
+    "completedWork": "Todos os itens marcados e evidenciados.",
+    "verification": "Checklist completo conferido item a item.",
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-011",
+    "objective": "Mapear autos sintéticos 11.",
+    "completedWork": "Autos parcialmente mapeados.",
+    "verification": "Conferência parcial.",
+    "knownGaps": [
+      "Falta analisar o documento principal"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-034",
+    "objective": "Pesquisar tese sintética 34.",
+    "completedWork": "Pesquisa executada.",
+    "verification": "Zero resultados retornados; ampliar termos.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-063",
+    "objective": "Novo escopo sintético 63 após mudança.",
+    "completedWork": "Trabalho do escopo anterior concluído.",
+    "verification": "Escopo novo ainda não confrontado com o trabalho.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-035",
+    "objective": "Pesquisar tese sintética 35.",
+    "completedWork": "Pesquisa executada.",
+    "verification": "Zero resultados retornados; ampliar termos.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-026",
+    "objective": "Coletar peças sintéticas 26.",
+    "completedWork": "Coleta parcial com falha registrada.",
+    "verification": "Subtarefa de download falhou.",
+    "knownGaps": [
+      "Peça central não coletada"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-010",
+    "objective": "Mapear autos sintéticos 10.",
+    "completedWork": "Autos parcialmente mapeados.",
+    "verification": "Conferência parcial.",
+    "knownGaps": [
+      "Falta analisar o documento principal"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-044",
+    "objective": "Minutar peça sintética 44.",
+    "completedWork": "Minuta redigida.",
+    "verification": "Revisão de citações ainda não executada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-009",
+    "objective": "Mapear autos sintéticos 9.",
+    "completedWork": "Autos parcialmente mapeados.",
+    "verification": "Conferência parcial.",
+    "knownGaps": [
+      "Falta analisar o documento principal"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-043",
+    "objective": "Minutar peça sintética 43.",
+    "completedWork": "Minuta redigida.",
+    "verification": "Revisão de citações ainda não executada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-054",
+    "objective": "Fechar checklist sintético 54.",
+    "completedWork": "Todos os itens marcados e evidenciados.",
+    "verification": "Checklist completo conferido item a item.",
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-025",
+    "objective": "Coletar peças sintéticas 25.",
+    "completedWork": "Coleta parcial com falha registrada.",
+    "verification": "Subtarefa de download falhou.",
+    "knownGaps": [
+      "Peça central não coletada"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-051",
+    "objective": "Fechar checklist sintético 51.",
+    "completedWork": "Todos os itens marcados e evidenciados.",
+    "verification": "Checklist completo conferido item a item.",
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-070",
+    "objective": "Encerrar rotina sintética 70.",
+    "completedWork": "Rotina executada.",
+    "verification": "",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-058",
+    "objective": "Fechar checklist sintético 58.",
+    "completedWork": "Metade dos itens marcada.",
+    "verification": "Itens restantes sem evidência.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-005",
+    "objective": "Redigir minuta sintética 5.",
+    "completedWork": "Minuta sintética redigida com capítulos e citações conferidas.",
+    "verification": "Gates PASS, citações verificadas nas fontes.",
+    "knownGaps": [],
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-003",
+    "objective": "Redigir minuta sintética 3.",
+    "completedWork": "Minuta sintética redigida com capítulos e citações conferidas.",
+    "verification": "Gates PASS, citações verificadas nas fontes.",
+    "knownGaps": [],
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-064",
+    "objective": "Novo escopo sintético 64 após mudança.",
+    "completedWork": "Trabalho do escopo anterior concluído.",
+    "verification": "Escopo novo ainda não confrontado com o trabalho.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-022",
+    "objective": "Checar fonte sintética 22.",
+    "completedWork": "Checagem parcial concluída.",
+    "verification": "Fonte primária ainda não verificada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-060",
+    "objective": "Fechar checklist sintético 60.",
+    "completedWork": "Metade dos itens marcada.",
+    "verification": "Itens restantes sem evidência.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-046",
+    "objective": "Concluir análise sintética 46.",
+    "completedWork": "Análise parcial.",
+    "verification": "Pendente.",
+    "knownGaps": [
+      "Documento central não analisado"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-006",
+    "objective": "Redigir minuta sintética 6.",
+    "completedWork": "Minuta sintética redigida com capítulos e citações conferidas.",
+    "verification": "Gates PASS, citações verificadas nas fontes.",
+    "knownGaps": [],
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-052",
+    "objective": "Fechar checklist sintético 52.",
+    "completedWork": "Todos os itens marcados e evidenciados.",
+    "verification": "Checklist completo conferido item a item.",
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-030",
+    "objective": "Consultar base sintética 30.",
+    "completedWork": "Consulta enviada, sem resposta até o momento.",
+    "verification": "Aguardando retorno da fonte.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-067",
+    "objective": "Encerrar rotina sintética 67.",
+    "completedWork": "Rotina executada.",
+    "verification": "",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-013",
+    "objective": "Fundamentar tese sintética 13.",
+    "completedWork": "Tese redigida com doutrina.",
+    "verification": "Falta validar a jurisprudência citada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-008",
+    "objective": "Mapear autos sintéticos 8.",
+    "completedWork": "Autos parcialmente mapeados.",
+    "verification": "Conferência parcial.",
+    "knownGaps": [
+      "Falta analisar o documento principal"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-056",
+    "objective": "Fechar checklist sintético 56.",
+    "completedWork": "Metade dos itens marcada.",
+    "verification": "Itens restantes sem evidência.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-061",
+    "objective": "Novo escopo sintético 61 após mudança.",
+    "completedWork": "Trabalho do escopo anterior concluído.",
+    "verification": "Escopo novo ainda não confrontado com o trabalho.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-069",
+    "objective": "Encerrar rotina sintética 69.",
+    "completedWork": "Rotina executada.",
+    "verification": "",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-040",
+    "objective": "Levantar julgados sintéticos 40.",
+    "completedWork": "Levantamento parcial com 2 de 5 fontes.",
+    "verification": "Faltam 3 fontes.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-049",
+    "objective": "Concluir análise sintética 49.",
+    "completedWork": "Análise parcial.",
+    "verification": "Pendente.",
+    "knownGaps": [
+      "Documento central não analisado"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-037",
+    "objective": "Levantar julgados sintéticos 37.",
+    "completedWork": "Levantamento parcial com 2 de 5 fontes.",
+    "verification": "Faltam 3 fontes.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-032",
+    "objective": "Pesquisar tese sintética 32.",
+    "completedWork": "Pesquisa executada.",
+    "verification": "Zero resultados retornados; ampliar termos.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-001",
+    "objective": "Redigir minuta sintética 1.",
+    "completedWork": "Minuta sintética redigida com capítulos e citações conferidas.",
+    "verification": "Gates PASS, citações verificadas nas fontes.",
+    "knownGaps": [],
+    "expectedConclusion": "complete",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-048",
+    "objective": "Concluir análise sintética 48.",
+    "completedWork": "Análise parcial.",
+    "verification": "Pendente.",
+    "knownGaps": [
+      "Documento central não analisado"
+    ],
+    "expectedConclusion": "incomplete",
+    "hasGaps": true
+  },
+  {
+    "id": "sh-com-017",
+    "objective": "Fundamentar tese sintética 17.",
+    "completedWork": "Tese redigida com doutrina.",
+    "verification": "Falta validar a jurisprudência citada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-041",
+    "objective": "Minutar peça sintética 41.",
+    "completedWork": "Minuta redigida.",
+    "verification": "Revisão de citações ainda não executada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-066",
+    "objective": "Encerrar rotina sintética 66.",
+    "completedWork": "Rotina executada.",
+    "verification": "",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  },
+  {
+    "id": "sh-com-019",
+    "objective": "Checar fonte sintética 19.",
+    "completedWork": "Checagem parcial concluída.",
+    "verification": "Fonte primária ainda não verificada.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false
+  }
+]

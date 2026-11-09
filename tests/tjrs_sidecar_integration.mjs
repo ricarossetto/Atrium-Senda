@@ -129,11 +129,27 @@ assert.equal(first.process.client, manualProcess.client, 'Cliente manual deve pr
 assert.equal(first.process.contactId, manualProcess.contactId, 'Vínculo manual deve prevalecer.');
 assert.equal(first.process.opposingParty, manualProcess.opposingParty, 'Parte contrária manual deve prevalecer.');
 assert.equal(first.process.court, manualProcess.court, 'Campo manual não vazio não pode ser sobrescrito.');
-assert.equal(first.process.actionType, snapshot.metadata.processClass, 'Campo local vazio pode receber valor canônico.');
+assert.equal(first.process.actionType, snapshot.metadata.processClass, 'Campo local vazio pode receber valor oficial.');
 assert.equal(first.process.judicialParties.length, 2);
 assert.equal(first.process.movements.length, 2);
 assert.equal(first.process.lastMovement, 'Intimação eletrônica expedida');
 assert.equal(first.process.tjrsCollector.payloadHash, HASH);
+
+// O sinal de sigilo do coletor não pode virar verdadeiro por coerção de tipo.
+const stringFalseSnapshot = structuredClone(snapshotPayload);
+stringFalseSnapshot.metadata.isSecret = 'false';
+stringFalseSnapshot.provenance.sha256Payload = 'c'.repeat(64);
+const stringFalseResult = reconcileTjrsSnapshot(manualProcess, stringFalseSnapshot, null);
+assert.equal(stringFalseResult.process.secrecy, false, 'A string "false" não pode marcar segredo de justiça.');
+const stringTrueSnapshot = structuredClone(snapshotPayload);
+stringTrueSnapshot.metadata.isSecret = 'S';
+stringTrueSnapshot.provenance.sha256Payload = 'd'.repeat(64);
+assert.equal(reconcileTjrsSnapshot(manualProcess, stringTrueSnapshot, null).process.secrecy, true, 'O sinal explícito "S" marca segredo.');
+
+// Em registro já coberto pelo sidecar, a fonte é autoritativa: público confirmado limpa.
+const coveredBySidecar = { ...manualProcess, secrecy: true, tjrsCollector: { payloadHash: 'e'.repeat(64) } };
+assert.equal(reconcileTjrsSnapshot(coveredBySidecar, snapshotPayload, null).process.secrecy, false, 'Fonte pública limpa marcação de origem no registro do sidecar.');
+
 const second = reconcileTjrsSnapshot(first.process, snapshot, diff);
 assert.equal(second.changed, false, 'Reimportar o mesmo snapshot deve ser idempotente.');
 assert.deepEqual(second.process, first.process);
@@ -191,6 +207,34 @@ assert.equal(savedState.processes[0].client, manualProcess.client);
 assert.equal(savedState.audit.length, 1);
 assert.equal(savedState.audit[0].action, 'Snapshot TJRS importado');
 assert.doesNotMatch(savedState.audit[0].detail, /CLIENTE SINTÉTICA|EMPRESA ADVERSA|ADVOGADA SINTÉTICA/, 'Auditoria deve minimizar PII.');
+
+// Workspace não-default: sync e download-autos exigem a chave de acesso do processo,
+// como a rota de preview, antes de ler o snapshot compartilhado do sidecar.
+const guardedRoute = createTjrsSidecarHttpHandler({
+  client,
+  assertAuthenticated: () => ({ username: 'ricardo', displayName: 'Ricardo' }),
+  readJson: async req => req.body,
+  readStateEnvelope: async () => ({ state: routeState, revision: 'revision-1' }),
+  saveState: async () => ({ revision: 'revision-2', updatedAt: '2026-09-03T10:07:00.000Z' }),
+  credentialManager: {
+    async saveProcessAccessKey() {},
+    async getProcessAccessKey() { return null; }
+  },
+  documentStorage: { async put() { return { checksum: 'c'.repeat(64), created: true }; } },
+  requireAccessKeyForPreview: () => true,
+  json: (res, status, payload) => Object.assign(res, { status, payload })
+});
+const guardedSync = {};
+assert.equal(await guardedRoute({ method: 'POST', body: { processId: 'process-1', processNumber: FORMATTED_CNJ, revision: 'revision-1' } }, guardedSync, new URL('http://localhost/api/integrations/tjrs-sidecar/processes/sync')), true);
+assert.equal(guardedSync.status, 403);
+assert.equal(guardedSync.payload.state, 'ACCESS_KEY_REQUIRED');
+const guardedAutos = {};
+assert.equal(await guardedRoute({ method: 'POST', body: { processId: 'process-1', processNumber: FORMATTED_CNJ, revision: 'revision-1' } }, guardedAutos, new URL('http://localhost/api/integrations/tjrs-sidecar/processes/download-autos')), true);
+assert.equal(guardedAutos.status, 403);
+assert.equal(guardedAutos.payload.state, 'ACCESS_KEY_REQUIRED');
+const guardedSyncWithKey = {};
+await guardedRoute({ method: 'POST', body: { processId: 'process-1', processNumber: FORMATTED_CNJ, revision: 'revision-1', accessKey: 'CHAVE-SINTETICA-GUARDED' } }, guardedSyncWithKey, new URL('http://localhost/api/integrations/tjrs-sidecar/processes/sync'));
+assert.notEqual(guardedSyncWithKey.status, 403, 'Chave de acesso informada não pode ser recusada pela guarda.');
 
 const mockSidecar = http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://127.0.0.1').pathname;
@@ -260,7 +304,7 @@ try {
   assert.equal(response.status, 200);
   syncResult = await response.json();
   assert.equal(syncResult.idempotent, true);
-  assert.equal(syncResult.revision, revision, 'Snapshot idempotente não pode trocar a revisão canônica.');
+  assert.equal(syncResult.revision, revision, 'Snapshot idempotente não pode trocar a revisão oficial.');
 
   response = await fetch(`${appServer.baseUrl}/api/state`, { headers: { Cookie: auth.cookie } });
   const persisted = await response.json();
@@ -277,7 +321,7 @@ try {
   await new Promise(resolve => mockSidecar.close(resolve));
 }
 
-console.log('✓ Sidecar restrito ao loopback e contrato canônico validado.');
+console.log('✓ Sidecar restrito ao loopback e contrato oficial validado.');
 console.log('✓ Snapshot, diff, indisponibilidade e ausência têm estados explícitos.');
 console.log('✓ Reconciliação preserva vínculo manual e é idempotente.');
 console.log('✓ Rota persiste com revisão otimista e auditoria minimizada.\n');

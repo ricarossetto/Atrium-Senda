@@ -201,7 +201,7 @@ try {
   });
 
   assert.equal(characterization.render.name, 'Advogada Principal Sintética');
-  assert.equal(characterization.render.registration, 'OAB/RS 000000 · Advogado(a) monitorado(a) principal');
+  assert.equal(characterization.render.registration, 'OAB/RS 000000 · OAB do escritório monitorada principal');
   assert.equal(characterization.render.sourceCount, '5');
   assert.equal(characterization.render.issueCount, '2');
   assert.equal(characterization.render.newCount, '2');
@@ -222,8 +222,8 @@ try {
   assert.equal(records.termCount, 4);
   assert.ok(records.saves >= 5);
   assert.ok(records.flushes >= 5);
-  const sourceHtmlHash = createHash('sha256').update(characterization.render.sourceHtml, 'utf8').digest('hex');
-  assert.equal(sourceHtmlHash, 'ee161fa95a64d817ad5d9817221cab0db44f176e7381e529958fc904f976460a');
+  const sourceHtmlHash = createHash('sha256').update(characterization.render.sourceHtml.replace(/\?v=[\d.]+/g, ''), 'utf8').digest('hex');
+  assert.equal(sourceHtmlHash, '1e8a0f65a382ca3e47d158c17dcbc12bb7b7e10c37ba6b83d1f9c856d2859a3d');
   console.log(`✓ Feature modular de monitoramento preservada (${sourceHtmlHash.slice(0, 12)}, seleção explícita entre 27 UFs, múltiplos termos e flush seguro)`);
   await context.close();
 } finally {

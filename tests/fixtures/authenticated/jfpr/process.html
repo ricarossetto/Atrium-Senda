@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="iso-8859-1">
+  <title>:: eproc - JFPR - Detalhes do Processo ::</title>
+  <link rel="stylesheet" href="css/dist/bundle-bs4.css">
+</head>
+<body class="bootstrap-styles instancia-1g">
+  <div id="divInfraAreaGlobal">
+    <div id="divInfraBarraLocalizacao">
+      <h1>Processo 5005678-22.2024.4.04.7000 - 2ª Vara Federal de Curitiba</h1>
+    </div>
+
+    <!-- Metadados de Capa -->
+    <div id="divInfraAreaDados" class="card mb-3">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <span class="font-weight-bold">Classe:</span>
+            <span id="txtClasse">PROCEDIMENTO DO JUIZADO ESPECIAL CÍVEL</span>
+          </div>
+          <div class="col-md-6">
+            <span class="font-weight-bold">Competência:</span>
+            <span id="txtCompetencia">JEF Previdenciário</span>
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div class="col-md-6">
+            <span class="font-weight-bold">Data de autuação:</span>
+            <span id="txtAutuacao">02/02/2024 10:15:20</span>
+          </div>
+          <div class="col-md-6">
+            <span class="font-weight-bold">Órgão Julgador:</span>
+            <span id="txtOrgaoJulgador">2ª Vara Federal de Curitiba</span>
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div class="col-md-6">
+            <span class="font-weight-bold">Magistrado:</span>
+            <span id="txtMagistrado">JUIZ FEDERAL TITULAR PR</span>
+          </div>
+          <div class="col-md-3">
+            <span class="font-weight-bold">Situação:</span>
+            <span id="txtSituacao">MOVIMENTO</span>
+          </div>
+          <div class="col-md-3">
+            <span class="font-weight-bold">Valor da Causa:</span>
+            <span>R$ 42.000,00</span>
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div class="col-md-12">
+            <span class="font-weight-bold">Chave do Processo:</span>
+            <span id="spnChaveProcesso">776655443322</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Partes e Representantes -->
+    <div class="card mb-3">
+      <div class="card-header font-weight-bold">Partes e Representantes</div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-striped mb-0" id="tblPartesERepresentantes">
+          <thead>
+            <tr>
+              <th>AUTOR</th>
+              <th>RÉU</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                PARTE AUTORA PILOTO PR (000.000.000-00)<br>
+                ADVOGADO PARANAENSE PR999999 Tipo de Usuário: ADVOGADO
+              </td>
+              <td>
+                INSTITUTO NACIONAL DO SEGURO SOCIAL - INSS
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Movimentações Processuais -->
+    <div class="card mb-3">
+      <div class="card-header font-weight-bold">Movimentações</div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0" id="tblEventos">
+          <thead>
+            <tr>
+              <th>Evento</th>
+              <th>Data/Hora</th>
+              <th>Descrição</th>
+              <th>Usuário</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>4</td>
+              <td>14/09/2026 14:00:15</td>
+              <td>Sentença com Resolução do Mérito - Procedente em Parte</td>
+              <td>JUIZ FEDERAL TITULAR PR</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>01/09/2026 11:00:00</td>
+              <td>Conclusos para Julgamento</td>
+              <td>SECRETARIA DA 2A VF CURITIBA</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>15/05/2024 16:30:00</td>
+              <td>Contestação Apresentada</td>
+              <td>PROCURADORIA FEDERAL - INSS</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>02/02/2024 10:15:20</td>
+              <td>Distribuído por sorteio</td>
+              <td>SISTEMA AUTOMATICO EPROC</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Documentos do Processo -->
+    <div class="card mb-3">
+      <div class="card-header font-weight-bold">Documentos</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" id="tblDocumentos">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Título / Descrição</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>
+                <a class="btn btn-sm btn-outline-primary" href="controlador.php?acao=acessar_documento&doc=112233&hash=sanitized_pr">SENT1</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

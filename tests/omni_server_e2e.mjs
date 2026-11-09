@@ -83,7 +83,7 @@ try {
   assert.equal(count(), 0);
   for (const prefix of ['tjrs-sidecar', 'omni']) {
     const preview = await postJson(`${instance.baseUrl}/api/integrations/${prefix}/processes/preview`,
-      { processNumber: CNJ }, { Cookie: authCookie });
+      { processNumber: CNJ }, { Cookie: authCookie, 'X-CSRF-Token': csrfToken });
     assert.equal(preview.status, 200, await preview.clone().text());
     const data = await preview.json();
     assert.equal(data.draft.client, '');

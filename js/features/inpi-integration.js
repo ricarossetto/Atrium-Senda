@@ -1,3 +1,6 @@
+import { describeLinkSafety } from '../core/link-safety.js?v=3.0.0';
+const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
+
 const defaultEscapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
 }[character]));
@@ -116,7 +119,16 @@ export function createInpiIntegrationFeature({
     }
 
     const generatedAt = inpiData?.generatedAt;
-    if (generatedAt) {
+    const scanStatus = inpiStatus?.lastScanStatus || inpiStatus?.scanStatus || inpiData?.lastRun?.status;
+    if (scanStatus === 'ERROR') {
+      statusPill.textContent = 'Erro na última varredura';
+      statusPill.className = 'status-chip error';
+      if (subtitle) {
+        subtitle.textContent = inpiStatus?.lastScanError
+          ? `Falha na última varredura: ${inpiStatus.lastScanError}`
+          : 'A última varredura do INPI falhou. Verifique e tente novamente.';
+      }
+    } else if (generatedAt && scanStatus !== 'RUNNING') {
       statusPill.textContent = 'Atualizado';
       statusPill.className = 'status-chip connected';
       if (subtitle) {
@@ -157,7 +169,7 @@ export function createInpiIntegrationFeature({
 
     const totalCount = autoMonitors.length + customMonitors.length;
     if (countEl) {
-      countEl.textContent = `${autoMonitors.length} advogado(s) do escritório · ${customMonitors.length} termo(s) personalizado(s)`;
+      countEl.textContent = `${plural(autoMonitors.length, 'advogado', 'advogados')} do escritório · ${plural(customMonitors.length, 'termo personalizado', 'termos personalizados')}`;
     }
     if (!container) return;
 
@@ -187,7 +199,7 @@ export function createInpiIntegrationFeature({
           <span class="inpi-monitor-type-badge ${typeClass}">${typeLabel}</span>
           <b>${escapeHtml(monitor.label || monitor.term)}</b>
           <span class="inpi-monitor-hits">${formatNumber(hits)} ocorrência${hits === 1 ? '' : 's'}</span>
-          <button type="button" class="inpi-remove-term-btn" data-delete-monitor-id="${escapeHtml(monitor.id)}" title="Remover termo ${escapeHtml(monitor.term)}" aria-label="Remover termo ${escapeHtml(monitor.term)}"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-close"></use></svg></button>
+          <button type="button" class="inpi-remove-term-btn" data-delete-monitor-id="${escapeHtml(monitor.id)}" title="Remover termo ${escapeHtml(monitor.term)}" aria-label="Remover termo ${escapeHtml(monitor.term)}"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-close"></use></svg></button>
         </div>
       `;
     }).join('');
@@ -211,6 +223,12 @@ export function createInpiIntegrationFeature({
       }
       select.innerHTML = optionsHtml;
     }
+  }
+
+  function linkSafetyChip(url) {
+    const safety = describeLinkSafety(url);
+    if (!safety.warn) return '';
+    return `<span class="link-safety-note is-${escapeHtml(safety.kind)}" title="${escapeHtml(safety.reason)}">${escapeHtml(safety.label)}</span>`;
   }
 
   function renderResults(matches) {
@@ -257,13 +275,13 @@ export function createInpiIntegrationFeature({
             </div>
 
             <div class="inpi-card-block">
-              <span class="label">Especificação & Classe Nice</span>
+              <span class="label">Especificação e Classe Nice</span>
               <p>${escapeHtml(classes)}</p>
               ${match.marca?.natureza ? `<p style="font-size:11.5px; color:var(--v2-color-muted-foreground); margin-top:4px;">Natureza: ${escapeHtml(match.marca.natureza)}${match.marca.apresentacao ? ` · Apresentação: ${escapeHtml(match.marca.apresentacao)}` : ''}</p>` : ''}
             </div>
 
             <div class="inpi-card-block">
-              <span class="label">Titular & Procuradores</span>
+              <span class="label">Titular e Procuradores</span>
               <p><strong>Requerente:</strong> ${escapeHtml(requerentes)}</p>
               <p style="margin-top:4px;"><strong>Procurador no INPI:</strong> ${escapeHtml(procuradores)}</p>
             </div>
@@ -272,8 +290,8 @@ export function createInpiIntegrationFeature({
           <div class="inpi-card-footer">
             <span class="inpi-hits-summary">Identificado por termos vinculados ao escritório</span>
             <div class="inpi-actions">
-              ${match.links?.pdf ? `<a class="inpi-action-link primary" href="${escapeHtml(match.links.pdf)}" target="_blank" rel="noreferrer" title="Abrir caderno oficial em PDF da RPI">PDF Oficial</a>` : ''}
-              ${match.links?.xml ? `<a class="inpi-action-link" href="${escapeHtml(match.links.xml)}" target="_blank" rel="noreferrer" title="Baixar arquivo XML original da RPI">XML INPI</a>` : ''}
+              ${match.links?.pdf ? `<a class="inpi-action-link primary" href="${escapeHtml(match.links.pdf)}" target="_blank" rel="noreferrer" title="Abrir caderno oficial em PDF da RPI">PDF Oficial</a>${linkSafetyChip(match.links.pdf)}` : ''}
+              ${match.links?.xml ? `<a class="inpi-action-link" href="${escapeHtml(match.links.xml)}" target="_blank" rel="noreferrer" title="Baixar arquivo XML original da RPI">XML INPI</a>${linkSafetyChip(match.links.xml)}` : ''}
             </div>
           </div>
         </article>
@@ -422,14 +440,22 @@ export function createInpiIntegrationFeature({
           secureFetch('/api/integrations/inpi/status', { headers: { Accept: 'application/json' } }),
           secureFetch('/api/integrations/inpi/monitors', { headers: { Accept: 'application/json' } })
         ]);
-        if (dataRes.ok) inpiData = await dataRes.json();
+        if (dataRes.ok) {
+          inpiData = await dataRes.json();
+          // A reconciliação ocorre no backend; recarrega o Store para que a
+          // nova publicação apareça imediatamente no painel, sem exigir F5.
+          if (inpiData?.newIntimations?.length && typeof store?.load === 'function') {
+            await store.load();
+          }
+        }
         if (statusRes.ok) inpiStatus = await statusRes.json();
         if (monitorsRes.ok) monitorsData = await monitorsRes.json();
+        const scanStatus = inpiStatus?.lastScanStatus || inpiStatus?.scanStatus || inpiData?.lastRun?.status;
         if (inpiData) {
           const inpiSource = store?.state?.sources?.find(s => s.id === 'inpi-rpi');
           if (inpiSource) {
             inpiSource.lastCheck = inpiData.lastRun?.startedAt || inpiData.generatedAt || inpiSource.lastCheck;
-            inpiSource.status = 'ok';
+            inpiSource.status = scanStatus === 'ERROR' ? 'error' : scanStatus === 'RUNNING' ? 'syncing' : 'ok';
             const total = inpiData.statistics?.totalMatches || 0;
             const revNum = inpiData.statistics?.latestRevista?.numero;
             if (total > 0 && revNum) {
@@ -440,7 +466,11 @@ export function createInpiIntegrationFeature({
           if (cardStatus && inpiData.statistics) {
             const total = inpiData.statistics.totalMatches || 0;
             const revNum = inpiData.statistics.latestRevista?.numero;
-            cardStatus.textContent = total > 0 ? `Ativo · ${total} ocorrência${total === 1 ? '' : 's'} (RPI ${revNum})` : 'Ativo · Semanal';
+            if (scanStatus === 'ERROR') {
+              cardStatus.textContent = 'Erro na última varredura';
+            } else {
+              cardStatus.textContent = total > 0 ? `Ativo · ${total} ocorrência${total === 1 ? '' : 's'} (RPI ${revNum})` : 'Ativo · Semanal';
+            }
           }
         }
         render();
@@ -490,9 +520,12 @@ export function createInpiIntegrationFeature({
           throw new Error(payload.message || 'Falha ao executar varredura.');
         }
         showToast(payload.message || 'Varredura da RPI concluída com sucesso.', 'success');
+        if (store?.load) await store.load();
+        windowRef?.Atrium?.App?.renderAll?.();
         await this.loadData();
       } catch (err) {
         showToast(err.message || 'Falha ao consultar a RPI.', 'error');
+        await this.loadData();
       } finally {
         isScanning = false;
         if (btn) {

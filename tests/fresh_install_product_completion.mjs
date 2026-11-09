@@ -32,10 +32,10 @@ try {
   await page.locator('#appShell:not(.hidden)').waitFor();
   assert.equal(await page.evaluate(() => window.Atrium.Store.stateStatus), 'NEW_INSTALL');
 
-  await page.locator('#guidedTourBackdrop:not(.hidden)').waitFor({ timeout: 2500 });
-  assert.match(await page.locator('.tour-slide.active').textContent(), /Atrium|escritório|trabalho/i);
-  await page.locator('#tourSkipButton').click();
-  await page.locator('#guidedTourBackdrop').waitFor({ state: 'hidden' });
+  await page.locator('#productTour .product-tour-card').waitFor({ timeout: 2500 });
+  assert.match(await page.locator('#productTourTitle').textContent(), /ATRIUM/);
+  await page.locator('[data-tour-skip]').click();
+  await page.locator('#productTour').waitFor({ state: 'detached' });
 
   const emptyViews = [
     ['contacts', /Nenhum contato cadastrado/i],
@@ -66,19 +66,20 @@ try {
   await page.evaluate(() => window.Atrium.App.switchView('processes'));
   await page.locator('#newProcessButton').click();
   await page.locator('#modalBackdrop[data-modal-mode="process"]:not(.hidden)').waitFor();
-  await page.locator('#field-number').fill('5000000-00.2026.8.21.0001');
+  await page.locator('#field-number').fill('5000000-42.2026.8.21.0001');
   await page.locator('#field-client').fill('CLIENTE SINTÉTICA PRIMEIRO DIA');
+  await page.locator('.process-form-more > summary').click();
   await page.locator('#field-court').fill('TRIBUNAL SINTÉTICO');
   await page.locator('#field-lastMovement').fill('Movimentação sintética sem inferência de prazo.');
   await submitModalAndWaitState(page);
-  const processId = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.number === '5000000-00.2026.8.21.0001')?.id);
+  const processId = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.number === '5000000-42.2026.8.21.0001')?.id);
   assert.ok(processId);
 
   await page.evaluate(() => window.Atrium.App.switchView('kanban'));
   await page.locator('#newTaskButton').click();
   await page.locator('#modalBackdrop[data-modal-mode="task"]:not(.hidden)').waitFor();
   await page.locator('#field-title').fill('TAREFA SINTÉTICA PRIMEIRO DIA');
-  await page.locator('#field-process').fill('5000000-00.2026.8.21.0001');
+  await page.locator('#field-process').fill('5000000-42.2026.8.21.0001');
   await page.locator('#field-client').fill('CLIENTE SINTÉTICA PRIMEIRO DIA');
   await page.locator('#field-description').fill('Conferência humana de fluxo sintético.');
   await submitModalAndWaitState(page);
@@ -103,7 +104,7 @@ try {
   await page.locator('#docGenContactSelect').selectOption(createdId);
   await page.locator('#docGenProcessSelect').selectOption(processId);
   assert.match(await page.locator('#docGenPreviewText').inputValue(), /CLIENTE SINTÉTICA PRIMEIRO DIA/);
-  assert.match(await page.locator('#docGenPreviewText').inputValue(), /5000000-00\.2026\.8\.21\.0001/);
+  assert.match(await page.locator('#docGenPreviewText').inputValue(), /5000000-42\.2026\.8\.21\.0001/);
   await page.locator('#docGenClose').click();
 
   await page.evaluate(() => window.Atrium.App.switchView('financial'));
@@ -138,7 +139,7 @@ try {
     assert.equal(persisted.stateStatus, 'READY');
     assert.equal(persisted.contact.name, 'CLIENTE SINTÉTICA PRIMEIRO DIA');
     assert.equal(persisted.contact.email, 'cliente.primeiro-dia@example.test');
-    assert.ok(persisted.revision, `Reload ${reload} deve manter revision canônica.`);
+    assert.ok(persisted.revision, `Reload ${reload} deve manter revision oficial.`);
   }
 
   const safety = await page.evaluate(() => ({

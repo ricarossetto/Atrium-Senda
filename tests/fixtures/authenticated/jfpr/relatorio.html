@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="iso-8859-1">
+  <title>:: eproc - JFPR - Relatório de Processos ::</title>
+  <link rel="stylesheet" href="css/dist/bundle-bs4.css">
+</head>
+<body class="bootstrap-styles instancia-1g">
+  <div id="divInfraAreaGlobal">
+    <div id="divInfraBarraLocalizacao">
+      <h1>Relatório de Processos do Procurador - JFPR</h1>
+    </div>
+
+    <!-- Paginação Superior -->
+    <div id="divPaginacaoSuperior" class="d-flex align-items-center mb-2">
+      <label for="selInfraPaginacaoSuperior" class="mr-2">Página:</label>
+      <select id="selInfraPaginacaoSuperior" name="selInfraPaginacaoSuperior" class="form-control form-control-sm" style="width: auto;">
+        <option value="1" selected>1 / 1 (Total: 20 processos)</option>
+      </select>
+    </div>
+
+    <!-- Tabela Oficial de Processos -->
+    <table class="table table-bordered table-hover infraTable" summary="Processos" id="tblProcessosLista">
+      <thead>
+        <tr>
+          <th>Sel.</th>
+          <th>Processo</th>
+          <th>Classe / Assunto</th>
+          <th>Autor / Exequente</th>
+          <th>Réu / Executado</th>
+          <th>Órgão Julgador / Localidade</th>
+          <th>Último Evento</th>
+          <th>Data Últ. Evento</th>
+          <th>Data Autuação</th>
+          <th>Valor da Causa</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="checkbox" name="chkProcesso[]" value="50056782220244047000"></td>
+          <td>
+            <a href="controlador.php?acao=processo_selecionar&num_processo=50056782220244047000&hash=sanitized_pr">5005678-22.2024.4.04.7000</a>
+          </td>
+          <td>PROCEDIMENTO DO JUIZADO ESPECIAL CÍVEL<br><small class="text-muted">Restabelecimento de Auxílio-Doença</small></td>
+          <td>PARTE AUTORA PILOTO PR</td>
+          <td>INSTITUTO NACIONAL DO SEGURO SOCIAL - INSS</td>
+          <td>2ª Vara Federal de Curitiba</td>
+          <td>Sentença com Resolução do Mérito</td>
+          <td>14/09/2026 14:00:15</td>
+          <td>02/02/2024 10:15:20</td>
+          <td>R$ 42.000,00</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" name="chkProcesso[]" value="50067893320244047001"></td>
+          <td>
+            <a href="controlador.php?acao=processo_selecionar&num_processo=50067893320244047001&hash=sanitized_pr">5006789-33.2024.4.04.7001</a>
+          </td>
+          <td>MANDADO DE SEGURANÇA CÍVEL<br><small class="text-muted">Liberação de Mercadoria / Aduana</small></td>
+          <td>IMPORTADORA PARANAENSE SA</td>
+          <td>DELEGADO DA RECEITA FEDERAL DO BRASIL - LONDRINA</td>
+          <td>1ª Vara Federal de Londrina</td>
+          <td>Decisão Liminar Deferida</td>
+          <td>13/09/2026 18:30:22</td>
+          <td>11/04/2024 16:45:00</td>
+          <td>R$ 150.000,00</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" name="chkProcesso[]" value="50078904420244047003"></td>
+          <td>
+            <a href="controlador.php?acao=processo_selecionar&num_processo=50078904420244047003&hash=sanitized_pr">5007890-44.2024.4.04.7003</a>
+          </td>
+          <td>AÇÃO CIVIL PÚBLICA<br><small class="text-muted">Proteção Ambiental</small></td>
+          <td>MINISTÉRIO PÚBLICO FEDERAL</td>
+          <td>AGROPECUÁRIA MARINGÁ LTDA</td>
+          <td>3ª Vara Federal de Maringá</td>
+          <td>Conclusos para Julgamento</td>
+          <td>12/09/2026 15:10:00</td>
+          <td>05/06/2024 09:00:10</td>
+          <td>R$ 500.000,00</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

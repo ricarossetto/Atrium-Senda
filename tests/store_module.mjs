@@ -13,11 +13,13 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ locale: 'pt-BR', viewport: { width: 1280, height: 720 } });
 const pageErrors = [];
 let stateReads = 0;
+let startupSyncs = 0;
 
 page.on('pageerror', error => pageErrors.push(error.message));
 page.on('request', request => {
-  if (new URL(request.url()).pathname !== '/api/state') return;
-  if (request.method() === 'GET') stateReads += 1;
+  const pathname = new URL(request.url()).pathname;
+  if (pathname === '/api/state' && request.method() === 'GET') stateReads += 1;
+  if (pathname === '/api/sync' && request.method() === 'POST') startupSyncs += 1;
 });
 
 await page.addInitScript(() => {
@@ -73,11 +75,15 @@ try {
   await page.locator('#finishRecovery').click();
   await page.locator('#appShell:not(.hidden)').waitFor();
   await page.locator('#systemStatusBar').waitFor({ state: 'attached' });
+  for (let attempt = 0; attempt < 100 && startupSyncs === 0; attempt++) await page.waitForTimeout(100);
+  assert.ok(startupSyncs >= 1, 'O boot deve disparar o sync de startup do workspace.');
+  await page.waitForFunction(() => window.portalApp?.syncInProgress === false);
+  await page.waitForTimeout(200);
   await page.evaluate(() => window.Atrium.Store.flush());
   assert.equal(stateReads, 1, 'Store.load deve executar uma única vez no boot inicial.');
 
   const initialContracts = await page.evaluate(async () => {
-    const module = await import('/js/core/store.js');
+    const module = await import(performance.getEntriesByType('resource').map(entry => entry.name).find(name => name.includes('/js/core/store.js')));
     return {
       exported: Boolean(module.Store),
       atriumIdentity: module.Store === window.Atrium.Store,
@@ -90,7 +96,7 @@ try {
     atriumIdentity: true,
     kellerIdentity: true,
     stateStatus: 'NEW_INSTALL'
-  }, 'Store exportado deve ser o objeto canônico e preservar NEW_INSTALL no primeiro boot.');
+  }, 'Store exportado deve ser o objeto oficial e preservar NEW_INSTALL no primeiro boot.');
 
   const monitoredIdentity = await page.evaluate(() => ({
     term: window.Atrium.Store.state.terms[0],
@@ -126,13 +132,13 @@ try {
   assert.equal(persistedProbe.saved, true, 'Save/flush deve persistir com sucesso.');
   assert.ok(persistedProbe.revision, 'Save deve atualizar revision.');
 
-  const backendProbe = await page.evaluate(async () => {
+  const backendProbe = await page.evaluate(async auditId => {
     const response = await window.KellerAuth.secureFetch('/api/state', { headers: { Accept: 'application/json' } });
     const payload = await response.json();
     const task = payload.state.tasks.find(item => item.id === 'store-module-coalescing');
-    const audit = payload.state.audit.find(item => item.id === window.Atrium.Store.state.audit[0].id);
+    const audit = payload.state.audit.find(item => item.id === auditId);
     return { points: task?.points, audit, revision: payload.revision };
-  });
+  }, persistedProbe.auditId);
   assert.equal(backendProbe.points, 95, 'Coalescing deve preservar o último valor conhecido.');
   assert.equal(backendProbe.revision, persistedProbe.revision, 'Revision do Store deve corresponder ao backend.');
   assert.equal(backendProbe.audit?.action, 'Auditoria sintética do Store', 'Audit deve ser persistido sem alterar formato.');
@@ -145,7 +151,7 @@ try {
   await page.locator('#systemStatusBar').waitFor({ state: 'attached' });
   assert.equal(stateReads, 1, 'Reload deve executar Store.load uma única vez.');
   const reloadProbe = await page.evaluate(async () => {
-    const module = await import('/js/core/store.js');
+    const module = await import(performance.getEntriesByType('resource').map(entry => entry.name).find(name => name.includes('/js/core/store.js')));
     return {
       points: module.Store.state.tasks.find(item => item.id === 'store-module-coalescing')?.points,
       audit: module.Store.state.audit.find(item => item.action === 'Auditoria sintética do Store'),
@@ -235,17 +241,50 @@ try {
   const afterConflict = await page.evaluate(() => ({
     revision: window.Atrium.Store.revision,
     reloads: globalThis.__storeCharacterization.conflictReloads,
-    toast: [...document.querySelectorAll('#toastRegion .toast')].map(item => item.textContent).find(text => text.includes('outra aba')) || ''
+    toast: [...document.querySelectorAll('#toastRegion .toast')].map(item => item.textContent).find(text => text.includes('mudou em outro lugar')) || ''
   }));
   assert.equal(afterConflict.revision, beforeConflict.revision, 'Store não deve aceitar silenciosamente a revision concorrente.');
-  assert.equal(afterConflict.reloads, 1, 'Conflito deve agendar um único reload.');
-  assert.match(afterConflict.toast, /outra aba/, 'Conflito deve preservar feedback visível ao usuário.');
+  assert.equal(afterConflict.reloads, 0, 'Conflito não pode recarregar a página e descartar o que está na tela.');
+  assert.match(afterConflict.toast, /mudou em outro lugar/, 'Conflito deve preservar feedback visível ao usuário.');
+  assert.equal(await page.evaluate(() => window.Atrium.Store.state.settings.officeSlogan), 'Write local conflitante', 'A alteração local continua na tela.');
 
   const persistedSlogan = await page.evaluate(async () => {
     const response = await window.KellerAuth.secureFetch('/api/state', { headers: { Accept: 'application/json' } });
     return (await response.json()).state.settings.officeSlogan;
   });
   assert.equal(persistedSlogan, 'Versão persistida por outra aba', 'Write conflitante não pode sobrescrever o backend.');
+
+  // Mudança em outro dado (varredura, outra tela) não pode custar a alteração local.
+  const rebaseOutcome = await page.evaluate(async () => {
+    const store = window.Atrium.Store;
+    store.state.settings.officeSlogan = 'Versão persistida por outra aba';
+    const current = await (await window.KellerAuth.secureFetch('/api/state', { headers: { Accept: 'application/json' } })).json();
+    current.state.settings.officeAddress = 'Endereço gravado em segundo plano';
+    const advanced = await window.KellerAuth.secureFetch('/api/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: current.state, revision: current.revision })
+    });
+    store.state.tasks.unshift({ id: 'task-rebase-teste', title: 'Tarefa criada durante a varredura', status: 'triagem' });
+    const flushed = await store.flush();
+    const persisted = await (await window.KellerAuth.secureFetch('/api/state', { headers: { Accept: 'application/json' } })).json();
+    return {
+      advanced: advanced.ok,
+      flushed,
+      keptTask: persisted.state.tasks.some(task => task.id === 'task-rebase-teste'),
+      keptBackground: persisted.state.settings.officeAddress,
+      reloads: globalThis.__storeCharacterization.conflictReloads,
+      localHasBackground: store.state.settings.officeAddress
+    };
+  });
+  assert.deepEqual(rebaseOutcome, {
+    advanced: true,
+    flushed: true,
+    keptTask: true,
+    keptBackground: 'Endereço gravado em segundo plano',
+    reloads: 0,
+    localHasBackground: 'Endereço gravado em segundo plano'
+  }, 'Conflito em dado diferente deve salvar os dois lados, sem recarregar a página.');
 
   await assertStatusScenarios();
   await assertLegacyImport();

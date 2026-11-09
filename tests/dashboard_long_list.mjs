@@ -28,7 +28,7 @@ try {
     assert.match(await page.locator('[data-dashboard-task-id="long-0"]').textContent(), /Danos materiais/);
     await page.locator('#dashboardTaskList').scrollIntoViewIfNeeded();
     await page.screenshot({path:`artifacts/omni-ui/dashboard-long-${width}.png`});
-    await page.locator('[data-dashboard-task-id="long-0"]').click();
+    await page.locator('[data-dashboard-task-id="long-0"] .dashboard-task-title').click();
     await page.locator('#modalBackdrop[data-modal-mode="task"]:not(.hidden)').waitFor();
     assert.equal(await page.locator('#field-title').inputValue(),'Tarefa Sintética 1');
     assert.deepEqual(pageErrors,[]);

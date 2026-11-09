@@ -103,9 +103,11 @@ try {
             viewportHeight: innerHeight,
             overflow: dialog.scrollWidth - dialog.clientWidth
           } : null,
-          undersized: mobile ? interactive.filter(element => {
-            const target = element.getBoundingClientRect();
-            return target.width < 43.5 || target.height < 43.5;
+  undersized: mobile ? interactive.filter(element => {
+    const target = element.type === 'radio' && element.closest('label')
+      ? element.closest('label').getBoundingClientRect()
+      : element.getBoundingClientRect();
+    return target.width < 43.5 || target.height < 43.5;
           }).map(element => element.id || element.textContent.trim()) : []
         };
       }, { dialogSelector: activeDialog, mobile: scenario.viewport.width <= 560 });

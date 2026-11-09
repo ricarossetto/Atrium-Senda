@@ -20,7 +20,7 @@ assert.equal(defaultPrompts.length, 230, 'Catálogo padrão deve ser lido como J
 
 const ocrReads = [];
 const unitState = {
-  processes: [{ id: 'process-unit', number: '5001234-12.2026.4.04.0001', client: 'Cliente Aurora', court: 'TRF4', lastMovement: 'Sentença previdenciária disponibilizada', feeStatus: 'em_dia', movements: [{ id: 'movement-unit', description: 'Conclusão judicial rara para conferência' }], expenses: [{ id: 'expense-unit', description: 'Custas de diligência rara', amount: 125 }], feeInstallments: [{ id: 'installment-unit', description: 'Parcela turmalina', amount: 500, status: 'pendente', dueDate: '2026-09-20' }], receipts: [{ id: 'receipt-unit', description: 'Recebimento topázio', amount: 250, status: 'recebido', date: '2026-09-01' }] }],
+  processes: [{ id: 'process-unit', number: '5001234-12.2026.4.04.0001', originNumbers: ['5001111-61.2026.8.21.0001'], client: 'Cliente Aurora', court: 'TRF4', lastMovement: 'Sentença previdenciária disponibilizada', feeStatus: 'em_dia', movements: [{ id: 'movement-unit', description: 'Conclusão judicial rara para conferência' }], expenses: [{ id: 'expense-unit', description: 'Custas de diligência rara', amount: 125 }], feeInstallments: [{ id: 'installment-unit', description: 'Parcela turmalina', amount: 500, status: 'pendente', dueDate: '2026-09-20' }], receipts: [{ id: 'receipt-unit', description: 'Recebimento topázio', amount: 250, status: 'recebido', date: '2026-09-01' }] }],
   contacts: [{ id: 'contact-unit', name: 'Áurea Sintética', contactRole: 'cliente', cpf: '000.111.222-33', email: 'aurea@example.test', city: 'Ijuí' }],
   leads: [{ id: 'lead-unit', client: 'Áurea Sintética', serviceType: 'Planejamento previdenciário', status: 'novo', notes: 'Entrevista sintética inicial' }],
   intimations: [{ id: 'publication-unit', title: 'Intimação sobre benefício', process: '5001234-12.2026.4.04.0001', text: 'Manifestação expressa sem prazo inferido', workNotes: [{ id: 'note-unit', text: 'Estratégia interna rara e supervisionada' }] }],
@@ -52,6 +52,7 @@ assert.equal(ocrReads.length, 1);
 assert.equal(index.search('ultrarraro')[0].entityType, 'document');
 assert.equal(index.search('ÁUREA')[0].id, 'contact-unit', 'Busca deve ser accent/case insensitive e ranquear título.');
 assert.equal(index.search('50012341220264040001').some(item => item.entityType === 'process'), true, 'CNJ sem pontuação deve localizar o processo.');
+assert.equal(index.search('50011116120268210001').some(item => item.entityType === 'process'), true, 'Número original vinculado deve localizar o processo redistribuído.');
 assert.equal(index.search('00011122233')[0].entityType, 'contact', 'CPF sem pontuação deve localizar o contato.');
 assert.equal(index.search('Pauta sintética')[0].entityType, 'appointment');
 assert.equal(index.search('Estratégia interna rara')[0].entityType, 'note');
@@ -170,7 +171,7 @@ try {
   assert.equal(payload.index.rebuilt, true);
   assert.equal(payload.index.sourceRevision, before.revision);
   const after = await getState(server.baseUrl, auth.cookie);
-  assert.equal(after.revision, before.revision, 'Rebuild não altera revision canônica.');
+  assert.equal(after.revision, before.revision, 'Rebuild não altera revision oficial.');
   assert.deepEqual(after.state, before.state, 'Rebuild não altera Store nem audit.');
 
   before.state.tasks.push({ id: 'task-search-new', title: 'Diligência incremental inédita', status: 'triagem' });

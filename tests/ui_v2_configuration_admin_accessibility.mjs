@@ -21,7 +21,7 @@ try {
   assert.equal(await page.locator('[data-config-section="taskDefinitions"]').getAttribute('aria-current'), 'page');
   assert.equal(await page.locator('#configurationSearch').getAttribute('aria-label'), 'Buscar na configuração ativa');
   assert.equal(await page.locator('#configurationList').getAttribute('role'), 'list');
-  assert.match(await page.locator('#configurationList').getAttribute('aria-label'), /Tarefas/);
+  assert.match(await page.locator('#configurationList').getAttribute('aria-label'), /Tipos de tarefa/);
 
   const firstRow = page.locator('.config-row-open').first();
   await firstRow.focus();
@@ -43,7 +43,7 @@ try {
   await page.locator('[data-config-section="users"]').click();
   await page.locator('[data-auth-user-id]').first().waitFor();
   for (const row of await page.locator('[data-auth-user-id]').all()) {
-    assert.match(await row.textContent(), /Administrador mestre|Colaborador/);
+    assert.match(await row.textContent(), /Administrador principal|Colaborador/);
     assert.match(await row.textContent(), /Ativo|Suspenso|Aguardando aprovação/);
   }
   assert.equal(await page.locator('[data-auth-user-id="master-admin-synthetic"] [data-auth-user-status]').count(), 0);
@@ -62,7 +62,15 @@ try {
   }
   await page.locator('#officeSetupForm button[type="submit"]').focus();
   await page.keyboard.press('Tab');
-  assert.equal(await page.evaluate(() => document.activeElement?.id), 'officeSetupClose');
+  assert.equal(
+    await page.evaluate(() => document.activeElement?.hasAttribute('data-panel-size-toggle')),
+    true,
+    'Tab deve circular no painel, retornando ao primeiro controle do cabeçalho (tamanho do painel).'
+  );
+  await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'officeSetupClose', 'Depois do tamanho, o Tab alcança o fechar.');
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await page.evaluate(() => document.activeElement?.hasAttribute('data-panel-size-toggle')), true);
   await page.keyboard.press('Shift+Tab');
   assert.equal(await page.evaluate(() => document.activeElement?.matches('#officeSetupForm button[type="submit"]')), true);
   await page.keyboard.press('Escape');
@@ -127,7 +135,9 @@ try {
       overflow: dialog.scrollWidth - dialog.clientWidth,
       animationName: getComputedStyle(dialog).animationName,
       undersized: interactive.filter(element => {
-        const target = element.getBoundingClientRect();
+        const target = element.type === 'radio' && element.closest('label')
+          ? element.closest('label').getBoundingClientRect()
+          : element.getBoundingClientRect();
         return target.width < 43.5 || target.height < 43.5;
       }).map(element => element.id || element.textContent.trim())
     };

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { prepareUiV2ContactsFixture, prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
+import { fillContactSearch, prepareUiV2ContactsFixture, prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [featureSource, presenterSource, portalSource] = await Promise.all([
@@ -39,10 +39,10 @@ try {
   assert.equal(await page.locator('#contactCount').textContent(), '9 contatos');
   assert.equal(await page.locator('#contactsV2Workspace [data-contact-id]').count(), 9);
 
-  await page.locator('#contactSearch').fill('000.000.001-91');
-  assert.equal(await page.locator('#contactsV2Workspace [data-contact-id]').count(), 1, 'Busca canônica por documento deve continuar local.');
+  await fillContactSearch(page, '000.000.001-91', 1);
+  assert.equal(await page.locator('#contactsV2Workspace [data-contact-id]').count(), 1, 'Busca oficial por documento deve continuar local.');
   assert.equal(await page.locator('#contactCount').textContent(), '9 contatos', 'Count deve permanecer total, não filtrado.');
-  await page.locator('#contactSearch').fill('');
+  await fillContactSearch(page, '', 9);
 
   await page.locator('[data-contact-role-filter="cliente"]').click();
   assert.equal(await page.locator('[data-contact-role-filter="cliente"]').getAttribute('aria-pressed'), 'true');
@@ -53,10 +53,24 @@ try {
   assert.equal(await page.locator('#contactsV2Workspace [data-contact-id]').count(), 1);
   await page.locator('[data-contact-role-filter="all"]').click();
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('[data-contact-role-filter="outro"]').click();
+  const activeFilterVisible = await page.locator('.contact-role-filter.is-active').evaluate(element => {
+    const strip = element.closest('.contact-role-filters').getBoundingClientRect();
+    const active = element.getBoundingClientRect();
+    return active.left >= strip.left && active.right <= strip.right;
+  });
+  assert.equal(activeFilterVisible, true, 'Filtro ativo precisa continuar visível após rerender mobile.');
+  await fillContactSearch(page, 'nome sem resultado', 0);
+  assert.equal(await page.locator('.contact-role-filters').evaluate(element => element.scrollLeft > 0), true, 'Busca não pode devolver a faixa de filtros ao início.');
+  await fillContactSearch(page, '', 1);
+  await page.locator('[data-contact-role-filter="all"]').click();
+  await page.setViewportSize({ width: 1440, height: 900 });
+
   const firstBefore = await page.locator('#contactsV2Workspace [data-contact-id]').first().getAttribute('data-contact-id');
   await page.locator('[data-contact-sort-field="name"]').click();
   const firstAfter = await page.locator('#contactsV2Workspace [data-contact-id]').first().getAttribute('data-contact-id');
-  assert.notEqual(firstAfter, firstBefore, 'Sort canônico deve alternar direção sem estado paralelo.');
+  assert.notEqual(firstAfter, firstBefore, 'Sort oficial deve alternar direção sem estado paralelo.');
 
   const presentationSafety = await page.evaluate(() => ({
     contacts: JSON.stringify(window.Atrium.Store.state.contacts),
@@ -149,4 +163,4 @@ try {
   await session.stop();
 }
 
-console.log('✓ Contatos V2 preserva feature única, busca, sort, filtros, CRUD, privacidade e integrações canônicas.');
+console.log('✓ Contatos V2 preserva feature única, busca, sort, filtros, CRUD, privacidade e integrações oficiais.');

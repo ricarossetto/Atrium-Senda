@@ -1,7 +1,12 @@
 (() => {
   'use strict';
 
-  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, workspaceSetupToken: null, invitationSetupToken: null, invitationToken: null, invitationCompleted: false, pendingUser: null, user: null, workspace: null, workspaceRegistrationEnabled: true, bootstrapRequired: false, setupMfaRequired: false, profileAvatarDraft: '', profileSnapshot: '' };
+  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, workspaceSetupToken: null, invitationSetupToken: null, invitationToken: null, invitationCompleted: false, resetToken: null, pendingUser: null, user: null, workspace: null, workspaceRegistrationEnabled: true, bootstrapRequired: false, setupMfaRequired: false, profileAvatarDraft: '', profileSnapshot: '' };
+  let pendingSetupSession = null;
+  let runtimeSessionKey = null;
+  let registrationStep = 0;
+  let registrationInFlight = false;
+  let registrationLocks = [];
   const byId = id => document.getElementById(id);
   const resolveApiUrl = value => {
     const url = String(value || '');
@@ -14,6 +19,7 @@
     get authenticated() { return state.authenticated; },
     get csrfToken() { return state.csrfToken; },
     get currentUser() { return state.user || state.pendingUser; },
+    get currentWorkspace() { return state.workspace ? Object.freeze({ ...state.workspace }) : null; },
     get trustedDevice() { return Boolean(state.trustedDevice); },
     async init() {
       this.bind();
@@ -46,10 +52,30 @@
           }
           return;
         }
+        const rawResetToken = new URLSearchParams(globalThis.location.search).get('reset')
+          || new URLSearchParams(String(globalThis.location.hash || '').replace(/^#/, '')).get('reset');
+        if (rawResetToken) {
+          state.resetToken = rawResetToken;
+          const cleanResetUrl = new URL(globalThis.location.href);
+          cleanResetUrl.searchParams.delete('reset');
+          cleanResetUrl.hash = '';
+          globalThis.history.replaceState({}, '', cleanResetUrl);
+          this.show('authResetForm');
+          this.feedback('Informe sua nova senha para concluir a recuperação.', 'info');
+          byId('authResetForm').elements.password.focus();
+          return;
+        }
         if (status.authenticated) {
+          try { validateSessionIdentity(status, status.user); }
+          catch (error) {
+            clearSessionIdentity();
+            this.show('authLoginForm'); this.feedback(error.message, 'error');
+            return;
+          }
           state.csrfToken = status.csrfToken; state.trustedDevice = Boolean(status.trustedDevice); state.user = status.user; state.workspace = status.workspace;
           this.enter(status.user);
         } else {
+          state.workspace = null;
           const pathname = String(globalThis.location.pathname || '').toLowerCase();
           const urlParams = new URLSearchParams(globalThis.location.search);
           const hash = String(globalThis.location.hash || '').toLowerCase();
@@ -66,6 +92,7 @@
           }
         }
       } catch (error) {
+        clearSessionIdentity();
         this.show('authLoading'); this.feedback(error.message || 'Não foi possível validar a proteção.', 'error');
       }
     },
@@ -115,6 +142,22 @@
       byId('authTotpSetupForm').addEventListener('submit', event => this.verifySetup(event));
       byId('authLoginForm').addEventListener('submit', event => this.login(event));
       byId('authRegisterForm')?.addEventListener('submit', event => this.register(event));
+      byId('authRegisterBack')?.addEventListener('click', () => {
+        if (!registrationInFlight) this.showRegistrationStep(Math.max(0, registrationStep - 1));
+      });
+      byId('authRegisterForm')?.addEventListener('input', () => {
+        if (!registrationInFlight) byId('authRegisterForm').elements.confirmPassword.setCustomValidity('');
+      });
+      byId('authGate')?.addEventListener('click', event => {
+        if (!registrationInFlight) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }, true);
+      byId('authGate')?.addEventListener('submit', event => {
+        if (!registrationInFlight) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }, true);
       byId('authInvitationForm')?.addEventListener('submit', event => this.acceptInvitation(event));
       const setTabActive = (activeTabId) => {
         ['authTabLogin', 'authTabRegister', 'authTabInvite'].forEach(tabId => {
@@ -145,7 +188,22 @@
       });
       byId('authForgotPassLink')?.addEventListener('click', (event) => {
         event.preventDefault();
-        this.feedback('Para recuperar o acesso, utilize um de seus códigos de recuperação de uso único ou contate o administrador do seu escritório.', 'success');
+        this.feedback('');
+        this.show('authForgotForm');
+        byId('authForgotForm').elements.identifier.focus();
+      });
+      byId('authForgotForm')?.addEventListener('submit', event => this.requestPasswordReset(event));
+      byId('authResetForm')?.addEventListener('submit', event => this.completePasswordReset(event));
+      byId('authForgotBackBtn')?.addEventListener('click', () => {
+        this.feedback('');
+        this.show('authLoginForm');
+        byId('authLoginForm').elements.username.focus();
+      });
+      byId('authResetBackBtn')?.addEventListener('click', () => {
+        state.resetToken = null;
+        this.feedback('');
+        this.show('authForgotForm');
+        byId('authForgotForm').elements.identifier.focus();
       });
       byId('authFooterInviteBtn')?.addEventListener('click', (event) => {
         event.preventDefault();
@@ -180,16 +238,15 @@
           this.feedback(err.message || 'Convite inválido ou expirado.', 'error');
         }
       });
+      // "Novo escritório" leva à aba de cadastro na primeira etapa.
       byId('authTabNewOffice')?.addEventListener('click', () => {
-        if (window.AtriumSaas?.renderSaasModal) {
-          window.AtriumSaas.renderSaasModal(document.body);
-        } else {
-          import('./features/saas-onboarding.js?v=2.2.1').then(module => {
-            const saas = module.createSaasOnboardingFeature();
-            window.AtriumSaas = saas;
-            saas.renderSaasModal(document.body);
-          }).catch(err => console.error('Erro ao carregar módulo SaaS:', err));
+        if (!state.workspaceRegistrationEnabled) {
+          this.feedback('O cadastro de novos escritórios não está habilitado nesta instalação.', 'info');
+          return;
         }
+        setTabActive('authTabRegister');
+        this.show('authRegisterForm');
+        this.showRegistrationStep(0, false);
       });
       byId('skipMfaButton')?.addEventListener('click', async () => {
         this.feedback('');
@@ -197,27 +254,23 @@
           if (state.workspaceSetupToken) {
             const result = await request('/api/auth/workspaces/register/verify', { method: 'POST', body: { setupToken: state.workspaceSetupToken, skipMfa: true } });
             state.workspaceSetupToken = null;
-            state.authenticated = true; state.csrfToken = result.csrfToken; state.pendingUser = result.user; state.workspace = result.workspace;
-            byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
-            sessionStorage.setItem('atrium_pending_a1_onboarding', 'true');
-            this.enter(result.user);
+            sessionStorage.setItem('atrium_pending_product_tour', 'true');
+            completeWorkspaceSession(result);
             return;
           }
           if (state.setupToken) {
             const result = await request('/api/auth/setup/verify', { method: 'POST', body: { setupToken: state.setupToken, skipMfa: true } });
             state.setupToken = null;
-            state.authenticated = true; state.csrfToken = result.csrfToken; state.user = result.user;
-            byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
-            this.enter(result.user);
+            await completeSetupSession(result);
             return;
           }
-        } catch (error) { this.feedback(error.message, 'error'); }
+        } catch (error) { clearSessionIdentity(); this.feedback(error.message, 'error'); }
       });
       byId('copyRecoveryCodes').addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(byId('authRecoveryCodes').textContent); this.feedback('Códigos copiados. Guarde-os fora deste computador.', 'success'); }
         catch { this.feedback('Não foi possível copiar automaticamente. Selecione e copie os códigos.', 'error'); }
       });
-      byId('finishRecovery').addEventListener('click', () => {
+      byId('finishRecovery').addEventListener('click', async () => {
         if (state.invitationCompleted) {
           state.invitationCompleted = false;
           this.show('authLoginForm');
@@ -225,10 +278,44 @@
           byId('authLoginForm').elements.username.focus();
           return;
         }
-        this.enter(state.pendingUser);
+        const button = byId('finishRecovery');
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+          if (pendingSetupSession) {
+            const user = await refreshSessionWorkspace(pendingSetupSession.user);
+            state.csrfToken = pendingSetupSession.csrfToken;
+            state.pendingUser = user;
+            pendingSetupSession = null;
+          }
+          const user = state.pendingUser;
+          byId('authRecoveryCodes').textContent = '';
+          this.enter(user);
+        } catch (error) {
+          pendingSetupSession = null;
+          clearSessionIdentity();
+          byId('authRecoveryCodes').textContent = '';
+          this.show('authLoginForm'); this.feedback(error.message, 'error');
+        } finally { button.disabled = false; }
       });
-      byId('logoutButton').addEventListener('click', () => this.logout());
-      byId('profileButton')?.addEventListener('click', () => this.openProfile());
+      byId('logoutButton')?.addEventListener('click', () => this.logout());
+      byId('v2UtilitiesLogout')?.addEventListener('click', () => {
+        byId('v2UtilitiesMenu')?.removeAttribute('open');
+        this.logout();
+      });
+      byId('sidebarLogoutButton')?.addEventListener('click', () => {
+        document.querySelector('.sidebar')?.classList.remove('open');
+        document.documentElement.removeAttribute('data-v2-nav-open');
+        this.logout();
+      });
+      document.addEventListener('click', event => {
+        const target = event.target?.closest?.('[data-action="logout"]');
+        if (target) {
+          event.preventDefault();
+          this.logout();
+        }
+      });
+      byId('profileButton')?.addEventListener('click', () => { this.openProfile(); this.refreshMfaStatus(); });
       byId('profileSettingsClose')?.addEventListener('click', () => this.closeProfile());
       byId('profileSettingsCancel')?.addEventListener('click', () => this.closeProfile());
       byId('profileSettingsBackdrop')?.addEventListener('click', event => {
@@ -241,17 +328,37 @@
         this.renderProfileAvatar('', byId('profileSettingsPreviewImage'), byId('profileSettingsPreviewInitials'));
       });
       byId('btnProfileReset')?.addEventListener('click', () => this.resetProfile());
+      byId('btnProfilePasswordChange')?.addEventListener('click', () => this.changePassword());
+      byId('btnProfileMfaEnable')?.addEventListener('click', () => this.openMfaEnroll());
+      byId('btnProfileMfaDisable')?.addEventListener('click', () => this.openMfaDisable());
+      byId('mfaEnrollClose')?.addEventListener('click', () => this.closeMfaModal());
+      byId('mfaEnrollCancel')?.addEventListener('click', () => this.closeMfaModal());
+      byId('mfaEnrollBackdrop')?.addEventListener('click', event => {
+        if (event.target === byId('mfaEnrollBackdrop')) this.closeMfaModal();
+      });
+      byId('mfaEnrollConfirm')?.addEventListener('click', () => this.confirmMfaModal());
       byId('btnProfileDelete')?.addEventListener('click', () => this.deleteProfile());
+      byId('btnWorkspaceFactoryReset')?.addEventListener('click', () => this.openWorkspaceFactoryReset());
+      byId('workspaceFactoryResetClose')?.addEventListener('click', () => this.closeWorkspaceFactoryReset());
+      byId('workspaceFactoryResetCancel')?.addEventListener('click', () => this.closeWorkspaceFactoryReset());
+      byId('workspaceFactoryResetBackdrop')?.addEventListener('click', event => {
+        if (event.target === byId('workspaceFactoryResetBackdrop')) this.closeWorkspaceFactoryReset();
+      });
+      byId('workspaceFactoryResetToken')?.addEventListener('input', () => this.updateWorkspaceFactoryResetSubmit());
+      byId('workspaceFactoryResetPassword')?.addEventListener('input', () => this.updateWorkspaceFactoryResetSubmit());
+      byId('workspaceFactoryResetForm')?.addEventListener('submit', event => this.submitWorkspaceFactoryReset(event));
     },
     show(id) {
+      if (registrationInFlight) return;
       document.querySelectorAll('.auth-step').forEach(element => element.classList.toggle('active', element.id === id));
+      const standalone = ['authLoading', 'authSetupForm', 'authTotpSetupForm', 'authRecoveryStep', 'authForgotForm', 'authResetForm'].includes(id);
       const tabs = byId('authTabs');
       if (tabs) {
-        tabs.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep' || Boolean(state.invitationToken));
+        tabs.classList.toggle('hidden', standalone || Boolean(state.invitationToken));
       }
       const footer = byId('authCardFooter');
       if (footer) {
-        footer.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep' || Boolean(state.invitationToken));
+        footer.classList.toggle('hidden', standalone || Boolean(state.invitationToken));
       }
       byId('authTabLogin')?.classList.toggle('active', id === 'authLoginForm');
       byId('authTabLogin')?.setAttribute('aria-selected', String(id === 'authLoginForm'));
@@ -265,10 +372,12 @@
       state.authenticated = false;
     },
     prepareSteps(id) {
+      if (registrationInFlight) return;
       document.querySelectorAll('.auth-step').forEach(element => element.classList.toggle('active', element.id === id));
+      const standalone = ['authLoading', 'authSetupForm', 'authTotpSetupForm', 'authRecoveryStep', 'authForgotForm', 'authResetForm'].includes(id);
       const tabs = byId('authTabs');
       if (tabs) {
-        tabs.classList.toggle('hidden', id === 'authLoading' || id === 'authSetupForm' || id === 'authTotpSetupForm' || id === 'authRecoveryStep' || Boolean(state.invitationToken));
+        tabs.classList.toggle('hidden', standalone || Boolean(state.invitationToken));
       }
       byId('authTabLogin')?.classList.toggle('active', id === 'authLoginForm');
       byId('authTabLogin')?.setAttribute('aria-selected', String(id === 'authLoginForm'));
@@ -278,6 +387,7 @@
       byId('authTabInvite')?.setAttribute('aria-selected', String(id === 'authInvitationForm'));
     },
     showLanding() {
+      if (registrationInFlight) return;
       const landing = byId('landingPage');
       if (landing) {
         document.documentElement.dataset.route = 'discover';
@@ -293,6 +403,7 @@
       }
     },
     showLogin() {
+      if (registrationInFlight) return;
       document.documentElement.dataset.route = 'app';
       if (globalThis.history?.pushState) {
         globalThis.history.pushState(null, '', '/');
@@ -300,6 +411,7 @@
       this.show('authLoginForm');
     },
     showRegister() {
+      if (registrationInFlight) return;
       document.documentElement.dataset.route = 'app';
       if (globalThis.history?.pushState) {
         globalThis.history.pushState(null, '', '/?auth=register');
@@ -341,14 +453,255 @@
         this.busy(formElement, false);
       }
     },
-    async register(event) {
-      event.preventDefault(); this.feedback('');
+    async requestPasswordReset(event) {
+      event.preventDefault();
+      this.feedback('');
       const formElement = event.currentTarget;
       const form = new FormData(formElement);
-      if (form.get('password') !== form.get('confirmPassword')) {
-        return this.feedback('As senhas não coincidem.', 'error');
+      this.busy(formElement, true);
+      this.feedback('Solicitando link seguro…', 'info');
+      try {
+        const result = await request('/api/auth/password/forgot', { method: 'POST', body: { identifier: form.get('identifier') } });
+        this.feedback(result.message || 'Verifique seu e-mail para continuar a redefinição.', 'success');
+      } catch (error) {
+        this.feedback(error.message, 'error');
+      } finally {
+        this.busy(formElement, false);
+      }
+    },
+    async completePasswordReset(event) {
+      event.preventDefault();
+      const formElement = event.currentTarget;
+      const form = new FormData(formElement);
+      if (form.get('password') !== form.get('confirmPassword')) return this.feedback('As senhas não coincidem.', 'error');
+      if (!state.resetToken) {
+        this.show('authForgotForm');
+        return this.feedback('Solicite um novo link de redefinição de senha.', 'error');
       }
       this.busy(formElement, true);
+      try {
+        const result = await request('/api/auth/password/reset', { method: 'POST', body: { token: state.resetToken, password: form.get('password') } });
+        state.resetToken = null;
+        formElement.reset();
+        this.show('authLoginForm');
+        this.feedback(result.message || 'Senha redefinida com sucesso. Entre com a nova senha.', 'success');
+        byId('authLoginForm').elements.username.focus();
+      } catch (error) {
+        this.feedback(error.message, 'error');
+      } finally {
+        this.busy(formElement, false);
+      }
+    },
+    async changePassword() {
+      const currentPassword = byId('profileCurrentPassword')?.value || '';
+      const newPassword = byId('profileNewPassword')?.value || '';
+      const confirmation = byId('profileNewPasswordConfirm')?.value || '';
+      const code = byId('profilePasswordCode')?.value || '';
+      if (!currentPassword) return this.profilePasswordFeedback('Informe sua senha atual para confirmar a alteração.', 'error');
+      if (newPassword.length < 10 || newPassword.length > 128) return this.profilePasswordFeedback('A nova senha deve ter entre 10 e 128 caracteres.', 'error');
+      if (newPassword !== confirmation) return this.profilePasswordFeedback('A confirmação da nova senha não confere.', 'error');
+      if (newPassword === currentPassword) return this.profilePasswordFeedback('A nova senha deve ser diferente da senha atual.', 'error');
+      const button = byId('btnProfilePasswordChange');
+      if (button) button.disabled = true;
+      this.profilePasswordFeedback('Atualizando senha…');
+      try {
+        const response = await this.secureFetch('/api/auth/password/change', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ currentPassword, newPassword, code })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível alterar a senha.');
+        if (payload.csrfToken) state.csrfToken = payload.csrfToken;
+        state.trustedDevice = false;
+        if (payload.user) this.applyProfile(payload.user);
+        ['profileCurrentPassword', 'profileNewPassword', 'profileNewPasswordConfirm', 'profilePasswordCode'].forEach(id => {
+          const input = byId(id);
+          if (input) input.value = '';
+        });
+        this.profilePasswordFeedback('Senha alterada. As demais sessões e navegadores confiáveis foram desconectados.', 'success');
+      } catch (error) {
+        this.profilePasswordFeedback(error.message, 'error');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    },
+    profilePasswordFeedback(message, type = '') {
+      const element = byId('profilePasswordFeedback');
+      if (!element) return;
+      element.textContent = message || '';
+      element.className = `profile-settings-feedback ${message ? '' : 'hidden'} ${type}`.trim();
+    },
+    async refreshMfaStatus() {
+      const status = byId('profileMfaStatus');
+      if (!status) return;
+      try {
+        const response = await this.secureFetch('/api/auth/mfa/status', { headers: { Accept: 'application/json' } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível verificar o 2FA.');
+        const enabled = payload.mfaEnabled === true;
+        status.textContent = enabled ? 'Ativa nesta conta.' : 'Inativa. Ative para exigir o código do autenticador no login.';
+        byId('btnProfileMfaEnable')?.classList.toggle('hidden', enabled);
+        byId('btnProfileMfaDisable')?.classList.toggle('hidden', !enabled);
+      } catch {
+        status.textContent = 'Não foi possível verificar o 2FA agora.';
+      }
+    },
+    mfaFeedback(message, type = '') {
+      const element = byId('mfaEnrollFeedback');
+      if (!element) return;
+      element.textContent = message || '';
+      element.className = `profile-settings-feedback ${message ? '' : 'hidden'} ${type}`.trim();
+    },
+    async openMfaEnroll() {
+      this.mfaMode = 'enable';
+      this.mfaFeedback('');
+      byId('mfaRecoveryBox')?.classList.add('hidden');
+      byId('mfaEnrollQr')?.removeAttribute('src');
+      const secret = byId('mfaEnrollSecret');
+      if (secret) secret.textContent = '';
+      const confirm = byId('mfaEnrollConfirm');
+      if (confirm) confirm.textContent = 'Confirmar e ativar';
+      try {
+        const response = await this.secureFetch('/api/auth/mfa/enroll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: '{}'
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível iniciar a ativação do 2FA.');
+        const qr = byId('mfaEnrollQr');
+        if (qr && payload.qrCode) qr.src = payload.qrCode;
+        if (secret) secret.textContent = payload.manualSecret || '';
+        byId('mfaEnrollBackdrop')?.classList.remove('hidden');
+        byId('mfaEnrollPassword')?.focus();
+      } catch (error) {
+        this.mfaFeedback(error.message, 'error');
+      }
+    },
+    openMfaDisable() {
+      this.mfaMode = 'disable';
+      this.mfaFeedback('');
+      byId('mfaRecoveryBox')?.classList.add('hidden');
+      byId('mfaEnrollQr')?.removeAttribute('src');
+      const secret = byId('mfaEnrollSecret');
+      if (secret) secret.textContent = '';
+      const confirm = byId('mfaEnrollConfirm');
+      if (confirm) confirm.textContent = 'Confirmar e desativar';
+      byId('mfaEnrollBackdrop')?.classList.remove('hidden');
+      byId('mfaEnrollPassword')?.focus();
+    },
+    closeMfaModal() {
+      byId('mfaEnrollBackdrop')?.classList.add('hidden');
+      ['mfaEnrollPassword', 'mfaEnrollCode'].forEach(id => {
+        const input = byId(id);
+        if (input) input.value = '';
+      });
+    },
+    async confirmMfaModal() {
+      if (this.mfaMode === 'done') {
+        this.closeMfaModal();
+        this.mfaMode = 'enable';
+        return;
+      }
+      const password = byId('mfaEnrollPassword')?.value || '';
+      const code = byId('mfaEnrollCode')?.value || '';
+      if (!password) return this.mfaFeedback('Informe sua senha para confirmar.', 'error');
+      const button = byId('mfaEnrollConfirm');
+      if (button) button.disabled = true;
+      this.mfaFeedback('Confirmando…');
+      try {
+        const enabling = this.mfaMode !== 'disable';
+        const response = await this.secureFetch(enabling ? '/api/auth/mfa/enable' : '/api/auth/mfa/disable', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ password, code })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível concluir agora.');
+        if (enabling && Array.isArray(payload.recoveryCodes)) {
+          const list = byId('mfaRecoveryList');
+          if (list) {
+            list.innerHTML = payload.recoveryCodes
+              .map(value => `<code>${String(value).replace(/[&<>"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[character]))}</code>`)
+              .join('');
+          }
+          byId('mfaRecoveryBox')?.classList.remove('hidden');
+          this.mfaFeedback('Proteção ativada. Guarde os códigos de recuperação.', 'success');
+          if (button) button.textContent = 'Concluir';
+          this.mfaMode = 'done';
+          this.refreshMfaStatus();
+          return;
+        }
+        this.mfaFeedback(enabling ? 'Proteção ativada.' : 'Proteção desativada.', 'success');
+        this.closeMfaModal();
+        this.refreshMfaStatus();
+      } catch (error) {
+        this.mfaFeedback(error.message, 'error');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    },
+    showRegistrationStep(step, focus = true) {
+      if (registrationInFlight) return;
+      registrationStep = step;
+      const form = byId('authRegisterForm');
+      form.querySelectorAll('[data-register-step]').forEach(element => {
+        element.hidden = Number(element.dataset.registerStep) !== step;
+      });
+      form.querySelectorAll('.auth-register-progress li').forEach((element, index) => {
+        if (index === Math.min(step, 1)) element.setAttribute('aria-current', 'step');
+        else element.removeAttribute('aria-current');
+      });
+      byId('authRegisterBack').hidden = step === 0;
+      byId('authRegisterNext').textContent = step >= 1 ? 'Cadastrar escritório' : 'Continuar';
+      if (focus) {
+        const panel = form.querySelector(`[data-register-step="${step}"]`);
+        (panel.querySelector('[aria-checked="true"]') || panel.querySelector('input, select, button'))?.focus();
+      }
+    },
+    validateRegistration(allSteps = false) {
+      const form = byId('authRegisterForm');
+      const confirmation = form.elements.confirmPassword;
+      confirmation.setCustomValidity(form.elements.password.value !== confirmation.value ? 'As senhas não coincidem.' : '');
+      const fields = allSteps ? [...form.elements] : [...form.querySelector(`[data-register-step="${registrationStep}"]`).querySelectorAll('input, select')];
+      const invalid = fields.find(element => element.willValidate && !element.validity.valid);
+      if (!invalid) return true;
+      this.showRegistrationStep(Number(invalid.closest('[data-register-step]').dataset.registerStep), false);
+      this.feedback(invalid.validationMessage, 'error');
+      invalid.focus();
+      invalid.reportValidity();
+      return false;
+    },
+    registrationBusy(active) {
+      registrationInFlight = active;
+      byId('authRegisterForm').setAttribute('aria-busy', String(active));
+      if (active) {
+        registrationLocks = [...byId('authGate').querySelectorAll('input, select, button')].map(element => [element, element.disabled]);
+        registrationLocks.forEach(([element]) => { element.disabled = true; });
+        byId('authGate').querySelectorAll('a').forEach(element => element.setAttribute('aria-disabled', 'true'));
+      } else {
+        registrationLocks.forEach(([element, disabled]) => { element.disabled = disabled; });
+        registrationLocks = [];
+        byId('authGate').querySelectorAll('a').forEach(element => element.removeAttribute('aria-disabled'));
+      }
+    },
+    async register(event) {
+      event.preventDefault();
+      if (registrationInFlight) return;
+      const formElement = byId('authRegisterForm');
+      if (!formElement.classList.contains('active')) return;
+      this.feedback('');
+      if (!this.validateRegistration(registrationStep >= 1)) return;
+      if (registrationStep < 1) {
+        this.showRegistrationStep(registrationStep + 1);
+        return;
+      }
+      const form = new FormData(formElement);
+      const focusTarget = document.activeElement;
+      const submittedStep = registrationStep;
+      let failed = false;
+      this.registrationBusy(true);
       try {
         const result = await request('/api/auth/workspaces/register', {
           method: 'POST',
@@ -367,14 +720,21 @@
         byId('authQrCode').src = result.qrCode;
         byId('authManualSecret').textContent = result.manualSecret;
         formElement.reset();
+        formElement.elements.confirmPassword.setCustomValidity('');
+        this.registrationBusy(false);
+        this.showRegistrationStep(0, false);
         this.show('authTotpSetupForm');
         if (byId('skipMfaButton')) byId('skipMfaButton').hidden = false;
         this.feedback('Vincule o autenticador ou entre sem 2FA para prosseguir.', 'success');
         byId('authTotpSetupForm').elements.code.focus();
       } catch (error) {
+        failed = true;
         this.feedback(error.message, 'error');
       } finally {
-        this.busy(formElement, false);
+        if (registrationInFlight) this.registrationBusy(false);
+        if (failed && byId('authRegisterForm') === formElement && formElement.classList.contains('active') && registrationStep === submittedStep && formElement.querySelector(`[data-register-step="${submittedStep}"]`)?.getClientRects().length && formElement.contains(focusTarget) && !focusTarget.disabled && focusTarget.getClientRects().length) {
+          focusTarget.focus();
+        }
       }
     },
     async setup(event) {
@@ -424,38 +784,44 @@
         if (state.workspaceSetupToken) {
           const result = await request('/api/auth/workspaces/register/verify', { method: 'POST', body: { setupToken: state.workspaceSetupToken, code: form.get('code') } });
           state.workspaceSetupToken = null;
-          state.authenticated = true; state.csrfToken = result.csrfToken; state.pendingUser = result.user; state.workspace = result.workspace;
-          byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src'); formElement.reset();
-          if (result.recoveryCodes?.length) {
-            byId('authRecoveryCodes').textContent = result.recoveryCodes.join('\n');
-            this.show('authRecoveryStep');
-          } else {
-            sessionStorage.setItem('atrium_pending_a1_onboarding', 'true');
-            this.enter(result.user);
-          }
+          sessionStorage.setItem('atrium_initial_sync_pending', 'true');
+          localStorage.setItem('atrium_tour_seen', 'true');
+          if (!result.recoveryCodes?.length) sessionStorage.setItem('atrium_pending_a1_onboarding', 'true');
+          completeWorkspaceSession(result);
           return;
         }
         const result = await request('/api/auth/setup/verify', { method: 'POST', body: { setupToken: state.setupToken, code: form.get('code') } });
-        state.authenticated = true; state.csrfToken = result.csrfToken; state.pendingUser = result.user;
-        byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
-        if (result.recoveryCodes && result.recoveryCodes.length > 0) {
-          byId('authRecoveryCodes').textContent = result.recoveryCodes.join('\n');
-          this.show('authRecoveryStep');
-        } else {
-          this.enter(result.user);
-        }
-      } catch (error) { this.feedback(error.message, 'error'); }
+        state.setupToken = null;
+        sessionStorage.setItem('atrium_initial_sync_pending', 'true');
+        sessionStorage.setItem('atrium_pending_product_tour', 'true');
+        await completeSetupSession(result);
+      } catch (error) { clearSessionIdentity(); this.feedback(error.message, 'error'); }
       finally { this.busy(formElement, false); }
     },
     async login(event) {
       event.preventDefault(); this.feedback(''); const formElement = event.currentTarget; const form = new FormData(formElement); this.busy(formElement, true);
       try {
+        clearSessionIdentity();
         const result = await request('/api/auth/login', { method: 'POST', body: Object.fromEntries(form.entries()) });
-        state.csrfToken = result.csrfToken; state.trustedDevice = Boolean(result.trustedDevice); formElement.reset(); this.enter(result.user);
-      } catch (error) { this.feedback(error.message, 'error'); }
+        const user = await refreshSessionWorkspace(result.user);
+        pendingSetupSession = null;
+        state.csrfToken = result.csrfToken; state.trustedDevice = Boolean(result.trustedDevice); formElement.reset(); this.enter(user);
+      } catch (error) {
+        clearSessionIdentity();
+        this.show('authLoginForm'); this.feedback(error.message, 'error');
+      }
       finally { this.busy(formElement, false); }
     },
     enter(user) {
+      try { validateSessionIdentity({ authenticated: true, user, workspace: state.workspace }, user); }
+      catch (error) { clearSessionIdentity(); this.show('authLoginForm'); throw error; }
+      const sessionKey = JSON.stringify([user?.workspaceId, user?.id || user?.username, user?.role]);
+      if (runtimeSessionKey !== null && runtimeSessionKey !== sessionKey) {
+        this.show('authLoading');
+        globalThis.location.reload();
+        return;
+      }
+      runtimeSessionKey = sessionKey;
       state.authenticated = true; state.pendingUser = null; state.user = user;
       byId('authGate').classList.add('hidden');
       const landing = byId('landingPage');
@@ -468,10 +834,21 @@
     applyProfile(user) {
       if (!user) return;
       state.user = { ...(state.user || {}), ...user };
+      // Chip compacto: primeiro nome + papel curto (nome longo sempre truncava
+      // no topbar). Identidade completa no tooltip e no modal de perfil.
+      const displayName = user.displayName || user.username || 'Usuário';
+      const firstName = String(displayName).trim().split(/\s+/)[0] || 'Usuário';
+      const fullRole = ({ master_admin: 'Advogado(a) Titular', admin: 'Administrador(a)', collaborator: 'Colaborador(a)' })[user.role] || 'Usuário(a)';
+      const shortRole = ({ master_admin: 'Advogado', admin: 'Administrador', collaborator: 'Colaborador' })[user.role] || 'Usuário';
       const strong = document.querySelector('.profile-copy strong');
-      if (strong) strong.textContent = user.displayName || user.username || 'Usuário';
+      if (strong) strong.textContent = firstName;
       const small = document.querySelector('.profile-copy small');
-      if (small) small.textContent = ({ master_admin: 'Advogado(a) Titular', admin: 'Administrador(a)', collaborator: 'Colaborador(a)' })[user.role] || 'Usuário(a)';
+      if (small) small.textContent = shortRole;
+      const profileButton = byId('profileButton');
+      if (profileButton) {
+        profileButton.title = `${displayName} · ${fullRole}`;
+        profileButton.setAttribute('title', `Meu perfil: ${displayName}`);
+      }
       this.renderProfileAvatar(user.avatar || '', byId('profileAvatarImage'), document.querySelector('.profile-initials'));
     },
     initials(name = state.user?.displayName || state.user?.username || 'AT') {
@@ -496,11 +873,81 @@
       byId('profilePhone').value = user.phone || '';
       state.profileAvatarDraft = user.avatar || '';
       this.renderProfileAvatar(state.profileAvatarDraft, byId('profileSettingsPreviewImage'), byId('profileSettingsPreviewInitials'));
+      byId('btnWorkspaceFactoryReset')?.classList.toggle('hidden', user.role !== 'master_admin');
+
+      this.secureFetch('/api/user/notification-preferences')
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(data => {
+          if (data && Array.isArray(data.preferences)) {
+            for (const p of data.preferences) {
+              if (p.event_type === 'PUBLICATION_NEW' && byId('userPrefPublicationCadence')) {
+                byId('userPrefPublicationCadence').value = p.enabled ? p.cadence : 'DISABLED';
+              }
+              if (p.event_type === 'DEADLINE_CRITICAL' && byId('userPrefDeadlineCadence')) {
+                byId('userPrefDeadlineCadence').value = p.enabled ? p.cadence : 'DISABLED';
+              }
+              if (p.event_type === 'HEARING_NEW' && byId('userPrefHearingCadence')) {
+                byId('userPrefHearingCadence').value = p.enabled ? p.cadence : 'DISABLED';
+              }
+            }
+          }
+        }).catch(error => {
+          window.console?.warn?.('Não foi possível carregar as preferências de notificação.', error?.message || error);
+        });
+
       state.profileSnapshot = this.profileFormSnapshot();
       byId('profileSettingsFeedback')?.classList.add('hidden');
       byId('profileSettingsBackdrop')?.classList.remove('hidden');
       document.body.classList.add('profile-settings-open');
       queueMicrotask(() => byId('profileDisplayName')?.focus());
+    },
+    openWorkspaceFactoryReset() {
+      if (state.user?.role !== 'master_admin') return;
+      this.closeProfile({ force: true });
+      byId('workspaceFactoryResetForm')?.reset();
+      byId('workspaceFactoryResetFeedback')?.classList.add('hidden');
+      this.updateWorkspaceFactoryResetSubmit();
+      byId('workspaceFactoryResetBackdrop')?.classList.remove('hidden');
+      queueMicrotask(() => byId('workspaceFactoryResetPassword')?.focus());
+    },
+    closeWorkspaceFactoryReset() {
+      byId('workspaceFactoryResetBackdrop')?.classList.add('hidden');
+      byId('workspaceFactoryResetForm')?.reset();
+      this.updateWorkspaceFactoryResetSubmit();
+    },
+    updateWorkspaceFactoryResetSubmit() {
+      const confirmed = byId('workspaceFactoryResetToken')?.value === 'ZERAR_ESCRITORIO';
+      const hasPassword = Boolean(byId('workspaceFactoryResetPassword')?.value);
+      if (byId('workspaceFactoryResetSubmit')) byId('workspaceFactoryResetSubmit').disabled = !(confirmed && hasPassword);
+    },
+    async submitWorkspaceFactoryReset(event) {
+      event.preventDefault();
+      if (state.user?.role !== 'master_admin') return;
+      const submit = byId('workspaceFactoryResetSubmit');
+      const feedback = byId('workspaceFactoryResetFeedback');
+      submit.disabled = true;
+      if (feedback) { feedback.textContent = 'Redefinindo o escritório com proteção de rollback…'; feedback.classList.remove('hidden'); }
+      try {
+        const response = await this.secureFetch('/api/admin/workspace/factory-reset', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            workspaceId: state.user.workspaceId,
+            password: byId('workspaceFactoryResetPassword')?.value || '',
+            code: byId('workspaceFactoryResetCode')?.value || '',
+            confirmationToken: byId('workspaceFactoryResetToken')?.value || ''
+          })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível redefinir o escritório.');
+        if (feedback) feedback.textContent = 'Escritório redefinido. Recarregando o onboarding inicial…';
+        window.setTimeout(() => window.location.reload(), 500);
+      } catch (error) {
+        if (feedback) feedback.textContent = error.message;
+        this.updateWorkspaceFactoryResetSubmit();
+      }
     },
     profileFormSnapshot() {
       return JSON.stringify({
@@ -557,6 +1004,26 @@
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || 'Não foi possível salvar o perfil.');
         this.applyProfile(payload.user);
+
+        const pubCad = byId('userPrefPublicationCadence')?.value;
+        const dlnCad = byId('userPrefDeadlineCadence')?.value;
+        const hrgCad = byId('userPrefHearingCadence')?.value;
+        if (pubCad || dlnCad || hrgCad) {
+          const prefs = [];
+          if (pubCad) prefs.push({ eventType: 'PUBLICATION_NEW', cadence: pubCad, enabled: pubCad !== 'DISABLED' });
+          if (dlnCad) prefs.push({ eventType: 'DEADLINE_CRITICAL', cadence: dlnCad, enabled: dlnCad !== 'DISABLED' });
+          if (hrgCad) prefs.push({ eventType: 'HEARING_NEW', cadence: hrgCad, enabled: hrgCad !== 'DISABLED' });
+          const preferencesResponse = await this.secureFetch('/api/user/notification-preferences', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ preferences: prefs })
+          });
+          if (!preferencesResponse.ok) {
+            const preferenceError = await preferencesResponse.json().catch(() => ({}));
+            throw new Error(preferenceError.message || 'O perfil foi salvo, mas as preferências de notificação não foram confirmadas.');
+          }
+        }
+
         state.profileSnapshot = this.profileFormSnapshot();
         this.profileFeedback('Perfil atualizado com sucesso.', 'success');
         window.dispatchEvent(new CustomEvent('keller:profile-updated', { detail: payload.user }));
@@ -620,7 +1087,9 @@
     async logout() {
       if (window.KellerCentral?.Store?.flush) await window.KellerCentral.Store.flush();
       try { await this.secureFetch('/api/auth/logout', { method: 'POST' }); } catch { /* a sessão será encerrada localmente mesmo assim */ }
-      state.authenticated = false; state.csrfToken = null; state.trustedDevice = false; sessionStorage.clear();
+      state.authenticated = false; state.csrfToken = null; state.trustedDevice = false; state.workspace = null; state.user = null; state.pendingUser = null; sessionStorage.clear();
+      // A tela de login tem URL oficial em /login; mantém o endereço coerente ao sair.
+      try { globalThis.history.replaceState({}, '', '/login'); } catch { /* histórico indisponível */ }
       this.show('authLoginForm');
       this.feedback('Sessão encerrada com segurança.', 'success');
     },
@@ -628,17 +1097,107 @@
       const method = String(options.method || 'GET').toUpperCase();
       const headers = new Headers(options.headers || {});
       if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && state.csrfToken) headers.set('X-CSRF-Token', state.csrfToken);
-      const response = await fetch(resolveApiUrl(url), { ...options, headers, credentials: 'include' });
-      if (response.status === 401) { state.authenticated = false; state.csrfToken = null; this.show('authLoginForm'); }
+      const send = () => fetch(resolveApiUrl(url), { ...options, headers, credentials: 'include' });
+      let response = await send();
+      // Um deploy reinicia o servidor e pode invalidar o token em memória desta aba.
+      // Em vez de exigir recarregar a página, renova o token e repete a mutação uma vez.
+      if (response.status === 403 && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        const payload = await response.clone().json().catch(() => ({}));
+        const message = String(payload.message || '').toLowerCase();
+        if (message.includes('seguran') || message.includes('csrf')) {
+          try {
+            const statusResponse = await fetch(resolveApiUrl('/api/auth/status'), { credentials: 'include', cache: 'no-store' });
+            if (statusResponse.ok) {
+              const status = await statusResponse.json();
+              if (status?.csrfToken && status.csrfToken !== state.csrfToken) {
+                state.csrfToken = status.csrfToken;
+                headers.set('X-CSRF-Token', state.csrfToken);
+                response = await send();
+              }
+            }
+          } catch { /* mantém a resposta original quando a renovação não é possível */ }
+        }
+      }
+      if (response.status === 401) { state.authenticated = false; state.csrfToken = null; state.workspace = null; state.user = null; state.pendingUser = null; this.show('authLoginForm'); }
       return response;
     },
     busy(form, active) {
       form.querySelectorAll('input, button').forEach(element => { element.disabled = active; });
     },
     feedback(message, type = '') {
-      const element = byId('authFeedback'); element.textContent = message || ''; element.className = `auth-feedback ${message ? '' : 'hidden'} ${type}`.trim();
+      const registrationActive = byId('authRegisterForm')?.classList.contains('active');
+      const element = byId(registrationActive ? 'authRegisterFeedback' : 'authFeedback');
+      const other = byId(registrationActive ? 'authFeedback' : 'authRegisterFeedback');
+      if (other) { other.textContent = ''; other.className = 'auth-feedback hidden'; }
+      element.textContent = message || ''; element.className = `auth-feedback ${message ? '' : 'hidden'} ${type}`.trim();
     }
   };
+
+  function clearSessionIdentity() {
+    state.authenticated = false; state.workspace = null; state.user = null; state.pendingUser = null; state.csrfToken = null; state.trustedDevice = false;
+  }
+
+  function completeWorkspaceSession(result) {
+    clearSessionIdentity();
+    byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
+    byId('authTotpSetupForm').reset();
+    const hasRecoveryCodes = Boolean(result.recoveryCodes?.length);
+    byId('authRecoveryCodes').textContent = (result.recoveryCodes || []).join('\n');
+    Auth.show(hasRecoveryCodes ? 'authRecoveryStep' : 'authLoading');
+    try {
+      validateSessionIdentity({ authenticated: true, user: result.user, workspace: result.workspace }, result.user);
+      state.csrfToken = result.csrfToken; state.pendingUser = result.user; state.workspace = result.workspace;
+      if (!hasRecoveryCodes) Auth.enter(result.user);
+    } catch (error) {
+      clearSessionIdentity();
+      if (!hasRecoveryCodes) Auth.show('authLoginForm');
+      Auth.feedback(error.message, 'error');
+    }
+  }
+
+  async function completeSetupSession(result) {
+    clearSessionIdentity();
+    pendingSetupSession = { user: result.user, csrfToken: result.csrfToken };
+    state.pendingUser = result.user; state.csrfToken = result.csrfToken;
+    byId('authManualSecret').textContent = ''; byId('authQrCode').removeAttribute('src');
+    byId('authTotpSetupForm').reset();
+    const hasRecoveryCodes = Boolean(result.recoveryCodes?.length);
+    byId('authRecoveryCodes').textContent = (result.recoveryCodes || []).join('\n');
+    Auth.show(hasRecoveryCodes ? 'authRecoveryStep' : 'authLoading');
+    byId('finishRecovery').disabled = true;
+    try {
+      const user = await refreshSessionWorkspace(result.user);
+      state.pendingUser = user;
+      if (!hasRecoveryCodes) {
+        pendingSetupSession = null;
+        Auth.enter(user);
+      }
+    } catch (error) {
+      clearSessionIdentity();
+      if (!hasRecoveryCodes) {
+        pendingSetupSession = null;
+        Auth.show('authLoginForm');
+      }
+      Auth.feedback(error.message, 'error');
+    } finally { byId('finishRecovery').disabled = false; }
+  }
+
+  function validateSessionIdentity(status, user) {
+    if (!status.authenticated || !status.user?.username || !user?.username
+      || status.user.username !== user.username || !status.workspace?.id
+      || status.workspace.id !== status.user.workspaceId || status.workspace.id !== user.workspaceId
+      || ((status.user.id != null || user.id != null) && status.user.id !== user.id)) {
+      throw new Error('Não foi possível validar o escritório da sessão. Entre novamente.');
+    }
+  }
+
+  async function refreshSessionWorkspace(user) {
+    state.workspace = null;
+    const status = await request('/api/auth/status');
+    validateSessionIdentity(status, user);
+    state.workspace = status.workspace;
+    return status.user;
+  }
 
   async function request(url, { method = 'GET', body } = {}) {
     const response = await fetch(resolveApiUrl(url), { method, credentials: 'include', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -647,23 +1206,75 @@
     return payload;
   }
 
-  window.KellerAuth = Auth;
-  function installPasswordToggles(root = document) {
-    root.querySelectorAll('input[type="password"]:not([data-password-toggle-ready])').forEach(input => {
-      input.dataset.passwordToggleReady = 'true';
-      const wrapper = document.createElement('span'); wrapper.className = 'password-input-wrap';
-      input.parentNode.insertBefore(wrapper, input); wrapper.appendChild(input);
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'password-toggle'; button.setAttribute('aria-label', 'Mostrar conteúdo'); button.setAttribute('aria-pressed', 'false'); button.textContent = '◉';
-      button.addEventListener('click', () => {
-        const visible = input.type === 'text'; input.type = visible ? 'password' : 'text';
-        button.setAttribute('aria-label', visible ? 'Mostrar conteúdo' : 'Ocultar conteúdo'); button.setAttribute('aria-pressed', String(!visible)); button.classList.toggle('visible', !visible);
-      });
-      wrapper.appendChild(button);
-    });
-  }
-  document.addEventListener('DOMContentLoaded', () => {
-    installPasswordToggles();
-    new MutationObserver(mutations => mutations.forEach(mutation => mutation.addedNodes.forEach(node => { if (node.nodeType === 1) installPasswordToggles(node); }))).observe(document.body, { childList: true, subtree: true });
-    Auth.init();
+  window.AtriumAuth = Auth;
+  // Alias de compatibilidade (AGENTS 9): consumidores legados e mocks de teste
+  // seguem funcionando — mesmo objeto.
+  window.KellerAuth = window.AtriumAuth;
+// Balões do sistema ficam abaixo do botão que descrevem, sem cobri-lo e dentro da tela.
+// Login, site e campo de senha têm posição própria no CSS.
+function placeTooltip(trigger, tip) {
+  if (tip.closest('.auth-topbar-actions, .password-input-wrap, .landing-nav-actions')) return;
+  const margin = 8;
+  const box = trigger.getBoundingClientRect();
+  Object.assign(tip.style, { position: 'fixed', right: 'auto', bottom: 'auto', left: '0px', top: '0px' });
+  const origin = tip.getBoundingClientRect();
+  const left = Math.min(Math.max(box.left + (box.width - origin.width) / 2, margin), window.innerWidth - origin.width - margin);
+  tip.style.left = `${left - origin.left}px`;
+  tip.style.top = `${box.bottom + 6 - origin.top}px`;
+}
+
+function installTooltipHints(root = document) {
+  root.querySelectorAll('[aria-describedby][role="button"], button[aria-describedby]').forEach(trigger => {
+    if (trigger.dataset.tooltipReady === 'true') return;
+    trigger.dataset.tooltipReady = 'true';
+    const ids = String(trigger.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+    const tip = ids.map(id => document.getElementById(id)).find(node => node?.getAttribute('role') === 'tooltip');
+    if (!tip) return;
+    const show = () => { placeTooltip(trigger, tip); tip.dataset.open = 'true'; };
+    const hide = () => { delete tip.dataset.open; };
+    trigger.addEventListener('mouseenter', show);
+    trigger.addEventListener('mouseleave', hide);
+    trigger.addEventListener('focus', show);
+    trigger.addEventListener('blur', hide);
+    trigger.addEventListener('keydown', event => { if (event.key === 'Escape') hide(); });
   });
+}
+
+function passwordToggleIcon(visible) {
+  const script = [...document.scripts].find(item => /\/auth\.js(?:\?|$)/.test(item.src || ''));
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'atrium-icon');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
+  svg.appendChild(use);
+  return svg;
+}
+
+function installPasswordToggles(root = document) {
+  root.querySelectorAll('input[type="password"]:not([data-password-toggle-ready])').forEach(input => {
+    input.dataset.passwordToggleReady = 'true';
+    const wrapper = document.createElement('span'); wrapper.className = 'password-input-wrap';
+    input.parentNode.insertBefore(wrapper, input); wrapper.appendChild(input);
+    const tooltipId = `passwordToggleTip-${Math.random().toString(36).slice(2, 10)}`;
+    const tooltip = document.createElement('span');
+    tooltip.className = 'ui-tooltip'; tooltip.id = tooltipId; tooltip.setAttribute('role', 'tooltip');
+    tooltip.textContent = 'Mostrar ou ocultar a senha digitada';
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'password-toggle'; button.setAttribute('aria-label', 'Mostrar conteúdo'); button.setAttribute('aria-pressed', 'false'); button.setAttribute('aria-describedby', tooltipId); button.appendChild(passwordToggleIcon(false));
+    button.addEventListener('click', () => {
+    const visible = input.type === 'text'; input.type = visible ? 'password' : 'text';
+    button.setAttribute('aria-label', visible ? 'Mostrar conteúdo' : 'Ocultar conteúdo'); button.setAttribute('aria-pressed', String(!visible)); button.classList.toggle('visible', !visible);
+    button.replaceChildren(passwordToggleIcon(!visible));
+    });
+    wrapper.appendChild(button);
+    wrapper.appendChild(tooltip);
+  });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  installPasswordToggles();
+  installTooltipHints();
+  new MutationObserver(mutations => mutations.forEach(mutation => mutation.addedNodes.forEach(node => { if (node.nodeType === 1) { installPasswordToggles(node); installTooltipHints(node); } }))).observe(document.body, { childList: true, subtree: true });
+  Auth.init();
+});
 })();

@@ -1,10 +1,11 @@
 name: Atrium CI
 
 on:
-  push:
-    branches: [ main, v2.0, beta-hardening, master, ui-v2, v2.1-dev ]
-  pull_request:
-    branches: [ main, v2.0, beta-hardening, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: atrium-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -25,8 +26,22 @@ jobs:
           corepack enable
           corepack prepare pnpm@11.19.0 --activate
 
+      - name: Configure pnpm Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
 
       - name: Install Playwright Browsers (Chromium)
         run: |
@@ -35,6 +50,11 @@ jobs:
       - name: Run Integrity Syntax Checks
         run: |
           pnpm check
+
+      - name: Privacy & Security Audit (informational, non-blocking)
+        run: |
+          pnpm audit:privacy --fail-on=never
+        continue-on-error: true
 
       - name: Run Full Audit & Test Suite
         run: |
@@ -57,8 +77,20 @@ jobs:
         run: |
           corepack enable
           corepack prepare pnpm@11.19.0 --activate
+      - name: Configure pnpm Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
       - name: Install Playwright Browsers (Chromium)
         run: pnpm exec playwright install chromium --with-deps
       - name: Run Multi-Viewport Visual QA
@@ -93,9 +125,25 @@ jobs:
           corepack prepare pnpm@11.19.0 --activate
         shell: bash
 
+      - name: Cache pnpm Store
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\pnpm\store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
         shell: bash
+
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
 
       - name: Install Playwright Browsers (Chromium)
         run: |

@@ -16,7 +16,7 @@ let result = applyPublicationWorkAction(state, 'publication-synthetic', {
 }, { actorName: 'Pessoa Revisora', nowIso: timestamp });
 assert.equal(result.entity.publicationId, 'publication-synthetic');
 assert.equal(result.entity.processId, 'process-confirmed');
-assert.equal(result.entity.client, 'Cliente Confirmado', 'Cliente só pode vir de vínculo canônico confirmado.');
+assert.equal(result.entity.client, 'Cliente Confirmado', 'Cliente só pode vir de vínculo oficial confirmado.');
 assert.equal(state.intimations[0].treatmentStatus, 'in_review');
 
 result = applyPublicationWorkAction(state, 'publication-synthetic', {
@@ -30,7 +30,7 @@ result = applyPublicationWorkAction(state, 'publication-synthetic', {
 assert.equal(result.entity.deadline, '2026-09-10');
 assert.equal(result.entity.fatalDeadline, '2026-09-11');
 assert.equal(result.entity.humanConfirmedBy, 'Pessoa Revisora');
-assert.equal(result.entity.client, '', 'Parte sem vínculo canônico não pode virar cliente da tarefa.');
+assert.equal(result.entity.client, '', 'Parte sem vínculo oficial não pode virar cliente da tarefa.');
 assert.equal(result.entity.actionType, '', 'Fluxo não pode inferir ato judicial.');
 assert.equal(result.entity.protocol, '', 'Fluxo não pode produzir protocolo judicial.');
 assert.equal(Object.hasOwn(result.entity, 'scienceAt'), false, 'Fluxo não pode registrar ciência judicial.');

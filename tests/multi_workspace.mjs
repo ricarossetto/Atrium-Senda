@@ -10,6 +10,13 @@ const server = await startTestServer({
   }
 });
 const password = 'Senha-Multi-2026!';
+let adminStepUsed = 0;
+function stepUpCode(secret) {
+  const current = Math.floor(Date.now() / 30000);
+  const step = Math.max(current - 1, adminStepUsed + 1);
+  adminStepUsed = step;
+  return generateTotp(secret, step);
+}
 
 try {
   let preflight = await fetch(`${server.baseUrl}/api/auth/status`, {
@@ -34,6 +41,7 @@ try {
   });
   let pending = await response.json();
   assert(response.ok && pending.setupToken, 'Primeiro escritório não iniciou o cadastro.');
+  const firstSecret = pending.manualSecret;
 
   response = await postJson(`${server.baseUrl}/api/auth/setup/verify`, {
     setupToken: pending.setupToken,
@@ -192,9 +200,18 @@ try {
 
   response = await postJson(`${server.baseUrl}/api/auth/users/manage`, {
     userId: secondUsers.users[0].id,
-    status: 'inactive'
+    status: 'inactive',
+    password,
+    code: stepUpCode(firstSecret)
   }, { Cookie: firstCookie, 'X-CSRF-Token': first.csrfToken });
   assert(response.status === 404, 'Administrador de um escritório conseguiu alterar usuário de outro escritório.');
+
+  // A auto-exclusão de um master único não pode resetar a instalação inteira
+  // enquanto existirem outros escritórios na mesma instalação.
+  response = await postJson(`${server.baseUrl}/api/auth/profile/delete`, {}, { Cookie: secondCookie, 'X-CSRF-Token': second.csrfToken });
+  assert(response.status === 409, 'Master de um escritório resetou a instalação com outros escritórios presentes.');
+  const firstStillAuthenticated = await (await fetch(`${server.baseUrl}/api/auth/status`, { headers: { Cookie: firstCookie } })).json();
+  assert(firstStillAuthenticated.authenticated, 'Sessão do primeiro escritório foi derrubada por tentativa de exclusão do segundo.');
 
   console.log('Multi-workspace isolation tests passed.');
 } finally {

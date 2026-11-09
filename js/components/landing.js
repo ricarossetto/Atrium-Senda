@@ -60,6 +60,23 @@
         });
       });
 
+      // Tooltip textual de controle sem rótulo visível (hover e foco de teclado)
+      document.querySelectorAll('.landing-nav-actions button[aria-describedby]').forEach(trigger => {
+        if (trigger.dataset.tooltipReady === 'true') return;
+        trigger.dataset.tooltipReady = 'true';
+        const ids = String(trigger.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        const tip = ids.map(id => document.getElementById(id))
+          .find(node => node && node.getAttribute('role') === 'tooltip');
+        if (!tip) return;
+        const show = () => { tip.dataset.open = 'true'; };
+        const hide = () => { delete tip.dataset.open; };
+        trigger.addEventListener('mouseenter', show);
+        trigger.addEventListener('mouseleave', hide);
+        trigger.addEventListener('focus', show);
+        trigger.addEventListener('blur', hide);
+        trigger.addEventListener('keydown', event => { if (event.key === 'Escape') hide(); });
+      });
+
       // Action triggers for login / register
       document.querySelectorAll('[data-landing-action="login"]').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -111,9 +128,9 @@
       const current = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
       const next = current === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = next;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', next === 'light' ? '#eef1f1' : '#0c0c0b');
       try {
         localStorage.setItem('atrium_theme', next);
-        localStorage.setItem('jurisflow_theme', next);
       } catch {}
       this.updateShowcaseImage();
       window.dispatchEvent(new CustomEvent('atrium:theme-changed', { detail: { theme: next } }));
@@ -131,17 +148,19 @@
       const img = document.getElementById('landingShowcaseImage');
       if (!img) return;
       const isLight = document.documentElement.dataset.theme === 'light';
+      const version = '5.6.2';
 
       const imageMap = {
-        dashboard: isLight ? 'assets/images/dashboard-light.png' : 'assets/images/dashboard-dark.png',
-        processes: 'assets/images/process-inspector.png',
-        publications: 'assets/images/publications-workspace.png',
-        contacts: 'assets/images/contacts-registry.png',
-        integrations: 'assets/images/integrations.png'
+        dashboard: isLight ? `assets/images/dashboard-light.png?v=${version}` : `assets/images/dashboard-dark.png?v=${version}`,
+        processes: `assets/images/process-inspector.png?v=${version}`,
+        publications: `assets/images/publications-workspace.png?v=${version}`,
+        contacts: `assets/images/contacts-registry.png?v=${version}`,
+        integrations: `assets/images/integrations.png?v=${version}`
       };
 
       const targetSrc = imageMap[this.currentShowcaseTab] || imageMap.dashboard;
-      if (img.src !== targetSrc) {
+      const currentSrc = img.getAttribute('src') || '';
+      if (currentSrc !== targetSrc && !currentSrc.endsWith(targetSrc)) {
         img.style.opacity = '0';
         setTimeout(() => {
           img.src = targetSrc;

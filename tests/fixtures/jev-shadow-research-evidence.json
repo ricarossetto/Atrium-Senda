@@ -1,0 +1,1012 @@
+[
+  {
+    "id": "sh-res-025",
+    "claim": "A tese firmada no TJSP vincula este processo em trâmite noutro tribunal.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-25f",
+        "citation": "Acórdão sintético (TJRS)",
+        "excerptOrSummary": "Trecho sintético que adota a tese como persuasiva, sem efeito vinculante declarado.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-024",
+    "claim": "Aplica-se a tese do Tema 224 sobre impenhorabilidade.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-24e",
+        "citation": "Tema 224, tese",
+        "excerptOrSummary": "Tese sintética sobre penhora de faturamento de empresa, matéria diversa da impenhorabilidade familiar.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-070",
+    "claim": "Ao menos um julgado analisou o tema.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-70p",
+        "citation": "Julgado sintético",
+        "excerptOrSummary": "Trecho sintético que enfrenta o tema em profundidade e decide.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "accept",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-067",
+    "claim": "Todas as turmas de todos os tribunais sempre decidiram assim, sem exceção.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-67o",
+        "citation": "Julgado sintético isolado",
+        "excerptOrSummary": "Trecho sintético de um único julgado favorável.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-037",
+    "claim": "O tribunal decidiu a tese no julgamento.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-37i",
+        "citation": "Acórdão sintético",
+        "excerptOrSummary": "Trecho sintético que apenas menciona a tese em obter dictum, sem decidir.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-019",
+    "claim": "Aplica-se a tese do Tema 219 sobre impenhorabilidade.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-19e",
+        "citation": "Tema 219, tese",
+        "excerptOrSummary": "Tese sintética sobre penhora de faturamento de empresa, matéria diversa da impenhorabilidade familiar.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-066",
+    "claim": "Todas as turmas de todos os tribunais sempre decidiram assim, sem exceção.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-66o",
+        "citation": "Julgado sintético isolado",
+        "excerptOrSummary": "Trecho sintético de um único julgado favorável.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-005",
+    "claim": "A decisão do evento 45 analisou a impenhorabilidade do bem de família.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-5a",
+        "citation": "Evento 45, decisão",
+        "excerptOrSummary": "Trecho sintético que analisa a impenhorabilidade do bem de família e afasta a constrição.",
+        "sourceType": "decisao"
+      },
+      {
+        "sourceId": "sh-ev-5b",
+        "citation": "Evento 45, certidão",
+        "excerptOrSummary": "Certidão sintética confirma a análise da impenhorabilidade na decisão.",
+        "sourceType": "certidao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-056",
+    "claim": "A jurisprudência é pacífica no sentido da tese.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-56m",
+        "citation": "Julgado sintético A",
+        "excerptOrSummary": "Trecho sintético favorável à tese.",
+        "sourceType": "acordao"
+      },
+      {
+        "sourceId": "sh-ev-56n",
+        "citation": "Julgado sintético B",
+        "excerptOrSummary": "Trecho sintético contrário à tese, com maioria atual.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-001",
+    "claim": "A decisão do evento 41 analisou a impenhorabilidade do bem de família.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-1a",
+        "citation": "Evento 41, decisão",
+        "excerptOrSummary": "Trecho sintético que analisa a impenhorabilidade do bem de família e afasta a constrição.",
+        "sourceType": "decisao"
+      },
+      {
+        "sourceId": "sh-ev-1b",
+        "citation": "Evento 41, certidão",
+        "excerptOrSummary": "Certidão sintética confirma a análise da impenhorabilidade na decisão.",
+        "sourceType": "certidao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-057",
+    "claim": "A jurisprudência é pacífica no sentido da tese.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-57m",
+        "citation": "Julgado sintético A",
+        "excerptOrSummary": "Trecho sintético favorável à tese.",
+        "sourceType": "acordao"
+      },
+      {
+        "sourceId": "sh-ev-57n",
+        "citation": "Julgado sintético B",
+        "excerptOrSummary": "Trecho sintético contrário à tese, com maioria atual.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-053",
+    "claim": "Todas as decisões mantiveram a condenação.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-53l",
+        "citation": "Acórdão sintético absolutório",
+        "excerptOrSummary": "Trecho sintético que absolve por falta de provas.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-039",
+    "claim": "O tribunal decidiu a tese no julgamento.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-39i",
+        "citation": "Acórdão sintético",
+        "excerptOrSummary": "Trecho sintético que apenas menciona a tese em obter dictum, sem decidir.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-058",
+    "claim": "O evento 958 contém o ato processual alegado.",
+    "evidence": [],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-022",
+    "claim": "Aplica-se a tese do Tema 222 sobre impenhorabilidade.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-22e",
+        "citation": "Tema 222, tese",
+        "excerptOrSummary": "Tese sintética sobre penhora de faturamento de empresa, matéria diversa da impenhorabilidade familiar.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-006",
+    "claim": "A decisão do evento 46 analisou a impenhorabilidade do bem de família.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-6a",
+        "citation": "Evento 46, decisão",
+        "excerptOrSummary": "Trecho sintético que analisa a impenhorabilidade do bem de família e afasta a constrição.",
+        "sourceType": "decisao"
+      },
+      {
+        "sourceId": "sh-ev-6b",
+        "citation": "Evento 46, certidão",
+        "excerptOrSummary": "Certidão sintética confirma a análise da impenhorabilidade na decisão.",
+        "sourceType": "certidao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-034",
+    "claim": "O andamento do evento 334 comprova a citação válida.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-34h",
+        "citation": "Evento 335, certidão",
+        "excerptOrSummary": "Certidão sintética de evento vizinho, número próximo mas distinto.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-017",
+    "claim": "O prazo recursal é de quinze dias úteis.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-17d",
+        "citation": "Manual sintético de custas",
+        "excerptOrSummary": "Tabela sintética de valores de preparo por instância.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-063",
+    "claim": "Existe precedente aplicável ao caso.",
+    "evidence": [],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-038",
+    "claim": "O tribunal decidiu a tese no julgamento.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-38i",
+        "citation": "Acórdão sintético",
+        "excerptOrSummary": "Trecho sintético que apenas menciona a tese em obter dictum, sem decidir.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-020",
+    "claim": "Aplica-se a tese do Tema 220 sobre impenhorabilidade.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-20e",
+        "citation": "Tema 220, tese",
+        "excerptOrSummary": "Tese sintética sobre penhora de faturamento de empresa, matéria diversa da impenhorabilidade familiar.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-007",
+    "claim": "A decisão do evento 47 analisou a impenhorabilidade do bem de família.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-7a",
+        "citation": "Evento 47, decisão",
+        "excerptOrSummary": "Trecho sintético que analisa a impenhorabilidade do bem de família e afasta a constrição.",
+        "sourceType": "decisao"
+      },
+      {
+        "sourceId": "sh-ev-7b",
+        "citation": "Evento 47, certidão",
+        "excerptOrSummary": "Certidão sintética confirma a análise da impenhorabilidade na decisão.",
+        "sourceType": "certidao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-026",
+    "claim": "A tese firmada no TJSP vincula este processo em trâmite noutro tribunal.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-26f",
+        "citation": "Acórdão sintético (STJ)",
+        "excerptOrSummary": "Trecho sintético que adota a tese como persuasiva, sem efeito vinculante declarado.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-040",
+    "claim": "O tribunal decidiu a tese no julgamento.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-40i",
+        "citation": "Acórdão sintético",
+        "excerptOrSummary": "Trecho sintético que apenas menciona a tese em obter dictum, sem decidir.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-043",
+    "claim": "A maioria da turma acompanha a tese.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-43j",
+        "citation": "Voto vencido sintético",
+        "excerptOrSummary": "Trecho sintético do voto vencido que defende a tese isoladamente.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-027",
+    "claim": "A tese firmada no TJRS vincula este processo em trâmite noutro tribunal.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-27f",
+        "citation": "Acórdão sintético (TJSP)",
+        "excerptOrSummary": "Trecho sintético que adota a tese como persuasiva, sem efeito vinculante declarado.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-015",
+    "claim": "O prazo recursal é de quinze dias úteis.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-15d",
+        "citation": "Manual sintético de custas",
+        "excerptOrSummary": "Tabela sintética de valores de preparo por instância.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-049",
+    "claim": "Todas as decisões mantiveram a condenação.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-49l",
+        "citation": "Acórdão sintético absolutório",
+        "excerptOrSummary": "Trecho sintético que absolve por falta de provas.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-014",
+    "claim": "O Tema 114 se aplica integralmente ao caso concreto.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-14c",
+        "citation": "Tema 114, tese",
+        "excerptOrSummary": "Tese sintética sobre matéria parcialmente relacionada, sem enfrentar os fatos do caso.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-032",
+    "claim": "O fato de 2019 foi julgado pela decisão de 2018.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-32g",
+        "citation": "Decisão sintética de 2018",
+        "excerptOrSummary": "Trecho sintético limitado a fatos anteriores a 2018.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-010",
+    "claim": "O Tema 110 se aplica integralmente ao caso concreto.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-10c",
+        "citation": "Tema 110, tese",
+        "excerptOrSummary": "Tese sintética sobre matéria parcialmente relacionada, sem enfrentar os fatos do caso.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-004",
+    "claim": "A decisão do evento 44 analisou a impenhorabilidade do bem de família.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-4a",
+        "citation": "Evento 44, decisão",
+        "excerptOrSummary": "Trecho sintético que analisa a impenhorabilidade do bem de família e afasta a constrição.",
+        "sourceType": "decisao"
+      },
+      {
+        "sourceId": "sh-ev-4b",
+        "citation": "Evento 44, certidão",
+        "excerptOrSummary": "Certidão sintética confirma a análise da impenhorabilidade na decisão.",
+        "sourceType": "certidao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-069",
+    "claim": "Ao menos um julgado analisou o tema.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-69p",
+        "citation": "Julgado sintético",
+        "excerptOrSummary": "Trecho sintético que enfrenta o tema em profundidade e decide.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "accept",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-064",
+    "claim": "Todas as turmas de todos os tribunais sempre decidiram assim, sem exceção.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-64o",
+        "citation": "Julgado sintético isolado",
+        "excerptOrSummary": "Trecho sintético de um único julgado favorável.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-050",
+    "claim": "Todas as decisões mantiveram a condenação.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-50l",
+        "citation": "Acórdão sintético absolutório",
+        "excerptOrSummary": "Trecho sintético que absolve por falta de provas.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-044",
+    "claim": "A maioria da turma acompanha a tese.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-44j",
+        "citation": "Voto vencido sintético",
+        "excerptOrSummary": "Trecho sintético do voto vencido que defende a tese isoladamente.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-051",
+    "claim": "Todas as decisões mantiveram a condenação.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-51l",
+        "citation": "Acórdão sintético absolutório",
+        "excerptOrSummary": "Trecho sintético que absolve por falta de provas.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-021",
+    "claim": "Aplica-se a tese do Tema 221 sobre impenhorabilidade.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-21e",
+        "citation": "Tema 221, tese",
+        "excerptOrSummary": "Tese sintética sobre penhora de faturamento de empresa, matéria diversa da impenhorabilidade familiar.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-018",
+    "claim": "O prazo recursal é de quinze dias úteis.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-18d",
+        "citation": "Manual sintético de custas",
+        "excerptOrSummary": "Tabela sintética de valores de preparo por instância.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-046",
+    "claim": "O inteiro teor confirma a ementa sintética.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-46k",
+        "citation": "Inteiro teor sintético",
+        "excerptOrSummary": "Trecho sintético do inteiro teor que restringe o alcance afirmado na ementa.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-003",
+    "claim": "A decisão do evento 43 analisou a impenhorabilidade do bem de família.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-3a",
+        "citation": "Evento 43, decisão",
+        "excerptOrSummary": "Trecho sintético que analisa a impenhorabilidade do bem de família e afasta a constrição.",
+        "sourceType": "decisao"
+      },
+      {
+        "sourceId": "sh-ev-3b",
+        "citation": "Evento 43, certidão",
+        "excerptOrSummary": "Certidão sintética confirma a análise da impenhorabilidade na decisão.",
+        "sourceType": "certidao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-068",
+    "claim": "Ao menos um julgado analisou o tema.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-68p",
+        "citation": "Julgado sintético",
+        "excerptOrSummary": "Trecho sintético que enfrenta o tema em profundidade e decide.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "accept",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-033",
+    "claim": "O andamento do evento 333 comprova a citação válida.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-33h",
+        "citation": "Evento 334, certidão",
+        "excerptOrSummary": "Certidão sintética de evento vizinho, número próximo mas distinto.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-011",
+    "claim": "O Tema 111 se aplica integralmente ao caso concreto.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-11c",
+        "citation": "Tema 111, tese",
+        "excerptOrSummary": "Tese sintética sobre matéria parcialmente relacionada, sem enfrentar os fatos do caso.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-036",
+    "claim": "O andamento do evento 336 comprova a citação válida.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-36h",
+        "citation": "Evento 337, certidão",
+        "excerptOrSummary": "Certidão sintética de evento vizinho, número próximo mas distinto.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-048",
+    "claim": "O inteiro teor confirma a ementa sintética.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-48k",
+        "citation": "Inteiro teor sintético",
+        "excerptOrSummary": "Trecho sintético do inteiro teor que restringe o alcance afirmado na ementa.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-042",
+    "claim": "A maioria da turma acompanha a tese.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-42j",
+        "citation": "Voto vencido sintético",
+        "excerptOrSummary": "Trecho sintético do voto vencido que defende a tese isoladamente.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-061",
+    "claim": "Existe precedente aplicável ao caso.",
+    "evidence": [],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-052",
+    "claim": "Todas as decisões mantiveram a condenação.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-52l",
+        "citation": "Acórdão sintético absolutório",
+        "excerptOrSummary": "Trecho sintético que absolve por falta de provas.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-031",
+    "claim": "O fato de 2019 foi julgado pela decisão de 2018.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-31g",
+        "citation": "Decisão sintética de 2018",
+        "excerptOrSummary": "Trecho sintético limitado a fatos anteriores a 2018.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-012",
+    "claim": "O Tema 112 se aplica integralmente ao caso concreto.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-12c",
+        "citation": "Tema 112, tese",
+        "excerptOrSummary": "Tese sintética sobre matéria parcialmente relacionada, sem enfrentar os fatos do caso.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-062",
+    "claim": "Existe precedente aplicável ao caso.",
+    "evidence": [],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-047",
+    "claim": "O inteiro teor confirma a ementa sintética.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-47k",
+        "citation": "Inteiro teor sintético",
+        "excerptOrSummary": "Trecho sintético do inteiro teor que restringe o alcance afirmado na ementa.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-065",
+    "claim": "Todas as turmas de todos os tribunais sempre decidiram assim, sem exceção.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-65o",
+        "citation": "Julgado sintético isolado",
+        "excerptOrSummary": "Trecho sintético de um único julgado favorável.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-009",
+    "claim": "O Tema 109 se aplica integralmente ao caso concreto.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-9c",
+        "citation": "Tema 109, tese",
+        "excerptOrSummary": "Tese sintética sobre matéria parcialmente relacionada, sem enfrentar os fatos do caso.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-055",
+    "claim": "A jurisprudência é pacífica no sentido da tese.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-55m",
+        "citation": "Julgado sintético A",
+        "excerptOrSummary": "Trecho sintético favorável à tese.",
+        "sourceType": "acordao"
+      },
+      {
+        "sourceId": "sh-ev-55n",
+        "citation": "Julgado sintético B",
+        "excerptOrSummary": "Trecho sintético contrário à tese, com maioria atual.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-023",
+    "claim": "Aplica-se a tese do Tema 223 sobre impenhorabilidade.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-23e",
+        "citation": "Tema 223, tese",
+        "excerptOrSummary": "Tese sintética sobre penhora de faturamento de empresa, matéria diversa da impenhorabilidade familiar.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-002",
+    "claim": "A decisão do evento 42 analisou a impenhorabilidade do bem de família.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-2a",
+        "citation": "Evento 42, decisão",
+        "excerptOrSummary": "Trecho sintético que analisa a impenhorabilidade do bem de família e afasta a constrição.",
+        "sourceType": "decisao"
+      },
+      {
+        "sourceId": "sh-ev-2b",
+        "citation": "Evento 42, certidão",
+        "excerptOrSummary": "Certidão sintética confirma a análise da impenhorabilidade na decisão.",
+        "sourceType": "certidao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-028",
+    "claim": "A tese firmada no TRF4 vincula este processo em trâmite noutro tribunal.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-28f",
+        "citation": "Acórdão sintético (TJRS)",
+        "excerptOrSummary": "Trecho sintético que adota a tese como persuasiva, sem efeito vinculante declarado.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-035",
+    "claim": "O andamento do evento 335 comprova a citação válida.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-35h",
+        "citation": "Evento 336, certidão",
+        "excerptOrSummary": "Certidão sintética de evento vizinho, número próximo mas distinto.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-041",
+    "claim": "A maioria da turma acompanha a tese.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-41j",
+        "citation": "Voto vencido sintético",
+        "excerptOrSummary": "Trecho sintético do voto vencido que defende a tese isoladamente.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-008",
+    "claim": "A decisão do evento 48 analisou a impenhorabilidade do bem de família.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-8a",
+        "citation": "Evento 48, decisão",
+        "excerptOrSummary": "Trecho sintético que analisa a impenhorabilidade do bem de família e afasta a constrição.",
+        "sourceType": "decisao"
+      },
+      {
+        "sourceId": "sh-ev-8b",
+        "citation": "Evento 48, certidão",
+        "excerptOrSummary": "Certidão sintética confirma a análise da impenhorabilidade na decisão.",
+        "sourceType": "certidao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-060",
+    "claim": "O evento 960 contém o ato processual alegado.",
+    "evidence": [],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-054",
+    "claim": "A jurisprudência é pacífica no sentido da tese.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-54m",
+        "citation": "Julgado sintético A",
+        "excerptOrSummary": "Trecho sintético favorável à tese.",
+        "sourceType": "acordao"
+      },
+      {
+        "sourceId": "sh-ev-54n",
+        "citation": "Julgado sintético B",
+        "excerptOrSummary": "Trecho sintético contrário à tese, com maioria atual.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-045",
+    "claim": "O inteiro teor confirma a ementa sintética.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-45k",
+        "citation": "Inteiro teor sintético",
+        "excerptOrSummary": "Trecho sintético do inteiro teor que restringe o alcance afirmado na ementa.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-030",
+    "claim": "O fato de 2019 foi julgado pela decisão de 2018.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-30g",
+        "citation": "Decisão sintética de 2018",
+        "excerptOrSummary": "Trecho sintético limitado a fatos anteriores a 2018.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-059",
+    "claim": "O evento 959 contém o ato processual alegado.",
+    "evidence": [],
+    "expectedVerdict": "reject",
+    "shouldReject": true
+  },
+  {
+    "id": "sh-res-013",
+    "claim": "O Tema 113 se aplica integralmente ao caso concreto.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-13c",
+        "citation": "Tema 113, tese",
+        "excerptOrSummary": "Tese sintética sobre matéria parcialmente relacionada, sem enfrentar os fatos do caso.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "verify_more",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-016",
+    "claim": "O prazo recursal é de quinze dias úteis.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-16d",
+        "citation": "Manual sintético de custas",
+        "excerptOrSummary": "Tabela sintética de valores de preparo por instância.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  },
+  {
+    "id": "sh-res-029",
+    "claim": "O fato de 2019 foi julgado pela decisão de 2018.",
+    "evidence": [
+      {
+        "sourceId": "sh-ev-29g",
+        "citation": "Decisão sintética de 2018",
+        "excerptOrSummary": "Trecho sintético limitado a fatos anteriores a 2018.",
+        "sourceType": "acordao"
+      }
+    ],
+    "expectedVerdict": "reject",
+    "shouldReject": false
+  }
+]

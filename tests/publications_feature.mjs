@@ -9,9 +9,13 @@ import {
   classifyIntimationAct,
   createPublicationsFeature,
   filterPublications,
+  findIntimationRecord,
   formatPublicationAge,
-  parsePublicationLocalDate
+  isActiveIntimation,
+  parsePublicationLocalDate,
+  resolveIntimationId
 } from '../js/features/publications.js';
+import { createTasksFeature } from '../js/features/tasks.js';
 import { isoDate } from '../js/core/store.js';
 import { postJson, startTestServer } from './helpers.mjs';
 
@@ -28,12 +32,12 @@ console.log('  ATRIUM — SUÍTE DA FEATURE MODULAR DE PUBLICAÇÕES');
 console.log('===============================================================\n');
 
 assert.doesNotMatch(featureSource, /from\s+['"]\.\.\/\.\.\/portal\.js['"]|from\s+['"]\.\.\/portal\.js['"]/, 'A feature não pode importar portal.js.');
-assert.match(featureSource, /from ['"]\.\.\/core\/store\.js['"]/, 'A feature deve consumir o Store canônico.');
-assert.match(portalSource, /from ['"]\.\/features\/publications\.js['"]/, 'portal.js deve importar a feature modular.');
+assert.match(featureSource, /from ['"]\.\.\/core\/store\.js(?:\?v=[^'"]*)?['"]/, 'A feature deve consumir o Store oficial.');
+assert.match(portalSource, /from ['"]\.\/features\/publications\.js(?:\?v=[^'"]*)?['"]/, 'portal.js deve importar a feature modular.');
 assert.doesNotMatch(featureSource, /window\.(?:Publications|Intimations)\s*=/, 'A feature não pode criar um novo global.');
 assert.doesNotMatch(featureSource, /\/api\/email\/publications/, 'O endpoint legado removido não pode reaparecer.');
-assert.match(featureSource, /\/api\/intimations\/email/, 'O endpoint individual canônico deve permanecer.');
-assert.match(featureSource, /\/api\/publications\/email\/batch/, 'O endpoint batch canônico deve permanecer.');
+assert.match(featureSource, /\/api\/intimations\/email/, 'O endpoint individual oficial deve permanecer.');
+assert.match(featureSource, /\/api\/publications\/email\/batch/, 'O endpoint batch oficial deve permanecer.');
 assert.match(featureSource, /\/api\/publications\/\$\{encodeURIComponent\(publicationId\)\}\/task/, 'A feature deve usar o endpoint transacional de tarefa.');
 assert.doesNotMatch(portalSource, /linkTaskToPublication|linkedTaskIds|treatmentStartedAt\s*=/, 'Portal não pode mutar vínculo ou tratamento da publicação diretamente.');
 
@@ -51,7 +55,7 @@ for (const [wrapper, target] of wrapperContracts) {
   const expression = new RegExp(`${wrapper}\\([^)]*\\)\\s*\\{\\s*return getPublicationsFeature\\(\\)\\.${target}\\(`);
   assert.match(portalSource, expression, `App.${wrapper} deve ser apenas um wrapper fino.`);
 }
-assert.equal((portalSource.match(/createPublicationsFeature\(/g) || []).length, 1, 'A feature deve possuir uma única instância canônica.');
+assert.equal((portalSource.match(/createPublicationsFeature\(/g) || []).length, 1, 'A feature deve possuir uma única instância oficial.');
 assert.equal((featureSource.match(/filteredItems\(\)\s*\{/g) || []).length, 1, 'A filtragem deve ter uma única implementação pública.');
 assert.doesNotMatch(portalSource, /secureFetch\(['"]\/api\/publications\/email\/batch/, 'O batch não pode permanecer implementado no portal.');
 assert.doesNotMatch(portalSource, /secureFetch\(['"]\/api\/intimations\/email/, 'O envio individual não pode permanecer implementado no portal.');
@@ -76,12 +80,36 @@ assert.deepEqual(filterPublications(publications, { filter: 'untreated', sort: '
 assert.deepEqual(filterPublications(publications, { filter: 'all', sort: 'date-desc', now: referenceNow }).map(item => item.id), ['fatal', 'untreated-urgent', 'review', 'treated', 'untreated-old', 'discarded']);
 assert.deepEqual(filterPublications(publications, { filter: 'all', sort: 'date-asc', now: referenceNow }).map(item => item.id), ['discarded', 'untreated-old', 'treated', 'review', 'untreated-urgent', 'fatal']);
 
+const aliasPublications = [
+  { id: 'keeper-publication', title: 'Publicação oficial', publishedAt: '2026-08-26', treatmentStatus: 'untreated' },
+  { id: 'alias-publication', title: 'Publicação alias', mergedInto: 'keeper-publication', publishedAt: '2026-08-26', treatmentStatus: 'untreated' },
+  { id: 'alias-orphan-publication', title: 'Alias órfão', mergedInto: 'keeper-ausente', publishedAt: '2026-08-26', treatmentStatus: 'untreated' }
+];
+for (const filter of ['all', 'untreated', 'in_review', 'treated', 'discarded', 'urgente', 'importante', 'prazo-fatal', 'triagem', 'prazo']) {
+  const ids = filterPublications(aliasPublications, { filter, sort: 'date-desc', now: referenceNow }).map(item => item.id);
+  assert.equal(ids.some(id => id.startsWith('alias-')), false, `Publicação-alias não pode aparecer no filtro ${filter}.`);
+}
+assert.deepEqual(
+  filterPublications(aliasPublications, { filter: 'all', sort: 'date-desc', now: referenceNow }).map(item => item.id),
+  ['keeper-publication'],
+  'Somente o keeper pode ser listado.'
+);
+assert.equal(isActiveIntimation({ id: 'publicacao-sem-fusao' }), true);
+assert.equal(isActiveIntimation({ id: 'publicacao-fundida', mergedInto: 'keeper' }), false);
+assert.equal(isActiveIntimation({ id: 'publicacao-fundida-vazia', mergedInto: '' }), true, 'mergedInto vazio não caracteriza alias.');
+assert.equal(resolveIntimationId(aliasPublications, 'alias-publication'), 'keeper-publication', 'Id de alias deve resolver para o keeper.');
+assert.equal(resolveIntimationId(aliasPublications, 'keeper-publication'), 'keeper-publication', 'Id de keeper deve permanecer estável.');
+assert.equal(resolveIntimationId([{ id: 'ciclo-a', mergedInto: 'ciclo-b' }, { id: 'ciclo-b', mergedInto: 'ciclo-a' }], 'ciclo-a'), '', 'Ciclo de fusão deve ser tratado como irresolúvel.');
+assert.equal(findIntimationRecord(aliasPublications, 'alias-orphan-publication'), null, 'Alias sem keeper no estado não pode ser devolvido.');
+
 const localDate = parsePublicationLocalDate('2026-08-28');
 assert.equal(localDate.getFullYear(), 2026);
 assert.equal(localDate.getMonth(), 7);
 assert.equal(localDate.getDate(), 28, 'Data YYYY-MM-DD deve permanecer no mesmo dia local.');
 assert.equal(formatPublicationAge('2026-08-28', referenceNow), 'Hoje');
 assert.equal(formatPublicationAge('2026-08-27', referenceNow), 'Há 1 dia');
+assert.equal(formatPublicationAge('2026-08-29', referenceNow), 'Em 1 dia', 'Data futura não pode ser rotulada como hoje.');
+assert.equal(formatPublicationAge('2026-08-30', referenceNow), 'Em 2 dias');
 
 const originalTimezone = process.env.TZ;
 process.env.TZ = 'America/Sao_Paulo';
@@ -149,6 +177,45 @@ assert.equal(mergedExternal.unread, false, 'Sincronização não pode remarcar p
 assert.equal(mergedExternal.treatmentStatus, 'treated', 'Sincronização não pode reabrir tratamento humano concluído.');
 assert.equal(mergedExternal.deadline, '2026-09-20', 'Sincronização não pode sobrescrever prazo humano explícito.');
 assert.deepEqual(mergedExternal.linkedTaskIds, ['task-manual'], 'Sincronização não pode apagar vínculos manuais.');
+
+fakeStore.state.intimations = [{
+  id: 'external-additive', externalId: 'djen:additive', client: 'Cliente Teste', clientName: 'Cliente Teste',
+  contactId: 'contato-teste', text: 'Texto oficial anterior', title: 'Título anterior'
+}];
+const mergedWithEmpties = isolatedFeature.upsertExternalIntimation({
+  id: 'external-additive-new-id', externalId: 'djen:additive', client: '', clientName: '', contactId: '', text: '',
+  title: 'Título oficial atualizado'
+});
+assert.equal(mergedWithEmpties.client, 'Cliente Teste', 'Resposta de sync com client vazio não pode apagar cliente existente.');
+assert.equal(mergedWithEmpties.clientName, 'Cliente Teste', 'Resposta de sync com clientName vazio não pode apagar nome existente.');
+assert.equal(mergedWithEmpties.contactId, 'contato-teste', 'Resposta de sync com contactId vazio não pode apagar vínculo existente.');
+assert.equal(mergedWithEmpties.text, 'Texto oficial anterior', 'Resposta de sync com text vazio não pode apagar texto existente.');
+assert.equal(mergedWithEmpties.title, 'Título oficial atualizado', 'Campos não protegidos devem continuar aceitando atualização oficial.');
+
+const mergedWithValues = isolatedFeature.upsertExternalIntimation({
+  id: 'external-additive-new-id', externalId: 'djen:additive', client: 'Cliente Teste Atualizado',
+  clientName: 'Cliente Teste Atualizado', contactId: 'contato-teste-2', text: 'Texto oficial atualizado'
+});
+assert.equal(mergedWithValues.client, 'Cliente Teste Atualizado', 'Valor novo não vazio deve preencher/atualizar o cliente.');
+assert.equal(mergedWithValues.clientName, 'Cliente Teste Atualizado', 'Valor novo não vazio deve preencher/atualizar o nome.');
+assert.equal(mergedWithValues.contactId, 'contato-teste-2', 'Valor novo não vazio deve preencher/atualizar o vínculo.');
+assert.equal(mergedWithValues.text, 'Texto oficial atualizado', 'Valor novo não vazio deve preencher/atualizar o texto.');
+
+fakeStore.state.intimations.unshift({ id: 'external-backfill', externalId: 'djen:backfill' });
+const mergedBackfill = isolatedFeature.upsertExternalIntimation({
+  id: 'external-backfill-new-id', externalId: 'djen:backfill', client: 'Cliente Teste Backfill',
+  clientName: 'Cliente Teste Backfill', contactId: 'contato-teste-backfill', text: 'Texto de backfill'
+});
+assert.equal(mergedBackfill.client, 'Cliente Teste Backfill', 'Campo vazio deve ser preenchido por valor novo do sync.');
+assert.equal(mergedBackfill.clientName, 'Cliente Teste Backfill', 'Campo vazio deve ser preenchido por valor novo do sync.');
+assert.equal(mergedBackfill.contactId, 'contato-teste-backfill', 'Campo vazio deve ser preenchido por valor novo do sync.');
+assert.equal(mergedBackfill.text, 'Texto de backfill', 'Campo vazio deve ser preenchido por valor novo do sync.');
+
+const mergedStillEmpty = isolatedFeature.upsertExternalIntimation({
+  id: 'external-backfill-new-id', externalId: 'djen:backfill', client: '', clientName: null, contactId: undefined, text: ''
+});
+assert.equal(mergedStillEmpty.client, 'Cliente Teste Backfill', 'Vazio sobre vazio não pode inventar valor nem apagar o preenchido.');
+assert.equal(mergedStillEmpty.contactId, 'contato-teste-backfill', 'Campo ausente no sync deve preservar o valor local.');
 assert.equal(isolatedFeature.init(), true, 'Primeiro init deve registrar a feature.');
 assert.equal(isolatedFeature.init(), false, 'Segundo init deve ser ignorado.');
 assert.equal(listenerRegistrations, 1, 'init idempotente deve registrar cada listener uma única vez.');
@@ -226,7 +293,7 @@ const canonicalFeature = createPublicationsFeature({
   showToast() {}
 });
 await canonicalFeature.applyTreatmentAction('canonical', 'mark_treated');
-assert.equal(canonicalStore.state.intimations[0], canonicalIntimation, 'Sucesso deve usar o objeto canônico devolvido pelo backend.');
+assert.equal(canonicalStore.state.intimations[0], canonicalIntimation, 'Sucesso deve usar o objeto oficial devolvido pelo backend.');
 assert.equal(canonicalStore.revision, 'revision-server', 'Sucesso deve adotar a revision devolvida pelo backend.');
 
 const linkedTask = { id: 'task-canonical', intimationId: 'canonical-link', deadline: '' };
@@ -256,16 +323,63 @@ const linkingFeature = createPublicationsFeature({
   formatDateTime: String,
   showToast() {}
 });
-const linkingResult = await linkingFeature.createTaskFromPublication('canonical-link', { id: 'task-canonical', title: 'Tarefa canônica' });
+const linkingResult = await linkingFeature.createTaskFromPublication('canonical-link', { id: 'task-canonical', title: 'Tarefa oficial' });
 assert.equal(linkingResult.task, linkedTask);
-assert.equal(linkingStore.state.tasks[0], linkedTask, 'Frontend deve adotar a tarefa canônica da resposta.');
-assert.equal(linkingStore.state.intimations[0], linkedPublication, 'Frontend deve adotar a publicação canônica da resposta.');
+assert.equal(linkingStore.state.tasks[0], linkedTask, 'Frontend deve adotar a tarefa principal da resposta.');
+assert.equal(linkingStore.state.intimations[0], linkedPublication, 'Frontend deve adotar a publicação oficial da resposta.');
 assert.equal(linkingStore.revision, 'revision-link-new');
 assert.deepEqual(linkingRequests[0], {
   publicationId: 'canonical-link',
   revision: 'revision-link-old',
-  task: { id: 'task-canonical', title: 'Tarefa canônica' }
+  task: { id: 'task-canonical', title: 'Tarefa oficial' }
 });
+
+const aliasCounterStore = {
+  state: {
+    intimations: [
+      { id: 'keeper-count', treatmentStatus: 'untreated', publishedAt: '2026-08-27' },
+      { id: 'alias-count', mergedInto: 'keeper-count', treatmentStatus: 'untreated', publishedAt: '2026-08-27' },
+      { id: 'alias-count-orphan', mergedInto: 'keeper-ausente', treatmentStatus: 'untreated', publishedAt: '2026-08-27' }
+    ],
+    processes: [],
+    tasks: []
+  },
+  save() {}
+};
+const aliasCounterFeature = createPublicationsFeature({
+  store: aliasCounterStore,
+  documentRef: treatmentDocument,
+  windowRef: { KellerAuth: {}, fetch() {} },
+  escapeHtml: String,
+  formatDate: String,
+  formatDateTime: String,
+  showToast() {}
+});
+assert.equal(aliasCounterFeature.getUntreatedCount(), 1, 'Contagem de pendências não pode incluir alias.');
+assert.deepEqual(
+  aliasCounterFeature.getMetrics(new Date(2026, 7, 28, 10, 0, 0)),
+  { untreated: 1, inReview: 0, treatedToday: 0, discardedToday: 0 },
+  'Métricas não podem incluir alias.'
+);
+
+const aliasTaskStore = {
+  state: {
+    intimations: [
+      { id: 'keeper-task-link', treatmentStatus: 'untreated' },
+      { id: 'alias-task-link', mergedInto: 'keeper-task-link', treatmentStatus: 'untreated' }
+    ],
+    processes: [],
+    tasks: []
+  }
+};
+const aliasTaskFeature = createTasksFeature({ store: aliasTaskStore });
+const taskFromAlias = aliasTaskFeature.buildTask({ title: 'Tarefa sintética', responsible: 'Advogada Teste' }, { intimationId: 'alias-task-link' });
+assert.equal(taskFromAlias.intimationId, 'keeper-task-link', 'Vínculo por alias deve ser resolvido para o keeper.');
+assert.equal(taskFromAlias.sourceIntimationId, 'keeper-task-link', 'sourceIntimationId deve acompanhar o keeper.');
+const taskFromKeeper = aliasTaskFeature.buildTask({ title: 'Tarefa sintética', responsible: 'Advogada Teste' }, { intimationId: 'keeper-task-link' });
+assert.equal(taskFromKeeper.intimationId, 'keeper-task-link', 'Vínculo já oficial deve permanecer estável.');
+const taskFromUnknown = aliasTaskFeature.buildTask({ title: 'Tarefa sintética', responsible: 'Advogada Teste' }, { intimationId: 'publicacao-fora-do-estado' });
+assert.equal(taskFromUnknown.intimationId, 'publicacao-fora-do-estado', 'Id desconhecido não pode ser inventado nem apagado.');
 
 const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });
@@ -321,7 +435,7 @@ try {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ ok: true, message: 'Boletim enviado.', emailHtml: '<p>Boletim canônico</p>', emailText: 'Boletim canônico' })
+      body: JSON.stringify({ ok: true, message: 'Boletim enviado.', emailHtml: '<p>Boletim oficial</p>', emailText: 'Boletim oficial' })
     });
   });
   await page.route('**/api/intimations/email', async route => {
@@ -362,7 +476,7 @@ try {
   assert.ok(renderSummary.rows > 0, 'A inbox deve renderizar publicações.');
   assert.equal(renderSummary.rows, renderSummary.filtered, 'Inbox e lista filtrada devem usar a mesma implementação.');
   assert.equal(renderSummary.untreatedMetric, renderSummary.untreatedStore, 'Métrica da feature deve refletir o Store.');
-  assert.equal(renderSummary.dashboardMetric, renderSummary.untreatedStore, 'Dashboard deve consumir a contagem canônica da feature.');
+  assert.equal(renderSummary.dashboardMetric, renderSummary.untreatedStore, 'Dashboard deve consumir a contagem oficial da feature.');
 
   await page.locator('#inboxList .inbox-row').first().click();
   await page.locator('#intimationDetail .detail-header').waitFor();
@@ -399,7 +513,7 @@ try {
   assert.equal(batchRequests.length, 0, 'Abrir modal batch não pode enviar requisição.');
   await page.fill('#emailTargetAddress', 'boletim@example.test');
   await page.click('#btnSendEmailDirect');
-  await page.locator('#emailPreviewContainer').getByText('Boletim canônico').waitFor();
+  await page.locator('#emailPreviewContainer').getByText('Boletim oficial').waitFor();
   assert.equal(batchRequests.length, 1, 'Clique explícito deve enviar uma requisição batch.');
   assert.deepEqual(Object.keys(batchRequests[0]).sort(), ['publicationIds', 'recipient']);
   assert.ok(batchRequests[0].publicationIds.every(value => typeof value === 'string'), 'Batch deve enviar apenas identificadores.');
@@ -426,16 +540,16 @@ try {
       detail: document.querySelector('#intimationDetail')?.textContent || ''
     };
   });
-  assert.equal(globalSelection.selected, 'int-demo-2', 'Global Search deve selecionar a publicação pelo estado canônico da feature.');
+  assert.equal(globalSelection.selected, 'int-demo-2', 'Global Search deve selecionar a publicação pelo estado consolidado da feature.');
   assert.equal(globalSelection.activeId, 'int-demo-2', 'A linha ativa deve acompanhar a seleção feita pela Global Search.');
-  assert.equal(globalSelection.unread, false, 'Selecionar pela Global Search deve preservar a política canônica de leitura.');
+  assert.equal(globalSelection.unread, false, 'Selecionar pela Global Search deve preservar a política oficial de leitura.');
   assert.match(globalSelection.detail, /Movimentação processual aguardando análise/i, 'O detalhe deve corresponder à publicação selecionada na busca.');
 
   await page.route('**/api/intimations/int-demo-2/treatment', async route => {
     await route.fulfill({
       status: 409,
       contentType: 'application/json',
-      body: JSON.stringify({ message: 'Conflito canônico de revisão' })
+      body: JSON.stringify({ message: 'Conflito oficial de revisão' })
     });
   });
   const conflictBefore = await page.evaluate(() => {
@@ -443,18 +557,27 @@ try {
     return { revision: window.Atrium.Store.revision, treatmentStatus: item?.treatmentStatus ?? null };
   });
   await page.evaluate(() => window.portalApp.applyTreatmentAction('int-demo-2', 'start_review'));
-  const conflictAfter = await page.evaluate(() => {
-    const item = window.Atrium.Store.state.intimations.find(record => record.id === 'int-demo-2');
+  const conflictAfter = await page.evaluate(async () => {
+    const store = window.Atrium.Store;
+    const item = store.state.intimations.find(record => record.id === 'int-demo-2');
+    // A ressincronização é suave: relê o estado consolidado em vez de recarregar a página.
+    const response = await fetch('/api/state', { headers: { Accept: 'application/json' } });
+    const server = await response.json().catch(() => ({}));
     return {
-      revision: window.Atrium.Store.revision,
+      revision: store.revision,
+      serverRevision: server.revision || null,
       treatmentStatus: item?.treatmentStatus ?? null,
       reloads: globalThis.__publicationConflictReloads
     };
   });
-  assert.equal(conflictAfter.revision, conflictBefore.revision, '409 não pode adotar revision fabricada no frontend.');
+  assert.equal(
+    conflictAfter.revision,
+    conflictAfter.serverRevision,
+    '409 ressincroniza o estado consolidado (revisão do servidor), sem inventar revisão no frontend.'
+  );
   assert.equal(conflictAfter.treatmentStatus, conflictBefore.treatmentStatus, '409 não pode aplicar transição local de tratamento.');
-  assert.equal(conflictAfter.reloads, 1, 'O wiring real do portal deve agendar exatamente um reload canônico após 409.');
-  await page.locator('#toastRegion .toast.warning', { hasText: 'Conflito canônico de revisão' }).waitFor();
+  assert.equal(conflictAfter.reloads, 0, 'A ressincronização suave NÃO recarrega a página (o operador apontou o reload como travamento).');
+  await page.locator('#toastRegion .toast.warning', { hasText: 'Conflito oficial de revisão' }).waitFor();
   assert.deepEqual(pageErrors, [], `A feature gerou pageerror: ${pageErrors.join(' | ')}`);
   await context.close();
 } finally {

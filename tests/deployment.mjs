@@ -24,12 +24,14 @@ async function findAvailablePort() {
 
 async function runDeploymentTests() {
   console.log('=== TESTES DE DEPLOYMENT & CONFORMIDADE COM NUVEM (RENDER / PROD) ===\n');
-  console.log('0. Validando recusa de boot cloud sem configuração explícita...');
+  console.log('0. Validando recusa de boot em produção sem configuração cloud...');
   const invalidCloud = spawn(process.execPath, ['server.mjs'], {
     cwd: ROOT,
     env: {
       ...process.env,
-      JURISFLOW_CLOUD_MODE: 'true',
+      NODE_ENV: 'production',
+      JURISFLOW_CLOUD_MODE: '',
+      KELLER_CLOUD_MODE: '',
       AUTH_SESSION_SECRET: '',
       AUTH_ENCRYPTION_KEY: '',
       SETUP_BOOTSTRAP_TOKEN: '',
@@ -65,7 +67,8 @@ async function runDeploymentTests() {
       HOST: '127.0.0.1',
       NODE_ENV: 'production',
       COOKIE_SECURE: 'true',
-      JURISFLOW_CLOUD_MODE: 'true',
+      JURISFLOW_CLOUD_MODE: '',
+      KELLER_CLOUD_MODE: '',
       KELLER_SKIP_COLLECTOR_ENV: 'true',
       KELLER_DATA_DIR: dataDirectory,
       JURISFLOW_DATA_DIR: dataDirectory,
@@ -105,7 +108,7 @@ async function runDeploymentTests() {
 
     const publicStatus = await (await fetch(`${baseUrl}/api/auth/status`)).json();
     assert.equal(publicStatus.bootstrapRequired, true, 'Frontend deve saber que o primeiro setup exige token de ativação.');
-    assert.equal(publicStatus.setupMfaRequired, true, 'Primeiro administrador cloud deve ativar MFA.');
+    assert.equal(publicStatus.setupMfaRequired, false, 'MFA é opcional por decisão do operador (AGENTS.md §32).');
     assert.equal(publicStatus.workspaceRegistrationEnabled, false, 'Cadastro público cloud deve permanecer fechado sem opt-in.');
 
     // 2. Validar bloqueio de bootstrap sem token secreto
@@ -140,13 +143,8 @@ async function runDeploymentTests() {
     assert.ok(setupData.setupToken, 'Deve retornar setupToken assinado');
     assert.ok(setupData.manualSecret, 'Deve retornar chave TOTP Base32');
 
-    const skipMfaRes = await fetch(`${baseUrl}/api/auth/setup/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ setupToken: setupData.setupToken, skipMfa: true })
-    });
-    assert.equal(skipMfaRes.status, 400, 'Cloud não pode criar o primeiro administrador sem MFA.');
-
+    // MFA é opcional por decisão do operador: o caminho sem MFA existe e não é testado aqui
+    // para não consumir o token de ativação usado no fluxo com TOTP abaixo.
     const totpCode = generateTotp(setupData.manualSecret);
     const verifyRes = await fetch(`${baseUrl}/api/auth/setup/verify`, {
       method: 'POST',
@@ -162,7 +160,7 @@ async function runDeploymentTests() {
     console.log('✓ Administrador autenticado com MFA/TOTP e sessão segura.');
 
     // 4. Validar bloqueio de recursos locais do Windows na nuvem (Cloud Mode)
-    console.log('\n4. Validando bloqueio de rotas Windows/PJe/A1 em Cloud Mode (JURISFLOW_CLOUD_MODE=true)...');
+    console.log('\n4. Validando bloqueio de rotas legadas sem instalação end-user em produção cloud-only...');
     const a1Attempt = await fetch(`${baseUrl}/api/integrations/judicial/certificate`, {
       method: 'POST',
       headers: {
@@ -193,10 +191,11 @@ async function runDeploymentTests() {
         'X-CSRF-Token': csrfToken
       }
     });
-    assert.equal(syncAttempt.status, 200, 'Sync na nuvem deve retornar 200 com mensagem orientativa');
+    assert.equal(syncAttempt.status, 503, 'Rota legada sem coleta deve falhar explicitamente na nuvem');
     const syncData = await syncAttempt.json();
-    assert.equal(syncData.cloud, true, 'Sync deve indicar execução no dispositivo seguro');
-    console.log('✓ Operações Windows / A1 restritas ao agente local (503 Service Unavailable na nuvem).');
+    assert.equal(syncData.ok, false, 'Rota legada não pode afirmar sucesso sem iniciar coleta');
+    assert.equal(syncData.cloud, true, 'Resposta deve declarar modo nuvem sem inventar execução');
+    console.log('✓ Operações legadas A1 bloqueadas na nuvem (503), sem exigir instalação end-user.');
 
     // 5. Validar que arquivos secretos não vazam via rotas estáticas
     console.log('\n5. Validando proteção estática contra vazamento de arquivos de configuração e segredos...');

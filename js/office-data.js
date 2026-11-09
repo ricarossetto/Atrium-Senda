@@ -310,6 +310,50 @@
     { name: 'TRÂNSITO EM JULGADO / PROCESSO FINALIZADO', phase: 'Judicial', classification: 'Fim' }
   ];
 
+  const taskAreas = [
+    'Judicial',
+    'Execução',
+    'Administrativo',
+    'Comercial',
+    'Marketing',
+    'Financeiro/RH',
+    'Consultoria',
+    'Cível',
+    'Previdenciário',
+    'Trabalhista',
+    'Tributário',
+    'Família',
+    'Consumidor',
+    'Criminal',
+    'Serviços',
+    'Precatório',
+    'Geral'
+  ];
+
+  const taskAreaByPhase = {
+    'negociacao': 'Comercial',
+    'judicial': 'Judicial',
+    'recursal': 'Judicial',
+    'execucao': 'Execução',
+    'execucao/cobranca': 'Execução',
+    'administrativo': 'Administrativo',
+    'consultoria': 'Consultoria',
+    'marketing': 'Marketing',
+    'rh/financeiro': 'Financeiro/RH',
+    'todas': 'Geral'
+  };
+
+  const normalizeTaskAreaKey = value => String(value ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().trim();
+
+  const deriveTaskArea = phase => taskAreaByPhase[normalizeTaskAreaKey(phase)] || 'Geral';
+
+  const resolveTaskArea = definition => {
+    const explicit = String(definition?.area ?? '').trim();
+    return explicit || deriveTaskArea(definition?.phase);
+  };
+
   const origins = [
     { name: 'Indicação de Cliente' },
     { name: 'Indicação de Parceiro / Correspondente' },
@@ -377,7 +421,7 @@
   const integrations = [
     { name: 'DJEN / CNJ Diário Eletrônico', status: 'Ativo', method: 'API Oficial Pública' },
     { name: 'DataJud / CNJ Metadados', status: 'Ativo', method: 'API Oficial Pública' },
-    { name: 'Google Gemini Flash IA', status: 'Ativo', method: 'REST API' },
+    { name: 'Assistente de IA (multi-provedor)', status: 'Ativo', method: 'REST API' },
     { name: 'Webcal / Google Agenda', status: 'Ativo', method: 'Sincronização iCal' },
     { name: 'Portais PJe / eproc (A1 + TOTP)', status: 'Preparado', method: 'Agente Local Seguro' },
     { name: 'INPI / RPI Marcas', status: 'Ativo', method: 'Varredura Semanal RPI (Terças)', syncFrequency: 'weekly', notes: 'Monitoramento semanal de marcas na Revista da Propriedade Industrial' }
@@ -386,6 +430,10 @@
   return {
     actionGroups,
     taskDefinitions,
+    taskAreas,
+    taskAreaByPhase,
+    deriveTaskArea,
+    resolveTaskArea,
     actionTypes,
     stages,
     origins,

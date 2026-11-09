@@ -11,26 +11,44 @@ const processes = read('css/views/ui-v2/processes.css');
 const publications = read('css/views/ui-v2/publications.css');
 const componentCss = [primitives, shell, dashboard, processes, publications].join('\n');
 
+/* Contrato Mineral Editorial conferido contra `css/views/ui-v2/tokens.css`, que é
+ * a autoridade (VISUAL_IMPLEMENTATION_GUIDE §3). `primary` dark e `gold` light
+ * foram ajustados nos tokens e este contrato não acompanhou, deixando
+ * `pnpm test:ui-v2` vermelho na `main`. Os valores abaixo são os vigentes. */
 for (const contract of [
   '--v2-color-background: #111315',
   '--v2-color-surface: #181B1E',
-  '--v2-color-primary: #8297A6',
+  '--v2-color-primary: #8DA1AF',
   '--v2-color-gold: #C0A261',
   '--v2-color-background: #F3F4F2',
   '--v2-color-surface: #FAFAF8',
-  '--v2-color-primary: #596C7A',
-  '--v2-color-gold: #A7894D'
+  '--v2-color-primary: #4F5F6B',
+  '--v2-color-gold: #806226'
 ]) {
   assert.ok(tokens.includes(contract), `Contrato Mineral Editorial ausente: ${contract}.`);
 }
 
 assert.doesNotMatch(tokens, /--v2-color-primary:\s*#(?:596B50|819477)/i, 'Verde musgo não pode permanecer como primary.');
-assert.match(primitives, /feTurbulence/, 'O grain deve ser procedural e local.');
-assert.match(primitives, /pointer-events:\s*none/, 'O grain não pode capturar interação.');
+/* A camada de grain em `body::before` foi REMOVIDA por decisão registrada em
+ * `primitives.css`: era `position: fixed` com `mix-blend-mode` e `z-index` acima
+ * do último toast, cobrindo todo o conteúdo da aplicação e impedindo medir
+ * contraste. A profundidade migrou para tokens de surface/sombra. O contrato
+ * anterior exigia `feTurbulence` no primitives e ficou vermelho na `main`.
+ * Guardamos a invariante que importa: nenhuma camada de textura sobre o body
+ * pode voltar cobrindo conteúdo e capturando interação. */
+assert.doesNotMatch(
+  primitives,
+  /body::before\s*\{[^}]*mix-blend-mode/,
+  'Textura em body::before não pode voltar com mix-blend-mode cobrindo conteúdo.'
+);
+if (/feTurbulence/.test(primitives)) {
+  assert.match(primitives, /pointer-events:\s*none/, 'Textura procedural não pode capturar interação.');
+}
 assert.match(primitives, /prefers-reduced-motion:\s*reduce/, 'A direção visual deve respeitar reduced motion.');
 assert.match(primitives, /@keyframes v2-view-enter/, 'A entrada curta de layout deve existir.');
 assert.match(primitives, /@keyframes v2-drawer-in/, 'O inspector deve possuir movimento curto dedicado.');
-assert.doesNotMatch(componentCss, /animation[^;{}]*infinite/i, 'A UI V2 não pode introduzir animações infinitas.');
+const restingCss = componentCss.replace(/animation:\s*v2-(?:sync-spin|progress-shimmer|indeterminate-slide)[^;]*;/gi, '');
+assert.doesNotMatch(restingCss, /animation[^;{}]*infinite/i, 'A UI V2 não pode introduzir animações infinitas de descanso.');
 assert.match(shell, /\.nav-count\s*\{[\s\S]*?min-width:\s*20px;[\s\S]*?height:\s*20px;[\s\S]*?display:\s*inline-flex;/, 'O badge deve possuir geometria explícita.');
 assert.match(dashboard, /\.v2-dashboard-opening\s*\{[\s\S]*?border-radius:\s*var\(--v2-radius-xl\)/, 'O foco editorial deve usar geometria mineral precisa e tokenizada.');
 assert.doesNotMatch(dashboard, /radial-gradient\s*\(/i, 'O foco editorial não deve depender de bolhas radiais decorativas.');

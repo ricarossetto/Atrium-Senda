@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { generateTotp } from '../lib/security.mjs';
 import { postJson, startTestServer } from './helpers.mjs';
+import { serverSourceText } from './server-source.mjs';
 
 console.log('\n=== MIGRAÇÕES DE SEGURANÇA: IA LEGADA E FEEDBACK LOCAL ===\n');
 
@@ -134,7 +135,9 @@ try {
   const aiEnvelope = JSON.parse(aiSecretsText);
   assert.equal(aiEnvelope.algorithm, 'aes-256-gcm');
   assert.doesNotMatch(aiSecretsText, new RegExp(AI_MARKER));
-  assert.equal(JSON.parse(decrypt(aiEnvelope.encrypted, successContext.encryptionKey)).geminiApiKey, AI_MARKER);
+  const migratedSecrets = JSON.parse(decrypt(aiEnvelope.encrypted, successContext.encryptionKey));
+  assert.equal(migratedSecrets.providers?.gemini?.apiKey, AI_MARKER);
+  assert.equal(migratedSecrets.activeProvider, 'gemini');
   if (process.platform !== 'win32') assert.equal((await stat(aiSecretsFile)).mode & 0o777, 0o600);
 
   const migratedEnvelopeBeforeGet = await readFile(successContext.appStateFile, 'utf8');
@@ -198,7 +201,7 @@ try {
   assert.equal(feedbackEntries.some(entry => entry.id === 'legacy-99'), false);
   assert.doesNotMatch(feedbackText, /Feedback legado sintético|Novo feedback após migração legada/);
 
-  const serverSource = await readFile(new URL('../server.mjs', import.meta.url), 'utf8');
+  const serverSource = serverSourceText;
   const feedbackBlock = serverSource.slice(
     serverSource.indexOf("url.pathname === '/api/system/feedback'"),
     serverSource.indexOf("url.pathname === '/api/events'", serverSource.indexOf("url.pathname === '/api/system/feedback'"))

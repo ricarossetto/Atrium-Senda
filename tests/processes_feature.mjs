@@ -18,7 +18,7 @@ for (const forbiddenConcern of ['renderFinancial', 'handleFinancialEntrySubmit',
   assert.equal(processesSource.includes(forbiddenConcern), false, `Processes não pode assumir ${forbiddenConcern}.`);
 }
 assert.match(processesSource, /String\(item\.number \|\| ''\)\.includes\('\.8\.21\.'\) \|\| String\(item\.court \|\| ''\)\.toUpperCase\(\)\.includes\('TJRS'\)/, 'Detecção histórica TJRS deve aceitar CNJ ou nome do tribunal.');
-assert.match(portalSource, /import \{ createProcessesFeature \} from '\.\/features\/processes\.js';/);
+assert.match(portalSource, /import \{ createProcessesFeature \} from '\.\/features\/processes\.js(?:\?v=[^']*)?';/);
 assert.equal((portalSource.match(/createProcessesFeature\(/g) || []).length, 1, 'Portal deve instanciar Processes uma única vez.');
 assert.equal(portalSource.includes('processSort:'), false, 'Sort de Processos não pode manter shadow state no App.');
 assert.equal(portalSource.includes("secureFetch('/api/tjrs/consult'"), false, 'TJRS concreto não pode permanecer no portal.');
@@ -26,7 +26,7 @@ assert.equal(portalSource.includes('data-tjrs-consult'), false, 'Markup e listen
 assert.match(portalSource, /renderProcesses\(query = ''\) \{\s*return getProcessesFeature\(\)\.render\(query\);\s*\}/);
 assert.match(portalSource, /openProcessModal\(defaults = \{\}\) \{\s*return getProcessesFeature\(\)\.openProcessModal\(defaults\);\s*\}/);
 assert.match(portalSource, /modalMode\.mode === 'process'\) \{\s*const savedProcess = getProcessesFeature\(\)\.saveProcess\(data, this\.modalMode\.defaults\);\s*if \(!savedProcess\) return;\s*if \(!await getProcessesFeature\(\)\.persistAccessKey\(savedProcess\)\) return;/);
-assert.match(portalSource, /secureFetch: \(\.\.\.args\) => window\.KellerAuth\.secureFetch\(\.\.\.args\)/, 'Wiring deve preservar KellerAuth.secureFetch com contexto seguro.');
+assert.match(portalSource, /secureFetch: \(\.\.\.args\) => window\.(?:AtriumAuth|KellerAuth)\.secureFetch\(\.\.\.args\)/, 'Wiring deve usar o cliente autenticado oficial ou seu alias de compatibilidade.');
 
 const listenerMap = { newProcessButton: [], processSearch: [] };
 const fakeElements = {
@@ -36,9 +36,12 @@ const fakeElements = {
 const unitAudits = [];
 const unitStore = {
   revision: 'unit-revision-1',
+  flushResult: true,
   state: {
+    settings: { hasA1Certificate: false },
     processes: [{ id: 'unit-process', number: '5000000-00.2026.8.21.0001', courtUnit: 'Vara Unitária' }],
-    configuration: { actionTypes: [], actionGroups: [] }
+    configuration: { actionTypes: [], actionGroups: [] },
+    audit: []
   },
   upsert(collection, record) {
     const index = this.state[collection].findIndex(item => item.id === record.id);
@@ -46,7 +49,14 @@ const unitStore = {
     else this.state[collection].push(record);
     return record;
   },
-  audit(action, detail) { unitAudits.push({ action, detail }); }
+  audit(action, detail) {
+    const entry = { id: `unit-audit-${unitAudits.length + 1}`, action, detail };
+    unitAudits.push({ action, detail });
+    this.state.audit = [...(this.state.audit || []), entry];
+    return entry;
+  },
+  save() {},
+  async flush() { return this.flushResult; }
 };
 let unitOpenCount = 0;
 const unitRenders = [];
@@ -97,7 +107,7 @@ assert.deepEqual(unitFeature.handleSort('lastMovementAt'), { field: 'lastMovemen
 assert.deepEqual(unitRenders.slice(-3), ['sort preservado', 'sort preservado', 'sort preservado']);
 
 const unitCreated = unitFeature.saveProcess({
-  number: '5001111-00.2026.8.21.0001', client: 'Cliente Unitário', feePercentage: '30', feeAmount: '1500',
+  number: '5001111-61.2026.8.21.0001', client: 'Cliente Unitário', feePercentage: '30', feeAmount: '1500',
   feeMonthly: '', secrecy: 'true', lastMovement: 'Movimento unitário', lastMovementAt: '2026-08-28'
 }, {});
 assert.ok(unitCreated.id.startsWith('proc-'));
@@ -106,7 +116,7 @@ assert.equal(unitCreated.feePercentage, 30);
 assert.equal(unitCreated.feeAmount, 1500);
 assert.equal(unitCreated.feeMonthly, null);
 assert.equal(unitCreated.secrecy, true);
-assert.deepEqual(unitAudits.at(-1), { action: 'Processo cadastrado', detail: '5001111-00.2026.8.21.0001 · Cliente Unitário' });
+assert.deepEqual(unitAudits.at(-1), { action: 'Processo cadastrado', detail: '5001111-61.2026.8.21.0001 · Cliente Unitário' });
 const unitEdited = unitFeature.saveProcess({
   number: unitCreated.number, client: unitCreated.client, feePercentage: '', feeAmount: '', feeMonthly: '400', secrecy: 'false'
 }, { ...unitCreated, externalId: 'external-unit', unknownField: 'preservado', source: 'DataJud' });
@@ -117,7 +127,30 @@ assert.equal(unitEdited.source, 'DataJud');
 assert.equal(unitEdited.feePercentage, null);
 assert.equal(unitEdited.feeMonthly, 400);
 assert.equal(unitEdited.secrecy, false);
-assert.deepEqual(unitAudits.at(-1), { action: 'Processo atualizado', detail: '5001111-00.2026.8.21.0001 · Cliente Unitário' });
+assert.deepEqual(unitAudits.at(-1), { action: 'Processo atualizado', detail: '5001111-61.2026.8.21.0001 · Cliente Unitário' });
+
+// CNJ: DV conferido no cadastro manual, duplicidade bloqueada, formato oficial e legado livre.
+const dvRejected = unitFeature.saveProcess({ number: '5001111-00.2026.8.21.0001', client: 'Cliente DV' }, {});
+assert.equal(dvRejected, null, 'Número novo com DV inválido deve ser recusado.');
+assert.deepEqual(unitToasts.at(-1), { message: 'Dígito verificador do número CNJ não confere. Use o número sugerido no formulário.', type: 'error' });
+const duplicateRejected = unitFeature.saveProcess({ number: '5001111-61.2026.8.21.0001', client: 'Cliente Duplicado' }, {});
+assert.equal(duplicateRejected, null, 'Número CNJ duplicado deve ser recusado.');
+assert.match(unitToasts.at(-1).message, /já está cadastrado/);
+const normalizedSave = unitFeature.saveProcess({ number: '50022220620265040001', client: 'Cliente Normalizado' }, {});
+assert.equal(normalizedSave.number, '5002222-06.2026.5.04.0001', 'Número de 20 dígitos deve ser normalizado ao formato oficial.');
+const legacySave = unitFeature.saveProcess({ number: '029/1.12.0001234-5', client: 'Cliente Legado' }, {});
+assert.equal(legacySave.number, '029/1.12.0001234-5', 'Formato antigo permanece livre.');
+const legacyEdit = unitFeature.saveProcess({ number: legacySave.number, client: legacySave.client, feeMonthly: '100' }, legacySave);
+assert.equal(legacyEdit.feeMonthly, 100, 'Edição de dado legado sem alterar o número não é bloqueada.');
+
+// Vínculo de número original: normalização, deduplicação e limite.
+const linkedProcess = unitFeature.saveProcess({
+  number: '5003333-67.2026.6.21.0001', client: 'Cliente Vínculo',
+  originNumbers: '5000000-42.2026.8.21.0001; 5000000-42.2026.8.21.0001; 029/1.12.0001234-5'
+}, {});
+assert.deepEqual(linkedProcess.originNumbers, ['5000000-42.2026.8.21.0001', '029/1.12.0001234-5'], 'Números anteriores devem ser normalizados, deduplicados e preservar formato antigo.');
+const clearedLink = unitFeature.saveProcess({ number: linkedProcess.number, client: linkedProcess.client, originNumbers: '' }, linkedProcess);
+assert.deepEqual(clearedLink.originNumbers, [], 'Editar com campo vazio deve limpar os números anteriores.');
 
 fakeElements['field-accessKey'] = { value: 'CHAVE-PROCESSUAL-SINTETICA' };
 const keyedProcess = unitFeature.saveProcess({
@@ -134,6 +167,29 @@ assert.deepEqual(JSON.parse(keyRequest.options.body), {
   chaveAcesso: 'CHAVE-PROCESSUAL-SINTETICA'
 });
 delete fakeElements['field-accessKey'];
+
+// Andamento manual append-only: entra no array principal, preserva o anterior e não rebaixa o último.
+const manualProcess = unitStore.state.processes[0];
+const manualMovement = await unitFeature.appendMovement('unit-process', { date: '2026-09-05', description: 'Petição protocolada sintética', author: 'Advogada Teste' });
+assert.equal(manualMovement.source, 'Interna');
+assert.equal(manualMovement.manual, true);
+assert.equal(manualMovement.date, '2026-09-05');
+assert.equal(manualMovement.name, 'Petição protocolada sintética');
+assert.equal(manualProcess.movements.length, 1);
+assert.equal(manualProcess.lastMovement, 'Petição protocolada sintética');
+assert.equal(manualProcess.lastMovementAt, '2026-09-05');
+assert.deepEqual(unitAudits.at(-1), { action: 'Andamento manual registrado', detail: '5000000-00.2026.8.21.0001 · Petição protocolada sintética' });
+await unitFeature.appendMovement('unit-process', { date: '2026-09-04', description: 'Andamento anterior sintético' });
+assert.equal(manualProcess.movements.length, 2, 'Append preserva o andamento anterior.');
+assert.equal(manualProcess.lastMovement, 'Petição protocolada sintética', 'Andamento mais antigo não rebaixa o último andamento.');
+unitStore.flushResult = false;
+const failedMovement = await unitFeature.appendMovement('unit-process', { date: '2026-09-06', description: 'Falha sintética de persistência' });
+assert.equal(failedMovement, null);
+assert.equal(manualProcess.movements.length, 2, 'Falha de flush restaura o array anterior.');
+assert.equal(manualProcess.lastMovement, 'Petição protocolada sintética');
+assert.equal(manualProcess.lastMovementAt, '2026-09-05');
+assert.equal(unitStore.state.audit.some(entry => entry.detail.includes('Falha sintética')), false, 'Auditoria de falha não pode permanecer.');
+unitStore.flushResult = true;
 
 const unitButton = { dataset: { tjrsConsult: '5000000-00.2026.8.21.0001' }, disabled: false, textContent: 'Atualizar TJRS' };
 await unitFeature.consultTjrs(unitButton);
@@ -478,14 +534,16 @@ try {
   await page.click('#newProcessButton');
   await page.locator('#modalTitle', { hasText: 'Cadastrar processo' }).waitFor();
   const expectedFields = [
-    'number', 'oldNumber', 'nb', 'client', 'clientPosition', 'opposingParty', 'actionGroup', 'actionType',
+    'number', 'oldNumber', 'originNumbers', 'nb', 'client', 'clientPosition', 'opposingParty', 'actionGroup', 'actionType',
     'judicialPhase', 'risk', 'stage', 'protocol', 'caseFolder', 'court', 'county', 'courtUnit', 'responsible',
+    // Identidade oculta do combobox de responsáveis (mesmo contrato do assigneeUserId em Tarefas).
+    'responsibleUserId',
     'registeredAt', 'lastMovementAt', 'lastMovement', 'feeType', 'feePercentage', 'feeAmount', 'feeMonthly',
     'feeStatus', 'requisitionType', 'requisitionAmount', 'requisitionBank', 'requisitionStatus', 'feeNotes',
     'secrecy', 'monitoring', 'notes'
   ];
   assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)), expectedFields);
-  await page.fill('#field-number', '5007777-00.2026.4.04.0001');
+  await page.fill('#field-number', '5007777-85.2026.4.04.0001');
   await page.fill('#field-client', 'Cliente CRUD Processos');
   await page.fill('#field-court', 'TRF4');
   await page.fill('#field-county', 'Seção Sintética CRUD');
@@ -501,7 +559,7 @@ try {
   await page.selectOption('#field-monitoring', 'active');
   await page.click('#modalForm button[type="submit"]');
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
-  const created = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.number === '5007777-00.2026.4.04.0001'));
+  const created = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.number === '5007777-85.2026.4.04.0001'));
   assert.ok(created?.id?.startsWith('proc-'));
   assert.equal(created.source, 'Interna');
   assert.equal(created.lastMovement, 'Movimento inicial sintético');
@@ -511,7 +569,7 @@ try {
   assert.equal(created.feeMonthly, 350);
   assert.equal(created.secrecy, true);
   assert.ok(Date.parse(created.updatedAt));
-  assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Processo cadastrado' && item.detail.includes('5007777-00.2026.4.04.0001'))), true);
+  assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Processo cadastrado' && item.detail.includes('5007777-85.2026.4.04.0001'))), true);
 
   await page.locator(`#processTableBody [data-process-id="${created.id}"]`).click();
   await page.fill('#field-stage', 'Etapa editada Fase 9');
@@ -528,13 +586,13 @@ try {
   assert.equal(edited.feeAmount, null);
   assert.equal(edited.feeMonthly, 350);
   assert.equal(edited.secrecy, true);
-  assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Processo atualizado' && item.detail.includes('5007777-00.2026.4.04.0001'))), true);
+  assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Processo atualizado' && item.detail.includes('5007777-85.2026.4.04.0001'))), true);
 
-  await page.locator('#globalSearch').fill('5007777-00.2026.4.04.0001');
+  await page.locator('#globalSearch').fill('5007777-85.2026.4.04.0001');
   await page.locator('#globalSearchPalette:not(.hidden)').waitFor();
   await page.locator(`[data-search-target="process"][data-search-id="${created.id}"]`).click();
   await page.locator('#view-processes.active').waitFor();
-  assert.equal(await page.locator('#processSearch').inputValue(), '5007777-00.2026.4.04.0001');
+  assert.equal(await page.locator('#processSearch').inputValue(), '5007777-85.2026.4.04.0001');
   assert.equal(await page.locator(`#processTableBody [data-process-id="${created.id}"]`).count(), 1);
 
   await page.evaluate(() => window.Atrium.App.switchView('dashboard'));
@@ -556,9 +614,9 @@ try {
   assert.equal(financeMutation.feePercentage, 35, 'Lançamento RPV deve preservar percentual contratual manual.');
   assert.equal(financeMutation.feeAmount, null, 'Lançamento RPV não pode fabricar honorário fixo.');
   assert.equal(financeMutation.requisitionStatus, 'aguardando_deposito');
-  assert.equal(financeMutation.feeType, 'misto', 'Lançamento RPV deve preservar enum canônico do contrato.');
+  assert.equal(financeMutation.feeType, 'misto', 'Lançamento RPV deve preservar enum oficial do contrato.');
   await page.evaluate(() => window.Atrium.App.switchView('processes'));
-  await page.locator('#processSearch').fill('5007777-00.2026.4.04.0001');
+  await page.locator('#processSearch').fill('5007777-85.2026.4.04.0001');
   await page.locator(`#processTableBody [data-process-id="${created.id}"] .fee-chip`, { hasText: '35% êxito' }).waitFor();
 
   await page.evaluate(() => window.Atrium.Store.flush());
@@ -581,3 +639,4 @@ try {
 }
 
 console.log('✓ Caracterização aprovada: pesquisa, sort, tabela, CRUD, resumo, TJRS e integrações externas.');
+process.exit(0);

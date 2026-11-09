@@ -65,6 +65,12 @@ try {
         return makeResponse(true, { configured: mode === 'configured' });
       }
       if (url === '/api/ai/configure') return makeResponse(true, { model: 'modelo-sintetico', message: 'Configuração sintética aceita' });
+      if (url === '/api/ai/providers') return makeResponse(true, {
+        active: 'gemini',
+        providers: [
+          { id: 'gemini', label: 'Google Gemini', kind: 'gemini', defaultModel: 'gemini-3.5-flash-lite', configured: true }
+        ]
+      });
       if (url === '/api/ai/chat') return makeResponse(true, { reply: markdownFixture, model: 'Gemini sintético' });
       throw new Error(`Endpoint inesperado: ${url}`);
     };
@@ -88,6 +94,8 @@ try {
 
     mode = 'configured';
     const secret = 'synthetic-gemini-key-000000000000';
+    App.openGeminiKeyModal();
+    await new Promise(resolve => setTimeout(resolve, 80));
     await App.saveGeminiKey(`  ${secret}  `);
     const configure = requests.find(item => item.url === '/api/ai/configure');
 
@@ -115,15 +123,32 @@ try {
     Store.state.contacts = [{ id: 'assistant-contact-v2', name: 'Cliente Contextual', contactRole: 'Cliente' }];
     App.renderAssistant();
     const contextSelect = document.getElementById('assistantContextSelect');
-    const contextOptionLabels = [...contextSelect.options].map(option => option.textContent);
+    const contextSearch = document.getElementById('assistantContextSearch');
+    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const searchContext = async query => {
+      contextSearch.focus();
+      contextSearch.value = query;
+      contextSearch.dispatchEvent(new Event('input', { bubbles: true }));
+      await wait(280);
+      const items = [...document.querySelectorAll('#assistantContextSearchResults .search-palette-item')];
+      return { items, labels: items.map(item => item.querySelector('strong')?.textContent || '') };
+    };
+    const paletteAll = await searchContext('');
+    const paletteByNumber = await searchContext('5000000');
+    paletteByNumber.items[0]?.click();
+    await wait(30);
+    const processSelectedKey = contextSelect.value;
+    const processSelectedLabel = contextSearch.value;
+    const sources = [...document.querySelectorAll('#assistantV2ContextSources span')].map(element => element.textContent);
+    await App.sendAiMessage('Analise o processo selecionado.');
+    const processContext = { payload: requests.findLast(item => item.url === '/api/ai/chat').body.context, sources };
     const selectAndSend = async (key, message) => {
       contextSelect.value = key;
       contextSelect.dispatchEvent(new Event('change', { bubbles: true }));
-      const sources = [...document.querySelectorAll('#assistantV2ContextSources span')].map(element => element.textContent);
+      const sourceList = [...document.querySelectorAll('#assistantV2ContextSources span')].map(element => element.textContent);
       await App.sendAiMessage(message);
-      return { payload: requests.findLast(item => item.url === '/api/ai/chat').body.context, sources };
+      return { payload: requests.findLast(item => item.url === '/api/ai/chat').body.context, sources: sourceList };
     };
-    const processContext = await selectAndSend('process:assistant-process-v2', 'Analise o processo selecionado.');
     const documentContext = await selectAndSend('document:assistant-document-v2', 'Analise o documento selecionado.');
     const contactContext = await selectAndSend('contact:assistant-contact-v2', 'Resuma o contexto do cliente selecionado.');
 
@@ -150,7 +175,10 @@ try {
       promptBridge,
       contextText: initialContextText,
       contextHidden: document.getElementById('assistantV2Context').hidden,
-      contextOptionLabels,
+      paletteAll: paletteAll.labels,
+      paletteByNumber: paletteByNumber.labels,
+      processSelectedKey,
+      processSelectedLabel,
       processContext,
       documentContext,
       contactContext,
@@ -159,13 +187,13 @@ try {
   }, MARKDOWN_FIXTURE);
 
   assert.deepEqual(result.statuses, {
-    configured: { configured: true, chip: 'Chave Ativa', banner: 'none', v2: 'Gemini configurado' },
+    configured: { configured: true, chip: 'Chave Ativa', banner: 'none', v2: 'Provedor de IA configurado' },
     unconfigured: { configured: false, chip: 'Chave não configurada', banner: 'block', v2: 'Configuração necessária' },
     failure: { configured: false, chip: 'Chave não configurada', banner: 'block', v2: 'Configuração necessária' }
   });
   assert.equal(result.shortRejected, true);
   assert.equal(result.shortRequests, 0);
-  assert.deepEqual(result.configure, { url: '/api/ai/configure', method: 'POST', body: { apiKey: 'synthetic-gemini-key-000000000000' } });
+  assert.deepEqual(result.configure, { url: '/api/ai/configure', method: 'POST', body: { apiKey: 'synthetic-gemini-key-000000000000', provider: 'gemini' } });
   assert.equal(result.secretInStore, false);
   assert.equal(result.secretInAudit, false);
   assert.deepEqual(result.guard, { requests: 0, open: true, history: 0 });
@@ -176,9 +204,11 @@ try {
   assert.equal(result.chatPayload.context.intimation.id, 'assistant-intimation-v2');
   assert.equal(result.contextHidden, false);
   assert.match(result.contextText, /0000000-00\.2026\.8\.21\.0000/);
-  assert.ok(result.contextOptionLabels.some(label => /5000000-00\.2026\.8\.21\.0001/.test(label)));
-  assert.ok(result.contextOptionLabels.includes('laudo-contextual.pdf'));
-  assert.ok(result.contextOptionLabels.includes('Cliente Contextual'));
+  assert.ok(result.paletteByNumber.some(label => /5000000-00\.2026\.8\.21\.0001/.test(label)), 'busca por número deve encontrar o processo');
+  assert.ok(result.paletteAll.includes('laudo-contextual.pdf'));
+  assert.ok(result.paletteAll.includes('Cliente Contextual'));
+  assert.equal(result.processSelectedKey, 'process:assistant-process-v2');
+  assert.equal(result.processSelectedLabel, '5000000-00.2026.8.21.0001');
   assert.deepEqual(result.processContext.payload, { process: { id: 'assistant-process-v2' } });
   assert.deepEqual(result.documentContext.payload, { document: { id: 'assistant-document-v2' } });
   assert.ok(result.documentContext.sources.includes('Dados do sistema') && result.documentContext.sources.includes('Texto extraído'));
@@ -187,7 +217,7 @@ try {
   assert.equal(result.scripts, 0);
   assert.deepEqual(result.historyTail.map(item => item.role), ['user', 'assistant']);
   assert.deepEqual(result.promptBridge, { value: 'PROMPT EXTERNO SINTÉTICO — NÃO ENVIAR', requests: 0 });
-  assert.deepEqual(result.endpoints.sort(), ['/api/ai/chat', '/api/ai/configure', '/api/ai/status']);
+  assert.deepEqual(result.endpoints.sort(), ['/api/ai/chat', '/api/ai/configure', '/api/ai/jev', '/api/ai/providers', '/api/ai/status']);
   assert.deepEqual(pageErrors, []);
   await context.close();
 } finally {

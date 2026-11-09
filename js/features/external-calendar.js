@@ -25,7 +25,21 @@ export function createExternalCalendarFeature({
         if (event.target === byId('calendarConfigBackdrop')) this.requestClose();
       });
       byId('calendarConfigForm')?.addEventListener('submit', event => this.submit(event));
+      this.refreshStatus();
       return true;
+    },
+
+    refreshStatus() {
+      const chip = byId('calendarIntegrationStatus');
+      if (!chip) return false;
+      const configured = Boolean(
+        store?.state?.settings?.calendarUrl
+        || store?.state?.settings?.externalCalendarUrl
+        || store?.state?.settings?.calendarConfigured
+      );
+      chip.textContent = configured ? 'Agenda configurada' : 'Não configurado — opcional';
+      chip.className = `status-chip ${configured ? 'connected' : 'muted'}`;
+      return configured;
     },
 
     open() {
@@ -89,25 +103,24 @@ export function createExternalCalendarFeature({
         const response = await secureFetch('/api/calendar/configure', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ calendarUrl })
+          body: JSON.stringify({ calendarUrl, revision: store?.revision ?? store?.state?.revision ?? null })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || 'Falha ao salvar configuração da agenda.');
 
-        store.state.settings.calendarUrl = calendarUrl;
-        store.state.settings.externalCalendarUrl = calendarUrl;
-        store.state.settings.calendarConfigured = true;
-        store.audit('Agenda externa configurada', `${data.imported || 0} compromissos sincronizados.`);
-        store.save();
-        if (typeof store.flush === 'function' && !await store.flush()) {
-          throw new Error('Não foi possível persistir a configuração da agenda.');
-        }
+        store.state.settings.calendarUrl = data.calendarUrl ?? calendarUrl;
+        store.state.settings.externalCalendarUrl = data.externalCalendarUrl ?? data.calendarUrl ?? calendarUrl;
+        store.state.settings.calendarConfigured = data.calendarConfigured ?? Boolean(store.state.settings.calendarUrl);
+        if (data.revision) store.revision = data.revision;
+        this.refreshStatus();
 
+        const operationFailed = data.ok === false || Boolean(data.error);
         if (status) {
-          status.className = data.error ? 'calendar-sync-status error' : 'calendar-sync-status success';
+          status.className = operationFailed ? 'calendar-sync-status error' : 'calendar-sync-status success';
           status.textContent = data.message || 'Agenda sincronizada com sucesso!';
         }
-        showToast(data.message || 'Agenda configurada com sucesso!', data.error ? 'error' : 'success');
+        showToast(data.message || 'Agenda configurada com sucesso!', operationFailed ? 'error' : 'success');
+        if (operationFailed) return false;
         await onSyncAll();
         schedule(() => this.close(), 1200);
         return true;

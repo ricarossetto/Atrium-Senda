@@ -1,3 +1,5 @@
+import { findStrongDuplicateIndexes, pickKeeperIndex } from '../../js/core/contact-identity.js';
+
 const API_BASE = 'https://api-publica.datajud.cnj.jus.br';
 export const OFFICIAL_DEFAULT_KEY = 'cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==';
 const OFFICIAL_KEY_PAGE = 'https://datajud-wiki.cnj.jus.br/api-publica/acesso/';
@@ -8,6 +10,18 @@ const STATE_ALIASES = {
   '15': 'tjpb', '16': 'tjpr', '17': 'tjpe', '18': 'tjpi', '19': 'tjrj', '20': 'tjrn', '21': 'tjrs',
   '22': 'tjro', '23': 'tjrr', '24': 'tjsc', '25': 'tjse', '26': 'tjsp', '27': 'tjto'
 };
+
+// DataJud identifica os TREs pela UF (api_publica_tre-rs) e a Justiça Militar
+// estadual por tjmmg/tjmrs/tjmsp — códigos TR da Resolução CNJ 65/2008.
+// DF usa `tre-df`: a wiki oficial ainda lista `tre-dft`, mas o endpoint vivo
+// responde 200 em `tre-df` e index_not_found em `tre-dft` (verificado 20/09/2026).
+const TRE_ALIASES = {
+  '01': 'tre-ac', '02': 'tre-al', '03': 'tre-ap', '04': 'tre-am', '05': 'tre-ba', '06': 'tre-ce', '07': 'tre-df',
+  '08': 'tre-es', '09': 'tre-go', '10': 'tre-ma', '11': 'tre-mt', '12': 'tre-ms', '13': 'tre-mg', '14': 'tre-pa',
+  '15': 'tre-pb', '16': 'tre-pr', '17': 'tre-pe', '18': 'tre-pi', '19': 'tre-rj', '20': 'tre-rn', '21': 'tre-rs',
+  '22': 'tre-ro', '23': 'tre-rr', '24': 'tre-sc', '25': 'tre-se', '26': 'tre-sp', '27': 'tre-to'
+};
+const STATE_MILITARY_ALIASES = { '13': 'tjmmg', '21': 'tjmrs', '26': 'tjmsp' };
 
 export async function collectDatajud(portal, config, target, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
@@ -23,8 +37,12 @@ export async function collectDatajud(portal, config, target, options = {}) {
   let updated = 0;
   let partial = 0;
   let failed = 0;
+  // Motivo da falha, sem PII: separa "sem indice para este tribunal" de "rede/servidor"
+  // e de "chave rejeitada". Sem isso o painel so dizia "1 falha" e nao havia como agir.
+  const failureReasons = { alias: 0, forbidden: 0, server: 0, network: 0, other: 0 };
+  let restricted = 0;
 
-  if (!numbers.length) return { queried: 0, found, updated, partial, failed, refreshedKey, complete: true };
+  if (!numbers.length) return { queried: 0, found, updated, partial, failed, failureReasons, restricted, refreshedKey, complete: true };
   if (!apiKey && allowKeyRefresh(portal)) {
     apiKey = await fetchCurrentPublicKey(fetchImpl, portal).catch(() => OFFICIAL_DEFAULT_KEY);
     refreshedKey = true;
@@ -47,6 +65,7 @@ export async function collectDatajud(portal, config, target, options = {}) {
     const alias = aliasForProcess(number);
     if (!alias) {
       failed += 1;
+      failureReasons.alias += 1;
       continue;
     }
     try {
@@ -64,10 +83,15 @@ export async function collectDatajud(portal, config, target, options = {}) {
       const hits = Array.isArray(payload?.hits?.hits) ? payload.hits.hits.map(hit => hit?._source).filter(Boolean) : [];
       if (!hits.length) continue;
       const record = newestRecord(hits);
+      // Guarda de contrato (Res. 331/2020, art. 11; Res. 121/2010): o índice público
+      // não devolve processos com nível de sigilo > 0 (verificado: 0 de 14,4M no TJRS).
+      // Se algum dia devolver, o registro não entra no acervo, no digest nem na UI.
+      if (Number(record?.nivelSigilo ?? 0) > 0) { restricted += 1; continue; }
       found += 1;
       if (mergeDatajudRecord(record, number, alias, portal, config, target)) updated += 1;
-    } catch {
+    } catch (error) {
       failed += 1;
+      failureReasons[classifyDatajudFailure(error)] += 1;
     }
     if (Number(portal.requestSpacingMs || 150) > 0) await sleep(Number(portal.requestSpacingMs || 150));
   }
@@ -75,7 +99,17 @@ export async function collectDatajud(portal, config, target, options = {}) {
     process.stdout.write(`\r  DataJud: [████████████████████] 100% (${numbers.length}/${numbers.length}) concluído!          \n`);
   }
 
-  return { queried: numbers.length, found, updated, partial, failed, refreshedKey, complete: failed === 0 && partial === 0 };
+  return { queried: numbers.length, found, updated, partial, failed, failureReasons, restricted, refreshedKey, complete: failed === 0 && partial === 0 };
+}
+
+// Classifica a falha sem expor payload: apenas a categoria, para o painel explicar
+// o "N falha(s)" e permitir a acao certa (chave, rede, ou tribunal sem indice).
+export function classifyDatajudFailure(error) {
+  const message = String(error?.message || error || '').toLowerCase();
+  if (message.includes('rejeitou a chave') || message.includes('401') || message.includes('403')) return 'forbidden';
+  if (message.includes('429') || /http 5\d\d/.test(message)) return 'server';
+  if (/fetch failed|econn|enotfound|etimedout|timeout|aborted|network|socket/.test(message)) return 'network';
+  return 'other';
 }
 
 function renderProgressBar(current, total, width = 20) {
@@ -139,6 +173,10 @@ function mergeDatajudRecord(record, number, alias, portal, config, target) {
   const latestAt = toIso(latest.dataHora);
   const previousAt = toIso(existing?.lastMovementAt);
   const subject = (Array.isArray(record.assuntos) ? record.assuntos.map(item => item?.nome).filter(Boolean) : []).join(' · ');
+  const subjectCodes = (Array.isArray(record.assuntos) ? record.assuntos : [])
+    .map(item => item?.codigo)
+    .filter(value => value !== undefined && value !== null && value !== '')
+    .map(value => String(value));
   const court = normalizeText([record.tribunal, record.grau, record.orgaoJulgador?.nome].filter(Boolean).join(' · '));
   const movementText = normalizeText(latest.nome || '');
   const now = new Date().toISOString();
@@ -153,11 +191,28 @@ function mergeDatajudRecord(record, number, alias, portal, config, target) {
     monitoring: 'active',
     ...(court ? { court } : {}),
     ...(normalizeText(record.classe?.nome) ? { actionType: normalizeText(record.classe.nome) } : {}),
+    ...(record.classe?.codigo !== undefined && record.classe?.codigo !== null && record.classe?.codigo !== ''
+      ? { classCode: String(record.classe.codigo) }
+      : {}),
     ...(subject ? { subject } : {}),
+    ...(subjectCodes.length ? { subjectCodes } : {}),
+    ...(datajudFiledAt(record.dataAjuizamento) ? { filedAt: datajudFiledAt(record.dataAjuizamento) } : {}),
+    ...(processFormat(record.formato) ? { processFormat: processFormat(record.formato) } : {}),
+    ...(courtSystem(record.sistema) ? { courtSystem: courtSystem(record.sistema) } : {}),
+    ...(record.orgaoJulgador?.codigoMunicipioIBGE !== undefined && record.orgaoJulgador?.codigoMunicipioIBGE !== null
+      ? { municipalityIbgeCode: String(record.orgaoJulgador.codigoMunicipioIBGE) }
+      : {}),
     ...(movementText && latestAt ? {
       lastMovement: movementText,
       lastMovementAt: latestAt,
-      movements: movements.slice(0, 20).map(item => ({ code: String(item.codigo ?? ''), name: normalizeText(item.nome || ''), at: toIso(item.dataHora) }))
+      movements: movements.slice(0, 20).map(item => ({
+        code: String(item.codigo ?? ''),
+        name: normalizeText(item.nome || ''),
+        at: toIso(item.dataHora),
+        ...(Array.isArray(item.complementosTabelados) && item.complementosTabelados.length
+          ? { complements: item.complementosTabelados.slice(0, 5).map(complement => ({ code: String(complement?.codigo ?? ''), name: normalizeText(complement?.nome || ''), value: String(complement?.valor ?? '') })) }
+          : {})
+      }))
     } : {})
   };
   const monitoredTerms = uniqueTerms([...(target.terms || []), ...(config.monitoredTerms || []), config.monitoredTerm].filter(Boolean));
@@ -269,7 +324,7 @@ export function mergeExternalProcessRecord(existing, incoming) {
   const current = safeRecord(existing || {});
   const external = safeRecord(incoming || {});
   const merged = { ...current };
-  const officialFields = new Set(['court', 'actionType', 'subject', 'datajudAlias', 'collectedAt']);
+  const officialFields = new Set(['court', 'actionType', 'subject', 'datajudAlias', 'collectedAt', 'classCode', 'subjectCodes', 'filedAt', 'processFormat', 'courtSystem', 'municipalityIbgeCode']);
   const currentExternalAt = timestamp(current.datajudUpdatedAt || current.collectedAt);
   const incomingExternalAt = timestamp(external.datajudUpdatedAt || external.collectedAt);
   const currentIsDatajud = /DataJud|CNJ/i.test(String(current.source || '')) || Boolean(current.datajudAlias);
@@ -308,8 +363,21 @@ export function mergeExternalContacts(left = [], right = []) {
   for (const record of Array.isArray(right) ? right : []) {
     const incoming = safeRecord(record);
     const index = contactMatchIndex(result, incoming);
-    if (index >= 0) result[index] = mergeExternalContactRecord(result[index], incoming);
-    else result.push(mergeExternalContactRecord(null, incoming));
+    if (index >= 0) {
+      result[index] = mergeExternalContactRecord(result[index], incoming);
+      continue;
+    }
+    // Colapso de duplicados fortes: mesmo documento/externalId em 2+ registros
+    // fundem o recebido no mais antigo em vez de gerar outro. Sem deleção aqui
+    // (o merge opera em arrays destacadas); a limpeza com religação é papel do
+    // script de deduplicação.
+    const strong = findStrongDuplicateIndexes(result, incoming);
+    if (strong.length > 1) {
+      const keeperIndex = pickKeeperIndex(result, strong);
+      result[keeperIndex] = mergeExternalContactRecord(result[keeperIndex], incoming);
+      continue;
+    }
+    result.push(mergeExternalContactRecord(null, incoming));
   }
   return result;
 }
@@ -429,6 +497,10 @@ function contactMatchIndex(records, incoming) {
 
 function processIdentity(record) {
   const number = digits(record?.number);
+  const privateOwner = String(record?.scope || '').toLowerCase() === 'private'
+    ? String(record?.privateOwnerUserId || record?.ownerUserId || '').trim()
+    : '';
+  if (privateOwner && number) return `private:${privateOwner}:number:${number}`;
   if (number) return `number:${number}`;
   const externalId = normalizeText(record?.externalId || record?.id);
   return externalId ? `external:${externalId}` : '';
@@ -491,19 +563,40 @@ export function aliasForProcess(value) {
   if (valueDigits.length !== 20) return '';
   const justice = valueDigits[13];
   const tribunal = valueDigits.slice(14, 16);
-  if (justice === '1') return 'stf';
-  if (justice === '2') return tribunal === '00' ? 'cnj' : '';
-  if (justice === '3') return tribunal === '00' ? 'stj' : tribunal === '03' ? 'tjdft' : '';
-  if (justice === '4') return `trf${Number(tribunal)}`;
-  if (justice === '5') return `trt${Number(tribunal)}`;
-  if (justice === '6') return `tre-${tribunal}`;
-  if (justice === '7') return tribunal === '00' ? 'stm' : `tjm${tribunal}`;
+  const numericTribunal = Number(tribunal);
+  if (justice === '1') return '';
+  if (justice === '2') return '';
+  if (justice === '3') return tribunal === '00' ? 'stj' : '';
+  if (justice === '4') {
+    if (tribunal === '90') return 'cjf';
+    return numericTribunal >= 1 && numericTribunal <= 6 ? `trf${numericTribunal}` : '';
+  }
+  if (justice === '5') return numericTribunal >= 1 && numericTribunal <= 24 ? `trt${numericTribunal}` : '';
+  if (justice === '6') return TRE_ALIASES[tribunal] || '';
+  if (justice === '7') return tribunal === '00' ? 'stm' : '';
   if (justice === '8') return STATE_ALIASES[tribunal] || '';
+  if (justice === '9') return STATE_MILITARY_ALIASES[tribunal] || '';
   return '';
 }
 
 function newestRecord(records) {
   return [...records].sort((a, b) => timestamp(b.dataHoraUltimaAtualizacao || b['@timestamp']) - timestamp(a.dataHoraUltimaAtualizacao || a['@timestamp']))[0];
+}
+
+function datajudFiledAt(value) {
+  const raw = String(value || '').replace(/\D/g, '');
+  if (raw.length < 8) return '';
+  const iso = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : '';
+}
+
+function processFormat(formato) {
+  return normalizeText(formato?.nome || '');
+}
+
+function courtSystem(sistema) {
+  const name = normalizeText(sistema?.nome || '');
+  return /^inv[aá]lido$/i.test(name) ? '' : name;
 }
 
 function allowKeyRefresh(portal) { return portal.autoRefreshKey !== false && String(process.env.DATAJUD_AUTO_REFRESH_KEY ?? 'true').toLowerCase() !== 'false'; }
@@ -536,5 +629,6 @@ export const datajudInternals = {
   mergeSources,
   mergeDatajudRecord,
   normalizeApiKey,
-  processNumbersFrom
+  processNumbersFrom,
+  classifyDatajudFailure
 };

@@ -1,16 +1,16 @@
 # ATRIUM 2.0.0 — Stable Release 1
 
-ATRIUM 2.0.0 é a primeira versão estável do workspace jurídico local-first para escritórios brasileiros. A release consolida a interface V2, a persistência cifrada e os fluxos canônicos de trabalho supervisionado.
+ATRIUM 2.0.0 é a primeira versão estável do workspace jurídico local-first para escritórios brasileiros. A release consolida a interface V2, a persistência cifrada e os fluxos oficiais de trabalho supervisionado.
 
 ## Destaques
 
 - Interface V2 Mineral Editorial, responsiva, clara/escura, acessível por teclado e compatível com redução de movimento.
 - Operação local-first com estado AES-256-GCM, revisão otimista, gravação atômica, recovery e backups cifrados.
-- Relações canônicas entre processos, contatos/clientes, publicações, tarefas, documentos, CRM e financeiro.
+- Relações oficiais entre processos, contatos/clientes, publicações, tarefas, documentos, CRM e financeiro.
 - Reconciliação idempotente de clientes, preservando vínculos manuais e exigindo confiança mínima de 90%; Gemini é opcional e ambiguidades seguem para revisão humana.
 - Descoberta DJEN/DataJud conservadora, preservando dados-base e impedindo que advogado ou parte contrária sejam classificados como cliente.
 - Integrações A1, PJeOffice, TOTP e portais em modo supervisionado e somente de leitura, com múltiplas abas e confirmação positiva de autenticação.
-- Fluxos financeiros para honorários, despesas/custas, reembolsos e RPV/alvarás vinculados às entidades canônicas.
+- Fluxos financeiros para honorários, despesas/custas, reembolsos e RPV/alvarás vinculados às entidades oficiais.
 - Acervo documental privado com upload/download, preview seguro, lixeira, checksum, OCR local opcional e busca full-text.
 - Inteligência cadastral para CNPJ, CEP e bancos, com validação local de CPF e revisão seletiva de dados encontrados.
 - Assistente Gemini opcional, biblioteca de prompts, contexto minimizado e revisão profissional obrigatória.
@@ -38,11 +38,11 @@ Antes de atualizar:
 - pare o servidor;
 - instale a nova versão em pasta separada ou faça fast-forward de um clone limpo.
 
-Não copie `node_modules` e não substitua arquivos privados por exemplos. A versão 2.0.0 mantém as migrações canônicas existentes; nenhuma promessa genérica de migração sem risco é feita. Valide o backup e o diagnóstico no seu ambiente.
+Não copie `node_modules` e não substitua arquivos privados por exemplos. A versão 2.0.0 mantém as migrações oficiais existentes; nenhuma promessa genérica de migração sem risco é feita. Valide o backup e o diagnóstico no seu ambiente.
 
 ## Modelo de segurança
 
-- Dados canônicos e backups são cifrados com AES-256-GCM.
+- Dados oficiais e backups são cifrados com AES-256-GCM.
 - Estado usa revisão e gravação atômica.
 - Sessões usam cookies HttpOnly/SameSite, CSRF e RBAC.
 - TOTP, PFX, credenciais judiciais e chave Gemini ficam fora do Store frontend.

@@ -82,6 +82,15 @@ try {
   })).json();
   assert.equal(keyStatusB.configured, false, 'Chave de A já constava em B.');
 
+  // 4b. Omni não pode servir o snapshot do sidecar compartilhado a um workspace
+  // não-default sem a chave de acesso do processo.
+  console.log('[Teste 4b] Omni exige chave de acesso para o cache compartilhado...');
+  const cnjOmniB = '5009999-16.2026.8.21.0002';
+  response = await postJson(`${server.baseUrl}/api/integrations/omni/processes/preview`, {
+    processNumber: cnjOmniB
+  }, { Cookie: secondCookie });
+  assert.equal(response.status, 403, `Escritório B alcançou o snapshot compartilhado sem chave de acesso (status ${response.status}).`);
+
   // 5. Test State & Process Data Isolation
   console.log('[Teste 5] Testando persistência e isolamento completo de acervo processual...');
   const stateA = {

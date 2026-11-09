@@ -9,6 +9,7 @@ import {
   isUnknownVersionedApiPath
 } from '../lib/api/api-contract.mjs';
 import { postJson, startTestServer } from './helpers.mjs';
+import { serverSourceText } from './server-source.mjs';
 
 console.log('\n===============================================================');
 console.log('  ATRIUM — API EVOLUTION FOUNDATION');
@@ -94,7 +95,7 @@ try {
   assert.equal(operationalStatus.mode, 'local-protected');
   assert.equal(response.headers.get('x-atrium-api-version'), API_CONTRACT_VERSION);
 
-  const source = await readFile(new URL('../server.mjs', import.meta.url), 'utf8');
+  const source = serverSourceText;
   assert.doesNotMatch(source, /\/api\/v1\/(?:state|documents|auth)/, 'Foundation não pode duplicar as rotas internas em v1.');
   assert.equal((source.match(/\/api\/system\/api-metadata/g) || []).length, 1);
   assert.ok(verified.csrfToken, 'Fluxo de autenticação existente deve permanecer intacto.');

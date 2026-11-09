@@ -13,7 +13,7 @@ O ATRIUM oferece consulta cadastral supervisionada para apoiar o preenchimento d
 
 ## Revisão humana e autoridade
 
-O contato canônico permanece autoridade. Uma consulta apresenta o cadastro atual lado a lado com os dados encontrados. Cada campo precisa ser selecionado explicitamente e o formulário ainda precisa ser salvo pelo usuário. São preservados:
+O contato oficial permanece autoridade. Uma consulta apresenta o cadastro atual lado a lado com os dados encontrados. Cada campo precisa ser selecionado explicitamente e o formulário ainda precisa ser salvo pelo usuário. São preservados:
 
 - precedência dos dados locais já curados;
 - ausência de merge automático;

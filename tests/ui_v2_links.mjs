@@ -25,7 +25,6 @@ const STATIC_LINK_INVENTORY = Object.freeze([
   Object.freeze({ group: 'legislation', title: 'Código Penal (CP)', href: 'https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm', target: '_blank', rel: 'noopener noreferrer' }),
   Object.freeze({ group: 'legislation', title: 'Código de Processo Penal (CPP)', href: 'https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm', target: '_blank', rel: 'noopener noreferrer' }),
   Object.freeze({ group: 'case-law', title: 'Jurisprudência do STJ (SCON)', href: 'https://processo.stj.jus.br/SCON/', target: '_blank', rel: 'noopener noreferrer' }),
-  Object.freeze({ group: 'tools', title: 'Prompts Jurídicos Atualizados (02/2026)', href: 'https://ricarossetto.github.io/prompts-atualizados-02-2026/', target: '_blank', rel: 'noopener noreferrer' }),
   Object.freeze({ group: 'tools', title: 'JURISPRUDENCIAIA', href: 'https://www.jurisprudenciaia.com.br/', target: '_blank', rel: 'noopener noreferrer' }),
   Object.freeze({ group: 'tools', title: 'TRANSCREVEIA', href: 'https://www.transcreveia.com.br/', target: '_blank', rel: 'noopener noreferrer' })
 ]);
@@ -35,7 +34,10 @@ console.log('  ATRIUM — UI V2 LINKS & LEGAL RESOURCES');
 console.log('===============================================================\n');
 
 assert.equal((portalSource.match(/createLinksFeature\s*\(/g) || []).length, 1, 'A feature de Links deve ter uma única instância.');
-assert.match(featureSource, /^import \{ Store, uid \} from '\.\.\/core\/store\.js';/);
+/* Aceita o sufixo de cache-busting exigido pelo AGENTS §36: a regex anterior era
+ * ancorada em `...store.js';` e passou a falhar quando o módulo recebeu `?v=`,
+ * deixando `pnpm test:ui-v2` vermelho na `main`. */
+assert.match(featureSource, /^import \{ Store, uid \} from '\.\.\/core\/store\.js(?:\?v=[\d.]+)?';/m);
 assert.match(featureSource, /const customLinks = store\.state\.customLinks \|\| \[\]/);
 assert.doesNotMatch(portalSource, /Store\.state\.customLinks/, 'Portal não pode criar autoridade paralela para Links.');
 assert.doesNotMatch(featureSource, /\b(?:fetch|secureFetch|XMLHttpRequest)\b|localStorage|sessionStorage|setInterval|setTimeout/);
@@ -103,10 +105,10 @@ try {
   await page.locator('#btnNewLink').click();
   await page.locator('#modalBackdrop:not(.hidden)').waitFor();
   assert.equal(await page.locator('#modalTitle').textContent(), 'Adicionar novo link útil');
-  await page.locator('#modalForm [name="title"]').fill('Referência canônica criada no modal');
+  await page.locator('#modalForm [name="title"]').fill('Referência oficial criada no modal');
   await page.locator('#modalForm [name="url"]').fill('https://created.example.test/resource');
   await page.locator('#modalForm [name="category"]').selectOption('Jurisprudência');
-  await page.locator('#modalForm [name="description"]').fill('Descrição criada pelo dispatcher canônico.');
+  await page.locator('#modalForm [name="description"]').fill('Descrição criada pelo dispatcher oficial.');
   await page.locator('#modalForm button[type="submit"]').click();
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   await page.waitForFunction(() => document.querySelectorAll('#customLinksGrid .custom-link-card').length === 4);
@@ -116,10 +118,10 @@ try {
     ops: structuredClone(window.__uiV2LinksOps)
   }));
   assert.match(creation.record.id, /^link-/);
-  assert.equal(creation.record.title, 'Referência canônica criada no modal');
+  assert.equal(creation.record.title, 'Referência oficial criada no modal');
   assert.equal(creation.record.url, 'https://created.example.test/resource');
   assert.equal(creation.record.category, 'Jurisprudência');
-  assert.equal(creation.record.description, 'Descrição criada pelo dispatcher canônico.');
+  assert.equal(creation.record.description, 'Descrição criada pelo dispatcher oficial.');
   assert.ok(Date.parse(creation.record.createdAt));
   assert.ok(Date.parse(creation.record.updatedAt));
   assert.equal(creation.audit.action, 'Link útil adicionado');
@@ -156,4 +158,4 @@ try {
   await session.stop();
 }
 
-console.log('✓ UI V2 Links: inventário estático, fonte única, parity de modo, CRUD canônico, XSS e rollback PASS.');
+console.log('✓ UI V2 Links: inventário estático, fonte única, parity de modo, CRUD oficial, XSS e rollback PASS.');

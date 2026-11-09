@@ -84,18 +84,26 @@ test('eproc - Extração da chave do processo em diferentes formatos da capa', a
 
   // Cenário 4: Chave capturada via diálogo (window.alert ao clicar no ícone)
   let dialogCallback;
+  let keyClicks = 0;
+  let dismissedDialogs = 0;
   const mockPage4 = {
+    url: () => 'https://eproc1g.tjrs.jus.br/eproc/controlador.php?acao=processo_selecionar',
+    waitForTimeout: async () => {},
     on: (evt, cb) => { if (evt === 'dialog') dialogCallback = cb; },
     off: () => {},
-    locator: () => ({
+    locator: selector => ({
       first: () => ({
-        isVisible: async () => false,
-        count: async () => 1,
+        // A dialog is reachable only through the visible key control.
+        isVisible: async () => selector.includes('#btnChaveProcesso'),
+        count: async () => selector.includes('#btnChaveProcesso') ? 1 : 0,
+        getAttribute: async name => name === 'id' ? 'btnChaveProcesso' : null,
+        evaluate: async () => '',
         click: async () => {
+          keyClicks += 1;
           if (dialogCallback) {
             dialogCallback({
               message: () => 'Chave do processo: 778899001122',
-              dismiss: async () => {}
+              dismiss: async () => { dismissedDialogs += 1; }
             });
           }
         }
@@ -114,6 +122,8 @@ test('eproc - Extração da chave do processo em diferentes formatos da capa', a
   const details4 = await extractProcessDetails(mockPage4);
   assert.equal(details4.accessKey, '778899001122');
   assert.equal(details4.chaveAcesso, '778899001122');
+  assert.equal(keyClicks, 1, 'Apenas o controle read-only visível deve ser clicado.');
+  assert.equal(dismissedDialogs, 1);
 });
 
 test('eproc - Vinculação automática da chave de acesso no processo e no cofre do sistema', async () => {

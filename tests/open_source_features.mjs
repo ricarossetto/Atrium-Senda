@@ -44,81 +44,13 @@ forbiddenPatterns.forEach(pattern => {
 });
 console.log('✓ Código 100% livre de credenciais e dados pessoais.');
 
-// 4. Validar Cálculo de Prazos Processuais com Recesso Forense (Art. 220 CPC)
-console.log('\n4. Validando regras do CPC/2015: Contagem em dias úteis e Recesso Forense...');
-
-function isBrazilianHoliday(date) {
-  const m = date.getMonth() + 1;
-  const d = date.getDate();
-  if (m === 1 && d === 1) return true;
-  if (m === 4 && d === 21) return true;
-  if (m === 5 && d === 1) return true;
-  if (m === 9 && d === 7) return true;
-  if (m === 10 && d === 12) return true;
-  if (m === 11 && d === 2) return true;
-  if (m === 11 && d === 15) return true;
-  if (m === 11 && d === 20) return true;
-  if (m === 12 && d === 25) return true;
-  return false;
-}
-
-function isForenseRecess(date) {
-  const m = date.getMonth() + 1;
-  const d = date.getDate();
-  if (m === 12 && d >= 20) return true;
-  if (m === 1 && d <= 20) return true;
-  return false;
-}
-
-function isBusinessDay(date) {
-  const dayOfWeek = date.getDay();
-  if (dayOfWeek === 0 || dayOfWeek === 6) return false;
-  if (isForenseRecess(date)) return false;
-  if (isBrazilianHoliday(date)) return false;
-  return true;
-}
-
-function calculateLegalDeadline(startDateStr, totalDays = 15, options = {}) {
-  const countBusiness = options.businessDays !== false;
-  const isDouble = Boolean(options.doubleDeadline);
-  const effectiveDays = isDouble ? totalDays * 2 : totalDays;
-  
-  let current = new Date(startDateStr + 'T00:00:00');
-  if (isNaN(current.getTime())) current = new Date();
-
-  current.setDate(current.getDate() + 1);
-
-  while (!isBusinessDay(current)) {
-    current.setDate(current.getDate() + 1);
-  }
-
-  if (!countBusiness) {
-    current.setDate(current.getDate() + (effectiveDays - 1));
-    while (!isBusinessDay(current)) {
-      current.setDate(current.getDate() + 1);
-    }
-    return current.toISOString().slice(0, 10);
-  }
-
-  let counted = 1;
-  while (counted < effectiveDays) {
-    current.setDate(current.getDate() + 1);
-    if (isBusinessDay(current)) {
-      counted += 1;
-    }
-  }
-
-  return current.toISOString().slice(0, 10);
-}
-
-// Teste A: Prazo normal de 15 dias úteis em agosto
-const normalDeadline = calculateLegalDeadline('2026-08-03', 15);
-assert.ok(normalDeadline > '2026-08-20', 'Prazo de 15 dias úteis deve vencer após 20 de agosto');
-
-// Teste B: Prazo iniciado em 18 de dezembro (deve suspender no recesso de 20/Dez a 20/Jan)
-const recessDeadline = calculateLegalDeadline('2026-12-18', 15);
-assert.ok(recessDeadline >= '2027-01-22', 'Prazo deve suspender no recesso forense e vencer em final de janeiro: ' + recessDeadline);
-console.log('✓ Recesso Forense (Art. 220 CPC) validado com sucesso (vencimento: ' + recessDeadline + ').');
+// 4. Proibir cálculo de prazo no produto (AGENTS §16; specs/human-deadline-policy.md)
+console.log('\n4. Validando a política humana de prazos: nenhum cálculo heurístico no runtime...');
+assert.doesNotMatch(publicSourceContent, /calculateLegalDeadline|isForenseRecess|isBusinessDay/, 'O runtime não pode calcular prazo por conta própria.');
+assert.match(publicSourceContent, /Contagem de prazo não é feita no produto/, 'O motivo da ausência deve estar documentado no código.');
+const businessDaysSource = fs.readFileSync(path.resolve(__dirname, '../lib/core/business-days.mjs'), 'utf8');
+assert.match(businessDaysSource, /informativa e a conferência é humana/, 'A derivação de data de publicação deve declarar que é informativa.');
+console.log('✓ Nenhum cálculo de prazo heurístico no runtime; derivação de publicação apenas informativa.');
 
 // 5. Validar Modelos de Documentos e Cálculos de Prestação de Contas (BUG-003 & BUG-004)
 console.log('\n5. Validando minutas e cálculos da prestação de contas de RPV (BUG-003 / BUG-004)...');
@@ -129,19 +61,19 @@ const net50k = gross50k - fee50k;
 assert.equal(fee50k, 15000, 'Honorários contratuais devem ser R$ 15.000');
 assert.equal(net50k, 35000, 'Valor líquido deve ser R$ 35.000');
 
-// Teste canônico RPV R$ 45.000 / 30%
+// Teste oficial RPV R$ 45.000 / 30%
 const gross45k = 45000;
 const feePct45k = 30;
 const fee45k = gross45k * (feePct45k / 100);
 const net45k = gross45k - fee45k;
 assert.equal(fee45k, 13500, 'Honorários contratuais de R$ 45k @ 30% devem ser R$ 13.500');
 assert.equal(net45k, 31500, 'Valor líquido do cliente de R$ 45k @ 30% deve ser R$ 31.500');
-console.log('✓ Cálculo financeiro canônico RPV validado: Bruto R$ 45.000, Honorários R$ 13.500, Líquido Cliente R$ 31.500.');
+console.log('✓ Cálculo financeiro oficial RPV validado: Bruto R$ 45.000, Honorários R$ 13.500, Líquido Cliente R$ 31.500.');
 
 // Teste de mapa de status de requisições financeiras (BUG-004)
 const financialStatuses = ['requisitado', 'aguardando_deposito', 'disponivel_saque', 'repassado'];
 financialStatuses.forEach(st => {
-  assert.ok(financialStatuses.includes(st), 'Status financeiro canônico presente: ' + st);
+  assert.ok(financialStatuses.includes(st), 'Status financeiro oficial presente: ' + st);
 });
 console.log('✓ Mapa de status financeiro com "repassado" como status final validado.');
 

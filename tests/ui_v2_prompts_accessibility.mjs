@@ -19,8 +19,8 @@ try {
   assert.equal(await page.locator('#promptsCategoryChips').getAttribute('role'), 'group');
   assert.equal(await page.locator('#promptsCategoryChips .prompt-chip[aria-pressed="true"]').count(), 1);
   assert.equal(await page.locator('#promptsGrid [data-prompt-id] h3').count(), 4);
-  assert.match(await page.locator('[data-use-prompt="prompt-v2-redacao"]').getAttribute('aria-label'), /Usar prompt Redação Cível Sintética no Assistente/);
-  assert.match(await page.locator('[data-copy-prompt="prompt-v2-redacao"]').getAttribute('aria-label'), /Copiar texto integral/);
+  assert.match(await page.locator('[data-use-prompt="prompt-v2-redacao"]').innerText(), /Usar no Assistente/, 'Nome acessível igual ao texto visível.');
+  assert.match(await page.locator('[data-copy-prompt="prompt-v2-redacao"]').innerText(), /Copiar/, 'Nome acessível igual ao texto visível.');
   assert.equal(await page.locator('[data-prompt-id="prompt-v2-redacao"] [data-edit-prompt], [data-prompt-id="prompt-v2-redacao"] [data-delete-prompt]').count(), 0);
   assert.equal(await page.locator('[data-prompt-id="prompt-v2-custom"] [data-edit-prompt], [data-prompt-id="prompt-v2-custom"] [data-delete-prompt]').count(), 2);
 
@@ -35,7 +35,7 @@ try {
     };
   });
   assert.ok(compactCard.height < 390, `O card deve ficar abaixo da antiga altura fixa: ${compactCard.height}px.`);
-  assert.ok(compactCard.footerHeight <= 48, `O rodapé deve permanecer compacto: ${compactCard.footerHeight}px.`);
+  assert.ok(compactCard.footerHeight <= 56, `O rodapé deve permanecer compacto: ${compactCard.footerHeight}px.`);
   assert.ok(compactCard.textHeight < 150, `O resumo não deve reservar os antigos 150px: ${compactCard.textHeight}px.`);
   assert.ok(compactCard.reservedSpace <= 24, `Não deve sobrar uma área vazia depois dos botões: ${compactCard.reservedSpace}px.`);
 

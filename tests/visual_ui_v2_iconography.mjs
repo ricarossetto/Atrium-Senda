@@ -78,7 +78,7 @@ try {
       await waitForStableLayout(page);
 
       const evidence = await page.evaluate(({ selectedNav, isCollapsed, isMobile }) => {
-        const navItems = [...document.querySelectorAll('.nav-item[data-view]')];
+        const navItems = [...document.querySelectorAll('.nav-item[data-view]:not(.is-admin-only)')];
         const activeItem = document.querySelector(`.nav-item[data-view="${selectedNav}"]`);
         const activeIcon = activeItem?.querySelector('svg.atrium-icon');
         const iconRects = navItems.map(item => {

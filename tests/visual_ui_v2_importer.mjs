@@ -47,6 +47,23 @@ const neutralPreview = {
   processes: [], contacts: [], tasks: []
 };
 
+const batchPreview = {
+  filename: '2 arquivos',
+  totalRows: 12,
+  preview: [
+    { Arquivo: 'relatorio-eproc-sintetico.xls', 'Número do processo': '5000000-00.2026.8.21.0001', Cliente: 'Cliente Sintético 1', Tribunal: 'TJ Sintético' },
+    { Arquivo: 'relatorio-eproc-sintetico.xls', 'Número do processo': '5000000-01.2026.8.21.0001', Cliente: 'Cliente Sintético 2', Tribunal: 'TJ Sintético' },
+    { Arquivo: 'contatos-com-falha.csv', 'Número do processo': '—', Cliente: '—', Tribunal: '—' }
+  ],
+  processes: [{ externalId: 'batch-process-1' }],
+  contacts: [{ externalId: 'batch-contact-1' }],
+  tasks: [{ externalId: 'batch-task-1' }],
+  files: [
+    { ok: true, filename: 'relatorio-eproc-sintetico.xls', error: '', totalRows: 8, processes: 1, contacts: 1, tasks: 1 },
+    { ok: false, filename: 'contatos-com-falha.csv', error: 'Planilha ilegível: cabeçalho ausente.', totalRows: 4, processes: 0, contacts: 0, tasks: 0 }
+  ]
+};
+
 const SCENARIOS = [
   { file: '01-light-1440x900-initial.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'initial' },
   { file: '02-dark-1440x900-initial.png', theme: 'dark', viewport: { width: 1440, height: 900 }, state: 'initial' },
@@ -58,7 +75,9 @@ const SCENARIOS = [
   { file: '08-light-1440x900-neutral-counts.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'preview', data: neutralPreview },
   { file: '09-light-390x844-initial.png', theme: 'light', viewport: { width: 390, height: 844 }, state: 'initial' },
   { file: '10-dark-390x844-preview.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'preview' },
-  { file: '11-light-1440x900-integration-hub.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'integration' }
+  { file: '11-light-1440x900-integration-hub.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'integration' },
+  { file: '12-light-1440x900-batch-preview.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'preview', data: batchPreview },
+  { file: '13-dark-1280x800-batch-partial.png', theme: 'dark', viewport: { width: 1280, height: 800 }, state: 'preview', data: batchPreview }
 ];
 
 const session = await startUiV2Session();

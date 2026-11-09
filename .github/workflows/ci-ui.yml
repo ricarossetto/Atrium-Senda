@@ -1,0 +1,117 @@
+name: Atrium UI CI
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: atrium-ui-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui-v2:
+    name: UI V2 Suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable Corepack & Setup PNPM
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.19.0 --activate
+
+      - name: Configure pnpm Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright Browsers (Chromium)
+        run: |
+          pnpm exec playwright install chromium --with-deps
+
+      - name: Run UI V2 Canonical Suites
+        run: |
+          pnpm test:ui-v2
+        env:
+          CI: true
+          NODE_ENV: test
+
+      - name: Run UI V2 Final Rollout Suites
+        run: |
+          pnpm test:ui-v2-final
+        env:
+          CI: true
+          NODE_ENV: test
+
+  visual-qa:
+    name: Multi-Viewport Visual QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable Corepack & Setup PNPM
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.19.0 --activate
+
+      - name: Configure pnpm Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright Browsers (Chromium)
+        run: |
+          pnpm exec playwright install chromium --with-deps
+
+      - name: Run Multi-Viewport Visual QA
+        run: node tests/visual-qa.mjs
+        env:
+          CI: true
+          NODE_ENV: test
+
+      - name: Upload Visual QA Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atrium-visual-qa-screenshots
+          path: artifacts/visual-qa/
+          retention-days: 14

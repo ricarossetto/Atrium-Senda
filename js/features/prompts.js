@@ -1,7 +1,17 @@
 const PROMPTS_ICON_NAMES = new Set(['assistant', 'check', 'copy', 'search']);
 const iconSvg = name => {
   const safeName = PROMPTS_ICON_NAMES.has(name) ? name : 'search';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-${safeName}"></use></svg>`;
+};
+
+const promptTypeClass = value => {
+  const suffix = String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return suffix ? `type-${suffix}` : 'type-geral';
 };
 
 export function createPromptsFeature({
@@ -9,7 +19,7 @@ export function createPromptsFeature({
   documentRef = globalThis.document,
   windowRef = globalThis.window,
   navigatorRef = globalThis.navigator,
-  escapeHtml = value => String(value ?? ''),
+  escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])),
   normalizeText = value => String(value ?? '').toLowerCase(),
   showToast = () => {},
   getDefaultPrompts = () => [],
@@ -145,6 +155,13 @@ export function createPromptsFeature({
       previewInvoker = invoker || documentRef.activeElement;
       previewBodyOverflow = documentRef.body?.style?.overflow || '';
       byId('promptPreviewTitle').textContent = prompt.title || 'Texto completo';
+      // A descrição é truncada em três linhas no cartão; a prévia é a superfície
+      // que devolve o texto integral, então o recorte nunca esconde conteúdo.
+      const previewDescription = byId('promptPreviewDescription');
+      if (previewDescription) {
+        previewDescription.textContent = prompt.description || '';
+        previewDescription.hidden = !prompt.description;
+      }
       byId('promptPreviewText').textContent = prompt.prompt || '';
       backdrop.classList.remove('hidden');
       byId('appShell')?.setAttribute('inert', '');
@@ -257,7 +274,7 @@ export function createPromptsFeature({
       }
 
       grid.innerHTML = filtered.map(prompt => {
-        const typeClass = prompt.type ? `type-${normalizeText(prompt.type).replace(/\s+/g, '-')}` : 'type-geral';
+        const typeClass = promptTypeClass(prompt.type);
         const tagsHtml = (prompt.tags || []).slice(0, 5).map(tag => `<span class="prompt-tag">${escapeHtml(tag)}</span>`).join('');
         const customBadge = prompt.isCustom ? `<span class="prompt-cat-badge custom-prompt-badge">Personalizado</span>` : '';
         const customActions = prompt.isCustom ? `
@@ -278,6 +295,7 @@ export function createPromptsFeature({
             ${tagsHtml ? `<div class="prompt-tags-list">${tagsHtml}</div>` : ''}
             <div class="prompt-box">
               <pre class="prompt-text">${escapeHtml(prompt.prompt)}</pre>
+              <span class="prompt-box-more" aria-hidden="true">Ver prompt completo</span>
             </div>
             <div class="prompt-card-actions">
               <button type="button" class="button ghost btn-copy-prompt" data-copy-prompt="${escapeHtml(prompt.id)}" title="Copiar texto do prompt">

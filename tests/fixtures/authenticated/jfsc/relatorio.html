@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="iso-8859-1">
+  <title>:: eproc - JFSC - Relatório de Processos ::</title>
+  <link rel="stylesheet" href="css/dist/bundle-bs4.css">
+</head>
+<body class="bootstrap-styles instancia-1g">
+  <div id="divInfraAreaGlobal">
+    <div id="divInfraBarraLocalizacao">
+      <h1>Relatório de Processos do Procurador - JFSC</h1>
+    </div>
+
+    <!-- Paginação Superior -->
+    <div id="divPaginacaoSuperior" class="d-flex align-items-center mb-2">
+      <label for="selInfraPaginacaoSuperior" class="mr-2">Página:</label>
+      <select id="selInfraPaginacaoSuperior" name="selInfraPaginacaoSuperior" class="form-control form-control-sm" style="width: auto;">
+        <option value="1" selected>1 / 1 (Total: 15 processos)</option>
+      </select>
+    </div>
+
+    <!-- Tabela Oficial de Processos -->
+    <table class="table table-bordered table-hover infraTable" summary="Processos" id="tblProcessosLista">
+      <thead>
+        <tr>
+          <th>Sel.</th>
+          <th>Processo</th>
+          <th>Classe / Assunto</th>
+          <th>Autor / Exequente</th>
+          <th>Réu / Executado</th>
+          <th>Órgão Julgador / Localidade</th>
+          <th>Último Evento</th>
+          <th>Data Últ. Evento</th>
+          <th>Data Autuação</th>
+          <th>Valor da Causa</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="checkbox" name="chkProcesso[]" value="50012341120244047200"></td>
+          <td>
+            <a href="controlador.php?acao=processo_selecionar&num_processo=50012341120244047200&hash=sanitized_sc">5001234-11.2024.4.04.7200</a>
+          </td>
+          <td>PROCEDIMENTO COMUM CÍVEL<br><small class="text-muted">Fornecimento de Medicamentos</small></td>
+          <td>PARTE AUTORA PILOTO SC</td>
+          <td>UNIÃO - ADVOCACIA GERAL DA UNIÃO</td>
+          <td>1ª Vara Federal de Florianópolis</td>
+          <td>Juntada de Laudo Pericial</td>
+          <td>14/09/2026 09:15:30</td>
+          <td>10/01/2024 14:22:10</td>
+          <td>R$ 75.000,00</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" name="chkProcesso[]" value="50023452220244047201"></td>
+          <td>
+            <a href="controlador.php?acao=processo_selecionar&num_processo=50023452220244047201&hash=sanitized_sc">5002345-22.2024.4.04.7201</a>
+          </td>
+          <td>CUMPRIMENTO DE SENTENÇA CONTRA A FAZENDA PÚBLICA<br><small class="text-muted">Aposentadoria Especial</small></td>
+          <td>SEGURADO CATARINENSE PILOTO</td>
+          <td>INSTITUTO NACIONAL DO SEGURO SOCIAL - INSS</td>
+          <td>2ª Vara Federal de Joinville</td>
+          <td>Expedição de RPV</td>
+          <td>13/09/2026 16:40:05</td>
+          <td>15/03/2024 08:30:00</td>
+          <td>R$ 48.500,00</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" name="chkProcesso[]" value="50034563320244047204"></td>
+          <td>
+            <a href="controlador.php?acao=processo_selecionar&num_processo=50034563320244047204&hash=sanitized_sc">5003456-33.2024.4.04.7204</a>
+          </td>
+          <td>EXECUÇÃO FISCAL<br><small class="text-muted">Dívida Ativa</small></td>
+          <td>CONSELHO REGIONAL DE CONTABILIDADE - CRC/SC</td>
+          <td>EMPRESA CATARINENSE LTDA</td>
+          <td>1ª Vara Federal de Criciúma</td>
+          <td>Suspensão da Execução</td>
+          <td>12/09/2026 11:20:18</td>
+          <td>20/05/2024 17:15:40</td>
+          <td>R$ 12.300,00</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

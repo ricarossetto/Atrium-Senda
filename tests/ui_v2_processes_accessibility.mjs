@@ -33,7 +33,11 @@ try {
 
     await page.locator('#processInspectorDelete').focus();
     await page.keyboard.press('Tab');
-    assert.equal(await page.evaluate(() => document.activeElement?.id), 'processInspectorClose', 'Tab no último controle deve retornar ao primeiro.');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.hasAttribute('data-panel-size-toggle')),
+      true,
+      'Tab no último controle deve retornar ao primeiro controle do cabeçalho (tamanho do painel).'
+    );
     await page.keyboard.press('Shift+Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'processInspectorDelete', 'Shift+Tab no primeiro controle deve retornar ao último.');
     await page.keyboard.press('Escape');
@@ -112,7 +116,7 @@ try {
       };
     });
     assert.equal(form.columns, 1, 'Formulário mobile deve usar uma coluna.');
-    assert.deepEqual(form.legends, ['Identificação', 'Partes', 'Classificação', 'Órgão e responsabilidade', 'Movimentação', 'Honorários', 'Requisições', 'Privacidade e acompanhamento']);
+    assert.deepEqual(form.legends, ['Essencial', 'Identificação', 'Classificação', 'Órgão e responsabilidade', 'Movimentação', 'Honorários', 'Requisições', 'Privacidade e acompanhamento']);
     assert.deepEqual(form.disconnectedLabels, []);
     assert.deepEqual(form.hiddenRequired, []);
     assert.ok(form.bounds.left >= -2 && form.bounds.right <= form.bounds.viewport + 2);

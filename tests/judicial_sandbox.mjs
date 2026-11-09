@@ -189,7 +189,7 @@ try {
   await credManager.init();
 
   await credManager.savePortalTotp('eproc-trf4', { secret: 'JBSWY3DPEHPK3PXP', label: 'TRF4 eproc' });
-  await credManager.savePortalCredentials('eproc-trf4', { username: '04276712050', password: 'SecretPassword123' });
+  await credManager.savePortalCredentials('eproc-trf4', { username: '00000000000', password: 'SecretPassword123' });
 
   const publicView = await credManager.getPublicStatus();
   assert.equal(publicView.automatedTotpEnabled, true);

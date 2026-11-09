@@ -1,6 +1,6 @@
 # Como contribuir
 
-Obrigado por contribuir com o ATRIUM. Mudanças devem preservar integridade de dados, privacidade, supervisão humana e as autoridades canônicas do produto.
+Obrigado por contribuir com o ATRIUM. Mudanças devem preservar integridade de dados, privacidade, supervisão humana e as autoridades oficiais do produto.
 
 ## Ambiente
 
@@ -32,4 +32,4 @@ Obrigado por contribuir com o ATRIUM. Mudanças devem preservar integridade de d
 
 Prefira testes dirigidos durante o desenvolvimento. Se alterar UI, capture estados relevantes em temas e viewports adequados, inspecione as imagens diretamente e respeite `prefers-reduced-motion`. Não atualize snapshot/hash para esconder regressão.
 
-O CI completo executa Lint/Test/E2E, Visual QA multiviewport e validação A1 no Windows.
+O CI automático está revogado por decisão do operador; os workflows do GitHub permanecem disponíveis apenas para execução manual (`workflow_dispatch`). A evidência de validação é local: suítes dirigidas ao domínio, `corepack pnpm check`, Visual QA quando tocar UI e `node tests/judicial_sandbox.mjs` no Windows quando tocar A1 ou integração judicial. Nunca simule A1 em Linux. Teste local vermelho no escopo bloqueia o commit e o deploy daquele escopo.

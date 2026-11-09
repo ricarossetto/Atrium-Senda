@@ -79,14 +79,20 @@ for (const [element, type] of [[sidebar, 'click'], [elements.officeSetupClose, '
 
 feature.render();
 assert.equal(elements.sidebarOfficeName.textContent, 'Meu Escritório');
-assert.equal(elements.sidebarOfficeLabel.textContent, 'Desde 1983');
+assert.equal(elements.sidebarOfficeLabel.textContent, 'Escritório');
 assert.match(avatar.style.backgroundImage, /team\.svg/);
 store.state.settings.officeName = 'Banca <Teste>';
 store.state.settings.officeSlogan = 'Slogan Sintético';
-store.state.settings.officeLogo = 'data:image/png;base64,<logo>';
+feature.render();
+assert.equal(elements.sidebarOfficeName.title, 'Banca <Teste> · Slogan Sintético');
+store.state.settings.officeLogo = 'data:image/png;base64,iVBORw0KGgo=';
 feature.render();
 assert.equal(elements.sidebarOfficeName.textContent, 'Banca <Teste>');
-assert.match(avatar.innerHTML, /data:image\/png;base64,&lt;logo>/);
+assert.match(avatar.innerHTML, /data:image\/png;base64,iVBORw0KGgo=/);
+store.state.settings.officeLogo = 'javascript:alert(1)';
+feature.render();
+assert.doesNotMatch(avatar.innerHTML, /<img|javascript:/);
+store.state.settings.officeLogo = 'data:image/png;base64,iVBORw0KGgo=';
 assert.equal(avatar.style.background, 'transparent');
 
 store.state.settings = {};
@@ -128,7 +134,7 @@ const primaryBefore = structuredClone(store.state.terms[1]);
 assert.equal(await feature.handleSubmit({ preventDefault() {} }), true);
 assert.deepEqual(store.state.settings, {
   officeName: 'Escritório Sintético', officeSlogan: 'Confiança', lawyerName: 'Advogada Teste', lawyerOab: 'OAB/RS 000000',
-  lawyerAddress: 'Rua Sintética, 1', city: 'Ijuí / RS', officeLogo: 'data:image/png;base64,VALIDA'
+  lawyerAddress: 'Rua Sintética, 1', city: 'Ijuí / RS', officeLogo: 'data:image/png;base64,VALIDA', deadlineMode: 'auto'
 });
 assert.equal(store.state.terms[0].name, 'Advogada Teste');
 assert.equal(store.state.terms[0].registration, 'OAB/RS 000000');

@@ -108,7 +108,7 @@ try {
   ));
   assert.equal(repeatedReloadPoints, 41, 'Segundo save deve sobreviver a novo reload.');
 
-  console.log('✓ Primeira persistência real aprovada: NEW_INSTALL, schema canônico, revision, reload e segundo save.');
+  console.log('✓ Primeira persistência real aprovada: NEW_INSTALL, schema oficial, revision, reload e segundo save.');
   await context.close();
 } finally {
   await browser.close();

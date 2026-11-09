@@ -1,59 +1,44 @@
 # ATRIUM — primeiros 10 minutos
 
-Este roteiro é para quem recebeu o ATRIUM para testar no próprio computador. Não é necessário conhecer programação.
+O ATRIUM Senda roda no computador do escritório (ou em um servidor próprio). As decisões jurídicas e os atos processuais permanecem humanos.
 
-## 1. Abrir o ATRIUM
+## 1. Instalar e abrir o ATRIUM
 
-1. Baixe e extraia o ZIP da versão recebida.
-2. Abra a pasta extraída e dê duplo clique em `ATRIUM.bat`.
-3. Se o Windows informar que o Node.js está ausente, aceite a instalação oficial oferecida pelo inicializador.
-4. Aguarde o navegador abrir em `http://127.0.0.1:4173` e mantenha a janela do ATRIUM aberta durante o uso.
+No Windows, baixe o instalador `ATRIUM_Setup_3.0.0_x64.exe` em [releases](https://github.com/ricarossetto/Atrium-Senda/releases), verifique a soma SHA-256 (`SHA256SUMS.txt`) e execute. Em outros sistemas, siga a [instalação manual](INSTALLATION.md).
 
-Na primeira execução, a preparação pode demorar alguns minutos porque o inicializador instala os componentes do navegador usados pelo sistema. Nas próximas aberturas, o processo é mais rápido.
+Abra o aplicativo e crie a conta do administrador do escritório. Configure o segundo fator quando solicitado e guarde os códigos de recuperação fora do navegador.
 
-## 2. Criar o acesso
+## 2. Configurar o escritório
 
-A configuração inicial acontece em etapas curtas:
+1. Informe a identidade do escritório em **Configurações**.
+2. Informe OAB e UF se for advogado e escolha explicitamente se deseja monitoramento.
+3. Cadastre a equipe e revise as preferências de notificações.
+4. Configure somente as credenciais judiciais solicitadas pela área protegida de **Integrações**.
 
-1. informe nome, e-mail profissional, usuário e uma senha forte;
-2. se for advogado, informe número e UF da OAB;
-3. marque **Ativar monitoramento automático** somente se quiser que o ATRIUM consulte as fontes disponíveis ao entrar;
-4. configure a verificação em duas etapas ou escolha configurá-la mais tarde;
-5. se forem exibidos códigos de recuperação, guarde-os fora da pasta do ATRIUM.
+Credenciais, certificado A1 e TOTP permanecem no cofre cifrado do workspace, no computador do escritório. Portais que recusam acesso ou exigem autenticação humana declaram isso; nunca declaram sucesso sem evidência do portal.
 
-Quem não informar OAB pode continuar normalmente e configurar o monitoramento depois em **Fontes monitoradas**. O botão da segunda etapa deixa explícito se o acesso seguirá com ou sem monitoramento.
+## 3. Conferir a primeira sincronização
 
-## 3. Entender a primeira sincronização
+A primeira captura depende da configuração aceita no onboarding. Ciclos posteriores rodam em segundo plano no servidor ou pelo botão manual; recarregar a página não inicia coleta. Portais que exigem autenticação humana podem declarar intervenção necessária, sem falso sucesso.
 
-Quando o monitoramento é ativado, o ATRIUM inicia a primeira busca depois da entrada. A barra superior mostra o andamento. O resultado depende das fontes disponíveis e das conexões configuradas no computador.
-
-- **Publicações** abre em **Não tratadas** e mostra inicialmente os dois dias mais recentes.
-- O histórico continua preservado e pode ser escolhido no filtro de período.
-- Processos encontrados por uma fonte são incorporados sem apagar os registros locais preenchidos pelo usuário.
-- Uma conexão autenticada de tribunal pode exigir credencial, TOTP, certificado, PJeOffice ou intervenção no portal.
-- Consulta, descoberta e download são operações de leitura. O ATRIUM não dá ciência, protocola petição ou confirma prazo automaticamente.
+- **Publicações** distingue registros não tratados, em análise, tratados e descartados.
+- Processos encontrados não apagam campos curados manualmente.
+- Uma fonte indisponível deve mostrar falha ou resultado parcial, nunca sucesso inventado.
+- Consulta e download são somente leitura: o ATRIUM não dá ciência, assina, protocola nem confirma prazo automaticamente.
 
 ## 4. Fazer um teste simples
 
-Use dados fictícios ou autorizados pelo escritório.
+Use somente dados sintéticos no ambiente de teste; dados reais devem ser usados apenas no escritório autorizado.
 
 1. Abra **Contatos** e cadastre um contato.
 2. Abra **Processos e casos** e cadastre um processo pelo número CNJ.
-3. Abra o painel lateral do processo e use **Criar tarefa**.
-4. Vá a **Gestão de tarefas** e alterne entre **Lista** e **Kanban**.
-5. Abra **Publicações**, escolha uma ocorrência e confira o teor integral antes de criar qualquer tarefa.
-6. Abra **Configurações → Sistema** e gere um backup cifrado antes de inserir uma base maior.
+3. No painel do processo, use **Criar tarefa**.
+4. Em **Gestão de tarefas**, confira Lista e Kanban.
+5. Abra **Publicações** e confira o teor integral antes de qualquer providência.
+6. Em **Configurações**, gere um backup cifrado por ação administrativa autorizada.
 
-Tarefas criadas a partir de publicação começam sem prazo fatal. A data deve ser informada somente após conferência profissional.
+Uma data de prazo sem confirmação humana não vira prazo fatal. Nunca envie em feedback público senha, QR code, código de recuperação, certificado, chave processual, nomes de clientes ou documentos do escritório.
 
 ## 5. Se algo não abrir
 
-Feche a janela do ATRIUM, dê duplo clique em `ATRIUM.bat` novamente e aguarde o navegador. Para um diagnóstico que não altera os dados, abra o Prompt de Comando na pasta do programa e execute:
-
-```bat
-ATRIUM.bat --doctor
-```
-
-O aviso de que o coletor TJRS local está indisponível significa que os recursos dependentes desse componente não puderam consultar o tribunal. Os dados já atuais continuam preservados. Consulte o [manual de instalação](INSTALLATION.md) para diagnóstico e atualização.
-
-Nunca envie em feedback público senha, QR code, código de recuperação, certificado, chave processual, nomes de clientes ou documentos do escritório.
+No Windows, execute `ATRIUM.bat --doctor` ou confira os logs em `%APPDATA%\ATRIUM\logs\server.log`. Em outros sistemas, consulte a saída do processo iniciado com `pnpm start`. Se a integração judicial não autenticar, revise o certificado, o PJeOffice e o TOTP na área de Integrações.

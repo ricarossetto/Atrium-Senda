@@ -2,7 +2,7 @@
 
 O **ATRIUM Legal Icon System** é o conjunto de ícones funcionais da UI do projeto. Ele é separado dos ativos de marca (`atrium-logo.svg`, `atrium-emblem.svg` e `favicon.svg`) e usa símbolos SVG locais, com `currentColor`, caixa ótica comum e `viewBox="0 0 24 24"`.
 
-- Fonte canônica: `atrium-ui-icons.svg`.
+- Fonte oficial: `atrium-ui-icons.svg`.
 - Runtime externo: nenhum.
 - Dependência de CDN ou pacote de ícones: nenhuma.
 - Os ativos fazem parte deste projeto e podem ser auditados no próprio repositório.
@@ -10,9 +10,11 @@ O **ATRIUM Legal Icon System** é o conjunto de ícones funcionais da UI do proj
 
 ## Registro semântico
 
-Navegação: `dashboard`, `processes`, `publications`, `tasks`, `agenda`, `contacts`, `leads`, `financial`, `documents`, `assistant`, `prompts`, `monitoring`, `integrations`, `configuration`, `importer`, `audit` e `links`.
+Navegação: `dashboard`, `processes`, `publications`, `tasks`, `agenda`, `contacts`, `leads`, `reports`, `financial`, `calculations`, `documents`, `assistant`, `prompts`, `monitoring`, `integrations`, `configuration`, `importer`, `audit` e `links`.
 
-Ações globais: `menu`, `sidebar-collapse`, `search`, `sync`, `notification`, `theme-light`, `theme-dark`, `close`, `add`, `edit`, `delete`, `download`, `upload`, `external-link`, `filter`, `more`, `chevron-left`, `chevron-right`, `chevron-down`, `check`, `warning`, `info`, `copy`, `send` e `reopen`.
+Ações globais: `menu`, `sidebar-collapse`, `search`, `sync`, `notification`, `theme-light`, `theme-dark`, `close`, `add`, `edit`, `delete`, `download`, `upload`, `external-link`, `filter`, `more`, `chevron-left`, `chevron-right`, `chevron-down`, `check`, `warning`, `info`, `copy`, `send`, `reopen`, `maximize`, `restore` e `lock`.
+
+Ações de campo: `eye` e `eye-off` (mostrar e ocultar senha).
 
 Conceitos de apoio usados na interface: `court`, `certificate`, `security`, `deadline`, `office`, `email`, `disconnected` e `conflict`.
 

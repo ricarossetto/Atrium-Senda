@@ -1,6 +1,6 @@
 ---
 name: legal-draft-br
-description: Redige petições brasileiras a partir de plano e registro fechado de fontes, com estilo técnico, objetivo e correspondência entre fatos, fundamentos e pedidos.
+description: Redige petições brasileiras a partir de plano e registro fechado de fontes, com estilo técnico, objetivo e correspondência entre fatos, fundamentos e pedidos. Use para redigir petições e peças brasileiras a partir do plano aprovado.
 ---
 
 # Redação jurídica brasileira

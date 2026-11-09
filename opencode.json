@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "orchestrator",
+  "instructions": [
+    "docs/ui-v2/VISUAL_IMPLEMENTATION_GUIDE.md",
+    "research/ui-design-skills/catalogo-referencias.md"
+  ],
+  "permission": {
+    "edit": "allow",
+    "webfetch": "allow",
+    "bash": {
+      "*": "allow",
+      "ssh *": "ask",
+      "scp *": "ask",
+      "git push*": "ask",
+      "git reset --hard*": "ask",
+      "Remove-Item *": "ask",
+      "rm -rf*": "ask"
+    }
+  },
+  "model": "amr/deepseek-v4-pro",
+  "small_model": "amr/deepseek-v4.1-flash"
+}

@@ -20,16 +20,22 @@ assert.ok(indexSource.indexOf('js/views/ui-v2/preference-init.js') < indexSource
 for (const stylesheet of ['tokens.css', 'primitives.css', 'shell.css', 'dashboard.css']) {
   assert.match(indexSource, new RegExp(`css/views/ui-v2/${stylesheet.replace('.', '\\.')}`), `${stylesheet} deve estar carregado.`);
 }
+/* Valores conferidos contra `css/views/ui-v2/tokens.css`, que é a autoridade
+ * (VISUAL_IMPLEMENTATION_GUIDE §3). O contrato anterior deste teste citava
+ * `primary` dark `#8297A6` e `gold` light `#A7894D`, valores que os tokens já
+ * não usam — a divergência deixava `pnpm test:ui-v2` vermelho na `main`. O teste
+ * guarda o CONTRATO ATUAL; quando o token mudar por decisão de design, atualize
+ * aqui no mesmo commit, como manda o AGENTS §24. */
 for (const [token, value] of Object.entries({
   '--v2-color-background': '#111315',
   '--v2-color-surface': '#181B1E',
   '--v2-color-foreground': '#ECEEED',
-  '--v2-color-primary': '#8297A6',
+  '--v2-color-primary': '#8DA1AF',
   '--v2-color-gold': '#C0A261'
 })) {
   assert.ok(tokensSource.includes(`${token}: ${value}`), `Token dark ausente: ${token}.`);
 }
-for (const value of ['#F3F4F2', '#FAFAF8', '#252A2E', '#596C7A', '#A7894D']) {
+for (const value of ['#F3F4F2', '#FAFAF8', '#252A2E', '#4F5F6B', '#806226']) {
   assert.ok(tokensSource.includes(value), `Valor light ausente: ${value}.`);
 }
 assert.match(tokensSource, /html\[data-ui="v2"\]/, 'O namespace V2 deve estar isolado no root.');

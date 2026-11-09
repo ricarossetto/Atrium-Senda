@@ -39,8 +39,40 @@ html[data-ui="v2"] .process-inspector .button.gold:disabled {
   transform: none;
 }
 
+html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold {
+  color: var(--v2-action-primary-text) !important;
+  background: var(--v2-action-primary-bg);
+  border-color: var(--v2-action-primary-border);
+  box-shadow: var(--v2-action-primary-shadow);
+  backdrop-filter: blur(8px) saturate(.94);
+  -webkit-backdrop-filter: blur(8px) saturate(.94);
+  text-shadow: none;
+  transform: none;
+  transition: background-color var(--v2-duration-base) var(--v2-ease-standard), border-color var(--v2-duration-base) var(--v2-ease-standard), box-shadow var(--v2-duration-base) var(--v2-ease-standard), color var(--v2-duration-base) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold:hover {
+  color: var(--v2-action-primary-text) !important;
+  background: var(--v2-action-primary-hover);
+  border-color: var(--v2-action-primary-border);
+  box-shadow: var(--v2-action-primary-shadow);
+  transform: none;
+}
+
+html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold:active {
+  box-shadow: var(--v2-action-primary-shadow-pressed);
+  transform: none;
+}
+
+html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold:disabled {
+  cursor: not-allowed;
+  opacity: .54;
+  box-shadow: none;
+  transform: none;
+}
+
 @media (max-width: 860px) {
-  html[data-ui="v2"] .view.active :where(button, [role="button"], input, select, textarea) {
+  html[data-ui="v2"] .view.active :where(button, [role="button"], input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
     min-height: 44px !important;
   }
 

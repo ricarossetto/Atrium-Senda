@@ -1,0 +1,46 @@
+[
+  {
+    "claim": "A decisão do evento 42 analisou a impenhorabilidade do bem de família.",
+    "evidence": [
+      { "citation": "Evento 42, decisão", "excerptOrSummary": "Trecho sintético que analisa a impenhorabilidade do bem de família e mantém a constrição afastada.", "sourceId": "autos-ev42", "sourceType": "documento" },
+      { "citation": "Evento 42, certidão", "excerptOrSummary": "Certidão sintética confirma a análise da impenhorabilidade na decisão.", "sourceId": "autos-cert42", "sourceType": "documento" }
+    ],
+    "expectedVerdict": "accept",
+    "id": "re-accept",
+    "shouldReject": false
+  },
+  {
+    "claim": "O precedente do Tema 100 se aplica ao caso concreto.",
+    "evidence": [
+      { "citation": "Tema 100, tese", "excerptOrSummary": "Tese sintética sobre matéria parcialmente relacionada, sem enfrentar os fatos do caso." }
+    ],
+    "expectedVerdict": "verify_more",
+    "id": "re-partial",
+    "shouldReject": false
+  },
+  {
+    "claim": "A turma manteve a condenação em todos os julgados.",
+    "evidence": [
+      { "citation": "Acórdão sintético 1", "excerptOrSummary": "Trecho sintético que absolve o réu por falta de provas." }
+    ],
+    "expectedVerdict": "reject",
+    "id": "re-contra",
+    "shouldReject": true
+  },
+  {
+    "claim": "Existe ato processual no evento 99.",
+    "evidence": [],
+    "expectedVerdict": "reject",
+    "id": "re-empty",
+    "shouldReject": true
+  },
+  {
+    "claim": "O laudo concluiu pela incapacidade total.",
+    "evidence": [
+      { "citation": "Laudo sintético", "excerptOrSummary": "Trecho sintético inconclusivo que sugere nova perícia." }
+    ],
+    "expectedVerdict": "verify_more",
+    "id": "re-insufficient",
+    "shouldReject": false
+  }
+]

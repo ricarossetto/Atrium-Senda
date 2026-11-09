@@ -1,10 +1,10 @@
-import { UI_MODE_CHANGE_EVENT } from './mode.js';
+import { UI_MODE_CHANGE_EVENT } from './mode.js?v=3.0.0';
 
 const SECTION_GROUPS = Object.freeze([
   Object.freeze({ label: 'Estrutura', keys: Object.freeze(['taskDefinitions', 'actionGroups', 'actionTypes', 'stages', 'origins']) }),
-  Object.freeze({ label: 'Equipe', keys: Object.freeze(['users', 'goals']) }),
+  Object.freeze({ label: 'Equipe', keys: Object.freeze(['office', 'users', 'goals']) }),
   Object.freeze({ label: 'Fluxo', keys: Object.freeze(['inboxSections', 'notificationAssignments']) }),
-  Object.freeze({ label: 'Sistema', keys: Object.freeze(['integrations', 'registry', 'diagnostic', 'backups']) })
+  Object.freeze({ label: 'Sistema', keys: Object.freeze(['integrations', 'registry', 'diagnostic', 'backups', 'experimental']) })
 ]);
 
 const FOCUSABLE_SELECTOR = [
@@ -38,11 +38,11 @@ export function createConfigurationAdminPresenter({
     button.id = 'openOfficeIdentityFromConfiguration';
     button.className = 'configuration-identity-entry';
     button.setAttribute('aria-haspopup', 'dialog');
-    button.setAttribute('aria-controls', 'officeSetupBackdrop');
+    button.setAttribute('aria-controls', 'officeSetupDialog');
     button.innerHTML = `
       <span class="configuration-identity-mark" aria-hidden="true">A</span>
       <span><strong>Identidade do Escritório</strong><small>Marca, responsável e sede</small></span>
-      <span class="configuration-entry-arrow" aria-hidden="true">→</span>`;
+      <span class="configuration-entry-arrow" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-chevron-right"></use></svg></span>`;
     button.addEventListener('click', () => onOpenOfficeIdentity());
     return button;
   }

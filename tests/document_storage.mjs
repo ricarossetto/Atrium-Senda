@@ -126,6 +126,36 @@ try {
   revision = mutation.payload.revision;
   assert.equal(mutation.payload.document.deletedAt, null);
 
+  // Restauração revalida unicidade do mesmo proprietário: excluir, reenviar o mesmo
+  // conteúdo/nome e tentar restaurar o registro antigo deve falhar com 409.
+  mutation = await mutateDocument(server.baseUrl, auth.headers, first.id, 'delete', { revision });
+  revision = mutation.payload.revision;
+  upload = await uploadDocument(server.baseUrl, auth.headers, {
+    revision,
+    ownerType: first.ownerType,
+    ownerId: first.ownerId,
+    originalName: first.name,
+    mime: 'application/pdf',
+    documentType: 'identidade',
+    documentDate: '2026-09-01',
+    contentBase64: secretBytes.toString('base64')
+  });
+  assert.equal(upload.response.status, 201, 'Reenvio do mesmo conteúdo após exclusão lógica deve ser aceito.');
+  const reuploaded = upload.payload.document;
+  revision = upload.payload.revision;
+  mutation = await mutateDocument(server.baseUrl, auth.headers, first.id, 'restore', { revision });
+  assert.equal(mutation.response.status, 409, 'Restauração não pode duplicar conteúdo vivo do mesmo proprietário.');
+  mutation = await mutateDocument(server.baseUrl, auth.headers, reuploaded.id, 'delete', { revision });
+  revision = mutation.payload.revision;
+  response = await fetch(`${server.baseUrl}/api/documents/${reuploaded.id}`, {
+    method: 'DELETE', headers: auth.headers, body: JSON.stringify({ revision, confirm: true })
+  });
+  assert.equal(response.status, 200, 'Duplicado reenviado deve poder ser purgado.');
+  revision = (await response.json()).revision;
+  mutation = await mutateDocument(server.baseUrl, auth.headers, first.id, 'restore', { revision });
+  assert.equal(mutation.response.status, 200, 'Sem duplicado vivo, a restauração volta a ser permitida.');
+  revision = mutation.payload.revision;
+
   mutation = await mutateDocument(server.baseUrl, auth.headers, first.id, 'delete', { revision });
   revision = mutation.payload.revision;
   response = await fetch(`${server.baseUrl}/api/documents/${first.id}`, {

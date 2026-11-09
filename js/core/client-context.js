@@ -1,5 +1,5 @@
-import { buildLegalTimeline } from './legal-timeline.js';
-import { normalizeProcessNumber } from './client-reconciliation.js';
+import { buildLegalTimeline } from './legal-timeline.js?v=3.0.0';
+import { normalizeProcessNumber } from './client-reconciliation.js?v=3.0.0';
 
 const TERMINAL_TASK_STATUSES = new Set(['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada']);
 
@@ -25,7 +25,7 @@ export function buildClientContext(state, contact, { timelineLimit = 80 } = {}) 
     || (record?.ownerType === 'process' && processIds.has(String(record.ownerId || '')))
     || processNumbers.has(normalizeProcessNumber(record?.process || record?.processNumber || record?.number));
 
-  const tasks = uniqueById((state.tasks || []).filter(linked));
+  const tasks = uniqueById((state.tasks || []).filter(task => task && task.active !== false).filter(linked));
   const publications = uniqueById((state.intimations || []).filter(linked));
   const appointments = uniqueById([...(state.agenda || []), ...(state.events || [])].filter(linked));
   const documents = uniqueById((state.documents || []).filter(document => linked(document)

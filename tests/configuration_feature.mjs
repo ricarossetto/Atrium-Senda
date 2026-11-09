@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createConfigurationFeature } from '../js/features/configuration.js';
+import '../js/office-data.js';
 
 const moduleSource = readFileSync(new URL('../js/features/configuration.js', import.meta.url), 'utf8');
 const portalSource = readFileSync(new URL('../js/portal.js', import.meta.url), 'utf8');
 assert.match(moduleSource, /export function createConfigurationFeature/);
-assert.doesNotMatch(moduleSource, /^\s*import\s/m);
+const configurationImports = moduleSource.match(/^\s*import\s.*$/gm) || [];
+assert.equal(configurationImports.length, 1, 'Configuration só pode importar o helper compartilhado de avatar.');
+assert.match(configurationImports[0], /core\/member-avatar\.js/);
 assert.doesNotMatch(moduleSource, /portal\.js|system-admin\.js/);
 assert.doesNotMatch(moduleSource, /\bfetch\s*\(/);
 assert.match(portalSource, /renderConfiguration\(query = ''\) \{ return getConfigurationFeature\(\)\.render\(query\); \}/);
@@ -103,11 +106,11 @@ for (const [id, type] of [['configurationSearch', 'input'], ['configurationTabs'
 
 feature.render();
 const tabKeys = [...elements.configurationTabs.innerHTML.matchAll(/data-config-section="([^"]+)"/g)].map(match => match[1]);
-assert.deepEqual(tabKeys, ['taskDefinitions', 'users', 'actionGroups', 'actionTypes', 'stages', 'origins', 'goals', 'inboxSections', 'notificationAssignments', 'integrations', 'registry', 'diagnostic', 'backups']);
-assert.match(elements.configurationMetrics.innerHTML, /2[\s\S]*Definições de tarefa/);
+assert.deepEqual(tabKeys.filter(key => key !== 'office' && key !== 'billing'), ['taskDefinitions', 'users', 'actionGroups', 'actionTypes', 'stages', 'origins', 'goals', 'inboxSections', 'notificationAssignments', 'integrations', 'registry', 'diagnostic', 'backups', 'experimental']);
+assert.match(elements.configurationMetrics.innerHTML, /2[\s\S]*Tipos de tarefa/);
 assert.match(elements.configurationMetrics.innerHTML, /1[\s\S]*Tipos de ação/);
 assert.match(elements.configurationMetrics.innerHTML, /1[\s\S]*Etapas/);
-assert.match(elements.configurationMetrics.innerHTML, /0[\s\S]*Usuários de acesso/);
+assert.match(elements.configurationMetrics.innerHTML, /[0-9][\s\S]*Membros/);
 assert.match(elements.configurationMetrics.innerHTML, /2[\s\S]*Contatos importados/);
 
 feature.render('acordao');
@@ -115,6 +118,7 @@ assert.match(elements.configurationList.innerHTML, /Pesquisar Acórdão Sintéti
 assert.doesNotMatch(elements.configurationList.innerHTML, /Tarefa Sintética/);
 assert.match(feature.row('Seção Sintética', 3), /Seção da caixa de entrada[\s\S]*data-delete-config="3"/);
 assert.match(feature.row({ name: 'Objeto Sintético', phase: 'Execução', points: 17 }, 2), /Objeto Sintético[\s\S]*Execução[\s\S]*17 pontos/);
+assert.match(feature.row({ name: 'Tarefa com Área', phase: 'Judicial', area: 'Cível', points: 30 }, 2), /Tarefa com Área[\s\S]*Cível · Judicial[\s\S]*30 pontos/);
 assert.match(feature.row({ group: 'Equipe Sintética', monthlyClosings: null }, 4), /Meta não definida/);
 assert.match(feature.row({ event: 'Evento legado', responsibles: 'Pessoa A; Pessoa B' }, 5), /Pessoa A; Pessoa B/);
 assert.match(feature.row({ event: 'Evento sem responsáveis', responsibles: { malformed: true } }, 6), /Evento sem responsáveis[\s\S]*—/);
@@ -141,7 +145,7 @@ assert.deepEqual(feature.users, []);
 assert.equal(feature.role, 'collaborator');
 
 const expectedFields = {
-  taskDefinitions: ['name', 'points', 'phase', 'slaDays', 'priority', 'defaultRole', 'requireDocument', 'status', 'instructions'],
+  taskDefinitions: ['name', 'points', 'phase', 'area', 'slaDays', 'priority', 'defaultRole', 'requireDocument', 'status', 'instructions'],
   users: ['name', 'role', 'pointsGoal', 'oab', 'email', 'status'],
   actionGroups: ['name', 'publicationResponsible', 'leaderLawyer', 'autoAssign', 'color', 'description'],
   actionTypes: ['name', 'group', 'procedure', 'defaultCourt', 'estimatedDuration', 'status'],
@@ -161,10 +165,19 @@ for (const [section, names] of Object.entries(expectedFields)) {
   assert.equal(call[4]._section, section);
 }
 
+feature.section = 'taskDefinitions';
+feature.openModal({ name: 'Modelo Legado', points: 15, phase: 'Recursal' }, 0);
+const areaField = modalCalls.at(-1)[3].find(field => field.name === 'area');
+assert.ok(areaField.suggestions.includes('Judicial') && areaField.suggestions.includes('Cível'), 'Editor de tarefas deve sugerir as áreas oficiais.');
+assert.equal(modalCalls.at(-1)[4].area, 'Judicial', 'Área derivada da fase deve preencher o editor de modelo legado.');
+
 feature.saveRecord({ name: 'Criada Sintética', points: '31', phase: 'Administrativo' }, { _section: 'taskDefinitions', _index: null });
 assert.equal(configuration.taskDefinitions.at(-1).points, 31);
+feature.saveRecord({ name: 'Criada com Área', points: '9', phase: 'Recursal', area: '  Cível  ' }, { _section: 'taskDefinitions', _index: null });
+assert.equal(configuration.taskDefinitions.at(-1).area, 'Cível');
 feature.saveRecord({ name: 'Editada Sintética', points: '', phase: 'Judicial' }, { _section: 'taskDefinitions', _index: 0 });
 assert.equal(configuration.taskDefinitions[0].points, 0);
+assert.equal('area' in configuration.taskDefinitions[0], false, 'Área vazia não deve persistir campo no modelo.');
 feature.saveRecord({ value: 'Caixa Normalizada' }, { _section: 'inboxSections', _index: null });
 assert.equal(configuration.inboxSections.at(-1), 'Caixa Normalizada');
 feature.saveRecord({ event: 'Evento Normalizado', responsibles: ' Pessoa A, Pessoa B; ;Pessoa C ' }, { _section: 'notificationAssignments', _index: null });

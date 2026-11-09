@@ -8,21 +8,27 @@
 }
 
 .email-receivers-empty { text-align: center; }
-.email-receivers-empty p { margin: 0; color: var(--muted); font-size: 12.5px; font-style: italic; }
+.email-receivers-empty p { margin: 0; color: var(--muted); font-size: 13px; font-style: italic; }
 .email-receiver-item { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .email-receiver-identity { min-width: 200px; display: flex; flex-direction: column; gap: 2px; }
 .email-receiver-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.email-receiver-heading strong { color: var(--ivory); font-size: 13.5px; }
-.email-receiver-address { color: var(--muted); font: 12.5px/1.4 monospace; }
+.email-receiver-heading strong { color: var(--ivory); font-size: 14px; }
+.email-receiver-address { color: var(--muted); font: 13px/1.4 monospace; }
 .email-receiver-type,
-.email-receiver-status { padding: 2px 8px; font-size: 11px; font-weight: 600; }
+.email-receiver-status { padding: 2px 8px; font-size: 12px; font-weight: 600; }
 .email-receiver-type,
 .email-receiver-status.muted { color: var(--muted); background: var(--panel); border-color: var(--line); }
 .email-receiver-status.success { color: var(--success); background: rgba(56, 161, 105, .15); border-color: var(--success); }
-.email-receiver-status.danger { color: var(--danger); background: rgba(204, 51, 51, .15); border-color: var(--danger); }
-.email-receiver-actions { display: flex; align-items: center; gap: 6px; }
+.email-receiver-status.danger { color: var(--v2-color-danger); background: var(--v2-color-danger-soft); border-color: color-mix(in srgb, var(--v2-color-danger) 45%, transparent); }
+.email-receiver-actions { display: flex; align-items: center; gap: 8px; }
 .email-receiver-actions .button { padding: 4px 10px; font-size: 12px; }
-.email-receiver-actions .email-receiver-delete { padding-inline: 8px; color: var(--danger); }
+.email-receiver-actions .email-receiver-delete { padding-inline: 8px; color: var(--v2-color-danger); }
+.email-receiver-empty-events { color: var(--muted); font-size: 12px; }
+.mail-telemetry { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin: 10px 0; font-size: 12px; }
+.mail-telemetry > div { background: var(--panel-soft); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); }
+.mail-telemetry small { display: block; color: var(--muted); font-size: 12px; }
+.mail-telemetry strong { color: var(--ivory); font-size: 13px; }
+.mail-telemetry #atriumMailQueueCount { color: var(--v2-color-gold-text, var(--gold)); }
 
 html[data-ui="v2"] #view-integrations {
   max-width: 1440px;
@@ -40,7 +46,7 @@ html[data-ui="v2"] .v2-integrations-header {
 html[data-ui="v2"] .v2-integrations-header p {
   margin: 0 0 var(--v2-space-1);
   color: var(--v2-color-gold);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 850;
   letter-spacing: .13em;
 }
@@ -48,7 +54,7 @@ html[data-ui="v2"] .v2-integrations-header p {
 html[data-ui="v2"] .v2-integrations-header h2 {
   margin: 0;
   color: var(--v2-color-foreground);
-  font: 600 clamp(30px, 3vw, 42px)/1.04 var(--v2-font-editorial);
+  font: 600 clamp(24px, 3vw, 40px)/1.04 var(--v2-font-editorial);
   letter-spacing: -.03em;
 }
 
@@ -71,7 +77,7 @@ html[data-ui="v2"] .v2-integrations-safety {
   background: var(--v2-color-surface-secondary);
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-round);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 650;
 }
 
@@ -152,6 +158,7 @@ html[data-ui="v2"] #judicialSetupBackdrop .judicial-setup-modal {
   height: 100dvh;
   max-height: 100dvh;
   margin: 0;
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
@@ -168,13 +175,14 @@ html[data-ui="v2"] #judicialSetupBackdrop .judicial-setup-modal > header {
   border-bottom: 1px solid var(--v2-color-border);
 }
 
-html[data-ui="v2"] #judicialSetupTitle { font-family: var(--v2-font-editorial); font-size: clamp(24px, 2.5vw, 32px); }
+html[data-ui="v2"] #judicialSetupTitle { font-family: var(--v2-font-editorial); font-size: clamp(20px, 2.5vw, 24px); }
 html[data-ui="v2"] #judicialSetupClose { min-width: 44px; min-height: 44px; }
 html[data-ui="v2"] .managed-judicial-subtitle { max-width: 680px; margin: var(--v2-space-2) 0 0; color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.45; }
 
 html[data-ui="v2"] .judicial-setup-body {
   min-height: 0;
   display: grid;
+  align-content: start;
   gap: var(--v2-space-4);
   padding: var(--v2-space-5) var(--v2-space-6);
   overflow-y: auto;
@@ -219,20 +227,25 @@ html[data-ui="v2"] .managed-coverage-group + .managed-coverage-group {
   border-top: 1px solid var(--v2-color-border);
 }
 
-html[data-ui="v2"] .managed-coverage-group > h4 {
+html[data-ui="v2"] .managed-coverage-group > h4,
+html[data-ui="v2"] .managed-coverage-group > summary {
   margin: 0;
   padding: var(--v2-space-3) var(--v2-space-4);
   color: var(--v2-color-muted-foreground);
   background: var(--v2-color-surface-inset);
-  font: 700 10px/1.2 var(--v2-font-sans);
+  font: 700 12px/1.2 var(--v2-font-sans);
   letter-spacing: .09em;
   text-transform: uppercase;
 }
 
+html[data-ui="v2"] .managed-coverage-group > summary { display: flex; justify-content: space-between; cursor: pointer; list-style: none; }
+html[data-ui="v2"] .managed-coverage-group > summary::-webkit-details-marker { display: none; }
+html[data-ui="v2"] .managed-coverage-group > summary small { color: var(--v2-color-muted-foreground); font: 600 11px/1.2 var(--v2-font-sans); letter-spacing: normal; text-transform: none; }
+
 html[data-ui="v2"] .managed-coverage-row {
   min-height: 76px;
   display: grid;
-  grid-template-columns: minmax(190px, 1.1fr) minmax(180px, .9fr) minmax(180px, .9fr);
+  grid-template-columns: minmax(190px, 1.1fr) minmax(180px, .9fr) minmax(180px, .9fr) auto;
   align-items: center;
   gap: var(--v2-space-4);
   padding: var(--v2-space-3) var(--v2-space-4);
@@ -247,7 +260,7 @@ html[data-ui="v2"] .managed-coverage-row[data-managed-state="error"] { backgroun
 
 html[data-ui="v2"] :where(.managed-coverage-identity, .managed-coverage-status, .managed-coverage-next) { min-width: 0; display: grid; gap: 4px; }
 html[data-ui="v2"] .managed-coverage-identity strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-html[data-ui="v2"] :where(.managed-coverage-identity, .managed-coverage-status, .managed-coverage-next) :where(span, small) { color: var(--v2-color-muted-foreground); font-size: 11px; line-height: 1.4; }
+html[data-ui="v2"] :where(.managed-coverage-identity, .managed-coverage-status, .managed-coverage-next) :where(span, small) { color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.4; }
 html[data-ui="v2"] .managed-coverage-status .status-chip { width: fit-content; color: var(--v2-color-foreground); }
 
 html[data-ui="v2"] .managed-readonly-notice {
@@ -260,6 +273,73 @@ html[data-ui="v2"] .managed-readonly-notice {
   font-size: 12px;
   line-height: 1.5;
 }
+
+html[data-ui="v2"] .pje-coverage-section {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+}
+
+html[data-ui="v2"] .pje-coverage-section > summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--v2-space-3) var(--v2-space-4);
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-inset);
+  cursor: pointer;
+  list-style: none;
+}
+
+html[data-ui="v2"] .pje-coverage-section > summary::-webkit-details-marker { display: none; }
+html[data-ui="v2"] .pje-coverage-section > summary span { font-size: 13px; font-weight: 700; }
+html[data-ui="v2"] .pje-coverage-section > summary small { color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.4; }
+html[data-ui="v2"] .pje-coverage-section[open] > summary { border-bottom: 1px solid var(--v2-color-border); }
+html[data-ui="v2"] .pje-coverage-section > summary:focus-visible { outline: 2px solid var(--v2-color-primary); outline-offset: -2px; }
+
+html[data-ui="v2"] .pje-coverage-body {
+  min-width: 0;
+  display: grid;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-4);
+}
+
+html[data-ui="v2"] .pje-coverage-config {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-3);
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-md);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] .pje-coverage-config label { display: inline-flex; align-items: center; gap: 6px; }
+html[data-ui="v2"] .pje-coverage-config input[type="number"] { width: 84px; }
+html[data-ui="v2"] #pjeCoverageSection .button { min-height: 40px; }
+
+html[data-ui="v2"] .pje-portal-card { min-width: 0; }
+html[data-ui="v2"] .pje-portal-card > div { color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+html[data-ui="v2"] .pje-portal-error { color: var(--v2-color-danger); }
+html[data-ui="v2"] .pje-portal-card-actions { display: flex; flex-wrap: wrap; gap: var(--v2-space-2); margin-top: var(--v2-space-2); }
+
+html[data-ui="v2"] .pje-communications-panel { min-width: 0; display: grid; gap: var(--v2-space-2); }
+html[data-ui="v2"] .pje-communications-heading h3 { margin: 0; font-size: 16px; }
+html[data-ui="v2"] .pje-communications-heading p { margin: 4px 0 0; color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.45; }
+html[data-ui="v2"] .pje-communications-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--v2-space-3); font-size: 12px; }
+html[data-ui="v2"] .pje-communications-filters label { display: inline-flex; align-items: center; gap: 6px; }
+html[data-ui="v2"] .pje-communications-list { min-width: 0; overflow-x: auto; }
+html[data-ui="v2"] .pje-communications-list table { width: 100%; border-collapse: collapse; font-size: 12px; }
+html[data-ui="v2"] .pje-communications-list th,
+html[data-ui="v2"] .pje-communications-list td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--v2-color-border-subtle); white-space: nowrap; }
+html[data-ui="v2"] .pje-communications-list th { color: var(--v2-color-muted-foreground); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+html[data-ui="v2"] .pje-communications-list td { color: var(--v2-color-foreground-secondary); }
+html[data-ui="v2"] .pje-communications-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--v2-space-2); color: var(--v2-color-muted-foreground); font-size: 12px; }
 
 html[data-ui="v2"] .setup-status-grid article {
   min-width: 0;
@@ -287,8 +367,8 @@ html[data-ui="v2"] .setup-status-icon {
 }
 
 html[data-ui="v2"] .setup-status-icon.ok { color: var(--v2-color-success); background: var(--v2-color-success-soft); border-color: var(--v2-color-success); }
-html[data-ui="v2"] .setup-status-grid small { color: var(--v2-color-muted-foreground); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-html[data-ui="v2"] .setup-status-grid strong { display: block; margin-top: 3px; color: var(--v2-color-foreground); font-size: 11px; line-height: 1.35; }
+html[data-ui="v2"] .setup-status-grid small { color: var(--v2-color-muted-foreground); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+html[data-ui="v2"] .setup-status-grid strong { display: block; margin-top: 3px; color: var(--v2-color-foreground); font-size: 12px; line-height: 1.35; }
 
 html[data-ui="v2"] #judicialSetupBackdrop .setup-section {
   padding: var(--v2-space-5);
@@ -310,7 +390,7 @@ html[data-ui="v2"] #judicialSetupBackdrop :where(.file-picker, .portal-qr-upload
 }
 
 html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading { gap: var(--v2-space-4); }
-html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading h3 { color: var(--v2-color-foreground); font-size: 17px; }
+html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading h3 { color: var(--v2-color-foreground); font-size: 18px; }
 html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading p:not(.eyebrow) { color: var(--v2-color-muted-foreground); line-height: 1.5; }
 html[data-ui="v2"] #judicialSetupBackdrop .eyebrow { color: var(--v2-color-gold); }
 
@@ -327,6 +407,43 @@ html[data-ui="v2"] #a1DocAndIssuer { color: var(--v2-color-muted-foreground) !im
 html[data-ui="v2"] #a1SandboxChecklist { color: var(--v2-color-foreground-secondary); background: var(--v2-color-surface-inset) !important; border-color: var(--v2-color-border-subtle) !important; }
 
 html[data-ui="v2"] #judicialSetupBackdrop :where(.setup-form-row, .totp-form) label { color: var(--v2-color-foreground-secondary); }
+
+/* Conta do tribunal (sem A1): seleção múltipla de tribunais com a mesma credencial. */
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-field { display: grid; gap: 8px; grid-column: 1 / -1; }
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-label { color: var(--v2-color-foreground-secondary); font-size: 12px; font-weight: 600; letter-spacing: .03em; }
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-actions .button { min-height: 34px; font-size: 12px; }
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 216px;
+  overflow-y: auto;
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface);
+}
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-row label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--v2-radius-sm);
+  cursor: pointer;
+}
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-row label:hover { background: var(--v2-color-surface-secondary); }
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--v2-color-gold);
+}
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-row span { display: grid; gap: 2px; }
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-row strong { color: var(--v2-color-foreground); font-size: 13px; font-weight: 600; }
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-row small { color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-empty { padding: 10px; color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] #judicialSetupBackdrop .account-portal-hint { margin: 0; color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.5; }
 html[data-ui="v2"] #judicialSetupBackdrop :where(input, select) {
   min-height: 44px;
   color: var(--v2-color-foreground);
@@ -370,7 +487,7 @@ html[data-ui="v2"] .portal-auth-guide {
 html[data-ui="v2"] .portal-auth-guide h3 {
   margin: 2px 0 10px;
   color: var(--v2-color-foreground);
-  font-size: 17px;
+  font-size: 18px;
 }
 
 html[data-ui="v2"] .portal-auth-guide ol {
@@ -408,6 +525,10 @@ html[data-ui="v2"] .portal-coverage-group {
   border-radius: var(--v2-radius-lg);
 }
 
+html[data-ui="v2"] .portal-coverage-group > summary { display: flex; justify-content: space-between; padding: var(--v2-space-3) var(--v2-space-4); color: var(--v2-color-foreground); background: var(--v2-color-surface-inset); cursor: pointer; list-style: none; }
+html[data-ui="v2"] .portal-coverage-group > summary::-webkit-details-marker { display: none; }
+html[data-ui="v2"] .portal-coverage-group > summary span { color: var(--v2-color-muted-foreground); font-size: 12px; }
+
 html[data-ui="v2"] .portal-coverage-group > header { color: var(--v2-color-foreground); background: var(--v2-color-surface-inset); border-color: var(--v2-color-border); }
 html[data-ui="v2"] .portal-coverage-group > header span { color: var(--v2-color-muted-foreground); }
 html[data-ui="v2"] .portal-coverage-row { min-height: 70px; color: var(--v2-color-foreground); border-color: var(--v2-color-border-subtle); }
@@ -417,6 +538,8 @@ html[data-ui="v2"] .portal-coverage-row.experimental { background: color-mix(in 
 html[data-ui="v2"] .portal-coverage-row input { min-width: 20px; min-height: 20px; }
 html[data-ui="v2"] .portal-coverage-row .button { min-height: 40px; }
 html[data-ui="v2"] .portal-row-actions { display: flex; justify-content: flex-end; gap: var(--v2-space-2); }
+html[data-ui="v2"] .managed-coverage-actions .button,
+html[data-ui="v2"] .v2-eproc-card-actions .button { min-height: 44px; }
 
 html[data-ui="v2"] #judicialSetupBackdrop .setup-warning {
   color: var(--v2-color-foreground-secondary);
@@ -458,30 +581,65 @@ html[data-ui="v2"] #view-integrations .connection-integration-card .integration-
 }
 
 html[data-ui="v2"] #view-integrations .inpi-integration-card {
-  border-color: color-mix(in srgb, var(--v2-color-gold, #c69f53) 25%, var(--v2-color-border));
-}
-
-html[data-ui="v2"] #view-integrations .inpi-integration-card::before {
-  background: var(--v2-color-gold, #c69f53);
+  /* Faixa superior do cartão como borda real: o ::before com fundo proprio
+     impedia a medição automática do contraste do texto do cartão. */
+  border-top-color: var(--v2-color-gold);
 }
 
 html[data-ui="v2"] #view-integrations .inpi-integration-card .integration-logo {
-  color: var(--v2-color-gold, #c69f53);
-  background: rgba(198, 159, 83, 0.12);
-  border: 1px solid rgba(198, 159, 83, 0.28);
+  color: var(--v2-color-gold);
+  background: var(--v2-color-gold-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-gold) 32%, transparent);
 }
 
 html[data-ui="v2"] #view-integrations .email-integration-card {
-  grid-column: 1 / -1;
+  grid-column: auto;
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr);
   align-items: start;
-  gap: var(--v2-space-5);
+  gap: var(--v2-space-4);
+  padding: var(--v2-space-4);
+  align-self: start;
 }
 
 html[data-ui="v2"] #view-integrations .email-integration-card .integration-logo {
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
+}
+
+html[data-ui="v2"] #view-integrations .email-integration-card .integration-copy h3 {
+  margin-top: 8px;
+  font-size: clamp(16px, 1.5vw, 20px);
+}
+
+html[data-ui="v2"] #view-integrations .email-integration-card .integration-copy p {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+html[data-ui="v2"] #view-integrations .email-integration-card #atriumMailTelemetry {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: var(--v2-space-3) 0 !important;
+}
+
+html[data-ui="v2"] #view-integrations .email-integration-card #atriumMailTelemetry > div {
+  padding: 5px 7px !important;
+}
+
+html[data-ui="v2"] #view-integrations .email-integration-card #atriumMailTelemetry strong {
+  font-size: 12px !important;
+}
+
+html[data-ui="v2"] #view-integrations .email-integration-card .email-integration-actions {
+  gap: var(--v2-space-2) !important;
+  margin: var(--v2-space-3) 0 0 !important;
+}
+
+html[data-ui="v2"] #view-integrations .email-integration-card .email-integration-actions .button {
+  min-height: 40px;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 html[data-ui="v2"] #view-integrations .email-integration-actions {
@@ -525,13 +683,13 @@ html[data-ui="v2"] .smtp-first-use-guide {
   border-radius: var(--v2-radius-lg);
 }
 html[data-ui="v2"] .smtp-first-use-guide.hidden { display: none; }
-html[data-ui="v2"] .smtp-first-use-guide h4 { margin: 2px 0 0; color: var(--v2-color-foreground); font: 650 17px/22px var(--v2-font-editorial); }
+html[data-ui="v2"] .smtp-first-use-guide h4 { margin: 2px 0 0; color: var(--v2-color-foreground); font: 650 18px/22px var(--v2-font-editorial); }
 html[data-ui="v2"] .smtp-first-use-guide ol { grid-column: 1 / -1; margin: 0; padding-left: 20px; font-size: 12px; line-height: 1.55; }
 html[data-ui="v2"] .smtp-first-use-guide .button { align-self: start; font-weight: 800; }
 
 html[data-ui="v2"] .assisted-session-action { width: min(260px, 100%); display: grid; gap: var(--v2-space-2); }
 html[data-ui="v2"] .assisted-session-action .button { width: 100%; }
-html[data-ui="v2"] .assisted-session-feedback { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 11px; line-height: 1.45; }
+html[data-ui="v2"] .assisted-session-feedback { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 12px; line-height: 1.45; }
 html[data-ui="v2"] .assisted-session-feedback.working { color: var(--v2-color-primary); }
 html[data-ui="v2"] .assisted-session-feedback.success { color: var(--v2-color-success); }
 html[data-ui="v2"] .assisted-session-feedback.warning { color: var(--v2-color-warning); }
@@ -539,7 +697,7 @@ html[data-ui="v2"] .assisted-session-feedback.warning { color: var(--v2-color-wa
 html[data-ui="v2"] .email-receivers-heading { margin-bottom: var(--v2-space-3) !important; }
 html[data-ui="v2"] .email-receivers-heading h4 { color: var(--v2-color-foreground) !important; font-size: 14px !important; }
 html[data-ui="v2"] .email-receivers-heading p { color: var(--v2-color-muted-foreground) !important; }
-html[data-ui="v2"] #emailReceiversCount { color: var(--v2-color-muted-foreground) !important; background: var(--v2-color-surface-inset) !important; border-color: var(--v2-color-border) !important; }
+html[data-ui="v2"] #emailReceiversCount { color: var(--v2-color-muted-foreground) !important; background: var(--v2-color-surface-inset) !important; border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-round); padding: 3px 8px; font-size: 12px; }
 
 html[data-ui="v2"] .email-receivers-list {
   display: grid !important;
@@ -572,14 +730,68 @@ html[data-ui="v2"] .email-receiver-heading { display: flex; align-items: center;
 html[data-ui="v2"] .email-receiver-heading strong { color: var(--v2-color-foreground); font-size: 13px; }
 html[data-ui="v2"] .email-receiver-address { overflow-wrap: anywhere; color: var(--v2-color-muted-foreground); font: 500 12px/1.4 var(--v2-font-sans); font-variant-numeric: tabular-nums; }
 html[data-ui="v2"] .email-receiver-type,
-html[data-ui="v2"] .email-receiver-status { padding: 3px 8px; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+html[data-ui="v2"] .email-receiver-status { padding: 3px 8px; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 html[data-ui="v2"] .email-receiver-type { color: var(--v2-color-muted-foreground); background: var(--v2-color-surface-secondary); border-color: var(--v2-color-border); }
 html[data-ui="v2"] .email-receiver-status.success { color: var(--v2-color-success); background: var(--v2-color-success-soft); border-color: color-mix(in srgb, var(--v2-color-success) 45%, var(--v2-color-border)); }
 html[data-ui="v2"] .email-receiver-status.danger { color: var(--v2-color-danger); background: var(--v2-color-danger-soft); border-color: color-mix(in srgb, var(--v2-color-danger) 45%, var(--v2-color-border)); }
 html[data-ui="v2"] .email-receiver-status.muted { color: var(--v2-color-muted-foreground); background: var(--v2-color-surface-secondary); border-color: var(--v2-color-border); }
 html[data-ui="v2"] .email-receiver-actions { flex: 0 0 auto; display: flex; align-items: center; gap: var(--v2-space-2); }
-html[data-ui="v2"] .email-receiver-actions .button { min-height: 40px; padding: 0 var(--v2-space-3); font-size: 11px; }
+html[data-ui="v2"] .email-receiver-actions .button { min-height: 40px; padding: 0 var(--v2-space-3); font-size: 12px; }
 html[data-ui="v2"] .email-receiver-actions .email-receiver-delete { min-width: 40px; padding: 0; color: var(--v2-color-danger); }
+
+html[data-ui="v2"] .mail-preferences-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  justify-content: flex-end;
+  background: color-mix(in srgb, var(--v2-color-background) 72%, transparent);
+  backdrop-filter: blur(5px);
+}
+html[data-ui="v2"] .mail-preferences-drawer-backdrop.hidden { display: none; }
+html[data-ui="v2"] .mail-preferences-drawer {
+  width: min(430px, 100vw);
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface);
+  border-left: 1px solid var(--v2-color-border);
+  box-shadow: -16px 0 40px rgba(0,0,0,.18);
+}
+html[data-ui="v2"] .mail-preferences-drawer > header { display: flex; justify-content: space-between; gap: var(--v2-space-4); padding: var(--v2-space-5); border-bottom: 1px solid var(--v2-color-border); }
+html[data-ui="v2"] .mail-preferences-drawer .icon-button,
+html[data-ui="v2"] .mail-preferences-drawer .button { min-width: 44px; min-height: 44px; }
+html[data-ui="v2"] .mail-preferences-drawer h2 { margin: 0; font: 600 24px/1.1 var(--v2-font-editorial); }
+html[data-ui="v2"] .mail-preferences-drawer header p:last-child { margin: var(--v2-space-2) 0 0; color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] #mailPreferencesForm { display: grid; align-content: start; gap: var(--v2-space-4); padding: var(--v2-space-5); overflow: auto; }
+html[data-ui="v2"] #mailPreferencesForm label { min-width: 0; display: grid; gap: 6px; color: var(--v2-color-foreground); font-size: 13px; font-weight: 700; }
+html[data-ui="v2"] #mailPreferencesForm label[hidden] { display: none; }
+html[data-ui="v2"] #mailPreferencesForm label > span { white-space: normal; overflow-wrap: break-word; }
+html[data-ui="v2"] #mailPreferencesForm select { width: 100%; min-width: 0; min-height: 44px; padding: 0 10px; font-size: 16px; color: var(--v2-color-foreground); background: var(--v2-color-surface-inset); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-md); }
+html[data-ui="v2"] .mail-preferences-help { margin: 0; color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.5; }
+html[data-ui="v2"] .mail-preferences-feedback.warning { color: var(--v2-color-warning); }
+html[data-ui="v2"] #mailPreferencesForm footer { display: flex; justify-content: flex-end; gap: var(--v2-space-2); margin-top: var(--v2-space-3); padding-top: var(--v2-space-4); border-top: 1px solid var(--v2-color-border); }
+html[data-ui="v2"] .mail-preferences-feedback { margin: 0; color: var(--v2-color-success); font-size: 12px; }
+html[data-ui="v2"] .mail-preferences-feedback.error { color: var(--v2-color-danger); }
+html[data-ui="v2"] .mail-preferences-master {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-3);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-md);
+}
+html[data-ui="v2"] .mail-preferences-master strong { display: block; font-size: 13px; }
+html[data-ui="v2"] .mail-preferences-master small { display: block; margin-top: 2px; color: var(--v2-color-muted-foreground); font-size: 11px; font-weight: 400; }
+html[data-ui="v2"] .mail-preferences-master .switch-label { min-height: 44px; padding: 0 var(--v2-space-1); align-items: center; }
+
+html[data-ui="v2"] #portalTotpFeedback { margin: 4px 0 0; padding: 6px 9px; font-size: 12px; line-height: 1.35; }
+html[data-ui="v2"] #totpSetupSection { scroll-margin-top: 16px; }
+html[data-ui="v2"] #eprocIntegrationsSection { margin-top: var(--v2-space-4); }
+html[data-ui="v2"] #eprocIntegrationsSection .v2-eproc-card-actions .button { min-height: 44px; }
 
 html[data-ui="v2"] body > .connection-backdrop {
   justify-content: flex-end;
@@ -609,6 +821,13 @@ html[data-ui="v2"] body > .connection-backdrop .connection-sheet {
 
 html[data-ui="v2"] body > .connection-backdrop .connection-sheet.compact { width: min(600px, calc(100vw - 72px)) !important; }
 
+/* O sheet vive numa track de grid alinhada ao fim; maximizado ele sai do fluxo e ancora na viewport. */
+html[data-ui="v2"] body > .connection-backdrop .connection-sheet[data-panel-size="maximized"] {
+  position: fixed;
+  width: 100% !important;
+  max-width: none !important;
+}
+
 html[data-ui="v2"] body > .connection-backdrop .connection-sheet > header {
   padding: var(--v2-space-5) var(--v2-space-6);
   background: var(--v2-color-surface-elevated);
@@ -619,7 +838,7 @@ html[data-ui="v2"] body > .connection-backdrop .connection-sheet > header h2,
 html[data-ui="v2"] body > .connection-backdrop .connection-sheet > header h3 {
   margin: 0;
   color: var(--v2-color-foreground);
-  font: 600 clamp(23px, 2.4vw, 31px)/1.08 var(--v2-font-editorial);
+  font: 600 clamp(20px, 2.4vw, 24px)/1.08 var(--v2-font-editorial);
   letter-spacing: -.02em;
 }
 
@@ -656,7 +875,7 @@ html[data-ui="v2"] .connection-form-section {
   padding-bottom: var(--v2-space-2);
   color: var(--v2-color-gold);
   border-bottom: 1px solid var(--v2-color-border-subtle);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 850;
   letter-spacing: .12em;
   text-transform: uppercase;
@@ -692,7 +911,7 @@ html[data-ui="v2"] .connection-professional-warning {
   background: var(--v2-color-primary-soft);
   border: 1px solid color-mix(in srgb, var(--v2-color-primary) 28%, var(--v2-color-border));
   border-radius: var(--v2-radius-md);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -714,16 +933,236 @@ html[data-ui="v2"] #calendarConfigStatus {
   to { opacity: 1; transform: translateX(0); }
 }
 
+/* =========================================================================
+   Painel Central Eproc Nacional · 4ª Região & Tribunais Integrados
+   ========================================================================= */
+html[data-ui="v2"] .v2-eproc-section {
+  padding: var(--v2-space-5);
+  margin-bottom: var(--v2-space-5);
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-xl);
+  box-shadow: var(--v2-shadow-card);
+}
+
+html[data-ui="v2"] .v2-eproc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--v2-space-4);
+  margin-bottom: var(--v2-space-5);
+  padding-bottom: var(--v2-space-4);
+  border-bottom: 1px solid var(--v2-color-border);
+}
+
+html[data-ui="v2"] .v2-eproc-header-titles {
+  max-width: 720px;
+}
+
+html[data-ui="v2"] .v2-eproc-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--v2-color-gold);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .12em;
+  margin-bottom: 4px;
+}
+
+html[data-ui="v2"] .v2-eproc-eyebrow svg {
+  width: 14px;
+  height: 14px;
+}
+
+html[data-ui="v2"] .v2-eproc-header h3 {
+  margin: 0 0 6px;
+  color: var(--v2-color-foreground);
+  font: 600 clamp(18px, 2.2vw, 24px)/1.15 var(--v2-font-editorial);
+  letter-spacing: -.02em;
+}
+
+html[data-ui="v2"] .v2-eproc-subtitle {
+  margin: 0;
+  color: var(--v2-color-muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+html[data-ui="v2"] .v2-eproc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--v2-space-3);
+  flex-wrap: wrap;
+}
+
+html[data-ui="v2"] .v2-eproc-schedule-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-round);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--v2-color-foreground-secondary);
+}
+
+html[data-ui="v2"] .v2-eproc-schedule-pill svg {
+  width: 15px;
+  height: 15px;
+  color: var(--v2-color-gold);
+}
+
+html[data-ui="v2"] .v2-eproc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--v2-space-4);
+}
+
+html[data-ui="v2"] .v2-eproc-portal-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-4);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+html[data-ui="v2"] .v2-eproc-portal-card:hover {
+  border-color: rgba(223, 190, 106, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+html[data-ui="v2"] .v2-eproc-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+html[data-ui="v2"] .v2-eproc-court-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: rgba(223, 190, 106, 0.08);
+  border: 1px solid rgba(223, 190, 106, 0.2);
+  border-radius: 4px;
+  color: var(--v2-color-gold);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .04em;
+}
+
+html[data-ui="v2"] .v2-eproc-court-badge svg {
+  width: 13px;
+  height: 13px;
+}
+
+html[data-ui="v2"] .v2-eproc-card-body h4 {
+  margin: 0 0 4px;
+  color: var(--v2-color-foreground);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+html[data-ui="v2"] .v2-eproc-card-body p {
+  margin: 0;
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+html[data-ui="v2"] .v2-eproc-auth-method {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--v2-color-foreground-secondary);
+}
+
+html[data-ui="v2"] .v2-eproc-auth-method svg {
+  width: 13px;
+  height: 13px;
+  color: var(--v2-color-gold);
+  flex-shrink: 0;
+}
+
+html[data-ui="v2"] .v2-eproc-card-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  color: var(--v2-color-muted-foreground);
+}
+
+html[data-ui="v2"] .v2-eproc-card-metrics span strong {
+  color: var(--v2-color-foreground);
+  font-weight: 700;
+}
+
+html[data-ui="v2"] .v2-eproc-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: var(--v2-space-2);
+}
+
+html[data-ui="v2"] .v2-eproc-last-sync {
+  font-size: 12px;
+  color: var(--v2-color-muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html[data-ui="v2"] .v2-eproc-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+html[data-ui="v2"] .v2-eproc-card-actions .button {
+  padding: 4px 10px;
+  font-size: 12px;
+  min-height: 28px;
+}
+
+html[data-ui="v2"] .eproc-sync-modal-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 3px 0 5px; color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] .eproc-sync-modal-meta span { white-space: nowrap; }
+
+@media (max-width: 1080px) {
+  html[data-ui="v2"] .v2-eproc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 760px) {
+  html[data-ui="v2"] .v2-eproc-header { flex-direction: column; align-items: stretch; }
+  html[data-ui="v2"] .v2-eproc-header-actions { flex-direction: column; align-items: stretch; }
+  html[data-ui="v2"] .v2-eproc-header-actions .button { width: 100%; min-height: 44px; justify-content: center; }
+  html[data-ui="v2"] .v2-eproc-grid { grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] .v2-integrations-header { align-items: stretch; flex-direction: column; }
   html[data-ui="v2"] .v2-integrations-safety { align-self: flex-start; }
   html[data-ui="v2"] #view-integrations .integration-grid { grid-template-columns: minmax(0, 1fr); }
-  html[data-ui="v2"] #view-integrations .judicial-integration-card { grid-column: auto; min-height: 0; grid-template-columns: 56px minmax(0, 1fr); padding: var(--v2-space-4); }
+  html[data-ui="v2"] #view-integrations .judicial-integration-card { grid-column: auto; min-height: 0; grid-template-columns: minmax(0, 1fr); padding: var(--v2-space-4); }
   html[data-ui="v2"] #view-integrations .judicial-integration-card .integration-logo { width: 52px; height: 52px; }
   html[data-ui="v2"] #view-integrations .integration-copy .button { width: 100%; justify-content: center; }
   html[data-ui="v2"] #view-integrations .email-integration-card { grid-column: auto; grid-template-columns: minmax(0, 1fr); gap: var(--v2-space-3); }
   html[data-ui="v2"] #view-integrations .email-integration-card .integration-logo { width: 52px; height: 52px; }
   html[data-ui="v2"] #view-integrations .email-integration-actions { display: grid !important; grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] #view-integrations .email-integration-card .email-integration-actions .button { min-height: 44px; }
   html[data-ui="v2"] .email-receiver-item { align-items: stretch; flex-direction: column; padding: var(--v2-space-4); }
   html[data-ui="v2"] .email-receiver-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   html[data-ui="v2"] .email-receiver-actions .button { min-height: 44px; }
@@ -742,6 +1181,8 @@ html[data-ui="v2"] #calendarConfigStatus {
   html[data-ui="v2"] .managed-coverage-row { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: var(--v2-space-3); padding: var(--v2-space-4); }
   html[data-ui="v2"] .managed-coverage-identity strong { white-space: normal; }
   html[data-ui="v2"] #judicialSetupBackdrop .setup-section { padding: var(--v2-space-4); }
+  html[data-ui="v2"] #judicialSetupBackdrop .account-portal-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] #judicialSetupBackdrop .account-portal-actions .button { min-height: 44px; justify-content: center; }
   html[data-ui="v2"] #a1ActiveCard > div:first-child { align-items: stretch !important; flex-direction: column; gap: var(--v2-space-3); }
   html[data-ui="v2"] #a1ActiveCard > div:first-child > div:last-child { display: grid !important; grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] #a1ActiveCard .button { min-height: 44px; }
@@ -765,6 +1206,16 @@ html[data-ui="v2"] #calendarConfigStatus {
   html[data-ui="v2"] .judicial-setup-footer { align-items: stretch; flex-direction: column; }
   html[data-ui="v2"] #syncJudicialNowButton { width: 100%; justify-content: center; }
 
+  html[data-ui="v2"] .pje-coverage-section > summary { min-height: 44px; justify-content: center; }
+  html[data-ui="v2"] .pje-coverage-config { align-items: stretch; flex-direction: column; }
+  html[data-ui="v2"] .pje-coverage-config label { justify-content: space-between; }
+  html[data-ui="v2"] .pje-coverage-config input[type="number"] { width: 100%; }
+  html[data-ui="v2"] #pjeCoverageSection .button,
+  html[data-ui="v2"] .pje-portal-card-actions .button,
+  html[data-ui="v2"] .pje-communications-pager .button { min-height: 44px; }
+  html[data-ui="v2"] .pje-portal-card-actions .button { width: 100%; justify-content: center; }
+  html[data-ui="v2"] .pje-communications-filters { align-items: stretch; flex-direction: column; }
+
   html[data-ui="v2"] body > .connection-backdrop .connection-sheet,
   html[data-ui="v2"] body > .connection-backdrop .connection-sheet.compact { width: 100vw !important; border: 0; }
   html[data-ui="v2"] body > .connection-backdrop .connection-sheet > header,
@@ -780,4 +1231,181 @@ html[data-ui="v2"] #calendarConfigStatus {
 @media (prefers-reduced-motion: reduce) {
   html[data-ui="v2"] #judicialSetupBackdrop .judicial-setup-modal { animation: none !important; transition-duration: .001ms !important; }
   html[data-ui="v2"] body > .connection-backdrop .connection-sheet { animation: none !important; transition-duration: .001ms !important; }
+}
+
+/* Modal judicial em abas: cobertura | credenciais | preferencias.
+   Apresentacao apenas; o estado continua vindo do backend. */
+html[data-ui="v2"] .jco-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--v2-space-1);
+  margin-bottom: var(--v2-space-4);
+  padding: var(--v2-space-1);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  background: var(--v2-color-surface-inset);
+}
+
+html[data-ui="v2"] .jco-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v2-space-2);
+  padding: var(--v2-space-2) var(--v2-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--v2-radius-md);
+  background: transparent;
+  color: var(--v2-color-muted-foreground);
+  font-family: var(--v2-font-interface);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: .01em;
+  cursor: pointer;
+  transition: background-color .16s ease, color .16s ease, border-color .16s ease;
+}
+
+html[data-ui="v2"] .jco-tab .atrium-icon { width: 16px; height: 16px; flex: 0 0 auto; }
+html[data-ui="v2"] .jco-tab:hover { color: var(--v2-color-foreground); background: var(--v2-color-surface-hover); }
+html[data-ui="v2"] .jco-tab[aria-selected="true"] {
+  background: var(--v2-color-surface);
+  border-color: var(--v2-color-border);
+  color: var(--v2-color-foreground);
+  box-shadow: var(--v2-shadow-xs);
+}
+html[data-ui="v2"] .jco-tab:focus-visible { outline: 2px solid var(--v2-color-primary); outline-offset: 2px; }
+
+html[data-ui="v2"] .jco-panels { min-width: 0; }
+html[data-ui="v2"] .jco-panel[hidden] { display: none; }
+
+html[data-ui="v2"] .jco-panel[data-jco-panel="credentials"] > .setup-status-grid { margin-top: 0; }
+
+html[data-ui="v2"] .jco-preferences-card {
+  padding: var(--v2-space-5);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  background: var(--v2-color-surface);
+}
+html[data-ui="v2"] .jco-preferences-card .setup-section-heading { margin-bottom: var(--v2-space-4); }
+html[data-ui="v2"] .jco-preferences-card .pje-coverage-config { align-items: center; }
+
+@media (max-width: 640px) {
+  html[data-ui="v2"] .jco-tab { flex: 1 1 100%; justify-content: flex-start; }
+}
+
+/* Drawer de detalhe do portal: painel interno do modal (nao um segundo modal),
+   coberto pelo mesmo focus trap. */
+html[data-ui="v2"] .jco-row-detail {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  background: transparent;
+  color: var(--v2-color-muted-foreground);
+  cursor: pointer;
+}
+html[data-ui="v2"] .jco-row-detail:hover { color: var(--v2-color-foreground); background: var(--v2-color-surface-hover); }
+html[data-ui="v2"] .jco-row-detail:focus-visible { outline: 2px solid var(--v2-color-primary); outline-offset: 2px; }
+
+html[data-ui="v2"] .jco-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  width: min(440px, 100%);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--v2-color-surface);
+  border-left: 1px solid var(--v2-color-border);
+  box-shadow: var(--v2-shadow-overlay);
+}
+html[data-ui="v2"] .jco-drawer[hidden] { display: none; }
+
+html[data-ui="v2"] .jco-drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-4) var(--v2-space-5);
+  border-bottom: 1px solid var(--v2-color-border);
+}
+html[data-ui="v2"] .jco-drawer-head h3 { margin: 2px 0 0; font-size: 18px; }
+
+html[data-ui="v2"] .jco-drawer-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--v2-space-4) var(--v2-space-5);
+  display: grid;
+  gap: var(--v2-space-2);
+  align-content: start;
+}
+html[data-ui="v2"] .jco-drawer-sub {
+  margin: var(--v2-space-3) 0 var(--v2-space-1);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--v2-color-muted-foreground);
+}
+html[data-ui="v2"] .jco-drawer-row {
+  display: grid;
+  grid-template-columns: minmax(120px, .8fr) minmax(0, 1.2fr);
+  gap: var(--v2-space-3);
+  align-items: baseline;
+  padding: var(--v2-space-2) 0;
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+}
+html[data-ui="v2"] .jco-drawer-row > span { color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] .jco-drawer-row > strong { color: var(--v2-color-foreground); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+html[data-ui="v2"] .jco-drawer-note { margin: var(--v2-space-1) 0 0; color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.45; }
+html[data-ui="v2"] .jco-drawer-comm-item {
+  display: grid;
+  gap: 2px;
+  padding: var(--v2-space-2) 0;
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+}
+html[data-ui="v2"] .jco-drawer-comm-item strong { font-size: 13px; color: var(--v2-color-foreground); }
+html[data-ui="v2"] .jco-drawer-comm-item span { font-size: 12px; color: var(--v2-color-muted-foreground); }
+
+html[data-ui="v2"] .jco-drawer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--v2-space-2);
+  justify-content: flex-end;
+  padding: var(--v2-space-4) var(--v2-space-5);
+  border-top: 1px solid var(--v2-color-border);
+}
+html[data-ui="v2"] .jco-drawer-foot .button { min-height: 44px; }
+
+@media (max-width: 640px) {
+  html[data-ui="v2"] .jco-drawer { width: 100%; }
+}
+
+/* Google Agenda */
+html[data-ui="v2"] .google-calendar-body { display: grid; gap: var(--v2-space-4); align-content: start; }
+html[data-ui="v2"] .google-calendar-intro { display: grid; gap: var(--v2-space-3); font-size: 14px; line-height: 1.55; color: var(--v2-color-foreground); }
+html[data-ui="v2"] .google-calendar-intro p { margin: 0; }
+html[data-ui="v2"] .google-calendar-intro ul { margin: 0; padding-left: var(--v2-space-5); display: grid; gap: var(--v2-space-2); color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] #googleCalendarMessage { margin: 0; padding: var(--v2-space-3); border-radius: var(--v2-radius-md); font-size: 13px; line-height: 1.5; }
+html[data-ui="v2"] #googleCalendarMessage.warning { color: var(--v2-color-foreground); background: color-mix(in srgb, var(--v2-color-warning) 12%, var(--v2-color-surface)); border: 1px solid color-mix(in srgb, var(--v2-color-warning) 40%, var(--v2-color-border)); }
+html[data-ui="v2"] .google-calendar-connected .field-note.hidden { display: none; }
+html[data-ui="v2"] .google-calendar-connected { display: grid; gap: var(--v2-space-4); }
+html[data-ui="v2"] .google-calendar-connected.hidden, html[data-ui="v2"] .google-calendar-intro.hidden { display: none; }
+html[data-ui="v2"] .google-calendar-account { display: grid; gap: var(--v2-space-1); padding-bottom: var(--v2-space-3); border-bottom: 1px solid var(--v2-color-border); min-width: 0; }
+html[data-ui="v2"] .google-calendar-account strong { overflow-wrap: anywhere; }
+html[data-ui="v2"] .google-calendar-account small { color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer { display: flex; flex-wrap: wrap; gap: var(--v2-space-2); justify-content: flex-end; }
+html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer .button { min-height: 44px; }
+html[data-ui="v2"] body > #googleCalendarBackdrop #googleCalendarDisconnect { margin-right: auto; }
+@media (max-width: 600px) {
+  html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer { display: grid; grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer .button { width: 100%; justify-content: center; }
 }

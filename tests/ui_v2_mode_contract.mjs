@@ -8,7 +8,9 @@ const preferenceInitSource = await readFile(new URL('../js/views/ui-v2/preferenc
 const indexSource = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const resolvePrepaint = storage => {
   const documentElement = { dataset: {} };
-  vm.runInNewContext(preferenceInitSource, { localStorage: storage, document: { documentElement } });
+  const themeMeta = { content: '', setAttribute(name, value) { if (name === 'content') this.content = value; } };
+  vm.runInNewContext(preferenceInitSource, { localStorage: storage, document: { documentElement, querySelector: () => themeMeta } });
+  assert.equal(themeMeta.content, documentElement.dataset.theme === 'dark' ? '#0c0c0b' : '#eef1f1');
   return documentElement.dataset.ui;
 };
 const storageFor = value => ({ getItem: () => value });
@@ -25,7 +27,14 @@ const context = await session.createContext();
 
 try {
   const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'light', probe: true });
-  await page.locator('#systemStatusBar[data-status="saved"], #systemStatusBar[data-status="ready"]').waitFor();
+  // A barra de status é transitória por desenho: ela mostra "salvando/guardado" e se esconde
+  // sozinha depois de ~2s. O contrato aqui é o **estado** alcançado, não a permanência visível
+  // (o auto-hide é coberto por ui_v2_accessibility e visual_human_acceptance).
+  await page.waitForFunction(
+    () => ['saved', 'ready'].includes(document.getElementById('systemStatusBar')?.dataset?.status || ''),
+    null,
+    { timeout: 15_000 }
+  );
 
   const baseline = await page.evaluate(() => {
     const store = window.Atrium.Store;

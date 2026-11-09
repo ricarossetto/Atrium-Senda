@@ -1,0 +1,252 @@
+import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
+const output = join(tmpdir(), 'opencode', 'jev-ui-evidence');
+await mkdir(output, { recursive: true });
+const session = await startUiV2Session();
+const base = kind => ({ ok: true, schema: 'atrium-operational-analysis/1', kind, sourceRevision: 'fixture-source', evaluatedAt: '2026-10-08T12:00:00Z', engine: 'backend_local_deterministic', mode: 'local', requiresHumanReview: true, filters: { windowDays: 30, timeZone: 'America/Sao_Paulo' }, coverage: { status: 'insufficient_data', issueCount: 2, excludedCount: 1, outsideWindow: 3, durationDenominator: 0, deadlineDenominator: 0 }, pagination: { offset: 0, limit: 20, total: 45, nextCursor: 'cursor-synthetic' }, data: { pendingCount: 45, overdueCount: 0, details: Array.from({ length: 20 }, (_, index) => ({ publicationId: `publication-synthetic-${index}`, taskId: `task-synthetic-${index}`, treatmentStatus: 'untreated', ageDays: index, score: 0, responsible: '<img src=x onerror=alert(1)> Advogada Teste com nome extenso', urgencyComponents: { overdue: 0, dueSoon: 0, fatal: 0, priority: 0, unassigned: 0 }, evidenceIds: [`synthetic-${index}`, '<svg onload=alert(1)>'], sourceReference: { value: '2026-10-07', field: 'sourceReportedDeadlineAt', source: 'domicilio' } })), totals: { completed: 0, points: null, pending: 45 }, rows: [], factors: [], assignmentSuggestions: [], risks: [], processes: [{ processId: 'process-synthetic', evidenceIds: ['process-synthetic'], movement: { status: 'not_evaluable' } }], unresolvedReferences: [], suggestions: [{ taskId: 'task-synthetic', kind: 'review_task', evidenceIds: ['task-synthetic'] }], missingReferences: [] } });
+try {
+  const context = await session.createContext({ viewport: { width: 1280, height: 844 } });
+  let mode = 'normal';
+  let release;
+  const calls = [];
+  await context.route('**/api/jev/**', async route => {
+    const req = route.request();
+    const url = new URL(req.url());
+    calls.push({ pathname: url.pathname, method: req.method(), body: req.postDataJSON(), csrf: Boolean(req.headers()['x-csrf-token']), query: Object.fromEntries(url.searchParams) });
+    if (mode === 'hold') await new Promise(resolve => { release = resolve; });
+    if (mode === 'network') return route.abort();
+    if (mode === '409' || mode === '403' || mode === '500') return route.fulfill({ status: Number(mode), json: { ok: false } });
+    const kind = url.pathname.split('/').at(-1);
+    const payload = base(kind);
+    if (mode === 'empty') { payload.data.details = []; payload.pagination.nextCursor = null; payload.pagination.total = 0; }
+    if (kind === 'action-plan') Object.assign(payload, { revision: 'audit-synthetic', refreshCanonicalState: true, advisory: { status: req.postDataJSON().advisory ? 'unavailable' : 'not_requested', decision: '<img onerror=alert(1)>' } });
+    return route.fulfill({ json: payload });
+  });
+  const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl);
+  await page.evaluate(() => window.Atrium.App.switchView('reports'));
+  assert.equal(calls.length, 0);
+  assert.equal(await page.locator('[data-analysis-kind]').count(), 1);
+  await page.selectOption('[data-analysis-kind]', 'tasks');
+  assert.equal(calls.length, 0);
+  assert.equal(await page.locator('[data-analysis-kind]').evaluate(el => document.activeElement === el), true);
+  await page.locator('[data-analysis-action="read"]').focus();
+  await page.keyboard.press('Enter');
+  await page.locator('.operational-analysis-item').first().waitFor();
+  assert.equal(await page.locator('[data-analysis-action="read"]').evaluate(el => document.activeElement === el), true);
+  assert.equal(await page.locator('.operational-analysis-panel img, .operational-analysis-panel svg, .operational-analysis-panel script').count(), 0);
+  assert.match(await page.locator('.operational-analysis-result').textContent(), /Score operacional: 0/);
+  assert.match(await page.locator('.operational-analysis-result').textContent(), /dados insuficientes/);
+  assert.equal(calls.at(-1).query.limit, '20');
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+    for (const [width, height] of [[1280, 844], [1024, 844], [390, 844], [390, 500]]) {
+      await page.setViewportSize({ width, height });
+      await page.locator('[data-analysis-action="read"]').scrollIntoViewIfNeeded();
+      const geometry = await page.evaluate(() => {
+        const selectors = ['[data-analysis-kind]', '[data-analysis-window]', '[data-analysis-action="read"]'];
+        const rectangles = selectors.map(selector => document.querySelector(selector).getBoundingClientRect().toJSON());
+        const collision = rectangles.some((left, index) => rectangles.slice(index + 1).some(right => Math.min(left.right, right.right) - Math.max(left.left, right.left) > 1 && Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top) > 1));
+        return { overflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - innerWidth, collision, heights: rectangles.map(rect => rect.height), selectFont: getComputedStyle(document.querySelector('[data-analysis-kind]')).fontSize };
+      });
+      assert.ok(geometry.overflow <= 1, JSON.stringify(geometry));
+      assert.equal(geometry.collision, false);
+      assert.ok(geometry.heights.every(value => value >= 44));
+      if (width === 390) assert.equal(geometry.selectFont, '16px');
+      await page.evaluate(() => { document.body.scrollTop = 0; document.documentElement.scrollTop = 0; });
+      await page.screenshot({ path: join(output, `after-${theme}-${width}-${height}.png`) });
+      await page.locator('[data-analysis-action="native"]').scrollIntoViewIfNeeded();
+      await page.locator('[data-analysis-action="native"]').focus();
+      assert.equal(await page.locator('[data-analysis-action="native"]').evaluate(el => document.activeElement === el), true);
+      await page.screenshot({ path: join(output, `actions-${theme}-${width}-${height}.png`) });
+    }
+  }
+  console.log('PASS: render e matriz geométrica.');
+  await page.setViewportSize({ width: 1280, height: 844 });
+  mode = '409';
+  await page.locator('[data-analysis-action="next"]').click();
+  await page.locator('.operational-analysis-feedback [role="alert"]').waitFor();
+  assert.match(await page.locator('.operational-analysis-feedback').textContent(), /409/);
+  assert.equal(await page.locator('[data-analysis-action="next"]').count(), 0);
+  mode = 'empty';
+  await page.locator('[data-analysis-action="read"]').click();
+  await page.waitForFunction(() => !document.querySelector('.operational-analysis-result')?.textContent.includes('aguardando') && document.querySelector('.operational-analysis-group')?.textContent.includes('Nada encontrado'));
+  mode = 'normal';
+  for (const kind of ['publications', 'productivity', 'risks']) {
+    await page.selectOption('[data-analysis-kind]', kind);
+    await page.selectOption('[data-analysis-window]', '90');
+    await page.locator('[data-analysis-action="read"]').click();
+    await page.locator('.operational-analysis-result').waitFor();
+    assert.equal(calls.at(-1).query.windowDays, '90');
+  }
+  assert.match(await page.locator('.operational-analysis-result').textContent(), /Prescrição: não avaliável/);
+  for (const failure of ['500', 'network']) {
+    mode = failure;
+    await page.locator('[data-analysis-action="read"]').click();
+    await page.locator('.operational-analysis-feedback [role="alert"]').waitFor();
+    assert.match(await page.locator('.operational-analysis-feedback').textContent(), /Não foi possível confirmar/);
+  }
+  console.log('PASS: tipos, paginação e erros.');
+  mode = 'hold';
+  const heldRequest = page.waitForRequest(request => request.url().includes('/api/jev/analysis/'));
+  await page.locator('[data-analysis-action="read"]').click();
+  await heldRequest;
+  await page.waitForFunction(() => document.querySelector('.operational-analysis-panel').getAttribute('aria-busy') === 'true');
+  assert.equal(await page.locator('[data-analysis-action="read"]').isDisabled(), true);
+  mode = 'normal';
+  release();
+  await page.locator('.operational-analysis-result').waitFor();
+  await page.evaluate(() => {
+    window.__originalFlush = window.Atrium.Store.flush;
+    window.Atrium.Store.flush = async () => false;
+  });
+  const beforeFlush = calls.length;
+  await page.locator('[data-analysis-action="plan"]').click();
+  await page.locator('.operational-analysis-feedback [role="alert"]').waitFor();
+  assert.equal(calls.length, beforeFlush);
+  await page.evaluate(() => { window.Atrium.Store.flush = window.__originalFlush; });
+  let canonical = null;
+  let stateFailure = false;
+  let stateWrites = 0;
+  let stateReads = 0;
+  let canonicalRevision = 'audit-synthetic';
+  await context.route('**/api/state', async route => {
+    if (!canonical) return route.continue();
+    if (route.request().method() === 'POST') { stateWrites++; return route.fulfill({ status: 409, json: { ok: false } }); }
+    stateReads++;
+    if (stateFailure) return route.fulfill({ status: 503, json: { ok: false } });
+    return route.fulfill({ json: { state: canonical, revision: canonicalRevision, stateStatus: 'READY' } });
+  });
+  canonical = await page.evaluate(async () => {
+    const store = window.Atrium.Store;
+    await store.flush();
+    return structuredClone(store.state);
+  });
+  await page.locator('[data-analysis-action="plan"]').click();
+  await page.waitForFunction(() => document.querySelector('.operational-analysis-result')?.textContent.includes('Proposta somente leitura') && document.querySelector('.operational-analysis-panel').getAttribute('aria-busy') === 'false');
+  const plan = calls.at(-1);
+  assert.equal(plan.method, 'POST');
+  assert.equal(plan.csrf, true);
+  assert.equal(plan.body.advisory, false);
+  assert.equal(typeof plan.body.expectedRevision, 'string');
+  assert.deepEqual(Object.keys(plan.body).sort(), ['advisory', 'expectedRevision', 'windowDays']);
+  assert.equal(await page.evaluate(() => window.Atrium.Store.revision), 'audit-synthetic');
+  assert.match(await page.locator('.operational-analysis-result').textContent(), /Modelo não solicitado/);
+  await page.locator('[data-analysis-action="native"]').click();
+  await page.waitForFunction(() => document.querySelector('.operational-analysis-panel').getAttribute('aria-busy') === 'false');
+  assert.equal(calls.at(-1).body.advisory, true);
+  assert.equal(calls.at(-1).csrf, true);
+  assert.match(await page.locator('.operational-analysis-result').textContent(), /Modelo indisponible|Modelo indisponível/);
+  await page.screenshot({ path: join(output, 'after-plan.png') });
+  mode = 'hold';
+  const heldPlan = page.waitForRequest(request => request.url().includes('/api/jev/action-plan'));
+  await page.locator('[data-analysis-action="native"]').click();
+  await heldPlan;
+  await page.evaluate(() => { window.Atrium.Store.state.tasks.push({ id: 'dirty-during-model', title: 'Edição sintética durante modelo' }); });
+  canonical.audit.unshift({ id: 'remote-audit-preserved', action: 'Auditoria sintética remota' });
+  canonicalRevision = 'audit-after-model';
+  mode = 'normal';
+  release();
+  await page.locator('[data-analysis-action="discard"]').waitFor();
+  assert.equal(await page.evaluate(() => window.Atrium.Store.flush()), false);
+  assert.equal(stateWrites, 0);
+  assert.equal(await page.locator('[data-analysis-action="plan"]').isDisabled(), true);
+  assert.equal(await page.locator('[data-analysis-action="refresh"]').count(), 0);
+  const blocked = await page.evaluate(() => ({ fingerprint: window.Atrium.Store.persistenceFingerprint(), revision: window.Atrium.Store.revision }));
+  const readsBeforeCancel = stateReads;
+  await page.locator('[data-analysis-action="discard"]').click();
+  assert.equal(await page.locator('[data-analysis-action="cancel-discard"]').evaluate(el => el === document.activeElement), true);
+  assert.match(await page.locator('#operationalDiscardDetails').textContent(), /todas as edições ainda não salvas/);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('[data-analysis-action="confirm-discard"]').count(), 0);
+  assert.equal(await page.locator('[data-analysis-action="discard"]').evaluate(el => el === document.activeElement), true);
+  await page.locator('[data-analysis-action="discard"]').click();
+  await page.waitForFunction(() => !document.querySelector('#toastRegion .toast'));
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+    for (const [width, height] of [[1280, 844], [1024, 844], [390, 844], [390, 500]]) {
+      await page.setViewportSize({ width, height });
+      await page.locator('[data-analysis-action="confirm-discard"]').scrollIntoViewIfNeeded();
+      await page.locator('[data-analysis-action="confirm-discard"]').focus();
+      await page.locator('[data-analysis-action="confirm-discard"]').evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+      const hit = await page.locator('[data-analysis-action="confirm-discard"]').evaluate(el => {
+        const rect = el.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const target = document.elementFromPoint(x, y);
+        return { reachable: y >= 0 && y < innerHeight && el.contains(target), rect: rect.toJSON(), target: target?.outerHTML.slice(0, 400), scrolls: [...document.querySelectorAll('*')].filter(node => node.scrollHeight > node.clientHeight && ['auto', 'scroll'].includes(getComputedStyle(node).overflowY)).map(node => ({ id: node.id, className: node.className, top: node.scrollTop, max: node.scrollHeight - node.clientHeight })) };
+      });
+      assert.equal(hit.reachable, true, JSON.stringify({ width, height, theme, ...hit }));
+      const geometry = await page.evaluate(() => {
+        const buttons = ['cancel-discard', 'confirm-discard'].map(action => document.querySelector(`[data-analysis-action="${action}"]`).getBoundingClientRect());
+        return { overflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - innerWidth, heights: buttons.map(rect => rect.height), collision: Math.min(buttons[0].right, buttons[1].right) - Math.max(buttons[0].left, buttons[1].left) > 1 && Math.min(buttons[0].bottom, buttons[1].bottom) - Math.max(buttons[0].top, buttons[1].top) > 1 };
+      });
+      assert.ok(geometry.overflow <= 1, JSON.stringify(geometry));
+      assert.ok(geometry.heights.every(height => height >= 44));
+      assert.equal(geometry.collision, false);
+      await page.screenshot({ path: join(output, `recovery-${theme}-${width}-${height}.png`) });
+    }
+  }
+  await page.locator('[data-analysis-action="cancel-discard"]').focus();
+  await page.keyboard.press('Enter');
+  assert.equal(stateReads, readsBeforeCancel);
+  assert.deepEqual(await page.evaluate(() => ({ fingerprint: window.Atrium.Store.persistenceFingerprint(), revision: window.Atrium.Store.revision })), blocked);
+  assert.equal(await page.evaluate(() => window.Atrium.Store.canonicalRefreshPending), true);
+  assert.equal(await page.locator('[data-analysis-action="discard"]').evaluate(el => el === document.activeElement), true);
+  stateFailure = true;
+  await page.locator('[data-analysis-action="discard"]').click();
+  await page.locator('[data-analysis-action="confirm-discard"]').click();
+  await page.waitForFunction(() => document.querySelector('.operational-analysis-feedback')?.textContent.includes('Recarga não confirmada'));
+  assert.deepEqual(await page.evaluate(() => ({ fingerprint: window.Atrium.Store.persistenceFingerprint(), revision: window.Atrium.Store.revision })), blocked);
+  assert.equal(await page.evaluate(() => window.Atrium.Store.canonicalRefreshPending), true);
+  assert.equal(stateWrites, 0);
+  stateFailure = false;
+  await page.locator('[data-analysis-action="discard"]').click();
+  await page.locator('[data-analysis-action="confirm-discard"]').focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => !window.Atrium.Store.canonicalRefreshPending);
+  assert.equal(await page.evaluate(() => window.Atrium.Store.state.tasks.some(task => task.id === 'dirty-during-model')), false);
+  assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.id === 'remote-audit-preserved')), true);
+  assert.equal(await page.evaluate(() => window.Atrium.Store.revision), 'audit-after-model');
+  assert.equal(await page.evaluate(() => window.Atrium.Store.flush()), true);
+  assert.equal(stateWrites, 0);
+  assert.equal(await page.locator('[data-analysis-action="plan"]').isDisabled(), false);
+  console.log('PASS: edição durante modelo, cancelamento/Escape, reload 503 preservado, confirmação humana, auditoria remota preservada, flush desbloqueado sem POST state e matriz de recuperação.');
+  await page.setViewportSize({ width: 1280, height: 844 });
+  mode = '409';
+  await page.locator('[data-analysis-action="plan"]').click();
+  await page.locator('.operational-analysis-feedback [role="alert"]').waitFor();
+  assert.match(await page.locator('.operational-analysis-feedback').textContent(), /409/);
+  assert.equal(await page.locator('[data-analysis-action="plan"]').isDisabled(), true);
+  const beforeRecovery = calls.length;
+  await page.locator('[data-analysis-action="refresh"]').click();
+  await page.waitForFunction(() => !document.querySelector('[data-analysis-action="refresh"]'));
+  assert.equal(calls.length, beforeRecovery);
+  assert.equal(await page.evaluate(() => window.Atrium.Store.canonicalRefreshPending), false);
+  mode = '403';
+  await page.locator('[data-analysis-action="read"]').click();
+  await page.getByText('Disponível somente para administradores autenticados.', { exact: false }).waitFor();
+  assert.equal(await page.locator('.operational-analysis-result').count(), 0);
+  assert.equal(await page.locator('[data-analysis-action]').count(), 0);
+  assert.deepEqual(pageErrors, []);
+  await context.close();
+  const nonAdmin = await session.createContext();
+  let deniedCalls = 0;
+  await nonAdmin.route('**/api/auth/status', async route => {
+    const response = await route.fetch();
+    const status = await response.json();
+    status.user.role = 'user';
+    await route.fulfill({ json: status });
+  });
+  await nonAdmin.route('**/api/jev/**', route => { deniedCalls++; return route.abort(); });
+  const deniedPage = await prepareUiV2Page(nonAdmin, session.server.baseUrl);
+  await deniedPage.page.evaluate(() => window.Atrium.App.switchView('reports'));
+  await deniedPage.page.getByText('Disponível somente para administradores autenticados.', { exact: false }).waitFor();
+  assert.equal(deniedCalls, 0);
+  assert.equal(await deniedPage.page.locator('[data-analysis-action]').count(), 0);
+  await nonAdmin.close();
+  console.log('PASS: shell Reports, 4 tipos, 30/90 dias, paginação/409, teclado/foco, zero/muitos/XSS, rede/500/403, flush estrito, plano local/nativo mock, CSRF/payload, RBAC e matriz 8 light/dark.');
+  console.log(`Screenshots: ${output}`);
+} finally { await session.stop(); }

@@ -28,7 +28,8 @@ for (const source of [emailSource, calendarSource]) {
 }
 assert.doesNotMatch(emailSource, /\bStore\b|store\.state|localStorage|sessionStorage|setInterval/);
 assert.doesNotMatch(presenterSource, /\bStore\b|store\.state|localStorage|sessionStorage|secureFetch|\bfetch\s*\(|setTimeout|setInterval|\baudit\s*\(|\.save\s*\(|\.flush\s*\(/);
-assert.match(emailSource, /presentation\?\.open\?\.\('emailConfig'\)/);
+assert.match(emailSource, /\/api\/admin\/mail\/status/);
+assert.doesNotMatch(emailSource, /secureFetch\(['"]\/api\/integrations\/email\//);
 assert.match(calendarSource, /presentation\?\.open\?\.\('externalCalendar'\)/);
 
 const session = await startUiV2Session();
@@ -43,15 +44,18 @@ try {
   }));
   await prepareUiV2EmailCalendarFixture(page);
 
-  assert.equal(await page.locator('.v2-integrations-header h2').textContent(), 'Integrações seguras');
+  assert.equal(await page.locator('.v2-integrations-header h2').textContent(), 'Integrações');
   assert.equal(await page.locator('.email-integration-card').count(), 1);
   assert.equal(await page.locator('.external-calendar-integration-card').count(), 1);
-  assert.equal(await page.locator('#emailIntegrationStatus').textContent(), 'SMTP conectado');
-  assert.match(await page.locator('#emailIntegrationDetail').textContent(), /smtp\.synthetic\.example\.test:465/);
-  assert.match(await page.locator('#emailIntegrationDetail').textContent(), /comunicacoes@synthetic\.example\.test/);
+  assert.equal(await page.locator('#emailIntegrationStatus').textContent(), 'Desativado');
+  assert.match(await page.locator('#emailIntegrationDetail').textContent(), /E-mail conectado pelo Resend/);
+  assert.match(await page.locator('#emailIntegrationDetail').textContent(), /Envios automáticos pausados/);
+  assert.equal(await page.locator('#atriumMailTodayCount').textContent(), '3 / 100');
+  assert.equal(await page.locator('#atriumMailMonthCount').textContent(), '17 / 3000');
+  assert.equal(await page.locator('#atriumMailQueueCount').textContent(), '2 na fila');
   assert.equal(await page.locator('.email-receiver-item').count(), 3);
   assert.match(await page.locator('#emailReceiversList').textContent(), /Usuário Inativo/);
-  assert.equal(await page.locator('[data-receiver-action="delete"][aria-label^="Remover destinatário"]').count(), 3);
+  assert.equal(await page.locator('[data-receiver-action="delete"]').count(), 3);
 
   const afterPresentation = await page.evaluate(() => ({
     state: JSON.stringify(window.Atrium.Store.state),
@@ -66,76 +70,54 @@ try {
   assert.equal(afterPresentation.intervals, before.intervals);
   assert.ok(afterPresentation.requests.every(request => request.method === 'GET'));
 
-  const smtpSecret = 'Synthetic-Transient-SMTP-Password';
-  await page.locator('#btnConfigureEmail').click();
-  await page.locator('#emailConfigBackdrop:not(.hidden)').waitFor();
-  assert.equal(await page.locator('#emailPasswordInput').inputValue(), '');
-  assert.equal(await page.locator('#emailPasswordInput').getAttribute('type'), 'password');
-  await page.locator('#emailPasswordInput').fill(smtpSecret);
-  await page.locator('#emailConfigSubmitBtn').click();
-  await page.locator('#emailConfigBackdrop').waitFor({ state: 'hidden' });
-  assert.equal(await page.locator('#emailPasswordInput').inputValue(), '');
-  const smtpEvidence = await page.evaluate(secret => {
-    const request = window.__uiV2EmailCalendarRequests.find(item => item.url === '/api/integrations/email/configure');
-    return {
-      request,
-      observed: window.__uiV2SmtpPasswordObserved,
-      store: JSON.stringify(window.Atrium.Store.state).includes(secret),
-      local: Object.values(localStorage).some(value => String(value).includes(secret)),
-      session: Object.values(sessionStorage).some(value => String(value).includes(secret)),
-      toast: window.__uiV2EmailCalendarToasts.some(item => String(item.message).includes(secret)),
-      rendered: document.body.innerText.includes(secret)
-    };
-  }, smtpSecret);
-  assert.deepEqual(Object.keys(smtpEvidence.request.body).sort(), ['fromAddress', 'fromName', 'host', 'password', 'port', 'secure', 'user'].sort());
-  assert.equal(smtpEvidence.request.body.password, '[REDACTED]');
-  assert.equal(smtpEvidence.observed, true);
-  assert.deepEqual({ store: smtpEvidence.store, local: smtpEvidence.local, session: smtpEvidence.session, toast: smtpEvidence.toast, rendered: smtpEvidence.rendered }, {
-    store: false, local: false, session: false, toast: false, rendered: false
-  });
+  await page.locator('#btnConfigureMailPreferences').click();
+  await page.locator('#mailPreferencesBackdrop:not(.hidden)').waitFor();
+  assert.equal(await page.locator('#atriumMailToggleCheckbox').isChecked(), false, 'O fixture inicia o master switch desativado.');
+  await page.locator('#atriumMailToggleCheckbox').click();
+  await page.waitForFunction(() => window.__uiV2EmailCalendarRequests.some(item => item.url === '/api/admin/mail/toggle'));
+  assert.deepEqual(await page.evaluate(() => window.__uiV2EmailCalendarRequests.find(item => item.url === '/api/admin/mail/toggle').body), { enabled: true });
 
-  await page.locator('#btnTestEmail').click();
+  await page.locator('#btnConfigureMailPreferences').click();
+  await page.locator('#mailPreferencesBackdrop:not(.hidden)').waitFor();
+   assert.equal(await page.locator('#mailPrefPublication').inputValue(), 'BULLETINS');
+  assert.equal(await page.locator('#mailPrefMovements').inputValue(), 'BULLETINS');
+  await page.locator('#mailPrefPublication').selectOption('DISABLED');
+  await page.locator('#mailPreferencesForm').evaluate(form => form.requestSubmit());
+  await page.locator('#mailPreferencesBackdrop').waitFor({ state: 'hidden' });
+  const preferenceRequest = await page.evaluate(() => window.__uiV2EmailCalendarRequests.find(item => item.url === '/api/user/notification-preferences' && item.method === 'PUT'));
+  assert.deepEqual(preferenceRequest.body.preferences, [
+    { eventType: 'PUBLICATION_NEW', cadence: 'DISABLED', enabled: false },
+    { eventType: 'DEADLINE_CRITICAL', cadence: 'BULLETINS', enabled: true },
+    { eventType: 'HEARING_NEW', cadence: 'BULLETINS', enabled: true },
+    { eventType: 'MOVEMENT_NEW', cadence: 'BULLETINS', enabled: true },
+    { eventType: 'SYNC_FAILED', cadence: 'BULLETINS', enabled: true },
+    { eventType: 'A1_CERT_EXPIRING', cadence: 'BULLETINS', enabled: true }
+  ]);
+
+  await page.locator('#btnTestAtriumMail').click();
   await page.locator('#emailTestBackdrop:not(.hidden)').waitFor();
   assert.equal(await page.locator('#emailTestRecipientInput').inputValue(), '');
   await page.locator('#emailTestRecipientInput').fill('explicit-recipient@synthetic.example.test');
   await page.locator('#emailTestSubmitBtn').click();
   await page.locator('#emailTestBackdrop').waitFor({ state: 'hidden' });
-  const testRequest = await page.evaluate(() => window.__uiV2EmailCalendarRequests.find(item => item.url === '/api/integrations/email/test'));
+  const testRequest = await page.evaluate(() => window.__uiV2EmailCalendarRequests.find(item => item.url === '/api/admin/mail/test'));
   assert.deepEqual(testRequest, {
-    url: '/api/integrations/email/test', method: 'POST', body: { recipient: 'explicit-recipient@synthetic.example.test' }
+    url: '/api/admin/mail/test', method: 'POST', body: { recipient: 'explicit-recipient@synthetic.example.test' }
   });
 
-  await page.locator('#btnAddEmailReceiver').click();
+  await page.locator('#btnAddExternalRecipient').click();
   await page.locator('#emailReceiverModalBackdrop:not(.hidden)').waitFor();
-  assert.deepEqual(await page.locator('#receiverUserSelect option').allTextContents(), ['Usuária Ativa Sintética (ativa@synthetic.example.test)']);
-  await page.locator('#receiverTypeExternal').check();
   await page.locator('#receiverNameInput').fill('Destinatário Externo V2');
   await page.locator('#receiverEmailInput').fill('externo-v2@synthetic.example.test');
   await page.locator('#receiverSubmitBtn').click();
   await page.locator('#emailReceiverModalBackdrop').waitFor({ state: 'hidden' });
-  const externalCreate = await page.evaluate(() => window.__uiV2EmailCalendarRequests.find(item => item.method === 'POST' && item.url === '/api/integrations/email/receivers'));
-  assert.deepEqual(externalCreate.body, { type: 'external', enabled: true, name: 'Destinatário Externo V2', email: 'externo-v2@synthetic.example.test' });
+  const externalCreate = await page.evaluate(() => window.__uiV2EmailCalendarRequests.find(item => item.method === 'POST' && item.url === '/api/admin/mail/recipients'));
+  assert.deepEqual(externalCreate.body, { enabled: true, name: 'Destinatário Externo V2', email: 'externo-v2@synthetic.example.test' });
 
-  await page.locator('#btnAddEmailReceiver').click();
-  await page.locator('#emailReceiverModalBackdrop:not(.hidden)').waitFor();
-  await page.locator('#receiverUserSelect').selectOption('user-active');
-  await page.locator('#receiverSubmitBtn').click();
-  await page.locator('#emailReceiverModalBackdrop').waitFor({ state: 'hidden' });
-  const internalCreate = await page.evaluate(() => window.__uiV2EmailCalendarRequests.find(item => item.method === 'POST' && item.body?.type === 'internal'));
-  assert.deepEqual(internalCreate.body, { type: 'internal', enabled: true, userId: 'user-active' });
-
-  await page.locator('[data-receiver-id="receiver-external"] [data-receiver-action="edit"]').click();
-  await page.locator('#emailReceiverModalBackdrop:not(.hidden)').waitFor();
-  await page.locator('#receiverNameInput').fill('Contabilidade Editada V2');
-  await page.locator('#receiverEmailInput').fill('contabilidade-editada@synthetic.example.test');
-  await page.locator('#receiverSubmitBtn').click();
-  const editRequest = await page.evaluate(() => window.__uiV2EmailCalendarRequests.find(item => item.method === 'PATCH' && item.url.endsWith('/receiver-external')));
-  assert.deepEqual(editRequest.body, { enabled: false, name: 'Contabilidade Editada V2', email: 'contabilidade-editada@synthetic.example.test' });
-
-  await page.locator('[data-receiver-id="receiver-internal"] [data-receiver-action="toggle"]').click();
-  await page.waitForFunction(() => window.__uiV2EmailCalendarRequests.some(item => item.method === 'PATCH' && item.url.endsWith('/receiver-internal')));
-  const toggleRequest = await page.evaluate(() => window.__uiV2EmailCalendarRequests.find(item => item.method === 'PATCH' && item.url.endsWith('/receiver-internal')));
-  assert.deepEqual(toggleRequest.body, { enabled: false });
+  await page.locator('[data-receiver-id="receiver-external"] [data-receiver-action="toggle"]').click();
+  await page.waitForFunction(() => window.__uiV2EmailCalendarRequests.some(item => item.method === 'PATCH' && item.url.endsWith('/receiver-external')));
+  const toggleRequest = await page.evaluate(() => window.__uiV2EmailCalendarRequests.find(item => item.method === 'PATCH' && item.url.endsWith('/receiver-external')));
+  assert.deepEqual(toggleRequest.body, { enabled: true });
 
   page.once('dialog', dialog => dialog.dismiss());
   const deleteCountBefore = await page.evaluate(() => window.__uiV2EmailCalendarRequests.filter(item => item.method === 'DELETE').length);
@@ -175,14 +157,14 @@ try {
     request: window.__uiV2EmailCalendarRequests.find(item => item.url === '/api/calendar/configure'),
     ops: window.__uiV2CalendarOps
   }));
-  assert.deepEqual(calendarEvidence.request, {
-    url: '/api/calendar/configure', method: 'POST', body: { calendarUrl: 'https://calendar.synthetic.example.test/feed.ics' }
-  });
+  assert.equal(calendarEvidence.request.url, '/api/calendar/configure');
+  assert.equal(calendarEvidence.request.method, 'POST');
+  assert.equal(calendarEvidence.request.body.calendarUrl, 'https://calendar.synthetic.example.test/feed.ics');
+  assert.match(calendarEvidence.request.body.revision, /^\S+$/);
   assert.equal(calendarEvidence.settings.calendarUrl, 'https://calendar.synthetic.example.test/feed.ics');
   assert.equal(calendarEvidence.settings.externalCalendarUrl, 'https://calendar.synthetic.example.test/feed.ics');
   assert.equal(calendarEvidence.settings.calendarConfigured, true);
-  assert.deepEqual(calendarEvidence.ops.map(item => item.type), ['audit', 'save', 'flush', 'sync']);
-  assert.deepEqual(calendarEvidence.ops[0], { type: 'audit', action: 'Agenda externa configurada', detail: '4 compromissos sincronizados.' });
+  assert.deepEqual(calendarEvidence.ops.map(item => item.type), ['sync']);
   assert.deepEqual(pageErrors, []);
   await context.close();
 
@@ -190,12 +172,13 @@ try {
   const collaboratorResult = await prepareUiV2Page(collaboratorContext, session.server.baseUrl, { theme: 'dark' });
   await prepareUiV2EmailCalendarFixture(collaboratorResult.page, { role: 'collaborator' });
   assert.equal(await collaboratorResult.page.locator('#emailReceiversSection').isVisible(), false);
-  assert.equal(await collaboratorResult.page.locator('#btnAddEmailReceiver').isVisible(), false);
-  assert.equal(await collaboratorResult.page.evaluate(() => window.__uiV2EmailCalendarRequests.filter(item => item.url === '/api/integrations/email/receivers').length), 0);
+  assert.equal(await collaboratorResult.page.locator('#btnAddExternalRecipient').isVisible(), false);
+  assert.equal(await collaboratorResult.page.locator('#btnTestAtriumMail').isVisible(), false);
+  assert.equal(await collaboratorResult.page.evaluate(() => window.__uiV2EmailCalendarRequests.filter(item => item.url === '/api/admin/mail/recipients').length), 0);
   assert.deepEqual(collaboratorResult.pageErrors, []);
   await collaboratorContext.close();
 } finally {
   await session.stop();
 }
 
-console.log('✓ UI V2 Email + Calendar: arquitetura, SMTP, receivers, RBAC, segredo, agenda e persistência PASS.');
+console.log('✓ UI V2 Mail + Calendar: Resend, preferências, recipients, RBAC, agenda e persistência PASS.');

@@ -75,7 +75,7 @@ export function buildLegalTimeline(state, process, { limit = 120, order = 'desc'
     }));
   });
 
-  (state.tasks || []).filter(linked).forEach(task => {
+  (state.tasks || []).filter(task => task && task.active !== false).filter(linked).forEach(task => {
     add({
       id: `task:${task.id}:created`, type: 'task', date: task.createdAt || task.updatedAt,
       title: task.title || 'Tarefa criada', detail: task.status || '', source: task.source || 'Tarefa',

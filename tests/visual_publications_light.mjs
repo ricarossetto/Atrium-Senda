@@ -10,6 +10,17 @@ import { isoDate } from '../js/core/store.js';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ARTIFACTS_DIR = path.join(ROOT, 'artifacts', 'light-publications');
 
+// O anti-replay de TOTP consome cada passo de 30s uma única vez por usuário.
+const consumedTotpSteps = new Map();
+async function freshTotp(secret) {
+  const counter = () => Math.floor(Date.now() / 30_000);
+  let target = consumedTotpSteps.has(secret) ? consumedTotpSteps.get(secret) + 1 : counter();
+  while (target > counter() + 1) await new Promise(resolve => setTimeout(resolve, 1_000));
+  target = Math.max(target, counter());
+  consumedTotpSteps.set(secret, target);
+  return generateTotp(secret, target);
+}
+
 console.log('\n===============================================================');
 console.log('  ATRIUM — TESTE VISUAL: MÓDULO PUBLICAÇÕES (LIGHT THEME)');
 console.log('===============================================================\n');
@@ -123,7 +134,7 @@ try {
     await page.locator('#authLoginForm.active').waitFor();
     await page.locator('#authLoginForm [name="username"]').fill('admin');
     await page.locator('#authLoginForm [name="password"]').fill(adminPassword);
-    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(setupData.manualSecret));
+    await page.locator('#authLoginForm [name="code"]').fill(await freshTotp(setupData.manualSecret));
     await page.locator('#authLoginForm button[type="submit"]').click();
     await page.locator('#appShell:not(.hidden)').waitFor();
 
@@ -244,7 +255,7 @@ try {
 
     // [3] Screenshot 3: Publicação Urgente Selecionada
     console.log('Selecionando publicação urgente...');
-    await page.locator('.inbox-row[data-intimation-id="pub-urgent-1"]').click();
+    await page.locator('[data-intimation-id="pub-urgent-1"] .publication-record-open').click();
     await page.locator('#intimationDetail .detail-header').waitFor();
     await page.waitForTimeout(300);
 
@@ -257,7 +268,7 @@ try {
 
     // [4] Screenshot 4: Painel de Detalhe Completo (Publicação Importante)
     console.log('Validando Painel de Detalhe e Original Text (Publicação com Destaque)...');
-    await page.locator('.inbox-row[data-intimation-id="pub-important-2"]').click();
+    await page.evaluate(() => document.querySelector('[data-intimation-id="pub-important-2"] .publication-record-open')?.click());
     await page.locator('#intimationDetail .detail-header').waitFor();
     await page.waitForTimeout(300);
 
@@ -296,7 +307,7 @@ try {
     await mobilePage.locator('#authLoginForm.active').waitFor();
     await mobilePage.locator('#authLoginForm [name="username"]').fill('admin');
     await mobilePage.locator('#authLoginForm [name="password"]').fill(adminPassword);
-    await mobilePage.locator('#authLoginForm [name="code"]').fill(generateTotp(setupData.manualSecret));
+    await mobilePage.locator('#authLoginForm [name="code"]').fill(await freshTotp(setupData.manualSecret));
     await mobilePage.locator('#authLoginForm button[type="submit"]').click();
     await mobilePage.locator('#appShell:not(.hidden)').waitFor();
 

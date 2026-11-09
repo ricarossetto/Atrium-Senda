@@ -17,14 +17,15 @@ html[data-ui="v2"] {
   --v2-color-surface-inset: #15181B;
   --v2-color-foreground: #ECEEED;
   --v2-color-foreground-secondary: #B4B9BC;
-  --v2-color-muted-foreground: #8B9297;
-  --v2-color-primary: #8297A6;
+  --v2-color-muted-foreground: #989FA4;
+  --v2-color-primary: #8DA1AF;
   --v2-color-primary-hover: #93A7B5;
   --v2-color-primary-active: #A3B4C0;
   --v2-color-primary-soft: #253039;
   --v2-color-primary-subtle: #1E272E;
   --v2-color-on-primary: #111315;
   --v2-color-gold: #C0A261;
+  --v2-color-gold-text: #C0A261;
   --v2-color-gold-strong: #D0B572;
   --v2-color-gold-soft: #30291D;
   --v2-color-warm: #BC8B73;
@@ -33,7 +34,7 @@ html[data-ui="v2"] {
   --v2-color-success-soft: #202B23;
   --v2-color-warning: #C39A58;
   --v2-color-warning-soft: #31281B;
-  --v2-color-danger: #C77971;
+  --v2-color-danger: #CD7F77;
   --v2-color-danger-soft: #352321;
   --v2-color-info: #8297A6;
   --v2-color-info-soft: #253039;
@@ -110,23 +111,24 @@ html[data-ui="v2"][data-theme="light"] {
   --v2-color-surface-inset: #E7E9E7;
   --v2-color-foreground: #252A2E;
   --v2-color-foreground-secondary: #555D63;
-  --v2-color-muted-foreground: #737B80;
-  --v2-color-primary: #596C7A;
+  --v2-color-muted-foreground: #565E63;
+  --v2-color-primary: #4F5F6B;
   --v2-color-primary-hover: #4C5E6B;
   --v2-color-primary-active: #40515D;
   --v2-color-primary-soft: #DCE4E8;
   --v2-color-primary-subtle: #E9EEF1;
   --v2-color-on-primary: #FFFFFF;
-  --v2-color-gold: #A7894D;
-  --v2-color-gold-strong: #927640;
+  --v2-color-gold: #806226;
+  --v2-color-gold-text: #6B5529;
+  --v2-color-gold-strong: #7A5C24;
   --v2-color-gold-soft: #EEE6D5;
   --v2-color-warm: #A6755C;
   --v2-color-warm-soft: #EFE0D7;
-  --v2-color-success: #627866;
+  --v2-color-success: #566C5A;
   --v2-color-success-soft: #E2E9E3;
-  --v2-color-warning: #9B6B31;
+  --v2-color-warning: #8C5C22;
   --v2-color-warning-soft: #F1E5D1;
-  --v2-color-danger: #A4544C;
+  --v2-color-danger: #9D4D45;
   --v2-color-danger-soft: #F2E0DE;
   --v2-color-info: #596C7A;
   --v2-color-info-soft: #E1E8EC;
@@ -148,4 +150,13 @@ html[data-ui="v2"][data-theme="light"] {
   --v2-shadow-slate: 0 14px 36px -22px rgba(77, 96, 109, .28);
   --v2-shadow-warm: 0 14px 34px -24px rgba(151, 118, 68, .22);
   --v2-grain-opacity: .022;
+}
+
+/* Safe areas do iOS/notch. Centralizadas para permitir simulação em testes headless
+   (o Chromium não popula env(safe-area-inset-*); basta sobrescrever estas variáveis). */
+:root {
+  --atrium-safe-top: env(safe-area-inset-top, 0px);
+  --atrium-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --atrium-safe-left: env(safe-area-inset-left, 0px);
+  --atrium-safe-right: env(safe-area-inset-right, 0px);
 }

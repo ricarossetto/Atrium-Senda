@@ -1,4 +1,16 @@
-export function createOnboarding({ getSettings, saveState, showToast, onSlideChange, onTimerChange } = {}) {
+import { safeImageSource } from '../core/link-safety.js?v=3.0.0';
+
+function escapeAttribute(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[character]));
+}
+
+export function createOnboarding({ getSettings, saveState, showToast, onSlideChange, onTimerChange, onNavigate, onActivateAi, isAiEnabled, onOpenTour = null } = {}) {
   let initialized = false;
   let currentSlide = 0;
   let tourTimer = null;
@@ -10,12 +22,38 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     if (initialized) return;
     initialized = true;
 
-    document.getElementById('tourButton')?.addEventListener('click', () => open(true));
-    document.getElementById('btnOpenTourFromConfig')?.addEventListener('click', () => open(true));
+    const openTour = () => (onOpenTour ? onOpenTour() : open(true));
+    document.getElementById('tourButton')?.addEventListener('click', openTour);
+    document.getElementById('btnOpenTourFromConfig')?.addEventListener('click', openTour);
     document.getElementById('tourCloseButton')?.addEventListener('click', close);
     document.getElementById('tourSkipButton')?.addEventListener('click', close);
+    document.getElementById('tourRegisterA1Now')?.addEventListener('click', () => {
+      selectA1Option('certOptNow');
+      close();
+      onNavigate?.('integrations');
+      showToast?.('Abra Conexões com tribunais para vincular seu Certificado A1.', 'success');
+    });
     document.getElementById('tourPrevButton')?.addEventListener('click', () => showSlide(currentSlide - 1));
     document.getElementById('tourNextButton')?.addEventListener('click', () => showSlide(currentSlide + 1));
+    // Ativação do Atrium IA direto no walkthrough: mesma rota oficial do painel (admin + CSRF),
+    // e a pessoa pode desligar depois em Configurações. Nesta fase é gratuita.
+    document.getElementById('tourActivateAi')?.addEventListener('click', async () => {
+      const botao = document.getElementById('tourActivateAi');
+      const rotulo = document.getElementById('tourActivateAiLabel');
+      const status = document.getElementById('tourActivateAiStatus');
+      if (!botao || !status) return;
+      botao.disabled = true;
+      status.textContent = 'Ativando…';
+      const ativado = typeof onActivateAi === 'function' ? await onActivateAi(true) : false;
+      botao.disabled = false;
+      if (ativado) {
+        if (rotulo) rotulo.textContent = 'Atrium IA ativado';
+        status.textContent = 'Pronto: o robô começa pelas publicações abertas.';
+        showToast?.('Atrium IA ativado. Você pode desligar quando quiser em Configurações.', 'success');
+      } else {
+        status.textContent = 'Não foi possível ativar agora — tente em Configurações.';
+      }
+    });
     document.getElementById('guidedTourBackdrop')?.addEventListener('click', event => {
       if (event.target === document.getElementById('guidedTourBackdrop')) close();
     });
@@ -57,31 +95,33 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     });
 
     // Theme selector
-    document.getElementById('onboardingThemeCardDark')?.addEventListener('click', () => selectTheme('dark'));
-    document.getElementById('onboardingThemeCardLight')?.addEventListener('click', () => selectTheme('light'));
+    const setupCardAction = (el, action) => {
+      if (!el) return;
+      el.addEventListener('click', action);
+      el.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          action();
+        }
+      });
+    };
+    setupCardAction(document.getElementById('onboardingThemeCardDark'), () => selectTheme('dark'));
+    setupCardAction(document.getElementById('onboardingThemeCardLight'), () => selectTheme('light'));
 
     // A1 Choice card selectors in Slide 4
     ['certOptNow', 'certOptLater', 'certOptNone'].forEach(optId => {
-      document.getElementById(optId)?.addEventListener('click', () => selectA1Option(optId));
+      setupCardAction(document.getElementById(optId), () => selectA1Option(optId));
     });
-
-    // A1 File upload handlers in onboarding
-    document.getElementById('btnOnboardingCertChoose')?.addEventListener('click', () => {
-      document.getElementById('onboardingA1FileInput')?.click();
-    });
-    document.getElementById('onboardingA1FileInput')?.addEventListener('change', event => {
-      const file = event.target.files?.[0];
-      if (file) handleA1FileUpload(file);
-    });
-    document.getElementById('btnOnboardingInstallA1')?.addEventListener('click', handleA1Install);
 
     document.addEventListener('keydown', event => {
+      const backdrop = document.getElementById('guidedTourBackdrop');
+      if (!backdrop || backdrop.classList.contains('hidden')) return;
       if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
         close();
         return;
       }
-      const backdrop = document.getElementById('guidedTourBackdrop');
-      if (!backdrop || backdrop.classList.contains('hidden')) return;
       if (event.key === 'ArrowRight') showSlide(currentSlide + 1);
       else if (event.key === 'ArrowLeft') showSlide(currentSlide - 1);
     });
@@ -126,7 +166,11 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     if (!file) return;
     const reader = new FileReader();
     reader.onload = e => {
-      draftLogo = e.target.result;
+      draftLogo = safeImageSource(e.target.result);
+      if (!draftLogo) {
+        showToast?.('Imagem de logo inválida. Use PNG ou JPEG.', 'error');
+        return;
+      }
       const img = document.getElementById('onboardingLogoImg');
       const placeholder = document.getElementById('onboardingLogoPlaceholder');
       const removeBtn = document.getElementById('btnOnboardingRemoveLogo');
@@ -158,12 +202,15 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
   }
 
   let selectedA1Option = 'certOptNone';
-  let a1FileDraft = null;
 
   function selectA1Option(optId) {
     selectedA1Option = optId;
     ['certOptNow', 'certOptLater', 'certOptNone'].forEach(id => {
-      document.getElementById(id)?.classList.toggle('active', id === optId);
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.toggle('active', id === optId);
+        el.setAttribute('aria-checked', String(id === optId));
+      }
     });
     const uploadArea = document.getElementById('onboardingA1UploadFields');
     if (uploadArea) {
@@ -173,48 +220,6 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     if (guideBox) {
       guideBox.classList.toggle('hidden', optId !== 'certOptNow');
     }
-  }
-
-  function handleA1FileUpload(file) {
-    a1FileDraft = file;
-    const nameEl = document.getElementById('onboardingA1FileName');
-    if (nameEl) {
-      nameEl.textContent = file.name;
-    }
-  }
-
-  function handleA1Install() {
-    const pwd = document.getElementById('onboardingA1Password')?.value?.trim();
-    const feedback = document.getElementById('onboardingA1Feedback');
-    if (!a1FileDraft) {
-      if (feedback) {
-        feedback.textContent = 'Por favor, selecione o arquivo .pfx ou .p12 do seu certificado.';
-        feedback.className = 'onboarding-a1-feedback error';
-        feedback.classList.remove('hidden');
-      }
-      return;
-    }
-    if (!pwd) {
-      if (feedback) {
-        feedback.textContent = 'Por favor, digite a senha do certificado.';
-        feedback.className = 'onboarding-a1-feedback error';
-        feedback.classList.remove('hidden');
-      }
-      return;
-    }
-
-    const settings = getSettings?.();
-    if (settings) {
-      settings.hasA1Cert = true;
-      settings.a1CertName = a1FileDraft.name;
-      saveState?.();
-    }
-    if (feedback) {
-      feedback.textContent = 'Certificado A1 validado e vinculado ao cofre criptográfico com sucesso!';
-      feedback.className = 'onboarding-a1-feedback success';
-      feedback.classList.remove('hidden');
-    }
-    showToast?.('Certificado A1 vinculado ao cofre local com sucesso!', 'success');
   }
 
   function selectTheme(theme) {
@@ -291,13 +296,26 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
   }
 
   function checkFirstAccess() {
+    if (!initialized) init();
     if (hasBeenSeen()) return;
-    if (tourTimer) window.clearTimeout(tourTimer);
-    tourTimer = window.setTimeout(() => open(), 600);
+    cancelTimer();
+    tourTimer = window.setTimeout(() => {
+      tourTimer = null;
+      onTimerChange?.(null);
+      if (document.querySelector?.('.modal-backdrop:not(.hidden):not(#guidedTourBackdrop)')) return;
+      open();
+    }, 600);
     onTimerChange?.(tourTimer);
   }
 
+  function cancelTimer() {
+    if (tourTimer) window.clearTimeout(tourTimer);
+    tourTimer = null;
+    onTimerChange?.(null);
+  }
+
   function open(force = false) {
+    if (!initialized) init();
     if (hasBeenSeen() && !force) return;
 
     // Load initial settings into inputs
@@ -325,16 +343,16 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     if (officeCityInput && !officeCityInput.value && settings.city) officeCityInput.value = settings.city;
 
     if (settings.officeLogo && !draftLogo) {
-      draftLogo = settings.officeLogo;
+      draftLogo = safeImageSource(settings.officeLogo);
       const logoImg = document.getElementById('onboardingLogoImg');
       const placeholder = document.getElementById('onboardingLogoPlaceholder');
       const removeBtn = document.getElementById('btnOnboardingRemoveLogo');
-      if (logoImg) {
+      if (logoImg && draftLogo) {
         logoImg.src = draftLogo;
         logoImg.classList.remove('hidden');
       }
-      if (placeholder) placeholder.classList.add('hidden');
-      if (removeBtn) removeBtn.classList.remove('hidden');
+      if (draftLogo && placeholder) placeholder.classList.add('hidden');
+      if (draftLogo && removeBtn) removeBtn.classList.remove('hidden');
     }
 
     const currentThemeAttr = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
@@ -343,13 +361,26 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     document.getElementById('onboardingThemeCardLight')?.classList.toggle('active', currentThemeAttr === 'light');
 
     updateBadgePreview();
+    syncAiCard();
     showSlide(0);
     document.getElementById('guidedTourBackdrop')?.classList.remove('hidden');
   }
 
+  /** Reflete no cartão do walkthrough o estado real do Atrium IA neste escritório. */
+  function syncAiCard() {
+    const rotulo = document.getElementById('tourActivateAiLabel');
+    const status = document.getElementById('tourActivateAiStatus');
+    if (!rotulo) return;
+    const ativo = typeof isAiEnabled === 'function' && isAiEnabled();
+    rotulo.textContent = ativo ? 'Atrium IA ativado' : 'Ativar o Atrium IA';
+    if (status && ativo) status.textContent = 'Já ativado neste escritório.';
+  }
+
   function close() {
-    if (tourTimer) window.clearTimeout(tourTimer);
-    document.getElementById('guidedTourBackdrop')?.classList.add('hidden');
+    const backdrop = document.getElementById('guidedTourBackdrop');
+    if (!backdrop || backdrop.classList.contains('hidden')) return;
+    cancelTimer();
+    backdrop.classList.add('hidden');
     localStorage.setItem('atrium_tour_seen', 'true');
     localStorage.setItem('jurisflow_tour_seen', 'true');
 
@@ -372,6 +403,8 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
       if (officeSlogan) settings.officeSlogan = officeSlogan;
       if (officeAddress) settings.lawyerAddress = officeAddress;
       if (officeCity) settings.city = officeCity;
+      const deadlineModeChoice = document.querySelector('input[name="onboardingDeadlineMode"]:checked');
+      if (deadlineModeChoice) settings.deadlineMode = deadlineModeChoice.value === 'manual' ? 'manual' : 'auto';
       if (draftLogo) settings.officeLogo = draftLogo;
 
       saveState?.();
@@ -383,8 +416,9 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
       if (labelEl && settings.officeSlogan) labelEl.textContent = settings.officeSlogan;
 
       const avatarEl = document.querySelector('.sidebar-office .office-avatar-icon');
-      if (avatarEl && settings.officeLogo) {
-        avatarEl.innerHTML = `<img src="${settings.officeLogo}" class="office-custom-logo" alt="Logo">`;
+      const safeLogo = safeImageSource(settings.officeLogo);
+      if (avatarEl && safeLogo) {
+        avatarEl.innerHTML = `<img src="${escapeAttribute(safeLogo)}" class="office-custom-logo" alt="Logo">`;
         avatarEl.style.background = 'transparent';
         avatarEl.style.backgroundImage = 'none';
       }
@@ -401,6 +435,7 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
   }
 
   function showSlide(index) {
+    if (!initialized) init();
     const slides = document.querySelectorAll('.tour-slide');
     const dots = document.querySelectorAll('.tour-dot');
     const stepIndicators = document.querySelectorAll('#tourStepper .tour-step-indicator');
@@ -446,7 +481,7 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     const previousButton = document.getElementById('tourPrevButton');
     const nextButton = document.getElementById('tourNextButton');
     if (previousButton) previousButton.style.display = index > 0 ? 'inline-block' : 'none';
-    if (nextButton) nextButton.textContent = index === total - 1 ? 'Começar a usar o Atrium' : 'Próximo →';
+    if (nextButton) nextButton.innerHTML = index === total - 1 ? 'Começar a usar o Atrium' : 'Próximo ' + '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-chevron-right"></use></svg>';
   }
 
   function hasBeenSeen() {
@@ -458,6 +493,7 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
   return Object.freeze({
     init,
     checkFirstAccess,
+    cancelTimer,
     open,
     close,
     showSlide,

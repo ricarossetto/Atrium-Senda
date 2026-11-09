@@ -29,9 +29,9 @@ try {
   assert.equal(await page.locator('.links-v2-header h2').textContent(), 'Links úteis');
   assert.deepEqual(await page.locator('#view-links .links-collection > .links-section-header h3').allTextContents(), [
     'Meus Links Personalizados',
-    'Legislação & Códigos Fundamentais (Planalto)',
-    'Jurisprudência & Precedentes Oficiais',
-    'Ferramentas Gratuitas com Inteligência Artificial & Repositório'
+    'Legislação e Códigos Fundamentais (Planalto)',
+    'Jurisprudência e Precedentes Oficiais',
+    'Ferramentas Gratuitas com Inteligência Artificial e Repositório'
   ]);
   assert.match(await page.locator('#btnNewLink').getAttribute('type'), /button/);
   assert.match((await page.locator('#btnNewLink').textContent()).replace(/\s+/g, ' ').trim(), /Novo Link Útil/);

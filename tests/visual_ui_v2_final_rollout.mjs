@@ -137,4 +137,4 @@ try {
 }
 
 assert.equal(hashes.size, 16, 'As 16 capturas finais devem produzir 16 hashes distintos.'); assertions++;
-console.log(`✓ Final rollout: 17/17 capacidades, 16 destinos primários em 6 matrizes, 16 screenshots, ${hashes.size}/16 hashes e ${assertions}/${assertions} assertions.`);
+console.log(`✓ Final rollout: ${UI_V2_CANONICAL_VIEWS.length}/${UI_V2_CANONICAL_VIEWS.length} capacidades, ${UI_V2_PRIMARY_NAV_VIEWS.length} destinos primários em 6 matrizes, 16 screenshots, ${hashes.size}/16 hashes e ${assertions}/${assertions} assertions.`);

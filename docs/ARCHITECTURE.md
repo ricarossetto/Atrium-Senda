@@ -1,4 +1,4 @@
-# Arquitetura do ATRIUM 2.1.1
+# Arquitetura do ATRIUM 3.0.0
 
 Este documento apresenta as autoridades e fronteiras do sistema. Os contratos normativos detalhados estão em [`specs/`](../specs/README.md); em caso de dúvida, código, testes e specs devem convergir antes de uma mudança.
 
@@ -7,7 +7,7 @@ Este documento apresenta as autoridades e fronteiras do sistema. Os contratos no
 ```mermaid
 flowchart TB
     Browser[Browser · Interface V2] --> Features[Features e presenters]
-    Features --> Store[Store canônico + API client]
+    Features --> Store[Store oficial + API client]
     Store --> Server[server.mjs · autoridade backend]
     Server --> State[(Estado cifrado AES-256-GCM)]
     Server --> Blobs[(Blobs documentais privados)]
@@ -31,11 +31,11 @@ Módulos em `js/features/` encapsulam os contratos de cada domínio e permanecem
 
 ### Store e API
 
-O Store em `js/core/store.js` mantém o estado canônico do frontend, a revisão recebida e a fila/coalescing de persistência. A API em `js/core/api.js` centraliza chamadas autenticadas. Respostas 409 representam concorrência real e não são convertidas silenciosamente em sucesso.
+O Store em `js/core/store.js` mantém o estado oficial do frontend, a revisão recebida e a fila/coalescing de persistência. A API em `js/core/api.js` centraliza chamadas autenticadas. Respostas 409 representam concorrência real e não são convertidas silenciosamente em sucesso.
 
 ### Backend
 
-`server.mjs` é o runtime canônico iniciado por `pnpm start` e pelo `ATRIUM.bat`. Ele concentra autenticação, autorização, CSRF, persistência, documentos, integrações e orquestração judicial. O launcher não inicia um segundo collector.
+`server.mjs` é o runtime do ATRIUM; quem instala escolhe onde ele roda (o aplicativo desktop empacota o Node; a instalação manual usa o Node do sistema). Ele concentra autenticação, autorização, CSRF, persistência, documentos, integrações e orquestração judicial.
 
 ## Fonte única e concorrência
 
@@ -47,7 +47,7 @@ sequenceDiagram
     participant B as Backend
     participant D as Estado cifrado
     U->>F: ação explícita
-    F->>S: alteração canônica
+    F->>S: alteração oficial
     S->>B: POST /api/state + expectedRevision
     B->>D: valida, cifra e grava atomicamente
     D-->>B: nova revision
@@ -62,7 +62,7 @@ O backend é a autoridade de persistência. O estado tem schema/dataVersion/appV
 
 ## Persistência cifrada
 
-- Estado canônico em envelope AES-256-GCM.
+- Estado oficial em envelope AES-256-GCM.
 - `revision` opaca para concorrência otimista.
 - Escrita temporária, sincronização e troca atômica.
 - Quarentena preservadora quando runtime derivado está corrompido.
@@ -83,7 +83,7 @@ flowchart LR
     Derived --> Index[Índice full-text derivado]
 ```
 
-Metadados são canônicos; conteúdo binário fica no provider privado. Download e preview exigem autenticação/autorização e não expõem o diretório como estático. Exclusão lógica, restauração, expurgo e deduplicação por checksum seguem operações distintas. Veja [gestão documental](../specs/document-management.md).
+Metadados são oficiais; conteúdo binário fica no provider privado. Download e preview exigem autenticação/autorização e não expõem o diretório como estático. Exclusão lógica, restauração, expurgo e deduplicação por checksum seguem operações distintas. Veja [gestão documental](../specs/document-management.md).
 
 ## Busca full-text
 
@@ -94,10 +94,10 @@ O índice em `lib/search-index.mjs` é memória derivada e reconstruível. Ele r
 ```mermaid
 flowchart LR
     DJEN[DJEN · publicação] --> CNJ[Número CNJ]
-    CNJ --> Process[Processo canônico]
+    CNJ --> Process[Processo oficial]
     Process --> DataJud[DataJud · enriquecimento]
     DataJud --> Parties[Partes estruturadas]
-    Parties --> Contacts[Contatos canônicos]
+    Parties --> Contacts[Contatos oficiais]
     Contacts --> Review{Evidência de representação?}
     Review -->|Sim, sem conflito| Client[Relação conservadora de cliente]
     Review -->|Ambígua| Human[Revisão humana]

@@ -4,12 +4,12 @@ import { postJson, startTestServer } from './helpers.mjs';
 
 export const UI_V2_CANONICAL_VIEWS = Object.freeze([
   'dashboard', 'processes', 'inbox', 'kanban', 'agenda', 'contacts', 'leads',
-  'financial', 'documents', 'assistant', 'prompts', 'monitoring', 'integrations',
-  'configuration', 'importer', 'audit', 'links'
+  'financial', 'calculations', 'documents', 'reports', 'assistant', 'prompts', 'monitoring', 'integrations',
+  'configuration', 'importer', 'audit', 'links', 'admin'
 ]);
 
 export const UI_V2_PRIMARY_NAV_VIEWS = Object.freeze(
-  UI_V2_CANONICAL_VIEWS.filter(view => view !== 'audit')
+  UI_V2_CANONICAL_VIEWS.filter(view => !['audit', 'admin', 'monitoring', 'importer'].includes(view))
 );
 
 export const UI_V2_OVERLAY_SELECTORS = Object.freeze([
@@ -34,7 +34,7 @@ export async function collectUiV2LayoutEvidence(page) {
     const visibleOverlays = overlaySelectors.filter(selector => document.querySelector(selector)?.getClientRects().length);
     return {
       activeViews: [...document.querySelectorAll('.view.active')].map(element => element.id),
-      navItems: document.querySelectorAll('.nav-item[data-view]').length,
+      navItems: document.querySelectorAll('.nav-item[data-view]:not(.is-admin-only)').length,
       navGroups: document.querySelectorAll('nav[data-v2-nav-group]').length,
       duplicateIds: ids.filter((id, index) => ids.indexOf(id) !== index),
       globalOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
@@ -43,9 +43,21 @@ export async function collectUiV2LayoutEvidence(page) {
   }, UI_V2_OVERLAY_SELECTORS);
 }
 
-export async function startUiV2Session({ viewport = { width: 1440, height: 900 } } = {}) {
-  const server = await startTestServer();
-  const browser = await chromium.launch({ headless: true });
+export async function startUiV2Session({ viewport = { width: 1440, height: 900 }, headless = true, dataDirectory = null } = {}) {
+  // O probe de disponibilidade do classificador não pode depender do CLI externo no ambiente de
+  // teste (o binário real é lento/instável e prende o boot em `networkidle`): `node --version`
+  // responde na hora, mantém a rota de status honesta e não chama provedor nenhum.
+  const server = await startTestServer({
+    env: { JEV_CMD_BIN: process.execPath },
+    ...(dataDirectory ? { dataDirectory } : {})
+  });
+  let browser;
+  try {
+    browser = await chromium.launch({ headless });
+  } catch (error) {
+    await server.stop();
+    throw error;
+  }
   const password = 'Senha-UI-V2-2026!';
   let response = await postJson(`${server.baseUrl}/api/auth/setup`, {
     username: 'admin_ui_v2',
@@ -497,17 +509,98 @@ export const UI_V2_JUDICIAL_STATUS = Object.freeze({
     { id: 'datajud-cnj', name: 'DataJud / CNJ', system: 'API pública', authStrategy: 'public', verification: 'verified', configured: true, connectivityState: 'connected', lastSuccessfulSyncAt: '2026-09-01T09:46:00.000Z', lastAttemptAt: '2026-09-01T09:46:00.000Z', nextRefreshAt: '2026-09-01T10:16:00.000Z', publicDetail: '3/3 processo(s) localizado(s); 3 atualizado(s)', lastError: null, humanAction: null, readOnly: true },
     { id: 'tj-sintetico', name: 'Tribunal de Justiça Sintético', system: 'PJe', authStrategy: 'pjeoffice-local', verification: 'verified', configured: true, connectivityState: 'connected', lastSuccessfulSyncAt: '2026-09-01T09:42:00.000Z', lastAttemptAt: '2026-09-01T09:42:00.000Z', nextRefreshAt: '2026-09-01T10:12:00.000Z', lastError: null, humanAction: null, readOnly: true },
     { id: 'trf-sintetico', name: 'Tribunal Regional Sintético', system: 'eproc', authStrategy: 'username-password-plus-totp', verification: 'experimental', configured: true, connectivityState: 'action_required', lastSuccessfulSyncAt: '2026-08-31T18:10:00.000Z', lastAttemptAt: '2026-09-01T09:30:00.000Z', nextRefreshAt: null, lastError: null, humanAction: 'Conclua o segundo fator no portal sintético.', readOnly: true },
-    { id: 'tst-sintetico', name: 'Tribunal Superior Sintético', system: 'Portal judicial', authStrategy: 'windows-store', verification: 'not_verified', configured: false, connectivityState: 'not_configured', lastSuccessfulSyncAt: null, lastAttemptAt: null, nextRefreshAt: null, lastError: null, humanAction: null, readOnly: true }
+    { id: 'tst-sintetico', name: 'Tribunal Superior Sintético', system: 'Portal judicial', authStrategy: 'windows-store', verification: 'not_verified', configured: false, connectivityState: 'not_configured', lastSuccessfulSyncAt: null, lastAttemptAt: null, nextRefreshAt: null, lastError: null, humanAction: null, readOnly: true },
+    { id: 'pje-tjmt-1g', name: 'TJMT · PJe 1º grau', system: 'PJe', authStrategy: 'pjeoffice-local', verification: 'verified', configured: true, connectivityState: 'connected', lastSuccessfulSyncAt: '2026-09-18T09:00:00.000Z', lastAttemptAt: '2026-09-18T09:00:00.000Z', nextRefreshAt: null, lastError: null, humanAction: null, readOnly: true }
   ],
   managedPolicy: { readOnly: true, cadence: 'conservative-with-backoff', humanSupervision: true, forbiddenAutomaticActions: ['science', 'signature', 'petition', 'protocol', 'acknowledgment', 'deadline-confirmation'] }
 });
 
+export const UI_V2_PJE_STATUS = Object.freeze({
+  ok: true,
+  workspaceId: 'ws-sintetico',
+  config: { pjeEnabled: true, enabledPortals: ['pje-tjmt-1g', 'pje-trt4-1g'], runtimePreference: 'auto', automaticSyncEnabled: true, syncIntervalMinutes: 360 },
+  portals: [
+    {
+      id: 'pje-tjmt-1g',
+      name: 'TJMT · PJe 1º grau',
+      court: 'TJMT 1º grau',
+      grau: '1G',
+      layoutFamily: 'standard',
+      collectorKey: 'standard',
+      collectorImplemented: true,
+      runtimePreference: 'server',
+      enabled: true,
+      routeStatus: 'confirmed',
+      statusLabel: 'Verificado',
+      verification: 'verified',
+      lastSync: { jobId: 'pje-ui-job-tjmt', status: 'COMPLETED', stage: 'finished', finishedAt: '2026-09-18T09:00:00.000Z', durationMs: 42_000, acervo: 'loaded', expedientes: 'loaded', expected: 2, collected: 2, missing: 0, errorCode: null }
+    },
+    {
+      id: 'pje-trt4-1g',
+      name: 'TRT4 · PJe 1º grau',
+      court: 'TRT4',
+      grau: '1G',
+      layoutFamily: 'trabalhista',
+      collectorKey: 'trabalhista',
+      collectorImplemented: true,
+      runtimePreference: 'local_sidecar',
+      enabled: true,
+      routeStatus: 'confirmed',
+      statusLabel: 'Erro',
+      verification: 'unverified',
+      lastSync: { jobId: 'pje-ui-job-trt4', status: 'ERROR', stage: 'auth', finishedAt: '2026-09-17T18:00:00.000Z', durationMs: 15_000, acervo: null, expedientes: null, expected: null, collected: null, missing: null, errorCode: 'AUTH-TOTP-REQUIRED' }
+    }
+  ]
+});
+
+export const UI_V2_PJE_COMMUNICATIONS = Object.freeze({
+  ok: true,
+  total: 2,
+  page: 1,
+  pageSize: 10,
+  items: [
+    {
+      id: 'pje:ws-sintetico:pje-tjmt-1g:id:53180112',
+      portalId: 'pje-tjmt-1g',
+      processNumber: '1003127-91.2024.8.11.0005',
+      source: 'TJMT · PJe 1º grau',
+      type: '',
+      status: 'new',
+      situationMemberships: ['Pendentes de ciência ou de resposta', 'Apenas pendentes de resposta'],
+      sourceReportedScienceAt: '2026-09-15',
+      sourceReportedDeadlineAt: '2026-09-25',
+      courtUnit: 'Vara Única de Diamantino',
+      firstSeenAt: '2026-09-18T09:00:00.000Z',
+      lastSeenAt: '2026-09-18T09:00:00.000Z',
+      version: 1,
+      deletedAt: null
+    },
+    {
+      id: 'pje:ws-sintetico:pje-trt4-1g:id:889900',
+      portalId: 'pje-trt4-1g',
+      processNumber: '0000000-00.2026.5.04.0001',
+      source: 'TRT4 · PJe 1º grau',
+      type: '',
+      status: 'in_review',
+      situationMemberships: [],
+      sourceReportedScienceAt: '',
+      sourceReportedDeadlineAt: '',
+      courtUnit: 'Colegiado IJU601',
+      firstSeenAt: '2026-09-17T18:00:00.000Z',
+      lastSeenAt: '2026-09-17T18:00:00.000Z',
+      version: 1,
+      deletedAt: null
+    }
+  ]
+});
+
 export async function prepareUiV2JudicialFixture(page, status = UI_V2_JUDICIAL_STATUS) {
-  await page.evaluate(statusFixture => {
+  await page.evaluate(({ statusFixture, pjeStatusFixture, communicationsFixture }) => {
     window.__uiV2JudicialRequests = [];
     const originalSecureFetch = window.KellerAuth.secureFetch.bind(window.KellerAuth);
     const response = payload => ({ ok: true, async json() { return payload; } });
     window.KellerAuth.secureFetch = async (url, options = {}) => {
+      if (String(url).startsWith('/api/judicial/communications')) return response(window.__uiV2PjeCommunicationsOverride?.(url) || communicationsFixture);
       if (!String(url).startsWith('/api/integrations/judicial')) return originalSecureFetch(url, options);
       window.__uiV2JudicialRequests.push({
         url,
@@ -515,12 +608,20 @@ export async function prepareUiV2JudicialFixture(page, status = UI_V2_JUDICIAL_S
         body: options.body ? JSON.parse(options.body) : undefined
       });
       if (url === '/api/integrations/judicial') return response(statusFixture);
+      if (url === '/api/integrations/judicial/pje') return response(pjeStatusFixture);
+      if (String(url).startsWith('/api/integrations/judicial/pje/sync')) return response({ ok: true, jobId: 'pje-ui-job' });
+      if (String(url).startsWith('/api/integrations/judicial/pje/jobs/')) return response({ ok: true, job: { jobId: 'pje-ui-job', status: 'COMPLETED', collected: 2, finishedAt: '2026-09-18T10:00:00.000Z', errorCode: null } });
+      if (url === '/api/integrations/judicial/pje/config') return response({ ok: true, config: pjeStatusFixture.config });
       if (url.endsWith('/reset')) return response({ certificatePreserved: true });
       if (url.endsWith('/a1/sandbox')) return response({ sandbox: { operational: true, steps: [{ id: 'pfxFile', name: 'Arquivo PFX', status: 'OK' }] } });
       return response({ ...statusFixture, ok: true });
     };
     window.Atrium.App.switchView('integrations');
-  }, status);
+  }, {
+    statusFixture: status,
+    pjeStatusFixture: UI_V2_PJE_STATUS,
+    communicationsFixture: UI_V2_PJE_COMMUNICATIONS
+  });
   await page.locator('#view-integrations.active').waitFor();
   const hasManagedAction = status.managedCoverage?.some(item => item.connectivityState === 'action_required');
   const expectedStatus = hasManagedAction
@@ -532,14 +633,8 @@ export async function prepareUiV2JudicialFixture(page, status = UI_V2_JUDICIAL_S
 
 export const UI_V2_EMAIL_STATUS = Object.freeze({
   configured: true,
-  host: 'smtp.synthetic.example.test',
-  port: 465,
-  secure: true,
-  userMasked: 'co***@synthetic.example.test',
-  fromName: 'Escritório Sintético',
-  fromAddress: 'comunicacoes@synthetic.example.test',
-  lastTestAt: '2026-08-30T12:00:00.000Z',
-  lastTestStatus: 'success'
+  stats: { enabled: false, sentToday: 3, sentMonth: 17, queue: { QUEUED: 2 } },
+  limits: { daily: 100, monthly: 3000 }
 });
 
 export const UI_V2_EMAIL_RECEIVERS = Object.freeze([
@@ -560,11 +655,9 @@ export async function prepareUiV2EmailCalendarFixture(page, {
     window.__uiV2SmtpPasswordObserved = false;
     const originalSecureFetch = window.KellerAuth.secureFetch.bind(window.KellerAuth);
     const originalToast = window.Atrium.App.toast.bind(window.Atrium.App);
-    const response = (payload = {}, ok = true) => ({ ok, async json() { return structuredClone(payload); } });
+    const response = (payload = {}, ok = true, status = ok ? 200 : 500) => ({ ok, status, async json() { return structuredClone(payload); } });
     const record = (url, options, body) => {
-      const safeBody = url === '/api/integrations/email/configure' && body
-        ? { ...body, password: body.password ? '[REDACTED]' : '' }
-        : body;
+      const safeBody = body;
       window.__uiV2EmailCalendarRequests.push({ url, method: options.method || 'GET', body: safeBody });
     };
     if (window.KellerAuth.currentUser) window.KellerAuth.currentUser.role = currentRole;
@@ -574,34 +667,40 @@ export async function prepareUiV2EmailCalendarFixture(page, {
     };
     window.KellerAuth.secureFetch = async (url, options = {}) => {
       const body = options.body ? JSON.parse(options.body) : undefined;
-      if (url === '/api/integrations/email/status') {
+      if (url === '/api/admin/mail/status') {
         record(url, options, body);
-        if (failStatus) throw new Error('Falha sintética de status SMTP');
-        return response({ status: statusFixture });
+        if (failStatus) throw new Error('Falha sintética de status Mail');
+        if (currentRole !== 'master_admin') return response({ message: 'Acesso restrito.' }, false, 403);
+        return response(statusFixture);
       }
-      if (url === '/api/integrations/email/configure') {
-        window.__uiV2SmtpPasswordObserved = Boolean(body?.password);
+      if (url === '/api/admin/mail/toggle') {
         record(url, options, body);
         return response({ ok: true });
       }
-      if (url === '/api/integrations/email/test') {
+      if (url === '/api/admin/mail/test') {
         record(url, options, body);
         return response({ ok: true, message: 'E-mail sintético enviado.' });
       }
-      if (url === '/api/integrations/email/receivers' && (options.method || 'GET') === 'GET') {
+      if (url === '/api/admin/mail/recipients' && (options.method || 'GET') === 'GET') {
         record(url, options, body);
-        return response({ receivers: receiverFixtures });
+        return response({ recipients: receiverFixtures });
       }
-      if (String(url).startsWith('/api/integrations/email/receivers')) {
+      if (String(url).startsWith('/api/admin/mail/recipients')) {
         record(url, options, body);
         return response({ ok: true });
       }
-      if (url === '/api/auth/users') {
+      if (url === '/api/user/notification-preferences' && (options.method || 'GET') === 'GET') {
         record(url, options, body);
-        return response({ users: [
-          { id: 'user-active', displayName: 'Usuária Ativa Sintética', email: 'ativa@synthetic.example.test', status: 'active' },
-          { id: 'user-inactive', displayName: 'Usuária Inativa Sintética', email: 'inativa@synthetic.example.test', status: 'inactive' }
+        return response({ preferences: [
+          { event_type: 'PUBLICATION_NEW', cadence: 'SYNC_DIGEST', enabled: true },
+          { event_type: 'DEADLINE_CRITICAL', cadence: 'IMMEDIATE', enabled: true },
+          { event_type: 'HEARING_NEW', cadence: 'SYNC_DIGEST', enabled: true },
+          { event_type: 'MOVEMENT_NEW', cadence: 'SYNC_DIGEST', enabled: true }
         ] });
+      }
+      if (url === '/api/user/notification-preferences' && options.method === 'PUT') {
+        record(url, options, body);
+        return response({ ok: true });
       }
       if (url === '/api/calendar/configure') {
         record(url, options, body);
@@ -612,7 +711,7 @@ export async function prepareUiV2EmailCalendarFixture(page, {
     window.Atrium.App.switchView('integrations');
   }, { statusFixture: emailStatus, receiverFixtures: receivers, currentRole: role, failStatus: statusFailure });
   await page.locator('#view-integrations.active').waitFor();
-  const expected = statusFailure ? 'Erro ao verificar' : emailStatus.configured ? 'SMTP conectado' : 'Não configurado';
+  const expected = statusFailure ? 'Indisponível' : role !== 'master_admin' ? 'ATRIUM Mail' : emailStatus.stats?.enabled ? 'Ativo' : 'Desativado';
   await page.locator('#emailIntegrationStatus').filter({ hasText: expected }).waitFor();
   return { emailStatus, receivers, role, statusFailure };
 }
@@ -753,6 +852,7 @@ export async function prepareUiV2PublicationsFixture(page) {
         court: 'TJRS · 1ª Vara Cível Sintética',
         source: 'DJEN sintético',
         publishedAt: '2026-08-30',
+        sourceCollectedAt: '2026-08-30T14:05:00.000Z',
         text: 'TEXTO OFICIAL SINTÉTICO\nA parte deverá se manifestar em 15 dias.\nA data é apenas conteúdo da publicação e não constitui prazo cadastrado.',
         status: 'nova',
         treatmentStatus: 'untreated',
@@ -1002,7 +1102,7 @@ export async function prepareUiV2ContactsFixture(page) {
     processes: [
       {
         id: 'ui-v2-contact-process', number: '5000000-00.2026.8.21.0001', client: 'Marina Duarte Sintética',
-        contactId: 'ui-v2-contact-client', actionType: 'Procedimento sintético de vínculo canônico', court: 'TJRS sintético',
+        contactId: 'ui-v2-contact-client', actionType: 'Procedimento sintético de vínculo oficial', court: 'TJRS sintético',
         stage: 'Em andamento', registeredAt: '2026-08-01', feeType: 'fixo', feeAmount: 1200,
         movements: [{ id: 'ui-v2-contact-movement', date: '2026-08-18', description: 'Movimentação sintética do processo vinculado' }]
       },
@@ -1285,4 +1385,12 @@ export async function prepareUiV2MonitoringFixture(page) {
   await page.locator('#view-monitoring.active').waitFor();
   await page.locator('#monitorSourceList [data-source-id="a1"]').waitFor();
   return fixture;
+}
+
+export async function fillContactSearch(page, query, expectedCount) {
+  await page.locator('#contactSearch').fill(query);
+  await page.waitForFunction(
+    count => document.querySelectorAll('#contactsV2Workspace [data-contact-id], #contactTableBody [data-contact-id]').length === count,
+    expectedCount
+  );
 }

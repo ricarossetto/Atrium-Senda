@@ -5,6 +5,7 @@ import { generateTotp } from '../lib/security.mjs';
 import { createContactsFeature } from '../js/features/contacts.js';
 import { isoDate } from '../js/core/store.js';
 import { postJson, startTestServer } from './helpers.mjs';
+import { fillContactSearch } from './ui_v2_helpers.mjs';
 
 console.log('\n===============================================================');
 console.log('  ATRIUM — CARACTERIZAÇÃO DA FEATURE DE CONTATOS');
@@ -23,12 +24,12 @@ for (const forbiddenSideEffect of ['console.log', 'fetch(', 'XMLHttpRequest', 'W
   assert.equal(contactsSource.includes(forbiddenSideEffect), false, `Contacts não pode introduzir ${forbiddenSideEffect}.`);
 }
 assert.match(contactsSource, /const roleMap = \{ cliente: 'Cliente', testemunha: 'Testemunha', perito: 'Perito Judicial', adverso: 'Adv\. Adverso', correspondente: 'Correspondente', preposto: 'Preposto', outro: 'Outro' \};/);
-assert.match(portalSource, /import \{ createContactsFeature \} from '\.\/features\/contacts\.js';/);
+assert.match(portalSource, /import \{ createContactsFeature \} from '\.\/features\/contacts\.js(\?v=[\d.]+)?';/);
 assert.equal((portalSource.match(/createContactsFeature\(/g) || []).length, 1, 'Portal deve instanciar Contacts uma única vez.');
 assert.equal(portalSource.includes('contactSort:'), false, 'Sort de Contatos não pode manter shadow state no App.');
 assert.equal(portalSource.includes('this.contactSort'), false, 'Portal não pode continuar manipulando sort de Contatos.');
-assert.equal(portalSource.includes("Store.upsert('contacts', record)"), false, 'Save canônico de Contatos não pode permanecer no portal.');
-assert.equal(portalSource.includes("const roleMap = { cliente: 'Cliente'"), false, 'Render canônico de Contatos não pode permanecer no portal.');
+assert.equal(portalSource.includes("Store.upsert('contacts', record)"), false, 'Save oficial de Contatos não pode permanecer no portal.');
+assert.equal(portalSource.includes("const roleMap = { cliente: 'Cliente'"), false, 'Render oficial de Contatos não pode permanecer no portal.');
 assert.match(portalSource, /renderContacts\(query = ''\) \{\s*return getContactsFeature\(\)\.render\(query\);\s*\}/);
 assert.match(portalSource, /openContactModal\(defaults = \{\}\) \{\s*return getContactsFeature\(\)\.openContactModal\(defaults\);\s*\}/);
 assert.match(portalSource, /modalMode\.mode === 'contact'\) \{\s*getContactsFeature\(\)\.saveContact\(data, this\.modalMode\.defaults\);/);
@@ -69,8 +70,10 @@ assert.equal(listenerMap.newContactButton.length, 1);
 assert.equal(listenerMap.contactSearch.length, 1);
 listenerMap.newContactButton[0].listener();
 listenerMap.contactSearch[0].listener({ target: { value: 'busca unitária' } });
+listenerMap.contactSearch[0].listener({ target: { value: 'busca unitária 2' } });
+await new Promise(resolve => setTimeout(resolve, 350));
 assert.equal(unitOpenCount, 1, 'Segundo init não pode duplicar listener de novo contato.');
-assert.deepEqual(unitRenders, ['busca unitária'], 'Pesquisa deve disparar um único render.');
+assert.deepEqual(unitRenders, ['busca unitária 2'], 'Debounce agrupa teclas num único render com o último valor.');
 fakeElements.contactSearch.value = 'sort preservado';
 assert.deepEqual(unitFeature.handleSort('name'), { field: 'name', direction: 'desc' });
 assert.deepEqual(unitFeature.handleSort('document'), { field: 'document', direction: 'asc' });
@@ -218,15 +221,15 @@ try {
     ['2026-08-28', 'contact-zeta']
   ];
   for (const [query, expectedId] of searchCases) {
-    await page.locator('#contactSearch').fill(query);
+    await fillContactSearch(page, query, 1);
     await page.locator(`#contactTableBody [data-contact-id="${expectedId}"]`).waitFor();
     assert.equal(await page.locator('#contactTableBody [data-contact-id]').count(), 1, `Busca deve localizar apenas ${expectedId} por ${query}.`);
     assert.equal(await page.locator('#contactCount').textContent(), '2 contatos', 'Count deve continuar representando o total geral.');
   }
-  await page.locator('#contactSearch').fill('contato inexistente fase 10');
+  await fillContactSearch(page, 'contato inexistente fase 10', 0);
   assert.match(await page.locator('#contactTableBody').textContent(), /Nenhum contato encontrado/);
   assert.equal(await page.locator('#contactCount').textContent(), '2 contatos');
-  await page.locator('#contactSearch').fill('');
+  await fillContactSearch(page, '', 2);
 
   await page.locator('#contactTable th[data-sort-field="name"]').click();
   assert.equal(await page.locator('#contactTable th[data-sort-field="name"].sorted-desc').count(), 1);

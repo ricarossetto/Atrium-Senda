@@ -40,10 +40,10 @@ try {
   for (const expected of ['Visão 360', 'Contexto jurídico', '2Processos', '1Providências', '1Publicações', '1Documentos', '1Agenda', '2Financeiro']) {
     assert.ok(summary.replace(/\s+/g, '').includes(expected.replace(/\s+/g, '')), `Resumo 360 deve exibir ${expected}.`);
   }
-  assert.match(summary, /Somente vínculos canônicos ou relações processuais registradas/);
+  assert.match(summary, /Somente vínculos principais ou relações processuais registradas/);
   assert.equal(await page.locator('[data-contact-process]').count(), 2);
-  assert.equal(await page.locator('[data-contact-process="ui-v2-contact-process"]').textContent().then(text => text.includes('Cliente canônico')), true);
-  assert.equal(await page.locator('[data-contact-process="ui-v2-contact-related-process"]').textContent().then(text => text.includes('Relação registrada')), true);
+  assert.equal(await page.locator('[data-contact-process="ui-v2-contact-process"]').textContent().then(text => text.includes('Cliente principal')), true);
+  assert.equal(await page.locator('[data-contact-process="ui-v2-contact-related-process"]').textContent().then(text => text.includes('Parte relacionada')), true);
   assert.doesNotMatch(await page.locator('#contactInspector').textContent(), /Processo sem vínculo explícito/, 'Nome coincidente não pode entrar no CRM derivado.');
   assert.match(await page.locator('#contactInspector').textContent(), /Linha do tempo consolidada/);
   assert.match(await page.locator('#contactInspector').textContent(), /Movimentação sintética do processo vinculado/);
@@ -94,7 +94,7 @@ try {
     documents: window.Atrium.Store.state.documents,
     financial: window.Atrium.Store.state.financial
   }));
-  assert.equal(after, before, 'Consulta e navegação do Client 360 não podem alterar dados canônicos.');
+  assert.equal(after, before, 'Consulta e navegação do Client 360 não podem alterar dados oficiais.');
   assert.deepEqual(pageErrors, []);
   await context.close();
 } finally {

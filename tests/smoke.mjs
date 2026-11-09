@@ -94,10 +94,10 @@ try {
   // Teste de personalização do escritório
   await page.locator('.sidebar-office').click();
   await page.locator('#officeSetupBackdrop:not(.hidden)').waitFor();
-  await page.locator('#officeInputName').fill('Banca Rossetto & Associados');
+  await page.locator('#officeInputName').fill('Banca Teste & Associados');
   await page.locator('#officeSetupForm button[type="submit"]').click();
   await page.locator('#officeSetupBackdrop').waitFor({ state: 'hidden' });
-  assert(await page.locator('#sidebarOfficeName').textContent() === 'Banca Rossetto & Associados', 'Personalização do escritório falhou.');
+  assert(await page.locator('#sidebarOfficeName').textContent() === 'Banca Teste & Associados', 'Personalização do escritório falhou.');
 
   await page.evaluate(() => window.Atrium.App.switchView('contacts'));
   await page.locator('#view-contacts.active').waitFor();
@@ -176,6 +176,11 @@ try {
   await page.locator('#view-integrations.active').waitFor();
   await page.locator('#certificateGuideButton').click();
   await page.locator('#judicialSetupBackdrop:not(.hidden)').waitFor();
+  /* O assistente abre na aba de cobertura; credenciais e TOTP ficam na aba seguinte,
+   * que estava oculta — o bloco abaixo dirige essa aba. Abrir a aba pelo caminho real
+   * (clique) é o que o usuário faz, e é o que torna os controles visíveis. */
+  await page.locator('#jcoTabCredentials').click();
+  await page.locator('#jcoPanelCredentials:not([hidden])').waitFor();
   const certificatePassword = page.locator('#certificatePassphrase');
   assert(await certificatePassword.getAttribute('type') === 'password', 'Senha do certificado não iniciou oculta.');
   assert.equal(await page.locator('#certificatePassphrase + .password-toggle').count(), 0, 'Segredo A1 não deve oferecer alternância visual persistente.');
@@ -192,7 +197,7 @@ try {
   await page.locator('#portalTotpSecret').fill(totpSecret);
   await page.locator('#portalTotpCode').fill(generateTotp(totpSecret));
   await page.locator('#portalTotpForm button[type="submit"]').click();
-  await page.getByText('QR validado. O segundo fator desse portal está ativo.', { exact: true }).waitFor();
+  await page.getByText('Código validado. Credencial pronta para este portal.', { exact: true }).waitFor();
   await page.locator('#portalCoverageList', { hasText: /2FA protegido|2FA vinculado e verificado/ }).waitFor();
   await capture('judicial-setup');
   await page.locator('#judicialSetupClose').click();
@@ -355,13 +360,25 @@ try {
   await page.locator('#authLoginForm button[type="submit"]').click();
   await page.locator('#view-kanban.active').waitFor();
   await flushStore();
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  /* O logout deixa a URL em `/login`, que é oficial no frontend publicado (Cloudflare
+   * Pages responde index.html para qualquer rota). O servidor Node dos testes tem
+   * allowlist estática estrita (AGENTS §18) e só serve a entrada — recarregar `/login`
+   * aqui mediria o servidor de arquivos, não a persistência. Recarrega-se a entrada. */
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => Boolean(window.Atrium?.Store?.state?.settings));
   await page.locator('#view-dashboard.active').waitFor();
   await page.evaluate(() => {
     document.documentElement.dataset.ui = 'classic';
     window.Atrium.App.renderAll();
     window.Atrium.App.switchView('kanban');
+  });
+  /* Sincronização determinística: espera o estado e o DOM concordarem antes de exigir
+   * visibilidade. `switchView` agenda a renderização, então esperar só o seletor pode
+   * tocar num frame anterior ao render. */
+  await page.waitForFunction(() => {
+    const tarefas = window.Atrium?.Store?.state?.tasks || [];
+    if (!tarefas.some(t => t.title === 'Tarefa com timesheet')) return false;
+    return [...document.querySelectorAll('#kanbanBoard h4')].some(h => h.textContent.trim() === 'Tarefa com timesheet');
   });
   await page.locator('#kanbanBoard h4', { hasText: 'Tarefa com timesheet' }).waitFor();
   assert(pageErrors.length === 0, `Erro de página: ${pageErrors.join(' | ')}`);

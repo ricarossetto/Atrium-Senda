@@ -13,9 +13,9 @@ Localizar conteúdo jurídico e operacional já autorizado em Processos, Contato
 ## Invariants
 
 - O índice é DERIVED / REBUILDABLE e nunca é fonte de verdade.
-- O Store cifrado continua sendo a autoridade canônica; blobs OCR continuam cifrados no acervo documental.
+- O Store cifrado continua sendo a autoridade oficial; blobs OCR continuam cifrados no acervo documental.
 - Cada resultado contém tipo, título, contexto, snippet, campo encontrado e relevância.
-- A sincronização usa a revision canônica e reaproveita entradas inalteradas quando seguro.
+- A sincronização usa a revision oficial e reaproveita entradas inalteradas quando seguro.
 
 ## Allowed operations
 
@@ -31,7 +31,7 @@ Localizar conteúdo jurídico e operacional já autorizado em Processos, Contato
 
 ## State model
 
-Snapshot em memória, versionado, ligado à revision canônica e composto por entradas derivadas. Ausência, versão inválida ou corrupção lógica dispara rebuild; nenhuma cópia plaintext é gravada em disco.
+Snapshot em memória, versionado, ligado à revision oficial e composto por entradas derivadas. Ausência, versão inválida ou corrupção lógica dispara rebuild; nenhuma cópia plaintext é gravada em disco.
 
 ## Security boundary
 
@@ -45,7 +45,7 @@ Falha ao ler um blob OCR omite apenas aquele texto derivado e preserva metadata/
 
 ## Persistence semantics
 
-Nenhuma persistência canônica nova. O índice vive somente em memória, é sincronizado quando a revision muda e pode ser descartado ou reconstruído sem perda de dados.
+Nenhuma persistência oficial nova. O índice vive somente em memória, é sincronizado quando a revision muda e pode ser descartado ou reconstruído sem perda de dados.
 
 ## Relevant tests
 

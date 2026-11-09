@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><title>:: eproc - Consulta Processual - Busca de Processo - Chave de Acesso ::</title></head>
+<body>
+  <form id="frmConsultaPublica" method="post" action="controlador.php?acao=processo_consulta_publica_chave%2Fconsultar&amp;acao_origem=processo_consulta_publica_chave%2Fconsultar&amp;acao_retorno=">
+    <input type="hidden" id="hdnInfraCaptcha" name="hdnInfraCaptcha" value="0" />
+    <input type="hidden" id="hdnInfraPrefixoCookie" name="hdnInfraPrefixoCookie" value="TRF4_Eproc_" />
+    <label for="txtNumProcesso">Número do processo</label>
+    <input type="text" id="txtNumProcesso" name="txtNumProcesso" value="" />
+    <label for="txtNumChaveDocumento">Chave de acesso</label>
+    <input type="number" id="txtNumChaveDocumento" name="txtNumChaveDocumento" value="" />
+    <button type="submit" id="btnConsultar" name="btnConsultar" value="Consultar">Consultar</button>
+  </form>
+</body>
+</html>

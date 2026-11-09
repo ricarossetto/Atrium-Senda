@@ -11,7 +11,7 @@ identidade do escritório
 → estratégia explícita do portal
 → sessão isolada por usuário + identidade + portal
 → leitura permitida
-→ ingestão canônica de processos/publicações
+→ ingestão oficial de processos/publicações
 → triagem humana
 ```
 
@@ -47,7 +47,7 @@ O agendamento do Windows é uma autoridade explícita e opcional, instalado por 
 - guards read-only do adapter PJe;
 - deduplicação por CNJ e referências externas estáveis;
 - matching explicável que gera sugestões, sem anexar ambiguidades silenciosamente;
-- ingestão no pipeline canônico existente;
+- ingestão no pipeline oficial existente;
 - estados, cadência, backoff, pausa para ação humana e sanitização testados em adapter sintético determinístico.
 
 ## Portais não verificados
@@ -70,7 +70,7 @@ O matching usa implementação própria no stack ATRIUM. Uma sugestão contém `
 - referência externa exata: confiança alta;
 - partes + tribunal: sugestão intermediária.
 
-Somente a deduplicação canônica por identidade estável pode consolidar registros automaticamente. Sinais ambíguos permanecem sugestões para revisão humana.
+Somente a deduplicação oficial por identidade estável pode consolidar registros automaticamente. Sinais ambíguos permanecem sugestões para revisão humana.
 
 ## Segurança e auditoria
 

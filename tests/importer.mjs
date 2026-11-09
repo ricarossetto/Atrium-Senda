@@ -38,7 +38,7 @@ try {
   assert.equal(state.tasks[0].points, 90);
   assert.equal(state.tasks[0].fatalDeadline, '');
   assert.equal(state.configuration.taskDefinitions.length, 1);
-  console.log('✓ Importador de Planilhas: XLSX, deduplicação, pontuação e criptografia validados.');
+  console.log('✓ Importador de planilhas: XLSX, deduplicação, pontuação e criptografia validados.');
 } finally {
   const resolved = path.resolve(temp);
   if (!resolved.startsWith(path.resolve(os.tmpdir()) + path.sep) || !path.basename(resolved).startsWith('jurisflow-import-test-')) throw new Error('Diretório temporário inesperado; limpeza cancelada.');

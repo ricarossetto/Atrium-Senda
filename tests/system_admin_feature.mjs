@@ -79,6 +79,11 @@ let closedModals = 0;
 let selectedView = '';
 let selectedTheme = '';
 let secureResponses = new Map();
+let cancelStepUp = false;
+const withReauth = async exec => {
+  if (cancelStepUp) return { ok: false, reauthCancelled: true, async json() { return { code: 'REAUTH_REQUIRED' }; } };
+  return exec({});
+};
 const secureFetch = async (url, options = {}) => {
   secureRequests.push({ url, method: options.method || 'GET', body: options.body ? JSON.parse(options.body) : undefined });
   const response = secureResponses.get(url);
@@ -107,6 +112,7 @@ const feature = createSystemAdminFeature({
   documentRef,
   windowRef,
   secureFetch,
+  withReauth,
   fetchFn,
   escapeHtml: value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
   showToast: (message, type) => toasts.push({ message, type }),
@@ -121,10 +127,10 @@ assert.match(elements.configurationList.innerHTML, /Consultando diagnóstico/);
 resolveDiagnostic({ async json() { return { ok: true, diagnostic }; } });
 await diagnosticPromise;
 assert.deepEqual(diagnosticRequest, { url: '/api/system/diagnostic', options: { credentials: 'same-origin' } });
-for (const heading of ['Banco de Dados & Estado', 'Criptografia & Sessão', 'Tribunais & Coleta', 'Higiene de Dados']) assert.match(elements.configurationList.innerHTML, new RegExp(heading.replace('&', '&amp;|&')));
-assert.match(elements.configurationList.innerHTML, /2\.0\.0-synthetic[\s\S]*build-synthetic[\s\S]*v9[\s\S]*READY/);
-assert.match(elements.configurationList.innerHTML, /Registrar feedback local/);
-assert.match(elements.configurationList.innerHTML, /IA Gemini:[\s\S]*Não configurado/);
+for (const heading of ['Banco de Dados e Estado', 'Criptografia e Sessão', 'Tribunais e Coleta', 'Higiene de Dados']) assert.match(elements.configurationList.innerHTML, new RegExp(heading.replace('&', '&amp;|&')));
+assert.match(elements.configurationList.innerHTML, /2\.0\.0-synthetic[\s\S]*build-synthetic[\s\S]*v9[\s\S]*Pronto/);
+assert.match(elements.configurationList.innerHTML, /Registrar comentário/);
+assert.match(elements.configurationList.innerHTML, /Assistente de IA:[\s\S]*Não configurado/);
 assert.doesNotMatch(elements.configurationList.innerHTML, /Enviar Feedback Beta|Registrar Feedback Beta|Modelos Locais/);
 for (const id of ['btnExportDiagnosticJson', 'btnOpenFeedbackModal', 'btnClearUiCache', 'btnResetVisualPrefs', 'btnRebuildRuntime', 'btnManagePortalSessions']) {
   assert.equal(elements[id].listeners.get('click')?.length, 1, `${id} deve receber listener dinâmico.`);
@@ -151,7 +157,7 @@ assert.equal(await feature.rebuildRuntime(), true);
 assert.ok(toasts.some(item => item.message === 'Runtime sintético reconstruído.' && item.type === 'success'));
 secureResponses.set('/api/system/rebuild-runtime', { ok: false, async json() { return { message: 'Falha sintética' }; } });
 assert.equal(await feature.rebuildRuntime(), false);
-assert.ok(toasts.some(item => item.message === 'Falha ao reconstruir dados derivados.' && item.type === 'error'));
+assert.ok(toasts.some(item => item.message === 'Falha sintética' && item.type === 'error'), 'toast de erro deve propagar a mensagem do servidor');
 feature.managePortalSessions();
 assert.equal(selectedView, 'integrations');
 assert.ok(toasts.some(item => item.message.includes('Limpar sessão local') && item.type === 'info'));
@@ -170,7 +176,14 @@ assert.equal(createdBackup.fileName, 'backup-synthetic.atrium-backup');
 assert.equal(anchors.at(-1).download, 'backup-synthetic.atrium-backup');
 assert.equal(anchors.at(-1).clicks, 1);
 assert.equal(revokedUrls.at(-1), 'blob:synthetic-1');
-assert.deepEqual(secureRequests.find(request => request.url.endsWith('/backup/create')), { url: '/api/system/backup/create', method: 'POST', body: undefined });
+assert.deepEqual(secureRequests.find(request => request.url.endsWith('/backup/create')), { url: '/api/system/backup/create', method: 'POST', body: {} }, 'body vazio no fluxo sem reauth');
+cancelStepUp = true;
+const backupCountBeforeCancel = secureRequests.length;
+assert.equal(await feature.createBackup(), null);
+assert.equal(secureRequests.length, backupCountBeforeCancel, 'cancelamento não pode repetir criação de backup');
+assert.equal(anchors.length, 1, 'cancelamento não pode iniciar download');
+assert.ok(toasts.some(item => item.type === 'warning' && item.message.includes('Backup cancelado')));
+cancelStepUp = false;
 
 const restoreInput = { value: 'selected' };
 const restoreFile = { name: 'restore-synthetic.atrium-backup', async text() { return JSON.stringify(backupData); } };
@@ -193,11 +206,18 @@ assert.deepEqual(secureRequests.find(request => request.url.endsWith('/backup/re
 secureResponses.set('/api/system/backup/restore', { ok: false, async json() { return { message: 'Restore sintético rejeitado' }; } });
 assert.equal(await feature.restoreBackup(restoreFile, { value: 'selected' }), false);
 assert.equal(reloads, 1);
+cancelStepUp = true;
+const restoreCountBeforeCancel = secureRequests.length;
+assert.equal(await feature.restoreBackup(restoreFile, { value: 'selected' }), false);
+assert.equal(secureRequests.length, restoreCountBeforeCancel, 'cancelamento não pode repetir restauração');
+assert.equal(reloads, 1, 'cancelamento não pode recarregar como sucesso');
+assert.ok(toasts.some(item => item.type === 'warning' && item.message.includes('Restauração cancelada')));
+cancelStepUp = false;
 
 feature.openFeedbackModal();
 const feedbackModal = modalCalls.at(-1);
 assert.equal(feedbackModal[0], 'feedback');
-assert.equal(feedbackModal[1], 'Registrar feedback local');
+assert.equal(feedbackModal[1], 'Registrar comentário');
 assert.equal(feedbackModal[2], 'Registro privado neste ambiente');
 assert.deepEqual(feedbackModal[3].map(field => field.name), ['type', 'component', 'message']);
 assert.deepEqual(feedbackModal[3][0].options.map(option => option.value), ['sugestao', 'bug', 'dificuldade', 'performance']);

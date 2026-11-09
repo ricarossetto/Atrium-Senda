@@ -10,6 +10,7 @@ try {
   window.Atrium.App.renderAll();
  });
  await switchUiV2View(page,'contacts');
+ await page.locator('[data-contact-page-size="100"]').click();
  for (const theme of ['light','dark']) {
   await page.evaluate(t => document.documentElement.dataset.theme=t,theme);
   for (const width of [1538,1152,390]) {

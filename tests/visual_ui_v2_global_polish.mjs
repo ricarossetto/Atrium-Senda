@@ -102,7 +102,7 @@ try {
         for (const [index, view] of UI_V2_CANONICAL_VIEWS.entries()) {
           await switchUiV2View(page, view);
           await waitForStableView(page, view);
-          const prefix = matrix.name === 'desktop-light' ? index + 1 : index + 18;
+          const prefix = matrix.name === 'desktop-light' ? index + 1 : index + UI_V2_CANONICAL_VIEWS.length + 1;
           await takeShot(page, `${String(prefix).padStart(2, '0')}-${matrix.name}-${view}.png`, hashes);
         }
       }
@@ -133,5 +133,6 @@ try {
   await session.stop();
 }
 
-assert.equal(hashes.size, 44, 'As 44 capturas devem produzir 44 hashes distintos.'); assertions++;
-console.log(`✓ Gate 24: 17/17 views em 6 matrizes, 44 screenshots, ${hashes.size}/44 hashes e ${assertions}/${assertions} asserções.`);
+const expectedShots = (UI_V2_CANONICAL_VIEWS.length * 2) + MOBILE_SHOTS.length;
+assert.equal(hashes.size, expectedShots, `As ${expectedShots} capturas devem produzir ${expectedShots} hashes distintos.`); assertions++;
+console.log(`✓ Gate 24: ${UI_V2_CANONICAL_VIEWS.length}/${UI_V2_CANONICAL_VIEWS.length} views em 6 matrizes, ${expectedShots} screenshots, ${hashes.size}/${expectedShots} hashes e ${assertions}/${assertions} asserções.`);

@@ -1,3 +1,5 @@
+import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.0.0';
+
 const DATE_LOCALE = 'pt-BR';
 
 function dateAtNoon(value) {
@@ -56,6 +58,23 @@ function activityMeta(item) {
   };
 }
 
+const STATUS_LABELS = new Map([
+  ['concluida', 'Concluída'],
+  ['concluída', 'Concluída'],
+  ['pendente', 'Pendente'],
+  ['em andamento', 'Em andamento'],
+  ['em_analise', 'Em análise'],
+  ['em análise', 'Em análise'],
+  ['cancelada', 'Cancelada'],
+  ['arquivada', 'Arquivada']
+]);
+
+function statusLabel(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  return STATUS_LABELS.get(raw.toLowerCase()) || raw.charAt(0).toLocaleUpperCase('pt-BR') + raw.slice(1);
+}
+
 function activityRow(item, { escapeHtml, formatMinutes }) {
   const meta = activityMeta(item);
   const date = dateAtNoon(item.date);
@@ -65,9 +84,8 @@ function activityRow(item, { escapeHtml, formatMinutes }) {
   const trackedTime = item.type === 'task' && item.timeMins > 0
     ? `<span class="agenda-activity-time">${escapeHtml(formatMinutes(item.timeMins))} apontados</span>`
     : '';
-  const status = item.type === 'task' && item.status
-    ? `<span class="agenda-activity-status">${escapeHtml(item.status)}</span>`
-    : '';
+  const statusText = item.type === 'task' && item.status ? statusLabel(item.status) : '';
+  const subtitleText = [item.subtitle, statusText].filter(Boolean).join(' · ');
   const accessibleName = `${meta.label}: ${item.title}. ${longDate(item.date)}. ${item.subtitle || ''}`;
 
   return `
@@ -77,12 +95,11 @@ function activityRow(item, { escapeHtml, formatMinutes }) {
         <small>${month}</small>
       </span>
       <span class="agenda-copy">
-        <span class="agenda-activity-kicker">${escapeHtml(time)}</span>
+        <span class="agenda-activity-kicker"${item.timeHint ? ` title="${escapeHtml(item.timeHint)}"` : ''}>${escapeHtml(time)}</span>
         <strong>${escapeHtml(item.title)}</strong>
-        <small>${escapeHtml(item.subtitle)}</small>
-        <span class="agenda-activity-meta">${status}${trackedTime}</span>
+        <small class="agenda-activity-subtitle">${item.member ? memberAvatarHtml(item.member, escapeHtml) : ''}<span>${escapeHtml(subtitleText)}</span></small>
+        ${trackedTime ? `<span class="agenda-activity-meta">${trackedTime}</span>` : ''}
       </span>
-      <span class="agenda-activity-kind is-${meta.className}">${escapeHtml(meta.label)}</span>
       <span class="agenda-activity-open" aria-hidden="true">›</span>
     </button>`;
 }
@@ -164,21 +181,24 @@ export function createAgendaPresenter({ escapeHtml, formatMinutes } = {}) {
       <header class="calendar-header">
         <div><p>Calendário mensal</p><h3 id="agendaCalendarMonth">${escapeHtml(monthName)}</h3></div>
         <div class="calendar-nav">
-          <button type="button" id="calPrevMonth" aria-label="Mostrar mês anterior" title="Mês anterior">←</button>
-          <button type="button" id="calNextMonth" aria-label="Mostrar próximo mês" title="Próximo mês">→</button>
+          <button type="button" id="calPrevMonth" aria-label="Mostrar mês anterior" title="Mês anterior"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-chevron-left"></use></svg></button>
+          <button type="button" id="calNextMonth" aria-label="Mostrar próximo mês" title="Próximo mês"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-chevron-right"></use></svg></button>
         </div>
       </header>
-      <div class="calendar-grid ${direction ? `month-enter is-${direction}` : ''}" role="grid" aria-labelledby="agendaCalendarMonth">
-        ${['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'].map(day => `<span class="calendar-weekday" role="columnheader" aria-label="${day}">${day.slice(0, 3)}</span>`).join('')}
+      <div class="calendar-grid ${direction ? `month-enter is-${direction}` : ''}" role="group" aria-labelledby="agendaCalendarMonth">
+        ${['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'].map(day => `<span class="calendar-weekday" aria-hidden="true">${day.slice(0, 3)}</span>`).join('')}
         ${days.join('')}
       </div>`;
   }
 
   function renderSummary({ events = [], tasks = [], intimations = [] }) {
+    const plural = (count, one, many) => (count === 1 ? one : many);
     return `
-      <span class="agenda-summary-item"><strong>${events.length}</strong><small>Compromissos</small></span>
-      <span class="agenda-summary-item"><strong>${tasks.length}</strong><small>Tarefas com data</small></span>
-      <span class="agenda-summary-item"><strong>${intimations.length}</strong><small>Publicações</small></span>`;
+      <span class="agenda-summary-item"><b>${events.length}</b> ${plural(events.length, 'compromisso', 'compromissos')}</span>
+      <span class="agenda-summary-sep" aria-hidden="true">·</span>
+      <span class="agenda-summary-item"><b>${tasks.length}</b> ${plural(tasks.length, 'tarefa com data', 'tarefas com data')}</span>
+      <span class="agenda-summary-sep" aria-hidden="true">·</span>
+      <span class="agenda-summary-item"><b>${intimations.length}</b> ${plural(intimations.length, 'publicação', 'publicações')}</span>`;
   }
 
   return Object.freeze({ renderActivities, renderCalendar, renderSummary });

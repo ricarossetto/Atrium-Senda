@@ -3,11 +3,22 @@ import fs from 'node:fs';
 import { chromium } from 'playwright';
 import { generateTotp } from '../lib/security.mjs';
 import { TASK_COLUMNS, createTasksFeature } from '../js/features/tasks.js';
+import '../js/office-data.js';
 import { postJson, startTestServer } from './helpers.mjs';
 
 console.log('\n===============================================================');
 console.log('  ATRIUM — CARACTERIZAÇÃO DA FEATURE DE TAREFAS / KANBAN');
 console.log('===============================================================\n');
+
+const officeData = globalThis.OFFICE_DEFAULT_DATA;
+assert.equal(officeData.resolveTaskArea({ name: 'Sintética', phase: 'Recursal' }), 'Judicial', 'Área deve derivar da fase em modelo legado.');
+assert.equal(officeData.resolveTaskArea({ name: 'Sintética', phase: 'Rh/financeiro' }), 'Financeiro/RH', 'Fase financeira deve derivar a área correspondente.');
+assert.equal(officeData.resolveTaskArea({ name: 'Sintética', phase: 'Judicial', area: 'Cível' }), 'Cível', 'Área explícita prevalece sobre a fase.');
+assert.equal(
+  officeData.taskDefinitions.filter(definition => !definition.area).length,
+  officeData.taskDefinitions.length,
+  'Seeds permanecem sem campo area; a derivação é lazy na leitura.'
+);
 
 const tasksSource = fs.readFileSync(new URL('../js/features/tasks.js', import.meta.url), 'utf8');
 const portalSource = fs.readFileSync(new URL('../js/portal.js', import.meta.url), 'utf8');
@@ -19,13 +30,13 @@ for (const forbiddenImport of ['portal.js', 'publications.js', 'agenda.js']) {
 for (const publicationConcern of ['linkedTaskIds', 'treatmentStatus', 'treatmentStartedAt', 'treatmentStartedBy']) {
   assert.equal(tasksSource.includes(publicationConcern), false, `Tasks não pode conhecer ${publicationConcern}.`);
 }
-assert.match(portalSource, /import \{ createTasksFeature \} from '\.\/features\/tasks\.js';/);
+assert.match(portalSource, /import \{ createTasksFeature \} from '\.\/features\/tasks\.js(?:\?v=[^']*)?';/);
 assert.equal((portalSource.match(/createTasksFeature\(/g) || []).length, 1, 'Portal deve instanciar Tasks uma única vez.');
-assert.equal(portalSource.includes('KANBAN_COLUMNS'), false, 'Constante canônica não pode permanecer no portal.');
-assert.equal(portalSource.includes("Store.upsert('tasks'"), false, 'Portal não pode duplicar persistência canônica de Tasks.');
+assert.equal(portalSource.includes('KANBAN_COLUMNS'), false, 'Constante oficial não pode permanecer no portal.');
+assert.equal(portalSource.includes("Store.upsert('tasks'"), false, 'Portal não pode duplicar persistência oficial de Tasks.');
 assert.match(portalSource, /renderKanban\(\) \{\s*return getTasksFeature\(\)\.renderKanban\(\);\s*\}/);
 assert.match(portalSource, /openTaskModal\(defaults = \{\}\) \{\s*return getTasksFeature\(\)\.openTaskModal\(defaults\);\s*\}/);
-assert.match(portalSource, /getTasksFeature\(\)\.completeTask\(chk\.dataset\.completeTaskId\)/, 'Dashboard deve delegar a conclusão canônica.');
+assert.match(portalSource, /getTasksFeature\(\)\.completeTask\(chk\.dataset\.completeTaskId\)/, 'Dashboard deve delegar a conclusão oficial.');
 
 const listeners = [];
 let saveCount = 0;
@@ -114,7 +125,16 @@ assert.equal(edited.id, created.id);
 assert.equal(edited.history.length, 3);
 assert.equal(edited.timeLogs.length, 1, 'Edição sem apontamento deve preservar timeLogs.');
 assert.equal(unitStore.state.audit.at(-1).action, 'Tarefa atualizada');
-assert.ok(saveCount >= 5, 'Mutações canônicas devem persistir/auditar conforme a semântica existente.');
+const completed = unitFeature.saveTask({
+  title: 'Título unitário editado', status: 'concluida', responsible: 'Advogada Unitária', responsibles: '', points: '12', addMinutes: '', timeDescription: ''
+}, edited);
+assert.ok(Date.parse(completed.completedAt));
+assert.equal(completed.completedBy, 'Advogada Unitária', 'Conclusão registra quem executou a ação.');
+const reEdited = unitFeature.saveTask({
+  title: 'Título unitário editado', status: 'concluida', responsible: 'Advogada Unitária', responsibles: '', points: '12', addMinutes: '', timeDescription: ''
+}, completed);
+assert.equal(reEdited.completedBy, 'Advogada Unitária', 'Edição preserva o autor já registrado da conclusão.');
+assert.ok(saveCount >= 5, 'Mutações oficiais devem persistir/auditar conforme a semântica existente.');
 
 const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });
@@ -157,6 +177,7 @@ try {
   });
   await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
+  await page.waitForFunction(() => Boolean(window.Atrium?.Store?.state), null, { timeout: 30_000 });
 
   const fixture = await page.evaluate(async () => {
     // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
@@ -193,7 +214,7 @@ try {
   const columns = page.locator('#kanbanBoard .kanban-column');
   assert.equal(await columns.count(), 6, 'Board deve manter seis colunas.');
   assert.deepEqual(await columns.evaluateAll(items => items.map(item => item.dataset.column)), ['triagem', 'prioridade', 'andamento', 'aguardando', 'revisao', 'concluida']);
-  assert.deepEqual(await columns.locator('.column-title').evaluateAll(items => items.map(item => item.childNodes[1]?.textContent?.trim())), ['Entrada & triagem', 'Prioridade', 'Em andamento', 'Aguardando', 'Revisão', 'Concluída']);
+  assert.deepEqual(await columns.locator('.column-title').evaluateAll(items => items.map(item => item.childNodes[1]?.textContent?.trim())), ['Entrada e triagem', 'Prioridade', 'Em andamento', 'Aguardando', 'Revisão', 'Concluída']);
 
   let card = page.locator('#kanbanBoard [data-task-id="task-characterization"]');
   await card.waitFor();
@@ -206,7 +227,7 @@ try {
   await page.locator('#modalTitle', { hasText: 'Editar tarefa' }).waitFor();
   assert.deepEqual(
     await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)),
-    ['title', 'taskDefinition', 'process', 'processId', 'client', 'contactId', 'fatalDeadline', 'deadline', 'date', 'time', 'responsible', 'responsibles', 'status', 'priority', 'points', 'addMinutes', 'timeDescription', 'description', 'actionType', 'protocol']
+    ['title', 'taskDefinition', 'process', 'processId', 'client', 'contactId', 'fatalDeadline', 'deadline', 'date', 'time', 'responsible', 'assigneeUserId', 'responsibles', 'status', 'priority', 'points', 'addMinutes', 'timeDescription', 'description', 'actionType', 'protocol']
   );
   assert.equal(await page.locator('#modalForm [name="fatalDeadline"]').inputValue(), fixture.tomorrow);
   assert.equal(await page.locator('#modalForm [name="points"]').inputValue(), '42');
@@ -218,6 +239,11 @@ try {
 
   await page.click('#newTaskButton');
   await page.locator('#modalTitle', { hasText: 'Nova tarefa' }).waitFor();
+  assert.equal(await page.locator('#field-taskDefinition').getAttribute('role'), 'combobox', 'Definição de modelo deve ser combobox com busca.');
+  await page.fill('#field-taskDefinition', 'ELABORAR CÁLCULO SIMPLES');
+  await page.press('#field-taskDefinition', 'Enter');
+  assert.equal(await page.inputValue('#field-title'), 'ELABORAR CÁLCULO SIMPLES', 'Modelo selecionado deve preencher o título.');
+  assert.equal(await page.inputValue('#field-points'), '30', 'Modelo selecionado deve aplicar a pontuação oficial.');
   await page.fill('#field-title', 'Tarefa Criada Fase 8');
   await page.fill('#field-description', 'Descrição criada pelo fluxo real');
   await page.fill('#field-process', '5008888-00.2026.8.21.0001');
@@ -234,6 +260,7 @@ try {
   assert.ok(createdTask?.id, 'Criação deve persistir um registro de tarefa.');
   assert.equal(createdTask.status, 'prioridade');
   assert.equal(createdTask.points, 18);
+  assert.equal(createdTask.taskDefinition, 'ELABORAR CÁLCULO SIMPLES', 'Valor oficial do modelo deve persistir na tarefa.');
   assert.equal(createdTask.history.length, 1);
   assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Tarefa atribuída' && item.detail.includes('Tarefa Criada Fase 8'))), true);
   await page.locator(`#kanbanBoard [data-column="prioridade"] [data-task-id="${createdTask.id}"]`).click();
@@ -280,10 +307,17 @@ try {
   await page.locator('#view-dashboard.active').waitFor();
   const dashboardCheckbox = page.locator(`[data-complete-task-id="${createdTask.id}"]`);
   await dashboardCheckbox.dispatchEvent('change');
-  await page.locator('#toastRegion .toast.success', { hasText: 'Tarefa concluída com sucesso!' }).waitFor();
+  // Tarefa com prazo pede confirmação antes de concluir.
+  const confirmCompletion = page.getByRole('button', { name: 'Sim, quero concluir' });
+  if (await confirmCompletion.waitFor({ timeout: 3000 }).then(() => true).catch(() => false)) {
+    await confirmCompletion.click();
+    await page.getByRole('button', { name: 'Concluir tarefa' }).click();
+  }
+  await page.locator('#toastRegion .toast.success', { hasText: 'Tarefa concluída.' }).waitFor();
   const dashboardCompleted = await page.evaluate(id => window.Atrium.Store.state.tasks.find(task => task.id === id), createdTask.id);
   assert.equal(dashboardCompleted.status, 'concluida');
   assert.ok(Date.parse(dashboardCompleted.completedAt));
+  assert.equal(dashboardCompleted.completedBy, 'Advogada Teste', 'Conclusão pelo dashboard registra quem executou.');
 
   await page.evaluate(async today => {
     const store = window.Atrium.Store;
@@ -348,7 +382,7 @@ try {
   assert.equal(moved.status, 'andamento');
   assert.ok(Date.parse(moved.updatedAt));
   assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Tarefa movimentada')), true);
-  await page.evaluate(() => window.Atrium.Store.flush());
+  await page.evaluate(() => window.Atrium.Store.flushPromise);
 
   await page.locator('#kanbanBoard [data-task-id="task-characterization"]').click();
   await page.click('#btnDirectCompleteTask');
@@ -356,14 +390,18 @@ try {
   let completion = await page.evaluate(() => window.Atrium.Store.state.tasks.find(task => task.id === 'task-characterization'));
   assert.equal(completion.status, 'concluida');
   assert.ok(Date.parse(completion.completedAt));
+  assert.equal(completion.completedBy, 'Advogada Teste', 'Conclusão direta registra quem executou.');
   assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Tarefa concluída')), true);
 
+  // O toast de conclusão (auto-remove em ~4s) não pode interceptar o clique no card.
+  await page.waitForFunction(() => !document.querySelector('#toastRegion .toast'), null, { timeout: 10_000 });
   await page.locator('#kanbanBoard [data-column="concluida"] [data-task-id="task-characterization"]').click();
   await page.click('#btnDirectReopenTask');
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   completion = await page.evaluate(() => window.Atrium.Store.state.tasks.find(task => task.id === 'task-characterization'));
   assert.equal(completion.status, 'triagem');
   assert.equal(Object.hasOwn(completion, 'completedAt'), false);
+  assert.equal(Object.hasOwn(completion, 'completedBy'), false, 'Reabertura limpa também o autor da conclusão.');
   assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Tarefa reaberta')), true);
 
   const modalWasHidden = await page.locator('#modalBackdrop').evaluate(element => element.classList.contains('hidden'));
@@ -394,7 +432,10 @@ try {
   await page.evaluate(() => window.Atrium.Store.flush());
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
-  await page.evaluate(() => window.Atrium.App.switchView('kanban'));
+  await page.evaluate(() => {
+    window.Atrium.App.switchView('kanban');
+    document.getElementById('taskKanbanViewButton')?.click();
+  });
   await page.locator('#kanbanBoard [data-column="triagem"] [data-task-id="task-characterization"]').waitFor();
   const reloaded = await page.evaluate(() => window.Atrium.Store.state.tasks.find(task => task.id === 'task-characterization'));
   assert.equal(reloaded.status, 'triagem');

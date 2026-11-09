@@ -12,6 +12,8 @@ try {
   const fixture = await prepareUiV2AgendaFixture(page);
 
   const calendar = page.locator('#miniCalendar .calendar-grid');
+  assert.equal(await calendar.getAttribute('role'), 'group', 'Calendário agrupa botões nativos; não anuncia grid sem linhas/células.');
+  assert.equal(await calendar.locator('[role="columnheader"]').count(), 0, 'Não há cabeçalhos ARIA sem a linha obrigatória.');
   assert.match(await calendar.getAttribute('aria-labelledby'), /agendaCalendarMonth/);
   assert.equal(await page.locator('#calPrevMonth').getAttribute('aria-label'), 'Mostrar mês anterior');
   assert.equal(await page.locator('#calNextMonth').getAttribute('aria-label'), 'Mostrar próximo mês');

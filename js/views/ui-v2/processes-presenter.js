@@ -1,4 +1,9 @@
-import { compactSourceLabel } from '../../core/legal-timeline.js';
+import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.0.0';
+import { compactSourceLabel } from '../../core/legal-timeline.js?v=3.0.0';
+import { describeCnj } from '../../core/cnj.js?v=3.0.0';
+import { safeImageSource } from '../../core/link-safety.js?v=3.0.0';
+import { sanitizeRichHtml } from '../../core/html-safety.js?v=3.0.0';
+import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.0.0';
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -9,6 +14,7 @@ export function createProcessesV2Presenter({
   formatMinutes,
   onEdit,
   onConsult,
+  onRefreshWithCertificate,
   onDownloadAutos,
   onDownloadEprocA1,
   onDocuments,
@@ -25,8 +31,10 @@ export function createProcessesV2Presenter({
   onAccessKey,
   onAccessKeyStatus,
   onCreateTask,
+  onCreateMovement,
   onDelete,
-  getHasA1Certificate = () => false
+  getHasA1Certificate = () => false,
+  getTriage = () => null
 } = {}) {
   let initialized = false;
   let selectedItem = null;
@@ -44,6 +52,8 @@ export function createProcessesV2Presenter({
     if (initialized) return false;
     initialized = true;
     byId('processInspectorClose')?.addEventListener('click', () => close());
+    installPanelSizeToggle(byId('processInspector'));
+    installPanelSizeToggle(byId('processDocumentsDrawer'));
     byId('processInspectorBackdrop')?.addEventListener('click', event => {
       if (event.target === byId('processInspectorBackdrop')) close();
     });
@@ -63,6 +73,10 @@ export function createProcessesV2Presenter({
       } else if (event.target.closest('[data-process-document]')) {
         const docId = event.target.closest('[data-process-document]').dataset.processDocument;
         openProcessDocuments(selectedItem, docId);
+      } else if (event.target.closest('[data-process-new-movement]')) {
+        const item = selectedItem;
+        close({ restoreFocus: false });
+        onCreateMovement?.(item);
       } else if (event.target.closest('[data-process-timeline]')) {
         const timelineEvent = selectedTimeline.find(item => String(item.id) === event.target.closest('[data-process-timeline]').dataset.processTimeline);
         if (!timelineEvent) return;
@@ -75,7 +89,7 @@ export function createProcessesV2Presenter({
         } else if (timelineEvent.target === 'agenda') {
           close({ restoreFocus: false }); onAgenda?.(timelineEvent);
         } else if (timelineEvent.target === 'document') {
-          openProcessDocuments(selectedItem, timelineEvent.entityId);
+          const item = selectedItem; close({ restoreFocus: false }); onDocuments?.(item, timelineEvent.entityId);
         } else if (timelineEvent.target === 'financial') {
           const item = selectedItem; close({ restoreFocus: false }); onFinancial?.(item);
         }
@@ -111,7 +125,7 @@ export function createProcessesV2Presenter({
       if (selectedItem) onDownloadEprocA1?.(event.currentTarget, selectedItem);
     });
     byId('processInspectorTjrs')?.addEventListener('click', event => {
-      if (selectedItem) onConsult?.(event.currentTarget, selectedItem);
+      if (selectedItem) onRefreshWithCertificate?.(event.currentTarget, selectedItem);
     });
     byId('processInspectorDownloadAutos')?.addEventListener('click', event => {
       if (selectedItem) onDownloadAutos?.(event.currentTarget, selectedItem);
@@ -174,7 +188,35 @@ export function createProcessesV2Presenter({
 
   function renderRows(records) {
     const hasA1 = typeof getHasA1Certificate === 'function' ? Boolean(getHasA1Certificate()) : false;
-    return records.map(item => renderRow({ item, escapeHtml, formatDate, hasA1Certificate: hasA1 })).join('');
+    return records.map(item => renderRow({
+      item,
+      escapeHtml,
+      formatDate,
+      hasA1Certificate: hasA1,
+      triage: typeof getTriage === 'function' ? getTriage(item) : null
+    })).join('');
+  }
+
+  function renderPagination({ pagination, escapeHtml: escape = escapeHtml }) {
+    const page = Math.max(1, Number(pagination?.page) || 1);
+    const pageSize = Number(pagination?.pageSize) || 100;
+    const total = Math.max(0, Number(pagination?.total) || 0);
+    const totalPages = Math.max(1, Number(pagination?.totalPages) || 1);
+    const totalLabel = total.toLocaleString('pt-BR');
+    const firstDisabled = page <= 1 ? ' disabled' : '';
+    const lastDisabled = page >= totalPages ? ' disabled' : '';
+    const sizes = [25, 100, 500, 1000];
+    return `<nav class="process-pagination" aria-label="Paginação de processos">`
+      + `<p class="process-pagination-status" aria-live="polite">Página ${page} de ${totalPages} · ${escape(totalLabel)} no filtro</p>`
+      + `<div class="process-pagination-nav" role="group" aria-label="Navegar páginas">`
+      + `<button type="button" class="v2-button is-secondary process-pagination-button" data-process-page="first"${firstDisabled} aria-label="Primeira página">Primeira</button>`
+      + `<button type="button" class="v2-button is-secondary process-pagination-button" data-process-page="prev"${firstDisabled} aria-label="Página anterior">Anterior</button>`
+      + `<button type="button" class="v2-button is-secondary process-pagination-button" data-process-page="next"${lastDisabled} aria-label="Próxima página">Próxima</button>`
+      + `<button type="button" class="v2-button is-secondary process-pagination-button" data-process-page="last"${lastDisabled} aria-label="Última página">Última</button>`
+      + `</div>`
+      + `<div class="process-page-size" role="group" aria-label="Processos por página"><span>Por página</span>`
+      + sizes.map(size => `<button type="button" class="process-page-size-option${size === pageSize ? ' is-active' : ''}" data-process-page-size="${size}" aria-pressed="${size === pageSize}">${size}</button>`).join('')
+      + `</div></nav>`;
   }
 
   function renderEmpty({ hasProcesses, query }) {
@@ -221,27 +263,23 @@ export function createProcessesV2Presenter({
     if (a1Button) {
       a1Button.classList.remove('hidden');
       const isDownloaded = Boolean(item.dossierDownloadedAt || item.documentsDownloadedAt || (selectedDocuments || []).some(d => (d.metadata?.origin || '').includes('eproc') || (d.metadata?.tags || []).includes('a1-oficial') || d.documentType === 'Índice de Autos Oficiais'));
+      // Estado verdadeiro por rótulo/título; sem cor de destaque concorrente com a ação primária.
+      a1Button.classList.remove('is-available', 'is-complete');
       if (isDownloaded) {
         a1Button.disabled = false;
-        a1Button.textContent = 'Autos baixados';
-        a1Button.classList.remove('is-available');
-        a1Button.classList.add('is-complete');
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-check"></use></svg><span>Autos baixados</span>';
         a1Button.title = 'Autos oficiais já baixados do eproc TJRS via Certificado A1.';
       } else if (!isTjrs) {
         a1Button.disabled = true;
-        a1Button.textContent = 'Baixar Autos com A1';
-        a1Button.classList.remove('is-available', 'is-complete');
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
         a1Button.title = 'Baixar autos com A1 disponível apenas para processos do TJRS (eproc).';
       } else if (!hasA1) {
         a1Button.disabled = true;
-        a1Button.textContent = 'Baixar Autos com A1';
-        a1Button.classList.remove('is-available', 'is-complete');
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
         a1Button.title = 'Requer Certificado Digital A1 ativo nas configurações do escritório.';
       } else {
         a1Button.disabled = false;
-        a1Button.textContent = 'Baixar Autos com A1';
-        a1Button.classList.add('is-available');
-        a1Button.classList.remove('is-complete');
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
         a1Button.title = 'Baixar peças oficiais e autos integrais do eproc TJRS via Certificado A1.';
       }
     }
@@ -252,13 +290,13 @@ export function createProcessesV2Presenter({
       if (!isTjrs) {
         consultButton.disabled = true;
         consultButton.dataset.tjrsConsult = '';
-        consultButton.title = 'Atualização automática disponível apenas para processos TJRS.';
+        consultButton.title = 'Atualização pelo eproc disponível apenas para processos TJRS.';
       } else {
         consultButton.disabled = !summary.canConsultTjrs;
         consultButton.dataset.tjrsConsult = summary.canConsultTjrs ? String(item.number || '') : '';
         consultButton.title = summary.canConsultTjrs
-          ? 'Consultar e atualizar movimentações no TJRS'
-          : 'Consulta TJRS indisponível para este número';
+          ? 'Atualizar capa, partes, movimentos, sigilo e chave pelo eproc com Certificado A1'
+          : 'Atualização pelo eproc indisponível para este número';
       }
     }
 
@@ -267,19 +305,20 @@ export function createProcessesV2Presenter({
       keyButton.classList.remove('hidden');
       if (!isTjrs) {
         keyButton.disabled = true;
-        keyButton.textContent = 'Chave eproc';
+        keyButton.textContent = 'Chave de acesso';
         keyButton.classList.remove('is-available', 'is-configured', 'is-complete');
         keyButton.title = 'Chave de acesso aplicável a processos do eproc TJRS.';
       } else {
-        const hasKey = Boolean(item.accessKey || item.chaveAcesso);
+        const hasKey = Boolean(item.accessKey || item.chaveAcesso || item.hasAccessKey
+          || (Array.isArray(item.tags) && item.tags.includes('chave-disponivel')));
         if (hasKey) {
-          keyButton.textContent = 'Chave cadastrada';
+          keyButton.textContent = 'Chave no cofre';
           keyButton.disabled = true;
           keyButton.classList.remove('is-available');
           keyButton.classList.add('is-configured', 'is-complete');
-          keyButton.title = 'Chave de acesso do eproc já cadastrada para este processo.';
+          keyButton.title = 'Chave de acesso do eproc já guardada no cofre cifrado para este processo.';
         } else {
-          keyButton.textContent = 'Adicionar Chave';
+          keyButton.textContent = 'Chave de acesso';
           keyButton.disabled = false;
           keyButton.classList.add('is-available');
           keyButton.classList.remove('is-configured', 'is-complete');
@@ -309,6 +348,7 @@ export function createProcessesV2Presenter({
     const wasOpen = Boolean(backdrop && !backdrop.classList.contains('hidden'));
     backdrop?.classList.add('hidden');
     byId('processDocumentsBackdrop')?.classList.add('hidden');
+    resetPanelSize(byId('processInspector'));
     closeProcessDocumentPreview();
     byId('appShell')?.removeAttribute('inert');
     documentRef.querySelectorAll('#processTableBody [aria-current="true"]').forEach(row => {
@@ -389,11 +429,13 @@ export function createProcessesV2Presenter({
 
     byId('processInspectorBackdrop')?.classList.add('hidden');
     documentsBackdrop.classList.remove('hidden');
+    syncPanelSizeControl(byId('processDocumentsDrawer'));
     queueMicrotask(() => byId('processDocumentsClose')?.focus());
   }
 
   function closeProcessDocuments({ returnToProcess = true } = {}) {
     byId('processDocumentsBackdrop')?.classList.add('hidden');
+    resetPanelSize(byId('processDocumentsDrawer'));
     closeProcessDocumentPreview();
     if (returnToProcess && selectedItem) {
       byId('processInspectorBackdrop')?.classList.remove('hidden');
@@ -489,9 +531,9 @@ export function createProcessesV2Presenter({
       if (typeof onPreviewDocument === 'function') {
         const result = await onPreviewDocument(doc);
         bodyEl.replaceChildren();
-        if (result?.type === 'image' && result.src) {
+        if (result?.type === 'image' && safeImageSource(result.src)) {
           const img = documentRef.createElement('img');
-          img.src = result.src;
+          img.src = safeImageSource(result.src);
           img.style.maxWidth = '100%';
           img.style.height = 'auto';
           img.style.borderRadius = '6px';
@@ -503,7 +545,7 @@ export function createProcessesV2Presenter({
           pre.textContent = result.text;
           bodyEl.append(pre);
         } else if (result?.html) {
-          bodyEl.innerHTML = result.html;
+          bodyEl.innerHTML = sanitizeRichHtml(result.html);
         } else {
           bodyEl.innerHTML = '<div class="empty-state"><p>Visualização não disponível.</p></div>';
         }
@@ -522,27 +564,113 @@ export function createProcessesV2Presenter({
     }
   }
 
-  return Object.freeze({ init, renderRows, renderEmpty, updateCount, open, close, openProcessDocuments, closeProcessDocuments });
+  return Object.freeze({ init, renderRows, renderEmpty, renderPagination, updateCount, open, close, openProcessDocuments, closeProcessDocuments });
+}
+
+// Grau/competência derivado do OOOO do número CNJ (Resolução CNJ 65/2008);
+// exibido apenas quando o dígito verificador confere.
+function cnjDegreeChip(item, escapeHtml) {
+  const descriptor = describeCnj(item?.number || item?.protocol || '');
+  if (!descriptor?.valid) return '';
+  return `<span class="process-phase">${escapeHtml(descriptor.degreeLabel)}</span>`;
+}
+
+function hasConfirmedEprocEnrichment(item) {
+  const statusValues = [
+    item?.enrichmentStatus,
+    item?.eprocEnrichmentStatus,
+    item?.eproc?.enrichmentStatus,
+    item?.enrichment?.status
+  ];
+  const normalizedStatuses = statusValues.map(value => String(value || '').trim().toUpperCase()).filter(Boolean);
+  // A retry/error/pending marker is authoritative and must not be hidden by
+  // a stale completion timestamp or the legacy varredura-a1 tag.
+  if (normalizedStatuses.some(value => ['PENDING', 'RETRYABLE_ERROR', 'ERROR', 'FAILED', 'IN_PROGRESS', 'RUNNING'].includes(value))) return false;
+  const completeStatus = normalizedStatuses.some(value => ['COMPLETE', 'COMPLETED', 'ENRICHED', 'SUCCESS', 'SUCCEEDED'].includes(value));
+  if (completeStatus) return true;
+
+  const completionTimestamp = item?.eprocEnrichedAt
+    || item?.eprocEnrichmentCompletedAt
+    || item?.enrichmentCompletedAt
+    || item?.eproc?.enrichedAt
+    || item?.enrichment?.completedAt;
+  if (completionTimestamp) return true;
+
+  // Legacy tags are not completion evidence: varredura-a1 is also written
+  // when only one detail field changes. Keep the marker until the canonical
+  // enrichment status (or its completion timestamp) confirms completion.
+  return false;
 }
 
 export function isProcessEnrichmentCandidate(item, hasA1 = true) {
   if (!item || hasA1 === false) return false;
 
+  const isKnownEproc = [item.source, item.portalId, item.system, item.origin]
+    .some(value => /eproc/i.test(String(value || '')));
   const isTjrs = String(item.number || '').includes('.8.21.') || String(item.court || '').toUpperCase().includes('TJRS');
-  if (!isTjrs) return false;
+  if (!isKnownEproc && !isTjrs) return false;
+  // Pendência/erro explícito do enriquecimento é autoridade e mantém a indicação,
+  // independentemente de cliente ou sigilo.
+  const statusValues = [item.enrichmentStatus, item.eprocEnrichmentStatus, item.eproc?.enrichmentStatus, item.enrichment?.status]
+    .map(value => String(value || '').trim().toUpperCase())
+    .filter(Boolean);
+  const explicitPending = item.needsEnrichment === true
+    || statusValues.some(value => ['PENDING', 'RETRYABLE_ERROR', 'ERROR', 'FAILED'].includes(value));
+  if (explicitPending && !hasConfirmedEprocEnrichment(item)) return true;
+  if (hasConfirmedEprocEnrichment(item)) return false;
   const client = String(item.client || '').trim();
-  const isMissingClient = !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
-  const isSecrecy = Boolean(item.secrecy) || /sigilo|segredo/i.test(client);
-  return isMissingClient || isSecrecy;
+  // Enriquecimento é sobre cliente ausente/genérico — nunca sobre sigilo. A marca
+  // de sigilo é dado da fonte e não indica que falte cadastro.
+  return !client || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(client);
 }
 
-export function renderRow({ item, escapeHtml, formatDate, hasA1Certificate = false }) {
+/**
+ * Selos da triagem assistiva do processo: tipo de andamento sugerido e lacunas de
+ * cadastro. Sempre aviso para conferência — nada é gravado, criado ou alterado.
+ */
+const PROCESS_MOVEMENT_LABELS = Object.freeze({
+  peticao: 'Petição',
+  decisao: 'Decisão',
+  despacho: 'Despacho',
+  sentenca: 'Sentença',
+  audiencia: 'Audiência',
+  cumprimento: 'Cumprimento',
+  recurso: 'Recurso',
+  expediente: 'Expediente',
+  outro: 'Outro'
+});
+
+function processMissingFieldsChip({ triage, escapeHtml }) {
+  const missingFields = Array.isArray(triage?.missingFields) ? triage.missingFields.map(String).filter(Boolean) : [];
+  if (missingFields.length === 0) return '';
+  return `<span class="process-triage-chip is-missing" title="Campos de cadastro em branco ou genéricos. Nada foi alterado.">Cadastro incompleto: ${escapeHtml(missingFields.join(', '))}</span>`;
+}
+
+function processTriageChips({ triage, escapeHtml }) {
+  const chips = [];
+  const movementKey = String(triage?.movementType || '').trim();
+  const movement = PROCESS_MOVEMENT_LABELS[movementKey];
+  const confidence = Number(triage?.movementConfidence) || 0;
+  if (movement) {
+    const note = confidence > 0
+      ? `Sugestão automática de tipo de andamento (confiança ${Math.round(confidence * 100)}%). Nada foi alterado.`
+      : 'Sugestão automática de tipo de andamento. Nada foi alterado.';
+    chips.push(`<span class="process-triage-chip is-movement" title="${escapeHtml(note)}">${escapeHtml(movement)}</span>`);
+  }
+  if (String(triage?.needsAttention || '') === 'sim') {
+    chips.push('<span class="process-triage-chip is-attention" title="O andamento parece exigir providência do escritório. Confira antes de agir.">Conferir providência</span>');
+  }
+  return chips;
+}
+
+export function renderRow({ item, escapeHtml, formatDate, hasA1Certificate = false, triage = null }) {
   const number = item.number || item.protocol || 'Sem número';
   const tribunal = item.court || 'TJRS';
   const phase = item.judicialPhase || item.stage || 'Fase não informada';
   const processMeta = unique([item.actionType, item.subject]).join(' · ') || 'Tipo de ação não informado';
   const registeredDate = item.registeredAt || item.createdAt;
-  const displayedClient = item.resolvedClient || (/^cliente n[aã]o informado$/i.test(String(item.client || '').trim()) ? '' : item.client);
+  const genericClientRe = /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i;
+  const displayedClient = item.resolvedClient || (genericClientRe.test(String(item.client || '').trim()) ? '' : item.client);
   const partyMeta = displayedClient
     ? (unique([item.clientPosition, item.opposingParty ? `vs. ${item.opposingParty}` : '']).join(' · ') || 'Vínculo confirmado na carteira')
     : 'A fonte não identificou com segurança a parte representada';
@@ -552,16 +680,23 @@ export function renderRow({ item, escapeHtml, formatDate, hasA1Certificate = fal
   const secrecy = item.secrecy
     ? '<span class="process-secrecy"><span aria-hidden="true">●</span> Segredo de justiça</span>'
     : '';
+  const hasStoredKey = Boolean(item.hasAccessKey) || (Array.isArray(item.tags) && item.tags.includes('chave-disponivel'));
+  const keyFlag = hasStoredKey
+    ? '<span class="process-key-stored" title="Chave de acesso do eproc guardada no cofre do escritório; não significa segredo de justiça."><span aria-hidden="true">●</span> Chave de acesso guardada</span>'
+    : '';
   const needsEnrichment = isProcessEnrichmentCandidate(item, hasA1Certificate);
   const enrichmentFlag = needsEnrichment
-    ? '<span class="process-enrichment-flag" title="Processo necessita de enriquecimento eproc TJRS (Segredo ou Cliente ausente)"><span aria-hidden="true">●</span> Enriquecimento eproc</span>'
+    ? '<span class="process-enrichment-flag" title="Processo necessita de enriquecimento eproc (cliente ainda não identificado)"><span aria-hidden="true">●</span> Enriquecimento eproc</span>'
     : '';
+  const triageChips = processTriageChips({ triage, escapeHtml });
+  const missingFieldsChip = processMissingFieldsChip({ triage, escapeHtml });
 
   return `<tr data-process-id="${escapeHtml(item.id)}" tabindex="0" aria-label="Ver detalhes do processo ${escapeHtml(number)}">
     <td class="process-cell-number" data-label="Processo">
       <strong data-process-number>${escapeHtml(number)}</strong>
       <small>${escapeHtml(processMeta)}</small>
       ${secrecy}
+      ${keyFlag}
       ${enrichmentFlag}
     </td>
     <td class="process-cell-parties" data-label="Cliente e partes">
@@ -575,12 +710,13 @@ export function renderRow({ item, escapeHtml, formatDate, hasA1Certificate = fal
       ${riskLabel ? `<span class="process-risk">Probabilidade informada: ${escapeHtml(riskLabel)}</span>` : ''}
     </td>
     <td class="process-cell-registration" data-label="Cadastro">
-      <strong>${formatDate(registeredDate)}</strong>
+      <strong>${escapeHtml(formatDate(registeredDate))}</strong>
       <small>${escapeHtml(compactSourceLabel(item.source) || 'eproc / Cadastro')}</small>
     </td>
     <td class="process-cell-movement" data-label="Último andamento">
       <strong>${escapeHtml(item.lastMovement || 'Sem movimentação')}</strong>
-      <small>${formatDate(item.lastMovementAt)}</small>
+      <small>${escapeHtml(formatDate(item.lastMovementAt))}</small>
+      ${(missingFieldsChip || triageChips.length) ? `<span class="process-triage-line">${missingFieldsChip}${triageChips.join('')}</span>` : ''}
     </td>
     <td class="process-cell-monitoring" data-label="Monitoramento">
       <span class="v2-status-badge ${monitoringActive ? 'is-success' : 'is-neutral'}"><span aria-hidden="true">${monitoringActive ? '●' : '○'}</span><span>${monitoringLabel}</span></span>
@@ -596,7 +732,7 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
     : '<span class="process-visibility">Consulta pública</span>';
   const needsEnrichment = isProcessEnrichmentCandidate(item, hasA1Certificate);
   const enrichmentFlag = needsEnrichment
-    ? '<span class="process-enrichment-flag" title="Processo necessita de enriquecimento eproc TJRS (Segredo ou Cliente ausente)"><span aria-hidden="true">●</span> Enriquecimento eproc</span>'
+    ? '<span class="process-enrichment-flag" title="Processo necessita de enriquecimento eproc (Segredo ou Cliente ausente)"><span aria-hidden="true">●</span> Enriquecimento eproc</span>'
     : '';
   const enrichmentBanner = needsEnrichment
     ? `<div class="process-enrichment-banner" role="status">
@@ -618,7 +754,7 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
     ${enrichmentBanner}
     <h3><button type="button" class="process-inspector-client-link" data-process-client aria-label="Abrir contato de ${escapeHtml(item.client || 'cliente não informado')}">${escapeHtml(item.client || 'Cliente não informado')}</button></h3>
     <p>${escapeHtml(item.clientPosition || 'Posição não informada')}${item.opposingParty ? ` <span>vs.</span> ${escapeHtml(item.opposingParty)}` : ''}</p>
-    <div class="process-inspector-context"><strong>${escapeHtml(item.court || item.county || 'Órgão não informado')}</strong><span>${escapeHtml(unique([item.courtUnit, item.actionType, item.judicialPhase, item.stage]).join(' · ') || 'Classificação não informada')}</span></div>
+    <div class="process-inspector-context"><strong>${escapeHtml(item.court || item.county || 'Órgão não informado')}</strong><span>${escapeHtml(unique([item.courtUnit, item.actionType, item.judicialPhase, item.stage]).join(' · ') || 'Classificação não informada')}</span>${cnjDegreeChip(item, escapeHtml)}</div>
   </section>
 
   <section class="process-inspector-section" aria-labelledby="processOperationalHeading">
@@ -629,13 +765,15 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
       ${metric(formatMinutes(summary.timeMinutes), 'Tempo apontado', escapeHtml)}
       ${metric(summary.nextDeadline ? formatDate(summary.nextDeadline) : '—', 'Próximo prazo existente', escapeHtml)}
     </div>
-    <div class="process-last-movement"><span>Último andamento</span><strong>${escapeHtml(item.lastMovement || 'Ainda não informado.')}</strong><small>${formatDate(item.lastMovementAt)}</small></div>
+    <div class="process-last-movement"><span>Último andamento</span><strong>${escapeHtml(item.lastMovement || 'Ainda não informado.')}</strong><small>${escapeHtml(formatDate(item.lastMovementAt))}</small></div>
   </section>
+
+  ${renderProcessAccess(item, summary, escapeHtml)}
 
   ${renderProcessFinance(item, escapeHtml, formatDate)}
 
   <section class="process-inspector-section" aria-labelledby="processTimelineHeading">
-    <h3 id="processTimelineHeading">Linha do tempo jurídica</h3>
+    <div class="process-inspector-section-heading"><h3 id="processTimelineHeading">Linha do tempo jurídica</h3><button type="button" class="button ghost" data-process-new-movement><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-add"></use></svg><span>Novo andamento</span></button></div>
     ${renderLegalTimeline(summary.timeline || [], escapeHtml, formatDate)}
   </section>
 
@@ -663,7 +801,9 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
       ${definition('Assunto', item.subject, escapeHtml)}
       ${definition('Fase processual', item.judicialPhase, escapeHtml)}
       ${definition('Etapa', item.stage, escapeHtml)}
-      ${definition('Responsável', item.responsible, escapeHtml)}
+      ${Array.isArray(summary.responsibleMembers) && summary.responsibleMembers.length
+        ? `<div><dt>Responsável</dt><dd class="process-responsible-avatar">${memberAvatarHtml(summary.responsibleMembers[0], escapeHtml)}<span>${escapeHtml(item.responsible || summary.responsibleMembers[0].displayName || summary.responsibleMembers[0].username || '')}</span></dd></div>`
+        : definition('Responsável', item.responsible, escapeHtml)}
       ${definition('Distribuição / cadastro', formatDate(item.registeredAt || item.createdAt), escapeHtml)}
       ${definition('Fonte', compactSourceLabel(item.source), escapeHtml)}
       ${definition('Monitoramento', monitoring, escapeHtml)}
@@ -675,6 +815,7 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
     <h3 id="processMetadataHeading">Informações adicionais</h3>
     <dl class="process-metadata-grid">
       ${definition('Número antigo', item.oldNumber, escapeHtml)}
+      ${definition('Números anteriores', (Array.isArray(item.originNumbers) ? item.originNumbers : []).join(' · '), escapeHtml)}
       ${definition('NB', item.nb, escapeHtml)}
       ${definition('Pasta física / caso', item.caseFolder, escapeHtml)}
       ${definition('Protocolo / local', item.protocol, escapeHtml)}
@@ -692,6 +833,33 @@ function definition(label, value, escapeHtml) {
 
 function metric(value, label, escapeHtml) {
   return `<div><strong>${escapeHtml(value ?? '—')}</strong><span>${escapeHtml(label)}</span></div>`;
+}
+
+function renderProcessAccess(item, summary, escapeHtml) {
+  const access = summary?.access || {};
+  const teams = Array.isArray(access.teams) ? access.teams : [];
+  const members = Array.isArray(access.members) ? access.members : [];
+  const teamIds = new Set((item.assignedTeamIds || []).map(String));
+  const responsibleIds = new Set((item.responsibleUserIds || []).map(String));
+  const currentTeams = teams.filter(team => teamIds.has(String(team.id)));
+  const currentMembers = members.filter(member => responsibleIds.has(String(member.id)));
+  const readOnly = !access.canAssign;
+  const teamList = currentTeams.length
+    ? currentTeams.map(team => `<span class="process-access-chip">${escapeHtml(team.name)}</span>`).join('')
+    : '<span class="process-inspector-empty">Nenhuma equipe atribuída.</span>';
+  const peopleList = currentMembers.length
+    ? currentMembers.map(member => `<span class="process-access-chip">${escapeHtml(member.displayName || member.username)}</span>`).join('')
+    : '<span class="process-inspector-empty">Nenhum advogado responsável vinculado.</span>';
+  if (readOnly) {
+    return `<section class="process-inspector-section" aria-labelledby="processAccessHeading"><h3 id="processAccessHeading">Equipe e acesso</h3><div class="process-access-readonly"><div><small>Equipe</small>${teamList}</div><div><small>Responsáveis</small>${peopleList}</div></div><p class="process-inspector-note">Somente gestores com permissão de atribuição podem alterar o acesso deste processo.</p></section>`;
+  }
+  const teamOptions = teams.length
+    ? teams.map(team => `<label class="office-check"><input type="checkbox" data-process-access-team value="${escapeHtml(team.id)}" ${teamIds.has(String(team.id)) ? 'checked' : ''}> <span>${escapeHtml(team.name)}</span></label>`).join('')
+    : '<span class="process-inspector-empty">Nenhuma equipe criada no escritório.</span>';
+  const memberOptions = members.length
+    ? members.map(member => `<label class="office-check"><input type="checkbox" data-process-access-user value="${escapeHtml(member.id)}" ${responsibleIds.has(String(member.id)) ? 'checked' : ''}> <span>${escapeHtml(member.displayName || member.username)}</span></label>`).join('')
+    : '<span class="process-inspector-empty">Nenhum membro ativo.</span>';
+  return `<section class="process-inspector-section" aria-labelledby="processAccessHeading"><div class="process-inspector-section-heading"><h3 id="processAccessHeading">Equipe e acesso</h3><button type="button" class="button ghost" data-process-access-save="${escapeHtml(item.id)}">Salvar acesso</button></div><div class="process-access-grid"><div><small>Equipe responsável</small><div class="office-check-grid">${teamOptions}</div></div><div><small>Advogados responsáveis</small><div class="office-check-grid">${memberOptions}</div></div></div><p class="process-inspector-note">Só equipes e advogados marcados veem este processo, suas tarefas, publicações, atendimentos e agenda. O financeiro continua dependendo de permissão própria.</p></section>`;
 }
 
 function renderProcessFinance(item, escapeHtml, formatDate) {
@@ -750,7 +918,7 @@ function formatFinancialValue(value) {
 
 function renderLinkedTasks(tasks, escapeHtml, formatDate) {
   if (!tasks.length) return '<p class="process-inspector-empty">Nenhuma tarefa vinculada a este processo.</p>';
-  return `<div class="process-linked-list">${tasks.map(task => `<button type="button" data-process-task="${escapeHtml(task.id)}" aria-label="Abrir tarefa ${escapeHtml(task.title || 'sem título')}"><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><span>${escapeHtml(task.status || 'Status não informado')}${task.fatalDeadline || task.deadline ? ` · ${escapeHtml(formatDate(task.fatalDeadline || task.deadline))}` : ''}${task.responsible ? ` · ${escapeHtml(task.responsible)}` : ''}</span></button>`).join('')}</div>`;
+  return `<div class="process-linked-list">${tasks.map(task => `<button type="button" data-process-task="${escapeHtml(task.id)}" aria-label="Abrir tarefa ${escapeHtml(task.title || 'sem título')}"><strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong><span>${escapeHtml(TASK_STATUS_LABELS[task.status] || task.status || 'Situação não informada')}${task.fatalDeadline || task.deadline ? ` · ${escapeHtml(formatDate(task.fatalDeadline || task.deadline))}` : ''}${task.responsible ? ` · ${escapeHtml(task.responsible)}` : ''}</span></button>`).join('')}</div>`;
 }
 
 function renderOperationalLinks(appointments, documents, escapeHtml, formatDate) {
@@ -765,9 +933,13 @@ function renderOperationalLinks(appointments, documents, escapeHtml, formatDate)
   return `<section class="process-inspector-section" aria-labelledby="processRelationsHeading"><h3 id="processRelationsHeading">Compromissos e documentos (${documents.length})</h3><div class="process-linked-list">${appointmentItems}${documentItems}</div></section>`;
 }
 
+// Os códigos ficam no estado; aqui só muda o que aparece na tela.
+const TREATMENT_LABELS = { untreated: 'Não tratada', in_review: 'Em análise', treated: 'Tratada', discarded: 'Descartada' };
+const TASK_STATUS_LABELS = { triagem: 'Entrada e triagem', prioridade: 'Prioridade', fazendo: 'Em andamento', aguardando: 'Aguardando', revisao: 'Revisão', concluida: 'Concluída' };
+
 function renderLinkedPublications(publications, escapeHtml, formatDate) {
   if (!publications.length) return '<p class="process-inspector-empty">Nenhuma publicação vinculada a este processo.</p>';
-  return `<div class="process-linked-list">${publications.map(item => `<button type="button" data-process-publication="${escapeHtml(item.id)}" aria-label="Abrir publicação ${escapeHtml(item.title || 'sem título')}"><strong>${escapeHtml(item.title || 'Publicação sem título')}</strong><span>${escapeHtml(item.treatmentStatus || 'untreated')} · ${escapeHtml(formatDate(item.publishedAt))}</span></button>`).join('')}</div>`;
+  return `<div class="process-linked-list">${publications.map(item => `<button type="button" data-process-publication="${escapeHtml(item.id)}" aria-label="Abrir publicação ${escapeHtml(item.title || 'sem título')}"><strong>${escapeHtml(item.title || 'Publicação sem título')}</strong><span>${escapeHtml(TREATMENT_LABELS[item.treatmentStatus] || TREATMENT_LABELS.untreated)} · ${escapeHtml(formatDate(item.publishedAt))}</span></button>`).join('')}</div>`;
 }
 
 function renderLegalTimeline(events, escapeHtml, formatDate) {
@@ -830,7 +1002,7 @@ function renderJudicialContext(item, escapeHtml, formatDate) {
 function renderAccessKeyAction(item) {
   const isTjrs = String(item?.number || '').includes('.8.21.') || String(item?.court || '').toUpperCase().includes('TJRS');
   if (!isTjrs) return '';
-  return `<div class="process-access-key-action" data-process-access-key-status="loading"><div><strong>Chave de acesso do processo</strong><span data-process-access-key-copy>Verificando o cofre local…</span></div><button type="button" class="button ghost" data-process-access-key>Adicionar chave</button></div>`;
+  return `<div class="process-access-key-action" data-process-access-key-status="loading"><div><strong>Chave de acesso do processo</strong><span data-process-access-key-copy>Verificando o cofre do escritório…</span></div><button type="button" class="button ghost" data-process-access-key>Adicionar chave</button></div>`;
 }
 
 function renderAutosAction(item, escapeHtml) {

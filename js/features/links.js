@@ -1,9 +1,10 @@
-import { Store, uid } from '../core/store.js';
-import { iconSvg } from '../views/ui-v2/icons.js';
+import { Store, uid } from '../core/store.js?v=3.0.0';
+import { describeLinkSafety } from '../core/link-safety.js?v=3.0.0';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.0';
 
 export const LINK_CATEGORIES = Object.freeze([
-  { value: 'Legislação', label: 'Legislação & Códigos' },
-  { value: 'Jurisprudência', label: 'Jurisprudência & Tribunais' },
+  { value: 'Legislação', label: 'Legislação e Códigos' },
+  { value: 'Jurisprudência', label: 'Jurisprudência e Tribunais' },
   { value: 'Ferramentas IA', label: 'Ferramentas com IA' },
   { value: 'Órgãos Públicos', label: 'Órgãos Públicos / Cartórios' },
   { value: 'Outros', label: 'Outros Links' }
@@ -65,10 +66,14 @@ export function createLinksFeature({
         const openLabel = `Abrir ${title} em nova guia`;
         const openIcon = safeUrl
           ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="external-icon" aria-label="${escapeHtml(openLabel)}">${iconSvg('external-link')}</a>`
-          : `<span class="external-icon link-action-disabled" aria-label="Endereço inválido">${iconSvg('external-link')}</span>`;
+          : `<span class="external-icon link-action-disabled" role="img" aria-label="Endereço inválido">${iconSvg('external-link')}</span>`;
         const openAction = safeUrl
           ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="link-tag" aria-label="${escapeHtml(openLabel)}">Acessar</a>`
           : '<span class="link-tag link-action-disabled">Indisponível</span>';
+        const safety = describeLinkSafety(safeUrl);
+        const safetyChip = safety.warn
+          ? `<span class="link-safety-note is-${escapeHtml(safety.kind)}" title="${escapeHtml(safety.reason)}">${escapeHtml(safety.label)}</span>`
+          : '';
         return `
           <article class="link-card card custom-link-card" aria-label="${escapeHtml(`${title}, ${link.category || 'Link Personalizado'}`)}">
             <div class="link-card-header">
@@ -81,7 +86,7 @@ export function createLinksFeature({
             <h4>${escapeHtml(title)}</h4>
             <p>${escapeHtml(link.description || 'Link personalizado adicionado ao escritório.')}</p>
             <div class="link-card-meta">
-              <span class="link-domain">${escapeHtml(domain)}</span>
+              <span class="link-domain">${escapeHtml(domain)}${safetyChip}</span>
               ${openAction}
             </div>
           </article>`;

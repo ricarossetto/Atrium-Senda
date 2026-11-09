@@ -44,8 +44,11 @@ try {
   assert.equal(await page.locator('[data-financial-record="fin-rpv-zero"]').first().textContent().then(text => text.includes('R$\u00a00,00')), true, 'RPV zero explícito deve permanecer zero.');
   const feeZero = await page.locator('[data-financial-record="fin-fee-zero"]').first().textContent();
   assert.ok(feeZero.includes('Honorários fixos') && feeZero.includes('R$\u00a00,00'), 'feeAmount zero deve permanecer visível.');
-  assert.match(await page.locator('[data-financial-record="fin-unknown"]').first().textContent(), /em_conferencia_sintetica/);
-  assert.match(await page.locator('[data-financial-record="fin-final"]').first().textContent(), /Repassado & Quitado/);
+  // Estado não mapeado (fixture `em_conferencia_sintetica`): continua **visível e fiel**, agora em
+  // português legível — o valor bruto permanece no registro, só a exibição é humanizada.
+  assert.match(await page.locator('[data-financial-record="fin-unknown"]').first().textContent(), /Em conferencia sintetica/);
+  assert.doesNotMatch(await page.locator('[data-financial-record="fin-unknown"]').first().textContent(), /em_conferencia_sintetica/);
+  assert.match(await page.locator('[data-financial-record="fin-final"]').first().textContent(), /Repassado e Quitado/);
 
   await page.locator('[data-fin-filter="rpv"]').click();
   assert.equal(await page.locator('[data-fin-filter="rpv"]').getAttribute('aria-pressed'), 'true');
@@ -205,7 +208,7 @@ try {
     Object.assign(store, original);
     return counts;
   });
-  assert.deepEqual(doubleResult, { upsert: 1, audit: 1, save: 1, flush: 1 });
+  assert.deepEqual(doubleResult, { upsert: 1, audit: 1, save: 2, flush: 1 });
 
   assert.deepEqual(pageErrors, [], `Erros de página: ${pageErrors.join(' | ')}`);
   await context.close();

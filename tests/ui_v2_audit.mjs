@@ -24,7 +24,11 @@ console.log('===============================================================\n')
 
 assert.equal((portalSource.match(/createAuditFeature\s*\(/g) || []).length, 1, 'A feature de Auditoria deve ter uma única instância.');
 assert.equal((portalSource.match(/createAuditPresenter\s*\(/g) || []).length, 1, 'O presenter de Auditoria deve ter uma única instância.');
-assert.match(featureSource, /^import \{ Store, isoDate \} from '\.\.\/core\/store\.js';/);
+/* O import carrega o sufixo de cache-busting (`?v=x.y.z`), exigido pelo AGENTS §36.
+ * A regex anterior era ancorada em `...store.js';` e passou a falhar quando o
+ * módulo recebeu `?v=`, deixando `pnpm test:ui-v2` vermelho na `main`. Aceita a
+ * query versionada e mantém a exigência de import estático do Store oficial. */
+assert.match(featureSource, /^import \{ Store, isoDate \} from '\.\.\/core\/store\.js(?:\?v=[\d.]+)?';/m);
 assert.match(portalSource, /renderAudit\(filter = 'all', query = ''\) \{ return getAuditFeature\(\)\.render\(filter, query\); \}/);
 assert.doesNotMatch(featureSource, /\b(?:fetch|secureFetch)\s*\(|localStorage|sessionStorage|setInterval|setTimeout/);
 assert.doesNotMatch(featureSource, /store\.audit\s*\(|\.splice\s*\(|\.sort\s*\(|\.reverse\s*\(/);
@@ -120,7 +124,7 @@ try {
   assert.equal(evidence.state, initialState, 'Render, busca, filtros, reset, export e troca de modo não podem mutar o Store.');
   assert.deepEqual(evidence.audit, UI_V2_AUDIT_FIXTURE);
   assert.deepEqual(evidence.ops, [], 'Audit V2 não pode chamar save, flush ou Store.audit.');
-  assert.deepEqual(evidence.mutationRequests, initialMutationRequests, 'Audit V2 não pode adicionar requests de mutação aos requests canônicos de boot.');
+  assert.deepEqual(evidence.mutationRequests, initialMutationRequests, 'Audit V2 não pode adicionar requests de mutação aos requests oficiais de boot.');
   assert.equal(evidence.intervals, initialIntervals, 'Audit V2 não pode criar timers.');
   assert.deepEqual(evidence.duplicateIds, []);
   assert.deepEqual(pageErrors, []);
@@ -129,4 +133,4 @@ try {
   await session.stop();
 }
 
-console.log('✓ UI V2 Auditoria: fonte única, ordem canônica, filtros, busca, export completo e imutabilidade PASS.');
+console.log('✓ UI V2 Auditoria: fonte única, ordem fixa, filtros, busca, export completo e imutabilidade PASS.');

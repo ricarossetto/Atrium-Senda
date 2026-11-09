@@ -1,4 +1,48 @@
-export function createModal({ escapeHtml, onModeChange } = {}) {
+// Campo de data só aceita aaaa-mm-dd: data com hora abria em branco e salvar apagava o valor.
+export function dateInputValue(value) {
+  const text = String(value ?? '').trim();
+  if (!text || /^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return text;
+  const pad = number => String(number).padStart(2, '0');
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
+}
+
+import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from './panel-size.js?v=3.0.0';
+import { attachFieldSuggest, enhanceSelect } from './field-suggest.js?v=3.0.0';
+import { fieldContextRule } from '../core/field-context.js?v=3.0.0';
+
+const SELF_MANAGED_TYPES = new Set(['combobox', 'model-combobox', 'textarea', 'select', 'password', 'date', 'time', 'number', 'email', 'tel', 'url', 'checkbox', 'file', 'hidden']);
+// Menu curto se escolhe de olho; a partir daqui, digitar é mais rápido que rolar.
+const SEARCHABLE_SELECT_MIN_OPTIONS = 6;
+
+function installFieldContext(root, fields, getFieldOptions) {
+  for (const field of fields) {
+    const input = root.querySelector(`[id="field-${CSS.escape(field.name)}"]`);
+    if (!input) continue;
+    if (input.tagName === 'SELECT') {
+      if (input.options.length >= SEARCHABLE_SELECT_MIN_OPTIONS) enhanceSelect(input);
+      continue;
+    }
+    if (input.tagName !== 'INPUT' || SELF_MANAGED_TYPES.has(field.type)) continue;
+    const own = Array.isArray(field.suggestions) && field.suggestions.length ? field.suggestions : null;
+    const rule = fieldContextRule(field.name);
+    if (!own && !rule) continue;
+    attachFieldSuggest(input, {
+      multiple: Boolean(rule?.multiple),
+      getOptions: () => own || getFieldOptions?.(field.name) || []
+    });
+  }
+}
+
+// Modos apresentados como painel lateral: recebem o controle de tamanho. Modais
+// centrados e o fluxo de reautenticação permanecem exatamente como estão.
+const LATERAL_MODAL_MODES = Object.freeze([
+  'task', 'agenda', 'contact', 'lead', 'prompt', 'term', 'source', 'datajud',
+  'configuration', 'feedback', 'publicationWorkAction'
+]);
+
+export function createModal({ escapeHtml, onModeChange, getFieldOptions, onFieldContextOpen } = {}) {
   let initialized = false;
   let lastFocusedElement = null;
   let previousBodyOverflow = '';
@@ -37,6 +81,25 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
         first.focus();
       }
     });
+    document.addEventListener('click', event => {
+      document.querySelectorAll('[data-model-combobox-field]').forEach(field => {
+        if (!field.contains(event.target)) closeModelCombobox(field);
+      });
+    });
+    installPanelSizeToggle(modalPanel());
+  }
+
+  function modalPanel() {
+    return document.querySelector('#modalBackdrop .modal');
+  }
+
+  function syncSizeControl(mode) {
+    const button = document.getElementById('modalSizeToggle');
+    if (!button) return;
+    const lateral = LATERAL_MODAL_MODES.includes(mode);
+    button.hidden = !lateral;
+    if (!lateral) resetPanelSize(modalPanel());
+    else syncPanelSizeControl(modalPanel());
   }
 
   function open(mode, title, eyebrow, fields, defaults = {}, topHtml = '') {
@@ -47,24 +110,42 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     document.getElementById('modalEyebrow').textContent = eyebrow;
     const renderField = field => {
       const value = defaults[field.name] ?? field.value ?? '';
+      if (field.type === 'date') field = { ...field, value: dateInputValue(field.value) };
+      const inputType = ['text', 'password', 'email', 'tel', 'number', 'date', 'time', 'url', 'search'].includes(field.type) ? field.type : 'text';
       if (field.type === 'combobox') {
         const identityName = field.identityName || `${field.name}Id`;
         const identityValue = defaults[identityName] ?? '';
-        const listId = `field-${field.name}-listbox`;
-        const options = (field.suggestions || []).map((option, index) => `<button type="button" role="option" id="${listId}-option-${index}" data-combobox-option data-value="${escapeHtml(option.value ?? '')}" data-identity="${escapeHtml(option.id ?? '')}" aria-selected="${String(option.id ?? '') === String(identityValue)}"><strong>${escapeHtml(option.value ?? '')}</strong>${option.label ? `<small>${escapeHtml(option.label)}</small>` : ''}</button>`).join('');
-        return `<div class="field ${field.full ? 'full' : ''}" data-modal-combobox-field><label for="field-${field.name}">${field.label}</label><div class="modal-combobox"><input id="field-${field.name}" name="${field.name}" type="text" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId}" data-modal-combobox><input type="hidden" name="${identityName}" value="${escapeHtml(identityValue)}" data-combobox-identity><div class="modal-combobox-listbox hidden" id="${listId}" role="listbox">${options || '<p>Nenhum contato cadastrado.</p>'}</div></div>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
+        const listId = `field-${escapeHtml(field.name)}-listbox`;
+        const options = (field.suggestions || []).map((option, index) => `<button type="button" role="option" id="${listId}-option-${index}" data-combobox-option data-value="${escapeHtml(option.value ?? '')}" data-identity="${escapeHtml(option.id ?? '')}" aria-selected="${String(option.id ?? '') === String(identityValue)}"${option.avatar ? ' class="has-avatar"' : ''}>${option.avatar ? `<img class="modal-combobox-avatar" src="${escapeHtml(option.avatar)}" alt="">` : ''}<strong>${escapeHtml(option.value ?? '')}</strong>${option.label ? `<small>${escapeHtml(option.label)}</small>` : ''}</button>`).join('');
+        return `<div class="field ${field.full ? 'full' : ''}" data-modal-combobox-field><label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label><div class="modal-combobox"><input id="field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" type="text" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId}" data-modal-combobox><input type="hidden" name="${escapeHtml(identityName)}" value="${escapeHtml(identityValue)}" data-combobox-identity><div class="modal-combobox-listbox hidden" id="${listId}" role="listbox">${options || '<p>Nenhum contato cadastrado.</p>'}</div></div>${field.note ? `<small class="field-note">${escapeHtml(field.note)}</small>` : ''}</div>`;
       }
-      if (field.type === 'textarea') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><textarea id="field-${field.name}" name="${field.name}" ${field.required ? 'required' : ''}>${escapeHtml(value)}</textarea>${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
-      if (field.type === 'select') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><select id="field-${field.name}" name="${field.name}" ${field.required ? 'required' : ''}>${field.options.map(option => `<option value="${escapeHtml(option.value)}" ${String(value) === String(option.value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div>`;
-      const suggestions = Array.isArray(field.suggestions) && field.suggestions.length
-        ? `<datalist id="field-${field.name}-suggestions">${field.suggestions.map(option => `<option value="${escapeHtml(option.value ?? option)}">${escapeHtml(option.label || '')}</option>`).join('')}</datalist>`
-        : '';
-      const list = suggestions ? `list="field-${field.name}-suggestions" autocomplete="off" role="combobox" aria-autocomplete="list"` : '';
-      return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${field.name}">${field.label}</label><input id="field-${field.name}" name="${field.name}" type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} ${list}>${suggestions}${field.note ? `<small class="field-note">${field.note}</small>` : ''}</div>`;
+      if (field.type === 'model-combobox') {
+        const listId = `field-${escapeHtml(field.name)}-listbox`;
+        const groups = [];
+        for (const option of (field.options || [])) {
+          const label = String(option.group || '');
+          let group = groups.find(item => item.label === label);
+          if (!group) { group = { label, options: [] }; groups.push(group); }
+          group.options.push(option);
+        }
+        let optionIndex = 0;
+        const groupsHtml = groups.map(group => `<div class="modal-combobox-group" role="group" aria-label="${escapeHtml(group.label || field.label)}" data-combobox-group>${group.label ? `<p class="modal-combobox-group-title">${escapeHtml(group.label)}</p>` : ''}${group.options.map(option => {
+          const id = `${listId}-option-${optionIndex++}`;
+          return `<button type="button" role="option" id="${id}" data-combobox-option data-value="${escapeHtml(option.value ?? '')}" aria-selected="false"><strong>${escapeHtml(option.value ?? '')}</strong>${option.label ? `<small>${escapeHtml(option.label)}</small>` : ''}</button>`;
+        }).join('')}</div>`).join('');
+        const emptyHtml = `<p class="modal-combobox-empty hidden" data-combobox-empty>${escapeHtml(field.emptyLabel || 'Nenhum item cadastrado.')}</p>`;
+        const createAction = field.createAction ? `<button type="button" role="option" id="${listId}-create" class="modal-combobox-create hidden" data-combobox-create data-combobox-action="${escapeHtml(field.createAction.id || 'create')}"><strong>${escapeHtml(field.createAction.label || 'Criar')} «<span data-combobox-create-term></span>»</strong></button>` : '';
+        return `<div class="field ${field.full ? 'full' : ''}" data-modal-combobox-field data-model-combobox-field><label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label><div class="modal-combobox"><input id="field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" type="text" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${listId}" data-modal-combobox><div class="modal-combobox-listbox hidden" id="${listId}" role="listbox" aria-label="${escapeHtml(field.label)}">${groupsHtml || emptyHtml}${createAction}</div></div>${field.note ? `<small class="field-note">${escapeHtml(field.note)}</small>` : ''}${field.inlineCreate ? '<div class="task-model-create hidden" data-task-model-create></div>' : ''}</div>`;
+      }
+      if (field.type === 'textarea') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label><textarea id="field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" ${field.required ? 'required' : ''}>${escapeHtml(value)}</textarea>${field.note ? `<small class="field-note">${escapeHtml(field.note)}</small>` : ''}</div>`;
+      if (field.type === 'select') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label><select id="field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" ${field.required ? 'required' : ''}>${field.options.map(option => `<option value="${escapeHtml(option.value)}" ${String(value) === String(option.value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div>`;
+      const suggestions = '';
+      const list = '';
+      return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label><input id="field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" type="${inputType}" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} ${list}>${suggestions}${field.note ? `<small class="field-note">${escapeHtml(field.note)}</small>` : ''}</div>`;
     };
     const isV2 = document.documentElement.dataset.ui === 'v2';
     const fieldsHtml = mode === 'process' && isV2
-      ? renderProcessSections(fields, renderField)
+      ? renderProcessSections(fields, renderField, Boolean(defaults.id))
       : mode === 'task' && isV2
         ? renderTaskSections(fields, renderField)
         : mode === 'agenda' && isV2
@@ -80,16 +161,19 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
       : `<div class="form-grid">${fields.map(renderField).join('')}</div>`;
     document.getElementById('modalFields').innerHTML = `${topHtml}${fieldsHtml}`;
     installModalComboboxes(document.getElementById('modalFields'));
+    onFieldContextOpen?.();
+    installFieldContext(document.getElementById('modalFields'), fields, getFieldOptions);
     document.querySelector('#modalForm footer .button.gold').textContent = /^(Editar|Detalhes)/.test(title) ? 'Salvar alterações' : 'Salvar';
     document.getElementById('modalBackdrop').dataset.modalMode = mode;
     document.getElementById('modalBackdrop').classList.remove('hidden');
+    syncSizeControl(mode);
     initialFormSnapshot = formSnapshot();
-    if (['task', 'agenda', 'contact', 'lead', 'prompt', 'term', 'source', 'datajud', 'configuration', 'feedback', 'publicationWorkAction'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
+    if (['task', 'agenda', 'contact', 'lead', 'prompt', 'term', 'source', 'datajud', 'configuration', 'feedback', 'publicationWorkAction', 'processMovement', 'reauth'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
       const modalFields = document.getElementById('modalFields');
       if (modalFields && (!document.activeElement || !modalFields.contains(document.activeElement))) {
-        modalFields.querySelector('input, textarea')?.focus();
+        modalFields.querySelector('input:not([type="password"]):not([type="hidden"]), textarea')?.focus();
       }
     }, 20);
   }
@@ -145,6 +229,7 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
     const wasOpen = backdrop && !backdrop.classList.contains('hidden');
     backdrop?.classList.add('hidden');
     backdrop?.removeAttribute('data-modal-mode');
+    resetPanelSize(modalPanel());
     document.getElementById('appShell')?.removeAttribute('inert');
     onModeChange?.(null);
     document.getElementById('modalForm').reset();
@@ -160,6 +245,10 @@ export function createModal({ escapeHtml, onModeChange } = {}) {
 
 export function installModalComboboxes(root) {
   root?.querySelectorAll('[data-modal-combobox-field]').forEach(field => {
+    if (field.hasAttribute('data-model-combobox-field')) {
+      installModelCombobox(field);
+      return;
+    }
     const input = field.querySelector('[data-modal-combobox]');
     const identity = field.querySelector('[data-combobox-identity]');
     const listbox = field.querySelector('[role="listbox"]');
@@ -230,10 +319,128 @@ export function installModalComboboxes(root) {
   });
 }
 
+function closeModelCombobox(field) {
+  const input = field?.querySelector('[data-modal-combobox]');
+  const listbox = field?.querySelector('[role="listbox"]');
+  listbox?.classList.add('hidden');
+  input?.setAttribute('aria-expanded', 'false');
+  input?.removeAttribute('aria-activedescendant');
+  field?.querySelectorAll('.active').forEach(item => item.classList.remove('active'));
+}
+
+function installModelCombobox(field) {
+  const input = field.querySelector('[data-modal-combobox]');
+  const listbox = field.querySelector('[role="listbox"]');
+  if (!input || !listbox) return;
+  const createOption = field.querySelector('[data-combobox-create]');
+  const emptyNotice = field.querySelector('[data-combobox-empty]');
+  const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  let activeIndex = -1;
+  const allOptions = () => [...listbox.querySelectorAll('[data-combobox-option]')];
+  const visibleOptions = () => allOptions().filter(option => !option.classList.contains('hidden'));
+  const items = () => {
+    const list = visibleOptions();
+    if (createOption && !createOption.classList.contains('hidden')) list.push(createOption);
+    return list;
+  };
+  function setActive(index) {
+    const list = items();
+    activeIndex = index >= 0 && list.length ? Math.min(index, list.length - 1) : -1;
+    list.forEach((item, itemIndex) => {
+      const selected = itemIndex === activeIndex;
+      item.classList.toggle('active', selected);
+      if (item.hasAttribute('data-combobox-option')) item.setAttribute('aria-selected', String(selected));
+    });
+    if (activeIndex >= 0) {
+      input.setAttribute('aria-activedescendant', list[activeIndex].id);
+      list[activeIndex].scrollIntoView?.({ block: 'nearest' });
+    } else {
+      input.removeAttribute('aria-activedescendant');
+    }
+  }
+  function setOpen(open) {
+    listbox.classList.toggle('hidden', !open);
+    input.setAttribute('aria-expanded', String(open));
+    if (!open) setActive(-1);
+  }
+  function moveActive(direction) {
+    const list = items();
+    if (!list.length) return;
+    const nextIndex = activeIndex < 0
+      ? (direction > 0 ? 0 : list.length - 1)
+      : (activeIndex + direction + list.length) % list.length;
+    setActive(nextIndex);
+  }
+  function filter() {
+    const query = normalize(input.value);
+    let visible = 0;
+    for (const option of allOptions()) {
+      const match = !query || normalize(option.textContent).includes(query);
+      option.classList.toggle('hidden', !match);
+      if (match) visible++;
+    }
+    for (const group of listbox.querySelectorAll('[data-combobox-group]')) {
+      group.classList.toggle('hidden', !group.querySelector('[data-combobox-option]:not(.hidden)'));
+    }
+    const showCreate = Boolean(createOption && query && visible === 0);
+    createOption?.classList.toggle('hidden', !showCreate);
+    if (createOption && showCreate) {
+      const term = createOption.querySelector('[data-combobox-create-term]');
+      if (term) term.textContent = String(input.value).trim();
+    }
+    emptyNotice?.classList.toggle('hidden', visible > 0 || showCreate);
+    setActive(-1);
+    setOpen(Boolean(visible || showCreate));
+  }
+  function choose(item) {
+    if (!item) return;
+    if (item.hasAttribute('data-combobox-action')) {
+      const detail = { name: input.name || '', value: input.value, identity: '', action: item.getAttribute('data-combobox-action'), query: String(input.value).trim() };
+      setOpen(false);
+      field.dispatchEvent(new CustomEvent('atrium:combobox-select', { bubbles: true, detail }));
+      return;
+    }
+    input.value = item.getAttribute('data-value') || '';
+    setOpen(false);
+    field.dispatchEvent(new CustomEvent('atrium:combobox-select', {
+      bubbles: true,
+      detail: { name: input.name || '', value: input.value, identity: '' }
+    }));
+    input.focus();
+  }
+  // Opening is intentional: automatic modal focus must not reopen suggestions.
+  input.addEventListener('click', filter);
+  input.addEventListener('input', () => { setActive(-1); filter(); });
+  input.addEventListener('keydown', event => {
+    const open = input.getAttribute('aria-expanded') === 'true';
+    if (event.key === 'Escape' && open) { event.preventDefault(); event.stopPropagation(); setOpen(false); return; }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (!open) filter();
+      event.preventDefault();
+      moveActive(event.key === 'ArrowDown' ? 1 : -1);
+      return;
+    }
+    if (event.key === 'Enter' && open) {
+      const list = items();
+      if (!list.length) return;
+      event.preventDefault();
+      choose(list[activeIndex >= 0 ? activeIndex : 0]);
+    }
+  });
+  listbox.addEventListener('mousedown', event => event.preventDefault());
+  listbox.addEventListener('click', event => {
+    const item = event.target.closest('[data-combobox-option], [data-combobox-create]');
+    if (item && listbox.contains(item)) choose(item);
+  });
+  field.addEventListener('focusout', event => {
+    if (!field.contains(event.relatedTarget)) setOpen(false);
+  });
+}
+
 const PROCESS_FIELD_SECTIONS = Object.freeze({
-  number: 'Identificação', oldNumber: 'Identificação', nb: 'Identificação', protocol: 'Identificação', caseFolder: 'Identificação',
-  client: 'Partes', clientPosition: 'Partes', opposingParty: 'Partes',
-  actionGroup: 'Classificação', actionType: 'Classificação', judicialPhase: 'Classificação', risk: 'Classificação', stage: 'Classificação',
+  number: 'Essencial', oldNumber: 'Identificação', originNumbers: 'Identificação', nb: 'Identificação', protocol: 'Identificação', caseFolder: 'Identificação',
+  client: 'Essencial', clientPosition: 'Essencial', opposingParty: 'Essencial',
+  actionGroup: 'Classificação', actionType: 'Essencial', judicialPhase: 'Classificação', risk: 'Classificação', stage: 'Classificação',
   court: 'Órgão e responsabilidade', county: 'Órgão e responsabilidade', courtUnit: 'Órgão e responsabilidade', responsible: 'Órgão e responsabilidade',
   registeredAt: 'Movimentação', lastMovementAt: 'Movimentação', lastMovement: 'Movimentação',
   feeType: 'Honorários', feePercentage: 'Honorários', feeAmount: 'Honorários', feeMonthly: 'Honorários', feeStatus: 'Honorários', feeNotes: 'Honorários',
@@ -241,18 +448,24 @@ const PROCESS_FIELD_SECTIONS = Object.freeze({
   secrecy: 'Privacidade e acompanhamento', monitoring: 'Privacidade e acompanhamento', notes: 'Privacidade e acompanhamento'
 });
 
-function renderProcessSections(fields, renderField) {
+function renderProcessSections(fields, renderField, editing = false) {
   const sections = new Map();
   for (const field of fields) {
     const section = PROCESS_FIELD_SECTIONS[field.name] || 'Outros dados';
     if (!sections.has(section)) sections.set(section, []);
     sections.get(section).push(field);
   }
-  return `<div class="process-form-sections">${[...sections.entries()].map(([section, sectionFields]) => `
+  const renderSection = ([section, sectionFields]) => `
     <fieldset class="process-form-section">
       <legend>${section}</legend>
       <div class="form-grid">${sectionFields.map(renderField).join('')}</div>
-    </fieldset>`).join('')}</div>`;
+    </fieldset>`;
+  const essential = sections.get('Essencial') || [];
+  sections.delete('Essencial');
+  return `<div class="process-form-sections">${essential.length ? renderSection(['Essencial', essential]) : ''}
+    <details class="process-form-more"${editing ? ' open' : ''}><summary class="button ghost">Mais dados do processo</summary>
+      <div class="process-form-sections">${[...sections.entries()].map(renderSection).join('')}</div>
+    </details></div>`;
 }
 
 const TASK_FIELD_SECTIONS = Object.freeze({

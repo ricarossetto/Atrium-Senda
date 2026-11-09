@@ -1,4 +1,4 @@
-import { publicationsInRecentScope } from './publication-scope.js';
+import { activeIntimations, publicationsInRecentScope } from './publication-scope.js?v=3.0.0';
 const DAY_MS = 86_400_000;
 const TERMINAL_STATUSES = new Set(['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada', 'descartada']);
 const SOURCE_PROBLEMS = new Set(['error', 'erro', 'attention', 'atencao', 'unavailable', 'indisponivel', 'stale']);
@@ -13,7 +13,7 @@ export function buildActivityInbox(state = {}, { now = new Date(), maxItems = 80
   const acknowledgements = state.settings?.activityInboxAcknowledged || {};
   const items = [];
 
-  for (const publication of publicationsInRecentScope(state.intimations, { now })) {
+  for (const publication of activeIntimations(publicationsInRecentScope(state.intimations, { now }))) {
     if (!publication?.id || isTreatedPublication(publication)) continue;
     const process = linkedProcess(publication, processById, processByNumber);
     const unread = publication.unread !== false;
@@ -28,7 +28,7 @@ export function buildActivityInbox(state = {}, { now = new Date(), maxItems = 80
   }
 
   for (const task of state.tasks || []) {
-    if (!task?.id || TERMINAL_STATUSES.has(normalized(task.status))) continue;
+    if (!task?.id || task.active === false || TERMINAL_STATUSES.has(normalized(task.status))) continue;
     const due = parseDate(task.fatalDeadline || task.deadline);
     if (!due || due > horizon) continue;
     const process = linkedProcess(task, processById, processByNumber);
@@ -92,7 +92,7 @@ export function buildActivityInbox(state = {}, { now = new Date(), maxItems = 80
     const signature = collector.payloadHash || diff.currentSnapshotTimestamp || collector.syncedAt;
     const item = activity({
       key: `collector:${process.id}`, type: 'judicial-event', priority: 2,
-      title: total > 0 ? `${total} alteração${total === 1 ? '' : 'ões'} judicial${total === 1 ? '' : 'is'} detectada${total === 1 ? '' : 's'}` : 'Movimentação possivelmente ausente no snapshot atual',
+      title: total > 0 ? `${total} ${total === 1 ? 'alteração judicial detectada' : 'alterações judiciais detectadas'}` : 'Movimentação possivelmente ausente no snapshot atual',
       context: join(process.number, process.client, process.lastMovement), origin: 'Coletor TJRS local',
       date: collector.syncedAt || diff.currentSnapshotTimestamp, entityType: 'process', entityId: process.id,
       processId: process.id, processNumber: process.number, actionLabel: 'Abrir processo', target: 'process',

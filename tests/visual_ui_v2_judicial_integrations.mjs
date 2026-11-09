@@ -28,7 +28,11 @@ const SCENARIOS = [
   { file: '09-light-1280x800-sandbox.png', theme: 'light', viewport: { width: 1280, height: 800 }, state: 'sandbox' },
   { file: '10-light-390x844-integrations-hub.png', theme: 'light', viewport: { width: 390, height: 844 }, state: 'hub' },
   { file: '11-light-390x844-judicial-sheet.png', theme: 'light', viewport: { width: 390, height: 844 }, state: 'active' },
-  { file: '12-dark-390x844-judicial-sheet.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'totp' }
+  { file: '12-dark-390x844-judicial-sheet.png', theme: 'dark', viewport: { width: 390, height: 844 }, state: 'totp' },
+  { file: '13-light-1280x800-pje-panel.png', theme: 'light', viewport: { width: 1280, height: 800 }, state: 'pje' },
+  { file: '14-dark-1280x800-pje-panel.png', theme: 'dark', viewport: { width: 1280, height: 800 }, state: 'pje' },
+  { file: '15-light-1440x900-portal-drawer.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'drawer' },
+  { file: '16-dark-1440x900-portal-drawer.png', theme: 'dark', viewport: { width: 1440, height: 900 }, state: 'drawer' }
 ];
 
 const session = await startUiV2Session();
@@ -45,12 +49,25 @@ try {
         await page.locator('#certificateGuideButton').click();
         await page.waitForFunction(() => document.querySelector('#judicialSetupBackdrop [role="dialog"]')?.contains(document.activeElement));
       }
+      // Cobertura/credenciais/preferencias vivem em abas: o cenario precisa da aba certa visivel.
+      const credentialsStates = ['upload', 'coverage', 'totp', 'sandbox'];
+      if (credentialsStates.includes(scenario.state)) await page.locator('#jcoTabCredentials').click();
       if (scenario.state === 'coverage') await page.locator('#portalCoverageList').scrollIntoViewIfNeeded();
       if (scenario.state === 'totp') await page.locator('#totpSetupSection').scrollIntoViewIfNeeded();
+      if (scenario.state === 'pje') {
+        await page.locator('#pjeCoverageSection > summary').click();
+        await page.waitForFunction(() => document.querySelectorAll('#pjePortalsGrid .pje-portal-card').length === 2
+          && document.querySelectorAll('#pjeCommunicationsList tbody tr').length === 2);
+        await page.locator('#pjeCoverageSection').scrollIntoViewIfNeeded();
+      }
       if (scenario.state === 'sandbox') {
         await page.locator('#btnRunA1Sandbox').click();
         await page.locator('#chkStep-pfxFile').filter({ hasText: 'OK' }).waitFor();
         await page.locator('#a1ActiveCard').scrollIntoViewIfNeeded();
+      }
+      if (scenario.state === 'drawer') {
+        await page.locator('[data-portal-detail="pje-tjmt-1g"]').click();
+        await page.locator('#jcoPortalDrawer:not([hidden])').waitFor();
       }
       await page.waitForFunction(() => [...document.querySelectorAll('#view-integrations, #judicialSetupBackdrop')]
         .flatMap(element => element.getAnimations({ subtree: true })).every(animation => animation.playState === 'finished'));
@@ -92,7 +109,7 @@ try {
       await context.close();
     }
   }
-  assert.equal(hashes.size, SCENARIOS.length, 'Os doze estados judiciais devem gerar imagens distintas.');
+  assert.equal(hashes.size, SCENARIOS.length, 'Os estados judiciais (incluindo o painel PJe no modal) devem gerar imagens distintas.');
   console.log('======================================================');
   console.log('✓ UI V2 JUDICIAL INTEGRATIONS VISUAL QA CONCLUÍDO!');
   console.log(`- Screenshots: ${SCENARIOS.length}`);

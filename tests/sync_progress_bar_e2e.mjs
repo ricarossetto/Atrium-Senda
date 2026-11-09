@@ -12,6 +12,7 @@ console.log('[1/2] Testando comportamento visual da barra de progresso no DOM...
 function createClassList(initial = []) {
   const set = new Set(initial);
   return {
+    toggle(c, force) { if (force === undefined ? !set.has(c) : force) set.add(c); else set.delete(c); },
     add(c) { set.add(c); },
     remove(c) { set.delete(c); },
     contains(c) { return set.has(c); },
@@ -22,6 +23,8 @@ function createClassList(initial = []) {
 const elements = {
   systemStatusBar: {
     dataset: {},
+    setAttribute() {},
+    removeAttribute() {},
     classList: createClassList(['system-status-bar']),
     setAttribute(name, value) { this[name] = value; },
     removeAttribute(name) { delete this[name]; }

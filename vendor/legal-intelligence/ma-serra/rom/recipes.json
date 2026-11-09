@@ -1,0 +1,397 @@
+{
+  "schemaVersion": 1,
+  "source": "ma-serra/ROM-Agent",
+  "commit": "ded68072ad4c2f3d427a3f4ddd51e6cd62d275a3",
+  "generatedAt": "2026-09-17",
+  "licenseStatus": "LICENSE_REVIEW_REQUIRED",
+  "recipes": [
+    {
+      "id": "rom.master-core",
+      "title": "Master Core ROM (fidelidade documental)",
+      "role": "core",
+      "file": "prompts/global/MOD_MASTER_CORE.txt",
+      "pieceTypes": [],
+      "areas": [],
+      "priority": 0,
+      "purpose": "Regras absolutas de fidelidade documental, rastreabilidade e anti-invenção.",
+      "sha256": "168fc575aca63da987ff52b0b77e1d82d4933fa4e3af4dd95dc4b5a10e0e9982",
+      "bytes": 19902
+    },
+    {
+      "id": "rom.orquestrador",
+      "title": "Orquestrador ROM (referência metodológica)",
+      "role": "reference",
+      "file": "prompts/global/orquestrador_prompt.txt",
+      "pieceTypes": [],
+      "areas": [],
+      "priority": 90,
+      "purpose": "Pipeline Discovery/Validator/Analyzer/Categorizer/Risk/Patch/Reporter, implementado em lib/legal-intelligence/pipeline.mjs.",
+      "sha256": "9e47481ec4ed4e00f3614fe89b98ccdcec54d0014cb3e87b9db16a32680d6db4",
+      "bytes": 22725
+    },
+    {
+      "id": "rom.system-prompt-base",
+      "title": "System prompt base V5",
+      "role": "method",
+      "file": "prompts/pecas/system_prompt_v5.txt",
+      "pieceTypes": [],
+      "areas": [],
+      "priority": 95,
+      "purpose": "Diretrizes gerais de redação forense do ROM.",
+      "sha256": "276e28490d6a1345280c14836a398187994c8221c5e98a2c6a0d0fa0a571793e",
+      "bytes": 5306
+    },
+    {
+      "id": "rom.peticao-inicial-universal",
+      "title": "Petição inicial — sistema universal V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_PETICAO_INICIAL_UNIVERSAL_V5.0.md",
+      "pieceTypes": [
+        "peticao_inicial"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe universal de petição inicial (requisitos do art. 319 e teses).",
+      "sha256": "2319c8a0d28a11a05a1d58e3c06f96f3840ce8958d3ec077cba3bb42b459ed9b",
+      "bytes": 21076
+    },
+    {
+      "id": "rom.peticao-inicial-civel",
+      "title": "Método de redação de inicial cível",
+      "role": "method",
+      "file": "prompts/pecas/peticao_inicial_civel.md",
+      "pieceTypes": [
+        "peticao_inicial"
+      ],
+      "areas": [
+        "civil"
+      ],
+      "priority": 30,
+      "purpose": "Método complementar para petição inicial cível.",
+      "sha256": "70bcc65d665c19839208342c0175c31272b2f7cf0e0f55a5b2da36376492c051",
+      "bytes": 14286
+    },
+    {
+      "id": "rom.contestacao-universal",
+      "title": "Contestação — sistema universal V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_CONTESTACAO_UNIVERSAL_V5.0.md",
+      "pieceTypes": [
+        "contestacao"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe universal de contestação (preliminares, mérito e provas).",
+      "sha256": "cdb032d51c89c013c000727793f3664f9a42c43c8b5b0814727110e46a9183b1",
+      "bytes": 17820
+    },
+    {
+      "id": "rom.contestacao-civel",
+      "title": "Método de contestação cível",
+      "role": "method",
+      "file": "prompts/pecas/contestacao_civel.md",
+      "pieceTypes": [
+        "contestacao"
+      ],
+      "areas": [
+        "civil"
+      ],
+      "priority": 30,
+      "purpose": "Método complementar para contestação cível.",
+      "sha256": "86805d3d1f8b4f5c289a2591eda7c75d87de344940343e836114d1c2e267e4fd",
+      "bytes": 15195
+    },
+    {
+      "id": "rom.replica",
+      "title": "Réplica / manifestação sobre a contestação V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_REPLICA_V5.0.md",
+      "pieceTypes": [
+        "replica"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe de réplica com resposta a preliminares, mérito e reconvenção.",
+      "sha256": "149d77fadf250f711d8528437d7590b14e1131363da4b925134857b17c9ff101",
+      "bytes": 28018
+    },
+    {
+      "id": "rom.apelacao-civel",
+      "title": "Apelação cível V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_APELACAO_CIVEL_V5.0.md",
+      "pieceTypes": [
+        "apelacao"
+      ],
+      "areas": [
+        "civil"
+      ],
+      "priority": 10,
+      "purpose": "Recipe de apelação cível por capítulos com prequestionamento prospectivo.",
+      "sha256": "f6381ea1cceda06aad54e69e848304c21a66d7f26e3ac88f1b60c3232affada9",
+      "bytes": 18718
+    },
+    {
+      "id": "rom.apelacao-criminal",
+      "title": "Apelação criminal V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_APELACAO_CRIMINAL_V5.0.md",
+      "pieceTypes": [
+        "apelacao"
+      ],
+      "areas": [
+        "criminal"
+      ],
+      "priority": 10,
+      "purpose": "Recipe de apelação criminal.",
+      "sha256": "2bbdca47efac5aa443a2207fb8b8c41e227b6bee2e903927a16d19fbad0b5d91",
+      "bytes": 18723
+    },
+    {
+      "id": "rom.agravo-instrumento",
+      "title": "Agravo de instrumento V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_AGRAVO_INSTRUMENTO_V5.0.md",
+      "pieceTypes": [
+        "agravo"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe de agravo de instrumento com demonstração de urgência e cabimento.",
+      "sha256": "e8fcf303ce0071ec4434bf6c130a515e2bae5268b42da7341cbf4064c9596000",
+      "bytes": 18814
+    },
+    {
+      "id": "rom.embargos-declaracao",
+      "title": "Embargos de declaração V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_EMBARGOS_DECLARACAO_COMPLETO_V5.0.md",
+      "pieceTypes": [
+        "embargos_declaracao"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe de embargos de declaração por vício (omissão, contradição, obscuridade, erro material).",
+      "sha256": "00b0411ba6cc60e4d04079249606db2d8c087e7bfd8fb761f666af9cb41fc687",
+      "bytes": 29215
+    },
+    {
+      "id": "rom.embargos-infringentes",
+      "title": "Embargos infringentes V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_EMBARGOS_INFRINGENTES_V5.0.md",
+      "pieceTypes": [
+        "embargos_infringentes"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe de embargos infringentes.",
+      "sha256": "4ad941c09672934ad2228cabe08372b57386e1dde04e65be48da91661bcdd622",
+      "bytes": 5846
+    },
+    {
+      "id": "rom.resp",
+      "title": "Recurso especial V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_RECURSO_ESPECIAL_V5.0.md",
+      "pieceTypes": [
+        "recurso_especial"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe de REsp com admissibilidade, prequestionamento e demonstração analítica.",
+      "sha256": "68f35c787a138f954dceb3cc54256c32edeabe0458578ec916012bfd2c39509d",
+      "bytes": 18765
+    },
+    {
+      "id": "rom.re",
+      "title": "Recurso extraordinário V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_RECURSO_EXTRAORDINARIO_V5.0.md",
+      "pieceTypes": [
+        "recurso_extraordinario"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe de RE com repercussão geral e prequestionamento.",
+      "sha256": "9f17116be1cbe1ce4f840a69e1e8ea2391635e313c1958d90e98e0432df44187",
+      "bytes": 18805
+    },
+    {
+      "id": "rom.impugnacao-cumprimento",
+      "title": "Impugnação ao cumprimento de sentença V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_IMPUGNACAO_CUMPRIMENTO_V5.0.md",
+      "pieceTypes": [
+        "impugnacao_cumprimento"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe de impugnação ao cumprimento de sentença (art. 525).",
+      "sha256": "187cbc10651897b9b2066adf3628258453cb29a3bcb927cd93ee05255759ee31",
+      "bytes": 8871
+    },
+    {
+      "id": "rom.acao-execucao",
+      "title": "Ação de execução V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_ACAO_EXECUCAO_V5.0.md",
+      "pieceTypes": [
+        "execucao"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe de execução de título judicial.",
+      "sha256": "5092159bd458835523af9df644858a8e4c9686b5b47d4eb28c47e2030987ed9d",
+      "bytes": 20128
+    },
+    {
+      "id": "rom.execucao-titulo-extrajudicial",
+      "title": "Execução de título extrajudicial V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_EXECUCAO_TITULO_EXTRAJUDICIAL_V5.0.md",
+      "pieceTypes": [
+        "execucao"
+      ],
+      "areas": [],
+      "priority": 10,
+      "purpose": "Recipe de execução de título extrajudicial.",
+      "sha256": "c4a2c182a655ef069d2bdcc5976466bcfaf252b3e3f818b9685b4d89c7d0c93a",
+      "bytes": 26055
+    },
+    {
+      "id": "rom.contrato-geral",
+      "title": "Contratos gerais V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_CONTRATO_GERAL_V5.0.md",
+      "pieceTypes": [
+        "contrato"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Recipe de elaboração e revisão contratual (teoria geral dos contratos).",
+      "sha256": "4ebc42f6199edad77a4418da6c43d4784647f38ab17da66139c47606186ab139",
+      "bytes": 18363
+    },
+    {
+      "id": "rom.reclamacao-trabalhista",
+      "title": "Reclamação trabalhista V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_RECLAMACAO_TRABALHISTA_V5.0.md",
+      "pieceTypes": [
+        "reclamacao_trabalhista"
+      ],
+      "areas": [
+        "trabalhista"
+      ],
+      "priority": 10,
+      "purpose": "Recipe de reclamação trabalhista.",
+      "sha256": "15e3a445866ae77768c909a166f03c6de695ec39b45f4df06f4b8b7501a56c78",
+      "bytes": 5609
+    },
+    {
+      "id": "rom.contestacao-trabalhista",
+      "title": "Contestação trabalhista (refatorada V5.0)",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_CONTESTACAO_TRABALHISTA_V5.0_REFATORADO.txt",
+      "pieceTypes": [
+        "contestacao"
+      ],
+      "areas": [
+        "trabalhista"
+      ],
+      "priority": 10,
+      "purpose": "Recipe de contestação trabalhista.",
+      "sha256": "03a7d1b5cb0bfabffa1dfe3567e366f5fc9e22a7ed04875dca04afc10b5b7fb3",
+      "bytes": 31557
+    },
+    {
+      "id": "rom.recurso-ordinario-trabalhista",
+      "title": "Recurso ordinário trabalhista V5.0",
+      "role": "recipe",
+      "file": "prompts/pecas/PROMPT_RECURSO_ORDINARIO_TRABALHISTA_V5.0.md",
+      "pieceTypes": [
+        "recurso_ordinario_trabalhista"
+      ],
+      "areas": [
+        "trabalhista"
+      ],
+      "priority": 10,
+      "purpose": "Recipe de recurso ordinário trabalhista.",
+      "sha256": "a3e8ccb3196b4dcfd89a9b4013b83a7b9c02d65867c647e78e969ed9c46a9342",
+      "bytes": 18786
+    },
+    {
+      "id": "rom.analise-peticao",
+      "title": "Análise e melhoria de petição (IAROM PR001)",
+      "role": "method",
+      "file": "prompts/pecas/IAROM_PR001_ANALISE_PETICAO_v2.0.txt",
+      "pieceTypes": [
+        "analise_processual",
+        "revisao_peca"
+      ],
+      "areas": [],
+      "priority": 20,
+      "purpose": "Análise multidimensional de peça em execução e produção de versão melhorada.",
+      "sha256": "0e292068dc9162b592ae79e2b695ca43cce3cbd0c43ac51d24bd67ca02f7692f",
+      "bytes": 17967
+    },
+    {
+      "id": "rom.revisao-geral",
+      "title": "Revisão geral de peça (IAROM PR005)",
+      "role": "method",
+      "file": "prompts/pecas/IAROM_PR005_REVISAO_GERAL_v2.0.txt",
+      "pieceTypes": [
+        "revisao_peca",
+        "analise_processual"
+      ],
+      "areas": [],
+      "priority": 25,
+      "purpose": "Revisão geral com correções e consistência.",
+      "sha256": "0cf641df6f3ed9b7a831c392222ae80f92a49044cf0d9d2765e52f2da1636bcc",
+      "bytes": 6585
+    },
+    {
+      "id": "rom.analise-processual",
+      "title": "Analista processual",
+      "role": "method",
+      "file": "prompts/pecas/analise_processual.md",
+      "pieceTypes": [
+        "analise_processual"
+      ],
+      "areas": [],
+      "priority": 15,
+      "purpose": "Método de análise exaustiva de autos com cronologia, provas e alertas.",
+      "sha256": "df058359f207006d2a06fa2bc25ba46c7a6c743f0c198973b4a063f105c1cbd2",
+      "bytes": 5686
+    },
+    {
+      "id": "rom.redator-civel",
+      "title": "Redator cível",
+      "role": "method",
+      "file": "prompts/pecas/redator_civel.md",
+      "pieceTypes": [],
+      "areas": [
+        "civil"
+      ],
+      "priority": 60,
+      "purpose": "Diretrizes de redação cível.",
+      "sha256": "c643d3d0a65fe43957461fd6c8fb122be38ef4fe3af575a53dca1812c1a2134a",
+      "bytes": 4795
+    },
+    {
+      "id": "rom.redator-criminal",
+      "title": "Redator criminal",
+      "role": "method",
+      "file": "prompts/pecas/redator_criminal.md",
+      "pieceTypes": [],
+      "areas": [
+        "criminal"
+      ],
+      "priority": 60,
+      "purpose": "Diretrizes de redação criminal.",
+      "sha256": "75690eb08087381fd39925a339e0df119e79c21f1095592fd9d3509e7b5aa81f",
+      "bytes": 5707
+    }
+  ]
+}

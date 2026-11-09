@@ -1,4 +1,5 @@
 import { mergeExternalContacts, mergeExternalProcesses } from './datajud.mjs';
+import { derivePublicationDate } from '../../lib/core/business-days.mjs';
 
 const DEFAULT_ENDPOINT = 'https://comunicaapi.pje.jus.br/api/v1/comunicacao';
 const PROCESS_DIGITS_RE = /\b\d{20}\b/;
@@ -6,10 +7,13 @@ const PROCESS_DIGITS_RE = /\b\d{20}\b/;
 export async function collectDjen(portal, config, target, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const sleep = options.sleep || (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)));
+  const processQuery = String(portal.numeroProcesso || (String(config.monitoredTerm?.type || '').toLowerCase() === 'process' ? config.monitoredTerm?.processNumber : '') || '').replace(/\D/g, '');
   const registration = config.monitoredTerm?.registration || '';
   const uf = String(portal.ufOab || config.monitoredTerm?.oabUf || registration.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i)?.[1] || '').toUpperCase();
   const rawNumber = String(portal.numeroOab || config.monitoredTerm?.oabNumber || registration).replace(/\D/g, '');
-  if (!rawNumber || !/^[A-Z]{2}$/.test(uf)) throw new Error('O número ou a UF da OAB do monitoramento DJEN é inválido.');
+  if (processQuery) {
+    if (processQuery.length !== 20) throw new Error('O número do processo monitorado no DJEN é inválido.');
+  } else if (!rawNumber || !/^[A-Z]{2}$/.test(uf)) throw new Error('O número ou a UF da OAB do monitoramento DJEN é inválido.');
 
   const number = rawNumber;
   const endpoint = new URL(portal.url || DEFAULT_ENDPOINT);
@@ -18,29 +22,64 @@ export async function collectDjen(portal, config, target, options = {}) {
   }
 
   const cutoff = portal.cutoffDate || options.cutoffDate || null;
-  const { start, end } = saoPauloDateWindow(Number(portal.lookbackDays || 2), cutoff);
-  const intimationCutoffDate = portal.intimationLookbackDays
-    ? saoPauloDateWindow(Number(portal.intimationLookbackDays)).start
-    : null;
-  const result = await fetchPages({ endpoint, variant: number, uf, start, end, portal, fetchImpl, sleep, onProgress: options.onProgress });
+  const { start, end } = saoPauloDateWindow(Number(portal.lookbackDays || options.lookbackDays || 2), cutoff);
+
+  const explicitTrackingSince = normalizeDateOnly(
+    options.intimationTrackingSince
+    || portal.intimationTrackingSince
+    || process.env.ATRIUM_DJEN_TRACKING_SINCE
+  );
+  const intimationLookbackDays = Number(options.intimationLookbackDays || portal.intimationLookbackDays || 0);
+  const intimationCutoffDate = explicitTrackingSince
+    || (
+      intimationLookbackDays
+        ? saoPauloDateWindow(intimationLookbackDays).start
+        : null
+    );
+
+  const result = await fetchPages({ endpoint, variant: number, uf, processQuery, start, end, portal, fetchImpl, sleep, onProgress: options.onProgress });
 
   const unique = [...new Map(result.items.map(item => [String(item.id), item])).values()];
-  for (const item of unique) appendDjenItem(item, portal, config, target, { intimationCutoffDate });
-  return { records: unique.length, announced: result.count, complete: result.complete, start, end };
+  let historicalSkipped = 0;
+  let inboxAdded = 0;
+  let inboxUpdated = 0;
+
+  for (const item of unique) {
+    const outcome = appendDjenItem(item, portal, config, target, { intimationCutoffDate });
+    if (outcome === 'historical') historicalSkipped += 1;
+    else if (outcome === 'added') inboxAdded += 1;
+    else if (outcome === 'updated') inboxUpdated += 1;
+  }
+
+  return {
+    records: unique.length,
+    announced: result.count,
+    complete: result.complete,
+    start,
+    end,
+    historicalSkipped,
+    inboxAdded,
+    inboxUpdated,
+    trackingSince: explicitTrackingSince || null
+  };
 }
 
-async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl, sleep, onProgress }) {
+async function fetchPages({ endpoint, variant, uf, processQuery = '', start, end, portal, fetchImpl, sleep, onProgress }) {
   const items = [];
-  const pageSize = Math.min(50, Math.max(1, Number(portal.pageSize || 50)));
-  const maxPages = Math.min(200, Math.max(1, Number(portal.maxPages || 40)));
+  // A API oficial do CNJ aceita no máximo 100 itens por página; usar o teto
+  // reduz o número de requisições (e o consumo de quota) sem alterar o total.
+  const pageSize = Math.min(100, Math.max(1, Number(portal.pageSize || 100)));
+  // Guarda de quota: orçamento de itens por termo/run limita as páginas lidas
+  // (2000 itens por padrão, igual ao teto anterior de 40 páginas × 50 itens).
+  const maxItemsPerTerm = Math.min(10_000, Math.max(pageSize, Number(portal.maxItemsPerTerm || 2000)));
+  const maxPages = Math.min(200, Math.max(1, Number(portal.maxPages || Math.ceil(maxItemsPerTerm / pageSize))));
   let count = null;
   let pageRetries = 0;
 
   for (let pagina = 1; pagina <= maxPages; pagina += 1) {
     const url = new URL(endpoint);
     url.search = new URLSearchParams({
-      numeroOab: variant,
-      ufOab: uf,
+      ...(processQuery ? { numeroProcesso: processQuery } : { numeroOab: variant, ufOab: uf }),
       dataDisponibilizacaoInicio: start,
       dataDisponibilizacaoFim: end,
       pagina: String(pagina),
@@ -64,6 +103,15 @@ async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl
       throw err;
     }
 
+    // O DJEN responde 500/502/503 com "O sistema está muito ocupado" de forma
+    // intermitente; a mesma consulta costuma passar segundos depois.
+    if (response.status >= 500 && response.status <= 504 && pageRetries < 3) {
+      pageRetries += 1;
+      await sleep(2000 * pageRetries);
+      pagina -= 1;
+      continue;
+    }
+
     if (response.status === 429) {
       if (pageRetries < 3) {
         pageRetries += 1;
@@ -74,7 +122,7 @@ async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl
       throw new Error(`DJEN limitou requisições (HTTP 429). Tente novamente em instantes.`);
     }
 
-    if (!response.ok) throw new Error(`DJEN respondeu HTTP ${response.status} para OAB ${variant}/${uf}.`);
+    if (!response.ok) throw new Error(`DJEN respondeu HTTP ${response.status} para ${processQuery ? `o processo ${processQuery}` : `OAB ${variant}/${uf}`}.`);
     const payload = await response.json();
     if (count === null) count = Number(payload.count || 0);
     const pageItems = Array.isArray(payload.items) ? payload.items.filter(validDjenItem) : [];
@@ -101,6 +149,9 @@ async function fetchPages({ endpoint, variant, uf, start, end, portal, fetchImpl
       try { onProgress({ page: pagina, items: items.length, total: count, status: 'received' }); } catch {}
     }
     if (items.length >= count) break;
+    // Orçamento de quota esgotado: encerra a paginação e a coleta é marcada
+    // como parcial no resultado (o termo entra na fila de falhas para retry).
+    if (items.length >= maxItemsPerTerm) break;
     await sleep(Number(portal.requestSpacingMs || 400));
   }
 
@@ -136,16 +187,19 @@ export function decodeHtmlEntities(value) {
 }
 
 export function appendDjenItem(item, portal, config, target, options = {}) {
-  const rawNumber = String(item.numeroprocessocommascara || item.numeroProcesso || item.numero_processo || '');
+  const rawNumber = djenProcessDigits(item) || String(item.numeroprocessocommascara || item.numeroProcesso || item.numero_processo || '');
   const process = formatProcessNumber(rawNumber);
-  const externalId = `djen:${item.id}`;
+  const baseExternalId = `djen:${item.id}`;
+  let externalId = baseExternalId;
   const canceledReason = normalizeText(item.motivo_cancelamento || item.motivoCancelamento || '');
   const text = htmlToText(item.texto || '').slice(0, 20_000);
   const rawHtml = String(item.texto || '').slice(0, 200_000);
   const hasHtml = /<[a-z][^>]*>/i.test(rawHtml);
   const recipientRecords = Array.isArray(item.destinatarios) ? item.destinatarios.filter(value => normalizeText(value?.nome)) : [];
   const recipients = recipientRecords.map(value => normalizeText(value?.nome)).join(' · ');
-  const publishedAt = String(item.data_disponibilizacao || item.dataDisponibilizacao || '').slice(0, 10);
+  const availableAt = String(item.data_disponibilizacao || item.dataDisponibilizacao || '').slice(0, 10);
+  const derived = derivePublicationDate(availableAt);
+  const publishedAt = derived.publishedAt || availableAt;
   const communicationType = normalizeText(item.tipoComunicacao || 'Publicação judicial');
   const documentType = normalizeText(item.tipoDocumento || '');
   const court = normalizeText([item.siglaTribunal, item.nomeOrgao].filter(Boolean).join(' · ')) || 'DJEN/CNJ';
@@ -156,6 +210,59 @@ export function appendDjenItem(item, portal, config, target, options = {}) {
   const now = new Date().toISOString();
   const monitoredTerms = [...(config.monitoredTerms || []), config.monitoredTerm].filter(Boolean);
   const matchedTerms = monitoredTerms.filter(termItem => publicationMatchesTerm(item, termItem));
+  const matchedOfficeTerm = matchedTerms.find(termItem => String(termItem?.scope || '').toLowerCase() !== 'private');
+  const matchedPrivateTerm = matchedTerms.find(termItem => String(termItem?.scope || '').toLowerCase() === 'private');
+  const configuredPrivate = String(config.monitoredTerm?.scope || '').toLowerCase() === 'private';
+  const captureScope = matchedOfficeTerm || !configuredPrivate ? 'office' : 'private';
+  const captureOwnerUserId = captureScope === 'private'
+    ? String(config.monitoredTerm?.privateOwnerUserId || config.monitoredTerm?.ownerUserId || matchedPrivateTerm?.privateOwnerUserId || '').trim()
+    : '';
+  const processesWithNumber = process
+    ? (target.processes || []).filter(candidate => String(candidate?.number || candidate?.externalId || '').replace(/\D/g, '') === process.replace(/\D/g, ''))
+    : [];
+  const existingProcess = captureScope === 'private'
+    ? processesWithNumber.find(candidate => {
+      const candidateScope = String(candidate?.scope || '').toLowerCase() === 'private' ? 'private' : 'office';
+      return candidateScope === 'private' && String(candidate.privateOwnerUserId || candidate.ownerUserId || '') === captureOwnerUserId;
+    })
+    : processesWithNumber.find(candidate => String(candidate?.scope || '').toLowerCase() !== 'private');
+  const basePublication = (target.intimations || []).find(record => String(record?.externalId || record?.id || '') === baseExternalId);
+  if (captureScope === 'office') {
+    // O escritório vence: cópias privadas da mesma comunicação do DJEN são
+    // suprimidas e passam a apontar para o registro oficial do escritório.
+    for (const record of target.intimations || []) {
+      const key = String(record?.externalId || record?.id || '');
+      if (key === baseExternalId) continue;
+      if (!key.startsWith(`${baseExternalId}:private:`)) continue;
+      if (record.scope !== 'private') continue;
+      record.captureSuppressed = true;
+      record.canonicalPublicationId = baseExternalId;
+    }
+    if (process) {
+      const officeProcessId = `djen:process:${process.replace(/\D/g, '')}`;
+      for (const record of target.processes || []) {
+        if (String(record?.number || '').replace(/\D/g, '') !== process.replace(/\D/g, '')) continue;
+        if (String(record?.scope || '').toLowerCase() !== 'private') continue;
+        record.captureSuppressed = true;
+        record.canonicalProcessId = officeProcessId;
+      }
+    }
+  }
+  if (captureScope === 'private') {
+    if (!captureOwnerUserId) return 'skipped_private_without_owner';
+    if (processesWithNumber.some(candidate => String(candidate?.scope || '').toLowerCase() !== 'private')) return 'skipped_office_owned';
+    if (basePublication && basePublication.scope !== 'private') return 'skipped_office_owned';
+    if (existingProcess?.scope === 'private'
+      && String(existingProcess.privateOwnerUserId || existingProcess.ownerUserId || '') !== captureOwnerUserId) {
+      return 'skipped_private_other_owner';
+    }
+    // Cada dono privado tem identidade própria da mesma comunicação do DJEN;
+    // o registro legado em `djen:<id>` continua sendo reutilizado pelo dono.
+    const ownedLegacy = (target.intimations || []).find(record => String(record?.externalId || record?.id || '') === baseExternalId
+      && record.scope === 'private'
+      && String(record.privateOwnerUserId || record.ownerUserId || '') === captureOwnerUserId);
+    if (!ownedLegacy) externalId = `${baseExternalId}:private:${captureOwnerUserId}`;
+  }
   const recipientPoles = new Set(recipientRecords.map(recipient => normalizePole(recipient.polo)).filter(Boolean));
   const singleRepresentedPole = matchedTerms.length > 0 && recipientPoles.size === 1;
 
@@ -172,6 +279,8 @@ export function appendDjenItem(item, portal, config, target, options = {}) {
       source: portal.name || 'DJEN/CNJ',
       relatedProcessNumbers: process ? [process] : [],
       monitoredTermIds: matchedTerms.map(termIdentity).filter(Boolean),
+      scope: captureScope,
+      ...(captureOwnerUserId ? { privateOwnerUserId: captureOwnerUserId } : {}),
       relationshipProvenance: {
         status: role === 'cliente' ? 'inferred-from-authoritative-source' : 'requires-human-confirmation',
         reason: selfParty ? 'monitored-professional-is-party' : role === 'cliente' ? 'djen-monitored-oab-single-recipient-pole' : 'djen-multiple-recipient-poles',
@@ -189,25 +298,61 @@ export function appendDjenItem(item, portal, config, target, options = {}) {
       ? target.contacts.find(contact => normalizeIdentity(contact.name) === normalizeIdentity(representedContacts[0].name)
         && (contact.relatedProcessNumbers || []).some(number => number.replace(/\D/g, '') === process.replace(/\D/g, '')))
       : null;
+    const processDigits = process.replace(/\D/g, '');
+    const processRecordId = captureScope === 'private'
+      ? `djen:process:${processDigits}:private:${captureOwnerUserId}`
+      : `djen:process:${processDigits}`;
     target.processes = mergeExternalProcesses(target.processes || [], [{
-      id: `djen:process:${process.replace(/\D/g, '')}`,
-      externalId: `djen:process:${process.replace(/\D/g, '')}`,
+      id: processRecordId,
+      externalId: processRecordId,
       number: process,
       source: portal.name || 'DJEN/CNJ',
       monitoring: 'active',
       ...(court ? { court } : {}),
       ...(normalizeText(item.nomeClasse) ? { actionType: normalizeText(item.nomeClasse) } : {}),
-      ...(publishedAt ? { registeredAt: publishedAt, latestPublicationAt: publishedAt } : {}),
+      ...(availableAt ? { registeredAt: availableAt, latestPublicationAt: publishedAt || availableAt } : {}),
       ...(title ? { latestPublicationTitle: decodeHtmlEntities(title) } : {}),
       monitoredTermIds: uniqueStrings([monitoredTermId, ...matchedTerms.map(termIdentity)]),
+      scope: captureScope,
+      ...(captureOwnerUserId ? { privateOwnerUserId: captureOwnerUserId } : {}),
       ...(canonicalClient?.id ? { client: canonicalClient.name, contactId: canonicalClient.id } : {})
     }]);
+    if (process) {
+      const mergedProcess = (target.processes || []).find(candidate => String(candidate?.id || '') === processRecordId);
+      if (mergedProcess) {
+        if (captureScope === 'office') {
+          mergedProcess.scope = 'office';
+          delete mergedProcess.privateOwnerUserId;
+          delete mergedProcess.ownerUserId;
+        } else if (!mergedProcess.scope) {
+          mergedProcess.scope = 'private';
+          mergedProcess.privateOwnerUserId = captureOwnerUserId;
+        }
+      }
+    }
   }
 
-  // Filtrar intimações para a caixa de entrada apenas se estiver dentro da janela de triagem (ex: 2 dias)
-  if (options.intimationCutoffDate && publishedAt && publishedAt < options.intimationCutoffDate) {
-    return;
+  const existing = (target.intimations || []).find(record => (record.externalId || record.id) === externalId);
+  if (existing) {
+    if (captureScope === 'private' && existing.scope !== 'private') return 'skipped_office_owned';
+    if (captureScope === 'private' && existing.scope === 'private'
+      && String(existing.privateOwnerUserId || existing.ownerUserId || '') !== captureOwnerUserId) {
+      return 'skipped_private_other_owner';
+    }
+    if (captureScope === 'office' && existing.scope === 'private') {
+      existing.scope = 'office';
+      delete existing.privateOwnerUserId;
+      delete existing.ownerUserId;
+    }
   }
+
+  // Filtrar intimações para a caixa de entrada apenas se for publicação anterior ao marco e ainda não existir
+  if (!existing && options.intimationCutoffDate && availableAt && availableAt < options.intimationCutoffDate) {
+    return 'historical';
+  }
+
+  const publicationLawyers = extractDjenLawyers(item);
+  const lawyersLabel = formatDjenLawyers(publicationLawyers);
 
   const incoming = {
     id: externalId,
@@ -221,26 +366,37 @@ export function appendDjenItem(item, portal, config, target, options = {}) {
     court: decodeHtmlEntities(court),
     process,
     client: decodeHtmlEntities(recipients),
+    disponibilizadoEm: availableAt,
     publishedAt,
     term,
     monitoredTermIds: monitoredTermId ? [monitoredTermId] : [],
+    scope: captureScope,
+    ...(captureOwnerUserId ? { privateOwnerUserId: captureOwnerUserId } : {}),
+    ...(publicationLawyers.length ? { publicationLawyers, lawyers: lawyersLabel } : {}),
     status: 'nova',
     unread: true,
     createdAt: now,
     certificateUrl: safeCertificateUrl(item.hash),
     officialLink: safeOfficialLink(item.link || item.url)
   };
-  const existing = target.intimations.find(record => (record.externalId || record.id) === externalId);
+
   if (!existing) {
+    if (!Array.isArray(target.intimations)) target.intimations = [];
     target.intimations.push(incoming);
-    return;
+    return 'added';
   }
 
-  for (const field of ['source', 'type', 'title', 'text', 'rawHtml', 'hasHtml', 'description', 'court', 'process', 'client', 'publishedAt', 'certificateUrl', 'officialLink']) {
+  for (const field of ['source', 'type', 'title', 'text', 'rawHtml', 'hasHtml', 'description', 'court', 'process', 'client', 'disponibilizadoEm', 'publishedAt', 'certificateUrl', 'officialLink']) {
     if (incoming[field] !== '' && incoming[field] !== null && incoming[field] !== undefined) existing[field] = incoming[field];
   }
   existing.monitoredTermIds = [...new Set([...(existing.monitoredTermIds || []), ...incoming.monitoredTermIds].filter(Boolean))];
   existing.term ||= term;
+  if (publicationLawyers.length) {
+    const mergedLawyers = mergeDjenLawyers(existing.publicationLawyers, publicationLawyers);
+    existing.publicationLawyers = mergedLawyers;
+    existing.lawyers = formatDjenLawyers(mergedLawyers);
+  }
+  return 'updated';
 }
 
 function termIdentity(term) {
@@ -253,19 +409,70 @@ function termIdentity(term) {
   return normalizeText(term.name || '').toLocaleLowerCase('pt-BR');
 }
 
+/**
+ * Advogados citados na comunicação (fonte oficial), normalizados e deduplicados.
+ * Somente o que o DJEN declara — nunca inferência por nome de parte.
+ */
+export function extractDjenLawyers(item) {
+  const links = Array.isArray(item?.destinatarioadvogados) ? item.destinatarioadvogados : [];
+  const lawyers = [];
+  const seen = new Set();
+  for (const link of links) {
+    const lawyer = link?.advogado && typeof link.advogado === 'object' ? link.advogado : link;
+    const name = normalizeText(lawyer?.nome).slice(0, 160);
+    const oab = String(lawyer?.numero_oab || lawyer?.numeroOab || lawyer?.oab || '').replace(/\D/g, '').slice(0, 12);
+    const uf = normalizeText(lawyer?.uf_oab || lawyer?.ufOab || lawyer?.uf || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    if (!name && !oab) continue;
+    const key = oab ? `oab:${uf}:${oab}` : `name:${normalizeIdentity(name)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    lawyers.push({ name, oab, uf });
+    if (lawyers.length >= 12) break;
+  }
+  return lawyers;
+}
+
+export function formatDjenLawyers(lawyers) {
+  return (Array.isArray(lawyers) ? lawyers : [])
+    .map(lawyer => {
+      const name = String(lawyer?.name || '').trim();
+      const uf = String(lawyer?.uf || '').trim().toUpperCase();
+      const oab = String(lawyer?.oab || '').replace(/\D/g, '');
+      if (!oab) return name;
+      return `${name ? `${name} ` : ''}(OAB/${uf || 'UF'} ${oab})`.trim();
+    })
+    .filter(Boolean)
+    .join(' · ')
+    .slice(0, 400);
+}
+
+function mergeDjenLawyers(current, incoming) {
+  const merged = [];
+  const seen = new Set();
+  for (const lawyer of [...(Array.isArray(current) ? current : []), ...(Array.isArray(incoming) ? incoming : [])]) {
+    const name = String(lawyer?.name || '').trim().slice(0, 160);
+    const oab = String(lawyer?.oab || '').replace(/\D/g, '').slice(0, 12);
+    const uf = String(lawyer?.uf || '').trim().toUpperCase().slice(0, 2);
+    if (!name && !oab) continue;
+    const key = oab ? `oab:${uf}:${oab}` : `name:${normalizeIdentity(name)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push({ name, oab, uf });
+    if (merged.length >= 12) break;
+  }
+  return merged;
+}
+
 function publicationMatchesTerm(item, term) {
+  // Processo acompanhado pelo número não representa advogado: nunca infere cliente.
+  if (String(term?.type || '').toLowerCase() === 'process') return false;
   const termOab = String(term?.oabNumber || term?.registration || '').replace(/\D/g, '');
   const registration = String(term?.registration || '');
   const termUf = normalizeText(term?.oabUf || registration.match(/OAB\s*[\/\-]?\s*([A-Z]{2})/i)?.[1] || '').toUpperCase();
   const termName = normalizeIdentity(term?.name);
-  const links = Array.isArray(item?.destinatarioadvogados) ? item.destinatarioadvogados : [];
-  return links.some(link => {
-    const lawyer = link?.advogado && typeof link.advogado === 'object' ? link.advogado : link;
-    const lawyerOab = String(lawyer?.numero_oab || lawyer?.numeroOab || lawyer?.oab || '').replace(/\D/g, '');
-    const lawyerUf = normalizeText(lawyer?.uf_oab || lawyer?.ufOab || lawyer?.uf || '').toUpperCase();
-    const lawyerName = normalizeIdentity(lawyer?.nome);
-    if (termOab && lawyerOab) return termOab === lawyerOab && (!termUf || !lawyerUf || termUf === lawyerUf);
-    return Boolean(termName && lawyerName && termName === lawyerName);
+  return extractDjenLawyers(item).some(lawyer => {
+    if (termOab && lawyer.oab) return termOab === lawyer.oab && (!termUf || !lawyer.uf || termUf === lawyer.uf);
+    return Boolean(termName && lawyer.name && termName === normalizeIdentity(lawyer.name));
   });
 }
 
@@ -284,8 +491,31 @@ function uniqueStrings(values) {
   return [...new Set((Array.isArray(values) ? values : []).map(value => String(value || '').trim()).filter(Boolean))];
 }
 
-function validDjenItem(item) {
-  return item && item.id !== undefined && String(item.numero_processo || item.numeroProcesso || '').replace(/\D/g, '').match(PROCESS_DIGITS_RE);
+export function djenProcessDigits(item) {
+  return String(
+    item?.numeroprocessocommascara
+    || item?.numeroProcesso
+    || item?.numero_processo
+    || ''
+  ).replace(/\D/g, '');
+}
+
+export function validDjenItem(item) {
+  return Boolean(
+    item
+    && item.id !== undefined
+    && /^\d{20}$/.test(djenProcessDigits(item))
+  );
+}
+
+export function normalizeDateOnly(value) {
+  const raw = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  const parsed = new Date(`${raw}T12:00:00Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== raw) {
+    return null;
+  }
+  return raw;
 }
 
 function safeCertificateUrl(hash) {
@@ -300,7 +530,7 @@ function safeOfficialLink(value) {
   } catch { return ''; }
 }
 
-function formatProcessNumber(value) {
+export function formatProcessNumber(value) {
   const digits = String(value || '').replace(/\D/g, '');
   if (digits.length !== 20) return '';
   return `${digits.slice(0, 7)}-${digits.slice(7, 9)}.${digits.slice(9, 13)}.${digits.slice(13, 14)}.${digits.slice(14, 16)}.${digits.slice(16)}`;
@@ -343,4 +573,13 @@ async function fetchWithTimeout(fetchImpl, url, timeoutMs) {
   } finally { clearTimeout(timer); }
 }
 
-export const djenInternals = { formatProcessNumber, htmlToText, safeOfficialLink, saoPauloDateWindow, termIdentity, validDjenItem };
+export const djenInternals = {
+  djenProcessDigits,
+  formatProcessNumber,
+  htmlToText,
+  normalizeDateOnly,
+  safeOfficialLink,
+  saoPauloDateWindow,
+  termIdentity,
+  validDjenItem
+};

@@ -1,4 +1,4 @@
-import { iconSvg as atriumIconSvg } from './icons.js';
+import { iconSvg as atriumIconSvg } from './icons.js?v=3.0.0';
 
 function escapeText(value) {
   return String(value ?? '')

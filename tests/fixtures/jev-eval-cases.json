@@ -1,0 +1,20 @@
+[
+  { "expectedArea": "civil", "id": "pub-civel-1", "text": "Intimação sintética: ação de indenização por danos morais contra a Empresa Alfa S.A. por cobrança indevida no cartão." },
+  { "expectedArea": "civil", "id": "pub-civel-2", "text": "Publicação sintética: audiência de conciliação em ação de divórcio com partilha de imóvel." },
+  { "expectedArea": "civil", "id": "pub-civel-3", "text": "Texto sintético: contestação em ação de consumo sobre defeito em eletrodoméstico e pedido de troca." },
+  { "expectedArea": "trabalhista", "id": "pub-trab-1", "text": "Intimação sintética: reclamação trabalhista de Beltrano de Tal contra Empresa Alfa pedindo verbas rescisórias e FGTS." },
+  { "expectedArea": "trabalhista", "id": "pub-trab-2", "text": "Publicação sintética: sentença em ação de horas extras com adicional noturno, CLT art. 59." },
+  { "expectedArea": "trabalhista", "id": "pub-trab-3", "text": "Texto sintético: acordo em reclamatória sobre vínculo de emprego e férias vencidas." },
+  { "expectedArea": "previdenciario", "id": "pub-prev-1", "text": "Intimação sintética: ação contra o INSS pedindo aposentadoria por tempo de contribuição." },
+  { "expectedArea": "previdenciario", "id": "pub-prev-2", "text": "Publicação sintética: perícia marcada em ação de auxílio-doença com incapacidade temporária." },
+  { "expectedArea": "previdenciario", "id": "pub-prev-3", "text": "Texto sintético: benefício assistencial negado, segurada idosa pede revisão." },
+  { "expectedArea": "criminal", "id": "pub-crim-1", "text": "Intimação sintética: audiência de instrução em ação penal por crime de furto, réu preso preventivamente." },
+  { "expectedArea": "criminal", "id": "pub-crim-2", "text": "Publicação sintética: denúncia recebida, defesa prévia em processo criminal com pedido de habeas corpus." },
+  { "expectedArea": "tributario", "id": "pub-trib-1", "text": "Intimação sintética: execução fiscal do município cobrando ISS da Empresa Alfa S.A." },
+  { "expectedArea": "tributario", "id": "pub-trib-2", "text": "Publicação sintética: embargos em execução fiscal sobre ICMS e multa tributária." },
+  { "expectedArea": "outro", "id": "pub-outro-1", "text": "Texto sintético: dúvida sobre o número do processo para consulta no portal." },
+  { "expectedArea": "outro", "id": "pub-outro-2", "text": "Texto sintético: reunião interna para tratar honorários e agenda da semana." },
+  { "expectedArea": "outro", "id": "pub-outro-3", "text": "Texto sintético: conferir publicação no DJEN e anotar prazo fatal de sexta-feira." },
+  { "expectedArea": "criminal", "id": "pub-amb-1", "text": "Texto sintético: defesa em ação penal de réu ex-empregado da Empresa Alfa, acusado de crime de furto." },
+  { "expectedArea": "previdenciario", "id": "pub-amb-2", "text": "Texto sintético: ação de indenização por desconto indevido em benefício do INSS." }
+]

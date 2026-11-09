@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ATRIUM",
+  "version": "3.0.0",
+  "identifier": "br.adv.atriumsenda",
+  "build": {
+    "frontendDist": "../www"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "ATRIUM",
+        "width": 1360,
+        "height": 860,
+        "minWidth": 1024,
+        "minHeight": 680,
+        "visible": true,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' tauri://localhost; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "createUpdaterArtifacts": true,
+    "shortDescription": "ATRIUM — gestão jurídica soberana",
+    "longDescription": "ATRIUM é a edição open-source do ATRIUM: gestão jurídica local-first para escritórios brasileiros, com dados cifrados, fluxo supervisionado e integrações judiciais somente leitura.",
+    "publisher": "ATRIUM",
+    "homepage": "https://github.com/ricarossetto/Atrium-Senda",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "wix": {
+        "language": ["pt-BR"],
+        "upgradeCode": "9E3F4C86-7BD2-4D05-B58A-1F1E6B2C5A47"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "languages": ["PortugueseBR"]
+      }
+    },
+    "resources": {
+      "../resources/app/**/*": "app",
+      "../resources/node/**/*": "node"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVGNDlGQTNEQjJBMDlBMTYKUldRV21xQ3lQZnBKNzBVOUVuTWNpNFNVekk0L2tiV21XKzYvUzhLa0dJV095WTZOQkhIaWRmWlgK",
+      "endpoints": [
+        "https://github.com/ricarossetto/Atrium-Senda/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

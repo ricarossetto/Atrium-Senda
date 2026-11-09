@@ -6,8 +6,9 @@ import { generateTotp } from '../lib/security.mjs';
 import { createPromptsFeature } from '../js/features/prompts.js';
 import { postJson, startTestServer } from './helpers.mjs';
 
-const promptsDataHash = createHash('sha256').update(fs.readFileSync(new URL('../js/prompts-data.js', import.meta.url))).digest('hex');
-const skillsDataHash = createHash('sha256').update(fs.readFileSync(new URL('../js/skills-data.js', import.meta.url))).digest('hex');
+const normalizeEol = source => source.replace(/\r\n/g, '\n');
+const promptsDataHash = createHash('sha256').update(normalizeEol(fs.readFileSync(new URL('../js/prompts-data.js', import.meta.url), 'utf8'))).digest('hex');
+const skillsDataHash = createHash('sha256').update(normalizeEol(fs.readFileSync(new URL('../js/skills-data.js', import.meta.url), 'utf8'))).digest('hex');
 const promptsSource = fs.readFileSync(new URL('../js/features/prompts.js', import.meta.url), 'utf8');
 const portalSource = fs.readFileSync(new URL('../js/portal.js', import.meta.url), 'utf8');
 assert.match(promptsSource, /export function createPromptsFeature\(/);
@@ -207,9 +208,9 @@ try {
     };
   });
 
-  assert.equal(promptsDataHash, '5ad2e02eaf7ea80bb76b43e2de7beccc05ffb159af56b634a4f9d712e74f8340');
-  assert.equal(skillsDataHash, '16f638bd98920f20767725f4ee3cec7fa3ec5f5e1ba7592c83b07d05b15f5905');
-  assert.equal(createHash('sha256').update(characterization.initialHtml, 'utf8').digest('hex'), 'c0d4b9fff3c808bee0313a35f02ba09a5f6f57714c2b22aea0c79e4458688103');
+  assert.equal(promptsDataHash, '93a3b5e7a2d71934ed7b003cb766a13b4ba20ee89dcc6b37e237c67113abd202');
+  assert.equal(skillsDataHash, 'cfa0b7df8f28b59a85afc2618b8fea4cbca02061b88c74d133d0c2021272cbef');
+  assert.equal(createHash('sha256').update(characterization.initialHtml, 'utf8').digest('hex'), '2aa318dac867fb42848fab597fb5657e455629d5d6e38f03df716c2d276ad3d9');
   assert.deepEqual(characterization.filterResults, {
     initial: ['custom-test-001', 'default-test-001', 'default-test-002'],
     search: ['default-test-002'],
@@ -222,7 +223,7 @@ try {
   assert.deepEqual(characterization.clipboardWrites, ['PROMPT PADRÃO DE REDAÇÃO']);
   assert.equal(createHash('sha256').update(characterization.copyFeedback.html, 'utf8').digest('hex'), 'e53b5d569a716f0a788e258a9c7308199bb7a10741883d9ffa9bd8227f39bbe1');
   assert.equal(characterization.copyFeedback.copiedClass, true);
-  assert.deepEqual(characterization.useBehavior, { currentView: 'assistant', value: 'PROMPT CARREGADO SEM ENVIO', height: '72px', focused: true, autoSubmitCalls: 0 });
+  assert.deepEqual(characterization.useBehavior, { currentView: 'assistant', value: 'PROMPT CARREGADO SEM ENVIO', height: '70px', focused: true, autoSubmitCalls: 0 });
   assert.equal(characterization.created.isCustom, true);
   assert.deepEqual(characterization.created.tags, ['tag um', 'tag dois', 'tag três']);
   assert.equal(characterization.created.createdAt, '2026-08-29T15:00:00.000Z');

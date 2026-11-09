@@ -31,8 +31,8 @@ assert.deepEqual(result, { linkedProcesses: 1, updatedRecords: 6 });
 assert.equal(state.processes[0].client, 'Maria de Souza');
 assert.equal(state.processes[0].contactId, 'contact-maria');
 for (const collection of ['intimations', 'tasks', 'agenda', 'documents', 'financial']) {
-  assert.equal(state[collection][0].client, 'Maria de Souza', `${collection} deve receber o cliente canônico.`);
-  assert.equal(state[collection][0].contactId, 'contact-maria', `${collection} deve receber o contato canônico.`);
+  assert.equal(state[collection][0].client, 'Maria de Souza', `${collection} deve receber o cliente principal.`);
+  assert.equal(state[collection][0].contactId, 'contact-maria', `${collection} deve receber o contato oficial.`);
 }
 assert.equal(state.tasks[0].process, '5001234-56.2026.8.21.0001');
 
@@ -47,6 +47,23 @@ assert.equal(JSON.stringify(state), idempotentSnapshot, 'Repetir a reconciliaç�
 
 const rejected = applyClientReconciliation(state, [{ processNumber: '123', clientName: 'Pessoa Inventada' }]);
 assert.deepEqual(rejected, { linkedProcesses: 0, updatedRecords: 0 });
+
+// Nome sugerido pelo modelo sem contato oficial com papel 'cliente' não grava.
+const contactlessState = {
+  contacts: [{ id: 'contact-sem-papel', name: 'Pessoa Sem Papel', contactRole: 'contato' }],
+  processes: [{ id: 'sem-contato', number: '5000000-00.2026.8.21.0009', client: 'Cliente ainda não vinculado' }]
+};
+assert.deepEqual(applyClientReconciliation(contactlessState, [{
+  processNumber: '5000000-00.2026.8.21.0009',
+  clientName: 'Pessoa Sem Papel',
+  confidence: 0.99
+}]), { linkedProcesses: 0, updatedRecords: 0 }, 'Contato sem papel cliente não pode virar vínculo durável.');
+assert.equal(contactlessState.processes[0].client, 'Cliente ainda não vinculado');
+assert.deepEqual(applyClientReconciliation(contactlessState, [{
+  processNumber: '5000000-00.2026.8.21.0009',
+  clientName: 'Nome Sem Contato',
+  confidence: 0.99
+}]), { linkedProcesses: 0, updatedRecords: 0 }, 'Nome do modelo sem contato correspondente não pode ser gravado.');
 
 const guardedState = {
   contacts: [
@@ -71,7 +88,7 @@ assert.deepEqual(applyClientReconciliation(guardedState, [
   { processNumber: guardedState.processes[4].number, clientName: 'Advogado Monitorado', contactId: 'contact-lawyer', confidence: 0.99 }
 ]), { linkedProcesses: 0, updatedRecords: 0 });
 assert.equal(guardedState.processes[0].client, 'Cliente Manual', 'Vínculo manual deve prevalecer.');
-assert.equal(guardedState.processes[1].client, 'Cliente ainda não vinculado', 'Contato manual deve prevalecer mesmo sem nome canônico preenchido.');
+assert.equal(guardedState.processes[1].client, 'Cliente ainda não vinculado', 'Contato manual deve prevalecer mesmo sem nome oficial preenchido.');
 assert.equal(guardedState.processes[2].client, 'Cliente ainda não vinculado', 'Confiança abaixo de 90% deve ser rejeitada.');
 assert.equal(guardedState.processes[3].client, 'Cliente ainda não vinculado', 'Parte contrária não pode virar cliente.');
 assert.equal(guardedState.processes[4].client, 'Cliente ainda não vinculado', 'Advogado não pode virar cliente.');

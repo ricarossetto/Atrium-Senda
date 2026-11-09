@@ -22,14 +22,23 @@ assert.match(portalSource, /saveCertificate\(event\) \{ return getJudicialIntegr
 assert.doesNotMatch(portalSource, /byId\('certificateGuideButton'\)|getElementById\('certificateGuideButton'\)/);
 assert.match(portalHtml, /id="savePortalCoverageButton"/);
 assert.match(moduleSource, /savePortalCoverageButton/);
-assert.match(portalHtml, /id="launchPortalLoginButton"/);
-assert.match(moduleSource, /launchPortalLoginButton/);
-assert.match(portalHtml, /certificado válido não significa sessão autenticada/i);
+assert.doesNotMatch(portalHtml, /id="launchPortalLoginButton"/);
+assert.doesNotMatch(portalHtml, /Autenticação manual|Zero Trust: As imagens de QR Code/i);
+assert.match(portalHtml, /Código atual do autenticador/);
+assert.match(portalHtml, /id="portalTotpFeedback"[^>]*aria-live="polite"/);
+assert.match(moduleSource, /savePortalAccount\(event\)/);
+assert.match(moduleSource, /removePortalAccount\(\)/);
+assert.match(portalSource, /savePortalAccount\(event\) \{ return getJudicialIntegrationsFeature\(\)\.savePortalAccount\(event\); \}/);
+assert.match(portalSource, /removePortalAccount\(\) \{ return getJudicialIntegrationsFeature\(\)\.removePortalAccount\(\); \}/);
+assert.match(portalHtml, /id="portalAccountForm"/);
+assert.match(portalHtml, /id="accountPortalSelect"/);
+assert.match(portalHtml, /id="portalAccountPassword"[^>]*type="password"/);
 
 const listenerIds = [
   'certificateGuideButton', 'judicialSetupClose', 'judicialSetupBackdrop', 'certificateFileInput',
   'certificateSetupForm', 'portalQrInput', 'portalTotpForm', 'removePortalTotpButton',
-  'resetJudicialConnectionsButton', 'savePortalCoverageButton', 'syncJudicialNowButton', 'launchPortalLoginButton', 'portalCoverageList'
+  'portalAccountForm', 'removePortalAccountButton',
+  'resetJudicialConnectionsButton', 'savePortalCoverageButton', 'syncJudicialNowButton', 'portalCoverageList'
 ];
 const listenerCounts = new Map();
 const listenerElements = new Map(listenerIds.map(id => [id, {
@@ -204,13 +213,25 @@ try {
     document.querySelector('[data-portal-enabled][value="portal-a"]').checked = false;
     document.querySelector('[data-portal-enabled][value="portal-b"]').checked = true;
     await app.savePortalCoverage();
-    await app.launchAssistedSession(document.getElementById('launchPortalLoginButton'));
     document.getElementById('totpPortalSelect').value = 'portal-a';
     document.getElementById('portalTotpSecret').value = 'SYNTHETIC_TOTP_SECRET_MARKER';
     document.getElementById('portalTotpCode').value = '123456';
     await app.savePortalTotp({ preventDefault() {}, currentTarget: document.getElementById('portalTotpForm') });
     document.getElementById('totpPortalSelect').value = 'portal-a';
     await app.removePortalTotp();
+
+    const accountList = document.getElementById('accountPortalList');
+    const portalACheckbox = document.querySelector('[data-account-portal="portal-a"]');
+    const portalBCheckbox = document.querySelector('[data-account-portal="portal-b"]');
+    if (portalACheckbox) { portalACheckbox.checked = true; if (portalBCheckbox) portalBCheckbox.checked = true; }
+    else document.getElementById('accountPortalSelect').value = 'portal-a';
+    document.getElementById('portalAccountUsername').value = 'RS000000';
+    document.getElementById('portalAccountPassword').value = 'SENHA_SINTETICA';
+    await app.savePortalAccount({ preventDefault() {}, currentTarget: document.getElementById('portalAccountForm') });
+    const accountPasswordCleared = document.getElementById('portalAccountPassword').value === '';
+    const accountPortalIds = portalACheckbox ? ['portal-a', 'portal-b'] : ['portal-a'];
+    await app.removePortalAccount();
+    const accountListRendered = Boolean(accountList && accountList.querySelectorAll('[data-account-portal]').length >= 2);
 
     window.confirm = () => false;
     await app.resetJudicialConnections();
@@ -223,7 +244,7 @@ try {
     app.syncAll = async () => { syncCalls++; return true; };
     await app.syncJudicialNow();
 
-    return { rendered, cleanup, requests, audits, toasts, resetBeforeConfirm, syncCalls };
+    return { rendered, cleanup, requests, audits, toasts, resetBeforeConfirm, syncCalls, accountPasswordCleared, accountPortalIds, accountListRendered };
   }, fixture);
 
   const validation = await page.evaluate(async () => {
@@ -300,13 +321,26 @@ try {
   assert.deepEqual(coverage.rendered.enabled, ['portal-a']);
   assert.deepEqual(coverage.cleanup, { secret: '', code: '', passphrase: '' });
   assert.deepEqual(coverage.requests.find(item => item.url.endsWith('/portals')).body, { enabledIds: ['portal-b'] });
-  assert.deepEqual(coverage.requests.find(item => item.url.endsWith('/connect')).body, { portalIds: ['portal-a'] });
+  assert.equal(coverage.requests.some(item => item.url.endsWith('/connect')), false);
   assert.deepEqual(coverage.requests.find(item => item.url.endsWith('/2fa') && !item.body.remove).body, { portalId: 'portal-a', secret: TOTP_MARKER, code: '123456' });
   assert.deepEqual(coverage.requests.find(item => item.url.endsWith('/2fa') && item.body.remove).body, { portalId: 'portal-a', remove: true });
+  assert.deepEqual(
+    coverage.requests.find(item => item.url.endsWith('/judicial/credentials') && !item.body?.remove).body,
+    { portalIds: coverage.accountPortalIds, username: 'RS000000', password: 'SENHA_SINTETICA' },
+    'A conta do tribunal deve ser salva manualmente pela rota de credenciais, com seleção múltipla.'
+  );
+  assert.deepEqual(
+    coverage.requests.find(item => item.url.endsWith('/judicial/credentials') && item.body?.remove === true).body,
+    { portalIds: coverage.accountPortalIds, remove: true }
+  );
+  assert.equal(coverage.accountListRendered, true, 'A lista de tribunais com a mesma credencial deve ser renderizada.');
+  assert.equal(coverage.accountPasswordCleared, true, 'A senha não pode permanecer no DOM após salvar.');
+  assert.ok(coverage.audits.some(item => /Conta do tribunal vinculada/i.test(item.action)), 'Auditoria da conta vinculada deve existir.');
+  assert.ok(coverage.audits.some(item => /Conta do tribunal removida/i.test(item.action)), 'Auditoria da remoção da conta deve existir.');
   assert.equal(coverage.resetBeforeConfirm, 0);
   assert.deepEqual(coverage.requests.find(item => item.url.endsWith('/reset')).body, { confirm: 'ZERAR_ACESSOS_JUDICIAIS' });
   assert.ok(coverage.requests.some(item => item.url.endsWith('/a1/sandbox') && item.method === 'POST'));
-  assert.equal(coverage.syncCalls, 1);
+  assert.equal(coverage.syncCalls, 0, 'O acompanhamento judicial usa o scheduler oficial, não o sincronizador global legado.');
   assert.ok(validation.some(item => item.message.includes('Selecione o PFX')));
   assert.ok(validation.some(item => item.message.includes('seis dígitos')));
   const certificateRequest = certificate.requests[0];

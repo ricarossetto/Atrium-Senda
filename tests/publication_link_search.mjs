@@ -48,7 +48,7 @@ try {
   assert.equal(await page.locator('#modalForm [name="contactId"]').inputValue(), 'publication-contact-other');
 
   await page.locator('#field-title').fill('Intimação contextual sintética');
-  await page.locator('#field-text').fill('Conteúdo sintético para validar vínculos canônicos.');
+  await page.locator('#field-text').fill('Conteúdo sintético para validar vínculos principais.');
   await page.locator('#modalForm button[type="submit"]').click();
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   await page.reload();

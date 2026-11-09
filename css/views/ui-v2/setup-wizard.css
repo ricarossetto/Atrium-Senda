@@ -1,0 +1,236 @@
+/* ATRIUM — Wizard de primeiros passos do escritório.
+   Modal de decisão pontual; reusa tokens e primitivas da UI V2. */
+
+html[data-ui="v2"] #setupWizardBackdrop .setup-wizard {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(86dvh, 720px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border-radius: var(--v2-radius-xl);
+  overflow: hidden;
+}
+
+html[data-ui="v2"] #setupWizardBackdrop .setup-wizard > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-5) var(--v2-space-6);
+  border-bottom: 1px solid var(--v2-color-border);
+}
+
+html[data-ui="v2"] #setupWizardBackdrop .setup-wizard > header h2 {
+  margin: 2px 0 0;
+  font-size: 20px;
+}
+
+html[data-ui="v2"] .setup-wizard-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--v2-space-5) var(--v2-space-6);
+  display: grid;
+  gap: var(--v2-space-4);
+  align-content: start;
+}
+
+html[data-ui="v2"] .setup-wizard-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--v2-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+html[data-ui="v2"] .setup-wizard-dot {
+  flex: 1 1 0;
+  height: 4px;
+  border-radius: var(--v2-radius-round);
+  background: var(--v2-color-surface-inset);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+html[data-ui="v2"] .setup-wizard-dot > span { display: none; }
+html[data-ui="v2"] .setup-wizard-dot.is-done { background: var(--v2-color-gold); opacity: .55; }
+html[data-ui="v2"] .setup-wizard-dot.is-current { background: var(--v2-color-gold); }
+
+html[data-ui="v2"] .setup-wizard-step { display: grid; gap: var(--v2-space-2); }
+html[data-ui="v2"] .setup-wizard-step h3 { margin: 0; font-size: 20px; }
+html[data-ui="v2"] .setup-wizard-desc {
+  margin: 0 0 var(--v2-space-2);
+  color: var(--v2-color-muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+html[data-ui="v2"] .setup-wizard-options { display: grid; gap: var(--v2-space-2); }
+
+html[data-ui="v2"] .setup-wizard-option {
+  display: flex;
+  align-items: center;
+  gap: var(--v2-space-3);
+  min-height: 44px;
+  padding: var(--v2-space-3) var(--v2-space-4);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface);
+  color: var(--v2-color-foreground);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+html[data-ui="v2"] .setup-wizard-option:hover { border-color: var(--v2-color-primary); }
+html[data-ui="v2"] .setup-wizard-option:has(input:checked) {
+  border-color: var(--v2-color-gold);
+  background: var(--v2-color-gold-soft, color-mix(in srgb, var(--v2-color-gold) 12%, var(--v2-color-surface)));
+}
+html[data-ui="v2"] .setup-wizard-option:focus-within { outline: 2px solid var(--v2-color-primary); outline-offset: 2px; }
+html[data-ui="v2"] .setup-wizard-option input { accent-color: var(--v2-color-gold); }
+
+html[data-ui="v2"] .setup-wizard-court-picker,
+html[data-ui="v2"] .setup-wizard-courts { display: grid; gap: var(--v2-space-3); min-width: 0; }
+html[data-ui="v2"] .setup-wizard-courts {
+  padding: var(--v2-space-3);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface-secondary);
+}
+html[data-ui="v2"] .setup-wizard-court-picker [hidden] { display: none; }
+html[data-ui="v2"] .setup-wizard-court-picker .button { min-height: 44px; white-space: normal; }
+html[data-ui="v2"] .setup-wizard-court-actions { display: flex; flex-wrap: wrap; gap: var(--v2-space-2); }
+html[data-ui="v2"] .setup-wizard-court-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v2-space-1);
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+html[data-ui="v2"] .setup-wizard-court-count { margin-right: var(--v2-space-1); }
+html[data-ui="v2"] .setup-wizard-court-chip {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: var(--v2-space-1) var(--v2-space-2);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-round);
+  background: var(--v2-color-surface);
+}
+html[data-ui="v2"] .setup-wizard-court-search { display: grid; gap: var(--v2-space-2); font-size: 13px; }
+html[data-ui="v2"] #setupWizardCourtSearch {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--v2-space-2) var(--v2-space-3);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface);
+  color: var(--v2-color-foreground);
+  font-size: 16px;
+}
+html[data-ui="v2"] .setup-wizard-court-results { margin: 0; color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] .setup-wizard-court-group {
+  display: grid;
+  min-width: 0;
+  gap: var(--v2-space-2);
+  margin: 0 0 var(--v2-space-4);
+  padding: 0;
+  border: 0;
+}
+html[data-ui="v2"] .setup-wizard-court-group legend {
+  padding: 0 0 var(--v2-space-2);
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+html[data-ui="v2"] .setup-wizard-court-group input { flex: 0 0 auto; }
+html[data-ui="v2"] .setup-wizard-court-group .setup-wizard-option { padding: var(--v2-space-2) var(--v2-space-3); }
+html[data-ui="v2"] .setup-wizard-court-group .setup-wizard-option span { min-width: 0; overflow-wrap: anywhere; }
+
+html[data-ui="v2"] .setup-wizard-summary { display: grid; gap: var(--v2-space-1); }
+html[data-ui="v2"] .setup-wizard-summary-row {
+  display: grid;
+  grid-template-columns: minmax(120px, .8fr) minmax(0, 1.2fr);
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-2) 0;
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+}
+html[data-ui="v2"] .setup-wizard-summary-row span { color: var(--v2-color-muted-foreground); font-size: 12px; }
+html[data-ui="v2"] .setup-wizard-summary-row strong { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+
+html[data-ui="v2"] .setup-wizard-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--v2-space-2);
+  margin-top: var(--v2-space-3);
+}
+html[data-ui="v2"] .setup-wizard-links .button { min-height: 44px; }
+html[data-ui="v2"] .setup-wizard-feedback {
+  margin: 0;
+  color: var(--v2-color-danger);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui="v2"] #setupWizardBackdrop .setup-wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--v2-space-2);
+  padding: var(--v2-space-4) var(--v2-space-6);
+  border-top: 1px solid var(--v2-color-border);
+}
+html[data-ui="v2"] #setupWizardBackdrop .setup-wizard-footer .button { min-height: 44px; }
+
+html[data-ui="v2"] #onboardingCertificateBackdrop .certificate-onboarding {
+  width: min(520px, 100%);
+  max-width: 100%;
+  min-width: 0;
+  max-height: calc(100dvh - var(--v2-space-10));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: 0;
+  border-radius: var(--v2-radius-xl);
+  overflow: hidden;
+}
+html[data-ui="v2"] #onboardingCertificateBackdrop .modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+html[data-ui="v2"] #onboardingCertificateBackdrop .button { min-height: 44px; }
+html[data-ui="v2"] #btnSubmitOnboardingCert { width: 100%; }
+html[data-ui="v2"] #onboardingCertPassword {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--v2-space-2) var(--v2-space-3);
+  border-radius: var(--v2-radius-md);
+  border: 1px solid var(--v2-color-border);
+  background: var(--v2-color-surface-inset);
+  color: var(--v2-color-foreground);
+  font-size: 16px;
+  box-sizing: border-box;
+}
+html[data-ui="v2"] #onboardingCertFeedback {
+  color: var(--v2-color-danger);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+html[data-ui="v2"] #onboardingCertFeedback.working { color: var(--v2-color-muted-foreground); }
+
+@media (max-width: 560px) {
+  html[data-ui="v2"] #setupWizardBackdrop { padding: 0; }
+  html[data-ui="v2"] #setupWizardBackdrop .setup-wizard { width: 100%; max-width: 100%; min-width: 0; max-height: 100dvh; border-radius: 0; }
+  html[data-ui="v2"] #setupWizardBackdrop .setup-wizard > header,
+  html[data-ui="v2"] .setup-wizard-body,
+  html[data-ui="v2"] #setupWizardBackdrop .setup-wizard-footer { padding-inline: var(--v2-space-4); }
+}

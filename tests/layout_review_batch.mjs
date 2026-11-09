@@ -1,7 +1,7 @@
 import './fixtures/omni-network.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { startUiV2Session, prepareUiV2Page, switchUiV2View } from './ui_v2_helpers.mjs';
+import { startUiV2Session, prepareUiV2Page, switchUiV2View, prepareUiV2PromptsFixture } from './ui_v2_helpers.mjs';
 const session = await startUiV2Session();
 await mkdir('artifacts/layout-review', { recursive: true });
 try {
@@ -61,8 +61,14 @@ try {
       status.setState('syncing', 'Teste atualizado', 20);
       if (document.querySelector('#systemStatusIcon svg') !== first) throw Error('Spinner replaced during progress update');
     });
-    assert.equal(await page.locator('#systemStatusProgressFill').evaluate(el => getComputedStyle(el).backgroundImage), 'none');
+    const fillVisual = await page.locator('#systemStatusProgressFill').evaluate(el => {
+      const style = getComputedStyle(el);
+      return { backgroundImage: style.backgroundImage, width: el.style.width };
+    });
+    assert.notEqual(fillVisual.backgroundImage, 'none', 'Progress fill deve manter o gradiente dourado aprovado');
+    assert.equal(fillVisual.width, '20%', 'Progress fill deve refletir o percentual atualizado');
     await switchUiV2View(page, 'inbox');
+    if (await page.locator('#inboxFiltersToggle').isVisible()) await page.locator('#inboxFiltersToggle').click();
     const filters = await page.locator('#inboxFilters').boundingBox();
     const cutoff = await page.locator('#inboxCutoffSelect').boundingBox();
     assert.ok(filters.y + filters.height <= cutoff.y || filters.x + filters.width <= cutoff.x,
@@ -95,10 +101,24 @@ try {
     await page.locator('#finLinkSearch').press('Enter');
     assert.equal(await page.locator('#finProcessSelect').inputValue(), 'office');
     await page.locator('#financialEntryCancel').click();
+    await prepareUiV2PromptsFixture(page);
     await switchUiV2View(page, 'prompts');
     await page.locator('#promptsGrid').scrollIntoViewIfNeeded();
-    const heights = await page.locator('#promptsGrid .prompt-library-card').evaluateAll(nodes => nodes.slice(0, 12).map(el => el.getBoundingClientRect().height));
-    assert.ok(heights.length > 1 && Math.max(...heights) - Math.min(...heights) <= 1);
+    const promptRowHeights = await page.locator('#promptsGrid .prompt-library-card').evaluateAll(nodes => {
+      const rows = new Map();
+      for (const el of nodes.slice(0, 12)) {
+        const rect = el.getBoundingClientRect();
+        const key = Math.round(rect.top);
+        if (!rows.has(key)) rows.set(key, []);
+        rows.get(key).push(rect.height);
+      }
+      return [...rows.values()];
+    });
+    const promptCardTotal = promptRowHeights.reduce((acc, row) => acc + row.length, 0);
+    assert.ok(promptCardTotal > 1, `Esperados múltiplos cards de prompt, obtidos ${promptCardTotal}`);
+    for (const rowHeights of promptRowHeights) {
+      assert.ok(rowHeights.length === 1 || Math.max(...rowHeights) - Math.min(...rowHeights) <= 1, `Cards da mesma linha devem ter altura uniforme: ${JSON.stringify(rowHeights)}`);
+    }
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     await screenshot('prompts');
     await page.evaluate(async () => {
@@ -121,7 +141,7 @@ try {
     }), 'Custom prompt actions must remain inside the normalized card');
     await page.evaluate(() => window.Atrium.App.openTermModal({ name: 'Termo sintético', type: 'oab', oabNumber: '123456', oabUf: 'RS' }));
     const oab = await page.locator('#field-oabNumber').boundingBox();
-    const uf = await page.locator('#field-oabUf').boundingBox();
+    const uf = await page.locator('#field-oabUf-busca').boundingBox();
     assert.ok(Math.abs(oab.height - uf.height) <= 1, 'OAB and UF controls have equal height');
     if (width > 760) assert.ok(Math.abs(oab.y - uf.y) <= 1, 'Desktop OAB and UF align at the top');
     await screenshot('monitoring');

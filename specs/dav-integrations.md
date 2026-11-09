@@ -15,7 +15,7 @@ Definir uma base aberta, limitada e honesta para avaliar WebDAV, CalDAV e CardDA
 - WebDAV, CalDAV e CardDAV permanecem `experimental`; resposta de endpoint não significa compatibilidade completa nem produção verificada.
 - Credenciais são cifradas e nunca retornam em status, logs, URL ou Store.
 - Operações de rede são explícitas; não existe timer, sync bidirecional ou reconciliação automática.
-- Agenda, Contatos e Documentos continuam autoridades canônicas independentes desta foundation.
+- Agenda, Contatos e Documentos continuam autoridades oficiais independentes desta foundation.
 - Redirect com credencial só pode permanecer na mesma origem HTTPS configurada.
 
 ## Allowed operations
@@ -28,7 +28,7 @@ Definir uma base aberta, limitada e honesta para avaliar WebDAV, CalDAV e CardDA
 ## Forbidden operations
 
 - Declarar conexão verificada, interoperabilidade completa ou suporte de produção com base em mock/probe.
-- Fazer sync bidirecional documental, criar eventos duplicados ou sobrescrever contatos canônicos.
+- Fazer sync bidirecional documental, criar eventos duplicados ou sobrescrever contatos oficiais.
 - Aceitar HTTP em produção, host privado/reservado, credencial embutida na URL ou redirect cross-origin.
 - Fazer `DELETE`, `MOVE`, reconciliação silenciosa, download ilimitado ou parsing de DTD/entity XML.
 

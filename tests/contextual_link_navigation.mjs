@@ -41,6 +41,23 @@ try {
       assert.equal(await page.locator('#view-contacts.active').count(), 1);
       assert.equal(await page.locator('#linkedPublicationReader article').textContent(), 'Conteúdo sintético sem prazo inferido.');
       assert.equal(await page.locator('#linkedPublicationReader').evaluate(el => el.scrollWidth <= el.clientWidth), true);
+      if (width === 1440) {
+        const readerToggle = page.locator('#linkedPublicationReader [data-panel-size-toggle]');
+        assert.equal(await readerToggle.isVisible(), true, 'O leitor vinculado deve exibir o controle de tamanho no desktop.');
+        await readerToggle.click();
+        await page.waitForFunction(() => document.getElementById('linkedPublicationReader')?.getAttribute('data-panel-size') === 'maximized');
+        await page.waitForFunction(() => !document.getElementById('linkedPublicationReader')?.classList.contains('is-panel-size-shifting'));
+        const maximizedReader = await page.evaluate(() => {
+          const dialog = document.getElementById('linkedPublicationReader');
+          const rect = dialog.getBoundingClientRect();
+          return { width: rect.width, left: rect.left, viewport: innerWidth, text: dialog.querySelector('article')?.textContent };
+        });
+        assert.ok(Math.abs(maximizedReader.width - maximizedReader.viewport) <= 2, `Leitor maximizado deve ocupar a viewport (${maximizedReader.width}/${maximizedReader.viewport}).`);
+        assert.ok(maximizedReader.left <= 1, `Leitor maximizado deve ancorar à esquerda (left=${maximizedReader.left}, width=${maximizedReader.width}, viewport=${maximizedReader.viewport}).`);
+        assert.equal(maximizedReader.text, 'Conteúdo sintético sem prazo inferido.', 'Maximizar não pode perder o conteúdo lido.');
+        await readerToggle.click();
+        await page.waitForFunction(() => !document.getElementById('linkedPublicationReader')?.hasAttribute('data-panel-size'));
+      }
       if (process.env.ATRIUM_CONTEXTUAL_SCREENSHOTS) await page.screenshot({ path: `artifacts/layout-review/contextual-${theme}-${width}.png` });
       await page.keyboard.press('Escape');
       await page.locator('#linkedPublicationReader').waitFor({ state: 'detached' });

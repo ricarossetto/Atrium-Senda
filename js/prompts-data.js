@@ -1,4 +1,4 @@
-/* Atrium Senda — Biblioteca de Prompts Jurídicos Especializados (230 Prompts) */
+/* ATRIUM — Biblioteca de Prompts Jurídicos Especializados (230 Prompts) */
 window.PROMPTS_DATA = [
   {
     "id": "p-1",

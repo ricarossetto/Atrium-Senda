@@ -31,7 +31,7 @@ html[data-route="discover"] #authGate {
   box-sizing: border-box;
 }
 
-/* Ambient Radial Glow Background */
+/* Ambient Glow Background */
 .landing-ambient-glow {
   position: absolute;
   top: 0;
@@ -39,12 +39,12 @@ html[data-route="discover"] #authGate {
   transform: translateX(-50%);
   width: min(1200px, 100vw);
   height: 680px;
-  background: radial-gradient(circle at 50% 20%, rgba(192, 162, 97, 0.09) 0%, rgba(130, 151, 166, 0.05) 45%, transparent 70%);
+  background: linear-gradient(180deg, rgba(192, 162, 97, 0.08) 0%, rgba(130, 151, 166, 0.03) 50%, transparent 100%);
   pointer-events: none;
   z-index: 0;
 }
 html[data-theme="light"] .landing-ambient-glow {
-  background: radial-gradient(circle at 50% 20%, rgba(167, 137, 77, 0.12) 0%, rgba(89, 108, 122, 0.06) 50%, transparent 75%);
+  background: linear-gradient(180deg, rgba(167, 137, 77, 0.10) 0%, rgba(89, 108, 122, 0.04) 50%, transparent 100%);
 }
 
 .landing-container {
@@ -74,23 +74,21 @@ html[data-theme="light"] .landing-ambient-glow {
 }
 
 .landing-nav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 20px;
-  border-radius: var(--v2-radius-round);
-  background: rgba(24, 27, 30, 0.78);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--v2-color-border-subtle);
-  box-shadow: var(--v2-shadow-card);
-  transition: all var(--v2-duration-base) var(--v2-ease-standard);
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 10px 20px;
+border-radius: var(--v2-radius-round);
+background: var(--v2-color-surface-elevated);
+border: 1px solid var(--v2-color-border-subtle);
+box-shadow: var(--v2-shadow-card);
+transition: all var(--v2-duration-base) var(--v2-ease-standard);
 }
 
 html[data-theme="light"] .landing-nav-bar {
-  background: rgba(250, 250, 248, 0.82);
-  border-color: rgba(210, 214, 213, 0.85);
-  box-shadow: 0 10px 30px -15px rgba(45, 52, 56, 0.12);
+background: var(--v2-color-surface-elevated);
+border-color: var(--v2-color-border);
+box-shadow: 0 10px 30px -15px rgba(45, 52, 56, 0.12);
 }
 
 .landing-brand {
@@ -133,7 +131,7 @@ html[data-theme="light"] .landing-brand-logo.logo-light {
 .landing-nav-link {
   color: var(--v2-color-muted-foreground);
   text-decoration: none;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.01em;
   position: relative;
@@ -192,66 +190,66 @@ html[data-theme="light"] .landing-brand-logo.logo-light {
 }
 
 .landing-btn-login {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  color: var(--v2-color-foreground);
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 8px 18px;
-  border-radius: var(--v2-radius-round);
-  font-size: 13.5px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all var(--v2-duration-fast) ease;
-  white-space: nowrap;
-  touch-action: manipulation;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+min-height: 40px;
+color: var(--v2-color-foreground);
+background: var(--v2-color-surface);
+border: 1px solid var(--v2-color-border-subtle);
+padding: 8px 18px;
+border-radius: var(--v2-radius-round);
+font-size: 13px;
+font-weight: 600;
+cursor: pointer;
+text-decoration: none;
+transition: all var(--v2-duration-fast) ease;
+white-space: nowrap;
+touch-action: manipulation;
 }
 
 .landing-btn-login:hover {
-  background: var(--v2-color-surface-secondary);
-  border-color: var(--v2-color-border-subtle);
-  color: var(--v2-color-gold);
+background: var(--v2-color-surface-secondary);
+border-color: var(--v2-color-border);
+color: var(--v2-color-gold-strong);
 }
 
+/* Gradiente impedia medir contraste e, no tema claro, deixava o texto branco
+   em 3,3:1. Dourado sólido com tinta escura: 7,6:1 (escuro) e 5,9:1 (claro). */
 .landing-btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #dfbe6a 0%, #c0a261 100%);
-  color: #111315;
-  border: 1px solid rgba(223, 190, 106, 0.6);
-  padding: 9px 20px;
-  border-radius: var(--v2-radius-round);
-  font-size: 13.5px;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: none;
-  box-shadow: 0 2px 10px rgba(192, 162, 97, 0.28);
-  transition: all var(--v2-duration-fast) var(--v2-ease-standard);
-  white-space: nowrap;
-  touch-manipulation: manipulation;
-  min-height: 40px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+gap: 8px;
+background: #c0a261;
+color: #111315;
+border: 1px solid #c0a261;
+padding: 9px 20px;
+border-radius: var(--v2-radius-round);
+font-size: 13px;
+font-weight: 700;
+cursor: pointer;
+text-decoration: none;
+box-shadow: 0 2px 10px rgba(192, 162, 97, 0.28);
+transition: all var(--v2-duration-fast) var(--v2-ease-standard);
+white-space: nowrap;
+touch-manipulation: manipulation;
+min-height: 40px;
 }
 
 html[data-theme="light"] .landing-btn-primary {
-  background: linear-gradient(135deg, #c5a046 0%, #a7894d 100%);
-  color: #ffffff;
-  border-color: #a7894d;
-  box-shadow: 0 4px 14px rgba(167, 137, 77, 0.26);
+background: #a7894d;
+color: #111315;
+border-color: #a7894d;
+box-shadow: 0 4px 14px rgba(167, 137, 77, 0.26);
 }
 
 .landing-btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(192, 162, 97, 0.38);
-  filter: brightness(1.04);
+box-shadow: 0 6px 18px rgba(192, 162, 97, 0.38);
+filter: brightness(1.04);
 }
 
 .landing-btn-primary:active {
-  transform: translateY(0);
   box-shadow: 0 2px 6px rgba(192, 162, 97, 0.24);
 }
 
@@ -269,9 +267,34 @@ html[data-theme="light"] .landing-btn-primary {
   .landing-nav-bar {
     padding: 6px 12px;
   }
-  .landing-nav-actions {
-    gap: 6px;
-  }
+.landing-nav-actions {
+display: flex;
+align-items: center;
+gap: 8px;
+position: relative;
+}
+
+/* Tooltip padrão de controle sem rótulo visível (a11y: texto vinculado). */
+.landing-nav-actions .ui-tooltip {
+position: absolute;
+top: calc(100% + 6px);
+right: 0;
+z-index: var(--v2-z-popover, 60);
+padding: 6px 9px;
+color: var(--v2-color-foreground);
+background: var(--v2-color-surface);
+border: 1px solid var(--v2-color-border);
+border-radius: var(--v2-radius-sm, 6px);
+font-size: 12px;
+font-weight: 500;
+line-height: 1.4;
+white-space: nowrap;
+opacity: 0;
+visibility: hidden;
+pointer-events: none;
+transition: opacity var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease), visibility var(--v2-duration-fast, 150ms);
+}
+.landing-nav-actions .ui-tooltip[data-open='true'] { opacity: 1; visibility: visible; }
   .landing-brand-logo {
     height: 22px;
   }
@@ -322,20 +345,23 @@ html[data-theme="light"] .landing-btn-primary {
 }
 
 .landing-pill-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: var(--v2-radius-round);
-  background: rgba(192, 162, 97, 0.12);
-  border: 1px solid rgba(192, 162, 97, 0.28);
-  color: var(--v2-color-gold-strong);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 24px;
+display: inline-flex;
+align-items: center;
+gap: 8px;
+padding: 6px 14px;
+border-radius: var(--v2-radius-round);
+background: rgba(192, 162, 97, 0.12);
+border: 1px solid rgba(192, 162, 97, 0.28);
+color: var(--v2-color-gold-strong);
+font-size: 12px;
+font-weight: 700;
+letter-spacing: 0.06em;
+text-transform: uppercase;
+margin-bottom: 24px;
 }
+
+/* Texto pequeno exige 4,5:1; o dourado do tema claro fica em ~3,6:1. */
+[data-theme="light"] .landing-pill-badge { color: #7A5C24; }
 
 .landing-pulsing-dot {
   width: 7px;
@@ -354,7 +380,7 @@ html[data-theme="light"] .landing-btn-primary {
 
 .landing-hero-title {
   font-family: var(--v2-font-editorial);
-  font-size: clamp(34px, 5.2vw, 64px);
+  font-size: clamp(32px, 5.2vw, 64px);
   font-weight: 700;
   line-height: 1.12;
   letter-spacing: -0.02em;
@@ -378,7 +404,7 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-hero-desc {
-  font-size: clamp(16px, 1.8vw, 19px);
+  font-size: clamp(16px, 1.8vw, 20px);
   color: var(--v2-color-muted-foreground);
   line-height: 1.6;
   max-width: 780px;
@@ -396,7 +422,7 @@ html[data-theme="light"] .landing-hero-title em {
 
 .landing-hero-cta-large {
   padding: 14px 32px;
-  font-size: 15px;
+  font-size: 14px;
   border-radius: var(--v2-radius-round);
   min-height: 48px;
 }
@@ -411,7 +437,7 @@ html[data-theme="light"] .landing-hero-title em {
   border: 1px solid var(--v2-color-border);
   padding: 13px 26px;
   border-radius: var(--v2-radius-round);
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
@@ -433,7 +459,7 @@ html[data-theme="light"] .landing-hero-title em {
   gap: 20px;
   flex-wrap: wrap;
   color: var(--v2-color-muted-foreground);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   margin-top: 6px;
 }
@@ -445,9 +471,11 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-check-icon {
-  color: var(--v2-color-gold);
-  font-weight: 800;
+color: var(--v2-color-gold-strong);
+font-weight: 800;
 }
+
+[data-theme="light"] .landing-check-icon { color: #7A5C24; }
 
 /* ==========================================================================
    3. HERO SHOWCASE MOCKUP (INTERACTIVE PRODUCT PREVIEW)
@@ -488,16 +516,16 @@ html[data-theme="light"] .landing-hero-title em {
   border-radius: 50%;
   display: inline-block;
 }
-.landing-mockup-dot.red { background: #e06c75; }
-.landing-mockup-dot.yellow { background: #e5c07b; }
-.landing-mockup-dot.green { background: #98c379; }
+.landing-mockup-dot.red { background: #C77971; }
+.landing-mockup-dot.yellow { background: #C39A58; }
+.landing-mockup-dot.green { background: #8AA08E; }
 
 .landing-mockup-tabs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
+display: flex;
+align-items: center;
+gap: 8px;
+overflow-x: auto;
+scrollbar-width: none;
 }
 .landing-mockup-tabs::-webkit-scrollbar { display: none; }
 
@@ -511,7 +539,7 @@ html[data-theme="light"] .landing-hero-title em {
   align-items: center;
   justify-content: center;
   border-radius: var(--v2-radius-sm);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--v2-duration-fast) ease;
@@ -525,14 +553,16 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-mockup-tab.active {
-  background: var(--v2-color-surface);
-  border-color: var(--v2-color-border-subtle);
-  color: var(--v2-color-gold);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+background: var(--v2-color-surface);
+border-color: var(--v2-color-border-subtle);
+color: var(--v2-color-gold-strong);
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
+[data-theme="light"] .landing-mockup-tab.active { color: #7A5C24; }
+
 .landing-mockup-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--v2-color-primary);
   display: inline-flex;
@@ -606,7 +636,7 @@ html[data-theme="light"] .landing-hero-title em {
 
 .landing-metric-number {
   font-family: var(--v2-font-editorial);
-  font-size: clamp(34px, 3.8vw, 46px);
+  font-size: clamp(32px, 3.8vw, 48px);
   font-weight: 700;
   line-height: 1;
   color: var(--v2-color-gold);
@@ -614,7 +644,7 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-metric-title {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--v2-color-foreground);
   margin-bottom: 4px;
@@ -641,18 +671,21 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-section-eyebrow {
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--v2-color-gold);
-  margin-bottom: 12px;
-  display: block;
+font-size: 12px;
+font-weight: 700;
+letter-spacing: 0.12em;
+text-transform: uppercase;
+color: var(--v2-color-gold-strong);
+margin-bottom: 12px;
+display: block;
 }
+
+/* Texto pequeno exige 4,5:1; o dourado claro fica em ~2,8–3,2:1. */
+[data-theme="light"] .landing-section-eyebrow { color: #7A5C24; }
 
 .landing-section-title {
   font-family: var(--v2-font-editorial);
-  font-size: clamp(28px, 3.6vw, 42px);
+  font-size: clamp(32px, 3.6vw, 40px);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.015em;
@@ -661,7 +694,7 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-section-subtitle {
-  font-size: 15.5px;
+  font-size: 16px;
   color: var(--v2-color-muted-foreground);
   line-height: 1.6;
   margin: 0;
@@ -710,7 +743,6 @@ html[data-theme="light"] .landing-hero-title em {
 
 .landing-module-card:hover {
   border-color: var(--v2-color-border);
-  transform: translateY(-2px);
   box-shadow: var(--v2-shadow-card);
 }
 
@@ -748,7 +780,7 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-module-desc {
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--v2-color-muted-foreground);
   line-height: 1.55;
   margin: 0 0 16px;
@@ -762,7 +794,7 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-module-tag {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   padding: 3px 8px;
   border-radius: var(--v2-radius-sm);
@@ -775,78 +807,91 @@ html[data-theme="light"] .landing-hero-title em {
    6. RUTHLESS COMPARISON MATRIX
    ========================================================================== */
 
-.landing-comparison-wrapper {
-  background: var(--v2-color-surface);
-  border: 1px solid var(--v2-color-border-subtle);
-  border-radius: var(--v2-radius-lg);
-  overflow-x: auto;
-  box-shadow: var(--v2-shadow-card);
+/* O markup usa .landing-table-wrapper; o alias .landing-comparison-wrapper
+   permanece por compatibilidade. Sem overflow declarado a tabela (min-width
+   620px) estourava o cartão e cortava o texto em ~200px. */
+.landing-comparison-wrapper,
+.landing-table-wrapper {
+background: var(--v2-color-surface);
+border: 1px solid var(--v2-color-border-subtle);
+border-radius: var(--v2-radius-lg);
+overflow-x: auto;
+overscroll-behavior-x: contain;
+box-shadow: var(--v2-shadow-card);
 }
 
 .landing-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  min-width: 620px;
+width: 100%;
+border-collapse: collapse;
+text-align: left;
+min-width: 620px;
 }
 
 .landing-table th,
 .landing-table td {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--v2-color-border-subtle);
-  font-size: 13.5px;
+padding: 16px 20px;
+border-bottom: 1px solid var(--v2-color-border-subtle);
+font-size: 13px;
 }
 
 .landing-table th {
-  background: var(--v2-color-surface-secondary);
-  font-weight: 700;
-  color: var(--v2-color-foreground);
+background: var(--v2-color-surface-secondary);
+font-weight: 700;
+color: var(--v2-color-foreground);
 }
 
 .landing-table th.highlight-col,
 .landing-table td.highlight-col {
-  background: rgba(192, 162, 97, 0.05);
-  border-left: 1px solid rgba(192, 162, 97, 0.20);
-  border-right: 1px solid rgba(192, 162, 97, 0.20);
+background: rgba(192, 162, 97, 0.05);
+border-left: 1px solid rgba(192, 162, 97, 0.20);
+border-right: 1px solid rgba(192, 162, 97, 0.20);
 }
 
 .landing-table th.highlight-col {
-  color: var(--v2-color-gold);
+color: var(--v2-color-gold);
 }
+
+/* Cabeçalho destacado tem 13px/700: exige 4,5:1, e o dourado claro fica em 2,8:1. */
+[data-theme="light"] .landing-table th.highlight-col { color: #7A5C24; }
 
 .landing-table tr:last-child td {
   border-bottom: none;
 }
 
 .badge-winner {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #98c379;
-  font-weight: 700;
+display: inline-flex;
+align-items: center;
+gap: 5px;
+color: var(--v2-color-success, #8AA08E);
+font-weight: 700;
 }
 
 .badge-loser {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #e06c75;
+display: inline-flex;
+align-items: center;
+gap: 5px;
+color: var(--v2-color-danger, #C77971);
 }
+
+/* Tema claro: os tokens semânticos claros ficam marginais sobre as superfícies
+   da landing; valores conferidos em ≥4,5:1 nas cinco superfícies usadas. */
+[data-theme="light"] .badge-winner { color: #48604F; }
+[data-theme="light"] .badge-loser { color: #96443C; }
 
 /* ==========================================================================
    7. SECURITY & LOCAL-FIRST MANIFESTO
    ========================================================================== */
 
 .landing-manifesto-card {
-  background: linear-gradient(135deg, var(--v2-color-surface) 0%, var(--v2-color-surface-secondary) 100%);
-  border: 1px solid var(--v2-color-border);
-  border-radius: var(--v2-radius-xl);
-  padding: 44px 40px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  align-items: center;
-  box-shadow: var(--v2-shadow-card);
+background: var(--v2-color-surface);
+border: 1px solid var(--v2-color-border);
+border-radius: var(--v2-radius-xl);
+padding: 44px 40px;
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 40px;
+align-items: center;
+box-shadow: var(--v2-shadow-card);
 }
 
 @media (max-width: 840px) {
@@ -857,14 +902,32 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-manifesto-badge {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--v2-color-gold);
-  margin-bottom: 12px;
-  display: block;
+font-size: 12px;
+font-weight: 700;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+color: var(--v2-color-gold-strong);
+margin-bottom: 12px;
+display: block;
 }
+
+[data-theme="light"] .landing-manifesto-badge { color: #7A5C24; }
+
+/* Rótulos do diagrama do cofre: 11–12px exigem 4,5:1. */
+.landing-vault-node-label {
+text-align: center;
+font-size: 12px;
+font-weight: 700;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 6px;
+}
+.landing-vault-node-label.is-success { color: var(--v2-color-success, #8AA08E); }
+.landing-vault-node-label.is-gold { color: var(--v2-color-gold-strong); }
+
+[data-theme="light"] .landing-vault-node-label.is-success { color: #48604F; }
+[data-theme="light"] .landing-vault-node-label.is-gold { color: #7A5C24; }
 
 .landing-manifesto-title {
   font-family: var(--v2-font-editorial);
@@ -876,7 +939,7 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-manifesto-text {
-  font-size: 14.5px;
+  font-size: 14px;
   color: var(--v2-color-muted-foreground);
   line-height: 1.6;
   margin-bottom: 24px;
@@ -892,7 +955,7 @@ html[data-theme="light"] .landing-hero-title em {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--v2-color-foreground);
 }
 
@@ -920,7 +983,7 @@ html[data-theme="light"] .landing-hero-title em {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -964,7 +1027,7 @@ html[data-theme="light"] .landing-hero-title em {
   text-align: left;
   cursor: pointer;
   color: var(--v2-color-foreground);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   font-family: inherit;
   min-height: 52px;
@@ -1021,19 +1084,19 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-final-cta-box {
-  text-align: center;
-  background: linear-gradient(135deg, var(--v2-color-surface) 0%, rgba(192, 162, 97, 0.12) 100%);
-  border: 1px solid var(--v2-color-border);
-  border-radius: var(--v2-radius-xl);
-  padding: 60px 24px;
-  box-shadow: var(--v2-shadow-elevated);
-  position: relative;
-  overflow: hidden;
+text-align: center;
+background: var(--v2-color-surface);
+border: 1px solid var(--v2-color-border);
+border-radius: var(--v2-radius-xl);
+padding: 60px 24px;
+box-shadow: var(--v2-shadow-elevated);
+position: relative;
+overflow: hidden;
 }
 
 .landing-final-cta-title {
   font-family: var(--v2-font-editorial);
-  font-size: clamp(28px, 4vw, 48px);
+  font-size: clamp(32px, 4vw, 48px);
   font-weight: 700;
   color: var(--v2-color-foreground);
   margin: 0 0 16px;
@@ -1041,7 +1104,7 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-final-cta-desc {
-  font-size: clamp(15px, 1.8vw, 18px);
+  font-size: clamp(16px, 1.8vw, 18px);
   color: var(--v2-color-muted-foreground);
   max-width: 640px;
   margin: 0 auto 32px;
@@ -1084,12 +1147,12 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-footer-col-title {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--v2-color-foreground);
-  margin: 0 0 16px;
+font-size: 14px;
+font-weight: 700;
+letter-spacing: 0.08em;
+text-transform: uppercase;
+color: var(--v2-color-foreground);
+margin: 0 0 16px;
 }
 
 .landing-footer-links {
@@ -1101,14 +1164,28 @@ html[data-theme="light"] .landing-hero-title em {
   gap: 10px;
 }
 
-.landing-footer-links a {
+.landing-footer-links a,
+.landing-footer-links button {
   color: var(--v2-color-muted-foreground);
   text-decoration: none;
   font-size: 13px;
   transition: color var(--v2-duration-fast) ease;
 }
 
-.landing-footer-links a:hover {
+.landing-footer-links button,
+li .landing-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.landing-footer-links a:hover,
+.landing-footer-links button:hover {
   color: var(--v2-color-gold);
 }
 
@@ -1125,42 +1202,20 @@ html[data-theme="light"] .landing-hero-title em {
 }
 
 .landing-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  color: #98c379;
+display: inline-flex;
+align-items: center;
+gap: 6px;
+font-weight: 600;
+color: var(--v2-color-success, #8AA08E);
 }
 
 .landing-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #98c379;
+width: 6px;
+height: 6px;
+border-radius: 50%;
+background: #8AA08E;
 }
 
-/* Back-to-landing button in Auth Gate */
-.auth-back-to-landing {
-  position: absolute;
-  top: 16px;
-  left: 20px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--v2-color-muted-foreground);
-  text-decoration: none;
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  padding: 6px 12px;
-  border-radius: var(--v2-radius-round);
-  transition: all var(--v2-duration-fast) ease;
-  z-index: 20;
-}
+[data-theme="light"] .landing-status-badge { color: #48604F; }
+[data-theme="light"] .landing-status-dot { background: #48604F; }
 
-.auth-back-to-landing:hover {
-  color: var(--v2-color-gold);
-  background: var(--v2-color-surface-secondary);
-}

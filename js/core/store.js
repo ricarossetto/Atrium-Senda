@@ -1,4 +1,5 @@
-import { fetchState, importLegacyState, persistState } from './api.js';
+import { fetchState, importLegacyState, persistState } from './api.js?v=3.0.0';
+import { rebaseClientState } from './state-rebase.js?v=3.0.0';
 
 const STORAGE_KEY = 'jurisflow_storage_v1';
 
@@ -77,6 +78,7 @@ export const sampleState = {
   documents: [],
   customPrompts: [],
   customLinks: [],
+  calculations: [],
   configuration: {
     users: [], monitoredTerms: [], taskDefinitions: [], actionGroups: [], actionTypes: [], stages: [], goals: [], origins: [], partners: [], inboxSections: [], notificationAssignments: [], integrations: [], sourceProducts: []
   },
@@ -178,24 +180,35 @@ export const Store = {
   serverMeta: null,
   saveTimer: null,
   flushPromise: Promise.resolve(),
-  async load() {
+  lastFlush: null,
+  canonicalRefreshPending: false,
+  canonicalRefreshSourceRevision: null,
+  async load({ expectedFingerprint, expectedRevision, canApply = () => true } = {}) {
+    const guarded = expectedFingerprint !== undefined;
     let persisted = null;
     let serverPayload = null;
     try {
       const response = await fetchState();
       if (response.ok) {
         serverPayload = await response.json();
+        if (guarded && (!canApply() || this.persistenceFingerprint() !== expectedFingerprint || this.revision !== expectedRevision)) return false;
+        if (guarded && (!serverPayload.state || typeof serverPayload.state !== 'object' || Array.isArray(serverPayload.state) || serverPayload.stateStatus !== 'READY' || typeof serverPayload.revision !== 'string' || !serverPayload.revision)) return false;
+        if (guarded) this.ensureShape.call({ state: serverPayload.state });
         persisted = serverPayload.state;
         this.revision = serverPayload.revision || null;
         this.stateStatus = serverPayload.stateStatus || 'READY';
         this.serverMeta = {
           appVersion: serverPayload.appVersion,
+          gitSha: serverPayload.gitSha || serverPayload.commitSha || null,
           buildId: serverPayload.buildId,
+          builtAt: serverPayload.builtAt || null,
           schemaVersion: serverPayload.schemaVersion,
           dataVersion: serverPayload.dataVersion
         };
       }
     } catch { /* servidor indisponível — modo offline seguro */ }
+
+    if (guarded && !persisted) return false;
 
     if (this.stateStatus === 'RECOVERY_REQUIRED' || this.stateStatus === 'FUTURE_SCHEMA_ERROR') {
       this.recoveryDetails = serverPayload?.recoveryDetails || null;
@@ -257,11 +270,15 @@ export const Store = {
     } else {
       this.state = persisted;
     }
-    this.ensureShape({ seedConfigurationDefaults });
-    this.save();
+    if (!guarded) this.ensureShape({ seedConfigurationDefaults });
+    this.persistedFingerprint = persisted ? this.persistenceFingerprint() : null;
+    this.canonicalRefreshPending = false;
+    this.canonicalRefreshSourceRevision = null;
+    if (!guarded) this.save();
+    return true;
   },
   ensureShape({ seedConfigurationDefaults = false } = {}) {
-    ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'documents', 'leads', 'customPrompts', 'customLinks'].forEach(key => {
+    ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'documents', 'leads', 'customPrompts', 'customLinks', 'calculations'].forEach(key => {
       if (!Array.isArray(this.state[key])) this.state[key] = [];
     });
     this.state.configuration = { ...(this.state.configuration || {}) };
@@ -375,29 +392,132 @@ export const Store = {
     this.flushPromise = this.flushPromise.then(() => this.flushRequest(), () => this.flushRequest());
     return this.flushPromise;
   },
+  /**
+   * Adota a revisão que o servidor devolveu numa mutação feita por rota própria (fusão de
+   * duplicatas, providência de publicação, tratamento). Sem isso o próximo flush mandava a
+   * revisão antiga, o servidor respondia 409 e a interface recarregava a página no meio do
+   * trabalho — exatamente o que o operador apontou na fusão de duplicatas.
+   */
+  adoptServerRevision(revision) {
+    if (revision === undefined || revision === null || revision === '') return this.revision;
+    this.revision = revision;
+    this.state && (this.state.revision = revision);
+    this.persistedFingerprint = this.persistenceFingerprint();
+    return this.revision;
+  },
   flush() {
     clearTimeout(this.saveTimer);
     this.saveTimer = null;
     return this.enqueueFlush();
   },
+  persistenceFingerprint() {
+    if (!this.state || typeof this.state !== 'object') return null;
+    const { documents, communications, ...clientState } = this.state;
+    return JSON.stringify(clientState);
+  },
+  async canonicalMutation(operation, { canApply = () => true } = {}) {
+    if (this.canonicalRefreshPending || await this.flush() !== true) return { ok: false, reason: 'flush' };
+    const execute = async () => {
+      if (this.canonicalRefreshPending || this.persistenceFingerprint() !== this.persistedFingerprint) return { ok: false, reason: 'pending' };
+      const expectedFingerprint = this.persistenceFingerprint();
+      const expectedRevision = this.revision;
+      try {
+        const result = await operation(expectedRevision);
+        this.canonicalRefreshPending = true;
+        this.canonicalRefreshSourceRevision = result?.sourceRevision || expectedRevision;
+        const refreshed = await this.load({ expectedFingerprint, expectedRevision, canApply });
+        return { ok: refreshed === true, reason: refreshed === true ? null : 'refresh', result };
+      } catch (error) {
+        this.canonicalRefreshPending = true;
+        this.canonicalRefreshSourceRevision ||= expectedRevision;
+        throw error;
+      }
+    };
+    const operationPromise = this.flushPromise.then(execute, execute);
+    this.flushPromise = operationPromise.then(() => true, () => false);
+    return operationPromise;
+  },
+  async refreshCanonicalState({ discardConfirmed = false, expectedFingerprint, expectedRevision, canApply = () => true } = {}) {
+    const execute = async () => {
+      const fingerprint = this.persistenceFingerprint();
+      if (!canApply()) return false;
+      if (discardConfirmed) {
+        if (!this.canonicalRefreshPending || expectedFingerprint !== fingerprint || expectedRevision !== this.revision) return false;
+      } else if (fingerprint !== this.persistedFingerprint) return false;
+      const snapshot = { state: deepClone(this.state), revision: this.revision, stateStatus: this.stateStatus, serverMeta: this.serverMeta, persistedFingerprint: this.persistedFingerprint, canonicalRefreshPending: this.canonicalRefreshPending, canonicalRefreshSourceRevision: this.canonicalRefreshSourceRevision };
+      try {
+        return await this.load({ expectedFingerprint: fingerprint, expectedRevision: this.revision, canApply });
+      } catch {
+        Object.assign(this, snapshot);
+        return false;
+      }
+    };
+    const refreshPromise = this.flushPromise.then(execute, execute);
+    this.flushPromise = refreshPromise.then(() => true, () => false);
+    return refreshPromise;
+  },
   async flushRequest() {
+    const result = await this.performFlush();
+    this.lastFlush = result;
+    return result.ok;
+  },
+  /**
+   * Flush que também devolve o que o servidor descartou. O `flush()` continua booleano
+   * porque dezenas de fluxos comparam `=== true`; quem precisa saber se o financeiro foi
+   * revertido usa este caminho e não finge sucesso.
+   */
+  async flushWithResult() {
+    // Descarta o resultado de um flush anterior: sem isso, um `flush` interceptado (teste
+    // ou wrapper) devolveria o anúncio antigo como se fosse deste pedido.
+    this.lastFlush = null;
+    const ok = await this.flush();
+    if (!ok) return { ok: false, discardedCollections: [] };
+    const last = this.lastFlush;
+    return {
+      ok: true,
+      discardedCollections: Array.isArray(last?.discardedCollections) ? [...last.discardedCollections] : []
+    };
+  },
+  async performFlush() {
+    if (this.canonicalRefreshPending) {
+      globalThis.dispatchEvent(new CustomEvent(STORE_PERSISTENCE_CONFLICT_EVENT, {
+        detail: Object.freeze({ message: 'Atualização oficial pendente: alterações locais preservadas. Resolva o conflito antes de salvar.' })
+      }));
+      return { ok: false, discardedCollections: [], reason: 'conflict' };
+    }
+    let sent = this.persistenceFingerprint();
+    if (this.persistedFingerprint != null && sent != null && sent === this.persistedFingerprint) {
+      return { ok: true, discardedCollections: [], revision: this.revision };
+    }
     try {
-      const response = await persistState(this.state, this.revision);
+      let response = await persistState(this.state, this.revision);
+      for (let attempt = 0; response.status === 409 && attempt < 3; attempt += 1) {
+        if (!(await this.rebaseOnServerState())) break;
+        sent = this.persistenceFingerprint();
+        response = await persistState(this.state, this.revision);
+      }
       if (response.status === 409) {
         globalThis.dispatchEvent(new CustomEvent(STORE_PERSISTENCE_CONFLICT_EVENT, {
-          detail: Object.freeze({ message: 'Os dados foram atualizados em outra aba. Recarregando a versão mais recente…' })
+          detail: Object.freeze({ message: 'Não foi possível salvar: o mesmo dado mudou em outro lugar. Suas alterações continuam nesta tela. Copie o que precisar e recarregue a página.' })
         }));
-        setTimeout(() => globalThis.location.reload(), 700);
-        return false;
+        return { ok: false, discardedCollections: [], reason: 'conflict' };
       }
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
         const detail = persistenceFailureDetail(response.status, payload?.message);
         throw Object.assign(new Error(detail.message), { persistenceDetail: detail });
       }
-      this.revision = (await response.json()).revision || this.revision;
+      const payload = await response.json().catch(() => ({}));
+      this.revision = payload.revision || this.revision;
       localStorage.removeItem(STORAGE_KEY);
-      return true;
+      this.persistedFingerprint = sent;
+      // O servidor grava o flush inteiro, mas pode devolver coleções à versão oficial
+      // (ex.: financeiro sem `finance.write`). Repassar isso é o que impede a tela de
+      // anunciar sucesso de uma gravação que não aconteceu.
+      const discardedCollections = Array.isArray(payload.discardedCollections)
+        ? payload.discardedCollections.filter(name => typeof name === 'string')
+        : [];
+      return { ok: true, discardedCollections, revision: this.revision };
     } catch (error) {
       const detail = error?.persistenceDetail || persistenceFailureDetail(null, '');
       if (typeof globalThis.dispatchEvent === 'function' && typeof globalThis.CustomEvent === 'function') {
@@ -405,6 +525,43 @@ export const Store = {
           detail: Object.freeze(detail)
         }));
       }
+      return { ok: false, discardedCollections: [], reason: 'error' };
+    }
+  },
+  /**
+   * Conflito de revisão: busca o estado novo e reaplica nele o que mudou nesta tela.
+   * Sem base conhecida ou sem resposta do servidor, nada é trocado e o conflito é informado.
+   */
+  async rebaseOnServerState() {
+    if (!this.persistedFingerprint) return false;
+    try {
+      const response = await fetchState();
+      if (!response.ok) return false;
+      const fresh = await response.json();
+      // Mesma revisão: não há nada novo para reaplicar, e repetir só daria a mesma recusa.
+      if (!fresh?.state || !fresh.revision || fresh.revision === this.revision) return false;
+      const localState = this.state;
+      const base = JSON.parse(this.persistedFingerprint);
+      try {
+        this.state = fresh.state;
+        this.ensureShape();
+        const { documents, communications, ...theirs } = this.state;
+        const nextFingerprint = this.persistenceFingerprint();
+        const { documents: localDocuments, communications: localCommunications, ...mine } = localState;
+        const { state: rebased, conflicts } = rebaseClientState({ base, mine, theirs });
+        if (conflicts.length) {
+          this.state = localState;
+          return false;
+        }
+        this.state = { ...rebased, documents: documents ?? localDocuments, communications: communications ?? localCommunications };
+        this.revision = fresh.revision;
+        this.persistedFingerprint = nextFingerprint;
+        return true;
+      } catch {
+        this.state = localState;
+        return false;
+      }
+    } catch {
       return false;
     }
   },

@@ -6,6 +6,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// No Windows o SQLite pode segurar o arquivo por instantes: pasta temporária que sobra não reprova o teste.
+async function removeDataDirectory(directory, options) {
+  try {
+    await rm(directory, options);
+  } catch (error) {
+    if (process.platform !== 'win32' || error?.code !== 'EBUSY') throw error;
+  }
+}
+
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const STARTUP_TIMEOUT_MS = 45_000;
 
@@ -37,7 +46,7 @@ export async function startTestServer({ env = {}, dataDirectory: requestedDataDi
   let lastStartupError = '';
   while (Date.now() - started < STARTUP_TIMEOUT_MS) {
     if (child.exitCode !== null) {
-      if (ownsDataDirectory && !preserveDataDirectory) await rm(dataDirectory, { recursive: true, force: true });
+      if (ownsDataDirectory && !preserveDataDirectory) await removeDataDirectory(dataDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       throw new Error(`Servidor de teste encerrou cedo: ${output || `código ${child.exitCode}`}`);
     }
     try {
@@ -49,7 +58,7 @@ export async function startTestServer({ env = {}, dataDirectory: requestedDataDi
   }
   if (!ready) {
     await stopChild(child);
-    if (ownsDataDirectory && !preserveDataDirectory) await rm(dataDirectory, { recursive: true, force: true });
+    if (ownsDataDirectory && !preserveDataDirectory) await removeDataDirectory(dataDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     throw new Error(`Servidor de teste não iniciou em ${STARTUP_TIMEOUT_MS / 1_000}s: ${output || lastStartupError || 'sem saída do processo'}`);
   }
   return {
@@ -61,7 +70,7 @@ export async function startTestServer({ env = {}, dataDirectory: requestedDataDi
     output: () => output,
     async stop() {
       try { await stopChild(child); } finally {
-        if (ownsDataDirectory && !preserveDataDirectory) await rm(dataDirectory, { recursive: true, force: true });
+        if (ownsDataDirectory && !preserveDataDirectory) await removeDataDirectory(dataDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       }
     }
   };

@@ -1,3 +1,31 @@
+// Prompt guardado em JSON aparece como texto: a pessoa lê o pedido, não a estrutura.
+export function promptPreviewText(value) {
+  const text = String(value ?? '').trim();
+  if (!text.startsWith('{')) return text;
+  try {
+    const values = [];
+    const walk = entry => {
+      if (typeof entry === 'string') values.push(entry);
+      else if (Array.isArray(entry)) entry.forEach(walk);
+      else if (entry && typeof entry === 'object') Object.values(entry).forEach(walk);
+    };
+    walk(JSON.parse(text));
+    return values.join(' · ') || text;
+  } catch {
+    return text;
+  }
+}
+
+const promptTypeClass = value => {
+  const suffix = String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return suffix ? `type-${suffix}` : 'type-geral';
+};
+
 export function renderPromptsV2Presentation({
   prompts = [],
   topCategories = [],
@@ -13,7 +41,7 @@ export function renderPromptsV2Presentation({
 
   const libraryHtml = prompts.length
     ? prompts.map(prompt => {
-        const typeClass = prompt.type ? `type-${normalizeText(prompt.type).replace(/\s+/g, '-')}` : 'type-geral';
+        const typeClass = promptTypeClass(prompt.type);
         const tagsHtml = (prompt.tags || []).slice(0, 5).map(tag => `<span class="prompt-tag">${escapeHtml(tag)}</span>`).join('');
         const origin = prompt.isCustom ? 'Personalizado' : 'Biblioteca Atrium';
         const customActions = prompt.isCustom ? `
@@ -34,14 +62,14 @@ export function renderPromptsV2Presentation({
               <p class="prompt-desc">${escapeHtml(prompt.description || 'Modelo especializado para aplicação prática jurídica.')}</p>
             </div>
             ${tagsHtml ? `<div class="prompt-tags-list" aria-label="Palavras-chave">${tagsHtml}</div>` : ''}
-            <button type="button" class="prompt-box" data-view-prompt="${escapeHtml(prompt.id)}" aria-label="Abrir texto completo do prompt ${escapeHtml(prompt.title)}">
-              <span class="prompt-text">${escapeHtml(prompt.prompt)}</span>
+            <button type="button" class="prompt-box" data-view-prompt="${escapeHtml(prompt.id)}">
+              <span class="prompt-text">${escapeHtml(promptPreviewText(prompt.prompt))}</span>
             </button>
             <footer class="prompt-card-actions">
-              <button type="button" class="button ghost btn-use-prompt" data-use-prompt="${escapeHtml(prompt.id)}" aria-label="Usar prompt ${escapeHtml(prompt.title)} no Assistente">
+              <button type="button" class="button ghost btn-use-prompt" data-use-prompt="${escapeHtml(prompt.id)}">
                 ${iconSvg('assistant')}<span>Usar no Assistente</span>
               </button>
-              <button type="button" class="button ghost btn-copy-prompt" data-copy-prompt="${escapeHtml(prompt.id)}" aria-label="Copiar texto integral do prompt ${escapeHtml(prompt.title)}">
+              <button type="button" class="button ghost btn-copy-prompt" data-copy-prompt="${escapeHtml(prompt.id)}">
                 ${iconSvg('copy')}<span>Copiar</span>
               </button>
               ${customActions}
@@ -57,4 +85,4 @@ export function renderPromptsV2Presentation({
 
   return Object.freeze({ chipsHtml, libraryHtml });
 }
-import { iconSvg } from './icons.js';
+import { iconSvg } from './icons.js?v=3.0.0';

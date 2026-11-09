@@ -15,7 +15,12 @@ const SPECS = [
   'email-policy',
   'security-boundaries',
   'audit-policy',
-  'import-policy'
+  'import-policy',
+  'legal-intelligence',
+  'judicial-intelligence',
+  'ai-assistant',
+  'productivity-reports',
+  'operational-analysis'
 ];
 
 const REQUIRED_SECTIONS = [
@@ -51,7 +56,7 @@ assert.match(specs['human-deadline-policy'], /n[aã]o (?:s[aã]o |é )?inferid/i
 assert.match(specs['publication-treatment'], /n[aã]o significa ci[eê]ncia/i);
 assert.match(specs['judicial-readonly-policy'], /Ci[eê]ncia, acknowledgment, assinatura, peti[cç][aã]o, protocolo/i);
 assert.match(specs['managed-judicial-connectivity'], /backoff exponencial/i);
-assert.match(specs['document-management'], /metadata can[oô]nica vive em `state\.documents`/i);
+assert.match(specs['document-management'], /metadata oficial vive em `state\.documents`/i);
 assert.match(specs['document-management'], /Soft delete precede a exclus[aã]o permanente/i);
 assert.match(specs['document-management'], /OCR nunca substitui o original/i);
 assert.match(specs['document-management'], /FUTURE[^\n]*classifica[cç][aã]o, versionamento/i);
@@ -67,9 +72,35 @@ assert.match(specs['email-policy'], /envio exclusivamente manual/i);
 assert.match(specs['security-boundaries'], /deny-by-default/i);
 assert.match(specs['audit-policy'], /n[aã]o inclui CPF\/RG\/telefone\/e-mail\/endere[cç]o\/notas/i);
 assert.match(specs['import-policy'], /Preview\/staging [eé] transit[oó]rio/i);
+assert.match(specs['legal-intelligence'], /LICENSE_REVIEW_REQUIRED/);
+assert.match(specs['legal-intelligence'], /dado n[ãa]o confi[áa]vel/i);
+assert.match(specs['legal-intelligence'], /desabilitado por padr[ãa]o/i);
+assert.match(specs['legal-intelligence'], /nunca aparece em HTML, JS p[uú]blico, resposta de API, prompt ou log/i);
+assert.match(specs['judicial-intelligence'], /EXPERIMENTAL \/ UNVERIFIED/i);
+assert.match(specs['judicial-intelligence'], /n[aã]o autoritativo/i);
+assert.match(specs['judicial-intelligence'], /desativada por padrão/i);
+assert.match(specs['judicial-intelligence'], /clean-room/i);
+assert.match(specs['ai-assistant'], /nunca [eé] devolvida ao navegador/i);
+assert.match(specs['ai-assistant'], /master_admin/);
+assert.match(specs['ai-assistant'], /CSRF/);
+assert.match(specs['ai-assistant'], /19 skills/);
+assert.match(specs['operational-analysis'], /Atrium IA/);
+assert.match(specs['operational-analysis'], /`expectedRevision` obrigatório/);
+assert.match(specs['operational-analysis'], /`admin` ou `master_admin`/);
+assert.match(specs['operational-analysis'], /POST também exige CSRF/);
+assert.match(specs['operational-analysis'], /menor que 5, inclusive zero, vira `null`/);
+assert.match(specs['operational-analysis'], /Prescrição é sempre `not_evaluable`/);
+assert.match(specs['operational-analysis'], /`automaticActions: \[\]`/);
+assert.match(specs['operational-analysis'], /`training: false`/);
+assert.match(specs['operational-analysis'], /Não há diagnóstico causal/);
+assert.match(specs['operational-analysis'], /primeiro confirma a auditoria da solicitação/);
+assert.match(specs['productivity-reports'], /Essa exceção se restringe ao analisador/);
+assert.match(specs['productivity-reports'], /Enviar dados dos relatórios a qualquer provedor externo/);
+const specIndex = await readFile(new URL('../specs/README.md', import.meta.url), 'utf8');
+assert.match(specIndex, /\(operational-analysis\.md\)/);
 
 const agentGuidance = await readFile(new URL('../AGENTS.md', import.meta.url), 'utf8');
 assert.match(agentGuidance, /leia o [ií]ndice `specs\/README\.md`/i);
 assert.match(agentGuidance, /n[aã]o implemente comportamento marcado como `FUTURE`/i);
 
-console.log(`✓ Especificações canônicas: ${SPECS.length}/${SPECS.length}, seções obrigatórias, políticas fundacionais e guidance agentivo PASS.`);
+console.log(`✓ Especificações oficiais: ${SPECS.length}/${SPECS.length}, seções obrigatórias, políticas fundacionais e guidance agentivo PASS.`);

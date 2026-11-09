@@ -1,5 +1,24 @@
-import { Store } from '../core/store.js';
-import { installModalComboboxes } from '../components/modal.js';
+import { Store } from '../core/store.js?v=3.0.0';
+import { installModalComboboxes } from '../components/modal.js?v=3.0.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.0';
+import { renderFinancialChart } from '../views/ui-v2/financial-chart.js?v=3.0.0';
+const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
+
+export const FINANCIAL_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
+export const FINANCIAL_DEFAULT_PAGE_SIZE = 25;
+
+function financialTotalPages(total, size) {
+  const safeSize = FINANCIAL_PAGE_SIZES.includes(size) ? size : FINANCIAL_DEFAULT_PAGE_SIZE;
+  return Math.max(1, Math.ceil((Number(total) || 0) / safeSize));
+}
+
+// Coleções financeiras que o servidor devolveu à versão oficial no último flush.
+const FINANCE_WRITE_COLLECTIONS = ['officeExpenses', 'financialEntries'];
+
+function financeWriteDiscarded(flushed) {
+  return Array.isArray(flushed?.discardedCollections)
+    && flushed.discardedCollections.some(name => FINANCE_WRITE_COLLECTIONS.includes(name));
+}
 
 export function createFinancialFeature({
   store = Store,
@@ -10,13 +29,20 @@ export function createFinancialFeature({
   showToast,
   renderDashboardFinancialWidgets,
   renderV2Workspace,
-  onOpenProcess
+  onOpenProcess,
+  installPanelSizeToggle = () => {},
+  resetPanelSize = () => {}
 } = {}) {
   let editingEntry = null;
   let visibleRecords = [];
   let initialized = false;
   let financialFilter = 'all';
+  let financialPage = 1;
+  let financialPageSize = FINANCIAL_DEFAULT_PAGE_SIZE;
+  let lastFinancialTotal = 0;
   let submittingEntry = false;
+  let financialSuggestions = new Map();
+  let financialTriageRunning = false;
   let lastFocusedElement = null;
   let previousBodyOverflow = '';
   const byId = id => documentRef?.getElementById(id);
@@ -24,18 +50,53 @@ export function createFinancialFeature({
 
   const feature = {
     get filter() { return financialFilter; },
+    get page() { return financialPage; },
+    get pageSize() { return financialPageSize; },
+    get pagination() {
+      return {
+        page: financialPage,
+        pageSize: financialPageSize,
+        total: lastFinancialTotal,
+        totalPages: financialTotalPages(lastFinancialTotal, financialPageSize)
+      };
+    },
+
+    setPageSize(value) {
+      const size = Number(value);
+      if (!FINANCIAL_PAGE_SIZES.includes(size) || size === financialPageSize) return financialPageSize;
+      financialPageSize = size;
+      financialPage = 1;
+      this.render(byId('financialSearch')?.value || '');
+      return financialPageSize;
+    },
+
+    setPage(value) {
+      const pages = financialTotalPages(lastFinancialTotal, financialPageSize);
+      let next = financialPage;
+      if (value === 'first') next = 1;
+      else if (value === 'prev') next = financialPage - 1;
+      else if (value === 'next') next = financialPage + 1;
+      else if (value === 'last') next = pages;
+      else if (Number.isFinite(Number(value))) next = Math.trunc(Number(value));
+      financialPage = Math.max(1, Math.min(pages, next || 1));
+      this.render(byId('financialSearch')?.value || '');
+      return financialPage;
+    },
 
     init() {
       if (initialized) return false;
       initialized = true;
+      void this.loadFinancialSuggestions();
+      byId('financialSuggestButton')?.addEventListener('click', () => this.runFinancialTriage());
       byId('financialFilters')?.addEventListener('click', event => {
         const button = event.target.closest('button[data-fin-filter]');
         if (!button) return;
         financialFilter = button.dataset.finFilter;
         byId('financialFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
-        this.render();
+        this.render(byId('financialSearch')?.value || '', { resetPage: true });
       });
-      byId('financialSearch')?.addEventListener('input', event => this.render(event.target.value));
+      byId('financialSearch')?.addEventListener('input', event => this.render(event.target.value, { resetPage: true }));
+      byId('view-financial')?.addEventListener('click', event => this.handlePaginationClick(event));
       byId('financialV2Workspace')?.addEventListener('click', event => {
         const button = event.target.closest('[data-financial-process-id]');
         if (!button) {
@@ -61,13 +122,80 @@ export function createFinancialFeature({
       byId('finGrossInput')?.addEventListener('input', () => this.updateModalSummary());
       byId('finFeePctInput')?.addEventListener('input', () => this.updateModalSummary());
       byId('finTypeSelect')?.addEventListener('change', () => this.updateModalSummary());
+      installPanelSizeToggle(byId('financialEntryBackdrop')?.querySelector?.('.financial-entry-modal'));
       return true;
     },
 
-    render(query = '') {
+    /**
+     * Sugestões de bucket do classificador (derivado `financial-triage.json`). Leitura pura:
+     * o selo é conferência e nunca grava no lançamento.
+     */
+    async loadFinancialSuggestions() {
+      const fetchImpl = documentRef?.defaultView?.fetch;
+      if (typeof fetchImpl !== 'function') return financialSuggestions;
+      try {
+        const response = await fetchImpl('/api/ai-classifier/financial-suggestions', { headers: { Accept: 'application/json' } });
+        if (!response.ok) return financialSuggestions;
+        const data = await response.json().catch(() => null);
+        const mapa = new Map();
+        for (const [id, entry] of Object.entries(data?.suggestions || {})) {
+          if (entry && entry.bucket) mapa.set(String(id), entry);
+        }
+        financialSuggestions = mapa;
+        this.render(byId('financialSearch')?.value || '');
+        return financialSuggestions;
+      } catch {
+        return financialSuggestions;
+      }
+    },
+
+    /** Dispara a triagem assistiva da carteira (até 50 por invocação) e recarrega os selos. */
+    async runFinancialTriage() {
+      if (financialTriageRunning) return null;
+      const fetchImpl = documentRef?.defaultView?.fetch;
+      if (typeof fetchImpl !== 'function') return null;
+      financialTriageRunning = true;
+      const botao = byId('financialSuggestButton');
+      if (botao) botao.disabled = true;
+      try {
+        const response = await fetchImpl('/api/ai-classifier/triage-financial', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-CSRF-Token': documentRef.defaultView?.KellerAuth?.csrfToken || ''
+          },
+          body: JSON.stringify({ limit: 50 })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          showToast?.(data.error || data.message || 'Não foi possível gerar as sugestões agora.', 'warning');
+          return null;
+        }
+        await this.loadFinancialSuggestions();
+        const classificados = Number(data.classified) || 0;
+        showToast?.(
+          classificados > 0
+            ? `${plural(classificados, 'lançamento', 'lançamentos')} com sugestão de categoria para conferência.`
+            : 'Nenhum lançamento novo para sugerir agora.',
+          'success'
+        );
+        return data;
+      } catch {
+        showToast?.('Não foi possível gerar as sugestões agora.', 'error');
+        return null;
+      } finally {
+        financialTriageRunning = false;
+        if (botao) botao.disabled = false;
+      }
+    },
+
+    render(query = '', { resetPage = false } = {}) {
       const listEl = byId('financialTableBody');
       if (!listEl) return;
-      const filter = financialFilter || 'all';
+      if (resetPage) financialPage = 1;
+      // "sugestao" é um recorte do selo de conferência: para a seleção por tipo vale como "all".
+      const filter = financialFilter === 'sugestao' ? 'all' : (financialFilter || 'all');
       const needle = normalizeText(query);
       const processes = store.state.processes || [];
 
@@ -75,9 +203,9 @@ export function createFinancialFeature({
         requisitado: { label: 'Requisitado / Expedido', chipClass: 'muted', isFinal: false },
         aguardando_deposito: { label: 'Aguardando Depósito', chipClass: 'warning', isFinal: false },
         disponivel_saque: { label: 'Disponível para Saque', chipClass: 'info', isFinal: false },
-        repassado: { label: 'Repassado & Quitado', chipClass: 'connected', isFinal: true },
-        pago: { label: 'Repassado & Quitado', chipClass: 'connected', isFinal: true },
-        quitado: { label: 'Repassado & Quitado', chipClass: 'connected', isFinal: true }
+        repassado: { label: 'Repassado e Quitado', chipClass: 'connected', isFinal: true },
+        pago: { label: 'Repassado e Quitado', chipClass: 'connected', isFinal: true },
+        quitado: { label: 'Repassado e Quitado', chipClass: 'connected', isFinal: true }
       };
 
       let totalHonorariosAFaturar = 0;
@@ -87,6 +215,12 @@ export function createFinancialFeature({
 
       const rows = [];
       const presentationRecords = [];
+      // Filtro "Com sugestão": o recorte é do selo de conferência do classificador. Métricas e
+      // demais filtros continuam coerentes porque a seleção acontece na própria montagem.
+      const pushRecord = record => {
+        if (financialFilter === 'sugestao' && !financialSuggestions.has(String(record?.id || ''))) return;
+        presentationRecords.push(record);
+      };
       processes.forEach(proc => {
         const isPaid = proc.feeStatus === 'pago' || proc.feeStatus === 'quitado' || proc.feeStatus === 'repassado' || proc.requisitionStatus === 'repassado' || proc.requisitionStatus === 'pago';
         const feeInstallments = Array.isArray(proc.feeInstallments) ? proc.feeInstallments : [];
@@ -111,7 +245,7 @@ export function createFinancialFeature({
             const amount = Number(expense.amount || 0);
             const status = expense.status || 'pendente';
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${expense.description} ${status}`).includes(needle)) {
-              presentationRecords.push({
+              pushRecord({
                 id: expense.id || `${proc.id}-expense`,
                 processId: proc.id,
                 kind: 'despesa',
@@ -121,6 +255,7 @@ export function createFinancialFeature({
                 gross: amount,
                 feeAmount: null,
                 netClient: null,
+                date: expense.date || expense.dueDate || expense.createdAt || '',
                 statusLabel: status === 'reembolsado' ? 'Reembolsada' : status === 'pago' ? 'Paga' : 'Pendente',
                 statusTone: status === 'pendente' ? 'warning' : 'connected'
               });
@@ -134,7 +269,7 @@ export function createFinancialFeature({
             const settled = isSettledFinancialStatus(installment.status);
             const overdue = !settled && isPastDate(installment.dueDate);
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${installment.description} ${installment.status} ${installment.dueDate}`).includes(needle)) {
-              presentationRecords.push({
+              pushRecord({
                 id: installment.id || `${proc.id}-installment-${index}`,
                 processId: proc.id,
                 kind: 'parcela',
@@ -156,7 +291,7 @@ export function createFinancialFeature({
           receipts.forEach((receipt, index) => {
             const amount = finiteAmount(receipt.amount);
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${receipt.description} ${receipt.status} ${receipt.date}`).includes(needle)) {
-              presentationRecords.push({
+              pushRecord({
                 id: receipt.id || `${proc.id}-receipt-${index}`,
                 processId: proc.id,
                 kind: 'recebimento',
@@ -174,7 +309,7 @@ export function createFinancialFeature({
           });
         }
 
-        // Cálculo canônico do RPV / Precatório (BUG-003)
+        // Cálculo oficial do RPV / Precatório (BUG-003)
         if (proc.requisitionStatus || hasRequisitionAmount || hasRpvAmount) {
           rpvCount++;
           const gross = Number(proc.requisitionAmount ?? proc.rpvAmount ?? proc.economicValue ?? 0);
@@ -182,7 +317,15 @@ export function createFinancialFeature({
           const hasFeeAmount = proc.feeAmount !== '' && proc.feeAmount !== null && proc.feeAmount !== undefined;
           const feeAmount = hasFeeAmount ? Number(proc.feeAmount) : (gross * feePct / 100);
           const netClient = Math.max(0, gross - feeAmount);
-          const statusInfo = FINANCIAL_STATUS_MAP[proc.requisitionStatus] || { label: proc.requisitionStatus || 'Requisitado', chipClass: 'warning', isFinal: false };
+          const rawRequisitionStatus = String(proc.requisitionStatus || '').trim();
+          const statusInfo = FINANCIAL_STATUS_MAP[rawRequisitionStatus] || {
+            // Estado não mapeado (legado ou digitado à mão): mostra em português legível, sem inventar etapa.
+            label: rawRequisitionStatus
+              ? rawRequisitionStatus.replace(/[_-]+/g, ' ').replace(/^\p{L}/u, caractere => caractere.toUpperCase())
+              : 'Requisitado',
+            chipClass: 'warning',
+            isFinal: false
+          };
 
           if (!hasInstallmentSchedule && !isPaid && !statusInfo.isFinal) {
             totalHonorariosAFaturar += feeAmount;
@@ -190,7 +333,7 @@ export function createFinancialFeature({
 
           if (filter === 'all' || filter === 'rpv') {
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${statusInfo.label}`).includes(needle)) {
-              presentationRecords.push({
+              pushRecord({
                 id: proc.id || proc.number,
                 processId: proc.id,
                 kind: 'rpv',
@@ -226,7 +369,7 @@ export function createFinancialFeature({
               : Number(hasFeeAmount ? proc.feeAmount : proc.feeMonthly);
             if (!hasInstallmentSchedule && !isPaid) totalHonorariosAFaturar += feeVal;
             if (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.feeType}`).includes(needle)) {
-              presentationRecords.push({
+              pushRecord({
                 id: proc.id || proc.number,
                 processId: proc.id,
                 kind: 'honorarios',
@@ -265,7 +408,7 @@ export function createFinancialFeature({
           const amount = finiteAmount(expense.amount);
           if ((expense.status || 'pendente') === 'pendente') pendingExpenses += amount;
           if ((filter === 'all' || filter === 'despesas') && (!needle || normalizeText(owner.name + ' ' + expense.description).includes(needle))) {
-            presentationRecords.push({ id: expense.id, processId: '', contactId: owner.office ? '' : owner.id,
+            pushRecord({ id: expense.id, processId: '', contactId: owner.office ? '' : owner.id,
               kind: 'despesa', processNumber: owner.office ? 'Escritório' : 'Contato', client: owner.office ? 'Despesa operacional — sem vínculo' : owner.name,
               typeLabel: expense.description, gross: amount, feeAmount: null, netClient: null, date: expense.date,
               statusLabel: expense.status === 'pago' ? 'Paga' : expense.status === 'reembolsado' ? 'Reembolsada' : 'Pendente',
@@ -278,7 +421,7 @@ export function createFinancialFeature({
             if (kind === 'recebimento' && entry.status !== 'estornado') totalReceipts += amount;
             if (kind === 'parcela' && !isSettledFinancialStatus(entry.status)) totalHonorariosAFaturar += amount;
             if ((filter === 'all' || filter === filterName) && (!needle || normalizeText(owner.name + ' ' + entry.description).includes(needle))) {
-              presentationRecords.push({ id: entry.id, processId: '', contactId: owner.id, kind,
+              pushRecord({ id: entry.id, processId: '', contactId: owner.id, kind,
                 processNumber: 'Contato', client: owner.name, typeLabel: entry.description,
                 gross: amount, feeAmount: amount, netClient: null, date: entry.date || entry.dueDate,
                 statusLabel: kind === 'recebimento' ? (entry.status === 'estornado' ? 'Estornado' : 'Recebido') : (isSettledFinancialStatus(entry.status) ? 'Paga' : 'Pendente'),
@@ -293,26 +436,107 @@ export function createFinancialFeature({
       const expenseEl = byId('finMetricExpenses');
       const receiptsEl = byId('finMetricReceipts');
       if (honEl) honEl.textContent = formatCurrency(totalHonorariosAFaturar);
-      if (rpvEl) rpvEl.textContent = `${rpvCount} requisições`;
+      if (rpvEl) rpvEl.textContent = `${rpvCount} ${rpvCount === 1 ? 'requisição' : 'requisições'}`;
       if (expenseEl) expenseEl.textContent = formatCurrency(pendingExpenses);
       if (receiptsEl) receiptsEl.textContent = formatCurrency(totalReceipts);
+      const chartEl = byId('financialChart');
+      if (chartEl) chartEl.innerHTML = isV2() ? renderFinancialChart({ records: presentationRecords, escapeHtml, formatCurrency }) : '';
       byId('financialFilters')?.querySelectorAll('button[data-fin-filter]').forEach(button => {
         button.setAttribute?.('aria-pressed', String(button.dataset.finFilter === filter));
       });
 
       if (isV2() && byId('financialV2Workspace') && renderV2Workspace) {
         listEl.innerHTML = '';
+        visibleRecords = presentationRecords;
+        lastFinancialTotal = presentationRecords.length;
+        const totalPages = financialTotalPages(presentationRecords.length, financialPageSize);
+        if (financialPage > totalPages) financialPage = totalPages;
+        if (financialPage < 1) financialPage = 1;
+        const start = (financialPage - 1) * financialPageSize;
+        const pagination = { page: financialPage, pageSize: financialPageSize, total: presentationRecords.length, totalPages };
         byId('financialV2Workspace').innerHTML = renderV2Workspace({
-          records: (visibleRecords = presentationRecords).map((record, editKey) => ({ ...record, editKey })),
+          records: presentationRecords.slice(start, start + financialPageSize).map((record, index) => ({ ...record, editKey: start + index })),
           query,
-          filter,
+          filter: financialFilter,
+          suggestions: financialSuggestions,
+          pagination,
           escapeHtml,
           formatCurrency
         });
       } else {
         if (byId('financialV2Workspace')) byId('financialV2Workspace').innerHTML = '';
-        listEl.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" class="empty-table" style="text-align:center;padding:24px;color:var(--muted);">Nenhum lançamento financeiro ou requisição RPV localizada.</td></tr>';
+        lastFinancialTotal = rows.length;
+        const totalPages = financialTotalPages(rows.length, financialPageSize);
+        if (financialPage > totalPages) financialPage = totalPages;
+        if (financialPage < 1) financialPage = 1;
+        const start = (financialPage - 1) * financialPageSize;
+        const pageRows = rows.slice(start, start + financialPageSize);
+        const pagination = { page: financialPage, pageSize: financialPageSize, total: rows.length, totalPages };
+        listEl.innerHTML = rows.length ? pageRows.join('') : '<tr><td colspan="7" class="empty-table" style="text-align:center;padding:24px;color:var(--muted);">Nenhum lançamento financeiro ou requisição RPV localizada.</td></tr>';
+        this.renderClassicPagination(pagination);
       }
+      return presentationRecords;
+    },
+
+    renderClassicPagination(pagination) {
+      const table = byId('financialTableBody')?.closest?.('table');
+      if (!table) return false;
+      let container = byId('financialClassicPagination');
+      if (!container) {
+        container = documentRef.createElement?.('div');
+        if (!container) return false;
+        container.id = 'financialClassicPagination';
+        container.className = 'financial-classic-pagination classic-only';
+        table.parentElement?.appendChild(container);
+      }
+      const totalLabel = Number(pagination.total).toLocaleString('pt-BR');
+      container.innerHTML = `<nav class="financial-pagination is-classic" aria-label="Paginação financeira">`
+        + `<p class="financial-pagination-status">Página ${pagination.page} de ${pagination.totalPages} · ${totalLabel} no filtro</p>`
+        + `<div class="financial-pagination-nav" role="group" aria-label="Navegar páginas">`
+        + `<button type="button" class="button ghost" data-fin-page="first"${pagination.page <= 1 ? ' disabled' : ''} aria-label="Primeira página">Primeira</button>`
+        + `<button type="button" class="button ghost" data-fin-page="prev"${pagination.page <= 1 ? ' disabled' : ''} aria-label="Página anterior">Anterior</button>`
+        + `<button type="button" class="button ghost" data-fin-page="next"${pagination.page >= pagination.totalPages ? ' disabled' : ''} aria-label="Próxima página">Próxima</button>`
+        + `<button type="button" class="button ghost" data-fin-page="last"${pagination.page >= pagination.totalPages ? ' disabled' : ''} aria-label="Última página">Última</button>`
+        + `</div>`
+        + `<div class="financial-page-size" role="group" aria-label="Lançamentos por página"><span>Por página</span>`
+        + FINANCIAL_PAGE_SIZES.map(size => `<button type="button" class="${size === pagination.pageSize ? 'button gold' : 'button ghost'}" data-fin-page-size="${size}" aria-pressed="${size === pagination.pageSize}">${size}</button>`).join('')
+        + `</div></nav>`;
+      return true;
+    },
+
+    async handlePaginationClick(event) {
+      const sizeTarget = event.target.closest?.('[data-fin-page-size]');
+      if (sizeTarget) {
+        const size = Number(sizeTarget.dataset.finPageSize);
+        if (!FINANCIAL_PAGE_SIZES.includes(size) || size === financialPageSize) return true;
+        financialPageSize = size;
+        financialPage = 1;
+        this.render(byId('financialSearch')?.value || '');
+        queueMicrotask(() => {
+          documentRef.querySelector?.(`#view-financial [data-fin-page-size="${size}"]`)?.focus({ preventScroll: true });
+        });
+        return true;
+      }
+      const pageTarget = event.target.closest?.('[data-fin-page]');
+      if (!pageTarget) return false;
+      const pages = financialTotalPages(lastFinancialTotal, financialPageSize);
+      const action = pageTarget.dataset.finPage;
+      let next = financialPage;
+      if (action === 'first') next = 1;
+      else if (action === 'prev') next = financialPage - 1;
+      else if (action === 'next') next = financialPage + 1;
+      else if (action === 'last') next = pages;
+      else if (Number.isFinite(Number(action))) next = Math.trunc(Number(action));
+      next = Math.max(1, Math.min(pages, next || 1));
+      if (next === financialPage) return true;
+      const direction = Math.sign(next - financialPage);
+      financialPage = next;
+      await transitionPageContent(documentRef, { v2: [
+        '#financialV2Workspace .financial-v2-record-list',
+        '#financialV2Workspace .financial-v2-table tbody'
+      ] }, direction, () => this.render(byId('financialSearch')?.value || ''));
+      focusPageControl(documentRef, '#view-financial', 'data-fin-page', action, direction > 0 ? 'prev' : 'next');
+      return true;
     },
 
     editRecord(record) {
@@ -383,9 +607,20 @@ export function createFinancialFeature({
         if (index < 0) throw new Error('Despesa não encontrada');
         const [removed] = owner.expenses.splice(index, 1);
         owner.updatedAt = owner.financialUpdatedAt = new Date().toISOString();
+        store.save();
+        const flushed = typeof store.flushWithResult === 'function'
+          ? await store.flushWithResult()
+          : { ok: await store.flush(), discardedCollections: [] };
+        if (!flushed.ok) throw new Error('Gravação não confirmada');
+        if (financeWriteDiscarded(flushed)) {
+          store.state = previous;
+          showToast?.('Você não tem permissão para excluir lançamentos financeiros. Peça a permissão finance.write ao gestor do escritório.', 'error');
+          return;
+        }
+        // Só registra a exclusão depois de confirmada: auditoria de despesa que o servidor
+        // manteve seria entrada fantasma.
         store.audit('Despesa excluída', `${removed.description}: ${formatCurrency(removed.amount)}`);
         store.save();
-        if (!await store.flush()) throw new Error('Gravação não confirmada');
         this.closeEntryModal();
         this.render();
         renderDashboardFinancialWidgets?.();
@@ -403,7 +638,7 @@ export function createFinancialFeature({
       editingEntry = null;
       byId('financialEntryDelete')?.classList.add('hidden');
       for (const option of byId('finTypeSelect')?.options || []) option.disabled = false;
-      if (byId('finModalTitle')) byId('finModalTitle').textContent = 'Novo Lançamento Financeiro';
+      if (byId('finModalTitle')) byId('finModalTitle').textContent = 'Novo lançamento';
       if (byId('finTypeSelect')) byId('finTypeSelect').disabled = false;
       const backdrop = byId('financialEntryBackdrop');
       if (!backdrop) return;
@@ -422,7 +657,7 @@ export function createFinancialFeature({
         const field = select.closest('label');
         field.setAttribute('data-modal-combobox-field', '');
         field.innerHTML = '<span>Pesquisar vínculo</span><div class="modal-combobox">' +
-          '<input id="finLinkSearch" type="search" autocomplete="off" placeholder="Processo, cliente ou escritório…" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="finLinkResults" data-modal-combobox>' +
+          '<input id="finLinkSearch" type="text" inputmode="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Processo, cliente ou escritório…" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="finLinkResults" data-modal-combobox>' +
           '<input id="finProcessSelect" type="hidden" name="processId" data-combobox-identity>' +
           '<div id="finLinkResults" class="modal-combobox-listbox hidden" role="listbox">' +
           choices.map((c, i) => '<button type="button" role="option" id="finLinkOption-' + i + '" aria-selected="false" data-combobox-option data-value="' + escapeHtml(c.label) + '" data-identity="' + escapeHtml(c.id) + '"><strong>' + escapeHtml(c.label) + '</strong><small>' + escapeHtml(c.detail) + '</small></button>').join('') +
@@ -447,6 +682,7 @@ export function createFinancialFeature({
       const backdrop = byId('financialEntryBackdrop');
       const wasOpen = backdrop && !backdrop.classList.contains('hidden');
       if (backdrop) backdrop.classList.add('hidden');
+      resetPanelSize(byId('financialEntryBackdrop')?.querySelector?.('.financial-entry-modal'));
       if (isV2()) byId('appShell')?.removeAttribute('inert');
       if (byId('modalBackdrop')?.classList.contains('hidden')) {
         documentRef.body.style.overflow = isV2() ? previousBodyOverflow : '';
@@ -500,7 +736,8 @@ export function createFinancialFeature({
       const dateLabel = byId('finDateLabel');
       if (descriptionLabel) descriptionLabel.textContent = isExpense ? 'Descrição da despesa' : isInstallment ? 'Identificação da parcela' : 'Identificação do recebimento';
       if (descriptionInput) descriptionInput.placeholder = isExpense ? 'Ex: preparo recursal' : isInstallment ? 'Ex: parcela 2 de 6' : 'Ex: pagamento via PIX';
-      byId('finDescriptionInput')?.setAttribute('list', isExpense ? 'financialExpenseSuggestions' : '');
+      const descriptionField = byId('finDescriptionInput');
+      if (descriptionField) descriptionField.dataset.suggestExpense = isExpense ? 'true' : '';
       if (dateLabel) dateLabel.textContent = isInstallment ? 'Vencimento' : isReceipt ? 'Data do recebimento' : 'Data da despesa';
       const gross = parseFloat(byId('finGrossInput')?.value) || 0;
       const feePct = parseFloat(byId('finFeePctInput')?.value) || 0;
@@ -647,14 +884,27 @@ export function createFinancialFeature({
 
       if (officeEntry) store.state.officeExpenses = process.expenses;
       else store.upsert(contact ? 'contacts' : 'processes', process);
-      store.audit(editingEntry ? 'Lançamento financeiro atualizado' : 'Lançamento financeiro registrado', `${officeEntry ? 'Escritório' : contact ? 'Contato' : process.number || process.client}: ${formatCurrency(grossAmount)} (${status})`);
       store.save();
 
-      if (!await store.flush()) {
+      // O flush inteiro continua massivo, mas o financeiro pode voltar à versão oficial
+      // quando a sessão não tem `finance.write`. A auditoria só é registrada depois de
+      // saber que a alteração persistiu: registrar antes deixava entrada fantasma de
+      // uma alteração que o servidor descartou.
+      const flushed = typeof store.flushWithResult === 'function'
+        ? await store.flushWithResult()
+        : { ok: await store.flush(), discardedCollections: [] };
+      if (!flushed.ok) {
         store.state = stateBeforeSubmit;
         showToast?.('Gravação não confirmada. O lançamento continua aberto para nova tentativa.', 'error');
         return;
       }
+      if (financeWriteDiscarded(flushed)) {
+        store.state = stateBeforeSubmit;
+        showToast?.('Você não tem permissão para gravar lançamentos financeiros. Peça a permissão finance.write ao gestor do escritório.', 'error');
+        return;
+      }
+      store.audit(editingEntry ? 'Lançamento financeiro atualizado' : 'Lançamento financeiro registrado', `${officeEntry ? 'Escritório' : contact ? 'Contato' : process.number || process.client}: ${formatCurrency(grossAmount)} (${status})`);
+      store.save();
       this.closeEntryModal();
       this.render();
       renderDashboardFinancialWidgets?.();
@@ -677,7 +927,7 @@ function financialStatusOptions(mode) {
   if (mode === 'installment') return '<option value="pendente">Pendente</option><option value="pago">Paga</option>';
   if (mode === 'receipt') return '<option value="recebido">Recebido</option><option value="estornado">Estornado</option>';
   if (mode === 'fee') return '<option value="pendente">Pendente / a receber</option><option value="em_dia">Em dia / regular</option><option value="aguardando_exito">Aguardando êxito processual</option><option value="quitado">Quitado</option>';
-  return '<option value="requisitado">Requisitado / Expedido</option><option value="aguardando_deposito">Aguardando Depósito Judicial</option><option value="disponivel_saque">Disponível para Saque / Levantamento</option><option value="repassado">Repassado ao Cliente &amp; Quitado</option>';
+  return '<option value="requisitado">Requisitado / Expedido</option><option value="aguardando_deposito">Aguardando Depósito Judicial</option><option value="disponivel_saque">Disponível para Saque / Levantamento</option><option value="repassado">Repassado ao Cliente e Quitado</option>';
 }
 
 function allowedFinancialStatuses(entryType) {

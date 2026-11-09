@@ -1,0 +1,80 @@
+@media (prefers-reduced-motion: no-preference) {
+  .preview-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: min(680px, 100%);
+    background: linear-gradient(180deg, var(--mineral-gold-soft), transparent 65%);
+    opacity: 0;
+    pointer-events: none;
+    animation: preview-atmosphere 1800ms var(--ease-editorial) 200ms both;
+  }
+
+  .preview-feature-spotlight .preview-feature,
+  .preview-plan,
+  .preview-faq details,
+  .final-cta-card {
+    transition: transform 280ms var(--ease-editorial), border-color 280ms var(--ease-editorial), box-shadow 280ms var(--ease-editorial);
+  }
+
+  .preview-feature-spotlight .preview-feature:hover,
+  .preview-plan:hover,
+  .final-cta-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--border-active);
+    box-shadow: var(--shadow-card);
+  }
+
+  .preview-feature-visual img,
+  .preview-ledger-visual img {
+    transition: transform 550ms var(--ease-editorial);
+  }
+
+  .preview-feature-spotlight .preview-feature:hover .preview-feature-visual img,
+  .preview-feature-ledger .preview-feature:hover .preview-ledger-visual img {
+    transform: scale(1.035);
+  }
+
+  .preview-feature-spotlight .preview-feature:focus-within {
+    border-color: var(--border-active);
+  }
+
+  .preview-faq details[open] {
+    border-color: var(--border-active);
+  }
+
+  .preview-faq details[open] p {
+    animation: preview-answer 320ms var(--ease-editorial) both;
+  }
+
+  .preview-hero .btn-hero-primary,
+  .preview-hero .btn-hero-secondary,
+  .landing-nav-actions .btn-primary-nav,
+  .final-cta-card .btn-hero-primary {
+    transition: transform 150ms var(--ease-editorial), background-color 150ms ease, border-color 150ms ease;
+  }
+
+  .preview-hero .btn-hero-primary:hover,
+  .preview-hero .btn-hero-secondary:hover,
+  .landing-nav-actions .btn-primary-nav:hover,
+  .final-cta-card .btn-hero-primary:hover {
+    transform: translateY(-3px);
+  }
+
+  .preview-hero .btn-hero-primary:active,
+  .preview-hero .btn-hero-secondary:active,
+  .landing-nav-actions .btn-primary-nav:active,
+  .final-cta-card .btn-hero-primary:active {
+    transform: scale(.97);
+  }
+
+  @keyframes preview-atmosphere {
+    from { opacity: 0; transform: translateY(-24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes preview-answer {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}

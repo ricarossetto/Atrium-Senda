@@ -1,236 +1,121 @@
-<div align="center">
+# ATRIUM — Edição Aberta (Senda)
 
-# ATRIUM — Escritório Integrado
+**Gestão jurídica soberana, local-first, para escritórios brasileiros.**
 
-### Gestão jurídica organizada, segura e supervisionada.
+O **ATRIUM** reúne processos, publicações, contatos e CRM, tarefas (Kanban), agenda, financeiro, documentos com OCR local e integrações judiciais somente leitura (DJEN, DataJud e eproc/PJe nacional) em um único ambiente. É um projeto de código aberto (MIT): você instala, opera e audita tudo no seu computador, com os dados cifrados sob o seu controle.
 
-[![Version 2.4.0](https://img.shields.io/badge/version-2.4.0-9b7a3c)](docs/RELEASE_NOTES_2.4.0.md)
-[![Live Site](https://img.shields.io/badge/site-atrium.adv.br-d4af37?logo=cloudflare&logoColor=white)](https://atrium.adv.br)
-[![API Central](https://img.shields.io/badge/API-api.atrium.adv.br-2f7d5b?logo=oracle&logoColor=white)](https://api.atrium.adv.br/api/health)
-[![Node.js 24](https://img.shields.io/badge/Node.js-%3E%3D24-3c873a?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Local-first](https://img.shields.io/badge/arquitetura-local--first-344955)](#princípios-do-produto)
-[![AES-256-GCM](https://img.shields.io/badge/dados-AES--256--GCM-5d6b73)](#segurança)
+Decisões jurídicas, confirmação de prazos e atos processuais continuam sob responsabilidade humana. O ATRIUM nunca dá ciência, não assina e não protocola nada em portais judiciais.
 
-</div>
+[![Licença](https://img.shields.io/badge/licença-MIT-blue)](LICENSE)
+[![Versão](https://img.shields.io/badge/versão-3.0.0-9b7a3c)](docs/RELEASE_NOTES_3.0.0.md)
+[![Node.js](https://img.shields.io/badge/Node.js-24+-3c873a)](#instalação)
 
-## O que é o ATRIUM
+---
 
-O **ATRIUM** é uma plataforma de gestão jurídica e workspace soberano (*local-first*) para escritórios de advocacia no Brasil. Ele reúne processos, publicações, contatos e clientes, CRM, tarefas (Kanban), agenda, financeiro, documentos com OCR derivado local, auditoria e integrações judiciais oficiais (eproc TJRS, DJEN e DataJud) em um único ambiente canônico.
+## Instalação
 
-A plataforma pode ser acessada diretamente na nuvem em **[https://atrium.adv.br](https://atrium.adv.br)** ou executada localmente no computador do escritório. Decisões jurídicas, confirmação de prazos e atos oficiais continuam sob responsabilidade humana.
+### App desktop (Windows)
 
-## Comece aqui — primeiro uso
+Baixe o instalador **`ATRIUM_Setup_3.0.0_x64.exe`** na [página de releases](https://github.com/ricarossetto/Atrium-Senda/releases) e execute. O aplicativo abre direto no seu computador: o servidor local inicia sozinho, o primeiro acesso cria o administrador do escritório, e as atualizações chegam pela própria aplicação. Nenhum dado sai da sua máquina sem que você peça.
 
-- **Ambiente Online:** Acesse **[https://atrium.adv.br](https://atrium.adv.br)** e crie sua banca para iniciar a degustação de 14 dias com o novo **Onboarding Show** interativo.
-- **Ambiente Local (Windows):** Baixe o código da [release v2.4.0](https://github.com/ricarossetto/atrium-pro/releases/tag/v2.4.0), extraia o ZIP e execute **`ATRIUM.bat`**. O inicializador confere Node.js 24, Corepack, pnpm e Chromium, instala o que faltar e abre `http://127.0.0.1:4173`. Se o Windows ainda não tiver Node.js, o instalador oferece instalação pelo `winget`.
+Os instaladores oficiais são publicados com soma SHA-256 (`SHA256SUMS.txt`) no mesmo release.
 
-No primeiro acesso:
+### Instalação manual (qualquer sistema com Node 24+)
 
-1. crie o administrador do escritório com nome, e-mail, usuário e senha;
-2. na etapa seguinte, informe OAB/UF se for advogado e escolha explicitamente se deseja ativar o monitoramento automático;
-3. conclua o segundo fator quando a tela solicitar e guarde os códigos de recuperação;
-4. abra **Configurações** e informe a identidade do escritório, equipe e preferências;
-5. cadastre um contato e um processo pelo número CNJ, ou importe uma planilha pela prévia supervisionada;
-6. abra o processo para conferir publicações, tarefas, documentos e o botão **Criar tarefa** no painel lateral.
-
-Para monitoramento judicial, informe somente os códigos solicitados pela própria tela, como OAB/UF, credencial/TOTP do portal ou chave de acesso do processo. Eles ficam no cofre local cifrado e nunca devem ser colados no GitHub, em screenshots ou no README.
-
-O caminho de teste mais curto é: cadastrar um contato → cadastrar um processo → abrir **Publicações** → pesquisar pelo cliente ou CNJ → criar uma tarefa vinculada → conferir a mesma tarefa em **Gestão de tarefas**. O servidor precisa permanecer em execução; `Ctrl+C` encerra o processo.
-
-Se algo não estiver respondendo, execute `ATRIUM.bat --doctor`. O diagnóstico não altera dados. O manual completo explica atualização, backup, integrações e recuperação em [docs/INSTALLATION.md](docs/INSTALLATION.md).
-
-## Princípios do produto
-
-- **Local-first:** o ambiente local é o modo principal; o diretório de dados pertence ao escritório.
-- **Cifrado:** estado, backups, segredos judiciais e blobs documentais privados usam proteção criptográfica adequada ao contrato de cada camada.
-- **Supervisionado:** integrações, enriquecimentos e IA apoiam o trabalho; não substituem conferência profissional.
-- **Fonte única de verdade:** um Store canônico mantém entidades e relações, com controle de revisão e conflitos.
-- **Relações canônicas:** processos, contatos, tarefas, publicações, documentos e lançamentos financeiros se conectam sem cópias funcionais paralelas.
-- **Automação judicial somente de leitura:** autenticação, descoberta e consulta são permitidas; ciência, assinatura e protocolo não são automatizados.
-
-## Visão do produto
-
-<p align="center">
-  <img src="docs/assets/screenshots/dashboard-light.png" alt="Dashboard claro do ATRIUM com dados inteiramente sintéticos" width="49%">
-  <img src="docs/assets/screenshots/dashboard-dark.png" alt="Dashboard escuro do ATRIUM com dados inteiramente sintéticos" width="49%">
-</p>
-<p align="center">
-  <img src="docs/assets/screenshots/publications-workspace.png" alt="Workspace de publicações com conteúdo sintético" width="49%">
-  <img src="docs/assets/screenshots/process-inspector.png" alt="Inspector de processo com registros sintéticos" width="49%">
-</p>
-
-Todas as imagens públicas foram produzidas em runtime isolado com dados fictícios. Nenhum dado de cliente, certificado ou publicação real foi usado.
-
-## Funcionalidades
-
-| Área | O que está disponível na versão 2.1.1 |
-| --- | --- |
-| Dashboard | Visão operacional, indicadores, agenda, publicações e prioridades do escritório |
-| Processos | Cadastro CNJ, partes, classe, assunto, órgão, movimentos e navegação cruzada |
-| Publicações e intimações | Leitura integral, não lida/lida, triagem, tratamento e criação explícita de tarefa |
-| Contatos e clientes | Cadastro único por papéis, vínculos manuais prioritários e reconciliação supervisionada opcional |
-| CRM e oportunidades | Atendimento, etapas, responsável, origem e associação a contato canônico |
-| Tarefas e Kanban | Fluxo visual, responsáveis, datas, apontamentos e vínculo com processo/publicação |
-| Agenda | Compromissos, tarefas, prazos confirmados e calendário externo opcional |
-| Documentos | Minutas, acervo privado, upload/download, preview, OCR local e extração de texto |
-| Financeiro | Honorários, despesas/custas, reembolsos, RPV/alvarás, status e vínculos processuais |
-| Busca global | `Ctrl+K`/`Cmd+K` sobre entidades e conteúdo textual indexável |
-| Notificações | Pendências reais do workspace e navegação para o item de origem |
-| Auditoria | Registro de ações relevantes, filtros e exportação local |
-| Importação e exportação | Planilhas com prévia supervisionada e exportações previstas no produto |
-| Monitoramento | Saúde do runtime, fontes e integridade operacional |
-| Links úteis | Referências jurídicas organizadas pelo escritório |
-| Integrações | DJEN, DataJud, portais, A1, PJeOffice, TOTP, SMTP e calendário externo |
-| Configurações | Identidade do escritório, equipe, permissões, preferências e administração |
-| Assistente | Google Gemini opcional, contexto minimizado e revisão profissional obrigatória |
-| Biblioteca de prompts | Prompts jurídicos reutilizáveis, carregados no assistente sem envio automático |
-
-## Processos e relações canônicas
-
-O número CNJ identifica o processo canônico quando disponível. O registro pode reunir classe, assunto, tribunal, comarca, unidade, partes, cliente/contato, movimentos, tarefas, publicações e documentos. A navegação cruzada abre a mesma entidade relacionada: o cliente exibido leva ao contato canônico, e tarefas e movimentos permanecem associados ao processo.
-
-Dados locais curados têm precedência sobre enriquecimentos externos. Sincronizações não devem apagar silenciosamente informações significativas registradas pelo usuário. Vínculos manuais de cliente sempre prevalecem; a reconciliação assistida só propõe vínculo com confiança mínima de 90%, não transforma advogado ou parte contrária em cliente e funciona sem Gemini, encaminhando ambiguidades para revisão humana.
-
-## Publicações e intimações
-
-Publicações distinguem leitura (`lida`/`não lida`) de tratamento (`untreated`, `in_review`, `treated`, `discarded`). O workspace oferece leitor integral, associação ao processo e criação de tarefa somente por ação explícita.
-
-> Marcar uma publicação como tratada no ATRIUM **não** equivale a dar ciência ou praticar qualquer ato no portal judicial.
-
-## Descoberta judicial
-
-O pipeline conservador é:
-
-```text
-DJEN → número CNJ → Processo → enriquecimento DataJud
-     → partes estruturadas → Contato → relação de cliente quando houver autoridade
-```
-
-Se o DataJud não localizar um processo, os dados básicos provenientes do DJEN são preservados. O ATRIUM não fabrica movimentos, assuntos ou partes ausentes. Uma relação de cliente somente é criada quando dados estruturados e a representação oferecem suporte suficiente; conflitos seguem para revisão humana.
-
-## Integrações judiciais supervisionadas
-
-O ATRIUM suporta certificado A1, PJeOffice, TOTP, sessões interativas/supervisionadas e conectividade gerenciada. A sessão assistida acompanha múltiplas abas e somente considera o login concluído diante de evidência positiva fornecida pelo portal; a janela visível continua sob controle humano. As operações admitidas são autenticação, verificação de saúde, descoberta, leitura de publicações e consulta de movimentos.
-
-O ATRIUM **não** dá ciência, assina, peticiona, protocola, confirma prazo jurídico automaticamente, contorna CAPTCHA ou contorna 2FA. Portais podem exigir login, consentimento, TOTP, CAPTCHA ou outra ação humana. Consulte [Instalação — integrações judiciais](docs/INSTALLATION.md#11-a1-pjeoffice-e-totp) e [Política judicial read-only](specs/judicial-readonly-policy.md).
-
-## Inteligência cadastral brasileira
-
-- **CPF:** validação estrutural exclusivamente local. Não há consulta externa de identidade por CPF configurada por padrão.
-- **CNPJ:** formatos numérico legado e alfanumérico; consulta pública pela BrasilAPI.
-- **CEP:** BrasilAPI, com ViaCEP como fallback.
-- **Bancos:** diretório público para apoio cadastral.
-- **Enriquecimento de contatos:** comparação entre valor atual e encontrado, aplicação seletiva, proveniência, freshness/cache e QSA.
-- **Duplicidades e conflitos:** sugestões supervisionadas. O sistema não executa merge automático destrutivo nem afirma identidade quando há apenas semelhança.
-
-## Documentos
-
-O acervo usa blobs privados cifrados e metadados no Store canônico. A versão atual inclui upload, download, preview seguro, exclusão lógica, restauração, expurgo explícito, deduplicação por checksum, extração de texto, OCR local quando configurado, derivados textuais/PDF e participação na busca full-text.
-
-Não fazem parte da versão atual: colaboração simultânea, assinatura digital, editor DOCX completo, versionamento jurídico automático e workflow de aprovação documental.
-
-## Pesquisa global
-
-Use `Ctrl+K` no Windows/Linux ou `Cmd+K` no macOS. O índice full-text em memória cobre processos, contatos, publicações, tarefas, documentos e OCR, prompts e metadados de auditoria apropriados. O índice é derivado e reconstruível; não é uma segunda fonte de verdade.
-
-## Segurança
-
-- Estado cifrado com AES-256-GCM, gravação atômica e controle de revisão.
-- Senhas protegidas pelo backend; sessão em cookie HttpOnly/SameSite, CSRF e RBAC.
-- TOTP opcional por usuário e segredos fora do Store jurídico do frontend.
-- Backups `.atrium-backup` cifrados, com checksum SHA-256 e snapshot de segurança antes da restauração.
-- Blobs documentais privados e não servidos como arquivos estáticos.
-- Credenciais, chaves Gemini, PFX e segredos judiciais não são enviados ao Store do navegador.
-
-Leia [SECURITY.md](.github/SECURITY.md) e as [fronteiras canônicas de segurança](specs/security-boundaries.md).
-
-## Assistência por IA
-
-A integração opcional usa Google Gemini quando uma chave é configurada pelo administrador. Sem chave, o recurso permanece claramente não configurado. A IA é assistiva: respostas e minutas exigem revisão profissional, e nenhuma resposta confirma automaticamente prazo ou decisão jurídica.
-
-## Interface e movimento
-
-A interface V2 segue o sistema visual Mineral Editorial, com temas claro/escuro, layouts responsivos, navegação por teclado, foco visível e respeito a `prefers-reduced-motion`. Microinterações são contidas e não alteram dados ou fluxos funcionais.
-
-## Instalação rápida no Windows
-
-1. Na página da [release v2.1.1](https://github.com/ricarossetto/Atrium-Senda/releases/tag/v2.1.1), baixe **Source code (zip)**.
-2. Extraia o ZIP para uma pasta comum do computador.
-3. Dê duplo clique em **`ATRIUM.bat`**.
-4. Conclua a criação do primeiro administrador no navegador.
-
-O inicializador valida Node.js 24+, Corepack, pnpm 11.19.0, dependências e Chromium. Ele não sobrescreve `.env` nem dados existentes e não inicia um segundo servidor se o ATRIUM já estiver na porta 4173.
-
-Consulte o [manual completo de instalação](docs/INSTALLATION.md).
-
-## Se aparecer um aviso de integração judicial
-
-O aviso **“O coletor TJRS local está indisponível. Os dados atuais foram preservados.”** significa que a consulta que depende do sidecar TJRS não conseguiu alcançar a interface local `127.0.0.1:3100`. O Store principal continua sendo a fonte dos dados já salvos; o aviso não apaga processos, clientes ou publicações.
-
-DJEN e DataJud públicos continuam sendo configurados pela tela de **Integrações**. Consultas TJRS que usam chave de acesso ou geração de autos dependem do sidecar local fornecido pelo ambiente do escritório. Verifique o serviço e `ATRIUM_TJRS_SIDECAR_URL` somente em endereço de loopback; não exponha essa porta na rede. A sincronização geral pode ser iniciada na abertura, no horário diário configurado ou pelo botão manual, mas nunca deve registrar a chave em log.
-
-## Instalação manual
-
-```powershell
+```bash
 git clone https://github.com/ricarossetto/Atrium-Senda.git
 cd Atrium-Senda
-corepack pnpm install --frozen-lockfile
-corepack pnpm exec playwright install chromium
-corepack pnpm start
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium   # apenas se for usar coleta judicial A1
+pnpm start
 ```
 
-Abra `http://127.0.0.1:4173`. Para diagnóstico do instalador Windows, use `ATRIUM.bat --doctor`; para preparar dependências sem iniciar o servidor, use `ATRIUM.bat --install-only`.
+Abra `http://127.0.0.1:4173`. No Windows, o `ATRIUM.bat` automatiza as verificações e abre o navegador. O diagnóstico do instalador fica disponível com `ATRIUM.bat --doctor`.
 
-## Armazenamento de dados
+## O que esta edição oferece
 
-Por padrão, os dados ficam em `data/` dentro da instalação. Defina `JURISFLOW_DATA_DIR` para usar outro diretório absoluto. `KELLER_DATA_DIR` permanece apenas como compatibilidade interna legada. O diretório de dados e o arquivo `.env` não entram no Git.
+| Área | O que já está disponível |
+| --- | --- |
+| Dashboard | Visão operacional do escritório: indicadores, agenda, publicações e prioridades |
+| Processos | Cadastro por CNJ, partes, classe, assuntos, movimentos e navegação cruzada |
+| Publicações | Leitura integral, não lida/lida, triagem, tratamento e criação explícita de tarefa |
+| Contatos e clientes | Cadastro único por papéis, vínculos manuais prioritários, deduplicação supervisionada |
+| CRM e oportunidades | Atendimento, etapas, responsável, origem e associação a contato |
+| Tarefas e Kanban | Fluxo visual, responsáveis, datas, apontamentos e vínculo com processo/publicação |
+| Agenda | Compromissos, tarefas, prazos confirmados e calendário externo opcional |
+| Documentos | Minutas, acervo privado, upload/download, preview seguro, OCR e busca full-text |
+| Financeiro e cálculos | Honorários, despesas, reembolsos, RPV/alvarás, vínculos processuais, módulo de cálculos |
+| Busca global | `Ctrl+K` / `Cmd+K` sobre entidades e conteúdo indexável |
+| Auditoria | Registro de ações relevantes, filtros e exportação local |
+| Integrações judiciais | DJEN, DataJud, eproc nacional e PJe nacional — somente leitura |
+| Assistente | IA opcional (Google Gemini ou provedor compatível), com revisão profissional obrigatória |
 
-Faça backup regular do diretório de dados e exporte backups cifrados antes de atualizar. A chave `AUTH_ENCRYPTION_KEY` é necessária para recuperar o estado e backups cifrados; preserve-a em local seguro separado.
+O que **não** está nesta edição (e faz diferença na prática hospedada):
 
-## Backup e restauração
+- Serviço hospedado com disponibilidade gerenciada (o ATRIUM em [atrium.adv.br](https://atrium.adv.br), operado pela mesma equipe).
+- Assistência jurídica com a base de habilidades MinutaIA e o acervo de 2 mil+ habilidades jurídicas calibradas (disponível no produto hospedado).
+- Suporte, backups gerenciados e evolução contínua assistida.
 
-O administrador pode exportar um arquivo `.atrium-backup` cifrado. A restauração valida formato, checksum, schema e migrações e cria um snapshot de segurança do estado corrente antes da troca atômica. Nunca restaure arquivo de origem desconhecida. Veja [Backup e restauração no manual](docs/USER_MANUAL.md#backup-e-restauração).
+Esta edição continua funcionando 100% offline para leitura e gestão do escritório; a IA é opcional e depende de chave própria.
+
+## Princípios
+
+- **Local-first:** o diretório de dados local é o modo principal; ele pertence ao escritório.
+- **Cifrado:** estado, backups e segredos judiciais usam proteção adequada a cada camada (AES-256-GCM, sessão HttpOnly/SameSite, CSRF e RBAC).
+- **Supervisionado:** integrações e IA apoiam o trabalho; nada é decidido pelo software em nome do advogado.
+- **Coleta judicial somente leitura:** autenticação, descoberta e consulta são permitidas; ciência, assinatura e protocolo nunca.
+- **Zero telemetria para terceiros:** nenhum dado sai da instalação sem ação explícita.
+
+## Primeiros passos
+
+1. Crie o administrador do escritório com nome, e-mail, usuário e senha.
+2. Informe OAB/UF se for advogado e escolha se deseja ativar o monitoramento automático.
+3. Conclua a verificação em duas etapas quando solicitada e guarde os códigos de recuperação.
+4. Cadastre um contato e um processo pelo número CNJ.
+5. Abra **Publicações** → pesquise por cliente ou CNJ → crie uma tarefa vinculada.
+
+Se algo não responder, execute `ATRIUM.bat --doctor` (Windows) ou `pnpm verify` no diretório do projeto.
+
+## Dados, backups e segurança
+
+- Os dados ficam em `data/` dentro da instalação, ou no diretório definido por `JURISFLOW_DATA_DIR`.
+- No app desktop, ficam em `%APPDATA%\ATRIUM\data`; logs, em `%APPDATA%\ATRIUM\logs`.
+- Backups `.atrium-backup` cifrados são exportáveis pela tela de administração; a restauração valida formato, checksum e migrações.
+- A chave `AUTH_ENCRYPTION_KEY` é indispensável para recuperar estado e backups cifrados: guarde-a em local seguro e separado.
+- `data/`, `.env` e perfis judiciais **não** fazem parte do repositório nem do instalador.
+
+Leia [.github/SECURITY.md](.github/SECURITY.md) e as [fronteiras de segurança](specs/security-boundaries.md).
 
 ## Testes e CI
 
-O workflow **Atrium CI** usa Node.js 24, pnpm 11.19.0 e lockfile congelado. Seus jobs são:
+```bash
+pnpm check          # verificação de sintaxe de todo o código
+pnpm test           # suíte completa (Playwright + Node)
+pnpm test:ci-fast   # núcleo rápido: segurança, contratos e store
+```
 
-- **Lint, Test & E2E Verification**;
-- **Multi-Viewport Visual QA**;
-- **Judicial A1 Windows Verification**.
+Os workflows em `.github/workflows/` são manuais (`workflow_dispatch`); a validação oficial é local e focada no escopo alterado. Veja [AGENTS.md](AGENTS.md) para as regras de contribuição e [docs/testing/REGRESSION_MATRIX.md](docs/testing/REGRESSION_MATRIX.md) para a matriz de regressão.
 
-A contagem de suítes pertence a cada execução do CI e não é fixada aqui. Testes judiciais públicos usam dados sintéticos; certificados reais nunca fazem parte do repositório.
+## Contribuindo
+
+Leia [docs/CONTRIBUTING.md](.github/CONTRIBUTING.md) ou os guardrails completos em [AGENTS.md](AGENTS.md). Em resumo:
+
+- Fixtures sempre sintéticas; nunca dados de cliente, OAB ou CPF reais.
+- Mudança funcional aprovada vem com teste no mesmo escopo.
+- Toda PR passa por revisão humana antes de merge.
+- Commits em português brasileiro, mensagens diretas.
 
 ## Limitações conhecidas
 
-- DJEN, DataJud, BrasilAPI, ViaCEP, Gemini, SMTP e portais dependem da disponibilidade de serviços externos.
-- Autenticação em portal pode exigir intervenção humana, PJeOffice, certificado, TOTP ou CAPTCHA.
-- Consulta externa de identidade por CPF não é configurada por padrão.
-- Confirmação de prazo e qualquer ato processual continuam humanos.
-- O ATRIUM não pratica atos judiciais oficiais e não oferece garantia de disponibilidade de terceiros.
+- DJEN, DataJud, BrasilAPI, ViaCEP e portais dependem de serviços externos e podem estar indisponíveis.
+- A autenticação em portais pode exigir certificado A1, PJeOffice, TOTP ou ação humana.
+- O ATRIUM não pratica atos judiciais e não substitui o profissional habilitado.
 
 ## Documentação
 
-- [Instalação](docs/INSTALLATION.md)
-- [Primeiros 10 minutos](docs/QUICK_START.md)
-- [Manual do usuário](docs/USER_MANUAL.md)
-- [Arquitetura](docs/ARCHITECTURE.md)
-- [Segurança](.github/SECURITY.md)
-- [Especificações do produto](specs/README.md)
-- [Changelog](docs/CHANGELOG.md)
-- [Notas da release 2.1.1](docs/RELEASE_NOTES_2.1.1.md)
-- [Como contribuir](.github/CONTRIBUTING.md)
-
-## Organização do repositório
-
-- **Raiz:** somente o runtime e os arquivos que alguém precisa para instalar ou iniciar (`ATRIUM.bat`, `install.ps1`, `package.json`, lockfile, `server.mjs`, `index.html` e configurações de execução).
-- **`js/`, `css/`, `lib/`, `collector/`, `scripts/`:** código da aplicação e inicializadores auxiliares.
-- **`docs/`:** instalação, manual, arquitetura, changelog, screenshots sintéticos, guias judiciais e registros de desenvolvimento.
-- **`specs/`:** contratos canônicos que orientam código e testes.
-- **`tests/`:** verificações locais e do CI.
-- **`data/`, `.env`, `.env.collector`, perfis judiciais e `artifacts/`:** dados ou saídas locais; são ignorados pelo Git e não entram no pacote para terceiros.
+- [Instalação](docs/INSTALLATION.md) · [Primeiros 10 minutos](docs/QUICK_START.md) · [Manual do usuário](docs/USER_MANUAL.md)
+- [Arquitetura](docs/ARCHITECTURE.md) · [Specs](specs/README.md) · [CHANGELOG](docs/CHANGELOG.md) · [Notas da 3.0.0](docs/RELEASE_NOTES_3.0.0.md)
 
 ## Licença
 
-Distribuído sob a [licença MIT](LICENSE).
+MIT — veja [LICENSE](LICENSE) e [NOTICE.md](NOTICE.md).

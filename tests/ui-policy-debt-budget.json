@@ -1,0 +1,167 @@
+{
+  "note": "Orçamento de dívida de UI das superfícies autenticadas, medido pelo gate tests/ui_policy_authenticated.mjs com a política de ui-policy.json. O teto só pode ser REDUZIDO, e cada redução exige correção real — nunca aumento. O valor não é uma meta nem uma declaração de conformidade: é a dívida medida hoje, para que ela não cresça enquanto o app autenticado não estiver coerente com a política.",
+  "budget": 359,
+  "history": [
+    {
+      "at": "2026-10-14",
+      "to": 10902,
+      "note": "Escala tipográfica normalizada nos 12 passos aprovados em 30 arquivos CSS (antes: 12.820)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 10500,
+      "note": "Gradiente de topo do app-shell tornado sólido; texto do shell passou a ser mensurável (antes: 10.902)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 8664,
+      "note": "Textura grain sobre o conteúdo removida (cobria toasts e bloqueava medição) e faixa de acento dos cartões de prompt trocada de ::before para borda real (antes: 10.500)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 7020,
+      "note": "Alvos de toque elevados: botões dos cartões de prompt 32px -> 40px, itens do menu 34px -> 40px, botão de recolher 28px -> 40px (antes: 8.664)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 5684,
+      "note": "Trecho do prompt com indicacao explicita de continuidade (Ver prompt completo) e excecao documentada para o recorte deliberado (antes: 7.020)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 4754,
+      "note": "Rotulos de botao e summary elevados de 10px para 12px (antes: 5.684)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 3694,
+      "note": "Nomes acessiveis alinhados ao texto visivel (marca, perfil, sair, cartoes de tarefa e prompt) (antes: 4.614)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 3202,
+      "note": "Tokens primary/muted-foreground e dourado em texto pequeno escurecidos para alcancar 4,5:1 (antes: 3.673)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 2784,
+      "note": "Folga entre itens do menu lateral elevada de 2px para 8px (antes: 3.202)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 2692,
+      "note": "Chips da biblioteca na familia densa (fonte 12px, altura 40px), titulo da marca na escala e prompt-titulo h2 ancorado na escala (antes: 2.784)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 2242,
+      "note": "Encaixe dos controles da barra superior e das secoes, altura dos chips de paginacao/ordem e link de atalho dentro do viewport (antes: 2.692)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 2204,
+      "note": "Titulo do topo ancorado em 18px e sem recorte horizontal, olho dourado das views em passo forte (antes: 2.242)."
+    },
+    {
+      "at": "2026-10-14",
+      "to": 2202,
+      "note": "Paginacao e alternador de visual de tarefas na familia densa (antes: 2.204)."
+    },
+    {
+      "at": "2026-10-15",
+      "to": 1461,
+      "note": "Superficies solidas no lugar de gradientes e pseudo-elementos decorativos, tokens semanticos de estado e placeholder escuro verificados (antes: 2.202)."
+    },
+    {
+      "at": "2026-10-15",
+      "to": 1289,
+      "note": "Folgas entre controles dos calendarios, abas de filtro, acoes de cartao e navegacao de configuracao elevadas ao piso de 8px (antes: 1.461)."
+    },
+    {
+      "at": "2026-10-15",
+      "to": 1217,
+      "note": "Folga nas listas de registros, marca da barra lateral, alternador de visual e acoes da caixa de entrada (antes: 1.289)."
+    },
+    {
+      "at": "2026-10-15",
+      "to": 1129,
+      "note": "Alvos de toque das abas de filtro, botoes textuais, paginacao de contatos, cronometro de tarefas e acoes de links elevados a 40px (antes: 1.217)."
+    },
+    {
+      "at": "2026-10-15",
+      "to": 1079,
+      "note": "Escala tipografica do app ancorada nos 12 passos aprovados; clamps extremos e valores soltos fora da escala (antes: 1.129)."
+    },
+    {
+      "at": "2026-10-15",
+      "to": 951,
+      "note": "Escala: h3 com 64px corrigidos, opcoes de paginacao e rotulos pequenos elevados, papeis tipograficos de glifos e metricas declarados (antes: 1.079)."
+    },
+    {
+      "at": "2026-10-15",
+      "to": 935,
+      "note": "Rotulos pequenos de publicacoes e agenda na escala e papel tipografico de texto secundario declarado (antes: 951)."
+    },
+    {
+      "at": "2026-10-15",
+      "to": 821,
+      "note": "Tooltip textual ligado por aria-describedby nos tres botoes somente-icone do shell (antes: 935)."
+    },
+    {
+      "at": "2026-10-16",
+      "to": 819,
+      "note": "Revisão visual e teste de teclado: atalho focável sem navegar à raiz, controle Análises e conferência restaurado a 12px e fontes de 64px introduzidas pela normalização corrigidas."
+    },
+    {
+      "at": "2026-10-16",
+      "to": 729,
+      "note": "Grupos nomeados com role adequado; contadores nativos no cabeçalho de coluna; calendário de botões sem ARIA grid incompleta. Referência do modal de identidade corrigida. Quarenta incertezas de popup fechado do axe foram revisadas e protegidas por teste de abertura/foco/Escape nos dois temas e viewports."
+    },
+    {
+      "at": "2026-10-16",
+      "to": 681,
+      "note": "Estilos inline antigos de ações de destinatários e telemetria substituídos por classes do módulo; fontes 12px, folga 8px e cor semântica do Excluir. Testes 1440/1186/390 light/dark e prints lidos."
+    },
+    {
+      "at": "2026-10-16",
+      "to": 373,
+      "note": "Alturas e folgas de controles corrigidas no CSS responsável: control-size e control-gap zerados nos 38 estados. Indicador Lista/Kanban alinhado à célula ativa nos dois temas/viewports; barra mobile de monitoramento com duas ações equilibradas. Regressões focais e prints de financeiro, monitoramento e tarefas conferidos."
+    },
+    {
+      "at": "2026-11-02",
+      "to": 359,
+      "note": "Escala tipográfica nos cartões de tarefa e na agenda, texto de responsável, origem e subtítulo quebra linha em vez de cortar, domínio de link na fonte da interface. Em 02/11 o total tinha subido a 511 por entregas recentes (antes do ajuste: 511)."
+    }
+  ],
+  "baseline": {
+    "measuredAt": "2026-10-13",
+    "viewport": "1440x900",
+    "states": "19 views x 2 temas (light/dark)",
+    "determinism": "Duas execuções consecutivas produziram o mesmo total após sincronizar rede e DOM juntos; timeout fixo oscilava em ±10.",
+    "initialTotal": 12820,
+    "byRule": {
+      "font-size": 3220,
+      "text-contrast": 3172,
+      "control-size": 1902,
+      "content-clipping": 1866,
+      "label-consistency": 1156,
+      "control-gap": 762,
+      "control-inset": 456,
+      "icon-button-tooltip": 130,
+      "control-state": 90,
+      "viewport-bounds": 38,
+      "font-family": 26,
+      "copy": 2
+    },
+    "applied": [
+      "Cores de estado do painel admin (paleta escura vazando no claro, até 1,76:1) migradas para tokens semânticos com overrides claros verificados em >=4,88:1.",
+      "Gradientes radiais decorativos do body removidos; base sólida."
+    ],
+    "dominantCauses": [
+      "2.936 medições de contraste impossíveis por fundo com gradiente em cards, hero e modais (dashboard, contatos, processos, publicações, monitoração, onboarding).",
+      "1.380 instâncias de texto a 8,5px, 980 a 10px e 460 a 17px — fora da escala aprovada.",
+      "1.902 controles abaixo do mínimo declarado (159x32px e 207x34px), a família densa existente do app.",
+      "1.866 recortes de texto e 1.156 problemas de nome acessível."
+    ]
+  }
+}

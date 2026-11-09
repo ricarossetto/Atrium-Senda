@@ -2,7 +2,7 @@
 
 **Data de Lançamento:** 10 de Setembro de 2026  
 **Ambiente Oficial de Produção:** [https://atrium.adv.br](https://atrium.adv.br)  
-**API Central & Backend:** [https://api.atrium.adv.br](https://api.atrium.adv.br)  
+**Repositório:** [github.com/ricarossetto/Atrium-Senda](https://github.com/ricarossetto/Atrium-Senda)  
 **Licença:** MIT — Open Source & Local-First  
 
 ---

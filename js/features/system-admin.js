@@ -1,8 +1,20 @@
 const SYSTEM_ADMIN_ICON_NAMES = new Set(['configuration', 'court', 'delete', 'download', 'edit', 'security', 'sync', 'theme-light', 'upload']);
 const iconSvg = name => {
   const safeName = SYSTEM_ADMIN_ICON_NAMES.has(name) ? name : 'configuration';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-${safeName}"></use></svg>`;
 };
+
+// Os códigos seguem iguais na API e no relatório exportado; aqui só muda o que aparece na tela.
+const STATUS_LABELS = new Map([
+  ['READY', 'Pronto'],
+  ['NEW_INSTALL', 'Instalação nova'],
+  ['EMPTY', 'Vazio'],
+  ['QUARANTINED', 'Em quarentena'],
+  ['UNKNOWN', 'Não informado'],
+  ['conectado', 'Conectado'],
+  ['consulta_sob_demanda', 'Consulta quando solicitada']
+]);
+const statusLabel = status => STATUS_LABELS.get(status) || status;
 
 export function createSystemAdminFeature({
   store,
@@ -10,10 +22,11 @@ export function createSystemAdminFeature({
   windowRef = globalThis.window,
   secureFetch,
   fetchFn = (...args) => globalThis.fetch(...args),
-  escapeHtml = value => String(value ?? ''),
+  escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])),
   showToast = () => {},
   openModal = () => {},
   closeModal = () => {},
+  withReauth = exec => exec({}),
   setTheme = () => {},
   switchView = () => {}
 } = {}) {
@@ -50,15 +63,15 @@ export function createSystemAdminFeature({
                 <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted);">Uptime: ${Math.floor(d.app.uptimeSeconds / 60)} min · Node ${escapeHtml(d.app.nodeVersion)} · ${escapeHtml(d.app.platform)} (${escapeHtml(d.app.arch)})</p>
               </div>
               <div style="display: flex; gap: 8px;">
-                <button type="button" class="button ghost" id="btnExportDiagnosticJson">📥 Exportar Relatório Anonimizado (.json)</button>
-                <button type="button" class="button gold" id="btnOpenFeedbackModal">💬 Registrar feedback local</button>
+                <button type="button" class="button ghost" id="btnExportDiagnosticJson">${iconSvg('download')} Exportar Relatório Anonimizado (.json)</button>
+                <button type="button" class="button gold" id="btnOpenFeedbackModal">${iconSvg('edit')} Registrar comentário</button>
               </div>
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
               <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                  <strong style="font-size: 13px; color: var(--ivory);">Banco de Dados & Estado</strong>
+                  <strong style="font-size: 13px; color: var(--ivory);">Banco de Dados e Estado</strong>
                   <span class="status-chip ${runtimeNeedsAttention ? 'warning' : 'connected'}" style="font-size: 10px;">${runtimeNeedsAttention ? 'Atenção' : 'Ativo'}</span>
                 </div>
                 <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.storage.type)}</p>
@@ -67,49 +80,53 @@ export function createSystemAdminFeature({
                   <li>Processos: <strong>${d.storage.records.processes}</strong></li>
                   <li>Tarefas: <strong>${d.storage.records.tasks}</strong></li>
                   <li>Intimações: <strong>${d.storage.records.intimations}</strong></li>
-                  <li>Runtime derivado: <strong>${escapeHtml(runtime.status)}</strong></li>
+                  <li>Dados derivados: <strong>${escapeHtml(statusLabel(runtime.status))}</strong></li>
                   <li>Tamanho do arquivo: <strong>${(d.storage.sizeBytes / 1024).toFixed(1)} KB</strong></li>
                 </ul>
               </div>
 
               <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                  <strong style="font-size: 13px; color: var(--ivory);">Criptografia & Sessão</strong>
+                  <strong style="font-size: 13px; color: var(--ivory);">Criptografia e Sessão</strong>
                   <span class="status-chip connected" style="font-size: 10px;">Protegido</span>
                 </div>
                 <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.security.encryption)}</p>
                 <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.6;">
                   <li>Segundo Fator: <strong>${escapeHtml(d.security.twoFactor)}</strong></li>
-                  <li>Sessão HttpOnly / Zero Trust: <strong>Ativa</strong></li>
+                  <li>Sessão com cookie protegido: <strong>Ativa</strong></li>
                   <li>Usuários Registrados: <strong>${d.security.totalUsers}</strong></li>
-                  <li>Modo: <strong>${d.app.cloudMode ? 'Nuvem / Cloud' : 'Local Seguro'}</strong></li>
+                  <li>Modo: <strong>${d.app.cloudMode ? 'Nuvem' : 'Desenvolvimento local'}</strong></li>
                 </ul>
               </div>
 
               <div class="card" style="padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                  <strong style="font-size: 13px; color: var(--ivory);">Tribunais & Coleta</strong>
-                  <span class="status-chip ${d.integrations.djen.status === 'conectado' ? 'connected' : 'warning'}" style="font-size: 10px;">${d.integrations.djen.status}</span>
+                  <strong style="font-size: 13px; color: var(--ivory);">Tribunais e Coleta</strong>
+                  <span class="status-chip ${d.integrations.djen.status === 'conectado' ? 'connected' : 'warning'}" style="font-size: 10px;">${escapeHtml(statusLabel(d.integrations.djen.status))}</span>
                 </div>
                 <p style="font-size: 12px; color: var(--muted); margin: 0 0 8px;">${escapeHtml(d.integrations.djen.description)}</p>
                 <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--muted); line-height: 1.6;">
                   <li>DataJud CNJ: <strong>${d.integrations.datajud.status === 'configurado' ? 'Chave Ativa' : 'Consulta Pública'}</strong></li>
-                  <li>IA Gemini: <strong>${d.integrations.gemini.status === 'configurado' ? 'Configurado' : 'Não configurado'}</strong></li>
+                  <li>Assistente de IA: <strong>${d.integrations.gemini.status === 'configurado' ? 'Configurado' : 'Não configurado'}</strong></li>
                   <li>Última Coleta: <strong>${d.integrations.collector.lastRun ? new Date(d.integrations.collector.lastRun).toLocaleString('pt-BR') : 'Nenhuma'}</strong></li>
                 </ul>
               </div>
             </div>
 
             <div style="border-top: 1px solid var(--line); padding-top: 20px; margin-top: 8px;">
-              <h4 style="margin: 0 0 12px; font-size: 1rem; color: var(--ivory);">🧹 Higiene de Dados</h4>
+              <h4 style="margin: 0 0 12px; font-size: 1rem; color: var(--ivory);">Higiene de Dados</h4>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px;">
                 <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
                   <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">App Version</p>
                   <p style="margin: 0; font-size: 14px; color: var(--ivory); font-weight: 600;">${escapeHtml(store.serverMeta?.appVersion || d.app.version || '—')}</p>
                 </div>
                 <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
+                  <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">Git Commit</p>
+                  <p style="margin: 0; font-size: 14px; color: var(--ivory); font-family: monospace;">${escapeHtml(store.serverMeta?.gitSha || d.app.gitSha || '—')}</p>
+                </div>
+                <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
                   <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">Build ID</p>
-                  <p style="margin: 0; font-size: 14px; color: var(--ivory); font-family: monospace;">${escapeHtml(store.serverMeta?.buildId || '—')}</p>
+                  <p style="margin: 0; font-size: 14px; color: var(--ivory); font-family: monospace;">${escapeHtml(store.serverMeta?.buildId || d.app.buildId || '—')}</p>
                 </div>
                 <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
                   <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">Schema Version</p>
@@ -117,14 +134,14 @@ export function createSystemAdminFeature({
                 </div>
                 <div class="card" style="padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft);">
                   <p style="margin: 0 0 4px; font-size: 12px; color: var(--muted);">Estado</p>
-                  <p style="margin: 0; font-size: 14px; color: ${store.stateStatus === 'READY' ? 'var(--emerald)' : 'var(--danger)'}; font-weight: 600;">${escapeHtml(store.stateStatus || 'READY')}</p>
+                  <p style="margin: 0; font-size: 14px; color: ${store.stateStatus === 'READY' ? 'var(--emerald)' : 'var(--danger)'}; font-weight: 600;">${escapeHtml(statusLabel(store.stateStatus || 'READY'))}</p>
                 </div>
               </div>
               <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                <button type="button" class="button ghost" id="btnClearUiCache" title="Remove apenas caches transitórios do navegador. Seus processos, tarefas e dados jurídicos permanecem intactos.">🧹 Limpar cache da interface</button>
-                <button type="button" class="button ghost" id="btnResetVisualPrefs" title="Reseta tema e layout para o padrão. Nenhum dado jurídico é afetado.">🎨 Resetar preferências visuais</button>
-                <button type="button" class="button ghost" id="btnRebuildRuntime" title="Reconstrói dados derivados e runtime no servidor sem afetar processos ou tarefas.">🔄 Recriar dados derivados</button>
-                <button type="button" class="button ghost" id="btnManagePortalSessions" title="Gerencie sessões de login dos portais judiciais. A1, TOTP e processos são preservados.">🏛️ Gerenciar sessões do tribunal</button>
+                <button type="button" class="button ghost" id="btnClearUiCache" title="Remove apenas caches transitórios do navegador. Seus processos, tarefas e dados jurídicos permanecem intactos.">${iconSvg('delete')} Limpar cache da interface</button>
+                <button type="button" class="button ghost" id="btnResetVisualPrefs" title="Reseta tema e layout para o padrão. Nenhum dado jurídico é afetado.">${iconSvg('theme-light')} Resetar preferências visuais</button>
+                <button type="button" class="button ghost" id="btnRebuildRuntime" title="Reconstrói dados derivados e runtime no servidor sem afetar processos ou tarefas.">${iconSvg('sync')} Recriar dados derivados</button>
+                <button type="button" class="button ghost" id="btnManagePortalSessions" title="Gerencie sessões de login dos portais judiciais. A1, TOTP e processos são preservados.">${iconSvg('court')} Gerenciar sessões do tribunal</button>
               </div>
             </div>
           </div>`;
@@ -142,24 +159,24 @@ export function createSystemAdminFeature({
             <div>
               <p class="eyebrow">Saúde do sistema e proteção dos dados</p>
               <h4 id="diagnosticV2Title">${escapeHtml(d.app.name)} <span>v${escapeHtml(d.app.version)}</span></h4>
-              <p>Visão administrativa do ambiente, da persistência e das integrações já configuradas.</p>
+              <p>Situação do ambiente, dos dados e das integrações.</p>
             </div>
             <div class="configuration-system-header-actions">
               <button type="button" class="button ghost" id="btnExportDiagnosticJson">${iconSvg('download')}Exportar relatório JSON</button>
-              <button type="button" class="button gold" id="btnOpenFeedbackModal">${iconSvg('edit')}Registrar feedback local</button>
+              <button type="button" class="button gold" id="btnOpenFeedbackModal">${iconSvg('edit')}Registrar comentário</button>
             </div>
           </header>
 
           <div class="diagnostic-v2-grid">
             <article class="diagnostic-v2-card" data-health-state="${runtimeNeedsAttention ? 'attention' : 'ready'}">
               <div class="diagnostic-v2-card-heading"><div><span class="diagnostic-v2-kicker">Estado e persistência</span><h5>Dados jurídicos</h5></div><span class="configuration-status-badge ${runtimeNeedsAttention ? 'warning' : 'success'}">${runtimeNeedsAttention ? 'Requer atenção' : 'Operacional'}</span></div>
-              <p>${escapeHtml(d.storage.type)}</p>
+              <p>Estado cifrado (AES-256-GCM)</p>
               <dl class="diagnostic-v2-definition-grid">
                 <div><dt>Contatos</dt><dd>${escapeHtml(d.storage.records.contacts)}</dd></div>
                 <div><dt>Processos</dt><dd>${escapeHtml(d.storage.records.processes)}</dd></div>
                 <div><dt>Tarefas</dt><dd>${escapeHtml(d.storage.records.tasks)}</dd></div>
-                <div><dt>Intimações</dt><dd>${escapeHtml(d.storage.records.intimations)}</dd></div>
-                <div><dt>Runtime derivado</dt><dd>${escapeHtml(runtime.status)}</dd></div>
+                <div><dt>Publicações</dt><dd>${escapeHtml(d.storage.records.intimations)}</dd></div>
+                <div><dt>Dados derivados</dt><dd>${escapeHtml(statusLabel(runtime.status))}</dd></div>
                 <div><dt>Arquivo de estado</dt><dd>${escapeHtml((d.storage.sizeBytes / 1024).toFixed(1))} KB</dd></div>
               </dl>
             </article>
@@ -169,30 +186,32 @@ export function createSystemAdminFeature({
               <p>${escapeHtml(d.security.encryption)}</p>
               <dl class="diagnostic-v2-list">
                 <div><dt>Segundo fator</dt><dd>${escapeHtml(d.security.twoFactor)}</dd></div>
-                <div><dt>Sessão</dt><dd>HttpOnly / Zero Trust</dd></div>
+                <div><dt>Sessão</dt><dd>Cookie protegido</dd></div>
                 <div><dt>Usuários registrados</dt><dd>${escapeHtml(d.security.totalUsers)}</dd></div>
-                <div><dt>Modo</dt><dd>${d.app.cloudMode ? 'Nuvem / Cloud' : 'Local seguro'}</dd></div>
+                <div><dt>Modo</dt><dd>${d.app.cloudMode ? 'Nuvem' : 'Desenvolvimento local'}</dd></div>
               </dl>
             </article>
 
             <article class="diagnostic-v2-card">
-              <div class="diagnostic-v2-card-heading"><div><span class="diagnostic-v2-kicker">Integrações</span><h5>Fontes e serviços</h5></div><span class="configuration-status-badge ${djenConnected ? 'success' : 'neutral'}">${escapeHtml(d.integrations.djen.status)}</span></div>
+              <div class="diagnostic-v2-card-heading"><div><span class="diagnostic-v2-kicker">Integrações</span><h5>Fontes e serviços</h5></div><span class="configuration-status-badge ${djenConnected ? 'success' : 'neutral'}">${escapeHtml(statusLabel(d.integrations.djen.status))}</span></div>
               <p>${escapeHtml(d.integrations.djen.description)}</p>
               <dl class="diagnostic-v2-list">
                 <div><dt>DataJud CNJ</dt><dd>${d.integrations.datajud.status === 'configurado' ? 'Chave ativa' : 'Consulta pública'}</dd></div>
-                <div><dt>Gemini</dt><dd>${d.integrations.gemini.status === 'configurado' ? 'Configurado' : 'Não configurado'}</dd></div>
+                <div><dt>Assistente de IA</dt><dd>${d.integrations.gemini.status === 'configurado' ? 'Configurado' : 'Não configurado'}</dd></div>
                 <div><dt>Última coleta</dt><dd>${escapeHtml(lastCollectorRun)}</dd></div>
               </dl>
             </article>
 
             <article class="diagnostic-v2-card diagnostic-v2-runtime-card">
-              <div class="diagnostic-v2-card-heading"><div><span class="diagnostic-v2-kicker">Runtime e higiene</span><h5>Versões do ambiente</h5></div><span class="configuration-status-badge ${stateStatus === 'READY' ? 'success' : 'warning'}">${escapeHtml(stateStatus)}</span></div>
+              <div class="diagnostic-v2-card-heading"><div><span class="diagnostic-v2-kicker">Ambiente</span><h5>Versões do ambiente</h5></div><span class="configuration-status-badge ${stateStatus === 'READY' ? 'success' : 'warning'}">${escapeHtml(statusLabel(stateStatus))}</span></div>
               <dl class="diagnostic-v2-list">
-                <div><dt>App version</dt><dd>${escapeHtml(store.serverMeta?.appVersion || d.app.version || '—')}</dd></div>
-                <div><dt>Build ID</dt><dd><code>${escapeHtml(store.serverMeta?.buildId || '—')}</code></dd></div>
-                <div><dt>Schema version</dt><dd>v${escapeHtml(String(store.serverMeta?.schemaVersion || '?'))}</dd></div>
+                <div><dt>Versão do aplicativo</dt><dd>${escapeHtml(store.serverMeta?.appVersion || d.app.version || '—')}</dd></div>
+                <div><dt>Commit</dt><dd><code>${escapeHtml(store.serverMeta?.gitSha || d.app.gitSha || '—')}</code></dd></div>
+                <div><dt>Build ID</dt><dd><code>${escapeHtml(store.serverMeta?.buildId || d.app.buildId || '—')}</code></dd></div>
+                <div><dt>Compilado em</dt><dd>${escapeHtml(store.serverMeta?.builtAt || d.app.builtAt || '—')}</dd></div>
+                <div><dt>Versão do esquema</dt><dd>v${escapeHtml(String(store.serverMeta?.schemaVersion || '?'))}</dd></div>
                 <div><dt>Node / plataforma</dt><dd>${escapeHtml(d.app.nodeVersion)} · ${escapeHtml(d.app.platform)} (${escapeHtml(d.app.arch)})</dd></div>
-                <div><dt>Uptime atual</dt><dd>${escapeHtml(Math.floor(d.app.uptimeSeconds / 60))} min</dd></div>
+                <div><dt>Tempo no ar</dt><dd>${escapeHtml(Math.floor(d.app.uptimeSeconds / 60))} min</dd></div>
               </dl>
             </article>
           </div>
@@ -245,8 +264,8 @@ export function createSystemAdminFeature({
         if (!response.ok) throw new Error(data.message || 'Falha ao reconstruir dados derivados.');
         showToast(data.message || 'Runtime reconstruído com sucesso.', 'success');
         return true;
-      } catch {
-        showToast('Falha ao reconstruir dados derivados.', 'error');
+      } catch (error) {
+        showToast(error?.message || 'Falha ao reconstruir dados derivados.', 'error');
         return false;
       }
     },
@@ -266,13 +285,13 @@ export function createSystemAdminFeature({
         <div style="padding: 16px; display: flex; flex-direction: column; gap: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line);">
             <div>
-              <h4 style="margin: 0; font-size: 1.1rem; color: var(--ivory);">Cópia de Segurança & Restauração (Zero Trust)</h4>
+              <h4 style="margin: 0; font-size: 1.1rem; color: var(--ivory);">Cópia de Segurança e Restauração (Zero Trust)</h4>
               <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted);">Gere snapshots cifrados dos dados processuais, tarefas e contatos ou restaure de um arquivo.</p>
             </div>
             <div style="display: flex; gap: 8px;">
-              <button type="button" class="button gold" id="btnCreateBackupNow">🔒 Gerar Backup Criptografado (.atrium-backup)</button>
-              <label class="button ghost" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center;">
-                📥 Restaurar do Arquivo
+              <button type="button" class="button gold" id="btnCreateBackupNow">${iconSvg('security')} Gerar Backup Criptografado (.atrium-backup)</button>
+              <label class="button ghost" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center; gap: 6px;">
+                ${iconSvg('upload')} Restaurar do Arquivo
                 <input type="file" id="inputRestoreBackup" accept=".atrium-backup,.json" style="display: none;">
               </label>
             </div>
@@ -299,7 +318,7 @@ export function createSystemAdminFeature({
             <div>
               <p class="eyebrow">Proteção e recuperação</p>
               <h4 id="backupV2Title">Cópias de segurança do ATRIUM</h4>
-              <p>Exporte um snapshot cifrado ou restaure um arquivo somente após confirmação humana.</p>
+              <p>Baixe uma cópia cifrada ou restaure um arquivo depois de confirmar.</p>
             </div>
           </header>
           <div class="backup-v2-grid">
@@ -308,12 +327,12 @@ export function createSystemAdminFeature({
               <p class="eyebrow">Criar backup</p>
               <h5>Guardar uma cópia protegida</h5>
               <p>Gera e baixa um arquivo <code>.atrium-backup</code> com o estado atual cifrado.</p>
-              <button type="button" class="button gold" id="btnCreateBackupNow">${iconSvg('security')}Gerar backup criptografado</button>
+              <button type="button" class="button gold" id="btnCreateBackupNow">${iconSvg('security')}Gerar cópia de segurança</button>
             </article>
             <article class="backup-v2-card backup-v2-restore">
               <span class="backup-v2-index">02</span>
               <p class="eyebrow">Restaurar</p>
-              <h5>Aplicar um backup existente</h5>
+              <h5>Restaurar uma cópia existente</h5>
               <p>A restauração é uma ação sensível. O sistema pedirá confirmação antes de enviar o arquivo.</p>
               <label class="button configuration-restore-button" for="inputRestoreBackup">${iconSvg('upload')}Selecionar arquivo para restaurar</label>
               <input type="file" id="inputRestoreBackup" accept=".atrium-backup,.json" class="configuration-restore-input">
@@ -324,7 +343,7 @@ export function createSystemAdminFeature({
               <ul>
                 <li><strong>SHA-256</strong><span>checksum de integridade do arquivo</span></li>
                 <li><strong>AES-256-GCM</strong><span>conteúdo protegido por criptografia autenticada</span></li>
-                <li><strong>Snapshot preventivo</strong><span>cópia criada pelo backend antes de restaurar</span></li>
+                <li><strong>Cópia preventiva</strong><span>cópia criada pelo backend antes de restaurar</span></li>
               </ul>
             </aside>
           </div>
@@ -334,7 +353,15 @@ export function createSystemAdminFeature({
     async createBackup() {
       try {
         showToast('Gerando cópia de segurança cifrada…', 'info');
-        const response = await secureFetch('/api/system/backup/create', { method: 'POST', headers: { Accept: 'application/json' } });
+        const response = await withReauth(stepUp => secureFetch('/api/system/backup/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(stepUp)
+        }));
+        if (response.reauthCancelled) {
+          showToast('Backup cancelado. Nenhuma mudança foi aplicada.', 'warning');
+          return null;
+        }
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.ok || !data.backupData) throw new Error(data.message || 'Falha ao criar backup.');
         const BlobConstructor = windowRef.Blob || globalThis.Blob;
@@ -345,7 +372,7 @@ export function createSystemAdminFeature({
         anchor.download = data.fileName || `atrium-backup-${new Date().toISOString().slice(0, 10)}.atrium-backup`;
         anchor.click();
         windowRef.URL.revokeObjectURL(url);
-        showToast('Backup criptografado gerado e baixado com sucesso!', 'success');
+        showToast('Cópia de segurança gerada e baixada.', 'success');
         return { blob, fileName: anchor.download };
       } catch (error) {
         showToast(`Erro no backup: ${error.message}`, 'error');
@@ -362,11 +389,15 @@ export function createSystemAdminFeature({
       try {
         const backupData = JSON.parse(await file.text());
         showToast('Validando integridade e restaurando dados…', 'info');
-        const response = await secureFetch('/api/system/backup/restore', {
+        const response = await withReauth(stepUp => secureFetch('/api/system/backup/restore', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ backupData })
-        });
+          body: JSON.stringify({ backupData, ...stepUp })
+        }));
+        if (response.reauthCancelled) {
+          showToast('Restauração cancelada. Nenhuma mudança foi aplicada.', 'warning');
+          return false;
+        }
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.ok) throw new Error(data.message || 'Falha ao restaurar dados.');
         showToast('Backup restaurado com sucesso! Atualizando o sistema…', 'success');
@@ -379,10 +410,8 @@ export function createSystemAdminFeature({
     },
 
     openFeedbackModal() {
-      const labels = isV2()
-        ? ['Sugestão de Melhoria', 'Relato de Problema / Bug', 'Dificuldade de Uso', 'Desempenho / Lentidão']
-        : ['💡 Sugestão de Melhoria', '🐛 Relato de Problema / Bug', '❓ Dificuldade de Uso', '⚡ Desempenho / Lentidão'];
-      openModal('feedback', 'Registrar feedback local', 'Registro privado neste ambiente', [
+      const labels = ['Sugestão de Melhoria', 'Relato de Problema / Bug', 'Dificuldade de Uso', 'Desempenho / Lentidão'];
+      openModal('feedback', 'Registrar comentário', 'Registro privado neste ambiente', [
         { name: 'type', label: 'Tipo de Feedback', type: 'select', options: [
           { value: 'sugestao', label: labels[0] },
           { value: 'bug', label: labels[1] },
@@ -392,11 +421,11 @@ export function createSystemAdminFeature({
         { name: 'component', label: 'Módulo / Tela Afetada', type: 'select', options: [
           { value: 'Geral', label: 'Geral / Outros' },
           { value: 'Área de Trabalho', label: 'Área de Trabalho' },
-          { value: 'Kanban', label: 'Kanban & Tarefas' },
+          { value: 'Kanban', label: 'Kanban e Tarefas' },
           { value: 'Intimações', label: 'Caixa de Intimações' },
           { value: 'Processos', label: 'Processos' },
-          { value: 'Financeiro', label: 'Financeiro & RPVs' },
-          { value: 'Documentos', label: 'Minutas & Modelos' },
+          { value: 'Financeiro', label: 'Financeiro e RPVs' },
+          { value: 'Documentos', label: 'Minutas e Modelos' },
           { value: 'Configurações', label: 'Configurações' }
         ], required: true },
         { name: 'message', label: 'Descrição Detalhada', type: 'textarea', full: true, required: true, placeholder: 'Descreva o que ocorreu ou sua sugestão sem incluir dados pessoais, processos ou conteúdo confidencial.' }

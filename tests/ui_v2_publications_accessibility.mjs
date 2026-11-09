@@ -33,7 +33,25 @@ try {
     assert.ok(initial.overflow <= 2);
 
     const record = page.locator('[data-intimation-id="ui-v2-publication-urgent"]');
-    await record.focus();
+    const openControl = record.locator('.publication-record-open');
+    await record.locator('.publication-row-quick').waitFor();
+    await page.evaluate(() => {
+      const firstOpen = document.querySelector('#inboxList .publication-record-shell .publication-record-open');
+      firstOpen?.focus();
+    });
+    await page.keyboard.press('Tab');
+    assert.equal(
+      await page.evaluate(() => document.activeElement?.dataset.rowAction || null),
+      'mark_treated',
+      'Tab deve alcançar a ação rápida da mesma linha após o controle de abrir.'
+    );
+    await page.keyboard.press('Tab');
+    assert.equal(
+      await page.evaluate(() => Boolean(document.activeElement?.classList.contains('publication-record-open'))),
+      true,
+      'Tab deve avançar para o controle de abrir da próxima linha.'
+    );
+    await openControl.focus();
     await page.keyboard.press('Enter');
     await page.locator('#view-inbox.publication-detail-open').waitFor();
     await page.waitForFunction(() => getComputedStyle(document.getElementById('intimationDetail')).opacity === '1');
@@ -61,16 +79,16 @@ try {
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'publicationDetailClose');
     await page.keyboard.press('Escape');
     await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
-    assert.equal(await page.evaluate(() => document.activeElement?.dataset.intimationId), 'ui-v2-publication-urgent');
+    assert.equal(await page.evaluate(() => document.activeElement?.closest('[data-intimation-id]')?.dataset.intimationId), 'ui-v2-publication-urgent');
     assert.equal(await page.locator('.inbox-list-card').getAttribute('inert'), null);
     assert.equal(await page.locator('#sidebar').getAttribute('inert'), null);
 
-    await record.click();
+    await openControl.click();
     await page.locator('#view-inbox.publication-detail-open').waitFor();
     await page.waitForFunction(() => getComputedStyle(document.getElementById('intimationDetail')).opacity === '1');
     await page.locator('#publicationInspectorBackdrop').click({ position: { x: 12, y: 12 } });
     await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
-    assert.equal(await page.evaluate(() => document.activeElement?.dataset.intimationId), 'ui-v2-publication-urgent');
+    assert.equal(await page.evaluate(() => document.activeElement?.closest('[data-intimation-id]')?.dataset.intimationId), 'ui-v2-publication-urgent');
 
     const filter = page.locator('#inboxFilters button[data-filter="treated"]');
     await filter.focus();
@@ -89,26 +107,60 @@ try {
     const before = await page.evaluate(() => {
       const ids = [...document.querySelectorAll('[id]')].map(element => element.id);
       const records = [...document.querySelectorAll('#inboxList [data-intimation-id]')];
+      const quickActions = [...document.querySelectorAll('#inboxList .publication-row-quick')];
       return {
         overflow: document.documentElement.scrollWidth - innerWidth,
         duplicates: ids.filter((id, index) => ids.indexOf(id) !== index),
-        targets: records.map(element => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))
+        targets: records.map(element => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height })),
+        quickTargets: quickActions.map(element => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height })),
+        quickCount: quickActions.length
       };
     });
     assert.ok(before.overflow <= 2, `Overflow mobile: ${before.overflow}px.`);
     assert.deepEqual(before.duplicates, []);
     for (const target of before.targets) assert.ok(target.width >= 44 && target.height >= 44);
+    assert.equal(before.quickCount, 2, 'Somente publicações não tratadas/em análise expõem a ação rápida.');
+    for (const target of before.quickTargets) assert.ok(target.width >= 44 && target.height >= 44, `Alvo da ação rápida deve ter 44px: ${JSON.stringify(target)}`);
 
     const origin = page.locator('[data-intimation-id="ui-v2-publication-urgent"]');
     const originText = await origin.textContent();
     for (const expected of ['Intimação sintética', '5004321-12.2026.8.21.0001', 'DJEN sintético', 'Não tratada', 'Não lida']) {
       assert.ok(originText.includes(expected), `RecordList deve expor: ${expected}`);
     }
-    await origin.focus();
+    await origin.locator('.publication-record-open').focus();
     await page.keyboard.press('Enter');
     await page.locator('#view-inbox.publication-detail-open').waitFor();
     await page.waitForFunction(() => getComputedStyle(document.getElementById('intimationDetail')).opacity === '1');
     await page.waitForFunction(() => document.activeElement?.id === 'publicationDetailClose');
+    await page.locator('[data-fold="conference"] > summary').click();
+    await page.locator('[data-conference-days]').fill('23');
+    await page.evaluate(() => window.Atrium.App.renderIntimationDetail());
+    assert.equal(await page.locator('[data-conference-days]').inputValue(), '23');
+    assert.equal(await page.evaluate(() => document.activeElement?.hasAttribute('data-conference-days')), true);
+    await page.locator('[data-conference-counting]').selectOption('calendar');
+    await page.evaluate(() => window.Atrium.App.renderIntimationDetail());
+    assert.equal(await page.locator('[data-conference-counting]').inputValue(), 'calendar');
+    if (await page.locator('[data-detail-more]').isVisible()) await page.locator('[data-detail-more]').click();
+    await page.locator('[data-detail-action="assistant"]').focus();
+    await page.evaluate(() => window.Atrium.App.renderIntimationDetail());
+    assert.equal(await page.evaluate(() => document.activeElement?.dataset.detailAction), 'assistant');
+    await page.evaluate(() => {
+      document.activeElement.blur();
+      window.Atrium.App.renderIntimationDetail();
+    });
+    assert.equal(await page.evaluate(() => document.activeElement?.tagName), 'BODY');
+    await page.locator('#btnSendIntimationEmail').click();
+    await page.locator('#publicationEmailBackdrop:not(.hidden)').waitFor();
+    const overlayFocus = await page.evaluate(() => document.activeElement?.id);
+    await page.evaluate(() => window.Atrium.App.renderIntimationDetail());
+    assert.equal(await page.evaluate(() => document.activeElement?.id), overlayFocus);
+    await page.keyboard.press('Escape');
+    await page.locator('#publicationEmailBackdrop.hidden').waitFor({ state: 'attached' });
+    await page.locator('#publicationDetailClose').focus();
+    page.once('dialog', async dialog => {
+      assert.match(dialog.message(), /alterações não salvas/);
+      await dialog.accept();
+    });
     const sheet = await page.locator('#intimationDetail').evaluate(element => {
       const rect = element.getBoundingClientRect();
       const actions = [...element.querySelectorAll('.detail-actions .button')].map(button => ({ width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height }));
@@ -119,10 +171,18 @@ try {
     for (const target of sheet.actions) assert.ok(target.width >= 44 && target.height >= 44);
     await page.keyboard.press('Escape');
     await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
-    assert.equal(await page.evaluate(() => document.activeElement?.dataset.intimationId), 'ui-v2-publication-urgent');
+    assert.equal(await page.evaluate(() => document.activeElement?.closest('[data-intimation-id]')?.dataset.intimationId), 'ui-v2-publication-urgent');
+
+    await page.locator('[data-intimation-id="ui-v2-publication-review"] .publication-record-open').click();
+    await page.waitForFunction(() => document.activeElement?.id === 'publicationDetailClose');
+    assert.equal(await page.locator('[data-conference-days]').inputValue(), '15');
+    assert.equal(await page.locator('[data-conference-counting]').inputValue(), 'business');
+    await page.keyboard.press('Escape');
+    await page.locator('#view-inbox:not(.publication-detail-open)').waitFor();
 
     const emailButton = page.locator('#btnEmailPublications');
     await emailButton.focus();
+    if (await page.locator('#inboxFiltersToggle').isVisible() && await page.locator('#inboxFiltersToggle').getAttribute('aria-expanded') === 'false') await page.locator('#inboxFiltersToggle').click();
     await emailButton.click();
     await page.locator('#publicationsEmailModalBackdrop:not(.hidden)').waitFor();
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'emailTargetAddress');

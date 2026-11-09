@@ -7,13 +7,16 @@ import { createPromptsFeature } from '../js/features/prompts.js';
 import { prepareUiV2Page, prepareUiV2PromptsFixture, startUiV2Session } from './ui_v2_helpers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const [featureSource, presenterSource, portalSource, promptsData, skillsData] = await Promise.all([
+const [featureSource, presenterSource, portalSource, promptsDataBuffer, skillsDataBuffer] = await Promise.all([
   readFile(path.join(ROOT, 'js/features/prompts.js'), 'utf8'),
   readFile(path.join(ROOT, 'js/views/ui-v2/prompts-presenter.js'), 'utf8'),
   readFile(path.join(ROOT, 'js/portal.js'), 'utf8'),
   readFile(path.join(ROOT, 'js/prompts-data.js')),
   readFile(path.join(ROOT, 'js/skills-data.js'))
 ]);
+const normalizeEol = source => source.replace(/\r\n/g, '\n');
+const promptsData = normalizeEol(promptsDataBuffer.toString('utf8'));
+const skillsData = normalizeEol(skillsDataBuffer.toString('utf8'));
 
 console.log('\n===============================================================');
 console.log('  ATRIUM — UI V2 LEGAL PROMPT LIBRARY');
@@ -23,8 +26,8 @@ assert.equal((portalSource.match(/createPromptsFeature\s*\(/g) || []).length, 1,
 assert.doesNotMatch(featureSource, /^\s*import\s/m);
 assert.doesNotMatch(featureSource, /\b(?:fetch|secureFetch)\s*\(/);
 assert.doesNotMatch(presenterSource, /\bStore\b|customPrompts|\bfetch\s*\(|secureFetch|\bsave\s*\(|\bflush\s*\(|\baudit\s*\(|clipboard\.writeText|setTimeout|onUsePrompt/);
-assert.equal(createHash('sha256').update(promptsData).digest('hex'), '5ad2e02eaf7ea80bb76b43e2de7beccc05ffb159af56b634a4f9d712e74f8340');
-assert.equal(createHash('sha256').update(skillsData).digest('hex'), '16f638bd98920f20767725f4ee3cec7fa3ec5f5e1ba7592c83b07d05b15f5905');
+assert.equal(createHash('sha256').update(promptsData).digest('hex'), '93a3b5e7a2d71934ed7b003cb766a13b4ba20ee89dcc6b37e237c67113abd202');
+assert.equal(createHash('sha256').update(skillsData).digest('hex'), 'cfa0b7df8f28b59a85afc2618b8fea4cbca02061b88c74d133d0c2021272cbef');
 
 const rollbackStore = {
   state: { customPrompts: [{ id: 'custom-rollback-v2', isCustom: true, title: 'Rollback V2' }] },

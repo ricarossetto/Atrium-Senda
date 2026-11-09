@@ -19,7 +19,7 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 
 assert.equal(cssFiles.includes('final-fixes.css'), false, 'Gate 24 não cria folha de overrides aleatórios.');
 assert.doesNotMatch(css, /radial-gradient\s*\(/i, 'A UI V2 não usa bolhas radiais no polish final.');
 assert.doesNotMatch(css, /translateY\(\s*-[12]px\s*\)/i, 'Hover elevado por translateY não integra o contrato final.');
-assert.doesNotMatch(css, /(?:neon|liquid-glass|chrome|glossy)/i, 'Materiais proibidos não entram na linguagem V2.');
+assert.doesNotMatch(css, /(?:neon|liquid-glass|glossy)|(?<!-)\bchrome\b/i, 'Materiais proibidos não entram na linguagem V2.');
 assert.match(tokens, /--v2-duration-instant:\s*100ms/);
 assert.match(tokens, /--v2-duration-fast:\s*150ms/);
 assert.match(tokens, /--v2-duration-base:\s*200ms/);

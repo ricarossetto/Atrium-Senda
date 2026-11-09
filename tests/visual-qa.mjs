@@ -35,7 +35,7 @@ const VIEWS = [
   { id: 'agenda', name: 'agenda', selector: '#view-agenda.active', uniqueSelector: '#agendaList, #agendaFilterTabs, #agendaSyncButton' },
   { id: 'contacts', name: 'contacts', selector: '#view-contacts.active', uniqueSelector: '#contactSearch, #contactTable, #newContactButton' },
   { id: 'integrations', name: 'sources', selector: '#view-integrations.active', uniqueSelector: '#configureCalendarButton, #certificateGuideButton, .integration-grid' },
-  { id: 'assistant', name: 'ai-assistant', selector: '#view-assistant.active', uniqueSelector: '#aiOnboardingBanner, #aiQuickKeyInput, .ai-assistant-container' },
+  { id: 'assistant', name: 'ai-assistant', selector: '#view-assistant.active', uniqueSelector: '#aiOnboardingBanner, #btnOpenKeyModalFromCard, .ai-assistant-container' },
   { id: 'audit', name: 'audit', selector: '#view-audit.active', uniqueSelector: '#auditFilters, #auditList, #auditCountBadge' }
 ];
 
@@ -83,7 +83,7 @@ try {
   const password = 'Senha-Segura-2026!';
   let res = await postJson(`${server.baseUrl}/api/auth/setup`, {
     username: 'admin',
-    displayName: 'Dr. Roberto Keller',
+    displayName: 'Dr. Roberto Teste',
     password
   });
   let setupData = await res.json();
@@ -208,11 +208,16 @@ try {
     const nextSlideIdx = await page.evaluate(() => Number(document.querySelector('.tour-slide.active')?.dataset.slide));
     assert.equal(nextSlideIdx, 5, 'Botão próximo deve avançar para o próximo slide.');
 
-    // Validar navegação por indicadores (Dots)
-    await page.click('#tourDots .tour-dot[data-slide-target="1"]');
-    await page.waitForTimeout(60);
-    const dotSlideIdx = await page.evaluate(() => Number(document.querySelector('.tour-slide.active')?.dataset.slide));
-    assert.equal(dotSlideIdx, 1, 'Clique no indicador (dot) deve navegar para o slide correspondente.');
+    // Validar navegação por indicadores (Dots) — ocultos por contrato em viewports estreitos
+    const dotSelector = '#tourDots .tour-dot[data-slide-target="1"]';
+    if (await page.locator(dotSelector).isVisible()) {
+      await page.click(dotSelector);
+      await page.waitForTimeout(60);
+      const dotSlideIdx = await page.evaluate(() => Number(document.querySelector('.tour-slide.active')?.dataset.slide));
+      assert.equal(dotSlideIdx, 1, 'Clique no indicador (dot) deve navegar para o slide correspondente.');
+    } else {
+      assert.ok(cfg.width <= 520, 'Indicadores do tour só podem ser ocultados em viewports estreitos.');
+    }
 
     // Validar Fechar apresentação
     await page.click('#tourCloseButton');

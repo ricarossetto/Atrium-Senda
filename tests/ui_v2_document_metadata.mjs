@@ -84,7 +84,7 @@ try {
       assert.match(await updatedRecord.textContent(), /contrato/);
       assert.match(await updatedRecord.textContent(), /honorários/);
       assert.match(await updatedRecord.textContent(), /Resumo exclusivamente sintético e revisado/);
-      assert.match(await updatedRecord.textContent(), /1 documento\(s\) relacionado\(s\)/);
+      assert.match(await updatedRecord.textContent(), /1 documento relacionado/);
 
       const evidence = await page.evaluate(() => ({
         overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,

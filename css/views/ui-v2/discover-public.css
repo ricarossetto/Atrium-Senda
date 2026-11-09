@@ -1,0 +1,211 @@
+html[data-theme="light"] body.discover-public {
+  --discover-accent-text: #7A6232;
+}
+
+body.discover-public :is(.preview-index, .preview-text-link, .section-kicker) {
+  color: var(--discover-accent-text, var(--mineral-gold));
+}
+
+body.discover-public .landing-footer,
+body.discover-public .footer-links a {
+  color: var(--text-secondary);
+}
+
+body.discover-public .footer-links a:hover {
+  color: var(--text-primary);
+}
+
+body.discover-public .discover-interest {
+  border-block: 1px solid var(--border-hairline);
+}
+
+body.discover-public .preview-hero .landing-container {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: clamp(28px, 4vw, 64px);
+  text-align: start;
+}
+
+body.discover-public .discover-hero-copy {
+  min-width: 0;
+}
+
+body.discover-public .preview-hero .hero-headline {
+  font-size: clamp(38px, 4.2vw, 62px);
+  line-height: 1.04;
+  margin-inline: 0;
+}
+
+body.discover-public .preview-hero .hero-subheadline {
+  font-size: clamp(16px, 1.4vw, 18px);
+  margin-inline: 0;
+}
+
+body.discover-public .preview-hero .hero-cta-group {
+  justify-content: flex-start;
+  margin-bottom: 0;
+}
+
+body.discover-public .discover-film {
+  min-width: 0;
+  margin: 0;
+}
+
+body.discover-public .discover-film-wide {
+  margin-block: 0 clamp(32px, 4vw, 56px);
+}
+
+body.discover-public .discover-film-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-card);
+  background: #111315;
+}
+
+body.discover-public .discover-film-frame :is(picture, img, video) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+body.discover-public .discover-film-frame video {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+body.discover-public .discover-film.is-ready .discover-film-frame video {
+  opacity: 1;
+  transition: opacity 650ms ease-in-out;
+}
+
+body.discover-public .discover-film-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 16px;
+  text-align: start;
+}
+
+body.discover-public .discover-film-number {
+  font-family: var(--font-mono);
+  color: var(--discover-accent-text, var(--mineral-gold));
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+body.discover-public .discover-film-caption p {
+  color: var(--text-primary);
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+body.discover-public .discover-film-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+body.discover-public .discover-film-toggle:hover {
+  border-color: var(--border-active);
+  background: var(--surface-elevated);
+}
+
+body.discover-public .discover-film-toggle[hidden] {
+  display: none;
+}
+
+body.discover-public .discover-dashboard {
+  margin-top: clamp(32px, 4vw, 56px);
+}
+
+body.discover-public .discover-dashboard .product-stage-badge {
+  max-width: calc(100% - 30px);
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  body.discover-public .preview-hero .landing-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  body.discover-public .discover-film-frame {
+    aspect-ratio: 4 / 5;
+  }
+
+  body.discover-public .discover-film-caption {
+    align-items: flex-start;
+  }
+
+  body.discover-public .discover-film-toggle {
+    padding-inline: 12px;
+  }
+
+  body.discover-public .discover-dashboard .product-stage-badge {
+    position: static;
+    display: block;
+    max-width: none;
+    border-radius: 0;
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.discover-public .discover-film.is-ready .discover-film-frame video {
+    opacity: 0;
+  }
+}
+
+body.discover-public .discover-interest-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(24px, 5vw, 64px);
+}
+
+body.discover-public .discover-interest .section-title-editorial {
+  max-width: 760px;
+}
+
+body.discover-public .discover-interest .section-lead-editorial {
+  max-width: 680px;
+  margin-top: 16px;
+}
+
+body.discover-public .discover-interest .btn-hero-primary {
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+  body.discover-public .discover-interest-inner {
+    grid-template-columns: 1fr;
+  }
+
+  body.discover-public .discover-interest .btn-hero-primary {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 640px) {
+  body.discover-public .discover-interest .btn-hero-primary {
+    justify-self: stretch;
+  }
+}

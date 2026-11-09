@@ -21,8 +21,12 @@
   <symbol id="atrium-icon-leads" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 5h11v9H8l-4 3z"/><circle cx="17" cy="15" r="3"/><path d="M14 20c.7-1.4 1.7-2 3-2s2.3.6 3 2M7 8h5M7 11h3"/>
   </symbol>
-  <symbol id="atrium-icon-financial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <symbol id="atrium-icon-reports" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></symbol>
+<symbol id="atrium-icon-financial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path d="M3.5 7h17v12h-17zM3.5 10h17M15 14.5h3"/><path d="M7 7V4.5h10V7"/>
+  </symbol>
+  <symbol id="atrium-icon-calculations" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/>
   </symbol>
   <symbol id="atrium-icon-documents" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path d="M7 3.5h9l3 3V19H7zM16 3.5v3h3M10 11h6M10 14h6M10 17h4"/><path d="M4 7v13.5h11"/>
@@ -56,6 +60,9 @@
   <symbol id="atrium-icon-sidebar-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 6-6 6 6 6"/></symbol>
   <symbol id="atrium-icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></symbol>
   <symbol id="atrium-icon-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 8V4.5H16M4.5 16v3.5H8M18.2 6.2A8 8 0 0 0 5.7 8M5.8 17.8A8 8 0 0 0 18.3 16"/></symbol>
+  <symbol id="atrium-icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 8V4.5H16M4.5 16v3.5H8M18.2 6.2A8 8 0 0 0 5.7 8M5.8 17.8A8 8 0 0 0 18.3 16"/></symbol>
+  <symbol id="atrium-icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></symbol>
+  <symbol id="atrium-icon-kanban" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="5" height="15" rx="1"/><rect x="10" y="4.5" width="5" height="10" rx="1"/><rect x="16.5" y="4.5" width="5" height="13" rx="1"/></symbol>
   <symbol id="atrium-icon-notification" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17.5h12l-1.5-2V10a4.5 4.5 0 0 0-9 0v5.5zM10 20h4"/><path d="M9 5.8V4.5h6v1.3"/></symbol>
   <symbol id="atrium-icon-theme-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
   <symbol id="atrium-icon-theme-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15.5A8 8 0 0 1 8.5 4a8.3 8.3 0 1 0 11.5 11.5z"/></symbol>
@@ -80,9 +87,14 @@
   <symbol id="atrium-icon-court" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18M5 9v8M9.5 9v8M14.5 9v8M19 9v8M3 17h18M2 20h20M12 3l9 4H3z"/></symbol>
   <symbol id="atrium-icon-certificate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h14v13H5zM8 7h8M8 10h5"/><circle cx="15.5" cy="16.5" r="3"/><path d="m14 19-1 2 2.5-1 2.5 1-1-2"/></symbol>
   <symbol id="atrium-icon-security" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 20 6v5c0 5-3.2 8.2-8 10-4.8-1.8-8-5-8-10V6z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></symbol>
+  <symbol id="atrium-icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="atrium-icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="atrium-icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 6.2A10.8 10.8 0 0 1 12 6c6 0 9.5 6 9.5 6a17.3 17.3 0 0 1-3.3 4.1M6.2 6.3A17.3 17.3 0 0 0 2.5 12S6 18 12 18c1.8 0 3.4-.5 4.8-1.3"/><path d="M9.9 9.9A3 3 0 0 0 14.1 14.1"/></symbol>
   <symbol id="atrium-icon-deadline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="atrium-icon-office" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M5 20V8l7-4 7 4v12M9 10v2M15 10v2M9 15v2M15 15v2"/></symbol>
   <symbol id="atrium-icon-email" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h18v13H3zM3 7l9 6 9-6"/></symbol>
   <symbol id="atrium-icon-disconnected" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 8a15 15 0 0 1 18 0M6 12a10 10 0 0 1 12 0M9 16a5 5 0 0 1 6 0M3 3l18 18"/></symbol>
   <symbol id="atrium-icon-conflict" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h12l-3-3M17 17H5l3 3M19 7v4M5 17v-4"/></symbol>
+  <symbol id="atrium-icon-maximize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4H4v5.5M14.5 4H20v5.5M20 14.5V20h-5.5M9.5 20H4v-5.5"/></symbol>
+  <symbol id="atrium-icon-restore" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h5.5V4M20 9.5h-5.5V4M20 14.5h-5.5V20M4 14.5h5.5V20"/></symbol>
 </svg>

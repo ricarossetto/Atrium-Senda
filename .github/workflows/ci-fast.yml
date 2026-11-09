@@ -1,0 +1,48 @@
+name: Atrium Fast CI
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: atrium-fast-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: Core Syntax, Security & Contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable Corepack & Setup PNPM
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.19.0 --activate
+
+      - name: Configure pnpm Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Integrity Syntax Checks
+        run: |
+          pnpm check
+
+      - name: Run Fast Core Audit (Security, Store & Contracts)
+        run: |
+          pnpm test:ci-fast
+        env:
+          CI: true
+          NODE_ENV: test

@@ -50,12 +50,20 @@ export const DOCUMENT_CATALOG = Object.freeze([
   })
 ]);
 
+export const DOCUMENT_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
+export const DOCUMENT_DEFAULT_PAGE_SIZE = 25;
+
+function documentTotalPages(total, size) {
+  const safeSize = DOCUMENT_PAGE_SIZES.includes(size) ? size : DOCUMENT_DEFAULT_PAGE_SIZE;
+  return Math.max(1, Math.ceil((Number(total) || 0) / safeSize));
+}
+
 export function createDocumentsFeature({
   store,
   documentRef = globalThis.document,
   windowRef = globalThis.window,
   navigatorRef = globalThis.navigator,
-  escapeHtml = value => String(value ?? ''),
+  escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])),
   normalizeText = value => String(value ?? '').trim().toLowerCase(),
   showToast = () => {},
   getCurrentUser = () => null,
@@ -72,6 +80,9 @@ export function createDocumentsFeature({
   let previousBodyOverflow = '';
   let archiveFilter = 'active';
   let selectedOwner = null;
+  let archivePage = 1;
+  let archivePageSize = DOCUMENT_DEFAULT_PAGE_SIZE;
+  let lastArchiveTotal = 0;
   let intelligenceObjectUrl = null;
   const byId = id => documentRef.getElementById(id);
   const isV2 = () => documentRef?.documentElement?.dataset?.ui === 'v2';
@@ -531,23 +542,9 @@ ${id.lawyerOab} - ${id.officeName}`;
     return 999999;
   }
 
-  function renderArchive() {
-    if (!isV2()) return;
-    updateOwnerOptions();
-    const template = byId('documentNamingTemplate');
-    if (template && documentRef.activeElement !== template) template.value = store.state.settings?.documentNamingTemplate || '';
-    const updateNamePreview = () => {
-      const preview = byId('documentNamingPreview');
-      if (!preview) return;
-      const examples = { cliente: 'Nome do cliente', tipo: 'Contrato', data: '2026-09-04', processo: 'Número do processo', tribunal: 'Tribunal', oab: 'Inscrição OAB' };
-      preview.textContent = template?.value ? 'Exemplo: ' + template.value.replace(/\{(processo|cliente|tipo|data|tribunal|oab)\}/g, (_, key) => examples[key]) : 'O arquivo manterá seu nome original.';
-    };
-    if (template) template.oninput = updateNamePreview;
-    updateNamePreview();
-
+  function getFilteredArchive() {
     let documents = (store.state.documents || []).filter(item => archiveFilter === 'deleted' ? Boolean(item.deletedAt) : !item.deletedAt);
 
-    let ownerFilterLabel = '';
     if (selectedOwner?.ownerId) {
       if (selectedOwner.ownerType === 'process') {
         const proc = (store.state.processes || []).find(p => String(p.id) === String(selectedOwner.ownerId));
@@ -570,26 +567,131 @@ ${id.lawyerOab} - ${id.officeName}`;
           if (dateA !== dateB) return dateA.localeCompare(dateB);
           return String(a.name || '').localeCompare(String(b.name || ''));
         });
-        ownerFilterLabel = `Processo ${procNum || proc?.id}`;
       } else if (selectedOwner.ownerType === 'contact') {
         documents = documents.filter(doc => {
           if (doc.ownerType === 'contact' && String(doc.ownerId) === String(selectedOwner.ownerId)) return true;
           if (doc.contactId && String(doc.contactId) === String(selectedOwner.ownerId)) return true;
           return false;
         });
-        const contact = (store.state.contacts || []).find(c => String(c.id) === String(selectedOwner.ownerId));
-        ownerFilterLabel = `Contato ${contact?.name || selectedOwner.ownerId}`;
       }
     }
+    return documents;
+  }
+
+  function ownerFilterLabelFor() {
+    if (!selectedOwner?.ownerId) return '';
+    if (selectedOwner.ownerType === 'process') {
+      const proc = (store.state.processes || []).find(p => String(p.id) === String(selectedOwner.ownerId));
+      const procNum = String(proc?.number || proc?.protocol || '').trim();
+      return `Processo ${procNum || proc?.id}`;
+    }
+    const contact = (store.state.contacts || []).find(c => String(c.id) === String(selectedOwner.ownerId));
+    return `Contato ${contact?.name || selectedOwner.ownerId}`;
+  }
+
+  function renderArchivePagination(pagination) {
+    const list = byId('documentArchiveList');
+    if (!list) return false;
+    let container = byId('documentArchivePagination');
+    if (!container) {
+      container = documentRef.createElement?.('div');
+      if (!container) return false;
+      container.id = 'documentArchivePagination';
+      container.className = 'document-pagination-slot';
+      list.parentElement?.appendChild(container);
+    }
+    container.innerHTML = renderArchivePaginationHtml({ pagination, escapeHtml });
+    return true;
+  }
+
+  function renderArchivePaginationHtml({ pagination, escapeHtml: escape }) {
+    const page = Math.max(1, Number(pagination?.page) || 1);
+    const pageSize = Number(pagination?.pageSize) || 100;
+    const total = Math.max(0, Number(pagination?.total) || 0);
+    const totalPages = Math.max(1, Number(pagination?.totalPages) || 1);
+    const totalLabel = total.toLocaleString('pt-BR');
+    const firstDisabled = page <= 1 ? ' disabled' : '';
+    const lastDisabled = page >= totalPages ? ' disabled' : '';
+    const sizes = [25, 100, 500, 1000];
+    return `<nav class="document-pagination" aria-label="Paginação de documentos">`
+      + `<p class="document-pagination-status" aria-live="polite">Página ${page} de ${totalPages} · ${escape(totalLabel)} no filtro</p>`
+      + `<div class="document-pagination-nav" role="group" aria-label="Navegar páginas">`
+      + `<button type="button" class="v2-button is-secondary document-pagination-button" data-document-page="first"${firstDisabled} aria-label="Primeira página">Primeira</button>`
+      + `<button type="button" class="v2-button is-secondary document-pagination-button" data-document-page="prev"${firstDisabled} aria-label="Página anterior">Anterior</button>`
+      + `<button type="button" class="v2-button is-secondary document-pagination-button" data-document-page="next"${lastDisabled} aria-label="Próxima página">Próxima</button>`
+      + `<button type="button" class="v2-button is-secondary document-pagination-button" data-document-page="last"${lastDisabled} aria-label="Última página">Última</button>`
+      + `</div>`
+      + `<div class="document-page-size" role="group" aria-label="Documentos por página"><span>Por página</span>`
+      + sizes.map(size => `<button type="button" class="document-page-size-option${size === pageSize ? ' is-active' : ''}" data-document-page-size="${size}" aria-pressed="${size === pageSize}">${size}</button>`).join('')
+      + `</div></nav>`;
+  }
+
+  async function handleArchivePaginationClick(event) {
+    const sizeTarget = event.target.closest?.('[data-document-page-size]');
+    if (sizeTarget) {
+      const size = Number(sizeTarget.dataset.documentPageSize);
+      if (!DOCUMENT_PAGE_SIZES.includes(size) || size === archivePageSize) return true;
+      archivePageSize = size;
+      archivePage = 1;
+      renderArchive();
+      queueMicrotask(() => {
+        documentRef.querySelector?.(`#documentArchiveWorkspace [data-document-page-size="${size}"]`)?.focus({ preventScroll: true });
+      });
+      return true;
+    }
+    const pageTarget = event.target.closest?.('[data-document-page]');
+    if (!pageTarget) return false;
+    const pages = documentTotalPages(lastArchiveTotal, archivePageSize);
+    const action = pageTarget.dataset.documentPage;
+    let next = archivePage;
+    if (action === 'first') next = 1;
+    else if (action === 'prev') next = archivePage - 1;
+    else if (action === 'next') next = archivePage + 1;
+    else if (action === 'last') next = pages;
+    else if (Number.isFinite(Number(action))) next = Math.trunc(Number(action));
+    next = Math.max(1, Math.min(pages, next || 1));
+    if (next === archivePage) return true;
+    const direction = Math.sign(next - archivePage);
+    archivePage = next;
+    await transitionPageContent(documentRef, { v2: '#documentArchiveList' }, direction,
+      () => renderArchive());
+    focusPageControl(documentRef, '#documentArchiveWorkspace', 'data-document-page', action, direction > 0 ? 'prev' : 'next');
+    return true;
+  }
+
+  function renderArchive({ resetPage = false } = {}) {
+    if (!isV2()) return;
+    updateOwnerOptions();
+    const template = byId('documentNamingTemplate');
+    if (template && documentRef.activeElement !== template) template.value = store.state.settings?.documentNamingTemplate || '';
+    const updateNamePreview = () => {
+      const preview = byId('documentNamingPreview');
+      if (!preview) return;
+      const examples = { cliente: 'Nome do cliente', tipo: 'Contrato', data: '2026-09-04', processo: 'Número do processo', tribunal: 'Tribunal', oab: 'Inscrição OAB' };
+      preview.textContent = template?.value ? 'Exemplo: ' + template.value.replace(/\{(processo|cliente|tipo|data|tribunal|oab)\}/g, (_, key) => examples[key]) : 'O arquivo manterá seu nome original.';
+    };
+    if (template) template.oninput = updateNamePreview;
+    updateNamePreview();
+
+    if (resetPage) archivePage = 1;
+    const documents = getFilteredArchive();
+    const ownerFilterLabel = ownerFilterLabelFor();
+    lastArchiveTotal = documents.length;
+    const totalPages = documentTotalPages(documents.length, archivePageSize);
+    if (archivePage > totalPages) archivePage = totalPages;
+    if (archivePage < 1) archivePage = 1;
+    const start = (archivePage - 1) * archivePageSize;
+    const pageRecords = documents.slice(start, start + archivePageSize);
+    const pagination = { page: archivePage, pageSize: archivePageSize, total: documents.length, totalPages };
 
     const list = byId('documentArchiveList');
     const status = byId('documentArchiveStatus');
     if (status) {
       const clearBtn = ownerFilterLabel ? ` <button type="button" class="button ghost text-xs" data-clear-owner-filter style="padding:2px 8px; font-size:11px; margin-left:8px;">Limpar filtro (${escapeHtml(ownerFilterLabel)})</button>` : '';
-      status.innerHTML = `<span>${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'} ${archiveFilter === 'deleted' ? 'na lixeira' : 'no acervo ativo'}${ownerFilterLabel ? ` · Isolamento estrito por ${escapeHtml(ownerFilterLabel)} (ordem de eventos 0 a N)` : ''}</span>${clearBtn}`;
+      status.innerHTML = `<span>${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'} ${archiveFilter === 'deleted' ? 'na lixeira' : 'ativos'}${ownerFilterLabel ? ` · Filtrado por ${escapeHtml(ownerFilterLabel)} (ordem de eventos 0 a N)` : ''}</span>${clearBtn}`;
     }
     if (!list) return;
-    list.innerHTML = documents.length ? documents.map(document => {
+    list.innerHTML = pageRecords.length ? pageRecords.map(document => {
       const evNum = extractEventNumber(document);
       const evBadge = evNum < 999999 ? `<span class="process-doc-event-badge" style="display:inline-block; margin-right:6px; font-size:11px; padding:2px 6px; border-radius:4px; background:var(--accent-soft, #eef2ff); color:var(--primary, #3730a3); font-weight:700;">Ev. ${String(evNum).padStart(3, '0')}</span>` : '';
       const isA1 = (document.metadata?.origin || '').includes('eproc') || (document.metadata?.tags || []).includes('a1-oficial');
@@ -609,7 +711,7 @@ ${id.lawyerOab} - ${id.officeName}`;
           ${document.metadata?.origin ? `<small>Origem: ${escapeHtml(document.metadata.origin)}</small>` : ''}
           ${document.metadata?.tags?.length ? `<div class="document-metadata-tags" aria-label="Tags">${document.metadata.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
           ${document.metadata?.summary ? `<p class="document-metadata-summary">${escapeHtml(document.metadata.summary)}</p>` : ''}
-          ${document.metadata?.relatedDocumentIds?.length ? `<small>${escapeHtml(String(document.metadata.relatedDocumentIds.length))} documento(s) relacionado(s)</small>` : ''}
+          ${document.metadata?.relatedDocumentIds?.length ? `<small>${plural(document.metadata.relatedDocumentIds.length, 'documento relacionado', 'documentos relacionados')}</small>` : ''}
           ${document.intelligence?.ocr ? `<small class="document-intelligence-status">Texto extraído sob supervisão · ${escapeHtml(String(document.intelligence.ocr.characterCount || 0))} caracteres</small>` : ''}
         </div>
         <div class="document-record-actions">
@@ -619,7 +721,8 @@ ${id.lawyerOab} - ${id.officeName}`;
         </div>
       </article>`;
     }).join('')
-      : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : (ownerFilterLabel ? 'Nenhum documento encontrado para este vínculo específico.' : 'Vincule um arquivo a um cliente ou processo para iniciar o acervo.')}</span>${ownerFilterLabel ? `<button type="button" class="button ghost text-xs" data-clear-owner-filter style="margin-top:8px;">Ver todos os documentos</button>` : ''}</div>`;
+      : `<div class="document-empty-state"><strong>${archiveFilter === 'deleted' ? 'A lixeira está vazia.' : 'Nenhum documento armazenado.'}</strong><span>${archiveFilter === 'deleted' ? 'Itens removidos de forma recuperável aparecerão aqui.' : (ownerFilterLabel ? 'Nenhum documento encontrado para este vínculo específico.' : 'Envie um arquivo e vincule a um cliente ou processo.')}</span>${ownerFilterLabel ? `<button type="button" class="button ghost text-xs" data-clear-owner-filter style="margin-top:8px;">Ver todos os documentos</button>` : ''}</div>`;
+    renderArchivePagination(pagination);
   }
 
   const feature = {
@@ -655,22 +758,27 @@ ${id.lawyerOab} - ${id.officeName}`;
       byId('docGenProcessSelect')?.addEventListener('change', () => feature.updatePreview());
       byId('docGenCopyButton')?.addEventListener('click', () => feature.copyToClipboard());
       byId('docGenDownloadButton')?.addEventListener('click', () => feature.download());
-      byId('documentOwnerType')?.addEventListener('change', () => { selectedOwner = null; updateOwnerOptions(); renderArchive(); });
+      byId('documentOwnerType')?.addEventListener('change', () => { selectedOwner = null; archivePage = 1; updateOwnerOptions(); renderArchive(); });
       byId('documentOwnerId')?.addEventListener('change', () => {
         const ownerType = byId('documentOwnerType')?.value || 'process';
         const ownerId = byId('documentOwnerId')?.value;
         selectedOwner = ownerId ? { ownerType, ownerId } : null;
+        archivePage = 1;
         renderArchive();
       });
       byId('documentUploadForm')?.addEventListener('submit', event => feature.uploadDocument(event));
       byId('documentNamingSave')?.addEventListener('click', () => feature.saveNamingTemplate());
       byId('documentIntelligenceClose')?.addEventListener('click', closeIntelligencePanel);
       byId('documentArchiveWorkspace')?.addEventListener('click', event => {
+        if (event.target.closest?.('[data-document-page-size], [data-document-page]')) {
+          void handleArchivePaginationClick(event);
+          return;
+        }
         if (event.target.closest('[data-clear-owner-filter]')) {
           selectedOwner = null;
           const select = byId('documentOwnerId');
           if (select) select.value = '';
-          renderArchive();
+          renderArchive({ resetPage: true });
           return;
         }
         const filter = event.target.closest('[data-document-filter]');
@@ -722,11 +830,45 @@ ${id.lawyerOab} - ${id.officeName}`;
         button.classList.toggle('is-active', active);
         button.setAttribute('aria-pressed', String(active));
       });
+      renderArchive({ resetPage: true });
+    },
+
+    get archivePage() { return archivePage; },
+    get archivePageSize() { return archivePageSize; },
+    get archivePagination() {
+      return {
+        page: archivePage,
+        pageSize: archivePageSize,
+        total: lastArchiveTotal,
+        totalPages: documentTotalPages(lastArchiveTotal, archivePageSize)
+      };
+    },
+
+    setArchivePageSize(value) {
+      const size = Number(value);
+      if (!DOCUMENT_PAGE_SIZES.includes(size) || size === archivePageSize) return archivePageSize;
+      archivePageSize = size;
+      archivePage = 1;
       renderArchive();
+      return archivePageSize;
+    },
+
+    setArchivePage(value) {
+      const pages = documentTotalPages(lastArchiveTotal, archivePageSize);
+      let next = archivePage;
+      if (value === 'first') next = 1;
+      else if (value === 'prev') next = archivePage - 1;
+      else if (value === 'next') next = archivePage + 1;
+      else if (value === 'last') next = pages;
+      else if (Number.isFinite(Number(value))) next = Math.trunc(Number(value));
+      archivePage = Math.max(1, Math.min(pages, next || 1));
+      renderArchive();
+      return archivePage;
     },
 
     openOwnerDocuments(ownerType, ownerId) {
       selectedOwner = { ownerType, ownerId };
+      archivePage = 1;
       const type = byId('documentOwnerType');
       if (type) type.value = ownerType === 'process' ? 'process' : 'contact';
       updateOwnerOptions();
@@ -736,6 +878,12 @@ ${id.lawyerOab} - ${id.officeName}`;
 
     focusDocument(id) {
       feature.setArchiveFilter('active');
+      const filtered = getFilteredArchive();
+      const index = filtered.findIndex(item => String(item.id) === String(id));
+      if (index >= 0) {
+        archivePage = Math.floor(index / archivePageSize) + 1;
+        renderArchive();
+      }
       const records = [...(byId('documentArchiveList')?.querySelectorAll('[data-document-id]') || [])];
       records.forEach(record => record.classList.remove('is-search-match'));
       const record = records.find(item => item.dataset.documentId === String(id));
@@ -1155,7 +1303,7 @@ ${id.lawyerOab} - ${id.officeName}`;
         if (!knownFeeTypes.has(normalizedFeeType)) {
           const previewArea = byId('docGenPreviewText');
           if (previewArea) previewArea.value = '';
-          showToast('O tipo de honorários do processo não é canônico. Revise os dados antes de gerar o contrato.', 'error');
+          showToast('O tipo de honorários do processo não é válido. Revise os dados antes de gerar o contrato.', 'error');
           return false;
         }
       }
@@ -1202,4 +1350,6 @@ ${id.lawyerOab} - ${id.officeName}`;
 
   return feature;
 }
-import { iconSvg } from '../views/ui-v2/icons.js';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.0';
+const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;

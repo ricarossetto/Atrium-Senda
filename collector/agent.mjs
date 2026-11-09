@@ -12,17 +12,35 @@ import { collectDjen } from './adapters/djen.mjs';
 import { collectDatajud } from './adapters/datajud.mjs';
 import { collectPje } from './adapters/pje.mjs';
 import { openEprocProcessDetails, downloadAndOrganizeProcessDocuments, isEprocSessionActive } from './adapters/eproc.mjs';
+import { captureDomicilioRaw } from './adapters/domicilio.mjs';
+import { readDomicilioSession } from '../lib/judicial/domicilio/domicilio-session.mjs';
 import { authStateRequiresHumanAction, classifyJudicialAuthState, findAuthenticatedJudicialPage, JUDICIAL_AUTH_STATES } from './auth-state.mjs';
+import { resolveAgentWorkspace } from '../lib/collectors/collector-context.mjs';
+import { looksLikeSecrecySignal } from '../lib/judicial/secrecy-signal.mjs';
 
 const COLLECTOR_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(COLLECTOR_DIR);
-const DATA_DIR = path.join(ROOT, 'data');
+let workspaceContext;
+try {
+  workspaceContext = resolveAgentWorkspace({ env: process.env, root: ROOT });
+} catch (error) {
+  console.error(`[coletor] Contexto de workspace inválido: ${error.message}`);
+  process.exit(1);
+}
+const workspaceId = workspaceContext.workspaceId;
+const DATA_DIR = workspaceContext.dataDir;
+const IS_DEFAULT_WORKSPACE = workspaceContext.isDefault;
+const ALLOW_GLOBAL_FALLBACKS = workspaceContext.allowGlobalFallbacks;
 const JUDICIAL_INTEGRATIONS_FILE = path.join(DATA_DIR, 'judicial-integrations.json');
 const PROCESS_RE = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/;
 const DATE_RE = /\b(\d{2})\/(\d{2})\/(\d{4})\b/;
 
 await loadEnv(path.join(ROOT, '.env'));
-await loadEnv(path.join(ROOT, '.env.collector'));
+if (IS_DEFAULT_WORKSPACE) await loadEnv(path.join(ROOT, '.env.collector'));
+if (!IS_DEFAULT_WORKSPACE && !process.env.COLLECTOR_INGEST_TOKEN) {
+  console.error('[coletor] Workspace não-default exige token do coletor pareado (COLLECTOR_INGEST_TOKEN).');
+  process.exit(1);
+}
 const judicialSecrets = await loadJudicialSecrets();
 const sessionManager = new JudicialSessionManager({ dataDirectory: DATA_DIR });
 await sessionManager.init();
@@ -36,6 +54,25 @@ const loginWaitMs = Math.max(0, Number(process.env.LOGIN_WAIT_SECONDS || 900)) *
 const judicialIdentityId = String(process.env.JUDICIAL_IDENTITY_ID || 'office-primary').replace(/[^a-zA-Z0-9_-]/g, '_');
 const configFile = existsSync(path.join(COLLECTOR_DIR, 'portals.json')) ? path.join(COLLECTOR_DIR, 'portals.json') : path.join(COLLECTOR_DIR, 'portals.example.json');
 const config = JSON.parse(await readFile(configFile, 'utf8'));
+// H3: termos e identidades monitoradas vêm do estado do workspace (injetados pelo servidor),
+// nunca do catálogo global de portais quando o workspace os define.
+const runtimeTermsRaw = String(process.env.ATRIUM_JUDICIAL_TERMS || '').trim();
+if (runtimeTermsRaw) {
+  try {
+    const parsedTerms = JSON.parse(runtimeTermsRaw);
+    if (Array.isArray(parsedTerms) && parsedTerms.length) {
+      config.monitoredTerms = parsedTerms;
+      config.monitoredTerm = { ...(config.monitoredTerm || {}), ...parsedTerms[0] };
+      const primaryTerm = parsedTerms.find(term => term?.uf && term?.num) || parsedTerms[0];
+      for (const portal of config.portals || []) {
+        if (portal.strategy === 'djen' && primaryTerm?.uf && primaryTerm?.num) {
+          portal.ufOab = primaryTerm.uf;
+          portal.numeroOab = primaryTerm.num;
+        }
+      }
+    }
+  } catch { console.warn('[coletor] ATRIUM_JUDICIAL_TERMS inválido; mantendo catálogo local.'); }
+}
 const runtimeOabUf = String(process.env.JUDICIAL_OAB_UF || '').trim().toUpperCase();
 const runtimeOabNumber = String(process.env.JUDICIAL_OAB_NUMBER || '').replace(/\D/g, '');
 if (runtimeOabUf && runtimeOabNumber) {
@@ -89,28 +126,34 @@ try {
         humanAction: null
       }, judicialIdentityId);
       const clientCerts = [];
+      const envA1Path = ALLOW_GLOBAL_FALLBACKS ? process.env.A1_PFX_PATH : '';
       const authStrategy = portal.authStrategy || (
         portal.strategy === 'pje' ? AUTH_STRATEGIES.PJEOFFICE_LOCAL :
-        (portal.strategy === 'eproc' && (portal.certificateMode === 'pfx-mtls' || portal.usesCertificate || judicialSecrets.certificate || process.env.A1_PFX_PATH))
+        (portal.strategy === 'eproc' && (portal.certificateMode === 'pfx-mtls' || portal.usesCertificate || judicialSecrets.certificate || envA1Path))
           ? AUTH_STRATEGIES.CLIENT_CERT_MTLS :
         portal.strategy === 'eproc' ? AUTH_STRATEGIES.CREDENTIALS_TOTP :
         AUTH_STRATEGIES.MANUAL_PERSISTENT_SESSION
       );
       const authAdapter = getAuthAdapter(authStrategy);
       const portalCreds = judicialSecrets.portalCredentials?.[portal.id] || null;
-      let totpSecret = judicialSecrets.totpSecrets?.[portal.id]?.secret || (portal.autoTotpEnv ? process.env[portal.autoTotpEnv] : null);
-      if (!totpSecret && /eproc|tjrs/i.test(portal.id)) {
-        const matchingKey = Object.keys(judicialSecrets.totpSecrets || {}).find(k => /eproc|tjrs/i.test(k));
+      let totpSecret = judicialSecrets.totpSecrets?.[portal.id]?.secret
+        || (ALLOW_GLOBAL_FALLBACKS && portal.autoTotpEnv ? process.env[portal.autoTotpEnv] : null);
+      if (!totpSecret && ALLOW_GLOBAL_FALLBACKS && /eproc/i.test(portal.id)) {
+        // Fallback restrito ao mesmo tribunal/escopo (ex.: tjrs-eproc-2g herda eproc-tjrs-1g);
+        // nunca reaproveita o TOTP de outro tribunal, que geraria código inválido.
+        const scopeToken = String(portal.credentialScope || portal.id).split('-')[0].toLowerCase();
+        const matchingKey = Object.keys(judicialSecrets.totpSecrets || {})
+          .find(k => k.toLowerCase().includes(scopeToken));
         if (matchingKey) totpSecret = judicialSecrets.totpSecrets[matchingKey].secret;
       }
       const credentials = portalCreds ? { ...portalCreds, totpSecret } : (totpSecret ? { totpSecret } : null);
 
-      if (authStrategy === AUTH_STRATEGIES.CLIENT_CERT_MTLS || portal.usesCertificate || portal.certificateMode === 'pfx-mtls' || (portal.strategy === 'eproc' && (judicialSecrets.certificate || process.env.A1_PFX_PATH))) {
-        let pfxPath = judicialSecrets.certificate?.path || process.env.A1_PFX_PATH;
+      if (authStrategy === AUTH_STRATEGIES.CLIENT_CERT_MTLS || portal.usesCertificate || portal.certificateMode === 'pfx-mtls' || (portal.strategy === 'eproc' && (judicialSecrets.certificate || envA1Path))) {
+        let pfxPath = judicialSecrets.certificate?.path || envA1Path;
         if (pfxPath && !path.isAbsolute(pfxPath)) {
           pfxPath = path.resolve(ROOT, pfxPath);
         }
-        const passphrase = judicialSecrets.certificate?.passphrase || process.env.A1_PFX_PASSPHRASE;
+        const passphrase = judicialSecrets.certificate?.passphrase || (ALLOW_GLOBAL_FALLBACKS ? process.env.A1_PFX_PASSPHRASE : null);
         if (pfxPath && passphrase && existsSync(pfxPath)) {
           try {
             const modernCert = await createModernizedPfx({ pfxPath, passphrase });
@@ -135,13 +178,14 @@ try {
         }
       }
 
-      context = await chromium.launchPersistentContext(profileDir, {
-        headless,
-        viewport: { width: 1440, height: 960 },
-        locale: 'pt-BR',
-        timezoneId: 'America/Sao_Paulo',
-        clientCertificates: clientCerts.length ? clientCerts : undefined
-      });
+  context = await chromium.launchPersistentContext(profileDir, {
+    headless,
+    viewport: { width: 1440, height: 960 },
+    locale: 'pt-BR',
+    timezoneId: 'America/Sao_Paulo',
+    clientCertificates: clientCerts.length ? clientCerts : undefined,
+    args: ['--renderer-process-limit=1', '--disable-gpu', '--disable-software-rasterizer', '--js-flags=--max-old-space-size=192']
+  });
 
       const collection = await collectPortal(context, portal, payload, authAdapter, credentials);
       if (collection.state === SESSION_STATUS.ACTION_REQUIRED) {
@@ -308,6 +352,7 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
 
     if (portal.strategy === 'eproc') {
       const result = await collectEproc(activePage, portal, target);
+      let autosDownloadFailures = 0;
       if (portal.downloadAutos || process.env.DOWNLOAD_AUTOS === 'true' || process.env.TARGET_CNJ) {
         const targetNumber = (process.env.TARGET_CNJ || '').replace(/\D/g, '');
         const procsToDownload = targetNumber
@@ -320,7 +365,15 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
             await openEprocProcessDetails(activePage, proc.number);
             const downloadResult = await downloadAndOrganizeProcessDocuments(activePage, {
               cnj: proc.number,
-              clientName: proc.client
+              clientName: proc.client,
+              // H3: autos de um workspace nunca caem no storage de outro/default.
+              targetBaseDir: path.join(
+                DATA_DIR,
+                'storage',
+                'processos',
+                String(proc.client || 'Processos').replace(/[^\w.-]+/g, '_'),
+                String(proc.number || '').replace(/[^\w.-]/g, '_')
+              )
             });
             if (downloadResult?.files?.length && Array.isArray(target.documents)) {
               for (const f of downloadResult.files) {
@@ -344,18 +397,71 @@ async function collectPortal(context, portal, target, authAdapter = null, creden
               }
             }
           } catch (dlErr) {
+            autosDownloadFailures += 1;
             console.warn(`[eproc] Aviso ao baixar autos do processo ${proc.number}:`, dlErr.message);
           }
         }
       }
-      target.sources.push(source(portal, 'ok', checkedAt, `${result.processes} processo(s) · ${result.deadlines} prazo(s) · ${result.pending} intimação(ões) pendente(s).`));
-      return { state: SESSION_STATUS.CONNECTED, counts: result };
+      const autosDetail = autosDownloadFailures > 0 ? ` · ${autosDownloadFailures} falha(s) ao baixar autos` : '';
+      target.sources.push(source(
+        portal,
+        autosDownloadFailures > 0 ? 'attention' : 'ok',
+        checkedAt,
+        `${result.processes} processo(s) · ${result.deadlines} prazo(s) · ${result.pending} intimação(ões) pendente(s)${autosDetail}.`
+      ));
+      return { state: SESSION_STATUS.CONNECTED, counts: { ...result, autosDownloadFailures } };
     }
 
     if (portal.strategy === 'pje') {
       const result = await collectPje(activePage, portal, config, target);
       target.sources.push(source(portal, 'ok', checkedAt, `${result.processes} processo(s) · ${result.intimations} expediente(s), em modo somente leitura.`));
       return { state: SESSION_STATUS.CONNECTED, counts: result };
+    }
+
+    if (portal.strategy === 'domicilio') {
+      // Redundância declarada: a janela é do servidor (7 dias na primeira captura por
+      // workspace, 2 dias depois) e a normalização/persistência oficial também. O
+      // coletor só lê a sessão do próprio usuário e envia os DTOs oficiais.
+      const collectorHeaders = {
+        'Content-Type': 'application/json',
+        ...(process.env.COLLECTOR_INGEST_TOKEN ? { Authorization: `Bearer ${process.env.COLLECTOR_INGEST_TOKEN}` } : {}),
+        ...(process.env.ATRIUM_WORKSPACE_ID ? { 'X-ATRIUM-Workspace-ID': process.env.ATRIUM_WORKSPACE_ID } : {})
+      };
+      const windowResponse = await fetch(`${CENTRAL_URL}/api/judicial/domicilio/window`, { headers: collectorHeaders });
+      if (!windowResponse.ok) {
+        throw new Error(`A Central não informou a janela do Domicílio (HTTP ${windowResponse.status}).`);
+      }
+      const window = (await windowResponse.json()).window;
+      const capture = await captureDomicilioRaw(activePage, {
+        dataInicio: window.dataInicio,
+        dataFim: window.dataFim,
+        maxPages: Number(portal.maxPages) || undefined
+      });
+      if (capture.status === 'sem-sessao') {
+        target.sources.push(source(portal, 'attention', checkedAt, 'Sessão do Domicílio Eletrônico não localizada; autentique-se no portal para retomar a captura.'));
+        return { state: SESSION_STATUS.ACTION_REQUIRED, humanAction: 'Autentique-se no Domicílio Eletrônico (PDPJ/Jus.br) na sessão deste navegador.' };
+      }
+      if (capture.status === 'failed') {
+        target.sources.push(source(portal, 'error', checkedAt, capture.error?.message || 'Falha na captura do Domicílio Eletrônico.'));
+        return { state: SESSION_STATUS.ERROR, error: capture.error?.message };
+      }
+      const ingestResponse = await fetch(`${CENTRAL_URL}/api/judicial/domicilio/ingest`, {
+        method: 'POST',
+        headers: collectorHeaders,
+        body: JSON.stringify({ comunicacoes: capture.comunicacoes })
+      });
+      if (!ingestResponse.ok) {
+        throw new Error(`A Central recusou a ingestão do Domicílio (HTTP ${ingestResponse.status}).`);
+      }
+      const ingested = await ingestResponse.json();
+      const resumo = ingested.resumo || {};
+      target.sources.push(source(
+        portal,
+        capture.status === 'partial' ? 'attention' : 'ok',
+        checkedAt,
+        `${resumo.recebidas || 0} comunicação(ões) na janela ${window.dataInicio} a ${window.dataFim} · ${resumo.normalizadas || 0} normalizada(s) · ${resumo.comReferenciaDePrazo || 0} com prazo declarado (referência) · ${resumo.comReferenciaDeCiencia || 0} com ciência declarada (referência).${capture.status === 'partial' ? ' Coleta parcial; repete no próximo ciclo.' : ''}`
+      ));
+      return { state: SESSION_STATUS.CONNECTED, counts: { recebidas: resumo.recebidas || 0, normalizadas: resumo.normalizadas || 0, paginas: capture.paginas || 0 } };
     }
 
     const selector = portal.itemSelector || 'table tbody tr';
@@ -454,7 +560,10 @@ async function collectEprocProcessPages(page, portal) {
       return [...table.rows].slice(1).map(row => {
         const cells = [...row.cells].map(cell => cell.innerText.trim().replace(/\s+/g, ' '));
         const number = (cells[1] || '').match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/)?.[0] || '';
-        const secrecy = Boolean(row.querySelector('[title*="sigilo" i], [title*="segredo" i], [aria-label*="sigilo" i], [aria-label*="segredo" i]')) || /sigilo|segredo/i.test(row.innerText);
+        const secrecyTitle = [...row.querySelectorAll('[title], [aria-label]')]
+          .map(element => `${element.getAttribute('title') || ''} ${element.getAttribute('aria-label') || ''}`)
+          .join(' ');
+        const secrecy = looksLikeSecrecySignal(secrecyTitle) || looksLikeSecrecySignal(row.innerText);
         return {
           id: `${metadata.id}:process:${number}`, externalId: `${metadata.id}:process:${number}`, number,
           client: cells[3] || 'Cliente não identificado', opposingParty: cells[4] || '',
@@ -577,7 +686,8 @@ function collectProcesses(lines, portal, target) {
     if (!number) continue;
     target.processes.push({
       id: `${portal.id}:process:${number}`, externalId: `${portal.id}:process:${number}`, number,
-      client: inferClient(text, number), court: portal.name, secrecy: /segredo|sigilo/i.test(text),
+      client: inferClient(text, number), court: portal.name,
+      secrecy: looksLikeSecrecySignal(text),
       lastMovement: text.slice(0, 500), lastMovementAt: parseBrazilianDate(text) || now.slice(0, 10), monitoring: 'active'
     });
   }
@@ -605,6 +715,20 @@ async function needsHumanAuthentication(page, portal = null) {
 
 async function detectAuthenticationState(page, portal = null) {
   if (page.isClosed()) return JUDICIAL_AUTH_STATES.SESSION_EXPIRED;
+  if (portal?.strategy === 'domicilio') {
+    // O sinal de sessão do Domicílio é o próprio token da API oficial: é ele que a
+    // captura usa, então é ele que decide se ainda falta login humano.
+    const session = await readDomicilioSession(page).catch(() => null);
+    if (session?.accessToken) return JUDICIAL_AUTH_STATES.AUTHENTICATED_SESSION;
+    const state = await classifyJudicialAuthState({
+      url: page.url(),
+      body: (await Promise.all(page.frames().map(frame => frame.locator('body').innerText({ timeout: 3_000 }).catch(() => '')))).join('\n').slice(0, 24_000),
+      hasPasswordField: await hasVisibleFieldAcrossFrames(page.frames(), 'input[type="password"]'),
+      hasOneTimeCodeField: await hasVisibleFieldAcrossFrames(page.frames(), 'input[autocomplete="one-time-code"], input[maxlength="6"]'),
+      strategy: 'domicilio'
+    });
+    return state === JUDICIAL_AUTH_STATES.UNKNOWN_STATE ? JUDICIAL_AUTH_STATES.LOGIN_PAGE : state;
+  }
   if (portal?.strategy === 'eproc') {
     if (await isEprocSessionActive(page).catch(() => false)) return JUDICIAL_AUTH_STATES.AUTHENTICATED_SESSION;
     const authenticatedNavigation = await firstVisibleHrefAcrossFrames(page, 'a', (href, text) =>
@@ -713,7 +837,8 @@ async function pjeOfficeAvailable() {
 }
 
 async function tryAutomatedTotp(page, portal) {
-  const secret = judicialSecrets.totpSecrets?.[portal.id]?.secret || (portal.autoTotpEnv ? process.env[portal.autoTotpEnv] : '');
+  const secret = judicialSecrets.totpSecrets?.[portal.id]?.secret
+    || (ALLOW_GLOBAL_FALLBACKS && portal.autoTotpEnv ? process.env[portal.autoTotpEnv] : '');
   if (!secret) return false;
   const allowedOrigins = new Set([new URL(portal.url).origin, ...(portal.trustedAuthOrigins || [])]);
   if (/tjrs\.jus\.br/i.test(portal.url) || portal.id.includes('tjrs')) {
@@ -853,11 +978,11 @@ async function loadEnv(file) {
 }
 
 async function loadExistingProcessNumbers() {
-  const runtimeFile = path.join(ROOT, 'data', 'runtime.json');
+  const runtimeFile = path.join(DATA_DIR, 'runtime.json');
   if (!existsSync(runtimeFile) || !process.env.AUTH_SESSION_SECRET || !process.env.AUTH_ENCRYPTION_KEY) return [];
   try {
     const security = new SecurityManager({
-      dataDirectory: path.join(ROOT, 'data'),
+      dataDirectory: DATA_DIR,
       sessionSecret: process.env.AUTH_SESSION_SECRET,
       encryptionKey: process.env.AUTH_ENCRYPTION_KEY,
       secureCookies: false
@@ -875,7 +1000,7 @@ async function loadJudicialSecrets() {
   if (!existsSync(JUDICIAL_INTEGRATIONS_FILE) || !process.env.AUTH_SESSION_SECRET || !process.env.AUTH_ENCRYPTION_KEY) return { certificate: null, totpSecrets: {}, allowAutomatedTotp: false };
   try {
     const security = new SecurityManager({
-      dataDirectory: path.join(ROOT, 'data'),
+      dataDirectory: DATA_DIR,
       sessionSecret: process.env.AUTH_SESSION_SECRET,
       encryptionKey: process.env.AUTH_ENCRYPTION_KEY,
       secureCookies: false

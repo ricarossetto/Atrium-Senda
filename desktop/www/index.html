@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>ATRIUM</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body {
+      margin: 0; height: 100%;
+      background: #0B0D0E;
+      display: grid; place-items: center;
+      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    }
+    .mark { display: grid; place-items: center; gap: 18px; }
+    .mark img { width: 96px; height: 96px; }
+    .mark span { color: #C8A24B; letter-spacing: .35em; font-size: 13px; font-weight: 700; text-transform: uppercase; }
+    .bar { width: 160px; height: 2px; background: rgba(223, 190, 106, .18); overflow: hidden; border-radius: 2px; }
+    .bar::after { content: ""; display: block; width: 40%; height: 100%; background: #DFBE6A; animation: sweep 1.1s ease-in-out infinite alternate; }
+    @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+    @media (prefers-reduced-motion: reduce) { .bar::after { animation: none; } }
+  </style>
+</head>
+<body>
+  <div class="mark">
+    <img src="emblem.png" alt="">
+    <span>ATRIUM</span>
+    <div class="bar" aria-hidden="true"></div>
+  </div>
+</body>
+</html>

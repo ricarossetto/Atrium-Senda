@@ -119,7 +119,7 @@ console.log('  ✓ Deterministic fingerprint e 4-way diff PASS');
 // -------------------------------------------------------------
 // TIER 3: Canonical Normalizer
 // -------------------------------------------------------------
-console.log('[Tier 3] Verificando normalizador canônico multi-tribunal...');
+console.log('[Tier 3] Verificando normalizador oficial multi-tribunal...');
 const normalizer = new CanonicalNormalizer();
 
 // Test TJRS normalization
@@ -235,6 +235,28 @@ const p1 = queue.enqueue(async () => { order.push('P1'); return 'P1'; }, { prior
 await Promise.all([p4, p0, p1]);
 assert.deepEqual(order, ['P0', 'P1', 'P4']);
 console.log('  ✓ Priority queue order PASS');
+
+// Fila com teto de pendências: excedente falha fechado com código próprio.
+const cappedQueue = new PriorityQueueManager({ minDelayMs: 5, maxPending: 1 });
+let releaseHeld;
+const held = cappedQueue.enqueue(() => new Promise(resolve => { releaseHeld = () => resolve('held'); }));
+await new Promise(resolve => setTimeout(resolve, 20));
+const filler = cappedQueue.enqueue(async () => 'filler');
+await assert.rejects(
+  () => cappedQueue.enqueue(async () => 'extra'),
+  error => error?.code === 'OMNI_QUEUE_OVERLOADED' && error?.statusCode === 503,
+  'Fila acima do teto deve recusar com OMNI_QUEUE_OVERLOADED.'
+);
+releaseHeld();
+await Promise.all([held, filler]);
+console.log('  ✓ Queue pending cap PASS');
+
+// Pacing de transporte é por instância: workspaces não compartilham tails globais.
+const adapterA = new BaseAdapter({ customFetch: async () => ({ ok: true, status: 200, text: async () => '{}' }) });
+const adapterB = new BaseAdapter({ customFetch: async () => ({ ok: true, status: 200, text: async () => '{}' }) });
+assert.notEqual(adapterA.transportTails, adapterB.transportTails, 'Tails de transporte não podem ser globais.');
+assert.notEqual(adapterA.lastRequestAtByHost, adapterB.lastRequestAtByHost, 'Pacing de host não pode ser global.');
+console.log('  ✓ Per-instance transport pacing PASS');
 
 // -------------------------------------------------------------
 // TIER 6: SQLite Storage Engine

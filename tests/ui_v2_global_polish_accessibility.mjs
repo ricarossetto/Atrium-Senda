@@ -35,7 +35,9 @@ try {
             headingText: heading?.textContent?.trim() || '',
             undersized: controls
               .map(control => {
-                const rect = control.getBoundingClientRect();
+                const checkbox = control.matches?.('input[type="checkbox"], input[type="radio"]');
+                const target = checkbox ? (control.closest('label') || control) : control;
+                const rect = target.getBoundingClientRect();
                 return { tag: control.tagName, id: control.id, text: control.getAttribute('aria-label') || control.textContent?.trim().slice(0, 40), width: rect.width, height: rect.height };
               })
               .filter(control => control.height < 43.5),
@@ -50,6 +52,19 @@ try {
           };
         });
         assert.ok(accessibility.headingText, `${matrix.name}/${view}: heading acessível.`);
+        if (matrix.viewport.width < 768) {
+          const statusBar = await page.evaluate(() => {
+            const bar = document.querySelector('#systemStatusBar');
+            return {
+              hidden: bar?.classList.contains('is-transient-hidden') === true,
+              ariaHidden: bar?.getAttribute('aria-hidden') === 'true',
+              visible: bar ? bar.getBoundingClientRect().height > 0 : false
+            };
+          });
+          assert.equal(statusBar.hidden, true, `${matrix.name}/${view}: status pronto não pode cobrir o conteúdo no celular.`);
+          assert.equal(statusBar.ariaHidden, true, `${matrix.name}/${view}: status oculto precisa sair da árvore de acessibilidade.`);
+          assert.equal(statusBar.visible, false, `${matrix.name}/${view}: status oculto não pode ocupar altura.`);
+        }
         assert.ok(evidence.globalOverflow <= 2, `${matrix.name}/${view}: overflow ${evidence.globalOverflow}px.`);
         assert.deepEqual(evidence.duplicateIds, [], `${matrix.name}/${view}: IDs duplicados.`);
         assert.deepEqual(evidence.visibleOverlays, [], `${matrix.name}/${view}: overlay residual.`);
@@ -85,5 +100,5 @@ try {
   await session.stop();
 }
 
-assert.equal(states, 68, '17 views devem ser certificadas em 4 matrizes responsivas.');
-console.log('✓ UI V2 Global Polish Accessibility: 68 estados, targets, foco, reflow e reduced motion PASS.');
+assert.equal(states, UI_V2_CANONICAL_VIEWS.length * 4, `${UI_V2_CANONICAL_VIEWS.length} views devem ser certificadas em 4 matrizes responsivas.`);
+console.log(`✓ UI V2 Global Polish Accessibility: ${states} estados, targets, foco, reflow e reduced motion PASS.`);

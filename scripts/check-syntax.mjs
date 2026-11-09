@@ -37,7 +37,7 @@ for (const file of allFiles) {
     execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
     checked++;
   } catch (err) {
-    console.error(`❌ Syntax error in ${file}:`, err.stderr?.toString() || err.message);
+    console.error(`[FAIL] Syntax error in ${file}:`, err.stderr?.toString() || err.message);
     errors++;
   }
 }
@@ -46,5 +46,5 @@ if (errors > 0) {
   console.error(`Check failed: ${errors} file(s) had syntax errors.`);
   process.exit(1);
 } else {
-  console.log(`✅ All ${checked} JS/MJS files passed syntax check.`);
+  console.log(`[PASS] All ${checked} JS/MJS files passed syntax check.`);
 }

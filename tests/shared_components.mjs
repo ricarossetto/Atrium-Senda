@@ -225,7 +225,7 @@ async function assertGlobalSearchBehavior() {
 async function assertConflictToast() {
   const before = await page.locator('#toastRegion .toast.error').count();
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('atrium:store-persistence-conflict')));
-  const conflict = page.locator('#toastRegion .toast.error', { hasText: 'Os dados foram atualizados em outra aba. Recarregando a versão mais recente…' });
+  const conflict = page.locator('#toastRegion .toast.error', { hasText: 'Não foi possível salvar: o mesmo dado mudou em outro lugar. Suas alterações continuam nesta tela. Copie o que precisar e recarregue a página.' });
   await conflict.waitFor();
   assert.equal(await page.locator('#toastRegion .toast.error').count(), before + 1, 'O conflito 409 deve gerar exatamente um toast de erro.');
 }

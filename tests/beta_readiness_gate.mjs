@@ -39,19 +39,25 @@ for (const forbiddenClaim of [
 }
 
 assert.match(allDocs, /confer[eê]ncia e confirma[cç][aã]o humana|confer[eê]ncia humana/i);
-assert.match(documents.guide, /come[cç]a sem deadline/i);
+assert.match(documents.guide, /prazo informado pela fonte oficial|fonte oficial \(eproc\/PJe\)/i);
 assert.match(documents.guide, /n[aã]o infere automaticamente deadline jur[ií]dico/i);
 assert.match(allDocs, /envio manual de publica[cç][aã]o|envio individual manual/i);
 assert.match(allDocs, /boletim em lote manual/i);
 assert.match(allDocs, /n[aã]o existe envio autom[aá]tico|n[aã]o h[aá] auto-send/i);
-assert.match(documents.guide, /grava a mensagem cifrada apenas no ambiente local/i);
-assert.match(documents.guide, /Nada [eé] enviado automaticamente/i);
+/* Contrato atual (verificado em server.mjs: o payload chega já redigido, fica em
+ * data/system/error-reports.json 0600 e o envio ao suporte é opcional, decidido pelo
+ * cliente). As duas asserções antigas descreviam o botão "Registrar Feedback Beta" do
+ * modo local, removido na conversão cloud-only — cobravam um texto que não existe mais
+ * e não correspondem ao comportamento vigente. */
+assert.match(documents.guide, /relato de erro [^.]*redigid[oa]/i);
+assert.match(documents.guide, /envio ao suporte da plataforma[^.]*opcional e expl[ií]cito/i);
+assert.match(documents.guide, /n[aã]o h[aá] envio autom[aá]tico/i);
 
 assert.doesNotMatch(currentStatusDocs, /HUMAN BETA GATE 1 PASSED — PRE-UI-V2|TECHNICAL BETA READY — PRE-UI-V2|Modo atual:[^\n]*PRE-UI-V2|UI V2[^\n]*(?:futur|etapa futura)|UI Cl[aá]ssica[^\n]*(?:[uú]nica interface)|NEXT — UI V2|UI V2 n[aã]o faz parte/i);
 assert.doesNotMatch(currentStatusDocs, /\b55\s*\/\s*55\b|\b55\s+su[ií]tes?|Tests-55/i);
 assert.match(documents.readme, /interface V2 [eé] a [uú]nica interface oferecida ao usu[aá]rio/i);
 assert.doesNotMatch(documents.readme, /UI Cl[aá]ssica permanece dispon[ií]vel|fallback visual/i);
-assert.match(documents.readme, /Fonte [uú]nica de verdade:[\s\S]*Store can[oô]nico/i);
+assert.match(documents.readme, /Fonte [uú]nica de verdade:[\s\S]*Store oficial/i);
 assert.match(documents.readiness, /UI V2 MIGRATION COMPLETE/);
 assert.match(documents.readiness, /um [uú]nico App, Store e backend/i);
 assert.doesNotMatch(documents.readiness, /final production ready|produ[cç][aã]o certificada/i);
@@ -65,7 +71,7 @@ assert.ok(roadmapOrder.every(index => index >= 0), 'O roadmap deve conter a cone
 assert.ok(roadmapOrder[0] < roadmapOrder[1] && roadmapOrder[1] < roadmapOrder[2], 'A ordem BASELINE ATUAL → PRÓXIMO → FUTURO deve ser preservada.');
 assert.match(documents.roadmap, /Managed Judicial Connectivity opera A1, PJeOffice, TOTP e sess[oõ]es como estrat[eé]gias independentes e read-only/i);
 assert.match(documents.roadmap, /protocolos DAV verificados e API p[uú]blica\/versionada exigem evid[eê]ncia, threat model e subgates independentes/i);
-assert.match(documents.roadmap, /Migra[cç][aã]o UI V2 conclu[ií]da nas 17 views can[oô]nicas/i);
+assert.match(documents.roadmap, /Migra[cç][aã]o UI V2 conclu[ií]da nas 17 views oficiais/i);
 assert.match(documents.decisions, /ci[eê]ncia, assinatura, peti[cç][aã]o, protocolo/i);
 assert.match(documents.decisions, /pausam retries e exigem reconex[aã]o humana/i);
 
@@ -79,4 +85,4 @@ assert.match(allDocs, /SQLite [eé] possibilidade futura|SQLite permanece uma po
 assert.doesNotMatch(allDocs, /SQLite\s+(?:est[aá]|foi|[eé])\s+(?:implementad[oa]|o padr[aã]o atual)/i);
 assert.match(documents.decisions, /Conectividade judicial gerenciada e estritamente read-only/i);
 
-console.log('✓ Compatibilidade documental aprovada: histórico preservado, README estável com V2 exclusiva e autoridade canônica.');
+console.log('✓ Compatibilidade documental aprovada: histórico preservado, README estável com V2 exclusiva e autoridade oficial.');

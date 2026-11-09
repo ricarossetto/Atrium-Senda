@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head><meta charset="utf-8"><title>:: eproc - - Painel do Advogado ::</title></head>
+<body>
+<div id="divMenuSuperior">
+  <a href="controlador.php?acao=peticao_inicial_montar&hash=ephemeral_hash_1" class="btnAcao">Petição inicial</a>
+  <a href="controlador.php?acao=processo_ultimas_movimentacoes_listar&hash=ephemeral_hash_2" class="btnAcao">Últimas movimentações</a>
+  <a href="controlador.php?acao=relatorio_processo_procurador_listar&hash=ephemeral_hash_3" id="btnRelacaoProcessos" class="btnAcao">Relação de processos</a>
+</div>
+
+<div class="card" id="cardCitacoesIntimacoes">
+  <h3>Citações/Intimações</h3>
+  <table class="infraTable">
+    <thead>
+      <tr><th>Tipo</th><th>Quantidade</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="controlador.php?acao=citacao_intimacao_prazo_aberto_listar&hash=ephemeral_hash_4">Processos com prazo em aberto</a></td>
+        <td><a href="controlador.php?acao=citacao_intimacao_prazo_aberto_listar&hash=ephemeral_hash_4">16</a></td>
+      </tr>
+      <tr>
+        <td><a href="controlador.php?acao=citacao_intimacao_prazo_aberto_listar&urgente=true&hash=ephemeral_hash_5">Processos com prazo em aberto - urgente</a></td>
+        <td><a href="controlador.php?acao=citacao_intimacao_prazo_aberto_listar&urgente=true&hash=ephemeral_hash_5">1</a></td>
+      </tr>
+      <tr>
+        <td><a href="controlador.php?acao=citacao_intimacao_pendente_listar_urgente&hash=ephemeral_hash_6">Processos pendentes de citação/intimação - Urgentes</a></td>
+        <td><a href="controlador.php?acao=citacao_intimacao_pendente_listar_urgente&hash=ephemeral_hash_6">0</a></td>
+      </tr>
+      <tr>
+        <td><a href="controlador.php?acao=citacao_intimacao_pendente_listar&hash=ephemeral_hash_7">Processos pendentes de citação/intimação</a></td>
+        <td><a href="controlador.php?acao=citacao_intimacao_pendente_listar&hash=ephemeral_hash_7">3</a></td>
+      </tr>
+      <tr>
+        <td><a href="controlador.php?acao=citacao_intimacao_pendente_listar_acordo&hash=ephemeral_hash_8">Processos pendentes de intimação de homologação de acordo</a></td>
+        <td><a href="controlador.php?acao=citacao_intimacao_pendente_listar_acordo&hash=ephemeral_hash_8">0</a></td>
+      </tr>
+      <tr>
+        <td><a href="controlador.php?acao=citacao_art334_pendente_listar&hash=ephemeral_hash_9">Processos pendentes de citação - art 334 CPC</a></td>
+        <td><a href="controlador.php?acao=citacao_art334_pendente_listar&hash=ephemeral_hash_9">0</a></td>
+      </tr>
+      <tr>
+        <td><a href="controlador.php?acao=citacao_intimacao_decurso_prazo_listar&hash=ephemeral_hash_10">Decursos de prazo nos últimos 30 dias</a></td>
+        <td><a href="controlador.php?acao=citacao_intimacao_decurso_prazo_listar&hash=ephemeral_hash_10">0</a></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="rodapeCard">
+    <span id="lblPrazoVencendoHoje">Processos com prazo vencendo hoje: <a href="controlador.php?acao=citacao_intimacao_prazo_aberto_listar&vence_hoje=S&hash=ephemeral_hash_11">1</a></span>
+  </div>
+</div>
+
+<div class="card" id="cardAudiencias">
+  <h3>Audiências/Fóruns de Conciliações/Perícias</h3>
+  <table class="infraTable">
+    <thead>
+      <tr><th>Situação</th><th>Quantidade</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="controlador.php?acao=audiencia_listar&hash=ephemeral_hash_12">Audiências Futuras</a></td>
+        <td><a href="controlador.php?acao=audiencia_listar&hash=ephemeral_hash_12">2</a></td>
+      </tr>
+      <tr>
+        <td><a href="controlador.php?acao=audiencia_conciliacao_listar&hash=ephemeral_hash_13">Audiências Futuras de Conciliação</a></td>
+        <td><a href="controlador.php?acao=audiencia_conciliacao_listar&hash=ephemeral_hash_13">0</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

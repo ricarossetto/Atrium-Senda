@@ -7,11 +7,24 @@ import { chromium } from 'playwright';
 import { SecurityManager, generateTotp } from '../lib/security.mjs';
 import { EmailService } from '../lib/email/email-service.mjs';
 import { postJson, startTestServer } from './helpers.mjs';
+import { serverSourceText } from './server-source.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
+// O anti-replay de TOTP consome cada passo de 30s uma única vez por usuário.
+// Logins sucessivos do mesmo usuário avançam o contador e aguardam a janela ±1.
+const consumedTotpSteps = new Map();
+async function freshTotp(secret) {
+  const counter = () => Math.floor(Date.now() / 30_000);
+  let target = consumedTotpSteps.has(secret) ? consumedTotpSteps.get(secret) + 1 : counter();
+  while (target > counter() + 1) await new Promise(resolve => setTimeout(resolve, 1_000));
+  target = Math.max(target, counter());
+  consumedTotpSteps.set(secret, target);
+  return generateTotp(secret, target);
+}
+
 const portalSource = await readFile(path.join(ROOT, 'js', 'portal.js'), 'utf8');
-const serverSource = await readFile(path.join(ROOT, 'server.mjs'), 'utf8');
+const serverSource = serverSourceText;
 const indexSource = await readFile(path.join(ROOT, 'index.html'), 'utf8');
 assert(!portalSource.includes('/api/email/publications'), 'O frontend ainda contém o endpoint legado /api/email/publications.');
 assert(!serverSource.includes("url.pathname === '/api/email/publications'"), 'O endpoint legado /api/email/publications ainda está ativo no servidor.');
@@ -142,6 +155,9 @@ try {
   assert.equal(sentMsg.from, '"Dr. Advogado Titular" <contato@escritorio.adv.br>', 'Remetente formatado incorreto.');
   assert.equal(sentMsg.subject, 'ATRIUM — Teste de integração de e-mail', 'Assunto do e-mail de teste incorreto.');
   assert(sentMsg.text.includes('A integração de e-mail do Atrium está funcionando corretamente'), 'Corpo do texto incorreto.');
+  assert(sentMsg.html.includes('>ATRIUM</h2>'), 'Template HTML deve usar a marca oficial ATRIUM.');
+  assert(!sentMsg.html.includes('ATRIUM SENDA'), 'Template HTML não pode reintroduzir branding legado.');
+  assert(!/[\u2600-\u27BF\u{1F000}-\u{1FAFF}]/u.test(sentMsg.html), 'Template HTML não pode conter emojis Unicode.');
 
   // Teste de envio de publicação com número de processo (Assunto dinâmico)
   const pubWithProcess = {
@@ -152,7 +168,8 @@ try {
     publishedAt: '2026-08-26',
     source: 'DJEN Oficial',
     term: 'Dr. Advogado Titular · OAB/RS 000000',
-    text: 'Intimação para manifestação sobre laudo contábil no prazo de 15 dias úteis. Conforme Art. 219 do CPC/2015 & decisão liminar.'
+    text: 'Intimação para manifestação sobre laudo contábil no prazo de 15 dias úteis. Conforme Art. 219 do CPC/2015 & decisão liminar.',
+    fullText: 'Intimação para manifestação sobre laudo contábil no prazo de 15 dias úteis. Conforme Art. 219 do CPC/2015 & decisão liminar.\n\nTEOR INTEGRAL EXCLUSIVO SINTÉTICO.'
   };
 
   const pubResult = await emailService.sendPublicationEmail({
@@ -163,13 +180,16 @@ try {
   const sentPubMsg = mockSentMessages[mockSentMessages.length - 1];
 
   assert.equal(sentPubMsg.to, 'cliente@empresa.com.br', 'Destinatário da publicação incorreto.');
-  assert.equal(sentPubMsg.subject, 'ATRIUM — Publicação judicial — 5001234-56.2026.4.04.7105', 'Assunto com processo incorreto.');
+  assert.equal(sentPubMsg.subject, 'ATRIUM — Publicação judicial — 5001234-56.2026.4.04.7105 — TRF4 — 1ª Vara Federal', 'Assunto com processo e tribunal incorreto.');
+  assert(!/[\u2600-\u27BF\u{1F000}-\u{1FAFF}]/u.test(sentPubMsg.html), 'Template de publicação não pode conter emojis Unicode.');
   assert(sentPubMsg.text.includes('5001234-56.2026.4.04.7105'), 'Texto plano não contém processo.');
   assert(sentPubMsg.text.includes('Empresa Teste de Serviços LTDA'), 'Texto plano não contém cliente.');
   assert(sentPubMsg.text.includes('TRF4 — 1ª Vara Federal'), 'Texto plano não contém tribunal.');
   assert(sentPubMsg.text.includes('26/08/2026') || sentPubMsg.text.includes('2026-08-26'), 'Texto plano não contém data.');
   assert(sentPubMsg.text.includes('DJEN Oficial'), 'Texto plano não contém fonte.');
   assert(sentPubMsg.text.includes('Art. 219 do CPC/2015 & decisão liminar.'), 'Texto plano não preservou conteúdo original.');
+  assert(sentPubMsg.text.includes('TEOR INTEGRAL EXCLUSIVO SINTÉTICO'), 'Envio manual não priorizou o fullText oficial.');
+  assert(sentPubMsg.html.includes('TEOR INTEGRAL EXCLUSIVO SINTÉTICO'), 'HTML manual não incluiu o fullText oficial.');
   assert(sentPubMsg.text.includes('Esta mensagem foi enviada pelo ATRIUM'), 'Texto plano não contém rodapé de segurança.');
 
   // Teste de envio de publicação SEM número de processo (Fallback do assunto)
@@ -227,8 +247,31 @@ try {
   assert(digestMail.text.includes(maliciousPub.text), 'Digest text/plain não contém a segunda publicação.');
   assert(!digestMail.html.includes('<script>'), 'Digest HTML não escapou conteúdo judicial malicioso.');
   assert(digestMail.html.includes('&lt;script&gt;'), 'Digest HTML deveria conter o conteúdo judicial escapado.');
-  assert.equal(digestResult.emailHtml, digestMail.html, 'Preview canônico deve corresponder ao HTML efetivamente enviado.');
-  assert.equal(digestResult.emailText, digestMail.text, 'Preview canônico deve corresponder ao text/plain efetivamente enviado.');
+  assert.equal(digestResult.emailHtml, digestMail.html, 'Preview oficial deve corresponder ao HTML efetivamente enviado.');
+  assert.equal(digestResult.emailText, digestMail.text, 'Preview oficial deve corresponder ao text/plain efetivamente enviado.');
+
+  // Data do boletim no assunto é sempre o dia civil de Brasília, nunca o fuso do processo.
+  const todayBr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  assert(digestMail.subject.includes(todayBr), `Assunto do digest deveria usar a data de Brasília (${todayBr}).`);
+
+  // Publicação com data fora do formato YYYY-MM-DD cai no ramo toLocaleDateString.
+  // O instante é 26/08/2026 23:30 em Brasília; em servidor UTC o dia apareceria como 27/08.
+  const lateNightPub = {
+    id: 'pub-tz-400',
+    process: '5007777-11.2026.8.21.0001',
+    court: 'TJRS — 2ª Vara Cível',
+    publishedAt: 'Wed, 26 Aug 2026 23:30:00 GMT-0300',
+    text: 'Publicação sintética noturna para conferência de fuso horário.'
+  };
+  const tzDigest = await emailService.sendPublicationsDigestEmail({
+    recipient: 'fuso.digest@example.test',
+    publications: [lateNightPub]
+  });
+  assert.equal(tzDigest.ok, true, 'Digest de conferência de fuso deveria retornar ok: true.');
+  const tzMail = mockSentMessages.at(-1);
+  assert(tzMail.text.includes('publicado em 26/08/2026'), 'Data da publicação deveria sair no dia civil de Brasília (26/08/2026).');
+  assert(!tzMail.text.includes('publicado em 27/08/2026'), 'Data da publicação não pode escorregar para o dia seguinte por causa do fuso do processo.');
+
   await assert.rejects(
     () => emailService.sendPublicationsDigestEmail({ recipient: 'invalido', publications: [pubWithProcess] }),
     /destinatário válido/,
@@ -239,6 +282,37 @@ try {
     /ao menos uma publicação/,
     'Digest deveria rejeitar lista vazia.'
   );
+
+  // Publicações do eproc não possuem `text`; o teor completo vive em `sourceText`
+  const pubWithSourceText = {
+    id: 'pub-source-300',
+    process: '5009876-54.2026.8.21.0001',
+    client: 'Cliente Teste',
+    court: 'TJRS — 1ª Vara Cível',
+    publishedAt: '2026-09-01',
+    source: 'eproc',
+    sourceText: 'TEOR COMPLETO SINTÉTICO DA PUBLICAÇÃO\nSegunda linha com detalhes processuais.\nTrecho com <b>negrito</b> para conferir o escape.'
+  };
+
+  await emailService.sendPublicationEmail({
+    recipient: 'cliente@source-text.example.test',
+    publication: pubWithSourceText
+  });
+  const sentSourcePub = mockSentMessages[mockSentMessages.length - 1];
+  assert(sentSourcePub.text.includes(pubWithSourceText.sourceText), 'Envio individual não usou o sourceText integral no emailText.');
+  assert(!sentSourcePub.text.includes('Sem conteúdo adicional.'), 'Envio individual caiu no placeholder mesmo com sourceText presente.');
+  assert(sentSourcePub.html.includes('&lt;b&gt;negrito&lt;/b&gt;'), 'Envio individual deveria escapar o sourceText no emailHtml.');
+  assert(!sentSourcePub.html.includes('<b>negrito</b>'), 'Envio individual vazou HTML não escapado do sourceText.');
+
+  const sourceDigestResult = await emailService.sendPublicationsDigestEmail({
+    recipient: 'destinatario.source@example.test',
+    publications: [pubWithSourceText]
+  });
+  assert.equal(sourceDigestResult.ok, true, 'Digest com sourceText deveria retornar ok: true.');
+  assert(sourceDigestResult.emailText.includes(pubWithSourceText.sourceText), 'Digest não usou o sourceText integral no emailText.');
+  assert(!sourceDigestResult.emailText.includes('Sem conteúdo adicional.'), 'Digest caiu no placeholder mesmo com sourceText presente.');
+  assert(sourceDigestResult.emailHtml.includes('&lt;b&gt;negrito&lt;/b&gt;'), 'Digest deveria escapar o sourceText no emailHtml.');
+  assert(!sourceDigestResult.emailHtml.includes('<b>negrito</b>'), 'Digest vazou HTML não escapado do sourceText.');
 
   // Teste de validação de destinatário na publicação
   await assert.rejects(
@@ -414,9 +488,26 @@ try {
 // 2. Testes de Integração HTTP via Servidor Real (Autenticação, RBAC e CSRF)
 console.log('\n[2/5] Testando endpoints HTTP de e-mail com autenticação e CSRF...');
 
-const server = await startTestServer();
+const server = await startTestServer({
+  env: {
+    NODE_ENV: 'test',
+    ATRIUM_MOCK_SMTP: 'true',
+    ATRIUM_MOCK_RESEND: 'true',
+    RESEND_API_KEY: '',
+    JEV_CMD_BIN: process.execPath
+  }
+});
 const adminPassword = 'Senha-Segura-2026!';
 const collaboratorPassword = 'Colaborador-2026!';
+// users/manage exige step-up (F-19). Cada consumo precisa de um passo TOTP
+// estritamente crescente; o helper reserva dentro da janela ±1.
+let adminStepUsed = 0;
+function adminStepUpCode(secret) {
+  const current = Math.floor(Date.now() / 30000);
+  const step = Math.max(current - 1, adminStepUsed + 1);
+  adminStepUsed = step;
+  return generateTotp(secret, step);
+}
 
 try {
   // Testes sem autenticação (deve retornar 401)
@@ -509,7 +600,9 @@ try {
 
   res = await postJson(`${server.baseUrl}/api/auth/users/manage`, {
     userId: collabUser.id,
-    status: 'active'
+    status: 'active',
+    password: adminPassword,
+    code: adminStepUpCode(setupData.manualSecret)
   }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
   assert.equal(res.status, 200, 'Aprovação de colaborador falhou.');
 
@@ -517,7 +610,7 @@ try {
   res = await postJson(`${server.baseUrl}/api/auth/login`, {
     username: 'colaborador',
     password: collaboratorPassword,
-    code: generateTotp(regData.manualSecret)
+    code: await freshTotp(regData.manualSecret)
   });
   assert.equal(res.status, 200, 'Login do colaborador falhou.');
   const collabLogin = await res.json();
@@ -704,7 +797,7 @@ try {
     id: 'int-canon-777',
     title: 'Intimação para Manifestação sobre Laudo Pericial',
     process: '0000001-11.2026.4.04.0001',
-    client: 'Cliente Teste Canônico',
+    client: 'Cliente Teste Oficial',
     court: 'TRF4 — 2ª Vara Federal de Novo Hamburgo',
     publishedAt: new Date().toISOString().slice(0, 10),
     source: 'DJEN Oficial',
@@ -716,7 +809,7 @@ try {
   };
   const secondCanonicalPublication = {
     id: 'int-canon-778',
-    title: 'Publicação Canônica Secundária',
+    title: 'Publicação Oficial Secundária',
     process: '5000000-00.2026.4.04.7000',
     client: 'Cliente Teste Secundário',
     court: 'TRF4 — Vara de Testes Automatizados',
@@ -784,13 +877,13 @@ try {
     secure: true,
     user: 'master@servidor-teste.adv.br',
     password: 'Senha-Super-Secreta-12345!',
-    fromName: 'Escritório Keller & Associados',
+    fromName: 'Escritório Teste & Associados',
     fromAddress: 'notificacoes@servidor-teste.adv.br'
   }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
   assert.equal(res.status, 200, 'Configuração SMTP pelo Admin falhou.');
 
   // Envio de publicação via HTTP (com tentativa de injeção de subject, html ou text pelo cliente)
-  // O servidor DEVE ignorar subject/html/text enviados pelo cliente e processar a publicação canônica
+  // O servidor DEVE ignorar subject/html/text enviados pelo cliente e processar a publicação oficial
   res = await postJson(`${server.baseUrl}/api/intimations/email`, {
     publicationId: 'int-canon-777',
     recipient: 'cliente.canonico@example.test',
@@ -814,11 +907,11 @@ try {
     }],
     title: 'TÍTULO FORJADO PELO CLIENTE'
   }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
-  assert.equal(res.status, 200, 'Envio batch canônico falhou.');
+  assert.equal(res.status, 200, 'Envio batch oficial falhou.');
   const batchResponse = await res.json();
   assert.equal(batchResponse.count, 2, 'IDs duplicados deveriam ser normalizados antes do digest.');
-  assert(batchResponse.emailText.includes(canonicalTestPublication.text), 'Digest não contém a primeira publicação canônica.');
-  assert(batchResponse.emailText.includes(secondCanonicalPublication.text), 'Digest não contém a segunda publicação canônica.');
+  assert(batchResponse.emailText.includes(canonicalTestPublication.text), 'Digest não contém a primeira publicação oficial.');
+  assert(batchResponse.emailText.includes(secondCanonicalPublication.text), 'Digest não contém a segunda publicação oficial.');
   assert(!batchResponse.emailText.includes('CONTEÚDO FORJADO PELO CLIENTE'), 'Digest confiou em conteúdo judicial fornecido pelo cliente.');
   assert(!batchResponse.emailText.includes('PROCESSO FORJADO PELO CLIENTE'), 'Digest confiou em processo fornecido pelo cliente.');
   assert(!batchResponse.emailText.includes('TÍTULO FORJADO PELO CLIENTE'), 'Digest confiou em título fornecido pelo cliente.');
@@ -872,7 +965,7 @@ try {
     await page.locator('#authLoginForm.active').waitFor();
     await page.locator('#authLoginForm [name="username"]').fill('admin');
     await page.locator('#authLoginForm [name="password"]').fill(adminPassword);
-    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(setupData.manualSecret));
+    await page.locator('#authLoginForm [name="code"]').fill(await freshTotp(setupData.manualSecret));
     await page.locator('#authLoginForm button[type="submit"]').click();
     await page.locator('#appShell:not(.hidden)').waitFor();
 
@@ -891,8 +984,8 @@ try {
     await page.evaluate(() => window.Atrium.App.switchView('inbox'));
     await page.locator('#view-inbox.active').waitFor();
 
-    // Clicar na publicação de teste
-    const pubRowMaster = page.locator(`.inbox-row[data-intimation-id="${canonicalTestPublication.id}"]`);
+    // Clicar na publicação de teste (seletor genérico: cobre o shell v2 e o botão clássico)
+    const pubRowMaster = page.locator(`[data-intimation-id="${canonicalTestPublication.id}"]`);
     await pubRowMaster.waitFor();
     await pubRowMaster.click();
 
@@ -917,7 +1010,7 @@ try {
     page.on('request', request => {
       if (request.method() === 'POST' && request.url().includes('/api/publications/email/batch')) batchRequests.push(request);
     });
-    await page.locator('#btnEmailPublications').click();
+    await page.locator('#btnEmailPublications').evaluate(element => element.click());
     const batchModal = page.locator('#publicationsEmailModalBackdrop');
     await batchModal.waitFor({ state: 'visible' });
     await page.waitForTimeout(300);
@@ -948,11 +1041,13 @@ try {
       email: 'admin2@escritorio.adv.br',
       password: admin2Password
     }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+    assert.equal(regRes.status, 200, 'Cadastro do admin secundário deve retornar 200.');
     const reg2Data = await regRes.json();
-    await postJson(`${server.baseUrl}/api/auth/register/verify`, {
+    const admin2Verification = await postJson(`${server.baseUrl}/api/auth/register/verify`, {
       setupToken: reg2Data.setupToken,
       code: generateTotp(reg2Data.manualSecret)
     });
+    assert.equal(admin2Verification.status, 200, 'Verificação do admin secundário deve retornar 200.');
 
     // Master Admin aprova admin2 e define papel como 'admin'
     const usersListRes = await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: adminCookie } });
@@ -960,21 +1055,28 @@ try {
     const admin2User = allUsers.find(u => u.username === 'admin2');
     assert(admin2User, 'admin2 não encontrado na lista de usuários.');
 
-    await postJson(`${server.baseUrl}/api/auth/users/manage`, {
+    const admin2Promotion = await postJson(`${server.baseUrl}/api/auth/users/manage`, {
       userId: admin2User.id,
       status: 'active',
-      role: 'admin'
+      role: 'admin',
+      password: adminPassword,
+      code: await freshTotp(setupData.manualSecret)
     }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+    assert.equal(admin2Promotion.status, 200, 'Promoção do admin secundário exige step-up válido.');
+    const promotedAdmin2 = (await admin2Promotion.json()).user;
+    assert.equal(promotedAdmin2.role, 'admin', 'Promoção deve persistir o papel admin.');
+    assert.equal(promotedAdmin2.status, 'active', 'Promoção deve ativar o admin secundário.');
 
     // Logout do Master Admin
     await page.evaluate(() => window.KellerAuth?.logout());
+    await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
     await page.locator('#authLoginForm.active').waitFor();
 
     // Login real do Admin Secundário e novo boot autenticado no contexto do navegador.
     const admin2LoginResponse = await postJson(`${server.baseUrl}/api/auth/login`, {
       username: 'admin2',
       password: admin2Password,
-      code: generateTotp(reg2Data.manualSecret)
+      code: await freshTotp(reg2Data.manualSecret)
     });
     const admin2Login = await admin2LoginResponse.json();
     assert.equal(admin2LoginResponse.status, 200, 'Login do admin secundário deve retornar 200.');
@@ -986,13 +1088,22 @@ try {
       domain: new URL(server.baseUrl).hostname,
       path: '/'
     }]);
-    await page.reload({ waitUntil: 'networkidle' });
+    const admin2StatusPromise = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/status');
+    await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
+    const admin2StatusResponse = await admin2StatusPromise;
+    assert.equal(admin2StatusResponse.status(), 200, 'Status do admin secundário deve retornar 200.');
+    const admin2Status = await admin2StatusResponse.json();
+    assert.equal(admin2Status.authenticated, true, 'Navegador deve confirmar a sessão do admin secundário.');
+    assert.equal(admin2Status.user.role, 'admin', 'Status deve confirmar o papel admin.');
+    assert.equal(admin2Status.workspace.id, admin2Status.user.workspaceId, 'Status deve confirmar o escritório oficial.');
     await page.locator('#appShell:not(.hidden)').waitFor();
 
     // Abrir aba Publicações e detalhe
     await page.evaluate(() => window.Atrium.App.switchView('inbox'));
     await page.locator('#view-inbox.active').waitFor();
-    const adminPublicationRow = page.locator(`#view-inbox.active .inbox-row[data-intimation-id="${canonicalTestPublication.id}"]`);
+    // O presenter v2 usa um shell <div data-intimation-id> com o botão .inbox-row dentro.
+    // O seletor genérico garante compatibilidade com a renderização do admin secundário.
+    const adminPublicationRow = page.locator(`#view-inbox.active [data-intimation-id="${canonicalTestPublication.id}"]`);
     await adminPublicationRow.waitFor({ state: 'visible' });
     await adminPublicationRow.click();
 
@@ -1010,28 +1121,30 @@ try {
     // 5.3 COLLABORATOR (role: collaborator):
     // Logout do Admin
     await page.evaluate(() => window.KellerAuth?.logout());
+    await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
     await page.locator('#authLoginForm.active').waitFor();
 
     // Login do Colaborador
     await page.locator('#authLoginForm [name="username"]').fill('colaborador');
     await page.locator('#authLoginForm [name="password"]').fill(collaboratorPassword);
-    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(regData.manualSecret));
+    await page.locator('#authLoginForm [name="code"]').fill(await freshTotp(regData.manualSecret));
     await page.locator('#authLoginForm button[type="submit"]').click();
     await page.locator('#appShell:not(.hidden)').waitFor();
 
     // Abrir aba Publicações e detalhe
     await page.evaluate(() => window.Atrium.App.switchView('inbox'));
     await page.locator('#view-inbox.active').waitFor();
-    // O detalhe V2 pode permanecer aberto entre sessões; selecione pela API canônica sem clique obstruído.
+    // O detalhe V2 pode permanecer aberto entre sessões; selecione pela API oficial sem clique obstruído.
     await page.evaluate(id => window.Atrium.App.selectIntimation(id), canonicalTestPublication.id);
 
     // 5.4 E2E DESTINATÁRIOS DE PUBLICAÇÕES (ADMIN & COLLABORATOR & THEMES)
     // Master Admin faz login novamente
     await page.evaluate(() => window.KellerAuth?.logout());
+    await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
     await page.locator('#authLoginForm.active').waitFor();
     await page.locator('#authLoginForm [name="username"]').fill('admin');
     await page.locator('#authLoginForm [name="password"]').fill(adminPassword);
-    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(setupData.manualSecret));
+    await page.locator('#authLoginForm [name="code"]').fill(await freshTotp(setupData.manualSecret));
     await page.locator('#authLoginForm button[type="submit"]').click();
     await page.locator('#appShell:not(.hidden)').waitFor();
 
@@ -1039,21 +1152,20 @@ try {
     await page.evaluate(() => window.Atrium.App.switchView('integrations'));
     await page.locator('#view-integrations.active').waitFor();
 
-    // Validar visibilidade da seção e do botão de adicionar destinatário
-    const receiversSection = page.locator('#emailReceiversSection:not(.hidden)');
-    const addReceiverBtn = page.locator('#btnAddEmailReceiver:not(.hidden)');
-    await receiversSection.waitFor();
+    // Contrato oficial: admin sempre pode adicionar destinatário; a seção de
+    // destinatários só aparece quando existe pelo menos um (sem lista vazia).
+    const receiversSection = page.locator('#emailReceiversSection');
+    const addReceiverBtn = page.locator('#btnAddExternalRecipient:not(.hidden)');
     await addReceiverBtn.waitFor();
-    assert.equal(await receiversSection.isVisible(), true, 'Seção de destinatários não está visível para admin.');
     assert.equal(await addReceiverBtn.isVisible(), true, 'Botão de adicionar destinatário não está visível para admin.');
+    assert.equal(await receiversSection.isVisible(), false, 'Seção de destinatários não pode aparecer vazia para admin.');
 
     // Abrir modal de criação
     await addReceiverBtn.click();
     const receiverModal = page.locator('#emailReceiverModalBackdrop');
     await receiverModal.waitFor({ state: 'visible' });
 
-    // Selecionar tipo E-mail externo
-    await page.locator('#receiverTypeExternal').click();
+    // O fluxo oficial abre diretamente em destinatário externo (seletor interno oculto)
     assert.equal(await page.locator('#receiverExternalFields').isVisible(), true, 'Campos externos não ficaram visíveis.');
     assert.equal(await page.locator('#receiverInternalFields').isVisible(), false, 'Campos internos não foram ocultados.');
 
@@ -1066,6 +1178,7 @@ try {
     // Validar item na lista
     const receiverRow = page.locator('.email-receiver-item').first();
     await receiverRow.waitFor();
+    assert.equal(await receiversSection.isVisible(), true, 'Seção de destinatários deve aparecer após o primeiro cadastro.');
     assert(await receiverRow.textContent().then(t => t.includes('Advogada Externa Parceira')), 'Nome do destinatário não apareceu na lista.');
     assert(await receiverRow.textContent().then(t => t.includes('advogada.externa@parceiro.adv.br')), 'E-mail do destinatário não apareceu na lista.');
     assert(await receiverRow.textContent().then(t => t.includes('Ativo')), 'Badge Ativo não apareceu.');
@@ -1073,7 +1186,7 @@ try {
     // Desativar destinatário
     await receiverRow.locator('[data-receiver-action="toggle"]').click();
     await page.waitForTimeout(400);
-    assert(await receiverRow.textContent().then(t => t.includes('Inativo')), 'Badge não mudou para Inativo após toggle.');
+    assert(await receiverRow.textContent().then(t => t.includes('Pausado')), 'Badge não mudou para Pausado após toggle.');
 
     // Reativar destinatário
     await receiverRow.locator('[data-receiver-action="toggle"]').click();
@@ -1095,18 +1208,18 @@ try {
     await receiverRow.locator('[data-receiver-action="delete"]').click();
     await page.waitForTimeout(500);
 
-    // Adicionar destinatário interno (Usuário do ATRIUM)
+    // Adicionar novo destinatário externo e validar persistência após reload
     await addReceiverBtn.click();
     await receiverModal.waitFor({ state: 'visible' });
-    await page.locator('#receiverTypeInternal').click();
-    assert.equal(await page.locator('#receiverInternalFields').isVisible(), true);
+    await page.locator('#receiverNameInput').fill('Destinatário Persistente');
+    await page.locator('#receiverEmailInput').fill('persistente@parceiro.adv.br');
     await page.locator('#receiverSubmitBtn').click();
     await receiverModal.waitFor({ state: 'hidden' });
     await page.waitForTimeout(400);
 
-    const internalReceiverRow = page.locator('.email-receiver-item').first();
-    await internalReceiverRow.waitFor();
-    assert(await internalReceiverRow.textContent().then(t => t.includes('Usuário interno')), 'Badge Usuário interno não exibido.');
+    const persistedBeforeReload = page.locator('.email-receiver-item').first();
+    await persistedBeforeReload.waitFor();
+    assert(await persistedBeforeReload.textContent().then(t => t.includes('Destinatário Persistente')), 'Destinatário recém-criado não apareceu na lista.');
 
     // Recarregar página (Reload) e verificar persistência dos destinatários
     await page.reload({ waitUntil: 'networkidle' });
@@ -1115,7 +1228,7 @@ try {
     await page.locator('#view-integrations.active').waitFor();
     const persistedRow = page.locator('.email-receiver-item').first();
     await persistedRow.waitFor();
-    assert(await persistedRow.isVisible(), 'Destinatário interno não persistiu após reload do navegador.');
+    assert(await persistedRow.isVisible(), 'Destinatário não persistiu após reload do navegador.');
 
     // Validação Visual Dark e Light Mode
     const mediaDir = path.join(ROOT, 'artifacts', 'email-service');
@@ -1144,10 +1257,11 @@ try {
 
     // Logout e verificar que Colaborador NÃO vê a seção de destinatários
     await page.evaluate(() => window.KellerAuth?.logout());
+    await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
     await page.locator('#authLoginForm.active').waitFor();
     await page.locator('#authLoginForm [name="username"]').fill('colaborador');
     await page.locator('#authLoginForm [name="password"]').fill(collaboratorPassword);
-    await page.locator('#authLoginForm [name="code"]').fill(generateTotp(regData.manualSecret));
+    await page.locator('#authLoginForm [name="code"]').fill(await freshTotp(regData.manualSecret));
     await page.locator('#authLoginForm button[type="submit"]').click();
     await page.locator('#appShell:not(.hidden)').waitFor();
 

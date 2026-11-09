@@ -1,0 +1,152 @@
+{
+  "fonts": [    "Inter",
+    "system-ui",
+    "-apple-system",
+    "BlinkMacSystemFont",
+    "Segoe UI",
+    "sans-serif",
+    "Playfair Display",
+    "Georgia",
+    "serif"
+  ],
+  "fontSizes": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    16,
+    18,
+    20,
+    24,
+    32,
+    40,
+    48
+  ],
+  "typeRules": [
+    {
+      "selector": ".brand-title",
+      "sizes": [18, 20]
+    },
+    {
+      "selector": "small",
+      "sizes": [10, 11, 12, 13, 14]
+    },
+    {
+      "selector": ".topbar h1",
+      "sizes": [16, 18]
+    },
+    {
+      "selector": ".contact-record-arrow, .agenda-activity-open, .lead-v2-record-action, .monitor-avatar",
+      "sizes": [16, 18, 20, 24]
+    },
+    {
+      "selector": ".pub-metric-content strong, .v2-attention-item strong, .monitor-stats strong, .metric-card strong",
+      "sizes": [18, 20, 24, 32]
+    },
+    {
+      "selector": ".auth-visual-copy h1 em",
+      "sizes": [20]
+    },
+    {
+      "selector": "h1",
+      "sizes": [32, 40, 48, 64]
+    },
+    {
+      "selector": "h2",
+      "sizes": [20, 24, 32, 40, 48]
+    },
+    {
+      "selector": "h3",
+      "sizes": [14, 18, 20, 24]
+    },
+    {
+      "selector": ".faq summary",
+      "sizes": [16, 20]
+    },
+    {
+      "selector": "button, [role=button], summary",
+      "sizes": [12, 13, 14, 16]
+    }
+  ],
+  "minControlSize": 40,
+  "controlSizeRules": [
+    {
+      "selector": ".icon-button, .atrium-icon-button, .compact-btn, .admin-row-buttons .button",
+      "minSize": 36
+    },
+    {
+      "selector": ".act-chip, .status-chip, .kanban-chip, .task-tag, .fee-chip, .risk-chip, .nb-chip, .process-triage-chip, .treatment-badge, .admin-status-pill, .admin-role-tag, .prompt-chip",
+      "minSize": 24
+    }
+  ],
+  "minControlGap": 8,
+  "minControlInset": 8,
+  "controlContainers": [
+    "[data-ui-container]",
+    ".section-toolbar",
+    ".topbar-actions",
+    ".admin-row-buttons",
+    ".task-list-controls",
+    ".admin-card-title"
+  ],
+  "minLayoutGap": 8,
+  "bannedCopy": [
+    "unlock your potential",
+    "seamlessly",
+    "game-changing",
+    "soberana",
+    "soberano",
+    "Soberania",
+    "revolucion",
+    "cutting-edge"
+  ],
+  "viewports": [
+    {
+      "width": 390,
+      "height": 844
+    },
+    {
+      "width": 1440,
+      "height": 900
+    }
+  ],
+  "colorSchemes": ["light", "dark"],
+  "exceptions": [
+    {
+      "rules": ["control-state"],
+      "selector": "#notificationButton[aria-haspopup=\"dialog\"][aria-controls=\"notificationPanel\"][aria-expanded=\"false\"], html:has(#officeSetupBackdrop.hidden) #openOfficeIdentityFromConfiguration[aria-haspopup=\"dialog\"][aria-controls=\"officeSetupDialog\"]",
+      "reason": "Incerteza controlsWithinPopup do axe em gatilhos de dialogo fechado: os destinos permanecem no DOM, com ID unico e role=dialog. O lintapple resolve automaticamente essa incerteza somente para role=menu. tests/ui_v2_dialog_reference_contract.mjs verifica ambos os destinos e exercita abertura, foco interno, Escape, retorno ao gatilho e aria-expanded das notificacoes em 1440/390 light/dark. O botao da identidade foi corrigido para controlar o dialogo real, nao o backdrop. A excecao e restrita ao estado fechado e a esses pares exatos; nao autoriza ID ausente ou papel divergente, protegidos pelo teste comportamental."
+    },
+    {
+      "rules": ["content-clipping"],
+      "selector": "#promptsGrid .prompt-text",
+      "reason": "Trecho intencional do prompt no cartão da biblioteca (linhas limitadas por -webkit-line-clamp). O corte é declarado ao usuário pelo indicador 'Ver prompt completo' no próprio cartão, e o texto integral fica acessível pela ação do cartão e pelo botão Copiar, por teclado e toque. A exceção cobre o recorte deliberado do resumo, não a ocultação de conteúdo inacessível."
+    },
+    {
+      "rules": ["content-clipping"],
+      "selector": "#promptsGrid .prompt-title, #promptsGrid .prompt-desc",
+      "reason": "Resumo do cartao da biblioteca: titulo e descricao truncados por -webkit-line-clamp (3 linhas cada). A superficie de detalhe do mesmo cartao — a previa aberta por 'Ver prompt completo', com foco devolvido ao gatilho — exibe o titulo em #promptPreviewTitle, a descricao integral em #promptPreviewDescription e o prompt em #promptPreviewText, sem cortes, por teclado e toque. Ate esta versao a previa omitia a descricao, o que fazia do recorte perda real de conteudo; a previa foi corrigida e a excecao passa a cobrir apenas o resumo deliberado do cartao."
+    },
+    {
+      "rules": ["text-contrast"],
+      "selector": ".sort-indicator, .sort-icon, .financial-process-arrow, .process-secrecy span[aria-hidden=\"true\"], .process-key-stored span[aria-hidden=\"true\"], .process-enrichment-flag span[aria-hidden=\"true\"], .process-enrichment-icon[aria-hidden=\"true\"], .v2-status-badge span[aria-hidden=\"true\"], .list-head-sort .sort-icon",
+      "reason": "Simbolos decorativos unicos (seta, marcador de estado, indicador de ordenacao), todos com aria-hidden=\"true\" e sem alternativa textual propria: o rotulo ao lado carrega o significado. O medidor descarta esse conteudo antes de calcular ('Element content contains only non-text characters'), que e justamente o caminho que a opcao ignoreUnicode do próprio medidor abre para revisao humana. Contrastes conferidos por calculo sobre o fundo real do pai: .sort-indicator 13,86:1 claro e 14,84:1 escuro apos a opacidade ociosa subir de .45 para .68 (era 2,63:1 e 4,00:1 — falha real corrigida); .sort-icon 4,97:1 e 6,38:1; marcador de segredo 5,48:1 e 6,66:1; badges de monitoramento 4,61:1/5,86:1 e 5,24:1/7,89:1; seta de contexto 5,65:1 e 5,67:1. Nenhum simbolo efetivo fica abaixo de 4,5:1; a excecao cobre a impossibilidade de medicao, nao uma falha de contraste."
+    },
+    {
+      "rules": ["text-contrast"],
+      "selector": ".hero-copy *, .strip-item *, .film-cap *, .site-header .nav *, .site-header .nav-actions *",
+      "reason": "Landing /discover: texto sobre a camada decorativa fixa .ambient (canvas WebGL, aria-hidden, pointer-events:none), sobre .ambient-scrim ou sobre o header transparente (.site-header so recebe fundo em .is-scrolled), o que impede a medicao automatica de fundo. Contraste real conferido por calculo sobre --canvas: --text-1 17,66:1 claro e 17,74:1 escuro; --text-2 5,96:1 e 7,49:1; --text-3 corrigido para #6A7379 (4,59:1) e #7d858b (5,19:1). Nenhum texto efetivo fica abaixo de 4,5:1; a excecao cobre a impossibilidade de medicao, nao uma falha de contraste."
+    },
+    {
+      "rules": ["text-contrast"],
+      "selector": "#landingPage .landing-hero *",
+      "reason": "Landing do SPA: texto do hero sobre a camada decorativa fixa .landing-ambient-glow (gradiente), o que impede a medicao automatica de fundo. Contraste real conferido por calculo sobre --v2-color-background: claro (fundo #f3f4f2) foreground 13,13:1, foreground-secondary 6,08:1, gold-strong do h1 em 3,89:1 (texto grande exige 3:1), primary 4,94:1; escuro (fundo #111315) 15,98:1, 9,40:1, 9,34:1 e 6,14:1. Nenhum texto efetivo fica abaixo do minimo; a excecao cobre a impossibilidade de medicao, nao uma falha de contraste."
+    },
+    {
+      "rules": ["text-contrast"],
+      "selector": "#landingPage .landing-mockup-badge, #landingPage .landing-mockup-badge *, #landingPage .landing-mockup-tabs button",
+      "reason": "Elementos do showcase maquetado: o ponto pulsante animado e, em 390px, a faixa de abas com overflow-x (o item vizinho cobre parcialmente o elemento) impedem a medicao automatica de fundo. Contraste real conferido sobre .landing-mockup-topbar (--v2-color-surface-secondary, #EEF0EF claro / #202428 escuro): --v2-color-primary 4,76:1 e 5,15:1; --v2-color-muted-foreground 5,10:1 e 5,68:1 — todos acima do minimo de 4,5:1. Excecao cobre a impossibilidade de medicao, nao falha de contraste."
+    }
+  ]
+}

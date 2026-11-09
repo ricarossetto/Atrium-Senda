@@ -63,7 +63,8 @@ const ids = [
   'metricInbox', 'metricDeadlines', 'metricTasks', 'metricSources', 'inboxBadge', 'notificationDot',
   'widgetCompletedTasks', 'widgetLateTasks', 'widgetPendingTasks', 'widgetProcActive', 'widgetProcInactive',
   'widgetActiveLeads', 'widgetHonorariosPending', 'widgetTimesheetHours', 'widgetDocsCount', 'dashboardRemindersList',
-  'activityInboxFilters', 'activityInboxList', 'activityInboxCount', 'dashboardActionableInsights'
+  'activityInboxFilters', 'activityInboxList', 'activityInboxCount', 'dashboardActionableInsights', 'v2PerformancePanel',
+  'v2AttentionAgenda', 'v2AttentionAgendaDetail'
 ];
 const elements = Object.fromEntries(ids.map(id => [id, makeElement()]));
 const documentRef = { getElementById: id => elements[id] || null };
@@ -74,7 +75,7 @@ const tasks = [
   { id: 'task-reuniao', title: 'Reunião de atendimento', type: '', status: 'prioridade', deadline: '9', points: 10, client: 'Cliente D' },
   { id: 'task-generic', title: 'Conferir documento', type: 'Tarefa', status: 'triagem', deadline: '1', points: 5, processId: 'linked-process', priority: 'urgente', responsible: 'Equipe', timeLogs: [{ minutes: 30 }] },
   { id: 'task-late', title: 'Recurso extraordinário', type: '', status: 'andamento', deadline: '-1', points: 30, client: 'Cliente E' },
-  { id: 'task-done', title: 'Tarefa concluída', status: 'concluida', deadline: '1', timeLogs: [{ minutes: 15, date: '2000-01-01' }] }
+  { id: 'task-done', title: 'Tarefa concluída', status: 'concluida', deadline: '1', completedAt: new Date().toISOString(), completedBy: 'Advogada Teste', points: 15, timeLogs: [{ minutes: 15, date: '2000-01-01' }] }
 ];
 const processes = [
   { id: 'linked-process', number: '5000000-00.2026.8.21.0001', client: 'Cliente A', actionType: 'Indenização por danos morais', stage: 'Conhecimento', monitoring: 'active' },
@@ -86,7 +87,16 @@ const processes = [
   { id: 'paid', feeType: 'fixo', feeAmount: 999, feeStatus: 'pago', monitoring: 'active' },
   { id: 'explicit-zero', feeType: 'fixo', feeAmount: 0, rpvAmount: 5000, monitoring: 'active' }
 ];
-const reminders = Array.from({ length: 5 }, (_, index) => ({ id: `agenda-${index}`, date: `2026-09-0${index + 1}`, title: `Lembrete ${index}`, client: `Cliente ${index}` }));
+const futureDate = offset => {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  return date.toISOString().slice(0, 10);
+};
+const reminders = [
+  { id: 'agenda-past', date: '2020-01-01', title: 'Lembrete passado', client: 'Cliente Passado' },
+  ...Array.from({ length: 5 }, (_, index) => ({ id: `agenda-${index}`, date: futureDate(index + 1), title: `Lembrete ${index}`, client: `Cliente ${index}` }))
+];
+const oldPublicationDate = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
 const store = {
   state: {
     tasks,
@@ -94,6 +104,7 @@ const store = {
     sources: [{ id: 'source-ok-1', status: 'ok', lastCheck: '2026-09-03T11:00:00.000Z' }, { id: 'source-attention', status: 'attention', name: 'Fonte em atenção', lastCheck: '2026-09-03T10:00:00.000Z' }, { id: 'source-ok-2', status: 'ok' }],
     intimations: [
       { id: 'publication-pending', title: 'Publicação pendente', treatmentStatus: 'untreated', unread: true, publishedAt: new Date().toLocaleDateString('sv-SE') },
+      { id: 'publication-old-pending', title: 'Publicação antiga pendente', treatmentStatus: 'untreated', unread: true, publishedAt: oldPublicationDate },
       { id: 'publication-treated', title: 'Publicação tratada', treatmentStatus: 'treated', treatmentStartedAt: '2026-09-02T10:00:00.000Z', treatedAt: '2026-09-02T11:00:00.000Z' },
       { id: 'publication-discarded', title: 'Publicação descartada', treatmentStatus: 'discarded', treatmentStartedAt: '2026-09-01T10:00:00.000Z', discardedAt: '2026-09-01T12:00:00.000Z' }
     ],
@@ -156,8 +167,8 @@ for (const [sort, expectedFirst] of [
 }
 
 const metrics = feature.renderMetrics();
-assert.deepEqual(metrics, { untreatedIntimations: 3, deadlines: 3, activeProcesses: 7, activeSources: 2, sourceCount: 3 });
-assert.equal(elements.metricInbox.textContent, 3);
+assert.deepEqual(metrics, { untreatedIntimations: 3, officeUntreated: 2, deadlines: 3, activeProcesses: 7, activeSources: 2, sourceCount: 3 });
+assert.equal(elements.metricInbox.textContent, 2);
 assert.equal(elements.metricDeadlines.textContent, 3);
 assert.equal(elements.metricTasks.textContent, 7);
 assert.equal(elements.metricSources.textContent, '2/3');
@@ -201,6 +212,8 @@ assert.equal(widgets.feesPending, 830, 'Fórmula financeira do dashboard mudou.'
 assert.equal(widgets.minutes30d, 30);
 assert.equal(widgets.documentCount, 2);
 assert.equal(widgets.reminders.length, 4);
+assert.equal(widgets.reminders[0].id, 'agenda-0', 'Próximo compromisso deve ser o primeiro evento futuro, não um evento passado.');
+assert.equal(widgets.reminders.some(item => item.id === 'agenda-past'), false, 'Evento passado não pode aparecer como próximo compromisso.');
 assert.equal(elements.widgetHonorariosPending.textContent, 'BRL:830');
 assert.equal(elements.widgetTimesheetHours.textContent, '30m');
 const reminderNode = elements.dashboardRemindersList.dynamic.get('[data-agenda-id]')[0];
@@ -215,7 +228,7 @@ assert.deepEqual(insights.tasksByResponsible.slice(0, 3), [
 ]);
 assert.equal(insights.averageTreatmentMinutes, 90);
 assert.equal(insights.treatmentSampleSize, 2);
-assert.equal(insights.pendingPublications, 1);
+assert.equal(insights.pendingPublications, 2, 'Estoque de pendentes inclui publicação fora da janela recente.');
 assert.equal(insights.latestCollectorCheck, '2026-09-03T11:00:00.000Z');
 assert.equal(insights.pendingSyncs, 1);
 assert.equal(insights.unclassifiedDocuments, 1);
@@ -227,7 +240,20 @@ assert.deepEqual(insights.processesByStatus.slice(0, 3), [
   { label: 'Execução', count: 1 }
 ]);
 
+const performance = feature.performanceValues();
+assert.equal(performance.current.completed, 1, 'Conclusão do mês entra na performance.');
+assert.equal(performance.current.points, 15, 'Pontos da conclusão entram na série.');
+assert.equal(performance.pending, 5, 'Pendentes excluem tarefas concluídas.');
+assert.equal(Number.isFinite(performance.previous.completed), true);
+
 feature.render();
 assert.equal(officeRenders, 1);
+assert.equal(elements.v2AttentionAgenda.textContent, `DATA:${reminders[1].date}`, 'O card deve usar o primeiro compromisso futuro.');
+assert.match(elements.dashboardActionableInsights.innerHTML, /2 pendentes/);
+assert.match(elements.dashboardActionableInsights.innerHTML, /1 pendência\b/);
+assert.doesNotMatch(elements.dashboardActionableInsights.innerHTML, /1 pendências/);
 assert.match(elements.dashboardActionableInsights.innerHTML, /Carga de trabalho|Tempo médio de tratamento|Documentos sem classificação|BRL:150/);
-console.log('✓ Dashboard modular aprovado: filtros, métricas, indicadores acionáveis, interações, widgets, finanças, timesheet e lembretes.');
+assert.match(elements.v2PerformancePanel.innerHTML, /Desempenho/, 'Painel de performance deve renderizar.');
+assert.match(elements.v2PerformancePanel.innerHTML, /Concluídas/);
+assert.match(elements.v2PerformancePanel.innerHTML, /v2-performance-svg|v2-performance-empty/, 'Painel deve renderizar gráfico ou estado vazio honesto.');
+console.log('✓ Dashboard modular aprovado: filtros, métricas, indicadores acionáveis, performance, interações, widgets, finanças, timesheet e lembretes.');

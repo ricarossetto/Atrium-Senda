@@ -1,14 +1,16 @@
-const ICON_SPRITE_PATH = 'assets/icons/atrium-ui-icons.svg';
+// O sprite é servido com cache longo no hosting; a versão na URL garante que um
+// símbolo novo (ex.: cálculos) chegue ao navegador mesmo com cache antigo.
+const ICON_SPRITE_PATH = 'assets/icons/atrium-ui-icons.svg?v=3.0.0';
 
 export const ATRIUM_ICON_NAMES = Object.freeze([
   'dashboard', 'processes', 'publications', 'tasks', 'agenda', 'contacts', 'leads',
-  'financial', 'documents', 'assistant', 'prompts', 'monitoring', 'integrations',
-  'configuration', 'importer', 'audit', 'links', 'menu', 'sidebar-collapse', 'search',
-  'sync', 'notification', 'theme-light', 'theme-dark', 'close', 'add', 'edit', 'delete',
+  'financial', 'calculations', 'documents', 'assistant', 'prompts', 'monitoring', 'integrations',
+  'configuration', 'importer', 'audit', 'links', 'reports', 'menu', 'sidebar-collapse', 'search',
+  'sync', 'refresh', 'list', 'kanban', 'notification', 'theme-light', 'theme-dark', 'close', 'add', 'edit', 'delete',
   'download', 'upload', 'external-link', 'filter', 'more', 'chevron-left',
   'chevron-right', 'chevron-down', 'check', 'warning', 'info', 'copy', 'send',
   'reopen', 'court', 'certificate', 'security', 'deadline', 'office', 'email',
-  'disconnected', 'conflict'
+  'disconnected', 'conflict', 'lock'
 ]);
 
 const ICON_NAME_SET = new Set(ATRIUM_ICON_NAMES);

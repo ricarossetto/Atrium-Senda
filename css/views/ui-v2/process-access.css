@@ -1,0 +1,74 @@
+html[data-ui="v2"] #intimationDetail .process-access-readonly,
+html[data-ui="v2"] #processInspectorBackdrop .process-access-readonly {
+  display: grid;
+  gap: var(--v2-space-3);
+}
+
+html[data-ui="v2"] #intimationDetail .process-access-readonly > div,
+html[data-ui="v2"] #processInspectorBackdrop .process-access-readonly > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+html[data-ui="v2"] .process-access-readonly small,
+html[data-ui="v2"] .process-access-grid small {
+  flex: 0 0 100%;
+  color: var(--v2-color-muted-foreground);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] .process-access-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-round);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+html[data-ui="v2"] .process-access-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--v2-space-4);
+}
+
+html[data-ui="v2"] .process-access-grid > div {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+html[data-ui="v2"] .process-access-grid .office-check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+html[data-ui="v2"] .process-access-grid .office-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-round);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] .process-access-grid .office-check input {
+  accent-color: var(--v2-color-primary);
+}
+
+@media (max-width: 760px) {
+  html[data-ui="v2"] .process-access-grid { grid-template-columns: minmax(0, 1fr); }
+}

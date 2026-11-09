@@ -1,4 +1,10 @@
-import { iconSvg } from '../views/ui-v2/primitives.js';
+import { iconSvg } from '../views/ui-v2/primitives.js?v=3.0.0';
+
+// Botão com balão próprio não recebe também a dica do navegador: seriam dois textos sobre o mesmo ícone.
+function setToggleHint(button, text) {
+  if (button.hasAttribute('aria-describedby')) button.removeAttribute('title');
+  else button.title = text;
+}
 
 export function createTheme({ showToast, onChange } = {}) {
   let initialized = false;
@@ -29,13 +35,13 @@ export function createTheme({ showToast, onChange } = {}) {
       if (currentTheme === 'light') {
         if (icon) icon.innerHTML = iconSvg('sun');
         if (text) text.textContent = 'Tema Claro';
-        button.title = 'Tema Claro ativo. Clique para alternar para o Modo Escuro';
+        setToggleHint(button, 'Tema Claro ativo. Clique para alternar para o Modo Escuro');
         button.setAttribute('aria-label', 'Tema claro ativo. Alternar para tema escuro');
         button.setAttribute('aria-pressed', 'true');
       } else {
         if (icon) icon.innerHTML = iconSvg('moon');
         if (text) text.textContent = 'Tema Escuro';
-        button.title = 'Tema Escuro ativo. Clique para alternar para o Modo Claro';
+        setToggleHint(button, 'Tema Escuro ativo. Clique para alternar para o Modo Claro');
         button.setAttribute('aria-label', 'Tema escuro ativo. Alternar para tema claro');
         button.setAttribute('aria-pressed', 'false');
       }

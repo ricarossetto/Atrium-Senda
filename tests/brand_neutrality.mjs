@@ -34,7 +34,11 @@ const isTraceabilityWord = (source, index) => {
   let end = index;
   while (start > 0 && isLetter(source[start - 1])) start--;
   while (end < source.length && isLetter(source[end])) end++;
-  return source.slice(start, end).toLocaleLowerCase('pt-BR').startsWith('rastrea');
+  const word = source.slice(start, end).toLocaleLowerCase('pt-BR');
+  if (word.startsWith('rastrea') || word.startsWith('lastrea')) return true;
+  // Identificadores camelCase/compostos de portais reais: o radical "rastrea" pode ter início
+  // no meio da palavra ("consultarRastreamento", "consulta-rastreamento").
+  return isLetter(source[index - 1]) && source.slice(index - 1, index + 6).toLocaleLowerCase('pt-BR') === 'rastrea';
 };
 
 const violations = [];
@@ -78,7 +82,7 @@ assert.deepEqual(violations, [], `Referências concorrenciais encontradas:\n${vi
 assert.deepEqual(
   legacyMatches,
   [{ file: 'js/core/store.js', lineNumber: legacyMatches[0]?.lineNumber }],
-  'O alias legado do calendário deve existir exatamente uma vez e apenas no Store canônico.'
+  'O alias legado do calendário deve existir exatamente uma vez e apenas no Store oficial.'
 );
 
 const htmlSource = readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -155,7 +159,7 @@ try {
   }]);
   Store.ensureShape();
   let calendar = Store.state.sources.find(source => source.id === EXTERNAL_CALENDAR_SOURCE_ID);
-  assert.ok(calendar, 'Estado somente legado não gerou o calendário canônico.');
+  assert.ok(calendar, 'Estado somente legado não gerou o calendário oficial.');
   assert.equal(Store.state.sources.some(source => source.id === LEGACY_EXTERNAL_CALENDAR_SOURCE_ID), false);
   assert.equal(calendar.status, 'ok');
   assert.equal(calendar.lastCheck, '2026-08-28T12:00:00.000Z');
@@ -166,17 +170,17 @@ try {
 
   const canonicalOnly = {
     id: EXTERNAL_CALENDAR_SOURCE_ID,
-    name: 'Agenda canônica personalizada',
+    name: 'Agenda oficial personalizada',
     short: 'EXT',
     method: 'Webcal',
     status: 'attention',
     lastCheck: '2026-08-29T10:00:00.000Z',
-    detail: 'Registro canônico intacto'
+    detail: 'Registro oficial intacto'
   };
   Store.state = stateWithSources([structuredClone(canonicalOnly)]);
   Store.ensureShape();
   calendar = Store.state.sources.find(source => source.id === EXTERNAL_CALENDAR_SOURCE_ID);
-  assert.deepEqual(calendar, canonicalOnly, 'Estado somente canônico foi alterado indevidamente.');
+  assert.deepEqual(calendar, canonicalOnly, 'Estado somente oficial foi alterado indevidamente.');
 
   Store.state = stateWithSources([
     {
@@ -232,4 +236,4 @@ try {
   else globalThis.OFFICE_DEFAULT_DATA = originalOfficeDefaults;
 }
 
-console.log('✓ Neutralidade de marca aprovada: árvore rastreada, UI, seletores, documentação, guardrail e migração canônica do calendário.');
+console.log('✓ Neutralidade de marca aprovada: árvore rastreada, UI, seletores, documentação, guardrail e migração oficial do calendário.');

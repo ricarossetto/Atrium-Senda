@@ -1,4 +1,4 @@
-/* Core Onboarding Styling — Light Blue Mineral & Champagne Gold with Normalized Height & Slide Carousel */
+/* Core Onboarding Styling — ATRIUM Mineral Editorial & Champagne Gold with Normalized Height & Slide Carousel */
 #guidedTourBackdrop {
   --tour-bg: #131618;
   --tour-surface: #1a1e21;
@@ -6,8 +6,8 @@
   --tour-text: #eceeed;
   --tour-muted: #8e979d;
   --tour-line: #2e353b;
-  --tour-accent-blue: #6b9ac4;
-  --tour-accent-blue-soft: rgba(107, 154, 196, 0.12);
+  --tour-accent-blue: #dfbe6a;
+  --tour-accent-blue-soft: rgba(223, 190, 106, 0.14);
   --tour-accent-gold: #dfbe6a;
   --tour-accent-gold-soft: rgba(223, 190, 106, 0.14);
   --tour-accent: #dfbe6a;
@@ -26,8 +26,8 @@ html[data-theme="light"] #guidedTourBackdrop {
   --tour-text: #1e293b;
   --tour-muted: #64748b;
   --tour-line: #e2e8f0;
-  --tour-accent-blue: #4a728e;
-  --tour-accent-blue-soft: rgba(74, 114, 142, 0.08);
+  --tour-accent-blue: #c5a046;
+  --tour-accent-blue-soft: rgba(197, 160, 70, 0.12);
   --tour-accent-gold: #c5a046;
   --tour-accent-gold-soft: rgba(197, 160, 70, 0.12);
   --tour-accent: #c5a046;
@@ -72,11 +72,11 @@ html[data-theme="light"] #guidedTourBackdrop {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--tour-accent-blue);
+  color: var(--tour-accent-gold);
 }
 #guidedTourBackdrop .tour-brand-dark { display: inline-block; height: 22px; width: auto; }
 #guidedTourBackdrop .tour-brand-light { display: none; height: 22px; width: auto; }
@@ -114,7 +114,7 @@ html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--tour-muted);
   letter-spacing: .02em;
@@ -128,7 +128,7 @@ html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline
 #guidedTourBackdrop:has(.tour-slide.active[data-slide="3"]) .tour-step-indicator[data-step="3"],
 #guidedTourBackdrop:has(.tour-slide.active[data-slide="4"]) .tour-step-indicator[data-step="4"],
 #guidedTourBackdrop:has(.tour-slide.active[data-slide="5"]) .tour-step-indicator[data-step="5"] {
-  color: var(--tour-accent-blue) !important;
+  color: var(--tour-accent-gold) !important;
   font-weight: 700;
 }
 
@@ -139,7 +139,7 @@ html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   border: 1px solid var(--tour-line);
   background: var(--tour-soft);
@@ -216,7 +216,7 @@ html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Hero & Subtitle — Azul Claro Mineral */
+/* Hero & Subtitle — Dourado Mineral Nobre */
 #guidedTourBackdrop .tour-slide-hero {
   display: flex;
   align-items: flex-start;
@@ -226,25 +226,25 @@ html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline
 #guidedTourBackdrop .tour-slide-hero h2 {
   margin: 0 0 4px;
   color: var(--tour-text);
-  font: 600 clamp(22px, 2.8vw, 30px)/1.15 "Playfair Display", Georgia, serif;
+  font: 600 clamp(20px, 2.8vw, 24px)/1.15 "Playfair Display", Georgia, serif;
 }
 #guidedTourBackdrop .tour-slide-hero p {
   margin: 0;
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: .02em;
-  color: var(--tour-accent-blue);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  color: var(--tour-accent-gold);
 }
 
-/* Icon Box — Azul Claro Translúcido com Borda Dourada Suave */
+/* Icon Box — Dourado Mineral Translúcido com Borda Nobre */
 #guidedTourBackdrop .tour-icon-box {
   width: 54px;
   height: 54px;
   flex-shrink: 0;
-  border: 1px solid rgba(212, 175, 55, 0.30);
+  border: 1px solid rgba(223, 190, 106, 0.35);
   border-radius: 12px;
   color: var(--tour-accent-gold);
-  background: var(--tour-accent-blue-soft);
+  background: var(--tour-accent-gold-soft);
   display: grid;
   place-items: center;
   box-shadow: none;
@@ -263,7 +263,6 @@ html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline
 #guidedTourBackdrop .button.gold:hover {
   background: linear-gradient(135deg, #e8cb7d 0%, #dfbe6a 100%) !important;
   border-color: #c5a046 !important;
-  transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(212, 175, 55, 0.38);
 }
 html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
@@ -406,7 +405,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
 #guidedTourBackdrop .onboarding-avatar-img { width: 100%; height: 100%; object-fit: cover; }
 #guidedTourBackdrop .onboarding-avatar-initials {
   font-family: "Playfair Display", Georgia, serif;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: var(--tour-accent-gold);
   letter-spacing: .05em;
@@ -433,7 +432,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   align-items: center;
   gap: 6px;
   color: var(--tour-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 #guidedTourBackdrop .onboarding-logo-placeholder svg { width: 26px; height: 26px; color: var(--tour-accent-gold); }
 
@@ -459,7 +458,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .05em;
@@ -475,7 +474,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   border: 1px solid var(--tour-input-border);
   background: var(--tour-input-bg);
   color: var(--tour-text);
-  font-size: 13.5px;
+  font-size: 14px;
   font-family: inherit;
   outline: none;
   transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
@@ -538,7 +537,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   line-height: 1.3;
 }
 #guidedTourBackdrop .tour-feature-card span {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--tour-muted);
   line-height: 1.45;
 }
@@ -548,7 +547,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   background: var(--tour-accent-blue-soft);
   border: 1px solid var(--tour-line);
   color: var(--tour-muted);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -588,9 +587,40 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   color: var(--tour-text);
 }
 #guidedTourBackdrop .info-card-text span {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--tour-muted);
   line-height: 1.45;
+}
+
+/* Ativação do Atrium IA no walkthrough — mesma família do cartão de próximos passos. */
+#guidedTourBackdrop .tour-ai-card {
+  border-color: color-mix(in srgb, var(--tour-accent-gold) 45%, var(--tour-line));
+  background: var(--tour-accent-gold-soft);
+}
+#guidedTourBackdrop .tour-ai-card .info-card-icon {
+  background: var(--tour-accent-gold-soft);
+  color: var(--tour-accent-gold);
+}
+#guidedTourBackdrop .tour-ai-limits {
+  color: var(--tour-text) !important;
+  opacity: .82;
+}
+#guidedTourBackdrop .tour-ai-price strong {
+  color: var(--tour-accent-gold);
+}
+#guidedTourBackdrop .tour-ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+#guidedTourBackdrop .tour-ai-actions .button {
+  min-height: 40px;
+}
+#guidedTourBackdrop .tour-ai-status {
+  font-size: 12px;
+  color: var(--tour-muted) !important;
 }
 
 /* Theme Selector Cards — Slide 3 */
@@ -616,7 +646,6 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   gap: 8px;
 }
 #guidedTourBackdrop .onboarding-theme-card:hover {
-  transform: translateY(-2px);
   border-color: var(--tour-accent-gold);
 }
 #guidedTourBackdrop .onboarding-theme-card.active {
@@ -649,13 +678,13 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   gap: 8px;
   margin-top: 2px;
 }
-#guidedTourBackdrop .onboarding-theme-title { font-size: 13.5px; font-weight: 700; color: var(--tour-text); }
+#guidedTourBackdrop .onboarding-theme-title { font-size: 14px; font-weight: 700; color: var(--tour-text); }
 #guidedTourBackdrop .theme-pill-tag {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -671,7 +700,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   color: var(--tour-accent-blue);
   border: 1px solid rgba(74, 114, 142, 0.3);
 }
-#guidedTourBackdrop .onboarding-theme-desc { font-size: 11.5px; color: var(--tour-muted); line-height: 1.45; margin: 0; }
+#guidedTourBackdrop .onboarding-theme-desc { font-size: 12px; color: var(--tour-muted); line-height: 1.45; margin: 0; }
 
 /* Interactive Certificado Digital A1 — Slide 4 */
 #guidedTourBackdrop .onboarding-a1-container {
@@ -733,13 +762,13 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   min-width: 0 !important;
 }
 #guidedTourBackdrop .a1-card-title {
-  font-size: 13.5px !important;
+  font-size: 14px !important;
   color: var(--tour-text) !important;
   font-weight: 700 !important;
   line-height: 1.3 !important;
 }
 #guidedTourBackdrop .a1-card-desc {
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   color: var(--tour-muted) !important;
   line-height: 1.4 !important;
 }
@@ -753,13 +782,13 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   width: 120px !important;
   min-width: 120px !important;
   max-width: 120px !important;
-  height: 28px !important;
+  height: 24px !important;
   padding: 0 8px !important;
   border-radius: 999px !important;
-  font-size: 10px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: .06em !important;
-  text-transform: uppercase !important;
+  letter-spacing: .02em !important;
+  text-transform: none !important;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
   margin-left: auto !important;
@@ -790,14 +819,14 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-optional {
   border-color: #cbd5e1 !important;
 }
 #guidedTourBackdrop .a1-status-badge.badge-free {
-  background: rgba(107, 154, 196, 0.16) !important;
-  color: #8ec5fc !important;
-  border: 1.5px solid #6b9ac4 !important;
+  background: rgba(223, 190, 106, 0.12) !important;
+  color: #dfbe6a !important;
+  border: 1.5px solid rgba(223, 190, 106, 0.40) !important;
 }
 html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
-  background: #eef6fb !important;
-  color: #2c5979 !important;
-  border-color: #8cb6d8 !important;
+  background: #fdfaf3 !important;
+  color: #8c6d1f !important;
+  border-color: #dfbe6a !important;
 }
 
 #guidedTourBackdrop .onboarding-a1-upload-box {
@@ -833,7 +862,7 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
   color: var(--tour-text);
 }
 #guidedTourBackdrop .onboarding-a1-dropzone small {
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--tour-muted);
 }
 #guidedTourBackdrop .onboarding-a1-password-row {
@@ -854,10 +883,10 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
 #guidedTourBackdrop .onboarding-a1-password-row button {
   height: 40px;
   min-height: 40px;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 #guidedTourBackdrop .onboarding-a1-feedback {
-  font-size: 11.5px;
+  font-size: 12px;
   padding: 8px 12px;
   border-radius: 8px;
 }
@@ -885,7 +914,7 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
 }
 #guidedTourBackdrop .a1-guide-item strong {
   display: block;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--tour-accent-blue);
   margin-bottom: 2px;
   text-transform: uppercase;
@@ -893,7 +922,7 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
 }
 #guidedTourBackdrop .a1-guide-item p {
   margin: 0;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--tour-muted);
   line-height: 1.36;
 }
@@ -942,7 +971,7 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
 #guidedTourBackdrop .badge-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
 #guidedTourBackdrop .badge-avatar-wrap .badge-initials {
   font-family: "Playfair Display", Georgia, serif;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: var(--tour-accent-gold);
   letter-spacing: .05em;
@@ -958,7 +987,7 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
 #guidedTourBackdrop .badge-lawyer-name {
   margin: 0;
   font-family: "Playfair Display", Georgia, serif;
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--tour-text);
   letter-spacing: -.01em;
@@ -971,7 +1000,7 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
   align-items: center;
   padding: 2px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: .06em;
   color: var(--tour-accent-gold);
@@ -983,7 +1012,7 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--tour-muted);
 }
 #guidedTourBackdrop .badge-office-logo-mini { width: 20px; height: 20px; object-fit: contain; border-radius: 4px; }
@@ -1021,7 +1050,7 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
   letter-spacing: .03em;
 }
 #guidedTourBackdrop .tour-feature-card span {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--tour-muted);
   line-height: 1.4;
 }
@@ -1038,7 +1067,7 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 #guidedTourBackdrop .tour-status-tag.tag-available {
@@ -1060,3 +1089,48 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
   #guidedTourBackdrop .tour-slide { transition: none !important; }
   #guidedTourBackdrop *, #guidedTourBackdrop *::before, #guidedTourBackdrop *::after { transition-duration: 1ms !important; }
 }
+
+@media (max-width: 640px) {
+  #guidedTourBackdrop .guided-tour-modal {
+    width: calc(100vw - 20px) !important;
+    height: min(680px, 94vh) !important;
+    max-height: min(94vh, 680px) !important;
+    min-height: auto !important;
+  }
+  #guidedTourBackdrop .tour-footer {
+    flex-wrap: nowrap !important;
+    padding: 0 14px !important;
+    gap: 8px !important;
+    height: 60px !important;
+    min-height: 60px !important;
+    max-height: 60px !important;
+  }
+  #guidedTourBackdrop .tour-dots {
+    display: none !important;
+  }
+  #guidedTourBackdrop .tour-nav-actions {
+    order: 0 !important;
+    gap: 6px !important;
+    height: 44px !important;
+    flex: 0 0 auto !important;
+    margin-left: auto !important;
+    display: flex !important;
+  }
+  #guidedTourBackdrop #tourSkipButton {
+    order: 0 !important;
+    font-size: 12px !important;
+    padding: 0 8px !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    white-space: nowrap !important;
+  }
+  #guidedTourBackdrop #tourNextButton,
+  #guidedTourBackdrop #tourPrevButton {
+    font-size: 12px !important;
+    padding: 0 10px !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    white-space: nowrap !important;
+  }
+}
+

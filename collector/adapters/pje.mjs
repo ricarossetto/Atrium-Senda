@@ -1,3 +1,5 @@
+import { looksLikeSecrecySignal } from '../../lib/judicial/secrecy-signal.mjs';
+
 const PROCESS_RE = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/;
 const DATE_RE = /\b(\d{2})\/(\d{2})\/(\d{4})\b/;
 const DANGEROUS_ACTION_RE = /tomar\s+ci[eê]ncia|dar\s+ci[eê]ncia|registrar\s+ci[eê]ncia|responder|peticionar|assinar|protocolar|visualizar\s+expediente/i;
@@ -29,7 +31,7 @@ export async function collectPje(page, portal, config, target) {
         number: process,
         client: inferParties(line, process),
         court: portal.court || portal.name,
-        secrecy: /segredo|sigilo/i.test(line),
+        secrecy: looksLikeSecrecySignal(line),
         lastMovement: line.slice(0, 2_000),
         lastMovementAt: parseBrazilianDate(line) || now.slice(0, 10),
         monitoring: 'active',

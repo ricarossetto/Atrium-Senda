@@ -35,7 +35,7 @@ try {
   assert.equal(await page.locator('#auditList').getAttribute('role'), 'region');
   assert.equal(await page.locator('#auditList').getAttribute('aria-labelledby'), 'auditLedgerHeading');
   assert.equal(await page.locator('.audit-ledger-table caption').textContent(), 'Registro cronológico de atividades do sistema');
-  assert.deepEqual(await page.locator('.audit-ledger-table th').allTextContents(), ['Data e hora', 'Ator', 'Ação', 'Detalhes', 'Status']);
+  assert.deepEqual(await page.locator('.audit-ledger-table th').allTextContents(), ['Data e hora', 'Ator', 'Ação', 'Detalhes', 'Situação']);
   assert.deepEqual(await page.locator('.audit-ledger-table th').evaluateAll(nodes => nodes.map(node => node.getAttribute('scope'))), ['col', 'col', 'col', 'col', 'col']);
   assert.equal(await page.locator('.audit-status-label').first().textContent(), 'Registrado');
   assert.match(await page.locator('.audit-export-note').textContent(), /registro completo/i);
@@ -82,7 +82,7 @@ try {
   assert.equal(mobileLayout.rowCount, 6);
   assert.equal(mobileLayout.tableDisplay, 'block');
   assert.equal(mobileLayout.rowDisplay, 'flex');
-  assert.deepEqual(mobileLayout.labels, ['Data e hora', 'Ator', 'Ação', 'Detalhes', 'Status']);
+  assert.deepEqual(mobileLayout.labels, ['Data e hora', 'Ator', 'Ação', 'Detalhes', 'Situação']);
   assert.deepEqual(mobileLayout.undersized, []);
 
   await mobilePage.evaluate(() => {

@@ -25,19 +25,27 @@ for (const forbiddenImport of [
 ]) {
   assert.equal(financialSource.includes(forbiddenImport), false, 'Financeiro não pode importar ' + forbiddenImport + '.');
 }
-for (const forbiddenSideEffect of ['console.log', 'fetch(', 'XMLHttpRequest', 'WebSocket']) {
+for (const forbiddenSideEffect of ['XMLHttpRequest', 'WebSocket', 'localStorage', 'sessionStorage']) {
   assert.equal(financialSource.includes(forbiddenSideEffect), false, 'Financeiro não pode introduzir ' + forbiddenSideEffect + '.');
 }
+// O financeiro só pode falar HTTP com o classificador assistido (leitura do derivado e lote de
+// sugestões, ambos sem escrita financeira). Qualquer outro destino é transporte paralelo.
+const fetchTargets = [...financialSource.matchAll(/fetchImpl\('([^']+)'/g)].map(match => match[1]);
+assert.ok(fetchTargets.length > 0, 'Financeiro consulta o derivado de sugestões por HTTP.');
+for (const target of fetchTargets) {
+  assert.match(target, /^\/api\/ai-classifier\//, 'Financeiro só pode chamar rotas do classificador, achei ' + target + '.');
+}
+assert.equal(financialSource.includes("fetch('/api/financial"), false, 'Financeiro não pode ter endpoint financeiro próprio.');
 for (const forbiddenCollection of [
   'state.financial', 'state.financialEntries', 'state.payments', 'state.ledger',
   "upsert('financial", "upsert('payments", "upsert('ledger"
 ]) {
   assert.equal(financialSource.includes(forbiddenCollection), false, 'Financeiro não pode criar coleção: ' + forbiddenCollection + '.');
 }
-assert.match(financialSource, /^import \{ Store \} from '\.\.\/core\/store\.js';/);
-assert.equal((financialSource.match(/^import /gm) || []).length, 2, 'Financeiro usa Store canônico e combobox compartilhado, sem transporte paralelo.');
-assert.ok(financialSource.includes("import { installModalComboboxes } from '../components/modal.js';"));
-assert.match(portalSource, /import \{ createFinancialFeature \} from '\.\/features\/financial\.js';/);
+assert.match(financialSource, /^import \{ Store \} from '\.\.\/core\/store\.js(\?v=[^']*)?';/);
+assert.equal((financialSource.match(/^import /gm) || []).length, 4, 'Financeiro importa Store oficial, combobox compartilhado, a transição de página e o gráfico — sem transporte paralelo.');
+assert.match(financialSource, /import \{ installModalComboboxes \} from '\.\.\/components\/modal\.js(\?v=[\d.]+)?';/);
+assert.match(portalSource, /import \{ createFinancialFeature \} from '\.\/features\/financial\.js(\?v=[^']*)?';/);
 assert.equal((portalSource.match(/createFinancialFeature\(/g) || []).length, 1, 'Portal deve instanciar Financeiro uma única vez.');
 assert.equal(portalSource.includes('this.financialFilter'), false, 'Portal não pode manter shadow state do filtro financeiro.');
 assert.equal(portalSource.includes("Store.upsert('processes', process)"), false, 'Mutation financeira concreta não pode permanecer no portal.');
@@ -51,7 +59,7 @@ assert.equal((documentsSource.match(/btnGenDocPrestacao'\)\?\.addEventListener/g
 assert.match(documentsSource, /btnGenDocPrestacao'\)\?\.addEventListener\('click', \(\) => open\(\{ type: 'prestacao_contas_rpv' \}\)\)/);
 assert.equal(financialSource.includes('generatePrestacaoContasRpvText'), false);
 assert.equal(financialSource.includes('prestacao de contas'), false);
-assert.match(processesSource, /store\.upsert\('processes', record\)/, 'Processos deve conservar seu CRUD canônico.');
+assert.match(processesSource, /store\.upsert\('processes', record\)/, 'Processos deve conservar seu CRUD oficial.');
 assert.match(processesSource, /item\.feeAmount/, 'Processos deve conservar a exibição financeira histórica.');
 
 const listeners = {};
@@ -155,8 +163,8 @@ for (const expected of [
   'Requisitado / Expedido', 'status-chip muted',
   'Aguardando Depósito', 'status-chip warning',
   'Disponível para Saque', 'status-chip info',
-  'Repassado & Quitado', 'status-chip connected',
-  'status_sintetico', 'BRL 0.00', 'BRL 1000.00', 'BRL 2000.00',
+  'Repassado e Quitado', 'status-chip connected',
+  'Status sintetico', 'BRL 0.00', 'BRL 1000.00', 'BRL 2000.00',
   'BRL 600.00', 'BRL 1400.00', 'BRL 200.00'
 ]) {
   assert.ok(allHtml.includes(expected), 'Render histórico deve preservar: ' + expected);
@@ -265,10 +273,10 @@ try {
   await page.evaluate(() => window.Atrium.App.switchView('financial'));
   await page.locator('#view-financial.active').waitFor();
   assert.deepEqual(await page.locator('#financialFilters button').evaluateAll(buttons => buttons.map(button => [button.dataset.finFilter, button.textContent.trim()])), [
-    ['all', 'Todos'], ['rpv', 'RPVs / Alvarás'], ['honorarios', 'Honorários'], ['recebimentos', 'Recebimentos'], ['despesas', 'Despesas']
+    ['all', 'Todos'], ['rpv', 'RPVs / Alvarás'], ['honorarios', 'Honorários'], ['recebimentos', 'Recebimentos'], ['despesas', 'Despesas'], ['sugestao', 'Com sugestão']
   ]);
   assert.equal(await page.locator('#finMetricHonorarios').textContent(), 'R$\u00a02.900,00', 'Métrica financeira pode divergir historicamente do Dashboard.');
-  assert.equal(await page.locator('#finMetricRpvCount').textContent(), '1 requisições');
+  assert.equal(await page.locator('#finMetricRpvCount').textContent(), '1 requisição');
   assert.equal(await page.locator('#financialTableBody tr').count(), 2);
   const initialText = await page.locator('#financialTableBody').textContent();
   for (const expected of ['RPV-DASH-SINTETICO', 'Cliente Dashboard Sintético', 'RPV / Alvará (30%)', '10.000,00', '2.500,00', '7.500,00', 'Requisitado / Expedido', 'HON-SINTETICO', 'A Faturar']) {
@@ -402,7 +410,7 @@ try {
     })),
     audits: window.Atrium.Store.state.audit.filter(item => item.action === 'Lançamento financeiro registrado')
   }), processIds);
-  assert.equal(submittedState.audits.length, 5, 'Cinco lançamentos canônicos devem produzir cinco audits, incluindo a despesa processual.');
+  assert.equal(submittedState.audits.length, 5, 'Cinco lançamentos oficiais devem produzir cinco audits, incluindo a despesa processual.');
   for (const item of submitCases) {
     const before = initialTargets[item.id];
     const after = submittedState.processes[item.id];
@@ -445,7 +453,7 @@ try {
   assert.equal(await page.locator('#finMetricHonorarios').textContent(), 'R$\u00a010.600,00');
   assert.equal(await page.locator('#finMetricRpvCount').textContent(), '2 requisições');
   assert.equal(await page.locator('#finMetricExpenses').textContent(), 'R$\u00a05.000,00');
-  assert.equal(await page.locator('#widgetHonorariosPending').textContent(), 'R$\u00a010.800,00', 'Dashboard deve ler os campos canônicos sem rótulos de UI persistidos.');
+  assert.equal(await page.locator('#widgetHonorariosPending').textContent(), 'R$\u00a010.800,00', 'Dashboard deve ler os campos oficiais sem rótulos de UI persistidos.');
   assert.equal(await page.locator('#toastRegion .toast.success').last().textContent(), 'Lançamento financeiro salvo com sucesso!');
 
   await page.evaluate(() => window.Atrium.App.switchView('processes'));

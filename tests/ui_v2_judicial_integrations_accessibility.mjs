@@ -27,6 +27,14 @@ try {
   assert.equal(await page.locator('label:has(#portalQrInput)').count(), 1);
   assert.equal(await page.locator('label:has(#portalTotpCode)').count(), 1);
 
+  assert.equal(await page.locator('#judicialSetupBackdrop #pjeCoverageSection').count(), 1, 'Painel PJe precisa estar dentro do modal oficial.');
+  await page.locator('#pjeCoverageSection > summary').focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#pjeCoverageSection[open]').count(), 1, 'Resumo do painel PJe deve abrir por teclado.');
+  assert.equal(await page.locator('#pjeCoverageSection .button').first().isVisible(), true);
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#pjeCoverageSection[open]').count(), 0, 'Resumo do painel PJe deve fechar por teclado.');
+
   await page.locator('#judicialSetupClose').focus();
   await page.keyboard.press('Shift+Tab');
   assert.equal(await page.evaluate(() => document.querySelector('#judicialSetupBackdrop [role="dialog"]')?.contains(document.activeElement)), true);
@@ -57,6 +65,9 @@ try {
   await prepareUiV2JudicialFixture(mobilePage);
   await mobilePage.locator('#certificateGuideButton').click();
   await mobilePage.waitForFunction(() => document.querySelector('#judicialSetupBackdrop [role="dialog"]')?.contains(document.activeElement));
+  await mobilePage.locator('#pjeCoverageSection > summary').click();
+  await mobilePage.waitForFunction(() => document.querySelectorAll('#pjePortalsGrid .pje-portal-card').length === 2
+    && document.querySelectorAll('#pjeCommunicationsList tbody tr').length === 2);
   await mobilePage.waitForFunction(() => [...document.querySelectorAll('#judicialSetupBackdrop')].flatMap(element => element.getAnimations({ subtree: true })).every(animation => animation.playState === 'finished'));
   const layout = await mobilePage.evaluate(() => {
     const dialog = document.querySelector('#judicialSetupBackdrop [role="dialog"]');

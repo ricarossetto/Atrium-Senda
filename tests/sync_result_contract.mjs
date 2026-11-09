@@ -78,13 +78,24 @@ try {
       const judicialToasts = [];
       app.toast = (message, type = '') => judicialToasts.push({ message, type });
       store.audit = () => {};
-      app.syncAll = async () => false;
+      auth.secureFetch = async () => new Response(JSON.stringify({ message: 'Agendador judicial indisponível (sintético).' }), {
+        status: 503, headers: { 'Content-Type': 'application/json' }
+      });
       const judicialFailure = await app.syncJudicialNow();
       const judicialFailureSuccessToasts = judicialToasts.filter(item => item.type === 'success').length;
       judicialToasts.length = 0;
-      app.syncAll = async () => true;
+      auth.secureFetch = async path => {
+        if (path === '/api/integrations/eproc/sync') {
+          return new Response(JSON.stringify({ jobId: 'job-synthetic-completed' }), { status: 202, headers: { 'Content-Type': 'application/json' } });
+        }
+        if (path === '/api/integrations/eproc/sync/status') {
+          return new Response(JSON.stringify({ active: false, job: { id: 'job-synthetic-completed', state: 'COMPLETED', portals: [] } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+        return new Response(JSON.stringify({ ok: true, certificate: { valid: false }, portals: [], managedCoverage: [], scheduler: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      };
       const judicialSuccess = await app.syncJudicialNow();
       const judicialSuccessToasts = judicialToasts.filter(item => item.type === 'success').length;
+      auth.secureFetch = original.secureFetch;
 
       return {
         preflushFailure,

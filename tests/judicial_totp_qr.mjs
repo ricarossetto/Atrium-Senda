@@ -66,7 +66,7 @@ try {
     return response.json();
   }, STANDARD_URI);
   assert.equal(parsedStandard.type, 'single');
-  assert.equal(parsedStandard.account.secret, STANDARD_SECRET, 'Parser canônico deve preservar a Base32 sintética esperada.');
+  assert.equal(parsedStandard.account.secret, STANDARD_SECRET, 'Parser oficial deve preservar a Base32 sintética esperada.');
 
   const standardResult = await readQrImage(page, standardPng, 'totp-standard-sintetico.png', 'image/png');
   assert.equal(standardResult.errorToasts, 0, JSON.stringify(standardResult));

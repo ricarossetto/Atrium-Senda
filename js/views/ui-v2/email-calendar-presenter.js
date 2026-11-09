@@ -1,4 +1,5 @@
-import { iconSvg } from './icons.js';
+import { iconSvg } from './icons.js?v=3.0.0';
+import { installPanelSizeToggle, resetPanelSize } from '../../components/panel-size.js?v=3.0.0';
 
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
@@ -13,7 +14,9 @@ const SURFACES = Object.freeze({
   emailConfig: Object.freeze({ backdropId: 'emailConfigBackdrop', closeId: 'emailConfigClose', focusId: 'emailHostInput' }),
   emailTest: Object.freeze({ backdropId: 'emailTestBackdrop', closeId: 'emailTestClose', focusId: 'emailTestRecipientInput' }),
   emailReceiver: Object.freeze({ backdropId: 'emailReceiverModalBackdrop', closeId: 'emailReceiverModalClose', focusId: 'receiverTypeInternal' }),
-  externalCalendar: Object.freeze({ backdropId: 'calendarConfigBackdrop', closeId: 'calendarConfigClose', focusId: 'calendarInputUrl' })
+  mailPreferences: Object.freeze({ backdropId: 'mailPreferencesBackdrop', closeId: 'mailPreferencesClose', focusId: 'mailPrefPublication' }),
+  externalCalendar: Object.freeze({ backdropId: 'calendarConfigBackdrop', closeId: 'calendarConfigClose', focusId: 'calendarInputUrl' }),
+  googleCalendar: Object.freeze({ backdropId: 'googleCalendarBackdrop', closeId: 'googleCalendarClose', focusId: 'googleCalendarPrimary' })
 });
 
 export function createEmailCalendarPresenter({ documentRef = globalThis.document } = {}) {
@@ -69,6 +72,7 @@ export function createEmailCalendarPresenter({ documentRef = globalThis.document
       initialized = true;
       for (const key of Object.keys(SURFACES)) {
         backdropFor(key)?.addEventListener('keydown', event => handleKeydown(key, event));
+        installPanelSizeToggle(dialogFor(key));
       }
       return true;
     },
@@ -88,6 +92,7 @@ export function createEmailCalendarPresenter({ documentRef = globalThis.document
 
     close(key) {
       if (!isV2()) return;
+      resetPanelSize(dialogFor(key));
       if (!anotherSurfaceIsOpen(key)) documentRef.getElementById('appShell')?.removeAttribute('inert');
       const target = returnFocusTargets.get(key);
       returnFocusTargets.delete(key);

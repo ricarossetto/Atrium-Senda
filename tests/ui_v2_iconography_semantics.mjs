@@ -14,25 +14,27 @@ console.log('===============================================================\n')
 const canonicalMapping = Object.freeze({
   dashboard: 'dashboard', processes: 'processes', inbox: 'publications', kanban: 'tasks',
   agenda: 'agenda', contacts: 'contacts', leads: 'leads', financial: 'financial',
-  documents: 'documents', assistant: 'assistant', prompts: 'prompts', monitoring: 'monitoring',
-  integrations: 'integrations', configuration: 'configuration', importer: 'importer', audit: 'audit', links: 'links'
+  calculations: 'calculations', documents: 'documents', assistant: 'assistant', prompts: 'prompts',
+  monitoring: 'monitoring', integrations: 'integrations', configuration: 'configuration',
+  importer: 'importer', audit: 'audit', links: 'links', reports: 'reports',
+  admin: 'security'
 });
 const primaryMapping = Object.freeze(Object.fromEntries(
-  Object.entries(canonicalMapping).filter(([view]) => view !== 'audit')
+  Object.entries(canonicalMapping).filter(([view]) => !['audit', 'monitoring', 'importer'].includes(view))
 ));
-assert.equal(Object.keys(canonicalMapping).length, 17);
-assert.equal(Object.keys(primaryMapping).length, 16);
-assert.equal(new Set(Object.values(canonicalMapping)).size, 17, 'Cada view canônica deve possuir um nome semântico próprio.');
+assert.equal(Object.keys(canonicalMapping).length, 20);
+assert.equal(Object.keys(primaryMapping).length, 17);
+assert.equal(new Set(Object.values(canonicalMapping)).size, 20, 'Cada view oficial deve possuir um nome semântico próprio.');
 
-const mappedFromMarkup = Object.fromEntries([...index.matchAll(/<button class="nav-item[^"]*" data-view="([^"]+)"[^>]*>[\s\S]*?<use href="assets\/icons\/atrium-ui-icons\.svg#atrium-icon-([^"]+)"[\s\S]*?<\/button>/g)]
+const mappedFromMarkup = Object.fromEntries([...index.matchAll(/<button class="nav-item[^"]*" data-view="([^"]+)"[^>]*>[\s\S]*?<use href="assets\/icons\/atrium-ui-icons\.svg(?:\?v=[^"#]+)?#atrium-icon-([^"]+)"[\s\S]*?<\/button>/g)]
   .map(match => [match[1], match[2]]));
 assert.deepEqual(mappedFromMarkup, primaryMapping, 'O mapping semântico da sidebar deve coincidir com os destinos primários.');
-assert.match(index, /id="view-audit"/, 'A view canônica de auditoria deve permanecer no DOM.');
+assert.match(index, /id="view-audit"/, 'A view oficial de auditoria deve permanecer no DOM.');
 assert.match(fs.readFileSync(path.join(ROOT, 'js/views/ui-v2/configuration-presenter.js'), 'utf8'), /dataset\.viewLink\s*=\s*'audit'/, 'Auditoria deve ser alcançável por Configurações > Sistema.');
 
 for (const icon of Object.values(canonicalMapping)) {
   assert.ok(ATRIUM_ICON_NAMES.includes(icon), `${icon} deve estar no registro do helper.`);
-  assert.equal(iconHref(icon), `assets/icons/atrium-ui-icons.svg#atrium-icon-${icon}`);
+  assert.match(iconHref(icon), new RegExp(`^assets/icons/atrium-ui-icons\\.svg(?:\\?v=[^#]+)?#atrium-icon-${icon}$`));
 }
 
 const criticalPairs = [
@@ -50,8 +52,8 @@ assert.doesNotMatch(decorative, /aria-label=/);
 const named = iconSvg('certificate', { label: 'Certificado digital' });
 assert.match(named, /role="img"/);
 assert.match(named, /aria-label="Certificado digital"/);
-assert.equal(iconHref('nome-inexistente'), 'assets/icons/atrium-ui-icons.svg#atrium-icon-info', 'Nome inválido deve cair em fallback visual seguro.');
+assert.match(iconHref('nome-inexistente'), /^assets\/icons\/atrium-ui-icons\.svg(?:\?v=[^#]+)?#atrium-icon-info$/, 'Nome inválido deve cair em fallback visual seguro.');
 
-console.log('✓ 17 capacidades usam nomes canônicos; 16 destinos aparecem na sidebar e auditoria permanece em Configurações.');
+console.log('✓ 19 capacidades usam nomes oficiais; 16 destinos declarados na sidebar (15 primários e o admin oculto) e auditoria permanece em Configurações.');
 console.log('✓ 6/6 pares críticos possuem símbolos distintos.');
 console.log('✓ Helper preserva ícones decorativos ocultos e ícones informativos nomeados.');

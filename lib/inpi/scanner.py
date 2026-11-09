@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 INPI RPI Scanner for ATRIUM Sidesystem
-Adapted from PAINEL-INPI by Ricardo de Luca Rossetto.
+Adapted from the PAINEL-INPI public project.
 Scans Seção V - Marcas of the Brazilian INPI RPI publication for monitored lawyers/attorneys.
 """
 from __future__ import annotations
@@ -365,15 +365,42 @@ def process_to_record(element: ET.Element, revista: dict[str, str]) -> dict[str,
     }
 
 
-def contains_prepared_field(field: dict[str, str], prepared_term: dict[str, str]) -> bool:
-    if not field["normalized"]:
-        return False
-    if prepared_term["normalized"] and prepared_term["normalized"] in field["normalized"]:
-        return True
+def contains_prepared_field(field: dict[str, Any], prepared_term: dict[str, str]) -> bool:
+    """O termo precisa começar e terminar em limite de palavra: 135294 não casa com 829135294."""
     compact_term = prepared_term["compact"]
-    if len(compact_term) >= 5 and compact_term in field["compact"]:
-        return True
+    if not compact_term or compact_term not in field["compact"]:
+        return False
+    tokens = field["tokens"]
+    for start in range(len(tokens)):
+        joined = ""
+        for token in tokens[start:]:
+            joined += token
+            if joined == compact_term:
+                return True
+            if len(joined) >= len(compact_term):
+                break
     return False
+
+
+def is_bare_number(prepared_term: dict[str, str]) -> bool:
+    return prepared_term["compact"].isdigit()
+
+
+def term_hits(
+    monitor_type: str,
+    term: dict[str, str],
+    prepared_fields: dict[str, dict[str, Any]],
+) -> list[str]:
+    if monitor_type == "processo":
+        return ["processo"] if term["compact"] == prepared_fields["processo"]["compact"] else []
+    # Número solto de OAB coincide com número de processo e de classe; não identifica ninguém.
+    if monitor_type == "advogado" and is_bare_number(term):
+        return []
+    return [
+        name
+        for name, field in prepared_fields.items()
+        if name != "processo" and contains_prepared_field(field, term)
+    ]
 
 
 def match_monitors(record: dict[str, Any], monitors: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -385,8 +412,8 @@ def match_monitors(record: dict[str, Any], monitors: list[dict[str, Any]]) -> li
     }
     prepared_fields = {
         name: {
-            "normalized": normalize(value),
             "compact": compact(value),
+            "tokens": re.findall(r"[A-Z0-9]+", normalize(value)),
         }
         for name, value in fields.items()
     }
@@ -394,11 +421,9 @@ def match_monitors(record: dict[str, Any], monitors: list[dict[str, Any]]) -> li
     for monitor in monitors:
         matched_terms = []
         matched_fields: set[str] = set()
+        monitor_type = monitor.get("type", "advogado")
         for term in monitor["termsPrepared"]:
-            term_fields = []
-            for field_name, field_value in prepared_fields.items():
-                if contains_prepared_field(field_value, term):
-                    term_fields.append(field_name)
+            term_fields = term_hits(monitor_type, term, prepared_fields)
             if term_fields:
                 matched_terms.append(term["label"])
                 matched_fields.update(field for field in term_fields if field != "texto")
@@ -454,6 +479,27 @@ def scan_zip(zip_path: Path, revista: dict[str, str], monitors: list[dict[str, A
                     matches.append(strip_private_fields(record))
                 element.clear()
     return matches
+
+
+def without_bare_number_hits(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Ocorrências antigas achadas só pelo número solto da OAB não valem mais."""
+    kept = []
+    for item in items:
+        hits = item.get("monitores")
+        if not hits:
+            kept.append(item)
+            continue
+        valid_hits = []
+        for hit in hits:
+            if hit.get("type", "advogado") != "advogado":
+                valid_hits.append(hit)
+                continue
+            terms = [term for term in hit.get("matchedTerms", []) if not compact(term).isdigit()]
+            if terms:
+                valid_hits.append({**hit, "matchedTerms": terms})
+        if valid_hits:
+            kept.append({**item, "monitores": valid_hits})
+    return kept
 
 
 def merge_by_id(old_items: list[dict[str, Any]], new_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -572,7 +618,7 @@ def run(args: argparse.Namespace) -> int:
                 print(f"  RPI {number} falhou: {message}", file=sys.stderr)
             time.sleep(args.pause)
 
-    matches = sort_matches(merge_by_id(existing_data.get("matches", []), new_matches))
+    matches = sort_matches(merge_by_id(without_bare_number_hits(existing_data.get("matches", [])), new_matches))
     revistas = build_revista_summary(scanned_revistas, existing_data.get("revistas", []), matches)
 
     data = {

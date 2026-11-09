@@ -26,11 +26,14 @@ const expectedViews = [...UI_V2_CANONICAL_VIEWS].sort();
 const expectedPrimaryNavigation = [...UI_V2_PRIMARY_NAV_VIEWS].sort();
 const navigationViews = [...indexSource.matchAll(/class="nav-item(?: active)?"[^>]*data-view="([^"]+)"/g)].map(match => match[1]).sort();
 const declaredViews = [...indexSource.matchAll(/id="view-([^"]+)"/g)].map(match => match[1]).sort();
-assert.deepEqual(navigationViews, expectedPrimaryNavigation, 'A sidebar deve listar exatamente os 16 destinos primários uma vez.');
-assert.deepEqual(declaredViews, expectedViews, 'O DOM deve declarar exatamente as 17 views canônicas uma vez.');
+assert.deepEqual(navigationViews, expectedPrimaryNavigation, 'A sidebar deve listar exatamente os destinos primários oficiais uma vez.');
+assert.deepEqual(declaredViews, expectedViews, 'O DOM deve declarar exatamente as 18 views oficiais uma vez.');
 assert.match(await readFile(path.join(ROOT, 'js/views/ui-v2/configuration-presenter.js'), 'utf8'), /dataset\.viewLink\s*=\s*'audit'/, 'Auditoria deve permanecer acessível por Configurações > Sistema.');
-assert.equal((portalSource.match(/const App\s*=\s*\{/g) || []).length, 1, 'Deve existir um único App canônico.');
-assert.equal((portalSource.match(/import\s*\{[\s\S]*?\bStore\b[\s\S]*?\}\s*from '\.\/core\/store\.js';/g) || []).length, 1, 'O Portal deve importar uma única autoridade de Store.');
+assert.equal((portalSource.match(/const App\s*=\s*\{/g) || []).length, 1, 'Deve existir um único App oficial.');
+/* O import carrega `?v=` por contrato de cache (AGENTS §36); a asserção que importa é
+ * "uma única autoridade de Store", não a ausência de query — a regex antiga exigia o
+ * caminho sem `?v=` e ficou vermelha desde o rebump da 6.42.2. */
+assert.equal((portalSource.match(/import\s*\{[\s\S]*?\bStore\b[\s\S]*?\}\s*from '\.\/core\/store\.js(?:\?v=[^']*)?';/g) || []).length, 1, 'O Portal deve importar uma única autoridade de Store.');
 assert.doesNotMatch(portalSource, /create[A-Za-z]+V2Feature\s*\(/, 'Não pode existir feature funcional paralela V2.');
 
 for (const file of uiV2Files) {
@@ -114,9 +117,27 @@ try {
     assert.deepEqual(layout.duplicateIds, []);
     assert.deepEqual(layout.visibleOverlays, []);
     assert.equal(layout.activeViews.length, 1);
+
+    for (const [link, view, parent] of [['monitoring', 'monitoring', 'integrations'], ['importer', 'importer', 'integrations'], ['audit', 'audit', 'configuration']]) {
+      await switchUiV2View(page, parent);
+      await page.locator(`#view-${parent} [data-view-link="${link}"]`).click();
+      await page.locator(`#view-${view}.active`).waitFor();
+      assert.equal(await page.locator(`.nav-item[data-view="${parent}"]`).evaluate(element => element.classList.contains('active')), true, `O card ${link} do hub deve manter ${parent} como destino pai ativo.`);
+    }
+
+    for (const [route, view, parent] of [['/sistema/monitoramento', 'monitoring', 'integrations'], ['/sistema/importador', 'importer', 'integrations'], ['/sistema/auditoria', 'audit', 'configuration']]) {
+      await page.goto(`${session.server.baseUrl}${route}`);
+      await page.locator(`#view-${view}.active`).waitFor();
+      const hubNavigation = page.locator(`.nav-item[data-view="${parent}"]`);
+      assert.equal(await hubNavigation.evaluate(element => element.classList.contains('active')), true, `${view} deve manter ${parent} como destino pai ativo.`);
+      assert.equal(await hubNavigation.getAttribute('aria-current'), 'page', `${view} deve expor aria-current no destino pai.`);
+      assert.equal(await page.locator('.nav-item.active').count(), 1, `${view} deve manter um único destino ativo na sidebar.`);
+      assert.equal(await page.locator('.nav-item[data-view="monitoring"], .nav-item[data-view="importer"], [data-view="audit"]').count(), 0, `${view} não pode reintroduzir destinos diretos na sidebar.`);
+    }
+
     assert.deepEqual(pageErrors, [], `Page errors: ${pageErrors.join(' | ')}`);
 
-    console.log('✓ 17/17 capacidades, 16/16 destinos primários, 1 App, 1 Store e V2 exclusiva preservados.');
+    console.log(`✓ ${UI_V2_CANONICAL_VIEWS.length}/${UI_V2_CANONICAL_VIEWS.length} capacidades, ${UI_V2_PRIMARY_NAV_VIEWS.length}/${UI_V2_PRIMARY_NAV_VIEWS.length} destinos primários, 1 App, 1 Store e V2 exclusiva preservados.`);
   } finally {
     await context.close();
   }

@@ -169,7 +169,8 @@ test('Timezone America/Sao_Paulo: cálculo de idade da publicação baseado em d
     const d1 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const diffDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 0) return 'Hoje';
+    if (diffDays < 0) return `Em ${Math.abs(diffDays)} dia${Math.abs(diffDays) === 1 ? '' : 's'}`;
+    if (diffDays === 0) return 'Hoje';
     if (diffDays === 1) return 'Há 1 dia';
     return `Há ${diffDays} dias`;
   };
@@ -178,6 +179,7 @@ test('Timezone America/Sao_Paulo: cálculo de idade da publicação baseado em d
   assert.equal(formatPublicationAge('2026-08-27', fakeNow), 'Hoje');
   assert.equal(formatPublicationAge('2026-08-26', fakeNow), 'Há 1 dia');
   assert.equal(formatPublicationAge('2026-08-22', fakeNow), 'Há 5 dias');
+  assert.equal(formatPublicationAge('2026-08-28', fakeNow), 'Em 1 dia', 'Data futura não pode ser rotulada como hoje.');
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -523,7 +525,7 @@ try {
   console.log('\n[3/4] Testando fluxo E2E no navegador com Playwright...');
 
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 1200 } });
   const page = await context.newPage();
   await page.addInitScript(() => localStorage.setItem('atrium:ui:mode', 'classic'));
 
@@ -587,7 +589,7 @@ try {
       assert.equal(fatalCountWithFlag, 1, 'Filtro prazo-fatal com flag explícita fatalDeadline deve retornar o registro');
 
       // Selecionar primeira publicação não tratada (pub-test-1 com texto "15 dias")
-      const firstRow = page.locator('.inbox-row[data-intimation-id="pub-test-1"]');
+      const firstRow = page.locator('.inbox-row[data-intimation-id="pub-test-1"], [data-intimation-id="pub-test-1"] .inbox-row');
       await firstRow.click();
       await page.waitForSelector('#intimationDetail .detail-header', { state: 'visible' });
 
@@ -605,21 +607,22 @@ try {
       assert.equal(taskDeadlineVal, '', 'O deadline da tarefa criada a partir da publicação deve iniciar vazio!');
 
       // Fechar modal de tarefa
-      await page.click('#modalBackdrop .button.ghost, #modalCloseBtn');
+      await page.click('#modalCancel');
       await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
       await page.waitForTimeout(300);
 
       // ── TESTE BUG 1: Testar também publicação com "recurso especial" ──
-      const secondRow = page.locator('.inbox-row[data-intimation-id="pub-test-2"]');
+      const secondRow = page.locator('.inbox-row[data-intimation-id="pub-test-2"], [data-intimation-id="pub-test-2"] .inbox-row');
       await page.evaluate(() => window.Atrium.App.selectIntimation('pub-test-2'));
       await page.waitForTimeout(300);
+      await page.locator('#btnCreateTask').scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
       await page.click('#btnCreateTask');
       await page.locator('#modalBackdrop').waitFor({ state: 'visible' });
 
       const task2DeadlineVal = await page.inputValue('#field-deadline');
       assert.equal(task2DeadlineVal, '', 'O deadline da tarefa com recurso especial deve iniciar vazio!');
 
-      await page.click('#modalBackdrop .button.ghost, #modalCloseBtn');
+      await page.click('#modalCancel');
       await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
       await page.waitForTimeout(300);
 
@@ -671,6 +674,7 @@ try {
       assert.match(inReviewBadge, /Em análise/i);
 
       // Clicar em "Criar tarefa" a partir da publicação
+      await page.locator('#btnCreateTask').scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
       await page.click('#btnCreateTask');
       await page.locator('#modalBackdrop').waitFor({ state: 'visible' });
 
@@ -759,6 +763,48 @@ try {
 
       const restoredBadge = await page.textContent('#intimationDetail .treatment-badge');
       assert.match(restoredBadge, /Não tratada/i);
+    });
+
+    await testAsync('E2E V2 — ação rápida de tratar na linha com desfazer explícito', async () => {
+      await page.evaluate(() => {
+        document.documentElement.dataset.ui = 'v2';
+        window.Atrium.App.inboxFilter = 'untreated';
+        window.Atrium.App.renderAll();
+      });
+      await page.locator('#view-inbox.active').waitFor();
+      await page.evaluate(() => document.getElementById('publicationDetailClose')?.click());
+      await page.waitForFunction(() => !document.getElementById('view-inbox')?.classList.contains('publication-detail-open'));
+      const quickAction = page.locator('[data-intimation-id="pub-test-1"] .publication-row-quick');
+      await quickAction.waitFor();
+
+      const treatmentRequests = [];
+      page.on('request', request => {
+        if (/\/api\/intimations\/.+\/treatment/.test(request.url())) treatmentRequests.push(request.postDataJSON());
+      });
+      await page.waitForFunction(() => !document.querySelector('#toastRegion .toast'));
+      await quickAction.click();
+      const undoAction = page.locator('#toastRegion .toast .toast-action', { hasText: 'Desfazer' });
+      await undoAction.waitFor();
+      assert.equal(treatmentRequests.length, 1, 'A ação rápida deve disparar exatamente uma transição de tratamento.');
+      assert.equal(treatmentRequests[0].action, 'mark_treated');
+      assert.equal(
+        await page.locator('#view-inbox').evaluate(view => view.classList.contains('publication-detail-open')),
+        false,
+        'A ação rápida não pode abrir o inspector da publicação.'
+      );
+      const treatedItem = await page.evaluate(() => window.Atrium.Store.state.intimations.find(item => item.id === 'pub-test-1'));
+      assert.equal(treatedItem.treatmentStatus, 'treated');
+      assert.equal(treatedItem.unread, false);
+      await page.evaluate(() => window.Atrium.Store.flush());
+      await undoAction.click();
+      await page.waitForFunction(() => window.Atrium.Store.state.intimations.find(item => item.id === 'pub-test-1')?.treatmentStatus === 'in_review');
+      assert.equal(treatmentRequests.length, 2, 'Desfazer deve disparar a reabertura oficial.');
+      assert.equal(treatmentRequests[1].action, 'reopen');
+      await page.evaluate(() => {
+        document.documentElement.dataset.ui = 'classic';
+        window.Atrium.App.inboxFilter = 'untreated';
+        window.Atrium.App.renderAll();
+      });
     });
 
     await testAsync('BUG 10 — Computed Styles no Tema Light: Badges possuem cores claras', async () => {

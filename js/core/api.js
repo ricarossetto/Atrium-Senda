@@ -17,10 +17,14 @@ export function importLegacyState(legacyState) {
 }
 
 export function persistState(state, revision) {
+  // Coleções server-authoritative não viajam no flush: o servidor restaura `documents`
+  // e `communications` do estado consolidado (`saveClientAppState`) e enviá-las de volta só
+  // inflava o corpo — o acervo documental cresce e o flush precisa continuar leve.
+  const { documents, communications, ...clientState } = state && typeof state === 'object' ? state : {};
   return authenticatedRequest('/api/state', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ state, revision })
+    body: JSON.stringify({ state: clientState, revision })
   });
 }
 

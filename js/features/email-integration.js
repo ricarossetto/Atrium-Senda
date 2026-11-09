@@ -11,12 +11,27 @@ export function createEmailIntegrationFeature({
   getCurrentUser = () => windowRef?.KellerAuth?.currentUser,
   getOfficeName = () => '',
   confirmFn = message => windowRef?.confirm?.(message) ?? false,
+  withReauth = exec => exec({}),
   presentation = null
 } = {}) {
   let initialized = false;
   let emailReceivers = [];
-  let smtpGuideDismissed = false;
-  const initialSnapshots = new Map();
+  let currentStatus = null;
+  let preferencesLoaded = false;
+  let preferencesSaving = false;
+  const unsupportedPreferences = new Set();
+  const preferenceFields = [
+    ['PUBLICATION_NEW', 'mailPrefPublication'],
+    ['DEADLINE_CRITICAL', 'mailPrefDeadline'],
+    ['HEARING_NEW', 'mailPrefHearing'],
+    ['MOVEMENT_NEW', 'mailPrefMovements'],
+    ['SYNC_FAILED', 'mailPrefSyncFailed'],
+    ['A1_CERT_EXPIRING', 'mailPrefCertificate']
+  ];
+  const normalizeCadence = (cadence, enabled = true) => {
+    if (!enabled || cadence === 'DISABLED') return 'DISABLED';
+    return ['BULLETINS', 'IMMEDIATE', 'SYNC_DIGEST', 'DAILY'].includes(cadence) ? 'BULLETINS' : 'DISABLED';
+  };
   const byId = id => documentRef?.getElementById(id);
   const logError = (...args) => windowRef?.console?.error?.(...args);
 
@@ -29,46 +44,50 @@ export function createEmailIntegrationFeature({
       initialized = true;
       presentation?.init?.();
 
-      byId('btnConfigureEmail')?.addEventListener('click', () => this.openConfigModal());
-      byId('emailConfigClose')?.addEventListener('click', () => this.requestClose('config'));
-      byId('emailConfigCancel')?.addEventListener('click', () => this.requestClose('config'));
-      byId('emailConfigBackdrop')?.addEventListener('click', event => {
-        if (event.target === byId('emailConfigBackdrop')) this.requestClose('config');
-      });
-      byId('emailConfigForm')?.addEventListener('submit', event => this.submitConfig(event));
-      byId('dismissSmtpGuide')?.addEventListener('click', () => {
-        byId('smtpFirstUseGuide')?.classList.add('hidden');
-        smtpGuideDismissed = true;
-        byId('emailHostInput')?.focus();
+      // ATRIUM Mail toggle switch
+      byId('atriumMailToggleCheckbox')?.addEventListener('change', event => {
+        this.toggleAtriumMail(event.target.checked);
       });
 
+      // Test email modal
+      byId('btnTestAtriumMail')?.addEventListener('click', () => this.openTestModal());
       byId('btnTestEmail')?.addEventListener('click', () => this.openTestModal());
-      byId('emailTestClose')?.addEventListener('click', () => this.requestClose('test'));
-      byId('emailTestCancel')?.addEventListener('click', () => this.requestClose('test'));
+      byId('emailTestClose')?.addEventListener('click', () => this.closeTestModal());
+      byId('emailTestCancel')?.addEventListener('click', () => this.closeTestModal());
       byId('emailTestBackdrop')?.addEventListener('click', event => {
-        if (event.target === byId('emailTestBackdrop')) this.requestClose('test');
+        if (event.target === byId('emailTestBackdrop')) this.closeTestModal();
       });
       byId('emailTestForm')?.addEventListener('submit', event => this.submitTest(event));
 
+      byId('btnConfigureMailPreferences')?.addEventListener('click', () => this.openPreferencesDrawer());
+      byId('mailPreferencesClose')?.addEventListener('click', () => this.closePreferencesDrawer());
+      byId('mailPreferencesCancel')?.addEventListener('click', () => this.closePreferencesDrawer());
+      byId('mailPreferencesBackdrop')?.addEventListener('click', event => {
+        if (event.target === byId('mailPreferencesBackdrop')) this.closePreferencesDrawer();
+      });
+      byId('mailPreferencesForm')?.addEventListener('submit', event => this.savePreferences(event));
+      for (const [eventType, id] of preferenceFields) {
+        byId(id)?.addEventListener('change', () => unsupportedPreferences.delete(eventType));
+      }
+
+      // External recipients management
+      byId('btnAddExternalRecipient')?.addEventListener('click', () => this.openReceiverModal());
       byId('btnAddEmailReceiver')?.addEventListener('click', () => this.openReceiverModal());
-      byId('emailReceiverModalClose')?.addEventListener('click', () => this.requestClose('receiver'));
-      byId('receiverCancelBtn')?.addEventListener('click', () => this.requestClose('receiver'));
+      byId('emailReceiverModalClose')?.addEventListener('click', () => this.closeReceiverModal());
+      byId('receiverCancelBtn')?.addEventListener('click', () => this.closeReceiverModal());
       byId('emailReceiverModalBackdrop')?.addEventListener('click', event => {
-        if (event.target === byId('emailReceiverModalBackdrop')) this.requestClose('receiver');
-      });
-      byId('receiverTypeInternal')?.addEventListener('change', () => {
-        byId('receiverInternalFields')?.classList.remove('hidden');
-        byId('receiverExternalFields')?.classList.add('hidden');
-      });
-      byId('receiverTypeExternal')?.addEventListener('change', () => {
-        byId('receiverInternalFields')?.classList.add('hidden');
-        byId('receiverExternalFields')?.classList.remove('hidden');
+        if (event.target === byId('emailReceiverModalBackdrop')) this.closeReceiverModal();
       });
       byId('emailReceiverForm')?.addEventListener('submit', event => this.submitReceiver(event));
+      byId('receiverTypeInternal')?.addEventListener('change', () => this.switchReceiverType('internal'));
+      byId('receiverTypeExternal')?.addEventListener('change', () => this.switchReceiverType('external'));
+
       byId('emailReceiversList')?.addEventListener('click', event => {
         const toggleButton = event.target.closest('[data-receiver-action="toggle"]');
         if (toggleButton) {
-          this.toggleReceiver(toggleButton.dataset.receiverId, toggleButton.dataset.receiverEnabled === 'true');
+          const id = toggleButton.dataset.receiverId;
+          const currentEnabled = toggleButton.dataset.receiverEnabled === 'true';
+          this.toggleReceiver(id, !currentEnabled);
           return;
         }
         const editButton = event.target.closest('[data-receiver-action="edit"]');
@@ -80,171 +99,214 @@ export function createEmailIntegrationFeature({
         const deleteButton = event.target.closest('[data-receiver-action="delete"]');
         if (deleteButton) this.deleteReceiver(deleteButton.dataset.receiverId);
       });
-      return true;
-    },
 
-    formSnapshot(key) {
-      const ids = key === 'config'
-        ? ['emailHostInput', 'emailPortInput', 'emailSecureInput', 'emailUserInput', 'emailPasswordInput', 'emailFromNameInput', 'emailFromAddressInput']
-        : key === 'test'
-          ? ['emailTestRecipientInput']
-          : ['receiverIdInput', 'receiverEditTypeInput', 'receiverTypeInternal', 'receiverTypeExternal', 'receiverUserSelect', 'receiverNameInput', 'receiverEmailInput', 'receiverEnabledInput'];
-      return JSON.stringify(ids.map(id => {
-        const element = byId(id);
-        return { id, value: element?.value || '', checked: Boolean(element?.checked) };
-      }));
-    },
+      // Legacy SMTP modal listeners (for rollback compatibility if enabled)
+      byId('btnConfigureEmail')?.addEventListener('click', () => this.openConfigModal());
+      byId('emailConfigClose')?.addEventListener('click', () => this.closeConfigModal());
+      byId('emailConfigCancel')?.addEventListener('click', () => this.closeConfigModal());
+      byId('emailConfigBackdrop')?.addEventListener('click', event => {
+        if (event.target === byId('emailConfigBackdrop')) this.closeConfigModal();
+      });
+      byId('emailConfigForm')?.addEventListener('submit', event => this.submitConfig(event));
 
-    rememberSnapshot(key) {
-      initialSnapshots.set(key, this.formSnapshot(key));
-    },
-
-    hasUnsavedChanges(key) {
-      const initial = initialSnapshots.get(key);
-      return Boolean(initial && initial !== this.formSnapshot(key));
-    },
-
-    requestClose(key) {
-      const labels = { config: 'configuração de e-mail', test: 'teste de e-mail', receiver: 'destinatário' };
-      if (this.hasUnsavedChanges(key)
-        && !confirmFn(`Há alterações não salvas em ${labels[key]}. Deseja realmente fechar e descartá-las?`)) return false;
-      if (key === 'config') this.closeConfigModal();
-      else if (key === 'test') this.closeTestModal();
-      else this.closeReceiverModal();
       return true;
     },
 
     async loadStatus() {
       const chip = byId('emailIntegrationStatus');
       const detail = byId('emailIntegrationDetail');
-      const configButton = byId('btnConfigureEmail');
-      const testButton = byId('btnTestEmail');
+      const toggleCheckbox = byId('atriumMailToggleCheckbox');
+      const toggleLabel = byId('atriumMailToggleLabel');
+      const currentUser = getCurrentUser();
+      const isMasterAdmin = currentUser?.role === 'master_admin';
+      byId('btnTestAtriumMail')?.classList.toggle('hidden', !isMasterAdmin);
 
       try {
-        const response = await secureFetch('/api/integrations/email/status');
-        const data = await response.json().catch(() => ({}));
-        const status = data?.status || {};
-
-        if (status.configured) {
-          if (chip) {
-            chip.textContent = 'SMTP conectado';
-            chip.className = 'status-chip connected';
+        const response = await secureFetch('/api/admin/mail/status');
+        if (!response.ok) {
+          if (response.status === 403) {
+            // User is not master_admin; hide admin switch
+            if (byId('atriumMailSwitchContainer')) byId('atriumMailSwitchContainer').style.display = 'none';
+            await this.loadReceivers();
           }
-          if (detail) {
-            const lastTestInfo = status.lastTestAt
-              ? ` · Último teste: ${new Date(status.lastTestAt).toLocaleDateString('pt-BR')} (${status.lastTestStatus === 'success' ? 'Sucesso' : 'Falhou'})`
-              : '';
-            detail.textContent = `Host: ${status.host}:${status.port} · Remetente: ${status.fromAddress}${lastTestInfo}`;
-          }
-          if (configButton) configButton.textContent = 'Reconfigurar SMTP';
-          testButton?.classList.remove('hidden');
-        } else {
-          if (chip) {
-            chip.textContent = 'Não configurado';
-            chip.className = 'status-chip muted';
-          }
-          if (detail) detail.textContent = 'Configure o transporte SMTP seguro para envio de comunicações e boletins do escritório.';
-          if (configButton) configButton.textContent = 'Configurar SMTP';
-          testButton?.classList.add('hidden');
+          return null;
         }
-        await this.loadReceivers();
-        return status;
-      } catch {
+
+        const data = await response.json().catch(() => ({}));
+        currentStatus = data;
+        const stats = data.stats || {};
+        const isEnabled = Boolean(stats.enabled);
+
         if (chip) {
-          chip.textContent = 'Erro ao verificar';
-          chip.className = 'status-chip danger';
+          chip.textContent = !isEnabled ? 'Desativado' : data.configured ? 'Ativo' : 'Não configurado';
+          chip.className = `status-chip ${data.configured && isEnabled ? 'connected' : 'muted'}`;
+        }
+
+        if (toggleCheckbox) toggleCheckbox.checked = isEnabled;
+        if (toggleLabel) toggleLabel.textContent = isEnabled ? 'Ativo' : 'Desativado';
+
+        if (detail) {
+          detail.textContent = !data.configured
+            ? 'E-mail não configurado. Nenhum e-mail será enviado até o provedor (Resend) ser configurado.'
+            : isEnabled
+              ? 'E-mail conectado pelo Resend. Notificações automáticas ativas.'
+              : 'E-mail conectado pelo Resend. Envios automáticos pausados neste escritório. Marque a chave para ativar.';
+        }
+
+        // Update telemetry counters
+        if (byId('atriumMailTodayCount') && data.limits) {
+          byId('atriumMailTodayCount').textContent = `${stats.sentToday || 0} / ${data.limits.daily || 100}`;
+        }
+        if (byId('atriumMailMonthCount') && data.limits) {
+          byId('atriumMailMonthCount').textContent = `${stats.sentMonth || 0} / ${data.limits.monthly || 3000}`;
+        }
+        if (byId('atriumMailQueueCount')) {
+          const queued = stats.queue?.QUEUED || 0;
+          byId('atriumMailQueueCount').textContent = `${queued} na fila`;
+        }
+
+        await this.loadReceivers();
+        return data;
+      } catch (error) {
+        logError('Falha ao carregar status do ATRIUM Mail:', error);
+        if (chip) {
+          chip.textContent = 'Indisponível';
+          chip.className = 'status-chip muted';
         }
         return null;
       }
     },
 
-    async openConfigModal() {
-      const backdrop = byId('emailConfigBackdrop');
-      if (!backdrop) return false;
-      try {
-        const response = await secureFetch('/api/integrations/email/status');
-        const data = await response.json().catch(() => ({}));
-        const status = data?.status || {};
-        const passwordInput = byId('emailPasswordInput');
+    async toggleAtriumMail(enabled) {
+      const toggleCheckbox = byId('atriumMailToggleCheckbox');
+      const toggleLabel = byId('atriumMailToggleLabel');
+      const chip = byId('emailIntegrationStatus');
 
-        if (byId('emailHostInput')) byId('emailHostInput').value = status.host || '';
-        if (byId('emailPortInput')) byId('emailPortInput').value = status.port || 465;
-        if (byId('emailSecureInput')) byId('emailSecureInput').checked = status.secure !== false;
-        if (byId('emailUserInput')) byId('emailUserInput').value = status.userMasked || '';
-        if (passwordInput) {
-          passwordInput.value = '';
-          passwordInput.placeholder = status.configured ? 'Deixe em branco para manter a senha atual' : 'Digite a senha SMTP ou senha de app';
-          passwordInput.required = !status.configured;
-        }
-        if (byId('emailFromNameInput')) byId('emailFromNameInput').value = status.fromName || getOfficeName() || '';
-        if (byId('emailFromAddressInput')) byId('emailFromAddressInput').value = status.fromAddress || '';
-        const firstUseGuide = byId('smtpFirstUseGuide');
-        if (firstUseGuide) firstUseGuide.classList.toggle('hidden', status.configured || smtpGuideDismissed);
-        this.rememberSnapshot('config');
-        backdrop.classList.remove('hidden');
-        presentation?.open?.('emailConfig');
-        return true;
-      } catch {
-        showToast('Não foi possível carregar a configuração SMTP.', 'error');
-        return false;
-      }
-    },
-
-    closeConfigModal() {
-      byId('emailConfigBackdrop')?.classList.add('hidden');
-      initialSnapshots.delete('config');
-      const passwordInput = byId('emailPasswordInput');
-      if (passwordInput) passwordInput.value = '';
-      presentation?.close?.('emailConfig');
-    },
-
-    async submitConfig(event) {
-      event?.preventDefault?.();
-      const submitButton = byId('emailConfigSubmitBtn');
-      if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.textContent = '⏳ Validando conexão SMTP...';
+      if (byId('mailPreferencesBackdrop') && !byId('mailPreferencesBackdrop').classList.contains('hidden')) {
+        this.closePreferencesDrawer();
       }
 
-      const payload = {
-        host: byId('emailHostInput')?.value?.trim(),
-        port: Number(byId('emailPortInput')?.value),
-        secure: byId('emailSecureInput')?.checked,
-        user: byId('emailUserInput')?.value?.trim(),
-        password: byId('emailPasswordInput')?.value,
-        fromName: byId('emailFromNameInput')?.value?.trim(),
-        fromAddress: byId('emailFromAddressInput')?.value?.trim()
-      };
-
       try {
-        const response = await secureFetch('/api/integrations/email/configure', {
+        const response = await withReauth(stepUp => secureFetch('/api/admin/mail/toggle', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify(payload)
-        });
+          body: JSON.stringify({ enabled, ...stepUp })
+        }));
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'Falha ao salvar configuração SMTP.');
-        this.closeConfigModal();
-        showToast('Configuração SMTP validada e salva com sucesso!', 'success');
+        if (!response.ok) {
+          if (response.reauthCancelled) {
+            showToast('Alteração cancelada. Nenhuma mudança foi aplicada.', 'warning');
+            await this.loadStatus();
+            return false;
+          }
+          throw new Error(data.message || 'Não foi possível alterar a situação do e-mail.');
+        }
+
+        if (toggleCheckbox) toggleCheckbox.checked = enabled;
+        if (toggleLabel) toggleLabel.textContent = enabled ? 'Ativo' : 'Desativado';
+        if (chip) {
+          chip.textContent = enabled ? 'Ativo' : 'Desativado';
+          chip.className = `status-chip ${enabled ? 'connected' : 'muted'}`;
+        }
+
+        showToast(`ATRIUM Mail ${enabled ? 'ativado' : 'desativado'} com sucesso!`, 'success');
         await this.loadStatus();
         return true;
       } catch (error) {
-        showToast(error.message || 'Erro ao conectar ao servidor SMTP.', 'error');
+        if (toggleCheckbox) toggleCheckbox.checked = !enabled;
+        showToast(error.message || 'Não foi possível alterar a situação do e-mail.', 'error');
+        await this.loadStatus();
         return false;
-      } finally {
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.textContent = 'Salvar e Validar Conexão';
-        }
       }
     },
 
-    openTestModal() {
+    async loadReceivers() {
+      const currentUser = getCurrentUser();
+      const isAdmin = currentUser?.role === 'master_admin';
+      const section = byId('emailReceiversSection');
+      const addButtons = ['btnAddExternalRecipient', 'btnAddEmailReceiver'].map(id => byId(id)).filter(Boolean);
+
+      if (!isAdmin) {
+        section?.classList.add('hidden');
+        addButtons.forEach(button => button.classList.add('hidden'));
+        return [];
+      }
+      addButtons.forEach(button => button.classList.remove('hidden'));
+
+      try {
+        const response = await secureFetch('/api/admin/mail/recipients', { headers: { Accept: 'application/json' } });
+        if (!response.ok) return emailReceivers;
+        const data = await response.json().catch(() => ({}));
+        emailReceivers = Array.isArray(data.recipients) ? data.recipients : [];
+        this.renderReceivers(emailReceivers);
+      } catch (error) {
+        logError('Erro ao carregar destinatários externos:', error);
+      }
+      return emailReceivers;
+    },
+
+    renderReceivers(receivers = []) {
+      const count = byId('emailReceiversCount');
+      const list = byId('emailReceiversList');
+      byId('emailReceiversSection')?.classList.toggle('hidden', receivers.length === 0);
+      if (count) count.textContent = `${receivers.length} cadastrado${receivers.length === 1 ? '' : 's'}`;
+      if (!list) return receivers;
+      if (!receivers.length) {
+        list.innerHTML = '';
+        return receivers;
+      }
+      byId('emailReceiversSection')?.classList.remove('hidden');
+      list.innerHTML = receivers.map(receiver => this.receiverHtml(receiver)).join('');
+      return receivers;
+    },
+
+    receiverHtml(receiver) {
+      const statusBadge = receiver.enabled
+        ? '<span class="badge-chip email-receiver-status success">Ativo</span>'
+        : '<span class="badge-chip email-receiver-status muted">Pausado</span>';
+
+      const prefs = Array.isArray(receiver.preferences) ? receiver.preferences : [];
+      const prefBadges = prefs
+        .filter(p => p.enabled && p.cadence !== 'DISABLED')
+        .map(p => {
+          const labels = {
+            PUBLICATION_NEW: 'Publicações',
+            HEARING_NEW: 'Audiências',
+            DEADLINE_CRITICAL: 'Prazos',
+            SYNC_FAILED: 'Falhas Sync',
+            A1_CERT_EXPIRING: 'Certificado A1'
+          };
+          return `<span class="badge-chip" style="font-size:10px; background:var(--panel-soft); border:1px solid var(--line);">${labels[p.eventType] || p.eventType}</span>`;
+        })
+        .join(' ');
+
+      return `
+        <div class="email-receiver-item card" data-receiver-id="${escapeHtml(receiver.id)}" style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:var(--panel-soft); border-radius:8px; border:1px solid var(--line); margin-bottom:6px;">
+          <div class="email-receiver-identity">
+            <div class="email-receiver-heading" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <strong style="color:var(--ivory); font-size:13px;">${escapeHtml(receiver.name || 'Sem nome')}</strong>
+              ${statusBadge}
+            </div>
+            <span class="email-receiver-address" style="display:block; color:var(--muted); font-size:12px; margin-top:2px;">${escapeHtml(receiver.email || 'Sem e-mail')}</span>
+            <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+              ${prefBadges || '<span class="email-receiver-empty-events">Nenhum evento ativo</span>'}
+            </div>
+          </div>
+          <div class="email-receiver-actions">
+            <button class="button ghost" data-receiver-action="toggle" data-receiver-id="${escapeHtml(receiver.id)}" data-receiver-enabled="${receiver.enabled ? 'true' : 'false'}">${receiver.enabled ? 'Pausar' : 'Ativar'}</button>
+            <button class="button ghost" data-receiver-action="edit" data-receiver-id="${escapeHtml(receiver.id)}">Editar</button>
+            <button class="button ghost email-receiver-delete" data-receiver-action="delete" data-receiver-id="${escapeHtml(receiver.id)}" title="Excluir destinatário">Excluir</button>
+          </div>
+        </div>`;
+    },
+
+    openTestModal(recipient) {
       const backdrop = byId('emailTestBackdrop');
       if (!backdrop) return false;
       const recipientInput = byId('emailTestRecipientInput');
-      if (recipientInput) recipientInput.value = '';
-      this.rememberSnapshot('test');
+      const currentUser = getCurrentUser();
+      const restored = typeof recipient === 'string' && recipient.trim();
+      if (recipientInput) recipientInput.value = restored ? recipient.trim() : (currentUser?.email || '');
       backdrop.classList.remove('hidden');
       presentation?.open?.('emailTest');
       return true;
@@ -252,8 +314,98 @@ export function createEmailIntegrationFeature({
 
     closeTestModal() {
       byId('emailTestBackdrop')?.classList.add('hidden');
-      initialSnapshots.delete('test');
       presentation?.close?.('emailTest');
+    },
+
+    async openPreferencesDrawer() {
+      const backdrop = byId('mailPreferencesBackdrop');
+      if (!backdrop || preferencesSaving) return false;
+      const isAdmin = ['admin', 'master_admin'].includes(getCurrentUser()?.role);
+      const fields = preferenceFields.filter(([, id]) => isAdmin || !['mailPrefSyncFailed', 'mailPrefCertificate'].includes(id));
+      const feedback = byId('mailPreferencesFeedback');
+      preferencesLoaded = false;
+      unsupportedPreferences.clear();
+      feedback?.classList.add('hidden');
+      for (const id of ['mailPrefSyncFailedField', 'mailPrefCertificateField']) {
+        if (byId(id)) byId(id).hidden = !isAdmin;
+      }
+      for (const [, id] of preferenceFields) {
+        if (byId(id)) { byId(id).value = 'DISABLED'; byId(id).disabled = true; }
+      }
+      if (byId('mailPreferencesSubmit')) byId('mailPreferencesSubmit').disabled = true;
+      try {
+        const response = await secureFetch('/api/user/notification-preferences', { headers: { Accept: 'application/json' } });
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data.preferences)) throw new Error('Não foi possível carregar as preferências. Feche e abra o painel para tentar novamente.');
+        for (const [eventType, id] of fields) {
+          const preference = data.preferences.find(item => (item.event_type || item.eventType) === eventType);
+          if (byId(id)) {
+            byId(id).value = preference ? normalizeCadence(preference.cadence, preference.enabled) : 'BULLETINS';
+            byId(id).disabled = false;
+          }
+          if (preference && preference.enabled !== false && preference.enabled !== 0 && !['BULLETINS', 'IMMEDIATE', 'SYNC_DIGEST', 'DAILY', 'DISABLED'].includes(preference.cadence)) unsupportedPreferences.add(eventType);
+        }
+        preferencesLoaded = true;
+        if (byId('mailPreferencesSubmit')) byId('mailPreferencesSubmit').disabled = false;
+        if (unsupportedPreferences.size && feedback) {
+          feedback.textContent = 'Algumas preferências não são reconhecidas. Serão preservadas, salvo se você escolher uma opção nesses campos.';
+          feedback.className = 'mail-preferences-feedback warning';
+        }
+      } catch (error) {
+        if (feedback) { feedback.textContent = error.message; feedback.className = 'mail-preferences-feedback error'; }
+        showToast(error.message, 'error');
+      }
+      backdrop.classList.remove('hidden');
+      documentRef.body.style.overflow = 'hidden';
+      presentation?.open?.('mailPreferences');
+      if (!preferencesLoaded) byId('mailPreferencesClose')?.focus?.();
+      return true;
+    },
+
+    closePreferencesDrawer() {
+      if (preferencesSaving) return false;
+      byId('mailPreferencesBackdrop')?.classList.add('hidden');
+      if (documentRef.body) documentRef.body.style.overflow = '';
+      presentation?.close?.('mailPreferences');
+    },
+
+    async savePreferences(event) {
+      event?.preventDefault?.();
+      if (!preferencesLoaded || preferencesSaving) return false;
+      const isAdmin = ['admin', 'master_admin'].includes(getCurrentUser()?.role);
+      const preferences = preferenceFields
+        .filter(([eventType, id]) => byId(id) && !unsupportedPreferences.has(eventType) && (isAdmin || !['SYNC_FAILED', 'A1_CERT_EXPIRING'].includes(eventType)))
+        .map(([eventType, id]) => {
+          const cadence = normalizeCadence(byId(id).value);
+          return { eventType, cadence, enabled: cadence !== 'DISABLED' };
+        });
+      const feedback = byId('mailPreferencesFeedback');
+      preferencesSaving = true;
+      if (byId('mailPreferencesSubmit')) byId('mailPreferencesSubmit').disabled = true;
+      byId('mailPreferencesForm')?.setAttribute?.('aria-busy', 'true');
+      try {
+        const response = await secureFetch('/api/user/notification-preferences', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ preferences })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.message || 'Não foi possível salvar as preferências.');
+        feedback?.classList.add('hidden');
+        showToast('Preferências de e-mail salvas.', 'success');
+        preferencesSaving = false;
+        this.closePreferencesDrawer();
+        return true;
+      } catch (error) {
+        if (feedback) { feedback.textContent = error.message; feedback.className = 'mail-preferences-feedback error'; }
+        byId('mailPreferencesSubmit')?.scrollIntoView?.({ block: 'nearest' });
+        showToast(error.message, 'error');
+        return false;
+      } finally {
+        preferencesSaving = false;
+        if (byId('mailPreferencesSubmit')) byId('mailPreferencesSubmit').disabled = !preferencesLoaded;
+        byId('mailPreferencesForm')?.removeAttribute?.('aria-busy');
+      }
     },
 
     async submitTest(event) {
@@ -264,165 +416,82 @@ export function createEmailIntegrationFeature({
         showToast('Informe o e-mail de destino do teste.', 'warning');
         return false;
       }
+
       if (submitButton) {
         submitButton.disabled = true;
-        submitButton.textContent = '⏳ Enviando e-mail de teste...';
+        submitButton.textContent = 'Enviando teste...';
       }
+
+      // O prompt genérico de step-up usa #modalBackdrop (z-index 80). Este backdrop
+      // vem depois no DOM e o encobriria, tornando o retry impossível: o modal do
+      // teste fecha antes da request e é restaurado se a ação não concluir.
+      this.closeTestModal();
       try {
-        const response = await secureFetch('/api/integrations/email/test', {
+        const response = await withReauth(stepUp => secureFetch('/api/admin/mail/test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ recipient })
-        });
+          body: JSON.stringify({ recipient, ...stepUp })
+        }));
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'Falha no envio de teste.');
-        this.closeTestModal();
-        showToast(data.message || `E-mail de teste enviado para ${recipient}!`, 'success');
+        if (!response.ok) {
+          if (response.reauthCancelled) {
+            showToast('Envio de teste cancelado. Nenhuma mensagem foi enfileirada.', 'warning');
+            this.openTestModal(recipient);
+            await this.loadStatus();
+            return false;
+          }
+          throw new Error(data.message || 'Falha no envio de teste.');
+        }
+        showToast(`E-mail de teste enfileirado para ${recipient}!`, 'success');
         await this.loadStatus();
         return true;
       } catch (error) {
         showToast(error.message || 'Erro ao enviar e-mail de teste.', 'error');
+        this.openTestModal(recipient);
+        await this.loadStatus();
         return false;
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
-          submitButton.innerHTML = `${presentation?.icon?.('send') || '🚀 '}Enviar Teste Agora`;
+          submitButton.textContent = 'Enviar Teste Agora';
         }
       }
     },
 
-    async loadReceivers() {
-      const currentUser = getCurrentUser();
-      const isAdmin = currentUser?.role === 'master_admin' || currentUser?.role === 'admin';
-      const section = byId('emailReceiversSection');
-      const addButton = byId('btnAddEmailReceiver');
-      if (!isAdmin) {
-        section?.classList.add('hidden');
-        addButton?.classList.add('hidden');
-        return [];
-      }
-      section?.classList.remove('hidden');
-      addButton?.classList.remove('hidden');
-      try {
-        const response = await secureFetch('/api/integrations/email/receivers', { headers: { Accept: 'application/json' } });
-        if (!response.ok) return emailReceivers;
-        const data = await response.json().catch(() => ({}));
-        emailReceivers = Array.isArray(data.receivers) ? data.receivers : [];
-        this.renderReceivers(emailReceivers);
-      } catch (error) {
-        logError('Erro ao carregar destinatários de e-mail:', error);
-      }
-      return emailReceivers;
-    },
-
-    renderReceivers(receivers = []) {
-      const count = byId('emailReceiversCount');
-      const list = byId('emailReceiversList');
-      if (count) count.textContent = `${receivers.length} cadastrado${receivers.length === 1 ? '' : 's'}`;
-      if (!list) return receivers;
-      if (!receivers.length) {
-        list.innerHTML = '<div class="email-receivers-empty"><p>Nenhum destinatário cadastrado para receber publicações.</p></div>';
-        return receivers;
-      }
-      list.innerHTML = receivers.map(receiver => this.receiverHtml(receiver)).join('');
-      return receivers;
-    },
-
-    receiverHtml(receiver) {
-      const isInternal = receiver.type === 'internal';
-      const isUserInactive = isInternal && receiver.userStatus && receiver.userStatus !== 'active';
-      const statusBadge = isUserInactive
-        ? '<span class="badge-chip email-receiver-status danger">Usuário Inativo</span>'
-        : receiver.enabled
-          ? '<span class="badge-chip email-receiver-status success">Ativo</span>'
-          : '<span class="badge-chip email-receiver-status muted">Inativo</span>';
-      const typeBadge = isInternal
-        ? '<span class="badge-chip email-receiver-type">Usuário interno</span>'
-        : '<span class="badge-chip email-receiver-type">Externo</span>';
-      return `
-        <div class="email-receiver-item" data-receiver-id="${escapeHtml(receiver.id)}">
-          <div class="email-receiver-identity">
-            <div class="email-receiver-heading">
-              <strong>${escapeHtml(receiver.name || 'Sem nome')}</strong>${typeBadge}${statusBadge}
-            </div>
-            <span class="email-receiver-address">${escapeHtml(receiver.email || 'Sem e-mail')}</span>
-          </div>
-          <div class="email-receiver-actions">
-            <button class="button ghost" data-receiver-action="toggle" data-receiver-id="${escapeHtml(receiver.id)}" data-receiver-enabled="${receiver.enabled ? 'true' : 'false'}" title="${receiver.enabled ? 'Desativar recebimento' : 'Ativar recebimento'}">${receiver.enabled ? 'Desativar' : 'Ativar'}</button>
-            <button class="button ghost" data-receiver-action="edit" data-receiver-id="${escapeHtml(receiver.id)}" title="Editar destinatário">Editar</button>
-            <button class="button ghost email-receiver-delete" data-receiver-action="delete" data-receiver-id="${escapeHtml(receiver.id)}" aria-label="Remover destinatário ${escapeHtml(receiver.name || receiver.email || '')}" title="Remover destinatário">${presentation?.icon?.('delete') || '✕'}</button>
-          </div>
-        </div>`;
-    },
-
-    async openReceiverModal(receiverToEdit = null) {
+    openReceiverModal(receiverToEdit = null) {
       const backdrop = byId('emailReceiverModalBackdrop');
       if (!backdrop) return false;
-      let activeUsers = [];
-      try {
-        const response = await secureFetch('/api/auth/users', { headers: { Accept: 'application/json' } });
-        if (response.ok) {
-          const data = await response.json().catch(() => ({}));
-          activeUsers = (data.users || []).filter(user => user.status === 'active' && user.email?.trim());
-        }
-      } catch (error) {
-        logError('Falha ao obter lista de usuários:', error);
-      }
 
-      const userSelect = byId('receiverUserSelect');
-      if (userSelect) {
-        userSelect.innerHTML = activeUsers.length
-          ? activeUsers.map(user => `<option value="${escapeHtml(user.id)}">${escapeHtml(user.displayName || user.username)} (${escapeHtml(user.email)})</option>`).join('')
-          : '<option value="">Nenhum usuário ativo com e-mail cadastrado</option>';
+      // Clean or populate fields
+      if (byId('emailReceiverModalTitle')) {
+        byId('emailReceiverModalTitle').textContent = receiverToEdit ? 'Editar Destinatário Externo' : 'Adicionar Destinatário Externo';
       }
+      if (byId('receiverIdInput')) byId('receiverIdInput').value = receiverToEdit?.id || '';
+      if (byId('receiverNameInput')) byId('receiverNameInput').value = receiverToEdit?.name || '';
+      if (byId('receiverEmailInput')) byId('receiverEmailInput').value = receiverToEdit?.email || '';
+      if (byId('receiverEnabledInput')) byId('receiverEnabledInput').checked = receiverToEdit ? Boolean(receiverToEdit.enabled) : true;
 
-      if (receiverToEdit) {
-        if (byId('emailReceiverModalTitle')) byId('emailReceiverModalTitle').textContent = 'Editar destinatário de publicações';
-        if (byId('receiverIdInput')) byId('receiverIdInput').value = receiverToEdit.id;
-        if (byId('receiverEditTypeInput')) byId('receiverEditTypeInput').value = receiverToEdit.type;
-        byId('receiverTypeSelectorContainer')?.classList.add('hidden');
-        if (receiverToEdit.type === 'internal') {
-          byId('receiverInternalFields')?.classList.remove('hidden');
-          byId('receiverExternalFields')?.classList.add('hidden');
-          if (userSelect) {
-            userSelect.value = receiverToEdit.userId;
-            userSelect.disabled = true;
-          }
-        } else {
-          byId('receiverInternalFields')?.classList.add('hidden');
-          byId('receiverExternalFields')?.classList.remove('hidden');
-          if (byId('receiverNameInput')) byId('receiverNameInput').value = receiverToEdit.name || '';
-          if (byId('receiverEmailInput')) byId('receiverEmailInput').value = receiverToEdit.email || '';
-        }
-        if (byId('receiverEnabledInput')) byId('receiverEnabledInput').checked = Boolean(receiverToEdit.enabled);
-      } else {
-        if (byId('emailReceiverModalTitle')) byId('emailReceiverModalTitle').textContent = 'Adicionar destinatário de publicações';
-        if (byId('receiverIdInput')) byId('receiverIdInput').value = '';
-        if (byId('receiverEditTypeInput')) byId('receiverEditTypeInput').value = '';
-        byId('receiverTypeSelectorContainer')?.classList.remove('hidden');
-        if (byId('receiverTypeInternal')) byId('receiverTypeInternal').checked = true;
-        if (byId('receiverTypeExternal')) byId('receiverTypeExternal').checked = false;
-        byId('receiverInternalFields')?.classList.remove('hidden');
-        byId('receiverExternalFields')?.classList.add('hidden');
-        if (userSelect) {
-          userSelect.disabled = false;
-          if (activeUsers.length) userSelect.selectedIndex = 0;
-        }
-        if (byId('receiverNameInput')) byId('receiverNameInput').value = '';
-        if (byId('receiverEmailInput')) byId('receiverEmailInput').value = '';
-        if (byId('receiverEnabledInput')) byId('receiverEnabledInput').checked = true;
-      }
-      this.rememberSnapshot('receiver');
+      // Hide internal user selector if present
+      byId('receiverTypeSelectorContainer')?.classList.add('hidden');
+      byId('receiverInternalFields')?.classList.add('hidden');
+      byId('receiverExternalFields')?.classList.remove('hidden');
+
       backdrop.classList.remove('hidden');
       if (documentRef?.body) documentRef.body.style.overflow = 'hidden';
       presentation?.open?.('emailReceiver');
       return true;
     },
 
+    switchReceiverType(type) {
+      const internal = type === 'internal';
+      byId('receiverInternalFields')?.classList.toggle('hidden', !internal);
+      byId('receiverExternalFields')?.classList.toggle('hidden', internal);
+      return internal;
+    },
+
     closeReceiverModal() {
       byId('emailReceiverModalBackdrop')?.classList.add('hidden');
-      initialSnapshots.delete('receiver');
-      if (byId('modalBackdrop')?.classList.contains('hidden') && documentRef?.body) documentRef.body.style.overflow = '';
+      if (documentRef?.body) documentRef.body.style.overflow = '';
       presentation?.close?.('emailReceiver');
     },
 
@@ -430,97 +499,89 @@ export function createEmailIntegrationFeature({
       event?.preventDefault?.();
       const submitButton = byId('receiverSubmitBtn');
       const id = byId('receiverIdInput')?.value;
-      const editType = byId('receiverEditTypeInput')?.value;
       const isEditing = Boolean(id);
-      const isInternal = isEditing ? editType === 'internal' : Boolean(byId('receiverTypeInternal')?.checked);
+      const name = byId('receiverNameInput')?.value?.trim();
+      const email = byId('receiverEmailInput')?.value?.trim();
       const enabled = Boolean(byId('receiverEnabledInput')?.checked);
+
+      if (!name || !email) {
+        showToast('Nome e e-mail são obrigatórios.', 'warning');
+        return false;
+      }
+
       if (submitButton) {
         submitButton.disabled = true;
-        submitButton.textContent = '⏳ Salvando...';
+        submitButton.textContent = 'Salvando...';
       }
+
       try {
-        if (isEditing) {
-          const payload = { enabled };
-          if (!isInternal) {
-            payload.name = byId('receiverNameInput')?.value?.trim();
-            payload.email = byId('receiverEmailInput')?.value?.trim();
-          }
-          const response = await secureFetch(`/api/integrations/email/receivers/${encodeURIComponent(id)}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.message || 'Falha ao atualizar destinatário.');
-          showToast('Destinatário atualizado com sucesso!', 'success');
-        } else {
-          const payload = { type: isInternal ? 'internal' : 'external', enabled };
-          if (isInternal) {
-            payload.userId = byId('receiverUserSelect')?.value;
-            if (!payload.userId) throw new Error('Selecione um usuário ativo.');
-          } else {
-            payload.name = byId('receiverNameInput')?.value?.trim();
-            payload.email = byId('receiverEmailInput')?.value?.trim();
-            if (!payload.name) throw new Error('Informe o nome do destinatário.');
-            if (!payload.email) throw new Error('Informe o e-mail do destinatário.');
-          }
-          const response = await secureFetch('/api/integrations/email/receivers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.message || 'Falha ao cadastrar destinatário.');
-          showToast('Destinatário cadastrado com sucesso!', 'success');
-        }
+        const url = isEditing ? `/api/admin/mail/recipients/${encodeURIComponent(id)}` : '/api/admin/mail/recipients';
+        const method = isEditing ? 'PATCH' : 'POST';
+        const response = await secureFetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ name, email, enabled })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.message || 'Falha ao salvar destinatário.');
+
         this.closeReceiverModal();
+        showToast(`Destinatário ${isEditing ? 'atualizado' : 'adicionado'} com sucesso!`, 'success');
         await this.loadReceivers();
         return true;
       } catch (error) {
-        showToast(error.message || 'Erro ao processar destinatário.', 'error');
+        showToast(error.message || 'Erro ao salvar destinatário.', 'error');
         return false;
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
-          submitButton.textContent = 'Salvar Destinatário';
+          submitButton.textContent = isEditing ? 'Salvar Alterações' : 'Cadastrar Destinatário';
         }
       }
     },
 
-    async toggleReceiver(id, currentEnabled) {
-      if (!id) return false;
+    async toggleReceiver(id, enabled) {
       try {
-        const response = await secureFetch(`/api/integrations/email/receivers/${encodeURIComponent(id)}`, {
+        const response = await secureFetch(`/api/admin/mail/recipients/${encodeURIComponent(id)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ enabled: !currentEnabled })
+          body: JSON.stringify({ enabled })
         });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'Falha ao alterar status.');
-        showToast(`Destinatário ${!currentEnabled ? 'ativado' : 'desativado'}.`, 'success');
+        if (!response.ok) throw new Error('Não foi possível atualizar a situação.');
+        showToast(`Destinatário ${enabled ? 'ativado' : 'pausado'}.`, 'success');
         await this.loadReceivers();
-        return true;
       } catch (error) {
         showToast(error.message || 'Erro ao alterar status.', 'error');
-        return false;
       }
     },
 
     async deleteReceiver(id) {
-      if (!id || !confirmFn('Remover este destinatário das notificações de publicações?')) return false;
+      if (!confirmFn('Deseja realmente remover este destinatário externo?')) return;
       try {
-        const response = await secureFetch(`/api/integrations/email/receivers/${encodeURIComponent(id)}`, {
-          method: 'DELETE', headers: { Accept: 'application/json' }
+        const response = await secureFetch(`/api/admin/mail/recipients/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { Accept: 'application/json' }
         });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'Falha ao remover destinatário.');
-        showToast('Destinatário removido.', 'success');
+        if (!response.ok) throw new Error('Falha ao excluir destinatário.');
+        showToast('Destinatário removido com sucesso.', 'success');
         await this.loadReceivers();
-        return true;
       } catch (error) {
-        showToast(error.message || 'Erro ao remover destinatário.', 'error');
-        return false;
+        showToast(error.message || 'Erro ao excluir destinatário.', 'error');
       }
+    },
+
+    // Legacy SMTP helpers (for rollback mode)
+    openConfigModal() {
+      byId('emailConfigBackdrop')?.classList.remove('hidden');
+      presentation?.open?.('emailConfig');
+    },
+    closeConfigModal() {
+      byId('emailConfigBackdrop')?.classList.add('hidden');
+      presentation?.close?.('emailConfig');
+    },
+    async submitConfig(event) {
+      event?.preventDefault?.();
+      showToast('SMTP Legado desabilitado. O sistema utiliza ATRIUM Mail nativo.', 'warning');
     }
   };
 

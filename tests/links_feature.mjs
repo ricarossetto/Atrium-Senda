@@ -71,7 +71,7 @@ assert.equal(elements.customLinksGrid.innerHTML, '');
 feature.openModal();
 assert.equal(modalCalls.at(-1)[0], 'link');
 assert.deepEqual(modalCalls.at(-1)[3].find(field => field.name === 'category').options, LINK_CATEGORIES);
-assert.deepEqual(LINK_CATEGORIES.map(category => category.label), ['Legislação & Códigos', 'Jurisprudência & Tribunais', 'Ferramentas com IA', 'Órgãos Públicos / Cartórios', 'Outros Links']);
+assert.deepEqual(LINK_CATEGORIES.map(category => category.label), ['Legislação e Códigos', 'Jurisprudência e Tribunais', 'Ferramentas com IA', 'Órgãos Públicos / Cartórios', 'Outros Links']);
 
 const invalidCount = store.state.customLinks.length;
 assert.equal(feature.saveRecord({ title: 'Inválido', url: 'javascript:alert(1)' }), null);
@@ -91,6 +91,8 @@ assert.match(elements.customLinksGrid.innerHTML, /href="https:\/\/www\.example\.
 assert.match(elements.customLinksGrid.innerHTML, /example\.test/);
 assert.match(elements.customLinksGrid.innerHTML, /Link &lt;Sintético&gt;/);
 assert.match(elements.customLinksGrid.innerHTML, /Descrição &lt;segura&gt;/);
+assert.match(elements.customLinksGrid.innerHTML, /link-safety-note is-external/, 'Domínio fora dos oficiais recebe aviso discreto.');
+assert.match(elements.customLinksGrid.innerHTML, /Domínio externo/);
 
 const createdAt = created.createdAt;
 const edited = feature.saveRecord({ title: 'Link Editado', url: 'http://example.test/editado', category: 'Jurisprudência', description: 'Editado' }, created);
@@ -98,6 +100,12 @@ assert.equal(edited.id, created.id);
 assert.equal(edited.createdAt, createdAt);
 assert.equal(store.state.customLinks.length, 1);
 assert.deepEqual(audits.at(-1), { action: 'Link útil atualizado', detail: 'Link Editado' });
+
+store.state.customLinks.push({ id: 'link-oficial', title: 'Planalto', url: 'https://www.planalto.gov.br/ccivil_03/leis/l9503compilado.htm', category: 'Legislação', description: 'Fonte oficial.' });
+feature.render();
+assert.equal((elements.customLinksGrid.innerHTML.match(/link-safety-note/g) || []).length, 1, 'Domínio oficial não recebe aviso; o http do link editado continua sinalizado.');
+assert.match(elements.customLinksGrid.innerHTML, /planalto\.gov\.br/);
+assert.match(elements.customLinksGrid.innerHTML, /link-safety-note is-unsafe/, 'Conexão http é sinalizada como suspeita.');
 
 store.state.customLinks.push({ id: 'invalid-render', title: 'URL inválida', url: 'data:text/html,unsafe', category: 'Outros', description: '' });
 feature.render();

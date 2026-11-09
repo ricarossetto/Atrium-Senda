@@ -26,3 +26,46 @@ export function publicationsInRecentScope(items, { now = new Date(), days = 2 } 
     return !/^\d{4}-\d{2}-\d{2}$/.test(published) || published >= cutoff;
   });
 }
+
+// Merge aliases are compatibility shims for stale clients: the keeper record is
+// the active publication and the alias must never render, count or link.
+function mergedIntimationTarget(item) {
+  const target = item?.mergedInto;
+  if (target === undefined || target === null) return '';
+  if (typeof target === 'object') return String(target.id ?? target.targetId ?? '').trim();
+  return String(target).trim();
+}
+
+export function isMergedIntimation(item) {
+  return mergedIntimationTarget(item) !== '';
+}
+
+export function isActiveIntimation(item) {
+  return !isMergedIntimation(item);
+}
+
+export function activeIntimations(items) {
+  return (Array.isArray(items) ? items : []).filter(isActiveIntimation);
+}
+
+export function resolveIntimationId(items, id) {
+  const records = Array.isArray(items) ? items : [];
+  let current = id;
+  const visited = new Set();
+  while (current !== undefined && current !== null && String(current).trim() !== '') {
+    const key = String(current).trim();
+    if (visited.has(key)) return '';
+    visited.add(key);
+    const record = records.find(item => String(item?.id) === key);
+    if (!record || !isMergedIntimation(record)) return key;
+    current = mergedIntimationTarget(record);
+  }
+  return '';
+}
+
+export function findIntimationRecord(items, id) {
+  const records = Array.isArray(items) ? items : [];
+  const resolved = resolveIntimationId(records, id);
+  if (!resolved) return null;
+  return records.find(item => String(item?.id) === resolved) || null;
+}

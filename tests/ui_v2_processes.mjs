@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { renderInspector, renderRow } from '../js/views/ui-v2/processes-presenter.js';
+import { isProcessEnrichmentCandidate, renderInspector, renderRow } from '../js/views/ui-v2/processes-presenter.js';
 import { prepareUiV2Page, prepareUiV2ProcessesFixture, startUiV2Session } from './ui_v2_helpers.mjs';
 
 const escapeHtml = value => String(value ?? '')
@@ -16,7 +16,8 @@ const unitRecord = {
   id: 'unit-process', number: '5000000-00.2026.8.21.0001', client: 'Cliente <Sintética>', opposingParty: 'Parte & Adversa',
   clientPosition: 'Autor(a)', court: 'TJRS', courtUnit: '1ª Vara', county: 'Ijuí', actionType: 'Obrigação',
   judicialPhase: 'Conhecimento', stage: 'Instrução', lastMovement: 'Despacho integral', lastMovementAt: '2026-08-29',
-  registeredAt: '2026-08-20', monitoring: 'inactive', secrecy: true, risk: 'possivel', feePercentage: 30
+  registeredAt: '2026-08-20', monitoring: 'inactive', secrecy: true, risk: 'possivel', feePercentage: 30,
+  originNumbers: ['5001111-61.2026.8.21.0001']
 };
 const unitRow = renderRow({ item: unitRecord, escapeHtml, formatDate });
 assert.match(unitRow, /data-process-id="unit-process"/);
@@ -25,6 +26,43 @@ assert.match(unitRow, /Monitoramento inativo/);
 assert.match(unitRow, /Probabilidade informada: Possível/);
 assert.match(unitRow, /Segredo de justiça/);
 assert.doesNotMatch(unitRow, /data-tjrs-consult|fetch\(/, 'A linha V2 não pode consultar TJRS nem conter integração de rede.');
+
+const enrichedRecord = {
+  ...unitRecord,
+  tags: ['Enriquecimento eproc', 'varredura-a1'],
+  enrichmentStatus: 'COMPLETE'
+};
+assert.equal(isProcessEnrichmentCandidate(enrichedRecord), false, 'Processo com enriquecimento eproc confirmado não pode continuar candidato.');
+assert.doesNotMatch(renderRow({ item: enrichedRecord, escapeHtml, formatDate }), /Enriquecimento eproc/, 'A marca visual deve desaparecer após confirmação persistida.');
+assert.equal(isProcessEnrichmentCandidate({ ...enrichedRecord, enrichmentStatus: 'PENDING', eprocEnrichmentCompletedAt: '2026-09-16T12:00:00Z' }), true, 'Pendente explícito não pode ser ocultado por timestamp antigo.');
+assert.equal(isProcessEnrichmentCandidate({ ...enrichedRecord, enrichmentStatus: 'RETRYABLE_ERROR', tags: ['varredura-a1'] }), true, 'Erro explícito não pode ser ocultado pela tag legada da varredura.');
+assert.equal(isProcessEnrichmentCandidate({ ...enrichedRecord, enrichmentStatus: 'RETRYABLE_ERROR', tags: ['Enriquecimento eproc'] }), true, 'Falha de enriquecimento deve manter a indicação para nova tentativa.');
+
+// Selos assistivos: tipo de andamento sugerido e lacunas de cadastro (sugestão, nunca dado).
+const triageRow = renderRow({
+  item: { ...unitRecord, county: '' },
+  escapeHtml,
+  formatDate,
+  triage: { movementType: 'decisao', movementConfidence: 0.83, needsAttention: 'sim', missingFields: ['comarca', 'classe'], action: 'suggest' }
+});
+assert.match(triageRow, /process-triage-chip/, 'Selos da triagem assistiva são obrigatórios');
+assert.match(triageRow, /Cadastro incompleto: comarca, classe/, 'Lacunas de cadastro devem ser nomeadas');
+assert.match(triageRow, />Decisão</, 'Tipo de andamento sugerido deve aparecer');
+assert.match(triageRow, /Conferir providência/, 'Sinal de providência deve aparecer');
+assert.match(triageRow, /Nada foi alterado/, 'Tooltip deve declarar que é sugestão');
+assert.match(triageRow, /confiança 83%/, 'Confiança deve ser informada como sugestão');
+
+const noTriageRow = renderRow({ item: unitRecord, escapeHtml, formatDate });
+assert.doesNotMatch(noTriageRow, /process-triage-chip/, 'Sem sugestão vigente não há selo');
+assert.equal(isProcessEnrichmentCandidate({
+  ...unitRecord,
+  id: 'unit-process-jfrs',
+  number: '5000000-00.2026.4.04.7100',
+  source: 'eproc-jfrs',
+  court: 'JFRS',
+  client: '',
+  secrecy: false
+}), true, 'Processo eproc de outro tribunal deve permanecer candidato quando ainda não foi enriquecido.');
 
 const unitInspector = renderInspector({
   item: unitRecord,
@@ -36,11 +74,28 @@ const unitInspector = renderInspector({
 for (const expected of ['Resumo operacional', '2', '1', '1h15m', '2026-09-03', 'Despacho integral', 'Probabilidade informada', '30%']) {
   assert.ok(unitInspector.includes(expected), `Inspector unitário deve preservar: ${expected}`);
 }
+assert.ok(unitInspector.includes('Números anteriores') && unitInspector.includes('5001111-61.2026.8.21.0001'), 'Vínculo de número original deve aparecer na identificação.');
+const degreeInspector = renderInspector({
+  item: { ...unitRecord, number: '5004321-23.2026.8.21.0001' },
+  summary: { openTasks: 0, linkedIntimations: 0, timeMinutes: 0, nextDeadline: null },
+  escapeHtml,
+  formatDate,
+  formatMinutes
+});
+assert.ok(degreeInspector.includes('1º grau'), 'Grau derivado do CNJ válido deve aparecer no inspector.');
+const invalidDegreeInspector = renderInspector({
+  item: { ...unitRecord, number: '5004321-12.2026.8.21.0001' },
+  summary: { openTasks: 0, linkedIntimations: 0, timeMinutes: 0, nextDeadline: null },
+  escapeHtml,
+  formatDate,
+  formatMinutes
+});
+assert.ok(!invalidDegreeInspector.includes('1º grau'), 'Número com DV inválido não pode exibir grau derivado.');
 
 const presenterSource = readFileSync(new URL('../js/views/ui-v2/processes-presenter.js', import.meta.url), 'utf8');
 const featureSource = readFileSync(new URL('../js/features/processes.js', import.meta.url), 'utf8');
 assert.doesNotMatch(presenterSource, /\bStore\b|secureFetch|\bfetch\s*\(|\.save\s*\(|\.flush\s*\(|\/api\//, 'Presenter V2 não pode acessar Store, persistência ou APIs.');
-assert.equal((featureSource.match(/createProcessesFeature/g) || []).length, 1, 'A feature funcional canônica deve continuar única.');
+assert.equal((featureSource.match(/createProcessesFeature/g) || []).length, 1, 'A feature funcional oficial deve continuar única.');
 assert.doesNotMatch(featureSource, /createProcessesV2Feature|setInterval\s*\(/, 'Não pode existir segunda feature ou timer de Processos.');
 
 const session = await startUiV2Session();
@@ -86,7 +141,7 @@ try {
       'Visão financeira do processo', 'Honorários parcelados', 'R$ 1.250,00', 'Recebido', 'R$ 750,00', 'Pendente', 'R$ 500,00', 'Despesas do processo', 'R$ 120,00',
       'Linha do tempo jurídica', 'Audiência sintética vinculada', 'peticao-sintetica.pdf', 'Custas sintéticas', 'Conferência sintética'
     ]) assert.ok(inspectorText.includes(expected), `Inspector deve preservar: ${expected}`);
-    assert.ok(await page.locator('.legal-timeline [data-process-timeline]').count() >= 4, 'Entidades canônicas navegáveis devem aparecer na linha do tempo.');
+    assert.ok(await page.locator('.legal-timeline [data-process-timeline]').count() >= 4, 'Entidades oficiais navegáveis devem aparecer na linha do tempo.');
     assert.equal(await page.locator('[data-process-task]').count(), 3, 'Todas as tarefas vinculadas devem permanecer acessíveis no inspector.');
     assert.equal(await page.locator('#processInspectorTjrs').isVisible(), true);
     assert.equal(await page.locator('#processInspectorDownloadEprocA1').isVisible(), true);
@@ -100,10 +155,12 @@ try {
     ], 'Rodapé deve seguir a ordem operacional solicitada.');
     assert.equal(await page.locator('#processInspector > footer').evaluate(element => getComputedStyle(element).display), 'grid', 'Rodapé deve distribuir as ações em grade 3x3.');
     assert.match(await page.locator('#processInspectorCreateTask').evaluate(element => getComputedStyle(element).backgroundColor), /194, 220, 234/, 'A ação principal do inspetor deve usar azul mineral no tema claro.');
-    assert.equal(await page.locator('#processInspectorAccessKey').textContent(), 'Adicionar Chave');
-    assert.equal(await page.locator('#processInspectorAccessKey').evaluate(el => el.classList.contains('is-available')), true);
+    assert.equal(await page.locator('#processInspectorAccessKey').textContent(), 'Chave de acesso');
+    assert.equal(await page.locator('#processInspectorAccessKey').evaluate(el => el.classList.contains('is-configured')), false, 'Sem chave no cofre, o botão não anuncia estado configurado.');
     assert.equal(await page.locator('#processInspectorDownloadEprocA1').textContent(), 'Baixar Autos com A1');
-    assert.equal(await page.locator('#processInspectorDownloadEprocA1').evaluate(el => el.classList.contains('is-available')), true);
+    assert.equal(await page.locator('#processInspectorDownloadEprocA1').evaluate(el => el.classList.contains('is-available')), false, 'Ações neutras não competem com a ação primária.');
+    assert.equal(await page.locator('#processInspectorTjrs').textContent(), 'Atualizar com Certificado');
+    assert.equal(await page.locator('#processInspectorEdit').evaluate(el => el.classList.contains('process-edit-action')), false, 'Editar processo não deve ter destaque dourado próprio.');
     await page.locator('#processInspectorAccessKey').click();
     assert.equal(await page.locator('#processAccessKeyBackdrop:not(.hidden)').count(), 1);
     assert.equal(await page.locator('#processAccessKeyNumber').textContent(), '5004321-12.2026.8.21.0001');
@@ -128,7 +185,7 @@ try {
     let tjrsRequests = 0;
     let requestPayload;
     let tjrsMode = 'success';
-    await page.route('**/api/integrations/tjrs-sidecar/processes/sync', async route => {
+    await page.route('**/api/integrations/eproc/processes/enrich-single', async route => {
       tjrsRequests++;
       requestPayload = route.request().postDataJSON();
       await route.fulfill({
@@ -138,24 +195,24 @@ try {
           ? {
               ok: true,
               revision: requestPayload.revision,
-              process: { ...fixture.processes[0], lastMovement: 'Snapshot local sintético incorporado', lastMovementAt: '2026-09-03' },
-              message: 'Snapshot local sintético incorporado.'
+              process: { ...fixture.processes[0], lastMovement: 'Capa oficial atualizada pelo eproc', lastMovementAt: '2026-09-03' },
+              message: 'Processo 5004321-12.2026.8.21.0001 atualizado via Certificado A1!'
             }
           : { ok: false, message: 'Falha sintética controlada.' })
       });
     });
     await page.locator('#processInspectorTjrs').click();
-    await page.locator('#toastRegion .toast.success', { hasText: 'Snapshot local sintético incorporado.' }).waitFor();
+    await page.locator('#toastRegion .toast.success', { hasText: 'atualizado via Certificado A1' }).waitFor();
     assert.equal(tjrsRequests, 1);
     assert.equal(requestPayload.processId, 'ui-v2-process-tjrs');
     assert.equal(requestPayload.processNumber, '5004321-12.2026.8.21.0001');
-    assert.ok(requestPayload.revision, 'Atualização do snapshot deve carregar a revisão canônica.');
+    assert.ok(requestPayload.revision, 'Atualização pelo eproc deve carregar a revisão oficial.');
     assert.equal(await page.locator('#processInspectorTjrs').isDisabled(), false);
 
     tjrsMode = 'failure';
     await page.locator('#processInspectorTjrs').click();
     await page.locator('#toastRegion .toast.error', { hasText: 'Falha sintética controlada.' }).waitFor();
-    assert.equal(tjrsRequests, 2, 'Cada ação explícita deve gerar uma operação TJRS.');
+    assert.equal(tjrsRequests, 2, 'Cada ação explícita deve gerar uma operação eproc.');
     assert.equal(await page.locator('#processInspectorTjrs').isDisabled(), false, 'Botão deve ser restaurado após falha.');
 
     let accessKeyPayload;
@@ -172,8 +229,7 @@ try {
     await page.locator('[data-process-access-key]').click();
     await page.locator('#processAccessKeyInput').fill('CHAVE-SINTETICA-UI');
     await page.locator('#processAccessKeySave').click();
-    await page.locator('#toastRegion .toast.success', { hasText: 'Chave validada e processo atualizado' }).waitFor();
-    assert.equal(accessKeyPayload.processNumber, '5004321-12.2026.8.21.0001');
+    await page.locator('#toastRegion .toast.success', { hasText: 'Chave validada e processo atualizado' }).waitFor();    assert.equal(accessKeyPayload.processNumber, '5004321-12.2026.8.21.0001');
     assert.equal(accessKeyPayload.accessKey, 'CHAVE-SINTETICA-UI');
     assert.equal(tjrsRequests, 3, 'Guardar a chave deve incorporar automaticamente os dados recém-consultados.');
     assert.equal(await page.locator('#processAccessKeyBackdrop.hidden').count(), 1);
@@ -189,7 +245,7 @@ try {
     await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
     await page.locator('[data-process-client]').click();
     await page.locator('#view-contacts.active').waitFor();
-    assert.match(await page.locator('#contactInspector').textContent(), /Cliente Sintética Processos/, 'O nome do cliente deve abrir o contato canônico.');
+    assert.match(await page.locator('#contactInspector').textContent(), /Cliente Sintética Processos/, 'O nome do cliente deve abrir o contato oficial.');
     await page.evaluate(() => { window.Atrium.App.switchView('processes'); window.Atrium.App.renderProcesses(''); });
     await page.locator('#processTableBody [data-process-id="ui-v2-process-tjrs"] [data-process-details]').click();
     await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
@@ -199,8 +255,8 @@ try {
     assert.equal(await page.locator('.process-form-section').count(), 8);
     const names = await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name));
     const expectedNames = [
-      'number', 'oldNumber', 'nb', 'client', 'clientPosition', 'opposingParty', 'actionGroup', 'actionType', 'judicialPhase', 'risk', 'stage',
-      'protocol', 'caseFolder', 'court', 'county', 'courtUnit', 'responsible', 'registeredAt', 'lastMovementAt', 'lastMovement', 'feeType',
+      'number', 'oldNumber', 'originNumbers', 'nb', 'client', 'clientPosition', 'opposingParty', 'actionGroup', 'actionType', 'judicialPhase', 'risk', 'stage',
+      'protocol', 'caseFolder', 'court', 'county', 'courtUnit', 'responsible', 'responsibleUserId', 'registeredAt', 'lastMovementAt', 'lastMovement', 'feeType',
       'feePercentage', 'feeAmount', 'feeMonthly', 'feeStatus', 'requisitionType', 'requisitionAmount', 'requisitionBank', 'requisitionStatus',
       'feeNotes', 'secrecy', 'monitoring', 'notes'
     ];
@@ -270,6 +326,8 @@ try {
     await page.locator('#modalBackdrop[data-modal-mode="process"]:not(.hidden)').waitFor();
     assert.equal(await page.locator('#processTjrsPreview').isVisible(), true);
     await page.locator('#field-number').fill('0000001-58.2099.8.21.0000');
+    await page.locator('[data-cnj-hint]').waitFor();
+    assert.match(await page.locator('[data-cnj-hint]').textContent(), /Tribunal de Justiça \(RS\) · Competência originária/, 'CNJ válido deve indicar tribunal e grau derivado do OOOO.');
     await page.locator('#processTjrsPreview').click();
     await page.locator('#processTjrsPreviewStatus', { hasText: 'Dados judiciais carregados para revisão.' }).waitFor();
     assert.deepEqual(previewPayload, { processNumber: '0000001-58.2099.8.21.0000' });
@@ -284,6 +342,8 @@ try {
     ]);
     await page.locator('#field-court').fill('Órgão revisado manualmente');
     await page.locator('#field-number').fill('5001111-00.2026.8.21.0001');
+    assert.match(await page.locator('[data-cnj-hint]').textContent(), /Dígito verificador não confere/, 'DV inválido deve avisar no formulário.');
+    assert.equal(await page.locator('[data-cnj-fix]').isVisible(), true, 'Correção sugerida deve estar disponível.');
     assert.equal(await page.locator('#field-court').inputValue(), 'Órgão revisado manualmente', 'Campo alterado pelo usuário deve sobreviver à invalidação do draft.');
     assert.equal(await page.locator('#field-actionType').inputValue(), '', 'Sugestão judicial antiga deve ser removida quando o CNJ muda.');
     assert.equal(await page.locator('#field-lastMovement').inputValue(), '', 'Andamento do CNJ anterior não pode permanecer no formulário.');

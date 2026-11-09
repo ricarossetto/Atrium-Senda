@@ -13,8 +13,8 @@ try {
     if (!await Store.flush()) throw new Error('Fixture save failed');
   });
 
-  assert.equal(await page.locator('[data-view="kanban"] span:last-child').textContent(), 'Gestão de tarefas');
-  assert.equal(await page.locator('#view-kanban').getAttribute('data-title'), 'Gestão de tarefas');
+  assert.equal(await page.locator('[data-view="kanban"] span:last-child').textContent(), 'Tarefas');
+  assert.equal(await page.locator('#view-kanban').getAttribute('data-title'), 'Tarefas');
   assert.equal(await page.locator('#taskKanbanViewButton').getAttribute('aria-pressed'), 'true');
   assert.equal(await page.locator('#kanbanBoard').isVisible(), true);
   assert.equal(await page.locator('#taskListPanel').isHidden(), true);
@@ -25,7 +25,7 @@ try {
   assert.equal(await page.locator('#kanbanBoard').isHidden(), true);
   assert.equal(await page.locator('#taskListPanel').isVisible(), true);
   assert.equal(await page.locator('#taskListSummary article').count(), 4);
-  assert.equal(await page.locator('#taskList [data-task-list-id]').count(), 6);
+  assert.equal(await page.locator('#taskList [data-task-list-id]').count(), 5);
   assert.equal(await page.evaluate(() => localStorage.getItem('atrium:tasks:view')), 'list');
 
   await page.locator('#taskListSearch').fill('5022222-22.2026');
@@ -36,6 +36,7 @@ try {
   assert.equal(await page.locator('#taskList [data-task-list-id]').count(), 1);
   assert.match(await page.locator('#taskList').textContent(), /Providência sintética concluída/);
   await page.locator('#taskListStatusFilter').selectOption('all');
+  assert.equal(await page.locator('#taskList [data-task-list-id]').count(), 6);
   await page.locator('#taskListSort').selectOption('priority');
   assert.equal(await page.locator('#taskList [data-task-list-id]').first().getAttribute('data-task-list-id'), 'ui-v2-task-overdue');
 
@@ -50,7 +51,7 @@ try {
   await page.evaluate(() => window.Atrium.App.switchView('kanban'));
   await page.locator('#taskListPanel:not(.hidden)').waitFor();
   assert.equal(await page.locator('#taskListViewButton').getAttribute('aria-pressed'), 'true', 'A preferência visual deve sobreviver ao reload.');
-  assert.equal(await page.locator('#taskList [data-task-list-id]').count(), 6);
+  assert.equal(await page.locator('#taskList [data-task-list-id]').count(), 5);
 
   await page.locator('#taskKanbanViewButton').click();
   assert.equal(await page.locator('#kanbanBoard').isVisible(), true);

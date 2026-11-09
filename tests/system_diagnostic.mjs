@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { generateTotp } from '../lib/security.mjs';
 import { startTestServer } from './helpers.mjs';
+// O teste verifica o estado sem chave: a chave da máquina não pode valer aqui.
+delete process.env.GEMINI_API_KEY;
 
 console.log('\n=== TESTES DE DIAGNÓSTICO DO SISTEMA, BACKUPS & FEEDBACK BETA ===\n');
 
@@ -65,7 +67,8 @@ try {
   const verifyData = await verifyResp.json();
   const cookies = verifyResp.headers.get('set-cookie');
   const sessionCookie = cookies ? cookies.split(';')[0] : '';
-  const authHeaders = { Cookie: sessionCookie, 'Content-Type': 'application/json', 'X-CSRF-Token': verifyData.csrfToken };
+  const authStatus = await (await fetch(`${server.baseUrl}/api/auth/status`, { headers: { Cookie: sessionCookie } })).json();
+  const authHeaders = { Cookie: sessionCookie, 'Content-Type': 'application/json', 'X-CSRF-Token': authStatus.csrfToken };
 
   // 2. Testar Endpoint de Diagnóstico do Sistema
   console.log('1. Validando endpoint /api/system/diagnostic...');
@@ -103,11 +106,13 @@ try {
 
   // 4. Testar Criação de Backup Criptografado
   console.log('\n3. Validando geração de backup cifrado (.atrium-backup)...');
+  // Backup exige reautenticação; o código de agora já foi usado no cadastro e não vale de novo.
   const backupResp = await fetch(`${server.baseUrl}/api/system/backup/create`, {
     method: 'POST',
-    headers: authHeaders
+    headers: authHeaders,
+    body: JSON.stringify({ password: 'SenhaForte123!@#', code: generateTotp(setupData.manualSecret, Math.floor(Date.now() / 30_000) + 1) })
   });
-  assert.equal(backupResp.status, 200, 'Criação de backup deve retornar 200');
+  assert.equal(backupResp.status, 200, `Criação de backup deve retornar 200: ${await backupResp.clone().text()}`);
   const backupData = await backupResp.json();
   assert.equal(backupData.ok, true);
   assert.ok(backupData.backupData.encryptedState, 'Backup deve conter estado cifrado');

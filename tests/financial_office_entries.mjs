@@ -142,6 +142,35 @@ try {
   await page.waitForFunction(() => window.Atrium?.Store?.state?.contacts?.find(c => c.id === 'finance-contact')?.receipts?.length === 2);
   assert.equal(await page.evaluate(() => window.Atrium.Store.state.officeExpenses.length), 0);
   assert.equal(await page.evaluate(id => window.Atrium.Store.state.contacts.find(c => c.id === 'finance-contact').receipts.some(r => r.id === id && r.amount === 20), correctionId), true);
+  // Autor do lançamento é carimbado pelo servidor: valor vindo do cliente é ignorado
+  // e vínculo inexistente vira "sem vínculo". Cobre o caminho de mutação real.
+  await page.evaluate(async () => {
+    const store = window.Atrium.Store;
+    store.state.officeExpenses.push({
+      id: 'fin-forged-author',
+      description: 'Despesa sintética com autor forjado',
+      amount: 11,
+      status: 'pendente',
+      date: '2026-09-02',
+      createdAt: new Date().toISOString(),
+      createdByUserId: 'usuario-forjado',
+      processId: 'processo-inexistente'
+    });
+    store.save();
+    if (!await store.flush()) throw Error('Synthetic forged entry was not saved');
+  });
+  await page.reload();
+  await page.waitForFunction(() => window.Atrium?.Store?.state?.officeExpenses?.some(entry => entry.id === 'fin-forged-author'));
+  const stamped = await page.evaluate(async () => {
+    const entry = window.Atrium.Store.state.officeExpenses.find(item => item.id === 'fin-forged-author');
+    const office = await (await window.AtriumAuth.secureFetch('/api/office', { headers: { Accept: 'application/json' } })).json();
+    const self = (office.members || []).find(member => member.role === 'master_admin');
+    return { createdByUserId: entry.createdByUserId, processId: entry.processId, selfId: self?.id };
+  });
+  assert.ok(stamped.selfId, 'Sessão sintética sem id de membro.');
+  assert.notEqual(stamped.createdByUserId, 'usuario-forjado', 'autor forjado pelo cliente é descartado');
+  assert.equal(stamped.createdByUserId, stamped.selfId, 'autor é o ator autenticado');
+  assert.equal(stamped.processId, null, 'vínculo órfão vira sem vínculo');
   await context.close();
   console.log('PASS office expense persistence, reload, search and reopening');
 } finally { await session.stop(); }

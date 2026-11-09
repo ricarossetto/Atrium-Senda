@@ -3,7 +3,8 @@ import {
   collectUiV2LayoutEvidence,
   prepareUiV2Page,
   startUiV2Session,
-  switchUiV2View
+  switchUiV2View,
+  UI_V2_PRIMARY_NAV_VIEWS
 } from './ui_v2_helpers.mjs';
 
 console.log('\n===============================================================');
@@ -37,7 +38,7 @@ try {
     assert.equal(iconEvidence.focusable, 0, 'Nenhum SVG decorativo pode receber foco.');
     assert.deepEqual(iconEvidence.unnamedControls, [], 'Todo controle icon-only deve possuir nome acessível.');
     assert.deepEqual(iconEvidence.duplicateIds, []);
-    assert.equal(new Set(iconEvidence.spriteRequests.map(entry => entry.name)).size, 1, 'Todos os usos devem apontar para o mesmo recurso local canônico.');
+    assert.equal(new Set(iconEvidence.spriteRequests.map(entry => entry.name)).size, 1, 'Todos os usos devem apontar para o mesmo recurso local oficial.');
     assert.ok(iconEvidence.spriteRequests.length < iconEvidence.total / 10, `O sprite não pode gerar um request por ícone; ${iconEvidence.spriteRequests.length} entradas para ${iconEvidence.total} ícones.`);
 
     for (const [selector, name] of [
@@ -88,7 +89,7 @@ try {
       await page.keyboard.press('Enter');
       await page.locator('#sidebar.open').waitFor();
       assert.equal(await menu.getAttribute('aria-expanded'), 'true');
-      const mobileIcons = await page.evaluate(() => [...document.querySelectorAll('.nav-item[data-view]')].map(item => {
+      const mobileIcons = await page.evaluate(() => [...document.querySelectorAll('.nav-item[data-view]:not(.is-admin-only)')].map(item => {
         const icon = item.querySelector('svg.atrium-icon');
         const use = icon?.querySelector('use');
         const itemRect = item.getBoundingClientRect();
@@ -107,10 +108,10 @@ try {
           verticallyCentered: iconRect ? Math.abs((itemRect.top + itemRect.height / 2) - (iconRect.top + iconRect.height / 2)) <= 2 : false
         };
       }));
-      assert.equal(mobileIcons.length, 16);
-      assert.ok(mobileIcons.every(icon => icon.href?.startsWith('assets/icons/atrium-ui-icons.svg#atrium-icon-')));
+      assert.equal(mobileIcons.length, UI_V2_PRIMARY_NAV_VIEWS.length);
+      assert.ok(mobileIcons.every(icon => /^assets\/icons\/atrium-ui-icons\.svg(?:\?v=[^#]+)?#atrium-icon-/.test(icon.href || '')));
       assert.ok(mobileIcons.every(icon => icon.width >= 18 && icon.width <= 20 && icon.height >= 18 && icon.height <= 20), 'Containers óticos devem permanecer entre 18 e 20px.');
-      assert.ok(mobileIcons.every(icon => icon.glyphWidth > 0 && icon.glyphHeight > 0), 'Os 16 símbolos da navegação primária devem renderizar geometria visível.');
+      assert.ok(mobileIcons.every(icon => icon.glyphWidth > 0 && icon.glyphHeight > 0), 'Os símbolos da navegação primária devem renderizar geometria visível.');
       assert.ok(mobileIcons.every(icon => icon.verticallyCentered), 'Ícones mobile devem permanecer centralizados verticalmente.');
 
       const layout = await collectUiV2LayoutEvidence(page);

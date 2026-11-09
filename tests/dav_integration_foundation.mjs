@@ -137,7 +137,7 @@ try {
   await assert.rejects(() => productionPolicy.validateUrl('https://user:secret@public.example.test/dav'), /credenciais embutidas/);
 
   const source = await readFile(new URL('../lib/dav/dav-integration-service.mjs', import.meta.url), 'utf8');
-  assert.doesNotMatch(source, /Store\.|store\.state|createAgendaFeature|createContactsFeature|setInterval/, 'Foundation DAV não pode mutar autoridades canônicas ou criar sync automático.');
+  assert.doesNotMatch(source, /Store\.|store\.state|createAgendaFeature|createContactsFeature|setInterval/, 'Foundation DAV não pode mutar autoridades oficiais ou criar sync automático.');
   assert.equal((await readdir(tempRoot)).some(name => name.includes('.tmp-')), false, 'Cofre DAV não pode deixar temporários.');
 
   console.log('✓ DAV foundation: cofre cifrado, status experimental, mock local, SSRF, redirects, limites e transferências explícitas PASS.');

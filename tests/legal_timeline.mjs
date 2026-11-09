@@ -45,4 +45,4 @@ assert.equal(autosTimeline[0].id, 'process:process-timeline:registered', 'Na ord
 assert.equal(autosTimeline[autosTimeline.length - 1].id, 'deadline:task-one', 'Na ordem cronológica dos autos, o último prazo deve ficar ao final.');
 assert.ok(autosTimeline.findIndex(e => e.id === 'document:document-one') < autosTimeline.findIndex(e => e.id === 'movement:process-timeline:movement-one'), 'Autos devem seguir ordem cronológica crescente.');
 
-console.log('Linha do tempo jurídica aprovada: derivação canônica, ordenação por data e ordem dos autos (0 a N), escopo e destinos navegáveis.');
+console.log('Linha do tempo jurídica aprovada: derivação oficial, ordenação por data e ordem dos autos (0 a N), escopo e destinos navegáveis.');

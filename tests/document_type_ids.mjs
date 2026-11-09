@@ -49,7 +49,7 @@ try {
     'declaracao_hipo',
     'quesitos_prev',
     'prestacao_contas_rpv'
-  ], 'Cards novos devem usar somente os IDs canônicos definidos para os cinco modelos atuais.');
+  ], 'Cards novos devem usar somente os IDs oficiais definidos para os cinco modelos atuais.');
 
   const expectedHeadings = new Map([
     ['procuracao', 'PROCURAÇÃO "AD JUDICIA ET EXTRA"'],
@@ -61,7 +61,7 @@ try {
   for (const [type, heading] of expectedHeadings) {
     await page.locator(`[data-generate-doc-type="${type}"]`).click();
     await page.locator('#docGeneratorBackdrop:not(.hidden)').waitFor();
-    assert.equal(await page.locator('#docGenTypeSelect').inputValue(), type, `Card ${type} deve selecionar seu ID canônico.`);
+    assert.equal(await page.locator('#docGenTypeSelect').inputValue(), type, `Card ${type} deve selecionar seu ID oficial.`);
     assert.match(await page.locator('#docGenPreviewText').inputValue(), new RegExp(escapeRegex(heading)), `Card ${type} deve acionar o gerador correto.`);
     await page.click('#docGenClose');
     await page.locator('#docGeneratorBackdrop').waitFor({ state: 'hidden' });
@@ -82,7 +82,7 @@ try {
     { type: 'prestacao_contas_rpv' },
     { type: 'contrato_honorarios' },
     { type: 'procuracao' }
-  ], 'Atalhos Financeiro, Processos e Contatos devem usar IDs canônicos.');
+  ], 'Atalhos Financeiro, Processos e Contatos devem usar IDs oficiais.');
 
   const aliases = await page.evaluate(() => {
     const app = window.portalApp;
@@ -101,7 +101,7 @@ try {
     hipossuficiencia: { opened: true, canonical: 'declaracao_hipo' },
     quesitos: { opened: true, canonical: 'quesitos_prev' },
     prestacao_contas: { opened: true, canonical: 'prestacao_contas_rpv' }
-  }, 'Aliases legados devem ser explícitos e resolver para IDs canônicos.');
+  }, 'Aliases legados devem ser explícitos e resolver para IDs oficiais.');
 
   const defaultType = await page.evaluate(() => {
     const app = window.portalApp;

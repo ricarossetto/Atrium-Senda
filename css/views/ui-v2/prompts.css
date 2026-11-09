@@ -20,7 +20,7 @@ html[data-ui="v2"] #view-prompts .toolbar-copy { display: none; }
 html[data-ui="v2"] .v2-prompts-heading p {
   margin: 0 0 var(--v2-space-1);
   color: var(--v2-color-gold);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 850;
   letter-spacing: .13em;
   text-transform: uppercase;
@@ -29,7 +29,7 @@ html[data-ui="v2"] .v2-prompts-heading p {
 html[data-ui="v2"] .v2-prompts-heading h2 {
   margin: 0;
   color: var(--v2-color-foreground);
-  font: 600 clamp(28px, 2.3vw, 38px)/1.06 var(--v2-font-editorial);
+  font: 600 clamp(20px, 2.3vw, 24px)/1.06 var(--v2-font-editorial);
   letter-spacing: -.025em;
 }
 
@@ -83,7 +83,7 @@ html[data-ui="v2"] #view-prompts .prompts-search-label {
   display: block;
   margin-bottom: var(--v2-space-2);
   color: var(--v2-color-foreground-secondary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -161,7 +161,7 @@ html[data-ui="v2"] #view-prompts .prompts-filter-group {
 
 html[data-ui="v2"] #view-prompts .prompts-filter-group label {
   color: var(--v2-color-foreground-secondary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -194,7 +194,7 @@ html[data-ui="v2"] #promptsCountDisplay {
   background: var(--v2-color-gold-soft);
   border: 1px solid color-mix(in srgb, var(--v2-color-gold) 28%, transparent);
   border-radius: var(--v2-radius-round);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
 }
@@ -208,13 +208,13 @@ html[data-ui="v2"] #promptsCategoryChips {
 }
 
 html[data-ui="v2"] #promptsCategoryChips .prompt-chip {
-  min-height: 38px;
+  min-height: 40px;
   padding: 0 var(--v2-space-3);
   color: var(--v2-color-foreground-secondary);
   background: transparent;
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-round);
-  font: 700 10px/1 var(--v2-font-interface);
+  font: 700 12px/1 var(--v2-font-interface);
   letter-spacing: .015em;
   box-shadow: none;
   transition: color var(--v2-duration-base) var(--v2-ease-standard), background var(--v2-duration-base) var(--v2-ease-standard), border-color var(--v2-duration-base) var(--v2-ease-standard), transform var(--v2-duration-base) var(--v2-ease-standard);
@@ -263,21 +263,18 @@ html[data-ui="v2"] #promptsGrid .prompt-library-card {
   transition: transform var(--v2-duration-base) var(--v2-ease-standard), border-color var(--v2-duration-base) var(--v2-ease-standard), box-shadow var(--v2-duration-base) var(--v2-ease-standard);
 }
 
-html[data-ui="v2"] #promptsGrid .prompt-library-card::before {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  content: "";
-  background: var(--v2-color-primary);
-  opacity: .65;
+/* A faixa de acento de 3px era um ::before: qualquer pseudo-elemento com
+   conteúdo em um ancestral torna o texto do cartão impossível de medir pelo
+   gate de contraste. Borda real preserva o acento sem bloquear a medição. */
+html[data-ui="v2"] #promptsGrid .prompt-library-card {
+  border-left: 3px solid color-mix(in srgb, var(--v2-color-primary) 62%, var(--v2-color-surface));
 }
 
 html[data-ui="v2"] #promptsGrid .prompt-library-card.custom-card {
   background: color-mix(in srgb, var(--v2-color-gold-soft) 26%, var(--v2-color-surface));
   border-color: color-mix(in srgb, var(--v2-color-gold) 32%, var(--v2-color-border));
+  border-left-color: color-mix(in srgb, var(--v2-color-gold) 88%, var(--v2-color-surface));
 }
-
-html[data-ui="v2"] #promptsGrid .prompt-library-card.custom-card::before { background: var(--v2-color-gold); opacity: .9; }
 
 html[data-ui="v2"] #promptsGrid .prompt-library-card:hover {
   border-color: var(--v2-color-primary);
@@ -307,7 +304,7 @@ html[data-ui="v2"] #promptsGrid .prompt-type-badge {
   background: var(--v2-color-surface-secondary);
   border: 1px solid var(--v2-color-border-subtle);
   border-radius: var(--v2-radius-round);
-  font: 800 8.5px/1 var(--v2-font-interface);
+  font: 800 10px/1 var(--v2-font-interface);
   letter-spacing: .065em;
   text-transform: uppercase;
 }
@@ -345,7 +342,7 @@ html[data-ui="v2"] #promptsGrid .prompt-title {
   overflow: hidden;
   margin: 0;
   color: var(--v2-color-foreground);
-  font: 750 17px/1.28 var(--v2-font-interface);
+  font: 750 18px/1.28 var(--v2-font-interface);
   letter-spacing: -.012em;
 }
 
@@ -354,7 +351,7 @@ html[data-ui="v2"] #promptsGrid .prompt-desc {
   margin: var(--v2-space-2) 0 0;
   overflow: hidden;
   color: var(--v2-color-foreground-secondary);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.55;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -373,7 +370,7 @@ html[data-ui="v2"] #promptsGrid .prompt-tag {
   background: transparent;
   border: 1px solid var(--v2-color-border-subtle);
   border-radius: var(--v2-radius-sm);
-  font: 700 9px/1.2 var(--v2-font-interface);
+  font: 700 10px/1.2 var(--v2-font-interface);
 }
 
 html[data-ui="v2"] #promptsGrid .prompt-box {
@@ -397,6 +394,16 @@ html[data-ui="v2"] #promptsGrid .prompt-box {
 
 html[data-ui="v2"] #promptsGrid .prompt-box:hover .prompt-text,
 html[data-ui="v2"] #promptsGrid .prompt-box:focus-visible .prompt-text { color: var(--v2-color-foreground); }
+
+/* Indicação explícita de que o trecho é parcial: sem ela, o cartão corta o
+   texto do prompt sem informar que há mais conteúdo. */
+html[data-ui="v2"] #promptsGrid .prompt-box-more {
+  display: block;
+  margin-top: var(--v2-space-1);
+  color: var(--v2-color-primary);
+  font-size: 12px;
+  font-weight: 650;
+}
 
 html[data-ui="v2"] #promptsGrid .prompt-box:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--v2-color-focus) 38%, transparent);
@@ -433,14 +440,15 @@ html[data-ui="v2"] #promptsGrid .prompt-card-actions {
 }
 
 html[data-ui="v2"] #promptsGrid .prompt-card-actions .button {
-  min-width: 0;
-  width: auto;
-  height: 32px;
-  min-height: 32px;
-  max-height: 32px;
-  flex: 1 1 112px;
-  padding: 0 10px;
-  font: 750 10px/1.2 var(--v2-font-interface);
+min-width: 0;
+width: auto;
+/* Alvo de toque: o botão de ação do cartão tinha 32px de altura. */
+height: 40px;
+min-height: 40px;
+max-height: 40px;
+flex: 1 1 112px;
+padding: 0 10px;
+font: 750 12px/1.2 var(--v2-font-interface);
   box-shadow: none;
 }
 
@@ -481,10 +489,23 @@ html[data-ui="v2"] .prompt-preview-dialog > footer {
 
 html[data-ui="v2"] .prompt-preview-dialog > header { border-bottom: 1px solid var(--v2-color-border); }
 html[data-ui="v2"] .prompt-preview-dialog > footer { justify-content: flex-end; border-top: 1px solid var(--v2-color-border); }
-html[data-ui="v2"] .prompt-preview-dialog > header p { margin: 0 0 3px; color: var(--v2-color-gold); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-html[data-ui="v2"] .prompt-preview-dialog > header h2 { margin: 0; font: 600 25px/1.15 var(--v2-font-editorial); }
+html[data-ui="v2"] .prompt-preview-dialog > header p { margin: 0 0 3px; color: var(--v2-color-gold); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+html[data-ui="v2"] .prompt-preview-dialog > header h2 { margin: 0; font: 600 24px/1.15 var(--v2-font-editorial); }
 html[data-ui="v2"] .prompt-preview-body { min-height: 0; overflow: auto; padding: var(--v2-space-5); }
-html[data-ui="v2"] #promptPreviewText { margin: 0; color: var(--v2-color-foreground); font: 500 15px/1.75 var(--v2-font-interface); overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* Descrição integral do prompt na prévia. O cartão corta em três linhas, então a
+   superfície de detalhe precisa devolver o texto completo sem cortes. */
+html[data-ui="v2"] .prompt-preview-description {
+  margin: 0 0 var(--v2-space-4);
+  padding-bottom: var(--v2-space-4);
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+  color: var(--v2-color-foreground-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+html[data-ui="v2"] #promptPreviewText { margin: 0; color: var(--v2-color-foreground); font: 500 16px/1.75 var(--v2-font-interface); overflow-wrap: anywhere; white-space: pre-wrap; }
 
 html[data-ui="v2"] #promptPreviewUse {
   color: var(--v2-action-primary-text) !important;
@@ -547,8 +568,8 @@ html[data-ui="v2"] #promptsGrid .prompts-empty {
   border-radius: var(--v2-radius-xl);
 }
 
-html[data-ui="v2"] #promptsGrid .prompts-empty .empty-icon { margin: 0; color: var(--v2-color-gold); font-size: 30px; }
-html[data-ui="v2"] #promptsGrid .prompts-empty h3 { margin: 0; color: var(--v2-color-foreground); font: 600 21px/1.2 var(--v2-font-editorial); }
+html[data-ui="v2"] #promptsGrid .prompts-empty .empty-icon { margin: 0; color: var(--v2-color-gold); font-size: 32px; }
+html[data-ui="v2"] #promptsGrid .prompts-empty h3 { margin: 0; color: var(--v2-color-foreground); font: 600 20px/1.2 var(--v2-font-editorial); }
 html[data-ui="v2"] #promptsGrid .prompts-empty p { max-width: 440px; margin: 0; font-size: 12px; line-height: 1.5; }
 
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] {
@@ -582,7 +603,7 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] .modal > header {
 }
 
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] #modalEyebrow { color: var(--v2-color-gold); }
-html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] #modalTitle { font-family: var(--v2-font-editorial); font-size: 25px; letter-spacing: -.015em; }
+html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] #modalTitle { font-family: var(--v2-font-editorial); font-size: 24px; letter-spacing: -.015em; }
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] #modalClose { min-width: 44px; min-height: 44px; }
 
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] #modalForm {
@@ -622,7 +643,7 @@ html[data-ui="v2"] .prompt-form-section {
 html[data-ui="v2"] .prompt-form-section legend {
   padding: 0 var(--v2-space-2);
   color: var(--v2-color-gold);
-  font: 850 9px/1.2 var(--v2-font-interface);
+  font: 850 10px/1.2 var(--v2-font-interface);
   letter-spacing: .09em;
   text-transform: uppercase;
 }
@@ -630,7 +651,7 @@ html[data-ui="v2"] .prompt-form-section legend {
 html[data-ui="v2"] .prompt-form-section .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--v2-space-3); }
 html[data-ui="v2"] .prompt-form-section .field { min-width: 0; }
 html[data-ui="v2"] .prompt-form-section .field.full { grid-column: 1 / -1; }
-html[data-ui="v2"] .prompt-form-section .field label { color: var(--v2-color-foreground-secondary); font-size: 10px; }
+html[data-ui="v2"] .prompt-form-section .field label { color: var(--v2-color-foreground-secondary); font-size: 12px; }
 html[data-ui="v2"] .prompt-form-section textarea[name="prompt"] { min-height: 280px; resize: vertical; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; line-height: 1.55; }
 
 @keyframes prompt-drawer-in {
@@ -653,7 +674,7 @@ html[data-ui="v2"] .prompt-form-section textarea[name="prompt"] { min-height: 28
 @media (max-width: 760px) {
   html[data-ui="v2"] #promptsGrid { grid-template-columns: 1fr; }
   html[data-ui="v2"] #view-prompts > .section-toolbar { grid-template-columns: 1fr; align-items: stretch; gap: var(--v2-space-4); }
-  html[data-ui="v2"] .v2-prompts-heading h2 { font-size: 28px; }
+  html[data-ui="v2"] .v2-prompts-heading h2 { font-size: 32px; }
   html[data-ui="v2"] #view-prompts .toolbar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: stretch; }
   html[data-ui="v2"] #view-prompts .toolbar-actions .button { min-width: 0; justify-content: center; }
   html[data-ui="v2"] #view-prompts .prompts-filter-bar { gap: var(--v2-space-3); padding: var(--v2-space-3) !important; }
@@ -685,4 +706,15 @@ html[data-ui="v2"] .prompt-form-section textarea[name="prompt"] { min-height: 28
     transition-duration: .001ms !important;
     transform: none !important;
   }
+}
+
+/* Dourado de marca em texto pequeno não alcança 4,5:1 no tema claro
+   (2,67:1 a 3:1 medidos). O passo forte verificado mantém a identidade. */
+html[data-theme="light"] #promptsCountDisplay,
+html[data-theme="light"] #promptsGrid .prompt-library-origin.custom-prompt-badge,
+html[data-theme="light"] .prompt-form-section legend,
+html[data-theme="light"] .prompt-preview-dialog > header p,
+html[data-theme="light"] #modalBackdrop[data-modal-mode="prompt"] #modalEyebrow,
+html[data-theme="light"] #view-prompts .v2-prompts-heading p {
+  color: #7A5C24;
 }

@@ -35,6 +35,12 @@ try {
       discardedBy: 'Analista Original', unread: false
     }
   ];
+  state.processes = [
+    { id: 'proc-task-1', number: '5000000-00.2026.8.21.0001', client: 'Cliente Teste', opposingParty: 'Parte Teste', responsibleUserIds: [collaborator.id] },
+    { id: 'proc-task-2', number: '5000000-00.2026.8.21.0002', client: 'Cliente Teste', opposingParty: 'Parte Teste', responsibleUserIds: [collaborator.id] },
+    { id: 'proc-task-3', number: '5000000-00.2026.8.21.0003', client: 'Cliente Teste', opposingParty: 'Parte Teste', responsibleUserIds: [collaborator.id] },
+    { id: 'proc-task-4', number: '5000000-00.2026.8.21.0004', client: 'Cliente Teste', opposingParty: 'Parte Teste', responsibleUserIds: [collaborator.id] }
+  ];
 
   response = await postJson(`${server.baseUrl}/api/state`, { state }, master.headers);
   assert.equal(response.status, 200);
@@ -178,10 +184,11 @@ async function readState(baseUrl, cookie) {
 }
 
 async function setupMaster(baseUrl) {
+  const password = 'Master-Publication-Task-2026!';
   let response = await postJson(`${baseUrl}/api/auth/setup`, {
     username: 'master.publication.task',
     displayName: 'Administradora Principal Teste',
-    password: 'Master-Publication-Task-2026!'
+    password
   });
   const setup = await response.json();
   assert.equal(response.status, 200);
@@ -192,7 +199,12 @@ async function setupMaster(baseUrl) {
   const verified = await response.json();
   assert.equal(response.status, 200);
   const cookie = response.headers.get('set-cookie').split(';')[0];
-  return { cookie, headers: { Cookie: cookie, 'X-CSRF-Token': verified.csrfToken } };
+  return {
+    cookie,
+    headers: { Cookie: cookie, 'X-CSRF-Token': verified.csrfToken },
+    password,
+    manualSecret: setup.manualSecret
+  };
 }
 
 async function setupCollaborator(baseUrl, master) {
@@ -215,7 +227,12 @@ async function setupCollaborator(baseUrl, master) {
   const users = await response.json();
   const user = users.users.find(item => item.username === username);
   assert.ok(user);
-  response = await postJson(`${baseUrl}/api/auth/users/manage`, { userId: user.id, status: 'active' }, master.headers);
+  response = await postJson(`${baseUrl}/api/auth/users/manage`, {
+    userId: user.id,
+    status: 'active',
+    password: master.password,
+    code: generateTotp(master.manualSecret)
+  }, master.headers);
   assert.equal(response.status, 200);
   response = await postJson(`${baseUrl}/api/auth/login`, {
     username,
@@ -226,5 +243,5 @@ async function setupCollaborator(baseUrl, master) {
   assert.equal(response.status, 200);
   assert.equal(login.user.role, 'collaborator');
   const cookie = response.headers.get('set-cookie').split(';')[0];
-  return { cookie, headers: { Cookie: cookie, 'X-CSRF-Token': login.csrfToken } };
+  return { id: user.id, cookie, headers: { Cookie: cookie, 'X-CSRF-Token': login.csrfToken } };
 }

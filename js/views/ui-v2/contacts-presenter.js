@@ -37,10 +37,13 @@ export function renderContactsV2Workspace({
   roleFilter,
   query,
   sort,
+  pagination,
   escapeHtml,
   formatDate
 }) {
-  const selected = records.find(item => String(item.id) === String(selectedId || '')) || null;
+  const selected = (records || []).find(item => String(item.id) === String(selectedId || ''))
+    || (allRecords || []).find(item => String(item.id) === String(selectedId || '')) || null;
+  const page = pagination || { page: 1, pageSize: (records || []).length || 100, total: (records || []).length, totalPages: 1 };
   const counts = roleCounts(allRecords);
   const filterButtons = ROLE_FILTERS.map(([value, label]) => {
     const active = roleFilter === value;
@@ -72,7 +75,30 @@ export function renderContactsV2Workspace({
       ${selected ? '<div class="contact-inspector-backdrop" data-contact-backdrop></div>' : ''}
       ${renderContactInspector({ item: selected, context: selectedContext, escapeHtml, formatDate })}
     </div>
+    ${renderContactsPagination({ pagination: page, escapeHtml })}
   </div>`;
+}
+
+export function renderContactsPagination({ pagination, escapeHtml }) {
+  const page = Math.max(1, Number(pagination?.page) || 1);
+  const pageSize = Number(pagination?.pageSize) || 100;
+  const total = Math.max(0, Number(pagination?.total) || 0);
+  const totalPages = Math.max(1, Number(pagination?.totalPages) || 1);
+  const totalLabel = total.toLocaleString('pt-BR');
+  const firstDisabled = page <= 1 ? ' disabled' : '';
+  const lastDisabled = page >= totalPages ? ' disabled' : '';
+  const sizes = [25, 100, 500, 1000];
+  return `<nav class="contact-pagination" aria-label="Paginação de contatos">`
+    + `<p class="contact-pagination-status" aria-live="polite">Página ${page} de ${totalPages} · ${escapeHtml(totalLabel)} no filtro</p>`
+    + `<div class="contact-pagination-nav" role="group" aria-label="Navegar páginas">`
+    + `<button type="button" class="v2-button is-secondary contact-pagination-button" data-contact-page="first"${firstDisabled} aria-label="Primeira página">Primeira</button>`
+    + `<button type="button" class="v2-button is-secondary contact-pagination-button" data-contact-page="prev"${firstDisabled} aria-label="Página anterior">Anterior</button>`
+    + `<button type="button" class="v2-button is-secondary contact-pagination-button" data-contact-page="next"${lastDisabled} aria-label="Próxima página">Próxima</button>`
+    + `<button type="button" class="v2-button is-secondary contact-pagination-button" data-contact-page="last"${lastDisabled} aria-label="Última página">Última</button>`
+    + `</div>`
+    + `<div class="contact-page-size" role="group" aria-label="Contatos por página"><span>Por página</span>`
+    + sizes.map(size => `<button type="button" class="contact-page-size-option${size === pageSize ? ' is-active' : ''}" data-contact-page-size="${size}" aria-pressed="${size === pageSize}">${size}</button>`).join('')
+    + `</div></nav>`;
 }
 
 export function roleForPresentation(item) {
@@ -92,8 +118,8 @@ export function originForPresentation(item) {
 function renderContactRecord({ item, selectedId, escapeHtml, formatDate }) {
   const role = roleForPresentation(item);
   const selected = String(item.id) === String(selectedId || '');
-  const location = [item.city, item.state].filter(Boolean).join(' / ') || 'Localidade não informada';
-  const phone = item.mobile || item.phone || 'Contato não informado';
+  const location = [item.city, item.state].filter(Boolean).join(' / ') || '—';
+  const phone = item.mobile || item.phone || '—';
   const registered = item.registeredAt || item.createdAt;
   const origin = originForPresentation(item);
   return `<button type="button" class="contact-record${selected ? ' is-selected' : ''}" role="listitem" data-contact-id="${escapeHtml(item.id)}" aria-label="Abrir contato ${escapeHtml(item.name || 'sem nome')}, papel ${escapeHtml(role.label)}" aria-current="${selected ? 'true' : 'false'}">
@@ -101,11 +127,11 @@ function renderContactRecord({ item, selectedId, escapeHtml, formatDate }) {
     <span class="contact-record-primary">
       <span class="contact-record-role">${escapeHtml(role.label)}</span>
       <strong>${escapeHtml(item.name || 'Contato sem nome')}</strong>
-      <small>${escapeHtml(item.profession || 'Pessoa cadastrada')}</small>
+      ${item.profession ? `<small>${escapeHtml(item.profession)}</small>` : ''}
     </span>
     <span class="contact-record-channel"><strong>${escapeHtml(phone)}</strong><small>${escapeHtml(item.email || '')}</small></span>
     <span class="contact-record-context"><strong>${escapeHtml(location)}</strong><small>${escapeHtml(origin)}</small></span>
-    <span class="contact-record-date"><strong>${formatDate(registered)}</strong><small>${item.document ? `Documento cadastrado` : 'Sem documento informado'}</small></span>
+    <span class="contact-record-date"><strong>${escapeHtml(formatDate(registered))}</strong>${item.document ? '<small>Documento cadastrado</small>' : ''}</span>
     <span class="contact-record-arrow" aria-hidden="true">›</span>
   </button>`;
 }
@@ -124,9 +150,10 @@ function renderContactInspector({ item, context, escapeHtml, formatDate }) {
   const role = roleForPresentation(item);
   const location = [item.city, item.state].filter(Boolean).join(' / ') || 'Localidade não informada';
   const address = [item.address, item.district, item.zip].filter(Boolean).join(' · ');
-  return `<aside class="contacts-inspector is-open" id="contactInspector" aria-labelledby="contactInspectorHeading">
+  return `<aside class="contacts-inspector is-open" id="contactInspector" data-panel-size-anchor="fixed" aria-labelledby="contactInspectorHeading">
     <header class="contact-inspector-header">
       <button type="button" class="contact-inspector-close" data-contact-inspector-close aria-label="Fechar detalhes do contato">${iconSvg('close')}</button>
+      <button type="button" class="contact-inspector-size" data-panel-size-toggle aria-pressed="false" aria-label="Maximizar painel" title="Maximizar painel">${iconSvg('maximize')}</button>
       <span class="contact-role-label"><span class="contact-role-marker is-${escapeHtml(role.key)}" aria-hidden="true"></span>${escapeHtml(role.label)}</span>
       <h3 id="contactInspectorHeading" tabindex="-1">${escapeHtml(item.name || 'Contato sem nome')}</h3>
       <p>${escapeHtml(item.profession || 'Profissão não informada')}<span aria-hidden="true"> · </span>${escapeHtml(location)}</p>
@@ -174,7 +201,7 @@ function renderLegalContextSummary({ item, context, escapeHtml, formatDate }) {
   if (!metrics) return '';
   const role = roleForPresentation(item);
   const integrity = role.key === 'cliente'
-    ? 'Somente vínculos canônicos ou relações processuais registradas são exibidos.'
+    ? 'Somente vínculos principais ou relações processuais registradas são exibidos.'
     : `Papel preservado como ${role.label.toLowerCase()}; este contato não é tratado como cliente.`;
   return `<section class="contact-legal-summary" aria-labelledby="contactLegalSummaryHeading">
     <div class="contact-context-heading"><div><p>Visão 360</p><h4 id="contactLegalSummaryHeading">Contexto jurídico</h4></div>${context.nextDeadline ? `<span>Próximo prazo ${escapeHtml(formatDate(context.nextDeadline))}</span>` : ''}</div>
@@ -217,7 +244,7 @@ function renderRelatedProcesses({ context, escapeHtml }) {
   if (!context?.processes?.length) return `<section class="contact-inspector-section contact-context-section"><h4>Processos relacionados</h4><p class="contact-context-empty">Nenhum processo explicitamente vinculado a este contato.</p></section>`;
   return `<section class="contact-inspector-section contact-context-section"><h4>Processos relacionados</h4><div class="contact-context-list">${context.processes.map(process => {
     const number = process.number || process.protocol || 'Processo sem número';
-    const relationship = process.contextRelationship === 'canonical-client' ? 'Cliente canônico' : 'Relação registrada';
+    const relationship = process.contextRelationship === 'canonical-client' ? 'Cliente principal' : 'Parte relacionada';
     const financial = context.financialProcesses.some(item => String(item.id) === String(process.id));
     return `<button type="button" data-contact-process="${escapeHtml(process.id)}" aria-label="Abrir processo ${escapeHtml(number)}"><span><strong>${escapeHtml(number)}</strong><small>${escapeHtml(process.actionType || process.subject || process.court || 'Classe não informada')}</small></span><span class="contact-context-link-meta">${escapeHtml(relationship)}${financial ? ' · Financeiro' : ''}<b aria-hidden="true">→</b></span></button>`;
   }).join('')}</div></section>`;
@@ -289,4 +316,4 @@ function roleCounts(records) {
     return counts;
   }, {});
 }
-import { iconSvg } from './icons.js';
+import { iconSvg } from './icons.js?v=3.0.0';

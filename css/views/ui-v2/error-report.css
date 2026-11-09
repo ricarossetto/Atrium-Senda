@@ -1,0 +1,148 @@
+/* ATRIUM — Relato de erro: código próprio, prévia honesta e envio opcional. */
+
+html[data-ui="v2"] .error-report-modal {
+  width: min(620px, 100%);
+}
+
+html[data-ui="v2"] .error-report-body {
+  display: grid;
+  gap: var(--v2-space-4);
+  padding: var(--v2-space-5) var(--v2-space-6);
+}
+
+html[data-ui="v2"] .error-report-code-block {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  padding: var(--v2-space-4);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+}
+
+html[data-ui="v2"] .error-report-code-label {
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] #errorReportCode {
+  color: var(--v2-color-foreground);
+  font: 700 18px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .04em;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui="v2"] #errorReportCode:focus-visible {
+  outline: 2px solid var(--v2-color-primary);
+  outline-offset: 3px;
+  border-radius: var(--v2-radius-sm);
+}
+
+html[data-ui="v2"] #errorReportCodeHint {
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] .error-report-meta {
+  display: grid;
+  gap: var(--v2-space-2);
+  margin: 0;
+}
+
+html[data-ui="v2"] .error-report-meta > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr);
+  gap: var(--v2-space-3);
+  align-items: baseline;
+}
+
+html[data-ui="v2"] .error-report-meta dt {
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] .error-report-meta dd {
+  margin: 0;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui="v2"] .error-report-details {
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface);
+}
+
+html[data-ui="v2"] .error-report-details summary {
+  padding: var(--v2-space-2) var(--v2-space-3);
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+html[data-ui="v2"] .error-report-details[open] summary {
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+}
+
+html[data-ui="v2"] .error-report-details pre {
+  margin: 0;
+  padding: var(--v2-space-3);
+  max-height: 220px;
+  overflow: auto;
+  color: var(--v2-color-foreground-secondary);
+  font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui="v2"] .error-report-details small {
+  display: block;
+  padding: 0 var(--v2-space-3) var(--v2-space-3);
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+html[data-ui="v2"] .error-report-status {
+  margin: 0;
+  min-height: 16px;
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] .error-report-status[data-tone="success"] { color: var(--v2-color-success); }
+html[data-ui="v2"] .error-report-status[data-tone="error"] { color: var(--v2-color-danger); }
+html[data-ui="v2"] .error-report-status[data-tone="warning"] { color: var(--v2-color-warning); }
+
+html[data-ui="v2"] .error-report-modal footer {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 560px) {
+  html[data-ui="v2"] .error-report-meta > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  html[data-ui="v2"] .error-report-modal footer .button {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="v2"] .error-report-modal,
+  html[data-ui="v2"] .error-report-modal .button,
+  html[data-ui="v2"] .error-report-modal summary {
+    transition: none;
+    animation: none;
+  }
+}

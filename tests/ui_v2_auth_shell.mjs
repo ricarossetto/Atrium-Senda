@@ -13,14 +13,18 @@ const indexSource = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const expectedEndpoints = [
   '/api/auth/status', '/api/auth/setup', '/api/auth/setup/verify', '/api/auth/workspaces/register',
   '/api/auth/workspaces/register/verify', '/api/auth/invitations/accept', '/api/auth/register/verify',
-  '/api/auth/login', '/api/auth/logout', '/api/auth/profile', '/api/auth/profile/reset', '/api/auth/profile/delete'
+  '/api/auth/login', '/api/auth/logout', '/api/auth/profile', '/api/auth/profile/reset', '/api/auth/profile/delete',
+  '/api/auth/password/forgot', '/api/auth/password/reset', '/api/auth/password/change',
+  // 2FA opcional (o cliente expõe o autoatendimento; o recurso continua opcional por decisão do
+  // escritório — nada bloqueia acesso). Estavam em `js/auth.js` sem constar nesta lista fixa.
+  '/api/auth/mfa/status', '/api/auth/mfa/enroll', '/api/auth/mfa/enable', '/api/auth/mfa/disable'
 ];
 const endpoints = [...new Set(authSource.match(/\/api\/auth\/[a-z/]+/g) || [])].sort();
 assert.deepEqual(endpoints, expectedEndpoints.toSorted());
 assert.match(indexSource, /css\/views\/ui-v2\/auth\.css/);
 assert.doesNotMatch(indexSource, /triagem autônoma/i);
 assert.match(indexSource, /class="theme-toggle-btn auth-theme-toggle" data-theme-toggle/);
-assert.match(indexSource, /Dados protegidos no seu computador/);
+assert.match(indexSource, /Criptografia de ponta a ponta e isolamento total|Dados protegidos no cofre do escritório/);
 assert.match(indexSource, /Consulta judicial somente para leitura/);
 assert.match(indexSource, /Você confirma tarefas e prazos/);
 assert.match(indexSource, /Crie seu acesso mestre/);
@@ -42,7 +46,10 @@ const SCENARIOS = [
   { file: '11-dark-1920x1200-first-setup.png', theme: 'dark', viewport: { width: 1920, height: 1200 }, state: 'setup', configured: false },
   { file: '12-light-2560x1080-first-setup.png', theme: 'light', viewport: { width: 2560, height: 1080 }, state: 'setup', configured: false },
   { file: '13-light-1920x1080-monitoring-setup.png', theme: 'light', viewport: { width: 1920, height: 1080 }, state: 'setup-monitoring', configured: false },
-  { file: '14-light-1440-team-invitation.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'invitation', configured: true }
+  { file: '14-light-1440-team-invitation.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'invitation', configured: true },
+  { file: '15-light-1440-password-recovery.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'forgot', configured: true },
+  { file: '16-dark-1440-password-reset.png', theme: 'dark', viewport: { width: 1440, height: 900 }, state: 'reset', configured: true },
+  { file: '17-light-390-password-recovery.png', theme: 'light', viewport: { width: 390, height: 844 }, state: 'forgot', configured: true }
 ];
 
 fs.mkdirSync(OUTPUT, { recursive: true });
@@ -71,12 +78,13 @@ try {
       contentType: 'application/json',
       body: JSON.stringify({ ok: true, invitation: { displayName: 'Colaboradora Teste', email: 'convidada@example.test', workspace: { id: 'ws-synthetic', name: 'Escritório Teste' } } })
     }));
-    await page.goto(`${server.baseUrl}${scenario.state === 'invitation' ? '#invite=synthetic-invitation-token' : ''}`, { waitUntil: 'networkidle' });
+    await page.goto(`${server.baseUrl}${scenario.state === 'invitation' ? '#invite=synthetic-invitation-token' : scenario.state === 'reset' ? '#reset=synthetic-reset-token' : ''}`, { waitUntil: 'networkidle' });
     await page.locator('#authGate:not(.hidden)').waitFor();
     await page.evaluate(({ state, theme }) => {
       document.documentElement.dataset.theme = theme;
       if (state === 'loading') window.KellerAuth.show('authLoading');
       if (state === 'register') document.getElementById('authTabRegister').click();
+      if (state === 'forgot') window.KellerAuth.show('authForgotForm');
       if (state === 'login-error') {
         window.KellerAuth.show('authLoginForm');
         window.KellerAuth.feedback('Não foi possível validar estas credenciais sintéticas.', 'error');
@@ -107,7 +115,7 @@ try {
       }
     }, { state: scenario.state, theme: scenario.theme });
 
-    const expectedId = ({ loading: 'authLoading', login: 'authLoginForm', 'login-error': 'authLoginForm', register: 'authRegisterForm', setup: 'authSetupForm', 'setup-monitoring': 'authSetupForm', invitation: 'authInvitationForm', totp: 'authTotpSetupForm', recovery: 'authRecoveryStep' })[scenario.state];
+    const expectedId = ({ loading: 'authLoading', login: 'authLoginForm', 'login-error': 'authLoginForm', register: 'authRegisterForm', setup: 'authSetupForm', 'setup-monitoring': 'authSetupForm', invitation: 'authInvitationForm', totp: 'authTotpSetupForm', recovery: 'authRecoveryStep', forgot: 'authForgotForm', reset: 'authResetForm' })[scenario.state];
     await page.locator(`#${expectedId}.active`).waitFor();
     await page.waitForFunction(() => [...document.querySelectorAll('#authGate *')]
       .flatMap(element => element.getAnimations())
@@ -134,6 +142,8 @@ try {
         trustBrowser: Boolean(active.querySelector('[name="trustBrowser"]')),
         qrAlt: gate.querySelector('#authQrCode')?.getAttribute('alt'),
         hasFeedbackText: gate.querySelector('#authFeedback')?.textContent.trim().length > 0,
+        rootOverflow: getComputedStyle(document.documentElement).overflowY,
+        bodyOverflow: getComputedStyle(document.body).overflowY,
         state
       };
     }, scenario.state);
@@ -141,6 +151,10 @@ try {
     assert.ok(evidence.overflow <= 2); assertions++;
     assert.deepEqual(evidence.duplicates, []); assertions++;
     assert.deepEqual(evidence.undersized, []); assertions++;
+    if (scenario.viewport.width <= 860) {
+      assert.notEqual(evidence.rootOverflow, 'hidden', 'Login não deve bloquear a rolagem da janela.'); assertions++;
+      assert.notEqual(evidence.bodyOverflow, 'auto', 'Login não herda o scroller do app.'); assertions++;
+    }
     assert.ok(evidence.passwordToggles >= 4); assertions++;
     if (['login', 'login-error'].includes(scenario.state)) { assert.equal(evidence.trustBrowser, true); assertions++; }
     if (scenario.state === 'totp') { assert.match(evidence.qrAlt, /QR code/i); assertions++; }
@@ -187,7 +201,7 @@ try {
           brandTitleSize: Number.parseFloat(getComputedStyle(brandTitle).fontSize),
           brandSubtitleSize: Number.parseFloat(getComputedStyle(brandSubtitle).fontSize),
           brandSubtitleStyle: getComputedStyle(brandSubtitle).fontStyle,
-          cardCenterOffset: Math.abs(cardBox.top + cardBox.height / 2 - innerHeight / 2),
+          cardCenterOffset: Math.abs(cardBox.top + cardBox.height / 2 - (card.closest('.auth-panel').getBoundingClientRect().top + card.closest('.auth-panel').getBoundingClientRect().height / 2)),
           securityItemsUseHangingIndent: securityItems.every(item => {
             const text = item.querySelector(':scope > span');
             return getComputedStyle(item).display === 'grid'
@@ -225,7 +239,7 @@ try {
           oabUf: rect('oabUf'),
           monitoringVisible: Boolean(document.getElementById('authMonitoringChoice').getClientRects().length),
           continueLabel: document.getElementById('authMonitoringContinue').textContent.trim(),
-          cardCenterOffset: Math.abs(card.top + card.height / 2 - innerHeight / 2),
+          cardCenterOffset: Math.abs(card.top + card.height / 2 - (document.querySelector('.auth-panel').getBoundingClientRect().top + document.querySelector('.auth-panel').getBoundingClientRect().height / 2)),
           cardOverflow: document.querySelector('.auth-card').scrollHeight - document.querySelector('.auth-card').clientHeight,
           ufLabelAlignment: getComputedStyle(document.querySelector('.auth-uf-label')).textAlign,
           ufLabelPadding: Number.parseFloat(getComputedStyle(document.querySelector('.auth-uf-label')).paddingLeft)
@@ -262,7 +276,7 @@ try {
     await context.close();
     return names;
   })();
-  assert.deepEqual(fieldNames, ['bootstrapToken', 'code', 'confirmPassword', 'displayName', 'email', 'enableMonitoring', 'oab', 'oabUf', 'password', 'trustBrowser', 'username', 'workspaceName']);
+  assert.deepEqual(fieldNames, ['bootstrapToken', 'code', 'confirmPassword', 'displayName', 'email', 'enableMonitoring', 'identifier', 'oab', 'oabUf', 'password', 'trustBrowser', 'username', 'workspaceName']);
 
   const publicThemeControl = await (async () => {
     const context = await browser.newContext();
@@ -270,20 +284,49 @@ try {
     await page.route('**/api/auth/status', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"configured":false,"authenticated":false}' }));
     await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
     const button = page.locator('.auth-theme-toggle');
-    const initial = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, saved: localStorage.getItem('atrium_theme') }));
+    const initial = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, saved: localStorage.getItem('atrium_theme'), tint: document.querySelector('meta[name="theme-color"]').content }));
     await button.click();
-    const dark = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme || 'dark', saved: localStorage.getItem('atrium_theme'), toasts: document.querySelectorAll('#toastRegion .toast').length }));
+    const dark = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme || 'dark', saved: localStorage.getItem('atrium_theme'), tint: document.querySelector('meta[name="theme-color"]').content, toasts: document.querySelectorAll('#toastRegion .toast').length }));
     await button.click();
-    const light = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, saved: localStorage.getItem('atrium_theme') }));
+    const light = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, saved: localStorage.getItem('atrium_theme'), tint: document.querySelector('meta[name="theme-color"]').content }));
     const result = { initial, dark, light, visible: await button.isVisible(), label: await button.getAttribute('aria-label') };
     await context.close();
     return result;
   })();
-  assert.deepEqual(publicThemeControl.initial, { theme: 'light', saved: 'light' });
-  assert.deepEqual(publicThemeControl.dark, { theme: 'dark', saved: 'dark', toasts: 0 });
-  assert.deepEqual(publicThemeControl.light, { theme: 'light', saved: 'light' });
+  assert.deepEqual(publicThemeControl.initial, { theme: 'light', saved: 'light', tint: '#eef1f1' });
+  assert.deepEqual(publicThemeControl.dark, { theme: 'dark', saved: 'dark', tint: '#0c0c0b', toasts: 0 });
+  assert.deepEqual(publicThemeControl.light, { theme: 'light', saved: 'light', tint: '#eef1f1' });
   assert.equal(publicThemeControl.visible, true);
   assert.equal(publicThemeControl.label, 'Tema claro ativo. Alternar para tema escuro');
+
+  for (const theme of ['light', 'dark']) {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await context.addInitScript(selectedTheme => {
+      localStorage.setItem('atrium_theme', selectedTheme);
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState === 'interactive') {
+          window.__prepaintTint = document.querySelector('meta[name="theme-color"]')?.content;
+        }
+      });
+    }, theme);
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on('pageerror', error => pageErrors.push(error.message));
+    await page.route('**/api/auth/status', route => route.fulfill({ status: 200, contentType: 'application/json', body: '{"configured":true,"authenticated":false}' }));
+    await page.goto(`${server.baseUrl}/?discover=1`, { waitUntil: 'networkidle' });
+    await page.locator('#landingPage:not(.hidden)').waitFor();
+    const initial = await page.evaluate(() => ({ prepaint: window.__prepaintTint, meta: document.querySelector('meta[name="theme-color"]').content }));
+    const expected = theme === 'light' ? '#eef1f1' : '#0c0c0b';
+    assert.deepEqual(initial, { prepaint: expected, meta: expected });
+    await page.locator('[data-landing-theme-toggle]').click();
+    const toggled = theme === 'light' ? '#0c0c0b' : '#eef1f1';
+    assert.equal(await page.locator('meta[name="theme-color"]').getAttribute('content'), toggled);
+    await page.locator('[data-landing-action="login"]').first().click();
+    await page.locator('#authGate:not(.hidden)').waitFor();
+    assert.equal(await page.locator('meta[name="theme-color"]').getAttribute('content'), toggled);
+    assert.deepEqual(pageErrors, []);
+    await context.close();
+  }
 
   const avatarVisibility = await (async () => {
     const context = await browser.newContext();

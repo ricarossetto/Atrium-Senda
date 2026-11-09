@@ -18,8 +18,14 @@ playwright-report/
 test-results/
 supabase/.temp/
 research/vendor/
+# Pesquisa CNJ: corpus pesado e reproduzível por scripts/cnj-research-fetch.mjs.
+# Ficam versionados apenas o paper, o manifesto e os inventários.
+research/cnj/pdf/
+research/cnj/raw/
+research/cnj/sources/
 dist/
 artifacts/
+scratch/
 .DS_Store
 Thumbs.db
 scripts/debug-*
@@ -29,3 +35,16 @@ scripts/print-sample.mjs
 scripts/reconcile-target-process.mjs
 __pycache__/
 *.pyc
+.agents/
+.codex/
+.playwright-mcp/
+.opencode/
+skills-lock.json
+.claude/
+.commandcode/
+.idea/
+.mcp.json
+# Desktop (Tauri): recursos gerados na compilação e caches
+desktop/resources/
+desktop/src-tauri/target/
+desktop/.staging/

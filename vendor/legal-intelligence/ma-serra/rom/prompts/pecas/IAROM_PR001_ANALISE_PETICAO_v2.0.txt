@@ -1,0 +1,416 @@
+IAROM_PR001_ANALISE_PETICAO_v2.0
+Sistema de Análise e Melhoria de Petições Judiciais
+Categoria: Prompts Específicos > Análise e Revisão
+Versão: 2.0 | Data: 2026-03-20
+Metodologia: Refatoração Científica IAROM
+────────────────────────────────────────────────────────────────────────────────
+
+OBJETIVO
+────────────────────────────────────────────────────────────────────────────────
+Analisar petição judicial em execução civil complexa, aplicando avaliação
+multidimensional estruturada e produzir versão melhorada com fundamentação
+robusta, pedidos estratégicos e redação técnico-jurídica otimizada.
+
+CONTEXTO ESPECÍFICO
+────────────────────────────────────────────────────────────────────────────────
+Processo: Execução civil de título judicial
+Perfil devedor: Alto patrimônio, sofisticação financeira, histórico de inadimplência
+Desafio central: Discrepância entre patrimônio declarado e liquidez disponível
+Estratégia: Medidas constritivas hierarquizadas, contraditório diferido justificado
+
+PROTOCOLO DE EXECUÇÃO
+────────────────────────────────────────────────────────────────────────────────
+
+[FASE 1] PREPARAÇÃO CONTEXTUAL
+
+Ler sequencialmente:
+1. Petição atual completa
+2. Dados patrimoniais consolidados do executado
+3. Memorial de cálculo atualizado
+4. Histórico processual completo
+5. Respostas de sistemas eletrônicos (SISBAJUD/RENAJUD/SNIPER/INFOJUD/outros)
+6. Contexto estratégico e objetivos
+
+Identificar elementos-chave:
+- Valor do crédito exequendo atualizado
+- Diligências executivas já realizadas e resultados
+- Patrimônio declarado vs liquidez localizada (calcular proporção)
+- Perfil do executado (profissão, histórico, sofisticação)
+- Ativos identificados e classificação de liquidez
+- Precedentes específicos aplicáveis ao caso
+
+[FASE 2] ANÁLISE MULTIDIMENSIONAL
+
+DIMENSÃO A - ANÁLISE FACTUAL E PROBATÓRIA
+
+A.1 Precedentes específicos
+Verificar exploração adequada de:
+- Operações policiais/investigações envolvendo executado
+- Apreensões anteriores de valores em espécie
+- Histórico criminal ou administrativo relevante
+- Matérias jornalísticas como prova empírica
+- Estabelecimento de nexo causal temporal (passado → presente)
+
+A.2 Evolução patrimonial temporal
+Analisar série histórica:
+- Declarações fiscais (IR) dos últimos 3-5 anos
+- Evolução de "dinheiro em caixa" vs saldos bancários localizados
+- Cálculo de proporções/discrepâncias
+- Demonstração de continuidade de padrão comportamental
+
+A.3 Perfil do executado
+Avaliar caracterização de:
+- Devedor contumaz (prazo de inadimplência, resistência ao cumprimento)
+- Má-fé processual (indícios objetivos)
+- Sofisticação financeira (holdings, múltiplos imóveis, operações complexas)
+- Abuso de direito de defesa
+
+A.4 Frustração de diligências ordinárias
+Documentar:
+- Todas diligências realizadas (sistemas eletrônicos, intimações)
+- Resultados insuficientes (valores ínfimos, bens já onerados)
+- Demonstração de esgotamento de vias ordinárias
+- Necessidade de medidas atípicas fundamentada
+
+DIMENSÃO B - ANÁLISE JURÍDICA E FUNDAMENTAÇÃO LEGAL
+
+B.1 Código de Processo Civil
+Verificar adequação/completude:
+
+Art. 835, I - Preferência por dinheiro
+Art. 139, IV - Poderes atípicos do juiz
+Art. 805 - Menor onerosidade ao devedor
+Art. 830 - Arresto cautelar (requisitos)
+Art. 854, §1º - Penhora sem intimação prévia
+Art. 297 - Tutela de urgência
+Art. 870 - Avaliação pelo valor de mercado
+Art. 866 - Penhora de faturamento empresarial
+Art. 774, §1º - Multa por não indicação de bens
+Art. 536, §1º - Astreintes para cumprimento de ordem
+Art. 77/80 - Litigância de má-fé
+
+Identificar lacunas: artigos aplicáveis não citados.
+
+B.2 Código Civil
+Art. 187 - Abuso de direito (aplicação ao comportamento do executado)
+Art. 422 - Boa-fé objetiva (violação)
+
+B.3 Legislação penal (contextual)
+Art. 312, CP - Peculato (se houver histórico)
+Art. 12, Lei 10.826/2003 - Posse irregular de armas
+Art. 330, CP - Crime de desobediência (para pedidos coercitivos)
+
+B.4 Lei de Lavagem de Dinheiro
+Lei 9.613/98 - Avaliar aplicabilidade (valores elevados "em caixa" sem origem)
+
+DIMENSÃO C - PESQUISA JURISPRUDENCIAL
+
+C.1 Priorizar julgados 2023-2026 (STJ e tribunal local)
+
+Temas específicos:
+- Busca e apreensão domiciliar em execução civil
+- Penhora sem intimação prévia (contraditório diferido)
+- Cláusula de proporcionalidade (deferimento simultâneo + cumprimento sucessivo)
+- Devedor contumaz / má-fé processual em execução
+- Penhora de quotas societárias de holdings patrimoniais
+- Penhora de faturamento empresarial
+- Discrepância patrimônio declarado vs liquidez localizada
+
+C.2 Precedentes já citados
+Verificar se há:
+- Versões mais recentes ou desdobramentos
+- Julgados supervenientes que alteraram entendimento
+- Decisões do tribunal local alinhadas
+
+C.3 Temas repetitivos STJ
+Verificar aplicação de temas repetitivos relevantes.
+
+DIMENSÃO D - FUNDAMENTAÇÃO DOUTRINÁRIA
+
+D.1 Conceito de "constrição simultânea coordenada"
+Buscar em:
+- Fredie Didier Jr. (Curso de Direito Processual Civil)
+- Daniel Amorim Assumpção Neves
+- Cassio Scarpinella Bueno
+- Leonardo Carneiro da Cunha
+- Luiz Guilherme Marinoni
+
+Conceito: Técnica executiva de constrição simultânea de múltiplos ativos
+sem prévia intimação (contraditório diferido) para evitar dissipação
+patrimonial entre atos sucessivos, aplicável contra devedores sofisticados
+com padrão de ocultação.
+
+Terminologia adequada (evitar anglicismos/germanismos):
+- "Constrição simultânea hierarquizada"
+- "Estratégia executiva coordenada"
+- "Medidas constritivas sincronizadas"
+- "Cerco patrimonial coordenado"
+- "Efetividade executiva por atos simultâneos"
+
+Fundamentação principiológica:
+- Princípio da efetividade da execução (Arts. 4º, 6º, 8º CPC)
+- Poder geral de efetivação (Art. 139, IV)
+- Proteção contra devedor recalcitrante
+- Combate à litigância de má-fé patrimonial
+
+D.2 Devedor contumaz
+- Caracterização doutrinária
+- Consequências processuais (inversão de ônus, presunção de má-fé)
+- Aplicação de penalidades (multas, astreintes)
+
+D.3 Contraditório diferido em execução
+- Justificativa constitucional (efetividade vs due process)
+- Balanceamento de princípios
+- Requisitos para aplicação
+
+DIMENSÃO E - ANÁLISE ESTRATÉGICA
+
+E.1 Justificativa fática para simultaneidade
+- Executado mantém X em "caixa" mas contas bancárias com Y
+- Precedente de ocultação (valores/documentação)
+- Padrão temporal demonstrado (série histórica)
+- Sofisticação financeira (estruturas societárias complexas)
+
+E.2 Justificativa jurídica
+- STJ valida constrição sem intimação prévia (Tema XXXX)
+- Art. 139, IV: poderes atípicos para efetividade
+- Art. 854, §1º: intimação após penhora
+- Risco concreto de frustração com intimação prévia
+
+E.3 Operacionalização hierarquizada
+BLOCO 1 (Urgente): Busca de dinheiro em espécie (24-48h)
+BLOCO 2 (Simultâneo): Penhora de imóveis (72h) - sem intimação prévia
+BLOCO 3 (Condicionado): Arresto de quotas societárias (96h) - sem intimação prévia
+BLOCO 4 (Subsidiário): Medidas complementares (se insuficiência)
+
+E.4 Cláusula de proporcionalidade (proteção contra alegação de excesso)
+- Deferimento simultâneo (preserva efetividade)
+- Cumprimento sucessivo (evita excesso de penhora)
+- Suspensão automática ao satisfazer crédito exequendo
+
+DIMENSÃO F - PEDIDOS COERCITIVOS
+
+F.1 Multa por não indicação de bens (Art. 774, §1º, CPC)
+Modelo: "Fixação de multa de 20% sobre crédito exequendo caso executado,
+intimado, não apresente bens livres e desembaraçados suficientes no prazo
+de 5 dias úteis, sendo as medidas constritivas infrutíferas."
+
+F.2 Astreintes para apresentação de documentação (Art. 536, §1º, CPC)
+Modelo: "Caso executado alegue alienação/oneração de bens identificados,
+determinar apresentação de prova documental em 5 dias, sob pena de multa
+diária de R$ X, limitada a R$ Y."
+
+F.3 Representação por desobediência (Art. 330, CP)
+Modelo: "Certificado descumprimento de ordem judicial, remessa de cópia
+ao Ministério Público para apuração de crime de desobediência."
+
+F.4 Litigância de má-fé (Art. 80, II e VI, CPC)
+Modelo: "Caso executado alegue inexistência de patrimônio, reconhecimento
+de litigância de má-fé ante desproporcionalidade comprovada (patrimônio
+declarado vs liquidez localizada), com multa de 10% sobre valor da causa
+e indenização por danos processuais."
+
+F.5 Arresto de bens futuros (Art. 830, CPC)
+Modelo: "Arresto de quaisquer bens futuros que executado adquira durante
+tramitação, incluindo veículos (RENAJUD automático), imóveis (avisos a
+cartórios) e empresas (avisos a junta comercial), até satisfação integral."
+
+DIMENSÃO G - ANÁLISE DE VIABILIDADE JURÍDICA
+
+Para cada pedido principal, avaliar:
+
+G.1 Probabilidade de deferimento (estimativa percentual fundamentada)
+G.2 Riscos de indeferimento (argumentos contrários esperados)
+G.3 Precedentes favoráveis (quantidade e relevância)
+G.4 Precedentes desfavoráveis (identificação e distinção)
+G.5 Argumentos defensivos esperados do executado
+G.6 Contra-argumentos preparados
+G.7 Cláusulas de proteção (proporcionalidade, subsidiariedade)
+
+DIMENSÃO H - ANÁLISE REDACIONAL E ESTRUTURAL
+
+H.1 Tom e estilo
+- Técnico-jurídico formal
+- Assertivo sem arrogância
+- Fundamentado (cada afirmação com fonte)
+- Objetivo e direto (evitar prolixidade)
+
+H.2 Estrutura organizacional
+- Títulos numerados e descritivos
+- Elementos visuais para destaque (uso moderado)
+- Sequência lógica: Fatos → Direito → Pedidos
+- Fundamentação em camadas: Artigo → Jurisprudência → Doutrina
+
+H.3 Formatação técnica
+- Parágrafos curtos (4-6 linhas)
+- Listas e tópicos (facilitam leitura)
+- Negrito para destaques críticos
+- CAIXA ALTA para valores monetários e datas
+- Citações jurisprudenciais em bloco separado
+- Tabelas comparativas (evolução temporal, discrepâncias)
+
+H.4 Elementos essenciais
+- Fundamentação fática antes da jurídica
+- Artigos citados com redação completa (quando relevante)
+- Precedentes com numeração completa (REsp, Tema, etc.)
+- Valores sempre atualizados e destacados
+- Referências cruzadas corretas (documentos, anexos)
+
+DIMENSÃO I - IDENTIFICAÇÃO DE ACERTOS E DESACERTOS
+
+I.1 Acertos (mínimo 10 pontos fortes da petição atual)
+I.2 Desacertos/Pontos de melhoria (mínimo 10 lacunas ou fragilidades)
+I.3 Inconsistências (verificar):
+- Valores divergentes entre seções
+- Numeração inconsistente de pedidos
+- Referências cruzadas incorretas
+- Datas desatualizadas
+- Qualificações imprecisas
+
+DIMENSÃO J - ANÁLISE DE COMPLETUDE
+
+Checklist crítico (elementos ausentes):
+□ Precedentes do tribunal local
+□ Pedido de multa Art. 774, CPC
+□ Pedido de astreintes Art. 536, CPC
+□ Fundamentação sobre devedor contumaz
+□ Caracterização de litigância de má-fé
+□ Pedido de arresto de bens futuros
+□ Doutrina sobre constrição simultânea
+□ Análise de risco de cada pedido
+□ Valores de mercado obtidos previamente (FIPE/SEFAZ)
+□ Modelos de ofícios específicos (bancos para acesso a cofres)
+□ Quesitos para avaliador judicial
+□ Pedido de nomeação de avaliador (evitar indicação pelo executado)
+
+[FASE 3] PRODUÇÃO DE RESULTADOS
+
+PRODUTO 1 - RELATÓRIO DE ANÁLISE
+
+Estrutura:
+
+═══════════════════════════════════════════════════════════════════════════
+RELATÓRIO DE ANÁLISE - [IDENTIFICAÇÃO DA PETIÇÃO]
+Processo: [Número]
+Versão analisada: [X.X]
+Data: [DATA]
+═══════════════════════════════════════════════════════════════════════════
+
+1. ANÁLISE FACTUAL E PROBATÓRIA
+   [Achados da Dimensão A]
+
+2. ANÁLISE JURÍDICA E FUNDAMENTAÇÃO LEGAL
+   [Achados da Dimensão B]
+
+3. PESQUISA JURISPRUDENCIAL
+   [Achados da Dimensão C - precedentes atualizados]
+
+4. ANÁLISE DOUTRINÁRIA
+   [Achados da Dimensão D]
+
+5. ANÁLISE ESTRATÉGICA
+   [Achados da Dimensão E]
+
+6. ANÁLISE DE PEDIDOS COERCITIVOS
+   [Achados da Dimensão F]
+
+7. ANÁLISE DE VIABILIDADE JURÍDICA
+   [Achados da Dimensão G]
+
+8. ANÁLISE REDACIONAL E ESTRUTURAL
+   [Achados da Dimensão H]
+
+9. VERIFICAÇÃO DE ACERTOS E DESACERTOS
+
+   ACERTOS (mínimo 10):
+   1. [...]
+
+   DESACERTOS (mínimo 10):
+   1. [...]
+
+10. ANÁLISE DE COMPLETUDE
+    [Achados da Dimensão J]
+
+═══════════════════════════════════════════════════════════════════════════
+
+PRODUTO 2 - MEMORIAL DE MUDANÇAS
+
+Estrutura:
+
+═══════════════════════════════════════════════════════════════════════════
+MEMORIAL DE MUDANÇAS [V.ANTERIOR] → [V.NOVA]
+═══════════════════════════════════════════════════════════════════════════
+
+RESUMO EXECUTIVO:
+Versão anterior: [X.X] ([Tamanho], [Linhas])
+Nova versão: [Y.Y] ([Tamanho], [Linhas])
+Tipo de mudança: [SUBSTANCIAL/INCREMENTAL]
+Data: [DATA]
+
+MUDANÇAS IMPLEMENTADAS:
+
+1. NOVOS PEDIDOS ADICIONADOS
+   □ [Pedido A] - [Localização na petição]
+   □ [Pedido B] - [Localização na petição]
+
+2. FUNDAMENTAÇÃO JURÍDICA AMPLIADA
+   □ [Artigo/precedente adicionado] - [Localização]
+
+3. JURISPRUDÊNCIA ATUALIZADA
+   □ [Julgado novo] - [Tema]
+
+4. REESTRUTURAÇÃO DE SEÇÕES
+   □ [Seção modificada] - [Descrição da mudança]
+
+5. MELHORIAS REDACIONAIS
+   □ [Tipo de melhoria] - [Impacto]
+
+6. CORREÇÕES
+   □ [Erro corrigido] - [Descrição]
+
+IMPACTO ESPERADO:
+Fundamentação: +[X]% robustez
+Viabilidade jurídica: +[Y]% probabilidade deferimento
+Proteção contra contestação: +[Z]%
+Probabilidade de deferimento integral: [N]% (era [M]%)
+
+═══════════════════════════════════════════════════════════════════════════
+
+PRODUTO 3 - PETIÇÃO MELHORADA
+
+Estrutura mantida da versão original com implementação de:
+- Todos novos pedidos identificados
+- Fundamentação ampliada (artigos + jurisprudência + doutrina)
+- Reestruturação de seções quando necessário
+- Melhorias redacionais aplicadas
+- Correções de inconsistências
+- Elementos de completude inseridos
+
+Critério de versionamento:
+V[X].[Y] → V[X].[Y+1]: Mudanças incrementais (correções, ajustes menores)
+V[X].[Y] → V[X+1].0: Mudanças substanciais (novos pedidos, reestruturação)
+
+DIRETRIZES FINAIS
+────────────────────────────────────────────────────────────────────────────────
+
+1. Completude: Executar TODAS as 10 dimensões de análise antes de produzir resultados
+2. Fundamentação: Cada afirmação deve ter fonte (artigo/precedente/doutrina)
+3. Atualização: Priorizar jurisprudência dos últimos 3 anos
+4. Estratégia: Justificar tecnicamente sem nomear estratégias com termos estrangeiros
+5. Proporcionalidade: Incluir cláusulas de proteção contra alegação de excesso
+6. Coerção: Adicionar pedidos coercitivos para pressionar cumprimento voluntário
+7. Viabilidade: Avaliar probabilidade de deferimento de cada pedido principal
+8. Redação: Manter tom técnico-jurídico, objetivo e fundamentado
+9. Qualidade: Priorizar análise profunda sobre velocidade
+10. Entrega: Apresentar 3 produtos (Relatório + Memorial + Petição melhorada)
+
+MÓDULOS EXTERNOS REFERENCIADOS
+────────────────────────────────────────────────────────────────────────────────
+[PM-001] - Padrão de Metadados IAROM
+[MOD-FL] - Módulo de Fundamentação Legal
+[MOD-VN] - Módulo de Versionamento
+[MOD-VJ] - Módulo de Viabilidade Jurídica
+[MOD-SF] - Módulo de Síntese Final
+
+FIM DO DOCUMENTO
+════════════════════════════════════════════════════════════════════════════════

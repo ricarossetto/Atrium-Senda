@@ -34,7 +34,8 @@ try {
   assert.equal(await page.locator('#modalBackdrop .modal').getAttribute('aria-modal'), 'true');
   assert.equal(await page.locator('#appShell').getAttribute('inert'), '');
   assert.deepEqual(await page.locator('#modalFields fieldset legend').allTextContents(), ['Identidade', 'OAB', 'Documento']);
-  assert.equal(await page.locator('#modalForm label').count(), 5);
+  assert.equal(await page.locator('#modalForm label').count(), 6);
+  assert.equal(await page.locator('#field-scope option').count(), 2);
   assert.equal(await page.locator('#field-oabUf option').count(), 28);
   assert.equal(await page.locator('#field-oabNumber').isVisible(), true);
   assert.equal(await page.locator('#field-oabUf').isVisible(), true);
@@ -104,6 +105,13 @@ try {
   assert.ok(layout.overflow <= 2);
   assert.equal(layout.rowOverflow, 0);
   assert.deepEqual(layout.undersized, []);
+  const toolbarActions = await mobilePage.locator('.monitoring-toolbar-actions .button').evaluateAll(elements => elements.filter(el => el.getClientRects().length).map(el => {
+    const box = el.getBoundingClientRect();
+    return { width: box.width, height: box.height, top: box.top };
+  }));
+  assert.equal(toolbarActions.length, 2);
+  assert.ok(Math.abs(toolbarActions[0].width - toolbarActions[1].width) <= 1, 'Ações mobile compartilham largura útil, sem esmagar o rótulo INPI.');
+  assert.ok(Math.abs(toolbarActions[0].height - toolbarActions[1].height) <= 1, 'Ações mobile alinhadas na mesma linha.');
 
   await mobilePage.locator('[data-source-id="generic-source"]').click();
   await mobilePage.waitForFunction(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement));

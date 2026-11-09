@@ -1,9 +1,18 @@
+// A auditoria é lida por gente: CPF e CNPJ aparecem mascarados e identificador interno sai do texto.
+export function readableAuditDetail(value) {
+  return String(value ?? '')
+    .replace(/\b(\d{3})\.\d{3}\.\d{3}-(\d{2})\b/g, '$1.***.***-$2')
+    .replace(/\b(\d{2})\.\d{3}\.\d{3}\/\d{4}-(\d{2})\b/g, '$1.***.***/****-$2')
+    .replace(/\b(?:task|intimation|proc|process|contact):[\w:.-]{6,}/gi, '(registro)')
+    .replace(/\bcan[oô]nic[ao]s?\b/gi, 'oficial');
+}
+
 const AUDIT_COLUMN_DEFINITIONS = Object.freeze([
   Object.freeze({ key: 'at', label: 'Data e hora' }),
   Object.freeze({ key: 'actor', label: 'Ator' }),
   Object.freeze({ key: 'action', label: 'Ação' }),
   Object.freeze({ key: 'detail', label: 'Detalhes' }),
-  Object.freeze({ key: 'status', label: 'Status' })
+  Object.freeze({ key: 'status', label: 'Situação' })
 ]);
 
 export function createAuditPresenter({ documentRef = globalThis.document } = {}) {
@@ -74,7 +83,7 @@ export function createAuditPresenter({ documentRef = globalThis.document } = {})
       action.textContent = item?.action || '';
       const detail = documentRef.createElement('span');
       detail.className = 'audit-detail-text';
-      detail.textContent = item?.detail || '';
+      detail.textContent = readableAuditDetail(item?.detail);
       const status = documentRef.createElement('span');
       status.className = 'audit-status-label';
       status.textContent = 'Registrado';
@@ -83,13 +92,62 @@ export function createAuditPresenter({ documentRef = globalThis.document } = {})
         cell('Ator', 'audit-actor-cell', actor),
         cell('Ação', 'audit-action-cell', action),
         cell('Detalhes', 'audit-detail-cell', detail),
-        cell('Status', 'audit-status-cell', status)
+        cell('Situação', 'audit-status-cell', status)
       );
       body.append(row);
     }
     table.append(caption, head, body);
     wrapper.append(table);
     return wrapper;
+  }
+
+  function renderPagination(pagination) {
+    const page = Math.max(1, Number(pagination?.page) || 1);
+    const pageSize = Number(pagination?.pageSize) || 100;
+    const total = Math.max(0, Number(pagination?.total) || 0);
+    const totalPages = Math.max(1, Number(pagination?.totalPages) || 1);
+    const nav = documentRef.createElement('nav');
+    nav.className = 'audit-pagination';
+    nav.setAttribute('aria-label', 'Paginação de auditoria');
+    const status = documentRef.createElement('p');
+    status.className = 'audit-pagination-status';
+    status.setAttribute('aria-live', 'polite');
+    status.textContent = `Página ${page} de ${totalPages} · ${total.toLocaleString('pt-BR')} no filtro`;
+    const group = documentRef.createElement('div');
+    group.className = 'audit-pagination-nav';
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', 'Navegar páginas');
+    for (const [action, label, description] of [['first', 'Primeira', 'Primeira página'], ['prev', 'Anterior', 'Página anterior'], ['next', 'Próxima', 'Próxima página'], ['last', 'Última', 'Última página']]) {
+      const button = documentRef.createElement('button');
+      button.type = 'button';
+      button.className = 'v2-button is-secondary audit-pagination-button';
+      button.dataset.auditPage = action;
+      button.setAttribute('aria-label', description);
+      button.textContent = label;
+      if ((action === 'first' || action === 'prev') ? page <= 1 : page >= totalPages) button.disabled = true;
+      group.append(button);
+    }
+    const sizes = documentRef.createElement('div');
+    sizes.className = 'audit-page-size';
+    sizes.setAttribute('role', 'group');
+    sizes.setAttribute('aria-label', 'Eventos por página');
+    const caption = documentRef.createElement('span');
+    caption.textContent = 'Por página';
+    sizes.append(caption);
+    for (const size of [25, 100, 500, 1000]) {
+      const option = documentRef.createElement('button');
+      option.type = 'button';
+      option.className = `audit-page-size-option${size === pageSize ? ' is-active' : ''}`;
+      option.dataset.auditPageSize = String(size);
+      option.setAttribute('aria-pressed', String(size === pageSize));
+      option.textContent = String(size);
+      sizes.append(option);
+    }
+    nav.append(status, group, sizes);
+    const slot = documentRef.createElement('div');
+    slot.className = 'audit-pagination-slot';
+    slot.append(nav);
+    return slot;
   }
 
   return Object.freeze({
@@ -104,12 +162,13 @@ export function createAuditPresenter({ documentRef = globalThis.document } = {})
       return true;
     },
 
-    render({ events = [], filter = 'all', query = '', formatDateTime = String } = {}) {
+    render({ events = [], filter = 'all', query = '', formatDateTime = String, pagination = null } = {}) {
       if (!isV2()) return false;
       const list = byId('auditList');
       if (!list) return false;
       updateFilterState(filter);
       list.replaceChildren(events.length ? renderLedger(events, formatDateTime) : renderEmpty(String(query || '').trim()));
+      if (pagination) list.append(renderPagination(pagination));
       return true;
     }
   });

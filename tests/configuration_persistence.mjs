@@ -6,6 +6,7 @@ import { startTestServer } from './helpers.mjs';
 const server = await startTestServer();
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ locale: 'pt-BR', viewport: { width: 1440, height: 900 } });
+await page.addInitScript(() => localStorage.setItem('atrium_product_tour_off', 'true'));
 
 try {
   // 1. Setup e login inicial
@@ -92,7 +93,9 @@ try {
 
   // 8. Nível C: BACKEND persistido com reload completo
   await page.reload({ waitUntil: 'networkidle' });
-  await page.locator('#view-dashboard.active').waitFor();
+  // Deep-link oficial por categoria: a view ativa é restaurada pela URL (/sistema/configuracoes) após reload
+  assert.equal(new URL(page.url()).pathname, '/sistema/configuracoes', 'A view ativa deve ser restaurada pela URL após o reload.');
+  await page.locator('#view-configuration.active').waitFor();
   await page.locator('button[data-view="configuration"]').click();
   await page.locator('#view-configuration.active').waitFor();
   await page.locator('#configurationList [data-config-index]', { hasText: '95 pontos' }).waitFor({ state: 'visible' });

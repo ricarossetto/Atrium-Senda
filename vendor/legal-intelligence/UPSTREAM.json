@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "description": "Manifesto de proveniência do material de terceiros integrado ao ATRIUM (Gerador de Minutas). Atualizações são deliberadas: nunca consumir 'main' dinamicamente.",
+  "importedAt": "2026-09-17",
+  "importedBy": "ATRIUM — missão de integração da camada de inteligência jurídica",
+  "policy": {
+    "runtimeFetchFromGitHub": false,
+    "vendorIsVersionPinned": true,
+    "secretsImported": false,
+    "excludedProject": "https://github.com/ma-serra/legal-ai-advocacia-brasil (excluído integralmente por decisão da missão)"
+  },
+  "upstreams": [
+    {
+      "id": "lex-intelligentia-skills",
+      "repository": "https://github.com/ma-serra/lex-intelligentia-skills",
+      "upstreamAttribution": "baseado em fbmoulin/lex-intelligentia-skills (Felipe, Juiz de Direito)",
+      "commit": "21f549647dd7f823831f2986670d1e196778233e",
+      "commitDate": "2026-03-01T14:59:27-03:00",
+      "license": "MIT",
+      "licenseFile": "LICENSES/LICENSE-lex-intelligentia-skills.txt",
+      "vendorable": true,
+      "destination": "ma-serra/lex-intelligentia",
+      "importedPaths": [
+        "skills/core/peticao-analyzer/SKILL.md",
+        "skills/core/jurisprudencia-miner/SKILL.md",
+        "skills/core/tese-juridica-validator/SKILL.md",
+        "skills/core/calculadora-processual/SKILL.md",
+        "skills/core/sentenca-judicial-br/SKILL.md",
+        "skills/core/dje-monitor/SKILL.md",
+        "skills/magistrado/contrato-analyzer-br/SKILL.md",
+        "docs/GUIA-ANTI-ALUCINACAO.md",
+        "docs/METODOLOGIA-FIRAC-JB.md"
+      ],
+      "omittedPaths": [
+        "install.sh (instala em ~/.claude/skills; irrelevante para o runtime ATRIUM)",
+        "skills/automacao/* (n8n/Supabase/Pinecone; fora do escopo do Gerador)",
+        "skills/criacao/*, skills/pesquisador/*, skills/magistrado/{despacho-generator,conciliacao-assistant,relatorio-produtividade,checklist-saneamento,audiencia-analyzer,prompt-forge-juridico}",
+        "tests/* (fixtures sintéticas, sem uso em runtime)"
+      ],
+      "atriumModifications": [
+        "Nenhuma alteração de bytes nos arquivos importados.",
+        "Sanitização (remoção de caracteres decorativos/emoji) e truncamento por orçamento são aplicados em tempo de carregamento por lib/legal-intelligence/loader.mjs, preservando o material original."
+      ]
+    },
+    {
+      "id": "rom-agent",
+      "repository": "https://github.com/ma-serra/ROM-Agent",
+      "commit": "ded68072ad4c2f3d427a3f4ddd51e6cd62d275a3",
+      "commitDate": "2026-06-14T23:50:30-03:00",
+      "license": "LICENSE_REVIEW_REQUIRED",
+      "licenseNotes": "Contradição no upstream: package.json e README declaram MIT, mas projeto-rom-completo/rom-agent/LICENSE declara 'Proprietary — Rodolfo Otávio Mota Advogados Associados S/S. Uso interno do escritório. Todos os direitos reservados.' Os prompts atribuem autoria a Dr. Rodolfo Otávio Mota (OAB/GO 21.841). Importação seletiva da camada declarativa executada por instrução expressa do titular do produto; o material não é redistribuído fora do repositório privado. Revisar licença antes de qualquer publicação externa.",
+      "licenseFile": "LICENSES/ROM-Agent-NOTICE.md",
+      "vendorable": "conditional",
+      "destination": "ma-serra/rom",
+      "importedPaths": [
+        "data/prompts/global/MOD_MASTER_CORE.txt",
+        "data/prompts/global/orquestrador_prompt.txt",
+        "data/prompts/global/PROMPT_PETICAO_INICIAL_UNIVERSAL_V5.0.md",
+        "data/prompts/global/peticao_inicial_civel.md",
+        "data/prompts/global/PROMPT_CONTESTACAO_UNIVERSAL_V5.0.md",
+        "data/prompts/global/contestacao_civel.md",
+        "data/prompts/global/PROMPT_REPLICA_V5.0.md",
+        "data/prompts/global/PROMPT_APELACAO_CIVEL_V5.0.md",
+        "data/prompts/global/PROMPT_APELACAO_CRIMINAL_V5.0.md",
+        "data/prompts/global/PROMPT_AGRAVO_INSTRUMENTO_V5.0.md",
+        "data/prompts/global/PROMPT_EMBARGOS_DECLARACAO_COMPLETO_V5.0.md",
+        "data/prompts/global/PROMPT_EMBARGOS_INFRINGENTES_V5.0.md",
+        "data/prompts/global/PROMPT_RECURSO_ESPECIAL_V5.0.md",
+        "data/prompts/global/PROMPT_RECURSO_EXTRAORDINARIO_V5.0.md",
+        "data/prompts/global/PROMPT_IMPUGNACAO_CUMPRIMENTO_V5.0.md",
+        "data/prompts/global/PROMPT_ACAO_EXECUCAO_V5.0.md",
+        "data/prompts/global/PROMPT_EXECUCAO_TITULO_EXTRAJUDICIAL_V5.0.md",
+        "data/prompts/global/PROMPT_CONTRATO_GERAL_V5.0.md",
+        "data/prompts/global/PROMPT_RECLAMACAO_TRABALHISTA_V5.0.md",
+        "data/prompts/global/PROMPT_CONTESTACAO_TRABALHISTA_V5.0_REFATORADO.txt",
+        "data/prompts/global/PROMPT_RECURSO_ORDINARIO_TRABALHISTA_V5.0.md",
+        "data/prompts/global/IAROM_PR001_ANALISE_PETICAO_v2.0.txt",
+        "data/prompts/global/IAROM_PR005_REVISAO_GERAL_v2.0.txt",
+        "data/prompts/global/analise_processual.md",
+        "data/prompts/global/redator_civel.md",
+        "data/prompts/global/redator_criminal.md",
+        "data/prompts/global/system_prompt_v5.txt"
+      ],
+      "curationMetadata": "recipes.json (curadoria ATRIUM com tipo de peça, papel e sha256 de cada arquivo)",
+      "omittedPaths": [
+        "src/, lib/, frontend/, database/, db/, migrations/, mcp-servers/, python-extractors/, python-scrapers/, scripts/, public/, mobile-access/, .github/, .claude/",
+        "package.json, package-lock.json, Dockerfile e qualquer dependência operacional (Prisma, Claude SDK, Express, Redis, pg, puppeteer)",
+        "data/ (exceto data/prompts/global dos arquivos acima), downloads/, var-data-local/, artifacts/, audit-results/, test-results/, KB/",
+        ".env.example, .env.test, config/datajud.env, frontend/.env.*, .jusbrasil-cookies.json",
+        "public/index-v3.html (contém chaves em HTML)",
+        "arquivos duplicados .md/.txt e 54 stubs sem corpo de prompt"
+      ],
+      "secretsExcluded": [
+        ".jusbrasil-cookies.json (24 cookies de sessão)",
+        ".env.example com valores realistas de AWS/Anthropic/DataJud/Telegram",
+        "audit-results/* com ocorrências sk-ant-* e ghp_*",
+        "public/index-v3.html com chave em frontend"
+      ],
+      "atriumModifications": [
+        "Nenhuma alteração de bytes nos arquivos importados.",
+        "Sanitização e truncamento em tempo de carregamento por lib/legal-intelligence/loader.mjs.",
+        "Referências internas a APIs/ferramentas do ROM (web_search, file_read) permanecem como texto declarativo e não habilitam execução no ATRIUM."
+      ]
+    },
+    {
+      "id": "biblioteca-prompts-juridicos",
+      "repository": "https://github.com/ma-serra/biblioteca-prompts-juridicos",
+      "commit": "d181c200e4a2dfa701b23e21f6ec9d18e43a5ada",
+      "commitDate": "2026-05-30T17:52:55-03:00",
+      "license": "NONE",
+      "licenseStatus": "LICENSE_REVIEW_REQUIRED",
+      "licenseNotes": "O repositório não possui LICENSE/COPYING/NOTICE e o package.json não declara licença. Pelo padrão de direito autoral, não há autorização para copiar, modificar ou redistribuir o conteúdo. Conforme regra expressa da missão: apenas a arquitetura/metadados genéricos foram aproveitados; nenhum texto de prompt foi copiado. O adapter está preparado para importação futura caso haja licença.",
+      "licenseFile": "ma-serra/biblioteca-prompts/LICENSE_REVIEW_REQUIRED.md",
+      "vendorable": false,
+      "destination": "ma-serra/biblioteca-prompts",
+      "importedPaths": [
+        "taxonomy.json (apenas taxonomia de categorias/arquiteturas/níveis de raciocínio derivada do schema público)"
+      ],
+      "omittedPaths": [
+        "src/data/prompts.ts (conteúdo integral dos 41 prompts — não copiado por ausência de licença)",
+        "src/pages/*, src/styles/*, public/*, package-lock.json"
+      ],
+      "atriumModifications": []
+    },
+    {
+      "id": "jusbrasil-mcp",
+      "repository": "https://github.com/ma-serra/jusbrasil-mcp",
+      "commit": "7034c543f6fee7a4ee2903753e65a604bea8bd69",
+      "commitDate": "2026-06-11T21:31:30-04:00",
+      "license": "MIT (apenas para os manifests/docs/skill deste repositório; o serviço remoto em api.mcp.ai é proprietário e não é redistribuído)",
+      "licenseFile": "LICENSES/LICENSE-jusbrasil-mcp.txt",
+      "vendorable": true,
+      "destination": "ma-serra/jusbrasil-mcp/docs",
+      "importedPaths": [
+        "docs/ferramentas.md (contrato de ferramentas e parâmetros)"
+      ],
+      "omittedPaths": [
+        "manifests/*, skills/*, assets/*, server.json, smithery.yaml, glama.json (configuração de cliente MCP, sem uso no runtime ATRIUM)"
+      ],
+      "atriumModifications": [
+        "Nenhuma. O provider ATRIUM (lib/legal-intelligence/providers/legal-mcp-provider.mjs) é código próprio que consome o serviço via HTTP REST, sem copiar implementação (o upstream não contém servidor)."
+      ]
+    }
+  ]
+}

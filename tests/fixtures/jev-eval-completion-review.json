@@ -1,0 +1,47 @@
+[
+  {
+    "completedWork": "Minuta sintética redigida com 3 capítulos e citações conferidas.",
+    "expectedConclusion": "complete",
+    "hasGaps": false,
+    "id": "co-done",
+    "knownGaps": [],
+    "objective": "Redigir minuta sintética com citações verificadas.",
+    "verification": "Gates PASS, citações verificadas nas fontes."
+  },
+  {
+    "completedWork": "Minuta sintética redigida.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false,
+    "id": "co-almost",
+    "knownGaps": [],
+    "objective": "Redigir minuta sintética com citações verificadas.",
+    "verification": "Revisão de citações ainda não executada."
+  },
+  {
+    "completedWork": "Pesquisa sintética parcial com 2 fontes.",
+    "expectedConclusion": "incomplete",
+    "hasGaps": true,
+    "id": "co-gaps",
+    "knownGaps": ["Falta analisar o documento principal"],
+    "objective": "Mapear precedentes sintéticos sobre o tema.",
+    "verification": "Cobertura parcial, sem conferência."
+  },
+  {
+    "completedWork": "Coleta sintética de andamentos concluída.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": false,
+    "id": "co-unverified",
+    "knownGaps": [],
+    "objective": "Coletar andamentos sintéticos do processo.",
+    "verification": "Nenhuma verificação executada."
+  },
+  {
+    "completedWork": "Análise sintética com lacuna material aberta.",
+    "expectedConclusion": "verify_more",
+    "hasGaps": true,
+    "id": "co-falseclaim",
+    "knownGaps": ["Documento central não analisado"],
+    "objective": "Concluir análise sintética dos autos.",
+    "verification": "Revisão adversarial pendente."
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "name": "atrium-senda-desktop",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Empacotamento desktop (Tauri) do ATRIUM Senda para Windows.",
+  "license": "MIT",
+  "scripts": {
+    "build:resources": "node scripts/build-desktop-resources.mjs",
+    "dev": "tauri dev --config src-tauri/tauri.conf.json",
+    "build": "node scripts/build-desktop-resources.mjs && tauri build --config src-tauri/tauri.conf.json",
+    "typecheck": "cargo check --manifest-path src-tauri/Cargo.toml"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.0"
+  }
+}

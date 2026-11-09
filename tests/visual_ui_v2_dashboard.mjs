@@ -20,6 +20,12 @@ const hashes = new Set();
 let screenshots = 0;
 let assertions = 0;
 
+function answersInside(inner, outer) {
+  return inner.x >= outer.x - 2 && inner.y >= outer.y - 2
+    && inner.x + inner.width <= outer.x + outer.width + 2
+    && inner.y + inner.height <= outer.y + outer.height + 2;
+}
+
 function recordScreenshot(file) {
   const hash = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
   assert.equal(hashes.has(hash), false, `Screenshot V2 duplicado: ${path.basename(file)}.`);
@@ -69,7 +75,7 @@ try {
         assert.equal(layout.searchVisible, true, `Busca deve permanecer visível em ${theme} ${config.name}.`); assertions++;
         assert.equal(layout.statusVisible, true, `Status persistente deve estar visível em ${theme} ${config.name}.`); assertions++;
         assert.equal(layout.clippedCards, 0, `Cards com conteúdo cortado em ${theme} ${config.name}.`); assertions++;
-        assert.equal(layout.insightCards, 4, `Panorama acionável incompleto em ${theme} ${config.name}.`); assertions++;
+        assert.equal(layout.insightCards, 4, `Indicadores do escritório incompleto em ${theme} ${config.name}.`); assertions++;
         assert.deepEqual(layout.duplicateIds, []); assertions++;
         assert.equal(layout.unexpectedOverlay, 0); assertions++;
         assert.deepEqual(pageErrors, [], `Pageerror em ${theme} ${config.name}: ${pageErrors.join(' | ')}`); assertions++;
@@ -90,6 +96,16 @@ try {
     const v2Opening = await page.locator('#v2DashboardOpening').boundingBox();
     assert.ok(v2Opening && v2Opening.width > 700, 'A composição V2 deve possuir uma zona editorial dominante.'); assertions++;
 
+    const performanceBox = await page.locator('#v2PerformancePanel').boundingBox();
+    assert.ok(performanceBox && performanceBox.width > 200, 'Painel de performance deve abrir a faixa do hero.'); assertions++;
+    assert.ok(performanceBox.x - v2Opening.x < 48, 'O painel de performance deve abrir a coluna esquerda da abertura.'); assertions++;
+    const attentionBox = await page.locator('.v2-attention-grid').boundingBox();
+    assert.ok(attentionBox && performanceBox.x + performanceBox.width <= attentionBox.x + 2, 'Painel de performance não pode sobrepor os cartões de atenção.'); assertions++;
+    const hearingsBox = await page.locator('#dashboardHearingsPanel').boundingBox();
+    assert.ok(hearingsBox && answersInside(hearingsBox, v2Opening), 'A pauta de audiências deve permanecer dentro da abertura.'); assertions++;
+    assert.ok(attentionBox.x + attentionBox.width <= hearingsBox.x + 2, 'A pauta de audiências deve ficar à direita dos cartões.'); assertions++;
+    assert.equal(await page.locator('.v2-dashboard-opening-copy, #v2AttentionSummary').count(), 0, 'A abertura não pode voltar a exibir texto de resumo.'); assertions++;
+
     assert.equal(await page.locator('#uiModeControl, [data-ui-mode]').count(), 0); assertions++;
     await page.locator('html').evaluate(element => { element.style.filter = 'grayscale(1)'; });
     assert.equal(await page.locator('#v2DashboardOpening').isVisible(), true); assertions++;
@@ -100,6 +116,60 @@ try {
     assert.deepEqual(pageErrors, [], `Comparativo Dashboard gerou pageerror: ${pageErrors.join(' | ')}`); assertions++;
   } finally {
     await comparisonContext.close();
+  }
+
+  const funnelFile = path.join(session.server.dataDirectory, 'publication-funnel-weekly.json');
+  const funnelWeekStarts = ['2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14'];
+  // O endpoint upserta a semana corrente na leitura; a expectativa deve derivar
+  // da janela mesclada (fixture + semana atual) para não depender do calendário.
+  const brtToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const [todayYear, todayMonth, todayDay] = brtToday.split('-').map(Number);
+  const todayUtc = new Date(Date.UTC(todayYear, todayMonth - 1, todayDay));
+  const currentMonday = new Date(Date.UTC(todayYear, todayMonth - 1, todayDay - ((todayUtc.getUTCDay() + 6) % 7)));
+  const mergedWeekStarts = [...new Set([...funnelWeekStarts, currentMonday.toISOString().slice(0, 10)])].sort();
+  const expectedFunnelHeaders = ['Métrica', ...mergedWeekStarts.slice(-4).map(date => `${date.slice(8, 10)}/${date.slice(5, 7)}`)];
+  fs.writeFileSync(funnelFile, JSON.stringify({
+    version: 1,
+    updatedAt: '2026-09-20T07:00:00.000Z',
+    weeks: [
+      { week: '2026-W35', weekStart: '2026-08-24', weekEnd: '2026-08-30', received: 18, treated: 15, discarded: 3, pending: 6, at: '2026-08-30T19:00:00.000Z' },
+      { week: '2026-W36', weekStart: '2026-08-31', weekEnd: '2026-09-06', received: 22, treated: 19, discarded: 2, pending: 7, at: '2026-09-06T19:00:00.000Z' },
+      { week: '2026-W37', weekStart: '2026-09-07', weekEnd: '2026-09-13', received: 14, treated: 12, discarded: 1, pending: 8, at: '2026-09-13T19:00:00.000Z' },
+      { week: '2026-W38', weekStart: '2026-09-14', weekEnd: '2026-09-20', received: 9, treated: 6, discarded: 1, pending: 8, at: '2026-09-20T19:00:00.000Z' }
+    ]
+  }, null, 2), 'utf8');
+
+  for (const theme of ['light', 'dark']) {
+    const context = await session.createContext({ viewport: { width: 1440, height: 900 } });
+    try {
+      const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme });
+      await page.locator('#dashboardActionableInsights .dashboard-funnel-weekly').waitFor();
+      await page.locator('#dashboardActionableInsights .dashboard-funnel-weekly').scrollIntoViewIfNeeded();
+      const funnel = await page.evaluate(() => {
+        const table = document.querySelector('#dashboardActionableInsights .dashboard-funnel-weekly table');
+        const card = table?.closest('.dashboard-insight-card');
+        return {
+          rows: table?.querySelectorAll('tbody tr').length || 0,
+          caption: table?.querySelector('caption')?.textContent.trim() || '',
+          headers: [...(table?.querySelectorAll('thead th') || [])].map(cell => cell.textContent.trim()),
+          cardClipped: card ? card.scrollWidth > card.clientWidth + 2 : true,
+          tableOverflow: table ? table.scrollWidth - table.clientWidth : 0,
+          pageOverflow: document.documentElement.scrollWidth - innerWidth
+        };
+      });
+      assert.equal(funnel.rows, 4, `Funil semanal deve listar 4 métricas em ${theme}.`); assertions++;
+      assert.equal(funnel.caption, 'Funil semanal · últimas 4 semanas'); assertions++;
+      assert.deepEqual(funnel.headers, expectedFunnelHeaders); assertions++;
+      assert.equal(funnel.cardClipped, false, `Card do funil cortado em ${theme}.`); assertions++;
+      assert.ok(funnel.tableOverflow <= 2, `Tabela do funil com overflow em ${theme}.`); assertions++;
+      assert.ok(funnel.pageOverflow <= 2, `Overflow global com funil em ${theme}.`); assertions++;
+      assert.deepEqual(pageErrors, [], `Pageerror no funil (${theme}): ${pageErrors.join(' | ')}`); assertions++;
+      const funnelScreenshot = path.join(OUTPUT, `${theme}-1440x900-funnel.png`);
+      await page.screenshot({ path: funnelScreenshot, fullPage: false });
+      recordScreenshot(funnelScreenshot);
+    } finally {
+      await context.close();
+    }
   }
 
   console.log('======================================================');

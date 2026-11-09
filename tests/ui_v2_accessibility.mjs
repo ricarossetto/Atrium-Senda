@@ -46,7 +46,13 @@ try {
   const submit = page.locator('#modalForm button[type="submit"]');
   await submit.focus();
   await page.keyboard.press('Tab');
-  assert.equal(await page.evaluate(() => document.activeElement?.id), 'modalClose', 'Tab deve permanecer contido no modal compartilhado.');
+  assert.equal(
+    await page.evaluate(() => document.activeElement?.id),
+    'modalSizeToggle',
+    'Tab deve permanecer contido no modal compartilhado, retornando ao primeiro controle do cabeçalho.'
+  );
+  await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'modalClose', 'O Tab segue do tamanho para o fechar.');
   await page.keyboard.press('Escape');
   await page.locator('#modalBackdrop.hidden').waitFor({ state: 'attached' });
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnDashboardNewTask', 'Escape deve devolver foco ao invocador.');
@@ -66,6 +72,38 @@ try {
       const box = await mobile.page.locator(selector).boundingBox();
       assert.ok(box && box.height >= 44, `${selector} deve possuir target de pelo menos 44px no mobile.`);
     }
+
+    assert.equal(await mobile.page.locator('#globalSearch').getAttribute('placeholder'), 'Pesquisar', 'O mobile não deve anunciar atalho de teclado na busca.');
+    assert.equal(await mobile.page.locator('.global-search kbd').isVisible(), false, 'O badge de atalho não deve aparecer no mobile.');
+
+    await mobile.page.waitForFunction(() => {
+      const bar = document.getElementById('systemStatusBar');
+      return bar?.classList.contains('is-transient-hidden') && bar.getBoundingClientRect().height <= 2;
+    }, null, { timeout: 5000 });
+    const collapsed = await mobile.page.evaluate(() => {
+      const bar = document.getElementById('systemStatusBar');
+      const rect = bar.getBoundingClientRect();
+      return { height: Math.round(rect.height), opacity: Number(getComputedStyle(bar).opacity), pointerEvents: getComputedStyle(bar).pointerEvents };
+    });
+    assert.ok(collapsed.height <= 2, `A barra de status transitória deve recolher no mobile (altura ${collapsed.height}px).`);
+    assert.ok(collapsed.opacity <= 0.05, `A barra recolhida deve ficar invisível (opacidade ${collapsed.opacity}).`);
+    assert.equal(collapsed.pointerEvents, 'none', 'A barra recolhida não pode capturar toques.');
+
+    await mobile.page.evaluate(() => window.Atrium.App.switchView('agenda'));
+    await mobile.page.locator('#view-agenda.active').waitFor();
+    const agendaFilters = await mobile.page.evaluate(() => {
+      const container = document.getElementById('agendaFilterTabs');
+      const buttons = [...container.querySelectorAll('button')];
+      const tops = new Set(buttons.map(button => Math.round(button.getBoundingClientRect().top)));
+      return { display: getComputedStyle(container).display, rows: tops.size, count: buttons.length };
+    });
+    assert.equal(agendaFilters.count, 4);
+    assert.equal(agendaFilters.rows, 1, 'Os filtros da Agenda devem ocupar uma única faixa no mobile.');
+    await mobile.page.evaluate(() => window.Atrium.App.switchView('dashboard'));
+    await mobile.page.locator('.notification-button').click();
+    const panel = await mobile.page.locator('.notification-panel:not(.hidden)').boundingBox();
+    assert.ok(panel && panel.x >= 0 && panel.x + panel.width <= 390, 'Notificações precisam permanecer inteiras dentro da largura mobile.');
+    await mobile.page.locator('.notification-button').click();
     await mobile.page.evaluate(() => window.Atrium.App.switchView('configuration'));
     await mobile.page.locator('#view-configuration.active').waitFor();
     assert.equal(await mobile.page.locator('#uiModeControl, [data-ui-mode]').count(), 0, 'O modo Classic não pode ser selecionável no produto.');

@@ -24,7 +24,7 @@ const [searchSpec, documentSpec, davSpec, apiSpec, roadmap, baseline, packageSou
 
 assert.match(searchSpec, /Status: \*\*CURRENT\*\*/);
 assert.match(searchSpec, /DERIVED \/ REBUILDABLE/i);
-assert.match(searchSpec, /Nenhuma persistência canônica nova/i);
+assert.match(searchSpec, /Nenhuma persistência oficial nova/i);
 assert.match(documentSpec, /provider CURRENT é local, privado e cifrado/i);
 assert.match(documentSpec, /\*\*FUTURE\*\* para classificação, versionamento e colaboração avançada/i);
 assert.doesNotMatch(documentSpec, /- CURRENT: classificação automática/i);

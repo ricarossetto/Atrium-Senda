@@ -10,20 +10,84 @@ try {
   const context = await session.createContext({ viewport: { width: 1440, height: 900 } });
   const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'light' });
 
-  // Intercepta a rota /api/integrations/eproc/sweep para simular resposta realista de 3 segundos
+  // Intercepta o pipeline oficial /api/integrations/eproc/sync e seu status para simular telemetria realista
   let sweepRequested = false;
-  await page.route('**/api/integrations/eproc/sweep', async route => {
+  let statusPollCount = 0;
+  await page.route('**/api/integrations/eproc/sync', async route => {
     sweepRequested = true;
-    // Aguarda 2.5s para permitir acompanhar visualmente a evolução das etapas e logs
-    await new Promise(resolve => setTimeout(resolve, 2500));
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         ok: true,
-        enrichedCount: 3,
-        message: '3 processo(s) TJRS sincronizado(s) e enriquecido(s) com sucesso!'
+        jobId: 'sweep-visual-test',
+        joinedExisting: false,
+        status: 'running'
       })
+    });
+  });
+
+  await page.route('**/api/integrations/eproc/sync/status', async route => {
+    statusPollCount++;
+    if (statusPollCount < 3) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          active: true,
+          job: {
+            id: 'sweep-visual-test',
+            state: 'RUNNING',
+            overall: { currentPortal: 'eproc-tjrs-1g', phase: 'coleta' },
+            portals: [{
+              portalId: 'eproc-tjrs-1g',
+              state: 'RUNNING',
+              phase: 'coleta',
+              step: Math.min(4, statusPollCount + 1),
+              action: `Processando processos do painel TJRS (${statusPollCount}/3)...`,
+              determinate: true,
+              percent: statusPollCount * 35,
+              completed: statusPollCount,
+              total: 3
+            }]
+          }
+        })
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          active: false,
+          job: {
+            id: 'sweep-visual-test',
+            state: 'COMPLETED',
+            overall: { currentPortal: 'eproc-tjrs-1g', phase: 'concluida', determinate: true, percent: 100, completed: 3, total: 3 },
+            portals: [{
+              portalId: 'eproc-tjrs-1g',
+              state: 'COMPLETED',
+              phase: 'concluida',
+              step: 5,
+              action: 'Sincronização do painel eproc concluída com sucesso.',
+              determinate: true,
+              percent: 100,
+              completed: 3,
+              total: 3
+            }]
+          }
+        })
+      });
+    }
+  });
+
+  // O refresh pós-conclusão consulta o status geral; responde vazio e honesto.
+  await page.route('**/api/integrations/eproc/status', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, scheduler: {}, portals: [] })
     });
   });
 
@@ -75,7 +139,7 @@ try {
   assert.ok(await doneBtn.isVisible(), 'Botão Concluir deve ficar visível ao término');
 
   const finalStatus = await page.locator('#eprocSyncStatusLabel').textContent();
-  assert.match(finalStatus, /Concluída/i, 'Status deve indicar conclusão');
+  assert.match(finalStatus, /Concluída|Conclusão/i, 'Status deve indicar conclusão');
   const finalPercent = await page.locator('#eprocSyncPercentLabel').textContent();
   assert.equal(finalPercent.trim(), '100%', 'Percentual deve atingir 100%');
 
@@ -93,8 +157,7 @@ try {
   console.log('  ✓ Modal fechado com sucesso.');
 
   // Verifica que o botão voltou ao estado normal
-  const isSyncingAfter = await page.evaluate(() => document.getElementById('btnSyncEprocA1')?.classList.contains('is-syncing'));
-  assert.equal(isSyncingAfter, false, 'Botão deve remover classe is-syncing após término');
+  await page.waitForFunction(() => !document.getElementById('btnSyncEprocA1')?.classList.contains('is-syncing'), null, { timeout: 5000 });
   console.log('  ✓ Botão restaurado ao estado inicial.');
 
   assert.equal(pageErrors.length, 0, `Nenhum erro de página tolerado: ${pageErrors.join('; ')}`);

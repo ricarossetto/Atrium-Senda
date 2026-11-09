@@ -14,6 +14,12 @@ assert.doesNotMatch(assistantSource, /\bfetch\s*\(/, 'assistant.js deve usar ape
 assert.doesNotMatch(assistantSource, /localStorage|sessionStorage|Store\.|store\.state/);
 assert.match(portalSource, /checkAiStatus\(\) \{ return getAssistantFeature\(\)\.checkStatus\(\); \}/);
 assert.doesNotMatch(portalSource, /aiChatHistory:\s*\[\]|aiConfigured:\s*false|isAiTyping:\s*false/);
+assert.doesNotMatch(assistantSource, /<datalist/);
+assert.doesNotMatch(assistantSource, /['"]aiProviderModelList['"]/);
+assert.match(assistantSource, /data-combobox-option/);
+assert.match(assistantSource, /renderModelOptions/);
+assert.match(portalSource, /installModalComboboxes/);
+assert.match(portalSource, /installComboboxes:\s*installModalComboboxes/);
 
 function makeElement() {
   const listeners = new Map();
@@ -32,7 +38,7 @@ function makeElement() {
   };
 }
 
-const listenerIds = ['btnOpenGeminiKeyModal', 'geminiKeyClose', 'geminiKeyCancel', 'geminiKeyBackdrop', 'geminiKeyForm', 'btnSaveQuickAiKey', 'btnClearAiConversation', 'assistantContextSelect', 'aiChatForm', 'aiChatInput', 'btnApplyCodexSkill'];
+const listenerIds = ['btnOpenGeminiKeyModal', 'geminiKeyClose', 'geminiKeyCancel', 'geminiKeyBackdrop', 'geminiKeyForm', 'btnOpenKeyModalFromCard', 'btnRetryAiProviders', 'btnClearAiConversation', 'assistantContextSelect', 'aiChatForm', 'aiChatInput', 'btnApplyCodexSkill'];
 const listenerElements = Object.fromEntries(listenerIds.map(id => [id, makeElement()]));
 const quickPrompt = makeElement();
 quickPrompt.dataset.prompt = 'PROMPT RÁPIDO SINTÉTICO';
@@ -41,9 +47,16 @@ const listenerDocument = {
   getElementById: id => listenerElements[id] || null,
   querySelectorAll: selector => selector === '.quick-prompt-btn' ? [quickPrompt] : []
 };
-const listenerFeature = createAssistantFeature({ documentRef: listenerDocument, windowRef: { setTimeout }, secureFetch: async () => ({ ok: true, json: async () => ({}) }) });
+let comboboxInstalls = 0;
+const listenerFeature = createAssistantFeature({
+  documentRef: listenerDocument,
+  windowRef: { setTimeout },
+  secureFetch: async () => ({ ok: true, json: async () => ({}) }),
+  installComboboxes: element => { comboboxInstalls++; assert.equal(element, listenerElements.geminiKeyBackdrop); }
+});
 assert.equal(listenerFeature.init(), true);
 assert.equal(listenerFeature.init(), false);
+assert.equal(comboboxInstalls, 1, 'combobox oficial deve ser instalado uma única vez no backdrop de IA');
 for (const element of [...Object.values(listenerElements), quickPrompt]) {
   for (const type of ['click', 'submit', 'keydown']) assert.ok(element.count(type) <= 1, `listener duplicado: ${type}`);
 }
@@ -122,6 +135,13 @@ try {
         return makeResponse(true, { configured: statusMode === 'configured' });
       }
       if (url === '/api/ai/configure') return makeResponse(true, { message: 'Chave sintética validada', model: 'modelo-sintetico' });
+      if (url === '/api/ai/providers') return makeResponse(true, {
+        active: 'gemini',
+        providers: [
+          { id: 'gemini', label: 'Google Gemini', kind: 'gemini', defaultModel: 'gemini-3.5-flash-lite', configured: true },
+          { id: 'zen-go', label: 'OpenCode Go', kind: 'openai-compatible', defaultModel: 'deepseek-v4.1-flash', baseUrl: 'https://opencode.ai/zen/go/v1', configured: false }
+        ]
+      });
       if (url === '/api/ai/chat') return makeResponse(true, { reply: markdownFixture, model: '' });
       throw new Error(`Endpoint inesperado: ${url}`);
     };
@@ -142,8 +162,11 @@ try {
     }
 
     statusMode = 'configured';
+    await app.openGeminiKeyModal();
+    await new Promise(resolve => setTimeout(resolve, 80));
     const syntheticKey = 'synthetic-gemini-key-000000000000';
     await app.saveGeminiKey(`  ${syntheticKey}  `);
+    app.closeGeminiKeyModal();
 
     store.state.intimations = [{
       id: 'intimation-test-001',
@@ -189,6 +212,26 @@ try {
     };
   }, MARKDOWN_FIXTURE);
 
+  const modelInjection = await page.evaluate(async () => {
+    const payload = '<img src=x onerror="globalThis.__assistantModelInjected=true">';
+    window.__assistantModelInjected = false;
+    window.KellerAuth.secureFetch = async url => {
+      if (url === '/api/ai/chat') return { ok: true, json: async () => ({ reply: 'Resposta sintética', model: payload }) };
+      return { ok: true, json: async () => ({ configured: true }) };
+    };
+    await window.portalApp.sendAiMessage('Consulta sintética');
+    const message = document.querySelector('#aiChatMessages .assistant-message:last-child');
+    await new Promise(resolve => setTimeout(resolve, 50));
+    return {
+      text: message?.querySelector('.message-meta')?.textContent,
+      injectedElements: message?.querySelectorAll('.message-meta img').length,
+      executed: window.__assistantModelInjected
+    };
+  });
+  assert.match(modelInjection.text || '', /<img src=x onerror=/);
+  assert.equal(modelInjection.injectedElements, 0, 'Modelo do provedor não pode gerar elemento HTML.');
+  assert.equal(modelInjection.executed, false, 'Modelo do provedor não pode executar handler.');
+
   const interactionCoverage = await page.evaluate(async () => {
     const app = window.portalApp;
     const input = document.getElementById('aiChatInput');
@@ -207,22 +250,74 @@ try {
       return makeResponse(true, { model: 'modelo-sintetico' });
     };
 
-    const originalToast = app.toast;
-    const quickKeyToasts = [];
-    app.toast = (message, type) => quickKeyToasts.push({ message, type });
-    const quickKeyInput = document.getElementById('aiQuickKeyInput');
-    quickKeyInput.value = '';
-    await app.handleQuickAiKeySubmit();
-    quickKeyInput.value = 'synthetic-quick-key-000000000000';
-    await app.handleQuickAiKeySubmit();
-    const quickKey = {
-      inputValue: quickKeyInput.value,
-      buttonDisabled: document.getElementById('btnSaveQuickAiKey').disabled,
-      buttonText: document.getElementById('btnSaveQuickAiKey').textContent,
-      configureBody: auxiliaryRequests.find(item => item.url === '/api/ai/configure')?.body,
-      toasts: quickKeyToasts
+    const baseFetch = window.KellerAuth.secureFetch;
+    window.KellerAuth.secureFetch = async (url, options) => {
+      if (url === '/api/ai/providers') return makeResponse(false, { message: 'falha sintetica de catalogo' });
+      return baseFetch(url, options);
     };
-    app.toast = originalToast;
+    document.getElementById('btnOpenKeyModalFromCard').click();
+    await new Promise(resolve => setTimeout(resolve, 80));
+    const providerSelect = document.getElementById('aiProviderSelect');
+    const providerFailure = {
+      options: providerSelect.options.length,
+      disabled: providerSelect.disabled,
+      feedback: document.getElementById('aiProviderFeedbackText').textContent,
+      retryVisible: !document.getElementById('btnRetryAiProviders').classList.contains('hidden')
+    };
+
+    window.KellerAuth.secureFetch = async (url, options) => {
+      if (url === '/api/ai/providers') return makeResponse(true, {
+        active: 'zen-go',
+        providers: [
+          { id: 'zen-go', label: 'OpenCode Go', kind: 'openai-compatible', defaultModel: 'deepseek-v4.1-flash', baseUrl: 'https://opencode.ai/zen/go/v1', configured: false, models: ['deepseek-v4.1-flash', 'kimi-k3', 'gpt-5.6-luna', 'deepseek-v4-flash-free'] },
+          { id: 'gemini', label: 'Google Gemini', kind: 'gemini', defaultModel: 'gemini-3.5-flash-lite', configured: false }
+        ]
+      });
+      return baseFetch(url, options);
+    };
+    document.getElementById('btnRetryAiProviders').click();
+    await new Promise(resolve => setTimeout(resolve, 80));
+    const providerRecovered = {
+      options: [...providerSelect.options].map(option => option.value),
+      selected: providerSelect.value,
+      disabled: providerSelect.disabled,
+      baseUrlVisible: !document.getElementById('aiProviderBaseUrlField').classList.contains('hidden'),
+      modelValue: document.getElementById('aiProviderModel').value
+    };
+
+    const modelInput = document.getElementById('aiProviderModel');
+    const modelListbox = document.getElementById('aiProviderModelListbox');
+    const comboboxState = () => ({
+      expanded: modelInput.getAttribute('aria-expanded'),
+      hidden: modelListbox.classList.contains('hidden'),
+      visible: [...modelListbox.querySelectorAll('[data-combobox-option]')]
+        .filter(option => !option.classList.contains('hidden'))
+        .map(option => option.getAttribute('data-value'))
+    });
+    const comboboxClosed = comboboxState();
+    modelInput.click();
+    await new Promise(resolve => setTimeout(resolve, 40));
+    const comboboxOpen = {
+      ...comboboxState(),
+      groups: [...modelListbox.querySelectorAll('.modal-combobox-group-title')].map(node => node.textContent)
+    };
+    modelInput.value = 'kimi';
+    modelInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise(resolve => setTimeout(resolve, 20));
+    const comboboxFiltered = comboboxState();
+    modelListbox.querySelector('[data-combobox-option]:not(.hidden)')?.click();
+    const comboboxChosen = {
+      value: modelInput.value,
+      expanded: modelInput.getAttribute('aria-expanded'),
+      hidden: modelListbox.classList.contains('hidden')
+    };
+    providerRecovered.modelCombobox = {
+      closed: comboboxClosed,
+      open: comboboxOpen,
+      filtered: comboboxFiltered,
+      chosen: comboboxChosen,
+      datalistAbsent: !document.getElementById('aiProviderModelList')
+    };
 
     const keyBackdrop = document.getElementById('geminiKeyBackdrop');
     app.openGeminiKeyModal();
@@ -265,8 +360,12 @@ try {
     const clear = { history: structuredClone(app.aiChatHistory), text: container.textContent.replace(/\s+/g, ' ').trim() };
 
     let enterRequests = 0;
-    window.KellerAuth.secureFetch = async () => {
-      enterRequests++;
+    const enterUrls = [];
+    window.KellerAuth.secureFetch = async url => {
+      // O contrato é "um Enter = um envio de chat": chamadas auxiliares de status
+      // e catálogo não contam (e podem ocorrer em paralelo por design).
+      if (String(url) === '/api/ai/chat') enterRequests++;
+      enterUrls.push(String(url));
       return makeResponse(true, { reply: 'Resposta via teclado' });
     };
     input.value = 'Mensagem Shift+Enter';
@@ -277,7 +376,7 @@ try {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    return { quickKey, modalBackdrop: { openAfterInsideClick, closedAfterBackdropClick }, duringRequest, afterRequestTyping: container.querySelectorAll('.ai-typing-row').length, failure, clear, afterShiftEnter, afterEnter: enterRequests };
+    return { providerFailure, providerRecovered, modalBackdrop: { openAfterInsideClick, closedAfterBackdropClick }, duringRequest, afterRequestTyping: container.querySelectorAll('.ai-typing-row').length, failure, clear, afterShiftEnter, afterEnter: enterRequests, enterUrls };
   });
 
   assert.deepEqual(characterization.statuses, {
@@ -287,7 +386,7 @@ try {
   });
   assert.equal(characterization.configureRequest.url, '/api/ai/configure');
   assert.equal(characterization.configureRequest.options.method, 'POST');
-  assert.deepEqual(characterization.configureRequest.options.body, { apiKey: 'synthetic-gemini-key-000000000000' });
+  assert.deepEqual(characterization.configureRequest.options.body, { apiKey: 'synthetic-gemini-key-000000000000', provider: 'gemini' });
   assert.deepEqual(Object.keys(characterization.chatPayload), ['message', 'context', 'history']);
   assert.equal(characterization.chatPayload.history.length, 12);
   assert.equal(characterization.chatPayload.history[0].text, 'histórico sintético 2');
@@ -301,12 +400,29 @@ try {
   assert.equal(createHash('sha256').update(characterization.skillTemplate, 'utf8').digest('hex'), '6cf17ec6d1e86d4107e31c355a7d4b0153cfa3b94b33c8a61e457d79dd7d3e46');
   assert.equal(characterization.keyInStore, false);
   assert.equal(JSON.stringify(characterization.audits).includes('synthetic-gemini-key'), false);
-  assert.deepEqual(interactionCoverage.quickKey.configureBody, { apiKey: 'synthetic-quick-key-000000000000' });
-  assert.equal(interactionCoverage.quickKey.inputValue, '');
-  assert.equal(interactionCoverage.quickKey.buttonDisabled, false);
-  assert.equal(interactionCoverage.quickKey.buttonText, 'Ativar Assistente Gratuito');
-  assert.ok(interactionCoverage.quickKey.toasts.some(entry => entry.type === 'error'));
-  assert.ok(interactionCoverage.quickKey.toasts.some(entry => entry.type === 'success'));
+  assert.equal(interactionCoverage.providerFailure.disabled, true, 'select fica desabilitado quando o catálogo falha');
+  assert.equal(interactionCoverage.providerFailure.feedback, 'Não foi possível carregar os provedores de IA.');
+  assert.equal(interactionCoverage.providerFailure.retryVisible, true);
+  assert.deepEqual(interactionCoverage.providerRecovered.options, ['zen-go', 'gemini']);
+  assert.equal(interactionCoverage.providerRecovered.selected, 'zen-go', 'provedor ativo deve ser pré-selecionado');
+  assert.equal(interactionCoverage.providerRecovered.disabled, false);
+  assert.equal(interactionCoverage.providerRecovered.baseUrlVisible, true, 'OpenCode Go exige URL base visível');
+  assert.equal(interactionCoverage.providerRecovered.modelValue, 'deepseek-v4.1-flash');
+  const modelCombobox = interactionCoverage.providerRecovered.modelCombobox;
+  assert.deepEqual(modelCombobox.closed, {
+    expanded: 'false',
+    hidden: true,
+    visible: ['gpt-5.6-luna', 'deepseek-v4.1-flash', 'kimi-k3', 'deepseek-v4-flash-free']
+  });
+  assert.deepEqual(modelCombobox.open, {
+    expanded: 'true',
+    hidden: false,
+    visible: ['deepseek-v4.1-flash'],
+    groups: ['GPT (OpenAI)', 'DeepSeek', 'Kimi (Moonshot)', 'Opções gratuitas']
+  });
+  assert.deepEqual(modelCombobox.filtered, { expanded: 'true', hidden: false, visible: ['kimi-k3'] });
+  assert.deepEqual(modelCombobox.chosen, { value: 'kimi-k3', expanded: 'false', hidden: true });
+  assert.equal(modelCombobox.datalistAbsent, true, 'datalist nativo deve ter sido removido do modal de IA');
   assert.deepEqual(interactionCoverage.modalBackdrop, { openAfterInsideClick: true, closedAfterBackdropClick: true });
   assert.deepEqual(interactionCoverage.duringRequest, { requests: 1, typingRows: 1 });
   assert.equal(interactionCoverage.afterRequestTyping, 0);
@@ -314,7 +430,7 @@ try {
   assert.deepEqual(interactionCoverage.clear.history, []);
   assert.match(interactionCoverage.clear.text, /Conversa reiniciada\. Em que posso auxiliá-lo\(a\) agora com suas intimações, prazos ou minutas\?/);
   assert.equal(interactionCoverage.afterShiftEnter, 0);
-  assert.equal(interactionCoverage.afterEnter, 1);
+  assert.equal(interactionCoverage.afterEnter, 1, `Chamadas no Enter: ${JSON.stringify(interactionCoverage.enterUrls)}`);
   console.log('✓ Feature modular do Assistente IA: arquitetura, segurança e contratos preservados.');
   await context.close();
 } finally {

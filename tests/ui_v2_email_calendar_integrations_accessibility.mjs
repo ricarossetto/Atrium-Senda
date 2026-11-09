@@ -16,29 +16,35 @@ try {
   const page = desktopResult.page;
   await prepareUiV2EmailCalendarFixture(page);
 
-  const configTrigger = page.locator('#btnConfigureEmail');
+  const configTrigger = page.locator('#btnConfigureMailPreferences');
   await configTrigger.focus();
   await configTrigger.click();
-  await page.waitForFunction(() => document.activeElement?.id === 'emailHostInput');
-  assert.equal(await page.locator('#emailConfigBackdrop [role="dialog"]').getAttribute('aria-labelledby'), 'emailConfigTitle');
-  assert.equal(await page.locator('#emailConfigBackdrop [role="dialog"]').getAttribute('aria-describedby'), 'emailConfigDescription');
+  await page.locator('#mailPreferencesBackdrop:not(.hidden)').waitFor();
+  await page.waitForFunction(() => document.activeElement?.id === 'mailPrefPublication');
+  assert.equal(await page.locator('#mailPreferencesBackdrop [role="dialog"]').getAttribute('aria-labelledby'), 'mailPreferencesTitle');
   assert.equal(await page.locator('#appShell').getAttribute('inert'), '');
-  for (const id of ['emailHostInput', 'emailPortInput', 'emailSecureInput', 'emailUserInput', 'emailPasswordInput', 'emailFromNameInput', 'emailFromAddressInput']) {
+  for (const id of ['mailPrefPublication', 'mailPrefDeadline', 'mailPrefHearing']) {
     assert.equal(await page.locator(`label:has(#${id})`).count(), 1, `${id} precisa de label associado.`);
   }
-  assert.equal(await page.locator('#emailPasswordInput').getAttribute('type'), 'password');
-  assert.equal(await page.locator('#emailPasswordInput').getAttribute('aria-describedby'), 'emailPasswordHelp');
-  await page.locator('#emailConfigSubmitBtn').focus();
+  await page.locator('#mailPreferencesSubmit').focus();
   await page.keyboard.press('Tab');
-  assert.equal(await page.evaluate(() => document.activeElement?.id), 'emailConfigClose');
+  assert.equal(
+    await page.evaluate(() => document.activeElement?.hasAttribute('data-panel-size-toggle')),
+    true,
+    'Tab deve circular no drawer, retornando ao primeiro controle do cabeçalho (tamanho do painel).'
+  );
+  await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'mailPreferencesClose', 'Depois do tamanho, o Tab alcança o fechar.');
   await page.keyboard.press('Shift+Tab');
-  assert.equal(await page.evaluate(() => document.activeElement?.id), 'emailConfigSubmitBtn');
+  assert.equal(await page.evaluate(() => document.activeElement?.hasAttribute('data-panel-size-toggle')), true);
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'mailPreferencesSubmit');
   await page.keyboard.press('Escape');
-  await page.locator('#emailConfigBackdrop').waitFor({ state: 'hidden' });
-  assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnConfigureEmail');
+  await page.locator('#mailPreferencesBackdrop').waitFor({ state: 'hidden' });
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnConfigureMailPreferences');
   assert.equal(await page.locator('#appShell').getAttribute('inert'), null);
 
-  const testTrigger = page.locator('#btnTestEmail');
+  const testTrigger = page.locator('#btnTestAtriumMail');
   await testTrigger.focus();
   await testTrigger.click();
   await page.waitForFunction(() => document.activeElement?.id === 'emailTestRecipientInput');
@@ -46,20 +52,20 @@ try {
   assert.equal(await page.locator('#emailTestBackdrop [role="dialog"]').getAttribute('aria-describedby'), 'emailTestDescription');
   await page.keyboard.press('Escape');
   await page.locator('#emailTestBackdrop').waitFor({ state: 'hidden' });
-  assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnTestEmail');
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnTestAtriumMail');
 
-  const receiverTrigger = page.locator('#btnAddEmailReceiver');
+  const receiverTrigger = page.locator('#btnAddExternalRecipient');
   await receiverTrigger.focus();
   await receiverTrigger.click();
   await page.locator('#emailReceiverModalBackdrop:not(.hidden)').waitFor();
   await page.waitForFunction(() => document.querySelector('#emailReceiverModalBackdrop [role="dialog"]')?.contains(document.activeElement));
-  for (const id of ['receiverTypeInternal', 'receiverTypeExternal', 'receiverUserSelect', 'receiverNameInput', 'receiverEmailInput', 'receiverEnabledInput']) {
+  for (const id of ['receiverNameInput', 'receiverEmailInput', 'receiverEnabledInput']) {
     assert.equal(await page.locator(`label:has(#${id})`).count(), 1, `${id} precisa de label associado.`);
   }
   await page.keyboard.press('Escape');
   await page.locator('#emailReceiverModalBackdrop').waitFor({ state: 'hidden' });
-  assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnAddEmailReceiver');
-  assert.equal(await page.locator('[data-receiver-action="delete"][aria-label]').count(), 3);
+  assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnAddExternalRecipient');
+  assert.equal(await page.locator('[data-receiver-action="delete"]').count(), 3);
 
   const calendarTrigger = page.locator('#configureCalendarButton');
   await calendarTrigger.focus();
@@ -88,9 +94,9 @@ try {
   const mobilePage = mobileResult.page;
   await prepareUiV2EmailCalendarFixture(mobilePage);
   const surfaces = [
-    ['btnConfigureEmail', 'emailConfigBackdrop'],
-    ['btnTestEmail', 'emailTestBackdrop'],
-    ['btnAddEmailReceiver', 'emailReceiverModalBackdrop'],
+    ['btnConfigureMailPreferences', 'mailPreferencesBackdrop'],
+    ['btnTestAtriumMail', 'emailTestBackdrop'],
+    ['btnAddExternalRecipient', 'emailReceiverModalBackdrop'],
     ['configureCalendarButton', 'calendarConfigBackdrop']
   ];
   for (const [triggerId, backdropId] of surfaces) {

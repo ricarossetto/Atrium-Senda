@@ -12,6 +12,8 @@ console.log('===============================================================\n')
 
 const testBaseDir = await mkdtemp(path.join(tmpdir(), 'atrium-multitenant-test-'));
 
+let registry = null;
+
 try {
   const sessionSecret = randomBytes(48).toString('base64url');
   const encryptionKey = randomBytes(32).toString('base64');
@@ -25,7 +27,7 @@ try {
   });
   await tenantManager.init();
 
-  const registry = new TenantContextRegistry(tenantManager, {
+  registry = new TenantContextRegistry(tenantManager, {
     sessionSecret,
     encryptionKey
   });
@@ -160,5 +162,6 @@ try {
 
   console.log('\n✅ TODOS OS 8 TESTES DE ISOLAMENTO MULTI-TENANT PASSARAM COM 100% DE SUCESSO!\n');
 } finally {
+  try { await registry?.dispose?.(); } catch {}
   await rm(testBaseDir, { recursive: true, force: true });
 }

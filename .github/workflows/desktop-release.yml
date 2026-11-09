@@ -1,0 +1,69 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Obter o código
+        uses: actions/checkout@v4
+
+      - name: Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Instalar CLI do Tauri (desktop)
+        run: pnpm --dir desktop install
+
+      - name: Montar recursos (Node empacotado + app)
+        run: pnpm --dir desktop run build:resources
+
+      - name: Compilar instaladores (NSIS e MSI)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Gere com `pnpm --dir desktop tauri signer generate` e cadastre:
+          #   TAURI_SIGNING_PRIVATE_KEY          (chave privada, idealmente com senha)
+          #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD (senha, se houver)
+          # Sem esses segredos, a compilação falha antes de assinar — de propósito.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: ATRIUM Senda ${{ github.ref_name }}
+          releaseBody: consulte docs/RELEASE_NOTES_3.0.0.md para as notas do release.
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+
+      - name: Somas de verificação (SHA-256)
+        shell: pwsh
+        run: |
+          $dir = "desktop/src-tauri/target/release/bundle"
+          Get-ChildItem -Path $dir -Recurse -Include *.exe,*.msi,*.zip,*.sig |
+            ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash)  $(Resolve-Path -Relative $_.FullName)" } |
+            Out-File -FilePath "SHA256SUMS.txt" -Encoding ascii
+          cat SHA256SUMS.txt
+
+      - name: Publicar SHA256SUMS
+        uses: softprops/action-gh-release@v2
+        with:
+          files: SHA256SUMS.txt

@@ -115,7 +115,7 @@ try {
   });
   await page.locator('[data-agenda-activity-id="ui-v2-agenda-task"]').click();
   await page.locator('[data-agenda-activity-id="ui-v2-agenda-publication"]').click();
-  assert.deepEqual(await page.evaluate(() => window.__agendaV2Routes), { task: 1, intimation: 1 }, 'Cada rota cross-module deve usar exatamente um callback canônico.');
+  assert.deepEqual(await page.evaluate(() => window.__agendaV2Routes), { task: 1, intimation: 1 }, 'Cada rota cross-module deve usar exatamente um callback oficial.');
 
   await page.locator('[data-agenda-activity-id="ui-v2-agenda-hearing"]').click();
   await page.locator('#modalBackdrop[data-modal-mode="agenda"]:not(.hidden)').waitFor();
@@ -126,7 +126,12 @@ try {
 
   await page.locator('#newAgendaButton').click();
   await page.locator('#modalBackdrop[data-modal-mode="agenda"]:not(.hidden)').waitFor();
-  assert.equal(await page.locator('.agenda-form-section').count(), 5);
+  assert.equal(await page.locator('.agenda-form-section').count(), 6, 'Novo compromisso inclui a seção de repetição.');
+  assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)),
+    ['title', 'date', 'time', 'client', 'contactId', 'process', 'processId', 'location', 'source', 'description', 'recurrenceFrequency']);
+  assert.deepEqual(await page.locator('#field-recurrenceFrequency option').evaluateAll(options => options.map(option => option.value)),
+    ['', 'daily', 'weekly', 'monthly', 'yearly'], 'Repetição oferece diária, semanal, mensal e anual, com padrão sem repetição.');
+  assert.equal(await page.locator('#field-recurrenceFrequency').inputValue(), '', 'Novo compromisso começa sem repetição.');
   const locationBox = await page.locator('#field-location').boundingBox();
   const sourceBox = await page.locator('#field-source').boundingBox();
   assert.ok(Math.abs(locationBox.y - sourceBox.y) <= 1, 'Local e origem ficam na mesma linha');
@@ -157,4 +162,4 @@ try {
   await session.stop();
 }
 
-console.log('✓ Agenda V2 preserva estado único, datas explícitas, filtros, rotas canônicas e CRUD de oito campos.');
+console.log('✓ Agenda V2 preserva estado único, datas explícitas, filtros, rotas oficiais e CRUD de oito campos.');

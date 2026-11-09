@@ -1,9 +1,9 @@
 {
-  "name": "atrium",
-  "version": "2.1.1",
-  "description": "ATRIUM 2.1 — gestão jurídica local-first para escritórios brasileiros, com dados cifrados, fluxos supervisionados e integrações judiciais em modo de leitura.",
+  "name": "atrium-senda",
+  "version": "3.0.0",
+  "description": "ATRIUM — gestão jurídica na nuvem para escritórios brasileiros, com dados cifrados, fluxos supervisionados e integrações judiciais somente leitura.",
   "homepage": "https://github.com/ricarossetto/Atrium-Senda#readme",
-  "author": "Ricardo de Luca Rossetto",
+  "author": "ATRIUM",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@11.19.0",
@@ -13,9 +13,13 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "node server.mjs",
+    "verify": "node scripts/verify-atrium.mjs --fast",
+    "verify:fast": "node scripts/verify-atrium.mjs --fast",
+    "verify:full": "node scripts/verify-atrium.mjs --full",
     "setup:keys": "node scripts/setup-keys.mjs",
     "collector": "node collector/agent.mjs",
-    "build:cloud": "node scripts/build-cloud-frontend.mjs",
+    "ji": "node scripts/judicial-intelligence.mjs",
+    "audit:privacy": "node scripts/audit-privacy.mjs",
     "test:workspace": "node tests/multi_workspace.mjs && node tests/multi_workspace_restart.mjs",
     "import:spreadsheet": "node scripts/import-spreadsheet.mjs",
     "precheck": "node --check lib/documents/document-service.mjs && node --check lib/documents/document-intelligence.mjs && node --check lib/documents/document-metadata.mjs && node --check lib/search-index.mjs && node --check lib/registry/identifiers.mjs && node --check lib/registry/registry-service.mjs && node --check lib/http/registry-routes.mjs && node --check js/core/legal-timeline.js && node --check js/core/client-context.js && node --check tests/legal_timeline.mjs && node --check tests/client_context.mjs && node --check tests/ui_v2_client_context.mjs && node --check tests/registry_intelligence.mjs && node --check tests/ui_v2_registry_intelligence.mjs && node --check tests/fresh_install_product_completion.mjs && node --check tests/cross_module_navigation.mjs && node --check tests/ui_v2_motion.mjs && node --check tests/visual_product_completion_motion.mjs && node --check tests/document_storage.mjs && node --check tests/document_intelligence.mjs && node --check tests/document_metadata.mjs && node --check tests/ui_v2_document_storage.mjs && node --check tests/ui_v2_document_intelligence.mjs && node --check tests/ui_v2_document_metadata.mjs && node --check tests/full_text_search.mjs && node --check tests/ui_v2_full_text_search.mjs && node --check tests/visual_ui_v2_full_text_search.mjs",
@@ -23,6 +27,7 @@
     "check:ui-v2-final": "node --check tests/ui_v2_final_parity.mjs && node --check tests/ui_v2_final_accessibility.mjs && node --check tests/ui_v2_runtime_hygiene.mjs && node --check tests/visual_ui_v2_final_rollout.mjs",
     "test:ui-v2-final": "node tests/ui_v2_final_parity.mjs && node tests/ui_v2_final_accessibility.mjs && node tests/ui_v2_runtime_hygiene.mjs && node tests/visual_ui_v2_final_rollout.mjs",
     "test:security": "node tests/security.mjs",
+    "test:password-recovery": "node tests/password_recovery.mjs",
     "test:importer": "node tests/importer.mjs",
     "test:rls": "node tests/rls.mjs",
     "test:collector": "node tests/collector.mjs",
@@ -39,8 +44,12 @@
     "test:smoke": "node tests/smoke.mjs",
     "test:shared-components": "node tests/shared_components.mjs",
     "test:onboarding": "node tests/onboarding_component.mjs",
-    "test:ui-v2": "node tests/ui_v2_mode_contract.mjs && node tests/ui_v2_foundation.mjs && node tests/ui_v2_dashboard.mjs && node tests/ui_v2_accessibility.mjs && node tests/ui_v2_processes.mjs && node tests/ui_v2_processes_accessibility.mjs && node tests/ui_v2_publications.mjs && node tests/ui_v2_publications_accessibility.mjs && node tests/ui_v2_tasks.mjs && node tests/ui_v2_tasks_accessibility.mjs && node tests/ui_v2_agenda.mjs && node tests/ui_v2_agenda_accessibility.mjs && node tests/ui_v2_contacts.mjs && node tests/ui_v2_contacts_accessibility.mjs && node tests/ui_v2_financial.mjs && node tests/ui_v2_financial_accessibility.mjs && node tests/ui_v2_documents.mjs && node tests/ui_v2_documents_accessibility.mjs && node tests/ui_v2_leads.mjs && node tests/ui_v2_leads_accessibility.mjs && node tests/ui_v2_assistant.mjs && node tests/ui_v2_assistant_accessibility.mjs && node tests/ui_v2_importer.mjs && node tests/ui_v2_importer_accessibility.mjs && node tests/ui_v2_audit.mjs && node tests/ui_v2_audit_accessibility.mjs && node tests/ui_v2_links.mjs && node tests/ui_v2_links_accessibility.mjs && node tests/ui_v2_visual_direction.mjs && node tests/visual_ui_v2_dashboard.mjs && node tests/visual_ui_v2_processes.mjs && node tests/visual_ui_v2_publications.mjs && node tests/visual_ui_v2_tasks.mjs && node tests/visual_ui_v2_agenda.mjs && node tests/visual_ui_v2_contacts.mjs && node tests/visual_ui_v2_financial.mjs && node tests/visual_ui_v2_documents.mjs && node tests/visual_ui_v2_leads.mjs && node tests/visual_ui_v2_assistant.mjs && node tests/visual_ui_v2_importer.mjs && node tests/visual_ui_v2_audit.mjs && node tests/visual_ui_v2_links.mjs",
-    "test": "node tests/run-all.mjs"
+    "test:calc": "node tests/calculation_spec_contract.mjs && node tests/calculation_decimal.mjs && node tests/calculation_indices.mjs && node tests/calculation_calendar.mjs && node tests/calculation_regimes.mjs && node tests/calculation_tabelas.mjs && node tests/calculation_atualizacao.mjs && node tests/calculation_civel.mjs && node tests/calculation_trabalhista.mjs && node tests/calculation_previdenciario.mjs && node tests/calculation_tempo.mjs && node tests/calculation_pcd_retorno.mjs && node tests/calculation_transicoes.mjs && node tests/calculation_cnis.mjs && node tests/calculation_cnis_extrato.mjs && node tests/calculation_cnis_planilha.mjs && node tests/calculation_cnis_ocr.mjs && node tests/calculation_cnis_pdf_sintetico.mjs && node tests/calculation_tribunais.mjs && node tests/calculation_routes.mjs && node tests/fabrica-calculos.test.mjs && node tests/calculation_persistence.mjs && node tests/calculation_server_wiring.mjs",
+    "test:ui-v2": "node tests/ui_v2_mode_contract.mjs && node tests/ui_v2_basic_density.mjs && node tests/ui_v2_basic_density_browser.mjs && node tests/ui_v2_sidebar_navigation.mjs && node tests/ui_v2_foundation.mjs && node tests/ui_v2_mobile_safe_area.mjs && node tests/ui_v2_mobile_safe_area_webkit.mjs && node tests/ui_v2_dashboard.mjs && node tests/ui_v2_accessibility.mjs && node tests/ui_v2_processes.mjs && node tests/ui_v2_processes_accessibility.mjs && node tests/ui_v2_publications.mjs && node tests/ui_v2_publications_accessibility.mjs && node tests/ui_v2_tasks.mjs && node tests/ui_v2_tasks_accessibility.mjs && node tests/ui_v2_agenda.mjs && node tests/ui_v2_agenda_accessibility.mjs && node tests/ui_v2_contacts.mjs && node tests/ui_v2_contacts_accessibility.mjs && node tests/ui_v2_financial.mjs && node tests/ui_v2_financial_accessibility.mjs && node tests/ui_v2_calculations.mjs && node tests/ui_v2_documents.mjs && node tests/ui_v2_documents_accessibility.mjs && node tests/ui_v2_leads.mjs && node tests/ui_v2_leads_accessibility.mjs && node tests/ui_v2_assistant.mjs && node tests/ui_v2_assistant_accessibility.mjs && node tests/skills_catalog_contract.test.mjs && node tests/ui_v2_importer.mjs && node tests/ui_v2_importer_accessibility.mjs && node tests/ui_v2_audit.mjs && node tests/ui_v2_audit_accessibility.mjs && node tests/ui_v2_links.mjs && node tests/ui_v2_links_accessibility.mjs && node tests/ui_v2_visual_direction.mjs && node tests/visual_ui_v2_dashboard.mjs && node tests/visual_ui_v2_processes.mjs && node tests/visual_ui_v2_publications.mjs && node tests/visual_ui_v2_tasks.mjs && node tests/visual_ui_v2_agenda.mjs && node tests/visual_ui_v2_contacts.mjs && node tests/visual_ui_v2_financial.mjs && node tests/visual_ui_v2_calculations.mjs && node tests/visual_ui_v2_documents.mjs && node tests/visual_ui_v2_leads.mjs && node tests/visual_ui_v2_assistant.mjs && node tests/visual_ui_v2_importer.mjs && node tests/visual_ui_v2_audit.mjs && node tests/visual_ui_v2_links.mjs && node tests/search_input_autofill_contract.test.mjs",
+    "test:ci-fast": "node tests/security.mjs && node tests/secret-hygiene.mjs && node tests/security_migrations.mjs && node tests/multi_tenant_isolation.mjs && node tests/state_migrations.mjs && node tests/instance_lock.test.mjs && node tests/large_state_persistence.mjs && node tests/state_payload_limit.test.mjs && node tests/backup_restore.mjs && node tests/spec_contracts.mjs && node tests/toolchain_contract.mjs && node tests/state_etag_principal.test.mjs && node tests/publication_treatment_access.test.mjs && node tests/private_scope_write_isolation.test.mjs && node tests/cnis_page_cap.test.mjs && node tests/inpi_scan_limit.test.mjs && node tests/omni_court_key.test.mjs && node tests/dashboard_deadline_escape.mjs && node tests/task_completion_notification_privacy.test.mjs && node tests/document_upload_access.test.mjs && node tests/ai_context_access.test.mjs && node tests/mfa_legacy_rotation.test.mjs && node tests/events_runtime_scope.test.mjs && node tests/ai_classifier_access.test.mjs && node tests/api-error-code-allowlist.mjs",
+    "test:ci-judicial": "node tests/judicial_sandbox.mjs && node tests/judicial_discovery.mjs && node tests/judicial_integration_rbac.mjs && node tests/judicial_auth_state.mjs && node tests/managed_judicial_connectivity.mjs && node tests/tjrs_sidecar_integration.mjs && node tests/tjrs_sidecar_fallback.mjs && node tests/eproc_a1_totp_integration.mjs && node tests/eproc-core-contract.mjs && node tests/eproc-registry.mjs && node tests/eproc-parsers.mjs && node tests/eproc-read-only-actions.mjs && node tests/eproc-scheduler-contract.mjs && node tests/eproc-legacy-routes-csrf.mjs && node tests/pje-registry.mjs && node tests/pje-read-only-actions.mjs && node tests/pje-runtime.mjs && node tests/pje-projection.mjs && node tests/pje-verification-store.mjs && node tests/publication_workflow.mjs && node tests/djen-capture-window.test.mjs && node tests/domicilio-eletronico.test.mjs && node tests/domicilio-ingest.test.mjs && node tests/domicilio-runner.test.mjs",
+    "test": "node tests/run-all.mjs",
+    "lint:ui": "node scripts/ui-lint.mjs http://127.0.0.1:4173"
   },
   "keywords": [
     "advocacia",
@@ -62,9 +71,13 @@
   },
   "dependencies": {
     "exceljs": "^4.4.0",
-    "nodemailer": "^9.0.5",
+    "nodemailer": "10.2.1",
     "playwright": "^1.56.0",
     "qrcode": "^1.5.4",
+    "unpdf": "1.8.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "lintapple": "^0.1.20"
   }
 }

@@ -1,6 +1,6 @@
 ---
 name: legal-audit
-description: Faz revisão adversarial final de peça jurídica, conferindo fatos, datas, jurisprudência, legislação, lógica, pedidos e adequação processual antes da entrega.
+description: Faz revisão adversarial final de peça jurídica, conferindo fatos, datas, jurisprudência, legislação, lógica, pedidos e adequação processual antes da entrega. Use ao revisar rascunhos e minutas de peças antes da entrega final.
 ---
 
 # Auditoria final adversarial

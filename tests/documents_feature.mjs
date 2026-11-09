@@ -70,7 +70,7 @@ for (const forbiddenSideEffect of [
 ]) {
   assert.equal(documentsSource.includes(forbiddenSideEffect), false, `Documents não pode conter ${forbiddenSideEffect}.`);
 }
-assert.match(portalSource, /import \{ createDocumentsFeature \} from '\.\/features\/documents\.js';/);
+assert.match(portalSource, /import \{ createDocumentsFeature \} from '\.\/features\/documents\.js(\?v=[^']*)?';/);
 assert.equal((portalSource.match(/createDocumentsFeature\(/g) || []).length, 1, 'Portal deve instanciar Documents uma única vez.');
 for (const generator of [
   'generateProcuracaoText', 'generateContratoText', 'generateProcuracaoPrevText',
@@ -98,7 +98,7 @@ for (const listenerId of [
 ]) {
   assert.equal(new RegExp(`byId\\('${listenerId}'\\)\\?\\.addEventListener`).test(portalSource), false, `${listenerId} não pode manter listener no portal.`);
 }
-assert.deepEqual(DOCUMENT_TYPES, EXPECTED_TYPES, 'Registry deve expor exatamente os nove tipos canônicos.');
+assert.deepEqual(DOCUMENT_TYPES, EXPECTED_TYPES, 'Registry deve expor exatamente os nove tipos oficiais.');
 assert.deepEqual(DOCUMENT_TYPE_ALIASES, EXPECTED_ALIASES, 'Aliases legados devem permanecer exatos.');
 assert.deepEqual(DOCUMENT_CATALOG.map(card => [card.id, card.title, card.category]), EXPECTED_CARDS, 'Catálogo deve preservar os cinco cards atuais.');
 
@@ -212,7 +212,9 @@ try {
   let trackFeatureRequests = false;
   page.on('pageerror', error => pageErrors.push(error.message));
   page.on('request', request => {
-    if (trackFeatureRequests) featureRequests.push({ url: request.url(), method: request.method() });
+    if (trackFeatureRequests && !request.url().includes('/assets/')) {
+      featureRequests.push({ url: request.url(), method: request.method() });
+    }
   });
   await page.addInitScript(() => {
     const NativeDate = Date;
@@ -233,7 +235,7 @@ try {
   });
   await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
-  await page.locator('#systemStatusBar[data-status="saved"]').waitFor({ state: 'attached' });
+  await page.locator('#systemStatusBar[data-status="saved"], #systemStatusBar[data-status="ready"]').waitFor({ state: 'attached' });
   await page.waitForFunction(() => {
     const syncButton = document.getElementById('syncButton');
     const agendaSyncButton = document.getElementById('agendaSyncButton');
@@ -301,7 +303,7 @@ try {
   await page.locator('#view-documents.active').waitFor();
   const cards = await page.locator('#documentsTemplateGrid .prompt-card').evaluateAll(items => items.map(card => ({
     id: card.querySelector('[data-generate-doc-type]').dataset.generateDocType,
-    title: card.querySelector('h4').textContent,
+    title: card.querySelector('h3, h4').textContent,
     category: card.querySelector('.prompt-category-badge').textContent,
     description: card.querySelector('p').textContent
   })));

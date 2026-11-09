@@ -1,0 +1,15 @@
+<!doctype html>
+<!-- Fixture sintética ATRIUM — consulta pública por chave (CAPTCHA requerido). Sem dados reais. -->
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Verificação de segurança — eproc</title></head>
+<body>
+<h1>Verificação de segurança</h1>
+<p>Informe os caracteres da imagem para continuar.</p>
+<form method="post" action="externo_controlador.php?acao=processo_consulta_publica">
+  <label for="txtCodigoSeguranca">Código de segurança</label>
+  <input type="text" id="txtCodigoSeguranca" name="txtCodigoSeguranca" value="">
+  <img src="captcha.php" alt="captcha">
+  <button type="submit">Enviar</button>
+</form>
+</body>
+</html>

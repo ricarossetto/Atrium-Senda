@@ -69,7 +69,7 @@ try {
   await page.locator('[data-process-publication="nav-publication"]').click();
   await page.locator('#linkedPublicationReader[open]').waitFor();
   assert.equal(await page.locator('#view-processes.active').count(), 1);
-  await page.locator('#linkedPublicationReader button').click();
+  await page.locator('#linkedPublicationReader').getByRole('button', { name: 'Voltar' }).click();
   await page.locator('#linkedPublicationReader').waitFor({ state: 'detached' });
   await page.locator('#processInspectorClose').click();
   await switchUiV2View(page, 'inbox');
@@ -134,4 +134,4 @@ try {
   await session.stop();
 }
 
-console.log('✓ Processo, Publicação, Contato, Tarefa e Notificação abrem a entidade canônica exata.');
+console.log('✓ Processo, Publicação, Contato, Tarefa e Notificação abrem a entidade oficial exata.');

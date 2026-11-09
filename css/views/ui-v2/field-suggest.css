@@ -1,0 +1,62 @@
+/* Lista de sugestões dos campos e menus digitáveis. */
+html[data-ui="v2"] .field-suggest {
+  position: fixed;
+  z-index: 100001;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--v2-space-1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border-strong);
+  border-radius: var(--v2-radius-md);
+  box-shadow: var(--v2-shadow-elevated);
+}
+
+html[data-ui="v2"] .field-suggest.hidden { display: none; }
+
+html[data-ui="v2"] .field-suggest button {
+  display: grid;
+  gap: 2px;
+  min-height: 36px;
+  padding: var(--v2-space-2) var(--v2-space-3);
+  color: var(--v2-color-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: var(--v2-radius-sm);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-ui="v2"] .field-suggest button:hover,
+html[data-ui="v2"] .field-suggest button[aria-selected="true"] { background: var(--v2-color-primary-soft); }
+
+html[data-ui="v2"] .field-suggest strong { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+html[data-ui="v2"] .field-suggest small { color: var(--v2-color-muted-foreground); font-size: 12px; overflow-wrap: anywhere; }
+
+/* A lista nativa fica no formulário, fora de vista, e segue sendo a dona do valor. */
+html[data-ui="v2"] .modal .field select.field-select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+html[data-ui="v2"] .modal .field input.field-select-proxy {
+  padding-right: 34px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+html[data-ui="v2"] .modal .field input.field-select-proxy::placeholder { color: var(--v2-color-foreground); opacity: .85; }

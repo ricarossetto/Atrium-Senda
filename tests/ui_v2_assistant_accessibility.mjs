@@ -16,8 +16,10 @@ try {
   assert.match(await page.locator('#aiChatMessages').getAttribute('aria-label'), /Assistente jurídico/);
   assert.equal(await page.locator('label[for="aiChatInput"]').count(), 1);
   assert.equal(await page.locator('label[for="codexSkillSelect"]').count(), 1);
-  assert.equal(await page.locator('label[for="assistantContextSelect"]').count(), 1);
+  assert.equal(await page.locator('label[for="assistantContextSearch"]').count(), 1);
   assert.equal(await page.locator('#assistantContextSelect').getAttribute('aria-describedby'), 'assistantV2ContextMeta assistantV2ContextHint');
+  assert.equal(await page.locator('#assistantContextSearch').getAttribute('role'), 'combobox');
+  assert.equal(await page.locator('#assistantContextSearch').getAttribute('aria-describedby'), 'assistantV2ContextMeta assistantV2ContextHint');
   assert.equal(await page.locator('#btnSendAiMessage').getAttribute('aria-label'), 'Enviar mensagem ao Assistente jurídico');
   assert.match(await page.locator('#btnClearAiConversation').getAttribute('aria-label'), /Limpar conversa/);
 
@@ -70,6 +72,7 @@ try {
 
   await mobilePage.locator('#btnOpenGeminiKeyModal').click();
   await mobilePage.waitForFunction(() => document.querySelector('#geminiKeyBackdrop .gemini-key-modal')?.contains(document.activeElement));
+  await mobilePage.waitForFunction(() => [...document.querySelectorAll('#geminiKeyBackdrop')].flatMap(element => element.getAnimations({ subtree: true })).every(animation => animation.playState === 'finished'));
   const sheet = await mobilePage.locator('#geminiKeyBackdrop .gemini-key-modal').evaluate(element => {
     const rect = element.getBoundingClientRect();
     const buttons = [...element.querySelectorAll('button')].filter(button => button.getClientRects().length);

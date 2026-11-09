@@ -23,7 +23,8 @@ const SCENARIOS = [
   { file: '13-dark-390x844-mobile-sheet.png', theme: 'dark', width: 390, height: 844, state: 'mobile-sheet' },
   { file: '14-light-1440x900-task-list.png', theme: 'light', width: 1440, height: 900, state: 'task-list' },
   { file: '15-dark-390x844-mobile-task-list.png', theme: 'dark', width: 390, height: 844, state: 'task-list' },
-  { file: '16-light-1186x698-task-list.png', theme: 'light', width: 1186, height: 698, state: 'task-list' }
+  { file: '16-light-1186x698-task-list.png', theme: 'light', width: 1186, height: 698, state: 'task-list' },
+  { file: '17-light-390x844-mobile-kanban.png', theme: 'light', width: 390, height: 844, state: 'mobile-kanban' }
 ];
 
 fs.mkdirSync(OUTPUT, { recursive: true });
@@ -59,6 +60,12 @@ try {
         await page.locator('[data-column="concluida"]').scrollIntoViewIfNeeded();
       } else if (scenario.state === 'mobile-sheet') {
         await page.locator('[data-task-id="ui-v2-task-publication"] [data-task-open]').click();
+      } else if (scenario.state === 'mobile-list') {
+        await page.locator('#taskListViewButton').click();
+        await page.locator('#taskListPanel:not(.hidden)').waitFor();
+      } else if (scenario.state === 'mobile-kanban') {
+        await page.locator('#taskKanbanViewButton').click();
+        await page.locator('#kanbanBoard:not(.hidden)').waitFor();
       } else if (scenario.state === 'task-list') {
         await page.locator('#taskListViewButton').click();
         await page.locator('#taskListPanel:not(.hidden)').waitFor();
@@ -76,6 +83,7 @@ try {
         const drawerRect = drawer?.getBoundingClientRect();
         return {
           active: document.getElementById('view-kanban').classList.contains('active'),
+          taskViewMode: document.getElementById('view-kanban').dataset.taskView,
           ui: document.documentElement.dataset.ui,
           pageOverflow: document.documentElement.scrollWidth - innerWidth,
           boardOverflow: innerWidth < 768 ? board.scrollWidth - board.clientWidth : 0,
@@ -94,6 +102,11 @@ try {
         };
       });
       assert.equal(layout.active, true); assertions++;
+      if (scenario.state === 'mobile-list' || scenario.state === 'mobile-kanban') {
+        const expectedMode = scenario.state === 'mobile-list' ? 'list' : 'kanban';
+        assert.equal(layout.taskViewMode, expectedMode); assertions++;
+        assert.equal(layout.taskListVisible, expectedMode === 'list'); assertions++;
+      }
       assert.equal(layout.ui, 'v2'); assertions++;
       assert.ok(layout.pageOverflow <= 2, `Overflow global em ${scenario.file}: ${layout.pageOverflow}px.`); assertions++;
       assert.ok(layout.boardOverflow <= 2, `Overflow mobile do RecordList em ${scenario.file}: ${layout.boardOverflow}px.`); assertions++;
@@ -101,7 +114,7 @@ try {
       assert.equal(layout.columns, 6); assertions++;
       if (scenario.state === 'task-list') {
         assert.equal(layout.taskListVisible, true); assertions++;
-        assert.equal(layout.taskListRows, 6); assertions++;
+        assert.equal(layout.taskListRows, 5); assertions++;
       }
       assert.deepEqual(layout.duplicateIds, []); assertions++;
       assert.equal(layout.hasCritical, true); assertions++;

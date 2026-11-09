@@ -73,11 +73,11 @@ try {
   });
 
   assert.equal(await page.locator('#primaryTermName').textContent(), 'Advogada Mineral Sintética');
-  assert.match(await page.locator('#primaryTermRegistration').textContent(), /OAB\/RS 000123 · Advogado\(a\) monitorado\(a\) principal/);
+  assert.match(await page.locator('#primaryTermRegistration').textContent(), /OAB\/RS 000123 · OAB do escritório monitorada principal/);
   assert.equal(await page.locator('#termSourceCount').textContent(), '5');
   assert.equal(await page.locator('#termIssueCount').textContent(), '2');
   assert.equal(await page.locator('#termNewCount').textContent(), '2');
-  assert.equal(fixture.rawIntimations.filter(item => item.status === 'nova').length, 4, 'A fixture raw deve divergir do cutoff canônico.');
+  assert.equal(fixture.rawIntimations.filter(item => item.status === 'nova').length, 4, 'A fixture raw deve divergir do cutoff oficial.');
 
   const sources = await page.locator('#monitorSourceList [data-source-id]').evaluateAll(rows => rows.map(row => ({
     id: row.dataset.sourceId,
@@ -133,14 +133,14 @@ try {
     return result;
   });
   assert.equal(fallback.name, 'Dr(a). Advogado(a) Titular');
-  assert.match(fallback.registration, /^OAB\/UF 000000/);
+  assert.match(fallback.registration, /^Informe sua OAB/);
   assert.equal(fallback.termCount, 0);
   assert.deepEqual(fallback.calls, fallback.before);
 
   const secondaryBefore = await page.evaluate(() => structuredClone(window.Atrium.Store.state.terms[1]));
   const settingsBefore = await page.evaluate(() => structuredClone(window.Atrium.Store.state.settings));
   await page.locator('#primaryTermCard').click();
-  assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(fields => fields.map(field => field.name)), ['name', 'type', 'oabNumber', 'oabUf', 'document']);
+  assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(fields => fields.map(field => field.name)), ['name', 'type', 'oabNumber', 'oabUf', 'scope', 'document', 'processNumber']);
   assert.equal(await page.locator('#field-oabUf option').count(), 28);
   await page.locator('#field-name').fill('Advogada Principal Editada');
   await page.locator('#field-oabNumber').fill('OAB 001.002');

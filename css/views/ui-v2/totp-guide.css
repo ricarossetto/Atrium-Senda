@@ -1,0 +1,40 @@
+/* Passo a passo animado do QR Code do Google Authenticator. */
+html[data-ui="v2"] .totp-guide {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  gap: var(--v2-space-4);
+  align-items: center;
+}
+html[data-ui="v2"] .totp-guide-frame {
+  aspect-ratio: 340 / 736;
+  overflow: hidden;
+  background: #131314;
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+}
+html[data-ui="v2"] .totp-guide-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  animation: totp-guide-in var(--v2-duration-slow) var(--v2-ease-standard);
+}
+html[data-ui="v2"] .totp-guide-frame img[hidden] { display: none; }
+@keyframes totp-guide-in { from { opacity: 0; } }
+html[data-ui="v2"] .totp-guide-copy { display: grid; gap: var(--v2-space-2); min-width: 0; }
+html[data-ui="v2"] .totp-guide-count { color: var(--v2-color-foreground-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+html[data-ui="v2"] .totp-guide-copy p { min-height: 63px; margin: 0; color: var(--v2-color-foreground); font-size: 14px; line-height: 21px; }
+html[data-ui="v2"] .totp-guide-controls { display: flex; flex-wrap: wrap; gap: var(--v2-space-2); }
+html[data-ui="v2"] .totp-guide-controls .button { min-height: 40px; padding-inline: var(--v2-space-3); font-size: 13px; }
+html[data-ui="v2"] .totp-guide-details { margin-bottom: var(--v2-space-3); }
+html[data-ui="v2"] .totp-guide-details summary { color: var(--v2-color-foreground); font-size: 13px; font-weight: 650; cursor: pointer; }
+html[data-ui="v2"] .totp-guide-details[open] summary { margin-bottom: var(--v2-space-3); }
+@media (max-width: 767px) {
+  html[data-ui="v2"] .totp-guide { grid-template-columns: 88px minmax(0, 1fr); gap: var(--v2-space-2); }
+  html[data-ui="v2"] .totp-guide-copy p { min-height: 80px; font-size: 13px; line-height: 19px; }
+  html[data-ui="v2"] .totp-guide-controls { flex-wrap: nowrap; gap: var(--v2-space-1); }
+  html[data-ui="v2"] .totp-guide-controls .button { flex: 1 1 auto; min-width: 0; padding-inline: 6px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="v2"] .totp-guide-frame img { animation: none; }
+}

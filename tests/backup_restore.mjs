@@ -8,9 +8,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SecurityManager, generateTotp } from '../lib/security.mjs';
 import { CURRENT_DATA_VERSION, CURRENT_SCHEMA_VERSION } from '../lib/state-migrations.mjs';
+import { serverSourceText } from './server-source.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const STARTUP_TIMEOUT_MS = 45_000;
+let testWorkspaceId = 'ws-default';
 const SENSITIVE_MARKERS = [
   'CLIENTE-SENSIVEL-TESTE-RESTORE',
   'CPF-SINTETICO-000',
@@ -37,12 +39,15 @@ try {
   console.log('1. Validando autenticação, CSRF, RBAC e backup de estado vazio...');
   const createResponse = await fetch(`${server.baseUrl}/api/system/backup/create`, {
     method: 'POST',
-    headers: master.headers
+    headers: master.headers,
+    body: JSON.stringify(master.stepUp())
   });
   assert.equal(createResponse.status, 200, 'Master com CSRF deve conseguir criar backup.');
   const createPayload = await createResponse.json();
   assert.equal(createPayload.ok, true);
   assert.equal(createPayload.backupData.format, 'atrium-encrypted-backup-v1');
+  testWorkspaceId = createPayload.backupData.workspaceId;
+  assert.equal(typeof testWorkspaceId, 'string', 'Backup criado deve declarar o escritório de origem.');
   const emptyBackupPlaintext = cryptoManager.decrypt(createPayload.backupData.encryptedState);
   const emptyBackupState = JSON.parse(emptyBackupPlaintext);
   assert.equal(emptyBackupState.schemaVersion, CURRENT_SCHEMA_VERSION, 'Backup vazio deve ser restaurável no schema corrente.');
@@ -62,7 +67,7 @@ try {
   assert.equal(response.status, 403, 'Colaborador não pode restaurar backup.');
 
   const snapshotsBeforeEmptyRestore = await listSafetySnapshots(backupDir);
-  response = await restore(server.baseUrl, createPayload.backupData, master.headers);
+  response = await restore(server.baseUrl, createPayload.backupData, master.headers, master.stepUp());
   assert.equal(response.status, 200, 'Master com CSRF deve restaurar backup válido em estado vazio.');
   assert.equal((await response.json()).ok, true);
   assert.deepEqual(
@@ -158,6 +163,16 @@ try {
     request: () => restore(server.baseUrl, encryptedBackup(cryptoManager, futureSchemaState), master.headers)
   });
 
+  const noOriginBackup = encryptedBackup(cryptoManager, makeState('SEM-ORIGEM'));
+  delete noOriginBackup.workspaceId;
+  await expectRejectedWithoutMutation({
+    label: 'backup sem escritório de origem',
+    expectedStatus: 400,
+    server,
+    headers: master.headers,
+    request: () => restore(server.baseUrl, noOriginBackup, master.headers)
+  });
+
   const legacySchemaState = makeState('SCHEMA-LEGADO');
   legacySchemaState.schemaVersion = CURRENT_SCHEMA_VERSION - 1;
   legacySchemaState.dataVersion = CURRENT_DATA_VERSION - 1;
@@ -229,11 +244,11 @@ try {
   assert.equal((await listBackupTemps(backupDir)).length, 0, 'Restore concluído não deve deixar snapshot parcial.');
   assert.equal((await listAppStateTemps(server.dataDirectory)).length, 0, 'Restore concluído não deve deixar app-state parcial.');
 
-  const serverSource = await readFile(path.join(ROOT, 'server.mjs'), 'utf8');
+  const serverSource = serverSourceText;
   const atomicHelper = sourceBlock(serverSource, 'async function writePrivateJsonAtomically', 'async function createPreRestoreSafetySnapshot');
   assert.match(atomicHelper, /writeFile\(tmpFile,[\s\S]*mode:\s*0o600/, 'Snapshot deve ser escrito primeiro em temporário privado.');
   assert.match(atomicHelper, /rename\(tmpFile,\s*targetPath\)/, 'Snapshot deve ser publicado por rename atômico.');
-  assert.match(serverSource, /saveAppStateDirect\(restoredState,\s*currentEnv\.revision\)/, 'Restore deve passar a revision capturada ao save direto validado, inclusive em recovery mode.');
+  assert.match(serverSource, /saveAppStateDirect\(restoredState,\s*currentEnv\.revision(?:,\s*\{[^}]*allowDegraded:\s*true[^}]*\})?\)/, 'Restore deve passar a revision capturada ao save direto validado, inclusive em recovery mode.');
   assert.doesNotMatch(serverSource, /JSON\.stringify\(currentEnv\s*,/, 'Restore não pode serializar currentEnv descriptografado em snapshot.');
   console.log('✓ Estado populado, expectedRevision, temp+rename e ausência de app-state parcial validados.');
 
@@ -289,13 +304,14 @@ function makeState(label, { sensitive = false } = {}) {
   };
 }
 
-function encryptedBackup(manager, state) {
+function encryptedBackup(manager, state, workspaceId = testWorkspaceId) {
   const plaintext = JSON.stringify(state);
   return {
     format: 'atrium-encrypted-backup-v1',
     createdAt: new Date().toISOString(),
     createdBy: 'backup-restore-test',
     appVersion: '2.0.0',
+    workspaceId,
     encryptedState: manager.encrypt(plaintext),
     checksum: sha256(plaintext)
   };
@@ -323,6 +339,7 @@ async function setupMaster(baseUrl) {
   return {
     cookie,
     csrf: verified.csrfToken,
+    stepUp: () => ({ password: 'Senha-Restore-2026!', code: generateTotp(setup.manualSecret) }),
     headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-CSRF-Token': verified.csrfToken }
   };
 }
@@ -348,7 +365,8 @@ async function setupCollaborator(baseUrl, master) {
   assert.ok(collaborator);
   response = await postJson(`${baseUrl}/api/auth/users/manage`, {
     userId: collaborator.id,
-    status: 'active'
+    status: 'active',
+    ...master.stepUp()
   }, master.headers);
   assert.equal(response.status, 200);
   response = await postJson(`${baseUrl}/api/auth/login`, {
@@ -364,11 +382,11 @@ async function setupCollaborator(baseUrl, master) {
   };
 }
 
-async function restore(baseUrl, backupData, headers) {
+async function restore(baseUrl, backupData, headers, stepUp = {}) {
   return fetch(`${baseUrl}/api/system/backup/restore`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ backupData })
+    body: JSON.stringify({ backupData, ...stepUp })
   });
 }
 

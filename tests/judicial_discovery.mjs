@@ -132,8 +132,18 @@ const target = {
 };
 
 await runSyntheticDiscoveryCycle(target);
-assert.equal(target.intimations.length, 1, 'a mesma publicação retornada para duas OABs deve permanecer canônica');
+assert.equal(target.intimations.length, 1, 'a mesma publicação retornada para duas OABs deve permanecer oficial');
 assert.deepEqual([...target.intimations[0].monitoredTermIds].sort(), [TERM_ALPHA.id, TERM_BETA.id].sort());
+assert.deepEqual(
+  target.intimations[0].publicationLawyers,
+  [{ name: TERM_ALPHA.name, oab: TERM_ALPHA.oabNumber, uf: TERM_ALPHA.oabUf }],
+  'advogados citados pela fonte oficial são persistidos de forma estruturada'
+);
+assert.equal(
+  target.intimations[0].lawyers,
+  `${TERM_ALPHA.name} (OAB/${TERM_ALPHA.oabUf} ${TERM_ALPHA.oabNumber})`,
+  'o rótulo legível de advogados alimenta a leitura e o e-mail'
+);
 assert.equal(target.processes.length, 1, 'o número CNJ descoberto deve criar um único processo');
 assert.equal(target.processes[0].number, PROCESS_NUMBER);
 assert.equal(target.processes[0].court, 'TJTS · G1 · Vara Cível Sintética');
@@ -142,7 +152,7 @@ assert.equal(target.processes[0].subject, 'Assunto Sintético');
 assert.equal(target.processes[0].lastMovement, 'Movimento oficial sintético mais novo');
 assert.equal(target.processes[0].lastMovementAt, NEW_MOVEMENT_AT);
 assert.equal(target.processes[0].client, 'Cliente Alpha Sintética');
-assert.equal(target.processes[0].contactId, target.contacts.find(item => item.name === 'Cliente Alpha Sintética')?.id, 'processo deve apontar para o contato canônico da parte representada');
+assert.equal(target.processes[0].contactId, target.contacts.find(item => item.name === 'Cliente Alpha Sintética')?.id, 'processo deve apontar para o contato oficial da parte representada');
 assert.equal(target.processes[0].counterpart, 'Empresa Adversa Sintética');
 assert.deepEqual([...target.processes[0].monitoredTermIds].sort(), [TERM_ALPHA.id, TERM_BETA.id].sort());
 assert.equal(target.contacts.length, 2, 'partes estruturadas devem gerar contatos individuais');
@@ -154,6 +164,7 @@ assert.equal(target.tasks[0]?.responsible, 'Equipe jurídica', 'duas associaçõ
 const firstCounts = collectionCounts(target);
 await runSyntheticDiscoveryCycle(target);
 assert.deepEqual(collectionCounts(target), firstCounts, 'o segundo sync idêntico não pode duplicar publicações, processos, contatos ou tarefas');
+assert.equal(target.intimations[0].publicationLawyers.length, 1, 'a releitura não duplica advogados citados');
 assert.equal(remoteCalls.filter(call => call.url.includes('api-publica.datajud.cnj.jus.br')).length, 2, 'DataJud deve ser consultado uma vez por processo em cada ciclo, não uma vez por advogado');
 assert(remoteCalls.filter(call => call.method === 'POST').every(call => call.url.endsWith('/_search')), 'o único POST remoto do discovery deve ser a pesquisa somente leitura do DataJud');
 assert(remoteCalls.every(call => call.url.startsWith('https://comunicaapi.pje.jus.br/') || call.url.startsWith('https://api-publica.datajud.cnj.jus.br/')), 'discovery não pode chamar fonte remota não autorizada');
@@ -227,7 +238,7 @@ assert.ok(selfContact, 'advogado monitorado que também é parte deve existir um
 assert.equal(selfContact.contactRole, 'outro', 'advogado monitorado que também é parte não pode ser inferido como cliente de si mesmo');
 assert.equal(selfContact.relationshipProvenance?.status, 'requires-human-confirmation');
 assert.equal(selfContact.relationshipProvenance?.reason, 'monitored-professional-is-party');
-assert.equal(selfPartyTarget.processes[0].client, undefined, 'caso de autor/advogado não pode corromper o cliente canônico');
+assert.equal(selfPartyTarget.processes[0].client, undefined, 'caso de autor/advogado não pode corromper o cliente principal');
 
 const frontendProcessStore = {
   state: { processes: [{ ...manualProcess, client: 'Cliente frontend manual', notes: 'Notas frontend manuais' }] }
@@ -283,7 +294,7 @@ await verifyServerPipeline();
 await verifyPersistedOabDiscoveryPipeline();
 await verifySourceContracts();
 
-console.log('Judicial discovery passou: DJEN → DataJud → processo → contatos, multi-OAB, merges seguros, idempotência e endpoints canônicos.');
+console.log('Judicial discovery passou: DJEN → DataJud → processo → contatos, multi-OAB, merges seguros, idempotência e endpoints oficiais.');
 
 async function runSyntheticDiscoveryCycle(cycleTarget) {
   const monitoredTerms = cycleTarget.terms || [];
@@ -463,17 +474,24 @@ async function verifySourceContracts() {
   ]);
   const syncSource = serverSource.slice(serverSource.indexOf("url.pathname === '/api/sync'"), serverSource.indexOf("if (req.method === 'GET' || req.method === 'HEAD')"));
   assert(syncSource.indexOf('await startManagedPortfolioCollector({ waitForCompletion: true })') >= 0 && syncSource.indexOf('await startManagedPortfolioCollector({ waitForCompletion: true })') < syncSource.indexOf('const runtime = await readRuntime()'), '/api/sync deve aguardar o acervo autenticado antes de ler e consolidar o runtime');
-  assert(syncSource.indexOf('await collectDjen') >= 0 && syncSource.indexOf('await collectDjen') < syncSource.indexOf('await collectDatajud'), '/api/sync deve encadear DJEN antes do DataJud');
+  assert(syncSource.indexOf('await collectDjenForWorkspaceTerms(') >= 0 && syncSource.indexOf('await collectDjenForWorkspaceTerms(') < syncSource.indexOf('await collectDatajud'), '/api/sync deve encadear DJEN antes do DataJud');
+  assert(serverSource.includes('await collectDjen({'), 'núcleo compartilhado deve chamar o adaptador DJEN oficial');
+  assert(!/if \(syncState\(\)\.requestActive \|\| existingStatus\?\.active\)/.test(syncSource), 'job eproc ativo não pode bloquear a coleta de publicações no /api/sync');
+  assert(/readDjenSyncMarker\(/.test(syncSource) && syncSource.includes('saveDjenSyncMarker('), '/api/sync deve usar o marcador por workspace (60 dias inicial, 2 dias depois)');
+  assert(serverSource.includes('resolveDjenCaptureWindow(marker)') && !serverSource.includes("'2026-09-15'"), 'janela DJEN deve vir do marcador por workspace, sem watermark fixo global');
+  assert(serverSource.includes('async function persistExternalCollectionsToCanonical'), 'estado consolidado deve ser persistido pelo servidor (fonte de verdade)');
+  assert(syncSource.includes('persistExternalCollectionsToCanonical('), '/api/sync deve gravar as coleções coletadas no estado consolidado antes de responder');
+  assert((serverSource.match(/persistExternalCollectionsToCanonical\(/g) || []).length >= 3, 'helper oficial deve ser reutilizado pelo /api/sync e pelo agendador DJEN 07h/19h');
   assert.match(serverSource, /portal\.enabled && portal\.accountScoped/, 'coletor de acervo deve selecionar somente portais autenticados habilitados');
   assert.doesNotMatch(serverSource.slice(serverSource.indexOf('function managedPortfolioPortalIds'), serverSource.indexOf('async function startManagedPortfolioCollector')), /strategy === ['"](?:djen|datajud)['"]/, 'seleção do acervo autenticado não deve duplicar DJEN ou DataJud');
-  assert.match(serverSource, /emptyRuntime[^\n]+contacts:\s*\[\]/, 'runtime canônico deve declarar contacts');
+  assert.match(serverSource, /emptyRuntime[^\n]+contacts:\s*\[\]/, 'runtime oficial deve declarar contacts');
   assert.match(serverSource, /contacts:\s*mergeExternalContacts\(runtime\.contacts, collections\.contacts\)/, '/api/ingest deve preservar contacts');
   assert.match(syncSource, /contacts,\s*\n\s*sources:/, '/api/sync deve persistir e retornar contacts');
   assert.doesNotMatch(syncSource, /mergeBy\(tasks,\s*sanitizeArray\(appState\?\.tasks\)/, '/api/sync não deve reenviar tarefas manuais como registros externos');
   assert.doesNotMatch(syncSource, /mergeBy\(intimations,\s*sanitizeArray\(appState\?\.intimations\)/, '/api/sync não deve reenviar publicações manuais como registros externos');
   assert.doesNotMatch(syncSource, /sendMail|sendEmail|acknowledge|protocolar|ci[eê]ncia/i, '/api/sync não pode praticar ato ou enviar e-mail');
   assert.match(portalSource, /getProcessesFeature\(\)\.upsertExternalProcess\(item\)/, 'frontend deve delegar merge externo de processo');
-  assert.match(portalSource, /getContactsFeature\(\)\.upsertExternalContact\(item\)/, 'frontend deve consumir contacts pela feature canônica');
+  assert.match(portalSource, /getContactsFeature\(\)\.upsertExternalContact\(item\)/, 'frontend deve consumir contacts pela feature oficial');
   assert.match(agentSource, /contacts:\s*\[\]/, 'payload do collector agent deve transportar contacts');
   assert.match(agentsGuardrails, /DJEN → número CNJ → DataJud → processo e\s+contatos/, 'guardrail arquitetural do discovery deve estar registrado');
 }

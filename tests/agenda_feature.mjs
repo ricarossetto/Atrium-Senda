@@ -22,8 +22,8 @@ console.log('===============================================================\n')
 assert.doesNotMatch(featureSource, /from\s+['"][^'"]*portal\.js['"]/, 'Agenda não pode importar portal.js.');
 assert.doesNotMatch(featureSource, /from\s+['"][^'"]*publications\.js['"]/, 'Agenda não pode importar Publications.');
 assert.doesNotMatch(featureSource, /from\s+['"][^'"]*(?:kanban|tasks?)[^'"]*['"]/, 'Agenda não pode importar Kanban/Tarefas.');
-assert.match(featureSource, /from ['"]\.\.\/core\/store\.js['"]/, 'Agenda deve consumir o Store canônico.');
-assert.match(portalSource, /from ['"]\.\/features\/agenda\.js['"]/, 'portal.js deve importar a feature Agenda.');
+assert.match(featureSource, /from ['"]\.\.\/core\/store\.js(?:\?v=[^'"]*)?['"]/, 'Agenda deve consumir o Store oficial.');
+assert.match(portalSource, /from ['"]\.\/features\/agenda\.js(?:\?v=[^'"]*)?['"]/, 'portal.js deve importar a feature Agenda.');
 assert.doesNotMatch(featureSource, /window\.(?:Agenda|AtriumAgenda)\s*=/, 'Agenda não pode criar global próprio.');
 assert.doesNotMatch(featureSource, /store\.upsert\(['"]tasks['"]|store\.state\.tasks\.(?:push|unshift|splice)|store\.state\.tasks\s*=/, 'Agenda não pode mutar tarefas.');
 assert.doesNotMatch(featureSource, /store\.upsert\(['"]intimations['"]|store\.state\.intimations\.(?:push|unshift|splice)|store\.state\.intimations\s*=/, 'Agenda não pode mutar publicações.');
@@ -42,7 +42,7 @@ for (const [wrapper, target] of wrapperContracts) {
   );
 }
 assert.match(portalSource, /modalMode\.mode === ['"]agenda['"]\)\s*\{\s*getAgendaFeature\(\)\.saveRecord\(data, this\.modalMode\.defaults\);\s*\}/, 'Dispatcher genérico deve delegar somente o branch Agenda.');
-assert.equal((portalSource.match(/createAgendaFeature\(/g) || []).length, 1, 'Deve existir uma única instância canônica da Agenda.');
+assert.equal((portalSource.match(/createAgendaFeature\(/g) || []).length, 1, 'Deve existir uma única instância oficial da Agenda.');
 assert.equal((featureSource.match(/render\(\)\s*\{/g) || []).length, 1, 'A implementação concreta de render deve existir uma única vez.');
 assert.match(portalSource, /get agendaSelectedDate\(\) \{ return getAgendaFeature\(\)\.selectedDate; \}/);
 assert.match(portalSource, /get agendaCalendarMonthOffset\(\) \{ return getAgendaFeature\(\)\.calendarMonthOffset; \}/);
