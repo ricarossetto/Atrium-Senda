@@ -8,9 +8,9 @@ export function dateInputValue(value) {
   return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
 }
 
-import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from './panel-size.js?v=3.0.0';
-import { attachFieldSuggest, enhanceSelect } from './field-suggest.js?v=3.0.0';
-import { fieldContextRule } from '../core/field-context.js?v=3.0.0';
+import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from './panel-size.js?v=3.0.1';
+import { attachFieldSuggest, enhanceSelect } from './field-suggest.js?v=3.0.1';
+import { fieldContextRule } from '../core/field-context.js?v=3.0.1';
 
 const SELF_MANAGED_TYPES = new Set(['combobox', 'model-combobox', 'textarea', 'select', 'password', 'date', 'time', 'number', 'email', 'tel', 'url', 'checkbox', 'file', 'hidden']);
 // Menu curto se escolhe de olho; a partir daqui, digitar é mais rápido que rolar.

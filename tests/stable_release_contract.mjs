@@ -10,7 +10,7 @@ const server = await read('server.mjs');
 const dockerfile = await read('Dockerfile');
 const compose = await read('docker-compose.yml');
 
-assert.equal(pkg.version, '3.0.0');
+assert.equal(pkg.version, '3.0.1');
 // Cadeia de entrada com a versão do pacote: sem isso, navegador com cache antigo segue
 // executando os módulos antigos (o HTML e o bootstrap são reusados).
 const bootstrap = await read('js/app/bootstrap.js');
@@ -33,4 +33,4 @@ assert.match(dockerfile, /^FROM node:24-alpine/m);
 assert.match(dockerfile, /pnpm install --prod --frozen-lockfile/);
 assert.match(compose, /AUTH_SESSION_SECRET=\$\{AUTH_SESSION_SECRET:\?/);
 assert.match(compose, /AUTH_ENCRYPTION_KEY=\$\{AUTH_ENCRYPTION_KEY:\?/);
-console.log('Contrato da edição aberta: runtime e documentos presentes; launchers locais disponíveis; versão 3.0.0 verificada.');
+console.log(`Contrato da edição aberta: runtime e documentos presentes; launchers locais disponíveis; versão ${pkg.version} verificada.`);

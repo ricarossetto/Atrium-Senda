@@ -1,4 +1,4 @@
-import { activeIntimations, publicationsInRecentScope } from './publication-scope.js?v=3.0.0';
+import { activeIntimations, publicationsInRecentScope } from './publication-scope.js?v=3.0.1';
 const DAY_MS = 86_400_000;
 const TERMINAL_STATUSES = new Set(['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada', 'descartada']);
 const SOURCE_PROBLEMS = new Set(['error', 'erro', 'attention', 'atencao', 'unavailable', 'indisponivel', 'stale']);

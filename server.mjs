@@ -106,10 +106,8 @@ import { createLegalIntelligenceHttpHandler } from './lib/http/legal-intelligenc
 import { createIdempotentRequests, readIdempotencyKey } from './lib/http/idempotent-requests.mjs';
 import { createAiClassifierHttpHandler, readAiClassifierSetting, probeHeadlessBin, AI_CLASSIFIER_SCHEMA_ID } from './lib/http/ai-classifier-routes.mjs';
 import { createTaskHttpHandler } from './lib/http/task-routes.mjs';
-import { createJevAnalysisService, createNativeJevAnalysisAdapter } from './lib/ai/jev-analysis-service.mjs';
 import { resolveClassifierDecision } from './lib/ai/classifier-decision-chain.mjs';
 import { createAiTaskUndoStore } from './lib/ai/ai-task-undo-store.mjs';
-import { createJevAnalysisHttpHandler } from './lib/http/jev-analysis-routes.mjs';
 import { callHeadlessCmd, CMD_PROVIDER_MODEL, JEV_PROVIDER_API_URL, schemaToSystemoneQuestions, buildJevProviderRequest, callJev } from './lib/jev-beta/client.mjs';
 import { normalizeCalibrationStore } from './lib/jev-beta/calibration.mjs';
 import { normalizeFinancialTriageStore, FINANCIAL_TRIAGE_BATCH_LIMIT } from './lib/financial/financial-triage-suggestions.mjs';
@@ -1380,10 +1378,6 @@ const handleLegalIntelligenceRequest = legalIntelligenceService
     planStore: { read: readAgenticPlans, write: saveAgenticPlans }
   })
   : async () => false;
-const handleJevAnalysisRequest = createJevAnalysisHttpHandler({
-  service: createJevAnalysisService({ resolveDecision: createNativeJevAnalysisAdapter() }),
-  assertAdmin, readJson, json, readAppStateEnvelope, saveAppStateDirectUnlocked, enqueueAppStateMutation
-});
 const handleTaskRequest = createTaskHttpHandler({
   assertAuthenticated,
   readJson,
@@ -5977,7 +5971,6 @@ const server = http.createServer(async (req, res) => {
     }
     if (await handleOmniRequest(req, res, url)) return;
     if (await handleLegalIntelligenceRequest(req, res, url)) return;
-    if (await handleJevAnalysisRequest(req, res, url)) return;
     if (await handleAiClassifierRequest(req, res, url)) return;
     if (await handleTaskRequest(req, res, url)) return;
 

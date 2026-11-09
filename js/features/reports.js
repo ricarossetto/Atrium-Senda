@@ -1,8 +1,7 @@
-import { Store } from '../core/store.js?v=3.0.0';
-import { createJevAnalyzerFeature } from './jev-analyzer.js?v=3.0.0';
-import { computeProductivityReport, buildProductivityCsv } from '../core/task-performance.js?v=3.0.0';
-import { renderReportsWorkspace } from '../views/ui-v2/reports-presenter.js?v=3.0.0';
-import { officeScopeItems } from '../core/office-scope.js?v=3.0.0';
+import { Store } from '../core/store.js?v=3.0.1';
+import { computeProductivityReport, buildProductivityCsv } from '../core/task-performance.js?v=3.0.1';
+import { renderReportsWorkspace } from '../views/ui-v2/reports-presenter.js?v=3.0.1';
+import { officeScopeItems } from '../core/office-scope.js?v=3.0.1';
 
 /**
  * ATRIUM — Feature de Relatórios (produtividade de tarefas)
@@ -27,7 +26,6 @@ export function createReportsFeature({
   let sort = { key: 'points', dir: 'desc' };
   let currentReport = null;
   const byId = id => documentRef?.getElementById(id);
-  const analyzer = createJevAnalyzerFeature({ store, documentRef, getAuth: () => windowRef?.KellerAuth });
 
   const feature = {
     get initialized() { return initialized; },
@@ -75,7 +73,6 @@ export function createReportsFeature({
       if (!container) return null;
       const report = this.compute();
       container.innerHTML = renderWorkspace({ report, sort, escapeHtml, formatDate, formatMinutes });
-      analyzer.mount();
       return report;
     },
 

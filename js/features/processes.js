@@ -1,16 +1,16 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.0.0';
-import { requestAuthUsers } from '../core/auth-users-request.js?v=3.0.0';
-import { resolveMemberIdList, matchMemberByName } from '../core/task-assignees.js?v=3.0.0';
-import { userInvolvedInProcess } from '../core/office-involvement.js?v=3.0.0';
-import { isAvatarDataUrl } from '../core/member-avatar.js?v=3.0.0';
-import { cleanCnj, formatCnj, isValidCnj, suggestCnjCorrection, describeCnj } from '../core/cnj.js?v=3.0.0';
-import { createProcessesV2Presenter } from '../views/ui-v2/processes-presenter.js?v=3.0.0';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.0';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.0';
-import { buildLegalTimeline } from '../core/legal-timeline.js?v=3.0.0';
-import { refreshProcessTriage, processTriageBadge } from '../core/process-triage.js?v=3.0.0';
-import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.0.0';
-import { isOfficeScopeItem } from '../core/office-scope.js?v=3.0.0';
+import { Store, isoDate, uid } from '../core/store.js?v=3.0.1';
+import { requestAuthUsers } from '../core/auth-users-request.js?v=3.0.1';
+import { resolveMemberIdList, matchMemberByName } from '../core/task-assignees.js?v=3.0.1';
+import { userInvolvedInProcess } from '../core/office-involvement.js?v=3.0.1';
+import { isAvatarDataUrl } from '../core/member-avatar.js?v=3.0.1';
+import { cleanCnj, formatCnj, isValidCnj, suggestCnjCorrection, describeCnj } from '../core/cnj.js?v=3.0.1';
+import { createProcessesV2Presenter } from '../views/ui-v2/processes-presenter.js?v=3.0.1';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.1';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.1';
+import { buildLegalTimeline } from '../core/legal-timeline.js?v=3.0.1';
+import { refreshProcessTriage, processTriageBadge } from '../core/process-triage.js?v=3.0.1';
+import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.0.1';
+import { isOfficeScopeItem } from '../core/office-scope.js?v=3.0.1';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 export const PROCESS_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
@@ -910,7 +910,7 @@ export function createProcessesFeature({
       const originalHtml = button?.innerHTML || 'Atualizar com Certificado';
       if (button) {
         button.disabled = true;
-        button.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-sync"></use></svg><span>Atualizando pelo eproc…</span>`;
+        button.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-sync"></use></svg><span>Atualizando pelo eproc…</span>`;
       }
       try {
         const result = await this.refreshProcessViaEproc(process);
@@ -938,7 +938,7 @@ export function createProcessesFeature({
       const originalHtml = button?.innerHTML || 'Baixar Autos com A1';
       if (button) {
         button.disabled = true;
-        button.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-sync"></use></svg><span>Baixando peças via A1…</span>`;
+        button.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-sync"></use></svg><span>Baixando peças via A1…</span>`;
       }
       showToast?.(`Solicitando as peças de ${process.number} ao eproc via Certificado A1. Se houver sincronização em andamento, o download entra na fila e começa em seguida.`, 'info');
       try {
@@ -1014,7 +1014,7 @@ export function createProcessesFeature({
       if (btn) {
         btn.classList.add('is-syncing');
         btn.setAttribute?.('aria-busy', 'true');
-        btn.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-sync"></use></svg><span>Sincronizando eproc...</span>`;
+        btn.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-sync"></use></svg><span>Sincronizando eproc...</span>`;
         btn.title = 'Sincronização eproc em andamento — clique para abrir o monitor';
       }
       if (topSyncBtn) {
@@ -1119,7 +1119,7 @@ export function createProcessesFeature({
           const fill = byId('systemStatusProgressFill');
 
           if (icon) {
-            icon.innerHTML = `<svg class="atrium-icon is-running" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-sync"></use></svg>`;
+            icon.innerHTML = `<svg class="atrium-icon is-running" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-sync"></use></svg>`;
           }
 
           if (lbl) lbl.textContent = label || 'Sincronizando';
@@ -1344,7 +1344,7 @@ export function createProcessesFeature({
           const track = byId('systemStatusProgressTrack');
           const fill = byId('systemStatusProgressFill');
           if (icon) {
-            icon.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-check"></use></svg>`;
+            icon.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-check"></use></svg>`;
           }
           if (lbl) lbl.textContent = 'Sincronização Concluída';
           if (percentEl) {
@@ -1396,7 +1396,7 @@ export function createProcessesFeature({
           const track = byId('systemStatusProgressTrack');
           const fill = byId('systemStatusProgressFill');
           if (icon) {
-            icon.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-warning"></use></svg>`;
+            icon.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-warning"></use></svg>`;
           }
           if (lbl) lbl.textContent = 'Falha na Sincronização';
           if (percentEl) {

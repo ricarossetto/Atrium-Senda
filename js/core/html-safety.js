@@ -1,4 +1,4 @@
-import { safeImageSource } from './link-safety.js?v=3.0.0';
+import { safeImageSource } from './link-safety.js?v=3.0.1';
 
 const ALLOWED_ELEMENTS = new Set([
   'A', 'B', 'BLOCKQUOTE', 'BR', 'CODE', 'DIV', 'EM', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',

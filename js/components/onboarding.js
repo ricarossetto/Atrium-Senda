@@ -1,4 +1,4 @@
-import { safeImageSource } from '../core/link-safety.js?v=3.0.0';
+import { safeImageSource } from '../core/link-safety.js?v=3.0.1';
 
 function escapeAttribute(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -481,7 +481,7 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     const previousButton = document.getElementById('tourPrevButton');
     const nextButton = document.getElementById('tourNextButton');
     if (previousButton) previousButton.style.display = index > 0 ? 'inline-block' : 'none';
-    if (nextButton) nextButton.innerHTML = index === total - 1 ? 'Começar a usar o Atrium' : 'Próximo ' + '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-chevron-right"></use></svg>';
+    if (nextButton) nextButton.innerHTML = index === total - 1 ? 'Começar a usar o Atrium' : 'Próximo ' + '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-right"></use></svg>';
   }
 
   function hasBeenSeen() {

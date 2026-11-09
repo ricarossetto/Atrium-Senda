@@ -1,19 +1,19 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.0.0';
-import { requestAuthUsers } from '../core/auth-users-request.js?v=3.0.0';
-import { resolveTaskAssignees, matchMemberByName, memberIdOf, memberKeys } from '../core/task-assignees.js?v=3.0.0';
-import { findProcessForRecord, userInvolvedInProcess } from '../core/office-involvement.js?v=3.0.0';
-import { isAvatarDataUrl, memberAvatarHtml } from '../core/member-avatar.js?v=3.0.0';
-import { resolveIntimationId, findIntimationRecord } from '../core/publication-scope.js?v=3.0.0';
-import { formatCnj } from '../core/cnj.js?v=3.0.0';
-import { refreshTaskTriage, taskTriageBadge } from '../core/task-triage.js?v=3.0.0';
-import { KANBAN_COLUMN_LIMIT, createTasksV2Presenter } from '../views/ui-v2/tasks-presenter.js?v=3.0.0';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.0';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.0';
-import { createRiskConfirm } from '../components/risk-confirm.js?v=3.0.0';
-import { refreshCompletionNotifications } from '../core/notification-inbox.js?v=3.0.0';
-import { renderOfficeInvolved, taskInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.0.0';
-import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.0.0';
-import { officeOabKeys } from '../core/publication-parties.js?v=3.0.0';
+import { Store, isoDate, uid } from '../core/store.js?v=3.0.1';
+import { requestAuthUsers } from '../core/auth-users-request.js?v=3.0.1';
+import { resolveTaskAssignees, matchMemberByName, memberIdOf, memberKeys } from '../core/task-assignees.js?v=3.0.1';
+import { findProcessForRecord, userInvolvedInProcess } from '../core/office-involvement.js?v=3.0.1';
+import { isAvatarDataUrl, memberAvatarHtml } from '../core/member-avatar.js?v=3.0.1';
+import { resolveIntimationId, findIntimationRecord } from '../core/publication-scope.js?v=3.0.1';
+import { formatCnj } from '../core/cnj.js?v=3.0.1';
+import { refreshTaskTriage, taskTriageBadge } from '../core/task-triage.js?v=3.0.1';
+import { KANBAN_COLUMN_LIMIT, createTasksV2Presenter } from '../views/ui-v2/tasks-presenter.js?v=3.0.1';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.1';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.1';
+import { createRiskConfirm } from '../components/risk-confirm.js?v=3.0.1';
+import { refreshCompletionNotifications } from '../core/notification-inbox.js?v=3.0.1';
+import { renderOfficeInvolved, taskInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.0.1';
+import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.0.1';
+import { officeOabKeys } from '../core/publication-parties.js?v=3.0.1';
 
 const pluralize = (count, singular, plural) => `${count} ${count === 1 ? singular : plural}`;
 

@@ -1,9 +1,9 @@
-import { memberAvatarHtml } from '../core/member-avatar.js?v=3.0.0';
+import { memberAvatarHtml } from '../core/member-avatar.js?v=3.0.1';
 
 const CONFIGURATION_ICON_NAMES = new Set(['check', 'delete']);
 const iconSvg = name => {
   const safeName = CONFIGURATION_ICON_NAMES.has(name) ? name : 'check';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-${safeName}"></use></svg>`;
 };
 
 const CONFIGURATION_SECTIONS = [
@@ -1248,7 +1248,7 @@ export function createConfigurationFeature({
           <article class="configuration-row" role="listitem" data-config-index="${index}">
             <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(item)}">
               <span class="config-row-info"><strong>${escapeHtml(item)}</strong><span>Seção da caixa de entrada</span><small>Ativa</small></span>
-              <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-chevron-right"></use></svg></span>
+              <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-right"></use></svg></span>
             </button>
             <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(item)}">${iconSvg('delete')} Excluir</button>
           </article>`;
@@ -1347,7 +1347,7 @@ export function createConfigurationFeature({
         <article class="configuration-row" role="listitem" data-config-index="${index}">
           <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(primary)}">
             <span class="config-row-info"><strong>${escapeHtml(primary)}</strong><span>${escapeHtml(secondary)}</span>${meta}</span>
-            <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-chevron-right"></use></svg></span>
+            <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-right"></use></svg></span>
           </button>
           ${extraActions}
           <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(primary)}">${iconSvg('delete')} Excluir</button>
@@ -1381,7 +1381,7 @@ export function createConfigurationFeature({
             <p>${escapeHtml(target.description)}</p>
           </div>
           <button type="button" class="button ghost" data-modal-open-dedicated-integration="${escapeHtml(values.name)}">
-            ${escapeHtml(target.actionLabel)} <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-chevron-right"></use></svg>
+            ${escapeHtml(target.actionLabel)} <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-right"></use></svg>
           </button>
         </div>`;
       }

@@ -1,4 +1,4 @@
-import { iconSvg } from '../views/ui-v2/primitives.js?v=3.0.0';
+import { iconSvg } from '../views/ui-v2/primitives.js?v=3.0.1';
 
 const GROUPS = Object.freeze({
   process: { label: 'Processos', icon: 'process', classic: 'PROC', target: 'process' },

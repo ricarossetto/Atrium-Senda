@@ -2,7 +2,7 @@
  * Paradas do tour de primeiro acesso. Sem acesso à tela: recebe a situação e devolve o roteiro.
  * Os exemplos só aparecem no cartão do tour e nunca entram nos dados do escritório.
  */
-import { HOW_TO } from './setup-how-to.js?v=3.0.0';
+import { HOW_TO } from './setup-how-to.js?v=3.0.1';
 
 const EXAMPLES = Object.freeze({
   intimations: { title: 'Intimação em processo do TJRS', detail: 'Recebida hoje. Aguarda a sua conferência.' },

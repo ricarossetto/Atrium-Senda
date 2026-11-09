@@ -1,4 +1,4 @@
-import { iconSvg } from '../views/ui-v2/primitives.js?v=3.0.0';
+import { iconSvg } from '../views/ui-v2/primitives.js?v=3.0.1';
 
 // Botão com balão próprio não recebe também a dica do navegador: seriam dois textos sobre o mesmo ícone.
 function setToggleHint(button, text) {

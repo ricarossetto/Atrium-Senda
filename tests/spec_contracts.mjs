@@ -19,8 +19,7 @@ const SPECS = [
   'legal-intelligence',
   'judicial-intelligence',
   'ai-assistant',
-  'productivity-reports',
-  'operational-analysis'
+  'productivity-reports'
 ];
 
 const REQUIRED_SECTIONS = [
@@ -84,20 +83,10 @@ assert.match(specs['ai-assistant'], /nunca [eé] devolvida ao navegador/i);
 assert.match(specs['ai-assistant'], /master_admin/);
 assert.match(specs['ai-assistant'], /CSRF/);
 assert.match(specs['ai-assistant'], /19 skills/);
-assert.match(specs['operational-analysis'], /Atrium IA/);
-assert.match(specs['operational-analysis'], /`expectedRevision` obrigatório/);
-assert.match(specs['operational-analysis'], /`admin` ou `master_admin`/);
-assert.match(specs['operational-analysis'], /POST também exige CSRF/);
-assert.match(specs['operational-analysis'], /menor que 5, inclusive zero, vira `null`/);
-assert.match(specs['operational-analysis'], /Prescrição é sempre `not_evaluable`/);
-assert.match(specs['operational-analysis'], /`automaticActions: \[\]`/);
-assert.match(specs['operational-analysis'], /`training: false`/);
-assert.match(specs['operational-analysis'], /Não há diagnóstico causal/);
-assert.match(specs['operational-analysis'], /primeiro confirma a auditoria da solicitação/);
 assert.match(specs['productivity-reports'], /Essa exceção se restringe ao analisador/);
 assert.match(specs['productivity-reports'], /Enviar dados dos relatórios a qualquer provedor externo/);
 const specIndex = await readFile(new URL('../specs/README.md', import.meta.url), 'utf8');
-assert.match(specIndex, /\(operational-analysis\.md\)/);
+assert.doesNotMatch(specIndex, /\(operational-analysis\.md\)/);
 
 const agentGuidance = await readFile(new URL('../AGENTS.md', import.meta.url), 'utf8');
 assert.match(agentGuidance, /leia o [ií]ndice `specs\/README\.md`/i);

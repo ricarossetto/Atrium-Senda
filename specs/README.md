@@ -38,7 +38,6 @@ Antes de alterar um domínio, leia a spec correspondente e as specs transversais
 - [Escritório, equipes e acesso por processo](office-teams-access.md) — **CURRENT em 3.0.0**: painel, convite por e-mail/link, equipes, ACL por processo, papéis finos, escopo privado e offboarding implementados; pendências restantes (papéis configuráveis na tela, financeiro segregado, consulta de auditoria, rotas de monitoramento) estão listadas na própria spec
 - [Gestão de tarefas](task-management.md)
 - [Produtividade e relatórios de tarefas](productivity-reports.md)
-- [Análise operacional com Atrium IA](operational-analysis.md)
 - [Recorrência de compromissos](recurrence.md)
 - [Inteligência cadastral brasileira](brazilian-registry-intelligence.md)
 - [Inteligência jurídica do Gerador de Minutas](legal-intelligence.md)

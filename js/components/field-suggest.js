@@ -1,4 +1,4 @@
-import { filterSuggestions } from '../core/field-context.js?v=3.0.0';
+import { filterSuggestions } from '../core/field-context.js?v=3.0.1';
 
 // Lista de sugestões própria do ATRIUM. Fica no body, em posição fixa, para não ser
 // cortada pela rolagem do painel. Há uma só por página; só uma é usada de cada vez.

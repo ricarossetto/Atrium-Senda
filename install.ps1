@@ -1,6 +1,6 @@
 ﻿[CmdletBinding()]
 param(
-    [string]$ReleaseTag = 'v3.0.0',
+    [string]$ReleaseTag = 'v3.0.1',
     [string]$SourceRef = '',
     [string]$InstallDirectory = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'ATRIUM')
 )
@@ -33,7 +33,7 @@ function Resolve-OfficialArchive {
     }
 
     if ($ReleaseTag -notmatch '^v\d+\.\d+\.\d+$') {
-        Stop-Install 'Informe uma tag estável no formato v3.0.0.'
+        Stop-Install 'Informe uma tag estável no formato v3.0.1.'
     }
     return [pscustomobject]@{
         Label = "release $ReleaseTag"

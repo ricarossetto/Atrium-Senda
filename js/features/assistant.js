@@ -1239,4 +1239,4 @@ export function createAssistantFeature({
 
   return feature;
 }
-const ASSISTANT_ICON = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-assistant"></use></svg>';
+const ASSISTANT_ICON = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-assistant"></use></svg>';

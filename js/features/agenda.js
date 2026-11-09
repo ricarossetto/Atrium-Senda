@@ -1,12 +1,12 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.0.0';
+import { Store, isoDate, uid } from '../core/store.js?v=3.0.1';
 import {
   RECURRENCE_FREQUENCIES,
   applyRecurrenceEdit,
   describeRecurrence,
   materializeCollection,
   parseOccurrenceId
-} from '../core/recurrence.js?v=3.0.0';
-import { createAgendaPresenter } from '../views/ui-v2/agenda-presenter.js?v=3.0.0';
+} from '../core/recurrence.js?v=3.0.1';
+import { createAgendaPresenter } from '../views/ui-v2/agenda-presenter.js?v=3.0.1';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 function addDaysIso(dateOnly, days) {

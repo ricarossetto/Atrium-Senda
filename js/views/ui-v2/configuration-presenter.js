@@ -1,4 +1,4 @@
-import { UI_MODE_CHANGE_EVENT } from './mode.js?v=3.0.0';
+import { UI_MODE_CHANGE_EVENT } from './mode.js?v=3.0.1';
 
 const SECTION_GROUPS = Object.freeze([
   Object.freeze({ label: 'Estrutura', keys: Object.freeze(['taskDefinitions', 'actionGroups', 'actionTypes', 'stages', 'origins']) }),
@@ -42,7 +42,7 @@ export function createConfigurationAdminPresenter({
     button.innerHTML = `
       <span class="configuration-identity-mark" aria-hidden="true">A</span>
       <span><strong>Identidade do Escritório</strong><small>Marca, responsável e sede</small></span>
-      <span class="configuration-entry-arrow" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.0#atrium-icon-chevron-right"></use></svg></span>`;
+      <span class="configuration-entry-arrow" aria-hidden="true"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-right"></use></svg></span>`;
     button.addEventListener('click', () => onOpenOfficeIdentity());
     return button;
   }

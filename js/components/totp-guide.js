@@ -1,4 +1,4 @@
-import { TOTP_SLIDES } from '../core/setup-how-to.js?v=3.0.0';
+import { TOTP_SLIDES } from '../core/setup-how-to.js?v=3.0.1';
 
 const SLIDE_MS = 3800;
 

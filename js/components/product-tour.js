@@ -2,7 +2,7 @@
  * Tour de primeiro acesso: leva a pessoa pelas telas e destaca a área de cada parada.
  * Só navega e destaca. Não grava nada nos dados do escritório.
  */
-import { mountTotpGuide } from './totp-guide.js?v=3.0.0';
+import { mountTotpGuide } from './totp-guide.js?v=3.0.1';
 
 const GAP = 12;
 const SPOT_PADDING = 8;
