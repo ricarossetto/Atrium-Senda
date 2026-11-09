@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-09T21:36:54.878Z",
+  "generatedAt": "2026-11-09T21:50:24.434Z",
   "assets": {
     "assets/icons/atrium-logo-light.svg|3.0.2": "8ca4879d91c16b93",
     "assets/icons/atrium-logo.svg|3.0.2": "57aefeb535bb88fe",
@@ -136,7 +136,7 @@
     "js/portal.js|3.0.2": "57ac44099aa57cff",
     "js/prompts-data.js|3.0.2": "93a3b5e7a2d71934",
     "js/runtime-config.js|3.0.2": "78134f5278af8d68",
-    "js/skills-data.js|3.0.2": "cfa0b7df8f28b59a",
+    "js/skills-data.js|3.0.2.1": "f67a9f30a030cab6",
     "js/views/ui-v2/agenda-presenter.js|3.0.2": "c155506a3eef143f",
     "js/views/ui-v2/assistant-presenter.js|3.0.2": "d7e123f4cf13e5f0",
     "js/views/ui-v2/audit-presenter.js|3.0.2": "e880195f1908bcf3",
