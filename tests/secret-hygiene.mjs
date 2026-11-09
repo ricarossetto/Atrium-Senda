@@ -47,11 +47,10 @@ const runFailClosed = (script, env) => spawnSync(process.execPath, [script], {
 const downloadRun = runFailClosed('scripts/download-and-ingest-a1.mjs', { A1_PFX_PASSPHRASE: '' });
 assert.notEqual(downloadRun.status, 0, 'download-and-ingest-a1.mjs deve falhar sem passphrase.');
 assert.match(String(downloadRun.stderr) + String(downloadRun.stdout), /passphrase/i, 'Falha deve orientar o uso da passphrase.');
+// Nota: o auxílio de operador scripts/validate-server-state.mjs (com dados
+// pessoais do ambiente de desenvolvimento) fica fora da edição aberta por
+// desenho; este S3 cobre os scripts publicados na edição.
 
-const validateRun = runFailClosed('scripts/validate-server-state.mjs', { ATRIUM_VALIDATE_PASSWORD: '' });
-assert.notEqual(validateRun.status, 0, 'validate-server-state.mjs deve falhar sem ATRIUM_VALIDATE_PASSWORD.');
-assert.match(String(validateRun.stderr) + String(validateRun.stdout), /ATRIUM_VALIDATE_PASSWORD|senha/i);
-
-console.log('  ✓ download-and-ingest-a1 e validate-server-state falham fechado sem credencial.');
+console.log('  ✓ download-and-ingest-a1 falha fechado sem credencial.');
 
 console.log('\n>>> SECRET HYGIENE: PASS <<<\n');
