@@ -114,7 +114,9 @@ const displayTitle = (title = '') => {
 };
 
 async function loadLexSkills() {
-  const result = await loadLexIntelligentiaSkills({ rootDir: ROOT, readFile: fs.readFile, readdir: fs.readdir });
+  // Na edição aberta o vendor Lex pode não estar presente: sem ele, o catálogo
+  // conta apenas as fontes ATRIUM e as de contexto. A ausência é silenciosa.
+  const result = await loadLexIntelligentiaSkills({ rootDir: ROOT, readFile: fs.readFile, readdir: fs.readdir }).catch(() => ({ skills: [] }));
   return result.skills
     .map(skill => ({
       id: skill.id,

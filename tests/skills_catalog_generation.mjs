@@ -44,17 +44,25 @@ assert.ok(!catalog.skills.some(skill => skill.id === 'astra-orchestrator'), 'Ski
 console.log('  [2] Catálogo oficial contém 9 skills jurídicas ATRIUM e exclui tooling de desenvolvimento.');
 
 const lex = await loadLexIntelligentiaSkills({ rootDir: ROOT, readFile: fs.readFile, readdir: fs.readdir });
-assert.equal(lex.available, true);
-assert.equal(lex.skills.length, 7);
-for (const required of ['peticao-analyzer', 'jurisprudencia-miner', 'tese-juridica-validator', 'calculadora-processual', 'contrato-analyzer-br']) {
-  assert.ok(lex.skills.some(skill => skill.id === required), `Skill Lex obrigatória ausente: ${required}`);
+const vendorRoot = path.join(ROOT, 'vendor', 'legal-intelligence');
+const hasVendor = await fs.stat(vendorRoot).then(() => true).catch(() => false);
+if (hasVendor) {
+  assert.equal(lex.available, true);
+  assert.equal(lex.skills.length, 7);
+  for (const required of ['peticao-analyzer', 'jurisprudencia-miner', 'tese-juridica-validator', 'calculadora-processual', 'contrato-analyzer-br']) {
+    assert.ok(lex.skills.some(skill => skill.id === required), `Skill Lex obrigatória ausente: ${required}`);
+  }
+  assert.ok(lex.skills.every(skill => skill.license === 'MIT'));
+  console.log('  [3] Vendor Lex Intelligentia preservado com 7 skills MIT (CAPPD, precedentes, teses, cálculo e contratos).');
+} else {
+  assert.equal(lex.available, false, 'Edição aberta sem vendor deve degradar o Lex como indisponível.');
+  assert.equal(lex.skills.length, 0);
+  console.log('  [3] Vendor ausente na edição aberta: Lex indisponível com degradação declarada.');
 }
-assert.ok(lex.skills.every(skill => skill.license === 'MIT'));
-console.log('  [3] Vendor Lex Intelligentia preservado com 7 skills MIT (CAPPD, precedentes, teses, cálculo e contratos).');
 
 const skillsDataRaw = await fs.readFile(path.join(ROOT, 'js/skills-data.js'), 'utf8');
 assert.ok(skillsDataRaw.includes('"source": "atrium"'));
-assert.ok(skillsDataRaw.includes('"source": "lex-intelligentia"'));
+if (hasVendor) assert.ok(skillsDataRaw.includes('"source": "lex-intelligentia"'));
 const atriumCatalog = await buildAtriumCatalog({ readdir: fs.readdir, readFile: fs.readFile });
 const firstRender = renderSkillsData({ atriumSkills: atriumCatalog.skills, lexSkills: lex.skills.map(skill => ({ ...skill, description: skill.description })) });
 const secondRender = renderSkillsData({ atriumSkills: atriumCatalog.skills, lexSkills: lex.skills.map(skill => ({ ...skill, description: skill.description })) });
@@ -70,7 +78,6 @@ for (const skill of lex.skills) {
 assert.ok(!EMOJI_RE.test(skillsDataRaw.slice(0, 4_000)));
 console.log('  [5] Catálogo exibível sem emojis nem símbolos decorativos (guardrail de UI).');
 
-const vendorRoot = path.join(ROOT, 'vendor', 'legal-intelligence');
 async function walk(directory) {
   const entries = await fs.readdir(directory, { withFileTypes: true });
   const files = [];
@@ -81,26 +88,35 @@ async function walk(directory) {
   }
   return files;
 }
-const vendorFiles = await walk(vendorRoot);
-assert.ok(vendorFiles.length >= 40);
-for (const file of vendorFiles) {
-  const buffer = await fs.readFile(file);
-  const text = buffer.toString('utf8');
-  for (const pattern of SECRET_PATTERNS) {
-    assert.ok(!pattern.test(text), `Padrão de segredo encontrado em ${path.relative(ROOT, file)}`);
+if (hasVendor) {
+  const vendorFiles = await walk(vendorRoot);
+  assert.ok(vendorFiles.length >= 40);
+  for (const file of vendorFiles) {
+    const buffer = await fs.readFile(file);
+    const text = buffer.toString('utf8');
+    for (const pattern of SECRET_PATTERNS) {
+      assert.ok(!pattern.test(text), `Padrão de segredo encontrado em ${path.relative(ROOT, file)}`);
+    }
   }
+  assert.ok(vendorFiles.every(file => path.extname(file) !== '.env'));
+  console.log('  [6] Vendor sem credenciais, cookies, chaves ou arquivos .env.');
+} else {
+  console.log('  [6] Vendor ausente na edição aberta: varredura de segredos vetada neste modo.');
 }
-assert.ok(vendorFiles.every(file => path.extname(file) !== '.env'));
-console.log('  [6] Vendor sem credenciais, cookies, chaves ou arquivos .env.');
 
 const registry = await createLegalIntelligenceRegistry({ rootDir: ROOT, readFile: fs.readFile, readdir: fs.readdir });
-assert.equal(registry.status().recipes.available, registry.status().recipes.total);
-const recipeManifest = JSON.parse(await fs.readFile(path.join(vendorRoot, 'ma-serra', 'rom', 'recipes.json'), 'utf8'));
-for (const recipe of recipeManifest.recipes) {
-  const buffer = await fs.readFile(path.join(vendorRoot, 'ma-serra', 'rom', recipe.file));
-  assert.equal(createHash('sha256').update(buffer).digest('hex'), recipe.sha256, `Integridade divergente: ${recipe.id}`);
+if (hasVendor) {
+  assert.equal(registry.status().recipes.available, registry.status().recipes.total);
+  const recipeManifest = JSON.parse(await fs.readFile(path.join(vendorRoot, 'ma-serra', 'rom', 'recipes.json'), 'utf8'));
+  for (const recipe of recipeManifest.recipes) {
+    const buffer = await fs.readFile(path.join(vendorRoot, 'ma-serra', 'rom', recipe.file));
+    assert.equal(createHash('sha256').update(buffer).digest('hex'), recipe.sha256, `Integridade divergente: ${recipe.id}`);
+  }
+  console.log('  [7] Recipes ROM pinadas por sha256 e biblioteca sem licença bloqueada no registry.');
+} else {
+  assert.equal(registry.status().recipes.available, 0, 'Sem vendor, nenhuma receita deve estar disponível.');
+  console.log('  [7] Sem vendor, o registry reporta degradação declarada das receitas.');
 }
 assert.equal(registry.status().promptLibrary.imported, false);
-console.log('  [7] Recipes ROM pinadas por sha256 e biblioteca sem licença bloqueada no registry.');
 
 console.log('\n>>> SKILLS CATALOG GENERATION: PASS <<<\n');

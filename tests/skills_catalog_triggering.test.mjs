@@ -21,7 +21,7 @@ const catalogSource = await readFile(path.join(ROOT, 'js', 'skills-data.js'), 'u
 const moduleShim = { exports: {} };
 new Function('module', 'exports', 'self', catalogSource)(moduleShim, moduleShim.exports, undefined);
 const skills = moduleShim.exports;
-assert.ok(Array.isArray(skills) && skills.length === 19, 'Catalogo deve ter 19 skills.');
+assert.ok(Array.isArray(skills) && skills.length === 12, 'Catalogo deve ter 12 skills.');
 
 const STOPWORDS = new Set([
   'a', 'o', 'as', 'os', 'um', 'uma', 'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas',
@@ -98,13 +98,7 @@ const FIXTURES = [
   ['Preciso de pesquisa de jurisprudencia e legislacao para claims especificos da peca.', 'legal-research-br'],
   ['Houve alegacao de inercia e prescricao durante a execucao.', 'prescricao-intercorrente'],
   ['Avaliar beneficio por incapacidade com pericia e prova medica.', 'previdenciario-incapacidade'],
-  ['Consultar indices de correcao monetaria e juros para calculo judicial.', 'calculadora-processual'],
-  ['Analise de contrato com clausulas abusivas e riscos contratuais.', 'contrato-analyzer-br'],
-  ['Monitoramento de publicacoes em diario oficial com prazos e intimacoes.', 'dje-monitor'],
-  ['Validar precedentes e sumulas do STJ aplicaveis ao caso.', 'jurisprudencia-miner'],
-  ['Analisar e resumir os autos mapeando pontos controvertidos da contestacao.', 'peticao-analyzer'],
-  ['Redigir sentenca e decisao com fundamentacao e dispositivo no modelo FIRAC.', 'sentenca-judicial-br'],
-  ['Avaliar a solidez argumentativa da tese contra a jurisprudencia do STF.', 'tese-juridica-validator'],
+
   ['Localizar o processo e as publicacoes no DJEN pelo numero CNJ e obter certidoes.', 'consulta-judicial-mcp'],
   ['Revisar e concluir o trabalho seguindo o Definition of Done e a aprovacao humana.', 'padroes-de-qualidade'],
   ['Analisar publicacoes pendentes do escritorio com analise operacional.', 'jev-data-analyzer'],

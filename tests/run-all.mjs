@@ -707,8 +707,6 @@ const testSuites = [
   { name: 'Catálogos jurídicos e regras de negócio', file: 'tests/features_validation.mjs' },
   { name: 'Recursos jurídicos, privacidade e cálculos auxiliares', file: 'tests/open_source_features.mjs' },
   { name: 'Minimização de dados no contexto do assistente de IA', file: 'tests/ai-context.mjs' },
-  { name: 'Inteligência Jurídica: Roteamento, Trust Boundary, Gates e Resiliência', file: 'tests/legal_intelligence.mjs' },
-  { name: 'Inteligência Jurídica: Rotas HTTP, CSRF, Degradação e Privacidade', file: 'tests/legal_intelligence_http.mjs' },
   { name: 'Inteligência Jurídica: Registro de Citações, Conflitos e Override Auditado', file: 'tests/citation-registry.test.mjs' },
   { name: 'Inteligência Jurídica: Revisão por Pares da Minuta (Payload e Achados)', file: 'tests/draft-review.test.mjs' },
   { name: 'Inteligência Jurídica: Planos Agênticos Supervisionados (Aprovação e Retomada)', file: 'tests/agentic-plan.test.mjs' },

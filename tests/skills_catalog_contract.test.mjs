@@ -17,7 +17,7 @@ const skills = moduleShim.exports;
 
 console.log('[C1] Estrutura do catálogo...');
 assert.ok(Array.isArray(skills), 'O catálogo deve exportar um array.');
-assert.equal(skills.length, 19, 'O catálogo deve ter 19 skills (9 jurídicas + 7 de produto + 3 de contexto).');
+assert.equal(skills.length, 12, 'O catálogo deve ter 12 skills (9 jurídicas + 3 de contexto).');
 const ids = skills.map(skill => skill.id);
 assert.equal(new Set(ids).size, ids.length, 'Ids devem ser únicos.');
 for (const skill of skills) {
@@ -27,7 +27,7 @@ for (const skill of skills) {
   assert.ok(['atrium', 'lex-intelligentia'].includes(skill.source), `${skill.id}: origem deve ser atrium ou lex-intelligentia (recebido: ${skill.source}).`);
   assert.ok(skill.instructions.length > 80, `${skill.id}: instruções curtas demais para guiar o assistente.`);
 }
-console.log(`  ✓ 19 skills com campos completos e instruções substanciais.`);
+console.log(`  ✓ 12 skills com campos completos e instruções substanciais.`);
 
 console.log('[C2] Skills jurídicas sincronizadas com os SKILL.md...');
 const LEGAL = ['fazenda-publica-cumprimento', 'legal-agent', 'legal-audit', 'legal-draft-br', 'legal-ingest', 'legal-planner', 'legal-research-br', 'prescricao-intercorrente', 'previdenciario-incapacidade'];

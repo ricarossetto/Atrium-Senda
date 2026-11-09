@@ -82,7 +82,7 @@ assert.match(specs['judicial-intelligence'], /clean-room/i);
 assert.match(specs['ai-assistant'], /nunca [eé] devolvida ao navegador/i);
 assert.match(specs['ai-assistant'], /master_admin/);
 assert.match(specs['ai-assistant'], /CSRF/);
-assert.match(specs['ai-assistant'], /19 skills/);
+assert.match(specs['ai-assistant'], /12 skills/);
 assert.match(specs['productivity-reports'], /Essa exceção se restringe ao analisador/);
 assert.match(specs['productivity-reports'], /Enviar dados dos relatórios a qualquer provedor externo/);
 const specIndex = await readFile(new URL('../specs/README.md', import.meta.url), 'utf8');
