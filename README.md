@@ -16,9 +16,9 @@ Decisões jurídicas, confirmação de prazos e atos processuais continuam sob r
 
 ### App desktop (Windows)
 
-Baixe o instalador **`ATRIUM_Setup_3.0.0_x64.exe`** na [página de releases](https://github.com/ricarossetto/Atrium-Senda/releases) e execute. O aplicativo abre direto no seu computador: o servidor local inicia sozinho, o primeiro acesso cria o administrador do escritório, e as atualizações chegam pela própria aplicação. Nenhum dado sai da sua máquina sem que você peça.
+Baixe o instalador **`ATRIUM_Setup_3.0.0_x64.exe`** (NSIS, instalação por usuário, sem administrador — 35,6 MB) na [página de releases](https://github.com/ricarossetto/Atrium-Senda/releases) e execute. O aplicativo abre direto no seu computador: o servidor local inicia sozinho, o primeiro acesso cria o administrador do escritório, e as atualizações chegam pela própria aplicação, assinadas digitalmente (Ed25519). Nenhum dado sai da sua máquina sem que você peça.
 
-Os instaladores oficiais são publicados com soma SHA-256 (`SHA256SUMS.txt`) no mesmo release.
+A soma SHA-256 do instalador 3.0.0 é `cd447a0f710fd84847ef8dc5bea145883e727e7b527c8aa48661991e9a316772` (também publicada como `SHA256SUMS.txt` no mesmo release; confira antes de instalar).
 
 ### Instalação manual (qualquer sistema com Node 24+)
 
