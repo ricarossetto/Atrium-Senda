@@ -4,7 +4,7 @@
  * O resumo é montado com o texto oficial e com a classificação que já existe.
  * Não calcula prazo, não declara ciência e não substitui a leitura do teor.
  */
-import { publicationReadableText } from './html-text.js?v=3.0.1';
+import { publicationReadableText } from './html-text.js?v=3.0.2';
 
 const DECISION_PATTERN = /(RECURSO\s+(?:DESPROVIDO|PROVIDO)|NEGO\s+PROVIMENTO|DOU\s+PROVIMENTO|JULGO\s+(?:PROCEDENTE|IMPROCEDENTE)|HOMOLOGO|DEFIRO|INDEFIRO|CONDENO|ABSOLVO|DECIDO|DECIDIU|ACORDAM|DESPROVIDO|PROVIDO)/i;
 

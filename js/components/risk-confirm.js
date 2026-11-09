@@ -13,7 +13,7 @@
  * O texto é fixo (contrato) e o componente é puro na renderização; o `createRiskConfirm` monta
  * o overlay no documento, cuida de foco/escape e persiste a preferência de não perguntar.
  */
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.1';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.2';
 
 export const RISK_CONFIRM_COPY = Object.freeze({
   title: 'Você tem certeza que deseja confirmar todas as sugestões do Atrium IA?',

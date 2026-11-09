@@ -1,14 +1,14 @@
-import { Store } from '../core/store.js?v=3.0.1';
-import { activeIntimations, findIntimationRecord, publicationsInRecentScope } from '../core/publication-scope.js?v=3.0.1';
-import { buildActivityInbox } from '../core/activity-inbox.js?v=3.0.1';
-import { computeTaskPerformance } from '../core/task-performance.js?v=3.0.1';
-import { renderDashboardV2Summary } from '../views/ui-v2/dashboard.js?v=3.0.1';
-import { renderFirstSteps } from '../views/ui-v2/first-steps.js?v=3.0.1';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.1';
-import { renderOfficeInvolved, taskInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.0.1';
-import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.0.1';
-import { officeOabKeys } from '../core/publication-parties.js?v=3.0.1';
-import { officeScopeItems } from '../core/office-scope.js?v=3.0.1';
+import { Store } from '../core/store.js?v=3.0.2';
+import { activeIntimations, findIntimationRecord, publicationsInRecentScope } from '../core/publication-scope.js?v=3.0.2';
+import { buildActivityInbox } from '../core/activity-inbox.js?v=3.0.2';
+import { computeTaskPerformance } from '../core/task-performance.js?v=3.0.2';
+import { renderDashboardV2Summary } from '../views/ui-v2/dashboard.js?v=3.0.2';
+import { renderFirstSteps } from '../views/ui-v2/first-steps.js?v=3.0.2';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.2';
+import { renderOfficeInvolved, taskInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.0.2';
+import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.0.2';
+import { officeOabKeys } from '../core/publication-parties.js?v=3.0.2';
+import { officeScopeItems } from '../core/office-scope.js?v=3.0.2';
 
 export function createDashboardFeature({
   store = Store,
@@ -686,7 +686,7 @@ export function createDashboardFeature({
       if (weekEl) weekEl.textContent = String(Number(hearings.week) || 0);
       if (!Array.isArray(hearings.items) || !hearings.items.length) {
         list.innerHTML = `<div class="v2-hearings-empty">
-          <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-agenda"></use></svg>
+          <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-agenda"></use></svg>
           <p>Nenhuma audiência ou sessão designada.</p>
         </div>`;
         return;

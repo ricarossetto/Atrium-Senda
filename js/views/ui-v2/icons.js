@@ -1,6 +1,6 @@
 // O sprite é servido com cache longo no hosting; a versão na URL garante que um
 // símbolo novo (ex.: cálculos) chegue ao navegador mesmo com cache antigo.
-const ICON_SPRITE_PATH = 'assets/icons/atrium-ui-icons.svg?v=3.0.1';
+const ICON_SPRITE_PATH = 'assets/icons/atrium-ui-icons.svg?v=3.0.2';
 
 export const ATRIUM_ICON_NAMES = Object.freeze([
   'dashboard', 'processes', 'publications', 'tasks', 'agenda', 'contacts', 'leads',

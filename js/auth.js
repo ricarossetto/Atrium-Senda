@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, workspaceSetupToken: null, invitationSetupToken: null, invitationToken: null, invitationCompleted: false, resetToken: null, pendingUser: null, user: null, workspace: null, workspaceRegistrationEnabled: true, bootstrapRequired: false, setupMfaRequired: false, profileAvatarDraft: '', profileSnapshot: '' };
+  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, workspaceSetupToken: null, resetToken: null, pendingUser: null, user: null, workspace: null, workspaceRegistrationEnabled: true, bootstrapRequired: false, setupMfaRequired: false, profileAvatarDraft: '', profileSnapshot: '' };
   let pendingSetupSession = null;
   let runtimeSessionKey = null;
   let registrationStep = 0;
@@ -33,25 +33,6 @@
         byId('authBootstrapField')?.toggleAttribute('hidden', !state.bootstrapRequired);
         if (byId('authBootstrapToken')) byId('authBootstrapToken').required = state.bootstrapRequired;
         byId('skipMfaButton')?.classList.toggle('hidden', state.setupMfaRequired);
-        const inviteToken = new URLSearchParams(globalThis.location.search).get('invite')
-          || new URLSearchParams(globalThis.location.hash.replace(/^#/, '')).get('invite');
-        if (inviteToken) {
-          try {
-            const result = await request(`/api/auth/invitations/accept?token=${encodeURIComponent(inviteToken)}`);
-            state.invitationToken = inviteToken;
-            state.workspace = result.invitation.workspace;
-            byId('authInvitationWorkspace').textContent = result.invitation.workspace.name;
-            byId('authInvitationPerson').textContent = `${result.invitation.displayName} · ${result.invitation.email}`;
-            if (byId('authInvitationIdentityBox')) byId('authInvitationIdentityBox').style.display = 'grid';
-            if (byId('authInviteInputGroup')) byId('authInviteInputGroup').style.display = 'none';
-            this.show('authInvitationForm');
-            byId('authInvitationForm').elements.username.focus();
-          } catch (error) {
-            this.show(status.configured ? 'authLoginForm' : 'authSetupForm');
-            this.feedback(error.message, 'error');
-          }
-          return;
-        }
         const rawResetToken = new URLSearchParams(globalThis.location.search).get('reset')
           || new URLSearchParams(String(globalThis.location.hash || '').replace(/^#/, '')).get('reset');
         if (rawResetToken) {
@@ -158,9 +139,8 @@
         event.preventDefault();
         event.stopImmediatePropagation();
       }, true);
-      byId('authInvitationForm')?.addEventListener('submit', event => this.acceptInvitation(event));
       const setTabActive = (activeTabId) => {
-        ['authTabLogin', 'authTabRegister', 'authTabInvite'].forEach(tabId => {
+        ['authTabLogin', 'authTabRegister'].forEach(tabId => {
           const tab = byId(tabId);
           if (!tab) return;
           const isActive = tabId === activeTabId;
@@ -178,10 +158,6 @@
         setTabActive('authTabRegister');
         this.show('authRegisterForm');
       });
-      byId('authTabInvite')?.addEventListener('click', () => {
-        setTabActive('authTabInvite');
-        this.show('authInvitationForm');
-      });
       byId('authBackToLoginLink')?.addEventListener('click', (event) => {
         event.preventDefault();
         byId('authTabLogin')?.click();
@@ -191,6 +167,33 @@
         this.feedback('');
         this.show('authForgotForm');
         byId('authForgotForm').elements.identifier.focus();
+      });
+      byId('authActivateAccountLink')?.addEventListener('click', () => {
+        this.feedback('');
+        this.show('authActivateForm');
+        byId('authActivateForm')?.elements.setupToken?.focus();
+      });
+      byId('authActivateBackBtn')?.addEventListener('click', () => {
+        this.feedback('');
+        this.show('authLoginForm');
+        byId('authLoginForm').elements.username.focus();
+      });
+      byId('authActivateForm')?.addEventListener('submit', async event => {
+        event.preventDefault();
+        this.feedback('');
+        const form = new FormData(event.currentTarget);
+        try {
+          const result = await request('/api/auth/register/verify', {
+            method: 'POST',
+            body: { setupToken: String(form.get('setupToken') || '').trim(), code: String(form.get('code') || '').trim() }
+          });
+          event.currentTarget.reset();
+          this.show('authLoginForm');
+          this.feedback(result.message || 'Conta ativa. Entre com seu usuário e senha.', result.status === 'pending_approval' ? 'info' : 'success');
+          byId('authLoginForm').elements.username.focus();
+        } catch (error) {
+          this.feedback(error.message || 'Não foi possível ativar a conta.', 'error');
+        }
       });
       byId('authForgotForm')?.addEventListener('submit', event => this.requestPasswordReset(event));
       byId('authResetForm')?.addEventListener('submit', event => this.completePasswordReset(event));
@@ -204,39 +207,6 @@
         this.feedback('');
         this.show('authForgotForm');
         byId('authForgotForm').elements.identifier.focus();
-      });
-      byId('authFooterInviteBtn')?.addEventListener('click', (event) => {
-        event.preventDefault();
-        byId('authTabInvite')?.click();
-      });
-      byId('authInvitationBackBtn')?.addEventListener('click', (event) => {
-        event.preventDefault();
-        byId('authTabLogin')?.click();
-      });
-      byId('authValidateInviteBtn')?.addEventListener('click', async () => {
-        const raw = byId('authInviteTokenInput')?.value?.trim();
-        if (!raw) return this.feedback('Informe o código ou link de convite.', 'error');
-        let token = raw;
-        try {
-          if (raw.includes('invite=')) {
-            const parsed = new URL(raw, globalThis.location.origin);
-            token = parsed.searchParams.get('invite') || token;
-          }
-        } catch {}
-        try {
-          this.feedback('Validando convite...', 'info');
-          const result = await request(`/api/auth/invitations/accept?token=${encodeURIComponent(token)}`);
-          state.invitationToken = token;
-          state.workspace = result.invitation.workspace;
-          byId('authInvitationWorkspace').textContent = result.invitation.workspace.name;
-          byId('authInvitationPerson').textContent = `${result.invitation.displayName} · ${result.invitation.email}`;
-          if (byId('authInvitationIdentityBox')) byId('authInvitationIdentityBox').style.display = 'grid';
-          if (byId('authInviteInputGroup')) byId('authInviteInputGroup').style.display = 'none';
-          this.feedback('Convite validado com sucesso. Crie seu usuário e senha.', 'success');
-          byId('authInvitationForm').elements.username.focus();
-        } catch (err) {
-          this.feedback(err.message || 'Convite inválido ou expirado.', 'error');
-        }
       });
       // "Novo escritório" leva à aba de cadastro na primeira etapa.
       byId('authTabNewOffice')?.addEventListener('click', () => {
@@ -271,13 +241,6 @@
         catch { this.feedback('Não foi possível copiar automaticamente. Selecione e copie os códigos.', 'error'); }
       });
       byId('finishRecovery').addEventListener('click', async () => {
-        if (state.invitationCompleted) {
-          state.invitationCompleted = false;
-          this.show('authLoginForm');
-          this.feedback('Cadastro concluído. Entre com seu usuário, senha e código do autenticador.', 'success');
-          byId('authLoginForm').elements.username.focus();
-          return;
-        }
         const button = byId('finishRecovery');
         if (button.disabled) return;
         button.disabled = true;
@@ -354,18 +317,16 @@
       const standalone = ['authLoading', 'authSetupForm', 'authTotpSetupForm', 'authRecoveryStep', 'authForgotForm', 'authResetForm'].includes(id);
       const tabs = byId('authTabs');
       if (tabs) {
-        tabs.classList.toggle('hidden', standalone || Boolean(state.invitationToken));
+        tabs.classList.toggle('hidden', standalone);
       }
       const footer = byId('authCardFooter');
       if (footer) {
-        footer.classList.toggle('hidden', standalone || Boolean(state.invitationToken));
+        footer.classList.toggle('hidden', standalone);
       }
       byId('authTabLogin')?.classList.toggle('active', id === 'authLoginForm');
       byId('authTabLogin')?.setAttribute('aria-selected', String(id === 'authLoginForm'));
       byId('authTabRegister')?.classList.toggle('active', id === 'authRegisterForm');
       byId('authTabRegister')?.setAttribute('aria-selected', String(id === 'authRegisterForm'));
-      byId('authTabInvite')?.classList.toggle('active', id === 'authInvitationForm');
-      byId('authTabInvite')?.setAttribute('aria-selected', String(id === 'authInvitationForm'));
       const landing = byId('landingPage');
       if (landing) landing.classList.add('hidden');
       byId('authGate').classList.remove('hidden'); byId('appShell').classList.add('hidden');
@@ -377,14 +338,12 @@
       const standalone = ['authLoading', 'authSetupForm', 'authTotpSetupForm', 'authRecoveryStep', 'authForgotForm', 'authResetForm'].includes(id);
       const tabs = byId('authTabs');
       if (tabs) {
-        tabs.classList.toggle('hidden', standalone || Boolean(state.invitationToken));
+        tabs.classList.toggle('hidden', standalone);
       }
       byId('authTabLogin')?.classList.toggle('active', id === 'authLoginForm');
       byId('authTabLogin')?.setAttribute('aria-selected', String(id === 'authLoginForm'));
       byId('authTabRegister')?.classList.toggle('active', id === 'authRegisterForm');
       byId('authTabRegister')?.setAttribute('aria-selected', String(id === 'authRegisterForm'));
-      byId('authTabInvite')?.classList.toggle('active', id === 'authInvitationForm');
-      byId('authTabInvite')?.setAttribute('aria-selected', String(id === 'authInvitationForm'));
     },
     showLanding() {
       if (registrationInFlight) return;
@@ -418,41 +377,7 @@
       }
       this.show('authRegisterForm');
     },
-    async acceptInvitation(event) {
-      event.preventDefault();
-      this.feedback('');
-      const formElement = event.currentTarget;
-      const form = new FormData(formElement);
-      if (form.get('password') !== form.get('confirmPassword')) return this.feedback('As senhas não coincidem.', 'error');
-      this.busy(formElement, true);
-      try {
-        const result = await request('/api/auth/invitations/accept', {
-          method: 'POST',
-          body: {
-            inviteToken: state.invitationToken,
-            username: form.get('username'),
-            password: form.get('password')
-          }
-        });
-        state.invitationToken = null;
-        state.invitationSetupToken = result.setupToken;
-        byId('authQrCode').src = result.qrCode;
-        byId('authManualSecret').textContent = result.manualSecret;
-        formElement.reset();
-        const cleanUrl = new URL(globalThis.location.href);
-        cleanUrl.searchParams.delete('invite');
-        cleanUrl.hash = '';
-        globalThis.history.replaceState({}, '', cleanUrl);
-        this.show('authTotpSetupForm');
-        byId('skipMfaButton').hidden = true;
-        this.feedback('Convite aceito. Vincule o autenticador para concluir o cadastro.', 'success');
-        byId('authTotpSetupForm').elements.code.focus();
-      } catch (error) {
-        this.feedback(error.message, 'error');
-      } finally {
-        this.busy(formElement, false);
-      }
-    },
+
     async requestPasswordReset(event) {
       event.preventDefault();
       this.feedback('');
@@ -769,18 +694,6 @@
     async verifySetup(event) {
       event.preventDefault(); this.feedback(''); const formElement = event.currentTarget; const form = new FormData(formElement); this.busy(formElement, true);
       try {
-        if (state.invitationSetupToken) {
-          const result = await request('/api/auth/register/verify', { method: 'POST', body: { setupToken: state.invitationSetupToken, code: form.get('code') } });
-          state.invitationSetupToken = null;
-          state.invitationCompleted = true;
-          byId('authManualSecret').textContent = '';
-          byId('authQrCode').removeAttribute('src');
-          formElement.reset();
-          byId('authRecoveryCodes').textContent = (result.recoveryCodes || []).join('\n');
-          this.show('authRecoveryStep');
-          this.feedback('Proteção em duas etapas ativada. Guarde os códigos de recuperação.', 'success');
-          return;
-        }
         if (state.workspaceSetupToken) {
           const result = await request('/api/auth/workspaces/register/verify', { method: 'POST', body: { setupToken: state.workspaceSetupToken, code: form.get('code') } });
           state.workspaceSetupToken = null;
@@ -1247,7 +1160,7 @@ function passwordToggleIcon(visible) {
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
   const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
+  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
   svg.appendChild(use);
   return svg;
 }

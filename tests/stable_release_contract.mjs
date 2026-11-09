@@ -10,7 +10,7 @@ const server = await read('server.mjs');
 const dockerfile = await read('Dockerfile');
 const compose = await read('docker-compose.yml');
 
-assert.equal(pkg.version, '3.0.1');
+assert.equal(pkg.version, '3.0.2');
 // Cadeia de entrada com a versão do pacote: sem isso, navegador com cache antigo segue
 // executando os módulos antigos (o HTML e o bootstrap são reusados).
 const bootstrap = await read('js/app/bootstrap.js');

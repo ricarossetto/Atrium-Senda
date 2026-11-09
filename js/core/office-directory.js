@@ -1,4 +1,4 @@
-import { requestAuthUsers } from './auth-users-request.js?v=3.0.1';
+import { requestAuthUsers } from './auth-users-request.js?v=3.0.2';
 let directory = { users: [], teams: [] };
 let loadedAt = 0;
 let pending = null;

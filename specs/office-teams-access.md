@@ -40,8 +40,8 @@ O ATRIUM tem **um perfil de escritório** e **perfis de membros**. Não são doi
 | Isolamento entre escritórios | **CURRENT** — cada usuário pertence a um workspace; dados e arquivos são separados por workspace | `specs/multi-workspace-cloud.md`, `lib/security.mjs`, `lib/workspaces/workspace-identity.mjs` |
 | Papéis | **CURRENT** — catálogo de nove papéis em `lib/office/role-catalog.mjs`, que carrega os dados em `officeRoleId`; papéis legados (`master_admin`, `admin`, `collaborator`) mapeados por `legacyRoleToOfficeRole` | `lib/office/role-catalog.mjs`, `lib/security.mjs:670-676,753-777` |
 | Permissões `C` | **CURRENT no backend, FUTURE na tela** — `permissionOverrides` é persistido por `PATCH /api/office/members/:id` (`lib/security.mjs`) e aplicado por `resolveOfficePermissions`; falta a UI da matriz de permissões (Lote B) | `lib/office/role-catalog.mjs`, `lib/security.mjs` |
-| Convite de integrante | **CURRENT** — válido por 48h, com escolha de tipo, papel e equipe inicial; e-mail transacional via Resend com link manual como fallback | `/api/auth/invitations`, `lib/http/invitation-routes.mjs`, `lib/security.mjs`, `js/features/configuration.js` |
-| Interface de gestão | **CURRENT, parcial** — Configurações > Equipe > Escritório reúne membros, convites, equipes, atribuição e offboarding; faltam a matriz de permissões `C` e a aba de monitoramento | `js/features/configuration.js`, `js/views/ui-v2/configuration-presenter.js` |
+| Cadastro de integrante | **CURRENT** — o administrador cria a conta (usuário, senha inicial, tipo, papel e equipes) em `POST /api/auth/register`; o membro ativa com o código de configuração e o código do autenticador, e a conta fica pendente até a aprovação | `lib/security.mjs`, `js/features/configuration.js`, `js/auth.js` |
+| Interface de gestão | **CURRENT, parcial** — Configurações > Equipe > Escritório reúne membros, equipes, atribuição e offboarding; faltam a matriz de permissões `C` e a aba de monitoramento | `js/features/configuration.js`, `js/views/ui-v2/configuration-presenter.js` |
 | Responsáveis do processo | **CURRENT como fronteira de segurança** — `responsibleUserIds`, `assignedTeamIds` e `accessGrants` são resolvidos por `canAccessProcess` no servidor | `lib/office/access-control.mjs:65`, `lib/http/process-access-routes.mjs` |
 | Filtro “apenas meus itens” | **CURRENT somente visual** — não altera RBAC; quem decide é o servidor | `specs/task-management.md` |
 | Equipes | **CURRENT** — nome, descrição e integrantes; atribuir a equipe ao processo concede acesso pelo resolvedor | `lib/security.mjs:232-258`, `/api/office/teams`, `/api/processes/:id/assignment` |
@@ -49,7 +49,6 @@ O ATRIUM tem **um perfil de escritório** e **perfis de membros**. Não são doi
 | Financeiro | **CURRENT** — `canAccessFinancialEntry` aplica a mesma decisão em `filterOfficeState` e `mergeVisibleClientState`: `canManageFinance` (`finance.read`/`finance.write`/`office.manage`) vê tudo; sem ela, o lançamento segue o processo vinculado por `canAccessProcess` e, sem vínculo, o autor (`createdByUserId`, carimbado pelo servidor). Gravar exige `canWriteFinancial` (`finance.write`/`office.manage`): sem esse direito, o flush mantém a versão oficial das duas coleções. Campos aditivos opcionais em `officeExpenses[]`/`financialEntries[]`: `processId` (`string \| null`) e `createdByUserId` (`string \| null`); ausência vale `null` e não exige migração | `lib/office/access-control.mjs`, `lib/office/finance-entry-scope.mjs` |
 | Perfil privado por OAB | **CURRENT** — termos com `scope: private` e `privateOwnerUserId`, captura separada, `privateMonitoring: allowed|disabled` e deduplicação com precedência do escritório | `lib/office/monitoring-scope.mjs`, `collector/adapters/djen.mjs:206-363`, `js/core/office-scope.js` |
 | Offboarding | **CURRENT** — transfere processos e tarefas, protege principal e último gestor, desativa preservando autoria e registra auditoria | `lib/http/office-routes.mjs:55-99` |
-| Convite por e-mail | **CURRENT** — transacional `TEAM_INVITE` no pipeline Resend, com status de enfileiramento e link manual de fallback | `lib/http/invitation-routes.mjs`, `lib/notifications/notification-service.mjs` |
 
 O que ainda falta é pontual e está listado abaixo na seção “Pendências por lote”, não no modelo em si.
 
@@ -58,7 +57,7 @@ O que ainda falta é pontual e está listado abaixo na seção “Pendências po
 1. Entre como membro com `office.manage` (principal ou gestor).
 2. Abra **Configurações**.
 3. No grupo **Equipe**, selecione **Escritório**.
-4. O painel mostra membros, convites, equipes e o modo de acesso. O convite aceita envio por e-mail e sempre devolve o link manual de 48h, já com tipo, papel e equipe inicial.
+4. O painel mostra membros, equipes e o modo de acesso. O cadastro de membro mostra o QR do autenticador, o segredo manual e o código de configuração para o membro ativar a conta.
 5. A ficha do membro permite editar tipo e papel, desligar com transferência de carteira. A atribuição de processo fica no inspetor do processo, cartão **Equipe e acesso**.
 6. Ainda **não** existem nessa tela: edição de permissões individuais `C`, aba de monitoramento por OAB e consulta de auditoria de acesso. Essas ações estão nos lotes B, D e seguem sem implementação.
 
@@ -68,7 +67,7 @@ O guia operacional curto, com o que já funciona e o que ainda não funciona, es
 
 1. Confirmar o perfil do escritório, principal e gestores.
 2. Configurar a(s) OAB(s) do escritório.
-3. Convidar advogados e funcionários, definindo `memberKind`, papel e equipe inicial.
+3. Cadastrar advogados e funcionários, definindo `memberKind`, papel e equipes iniciais, e aprovar as contas ativadas.
 4. Criar equipes por área e revisar seus membros.
 5. Para cada processo novo, manual ou automático, definir equipe principal, advogados responsáveis e, se necessário, pessoa extra com acesso.
 6. Confirmar a atribuição; sem ela, o processo fica na fila do gestor e não aparece para associados/contratados.
@@ -81,19 +80,17 @@ O gestor não precisa repetir a atribuição em toda captura: a atribuição exi
 - O gestor **não vê conteúdo** do escopo privado; vê apenas existência e contagens agregadas.
 - Sócio **não vê financeiro por padrão**; recebe `finance.read`/`finance.write` por concessão explícita do gestor.
 - Associado e contratado **podem criar processo sem autorização prévia**; a criação não depende de aprovação. O criador fica como responsável provisório e o gestor confirma ou altera a atribuição depois.
-- Convite por e-mail usa o pipeline transacional **Resend**, com link manual como fallback; nunca o SMTP de publicações.
+
 
 ## Implementado em 6.47.0 (histórico)
 
 A seção abaixo registra a entrega original e permanece válida; o estado consolidado é o da tabela acima.
 
-### Convite por e-mail
+### Cadastro de membro (substituindo o convite por e-mail)
 
-- `POST /api/auth/invitations` e `POST /api/auth/invitations/resend` aceitam `sendEmail: true`.
-- O backend enfileira `TEAM_INVITE` via `NotificationService → outbox → worker → Resend`; nunca chama o provider diretamente e nunca usa o SMTP de publicações.
-- A resposta devolve `emailStatus: queued | failed | not_configured | not_requested`; o frontend só afirma “enfileirado” nesse estado e sempre exibe o link manual de 48h.
-- O link usa `/login#invite=<token>`; o fragmento não é enviado ao servidor. Reenvio renova o token e usa uma nova geração de idempotência, sem duplicar o mesmo envio.
-- `TEAM_INVITE` é transacional e não entra na quota dos três boletins operacionais. Sem provider configurado, o convite por link continua válido.
+- O administrador cria a conta em `POST /api/auth/register` (usuário, senha inicial, tipo, papel e equipes); a resposta devolve `setupToken`, QR e segredo manual do TOTP.
+- O membro ativa a conta na tela de login (Ativar conta) com o código de configuração e o código de 6 dígitos do autenticador (`POST /api/auth/register/verify`). A conta nasce `pending_approval` e só entra após a aprovação no painel de membros.
+- O cadastro direto substitui os antigos convites por e-mail (`TEAM_INVITE`) e por link (`/login#invite=`), retirados da edição aberta: o escritório é local e os membros se cadastam no próprio computador.
 
 ### Envolvidos em tarefas e publicações
 
@@ -167,10 +164,9 @@ Relação com `memberKind`:
 
 | Permissão | Efeito |
 |---|---|
-| `office.manage` | gerir perfil do escritório, membros, papéis, equipes e convites |
+| `office.manage` | gerir perfil do escritório, membros, papéis e equipes |
 | `office.principal` | transferir principal, nomear/remover gestores, última palavra em conflito de gestão |
-| `members.invite` | criar/reenviar/cancelar convites |
-| `members.manage` | alterar papel, equipes, status e offboarding |
+| `members.manage` | cadastrar, alterar papel, equipes, status e offboarding |
 | `roles.manage` | criar/editar papéis e concessões dentro do catálogo |
 | `teams.manage` | criar/editar/desativar equipes e membros |
 | `processes.read_all` | ler todos os processos do escritório |
@@ -301,19 +297,15 @@ Implementação 6.45.3:
 - O evento não entra no boletim das 20h e não altera prazo, tratamento ou ciência.
 - A fila ativa esconde a tarefa concluída para todos; o histórico continua disponível para quem tem acesso.
 
-## Convites e ciclo de vida do membro
+## Cadastro e ciclo de vida do membro
 
-### Convite
+### Cadastro de membro
 
-- O gestor escolhe nome, e-mail, papel e equipe(s) inicial(is).
-- Dois caminhos no mesmo registro:
-  1. **E-mail transacional** `TEAM_INVITE` pelo pipeline oficial `NotificationService → outbox → worker → Resend`, com quota própria, sem opt-out e sem conteúdo judicial. Não usar o SMTP de publicações.
-  2. **Link de uso único** para compartilhar manualmente, quando o e-mail não estiver configurado ou falhar.
-- O e-mail contém apenas: nome do escritório, nome de quem convidou, link, validade e instrução para definir senha/ativar MFA. Nunca contém senha, papel detalhado, permissões ou conteúdo jurídico.
-- Token: aleatório, hash persistido, uso único, 48h, no fragmento do link (`#invite=...`), removido da URL após o aceite. Reenviar rotaciona o token e invalida o anterior.
-- Status do convite: `pending`, `sent`, `delivered`, `accepted`, `expired`, `revoked`, `failed`. Falha de e-mail não pode ser exibida como enviada; o link continua disponível.
-- Rate limit por escritório, por e-mail e por IP; convite duplicado ativo retorna 409; convite aceito não pode ser reutilizado.
-- Escalonamento de privilégio: o convidante não pode conceder papel/permissão que ele próprio não possui. Apenas o principal pode convidar outro `office_manager`/`office_principal`.
+- O administrador cria a conta com usuário, nome, e-mail, senha inicial, tipo, papel e equipe(s) inicial(is) em `POST /api/auth/register` (CSRF + admin; o papel e a permissão concedidos não podem exceder os do ator).
+- A resposta mostra QR code, segredo manual do TOTP e código de configuração (válido por 10 minutos); o administrador entrega esses dados ao membro.
+- O membro ativa a conta na tela de login (**Ativar conta**) com o código de configuração e o código de 6 dígitos do autenticador (`POST /api/auth/register/verify`, uso único, com limite de tentativas).
+- A conta nasce `pending_approval`; o administrador aprova no painel de membros (`POST /api/auth/users/manage`). A aprovação é passo obrigatório — ativação sem aprovação não concede acesso.
+- Substitui os antigos convites por e-mail e por link, que ficavam reservados ao produto hospedado (colaboração multi-máquina).
 
 ### Ciclo de vida
 

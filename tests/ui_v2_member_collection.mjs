@@ -12,10 +12,12 @@ try {
   const verified = await postJson(`${server.baseUrl}/api/auth/setup/verify`, { setupToken: setup.setupToken, code: generateTotp(setup.manualSecret) });
   const adminCookie = verified.headers.get('set-cookie').split(';')[0];
   const adminCsrf = (await verified.json()).csrfToken;
-  const invited = await (await postJson(`${server.baseUrl}/api/auth/invitations`, { email: 'membro.coleta@example.test', displayName: 'Membro Teste', role: 'collaborator' }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf })).json();
-  const accepted = await (await postJson(`${server.baseUrl}/api/auth/invitations/accept`, { inviteToken: invited.inviteToken, username: 'membro_coleta', password: PASSWORD })).json();
-  await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: accepted.setupToken, code: generateTotp(accepted.manualSecret) });
-  const login = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'membro_coleta', password: PASSWORD, code: generateTotp(accepted.manualSecret, Math.floor(Date.now() / 30_000) + 1) });
+  const registered = await (await postJson(`${server.baseUrl}/api/auth/register`, { username: 'membro_coleta', displayName: 'Membro Teste', email: 'membro.coleta@example.test', password: PASSWORD, officeRoleId: 'associate' }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf })).json();
+  await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: registered.setupToken, code: generateTotp(registered.manualSecret) });
+  const listedUsers = await (await (await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: adminCookie } })).json());
+  const memberUser = listedUsers.users.find(user => user.username === 'membro_coleta');
+  await postJson(`${server.baseUrl}/api/auth/users/manage`, { userId: memberUser.id, status: 'active', password: PASSWORD, code: generateTotp(setup.manualSecret) }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  const login = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'membro_coleta', password: PASSWORD, code: generateTotp(registered.manualSecret, Math.floor(Date.now() / 30_000) + 1) });
   assert.equal(login.status, 200);
 
   const open = async cookieHeader => {
@@ -37,7 +39,7 @@ try {
   assert.equal(await member.page.evaluate(() => document.documentElement.dataset.canCollect), 'false');
   assert.equal(await member.page.evaluate(() => getComputedStyle(document.getElementById('btnSyncEprocA1')).display), 'none', 'botão de varredura some');
   await member.page.locator('#syncButton').click();
-  await member.page.getByText('A coleta nos tribunais roda nos ciclos automáticos').first().waitFor();
+  await member.page.getByText('A coleta nos tribunais é manual').first().waitFor();
   assert.deepEqual(member.posts.filter(pathname => /\/api\/sync$|\/sync-all$|\/sweep$/.test(pathname)), [], 'botão não inicia coleta');
   assert.deepEqual(member.errors, []);
   await member.context.close();

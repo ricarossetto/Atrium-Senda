@@ -1,5 +1,5 @@
-import { findIntimationRecord } from '../core/publication-scope.js?v=3.0.1';
-import { installPanelSizeToggle } from './panel-size.js?v=3.0.1';
+import { findIntimationRecord } from '../core/publication-scope.js?v=3.0.2';
+import { installPanelSizeToggle } from './panel-size.js?v=3.0.2';
 
 // Contextual reading uses the canonical Store record without changing treatment.
 // Ids absorvidos por fusão resolvem para o keeper (alias nunca abre).
@@ -12,7 +12,7 @@ export function openLinkedPublication(store, id, documentRef = document) {
   dialog.id = 'linkedPublicationReader';
   dialog.className = 'linked-publication-reader';
   dialog.setAttribute('aria-labelledby', 'linkedPublicationTitle');
-  dialog.innerHTML = '<header><button type="button" class="v2-button" autofocus><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-left"></use></svg> Voltar</button><button type="button" class="linked-publication-reader-size" data-panel-size-toggle aria-pressed="false" aria-label="Maximizar painel" title="Maximizar painel"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-maximize"></use></svg></button><p>PUBLICAÇÃO VINCULADA</p><h2 id="linkedPublicationTitle"></h2><small></small></header><article tabindex="0"></article>';
+  dialog.innerHTML = '<header><button type="button" class="v2-button" autofocus><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-chevron-left"></use></svg> Voltar</button><button type="button" class="linked-publication-reader-size" data-panel-size-toggle aria-pressed="false" aria-label="Maximizar painel" title="Maximizar painel"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-maximize"></use></svg></button><p>PUBLICAÇÃO VINCULADA</p><h2 id="linkedPublicationTitle"></h2><small></small></header><article tabindex="0"></article>';
   dialog.setAttribute('data-panel-size-anchor', 'fixed');
   dialog.querySelector('h2').textContent = record.title || 'Publicação';
   dialog.querySelector('small').textContent = [record.process, record.court, record.publishedAt?.slice(0, 10)].filter(Boolean).join(' · ');

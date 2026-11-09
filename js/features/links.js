@@ -1,6 +1,6 @@
-import { Store, uid } from '../core/store.js?v=3.0.1';
-import { describeLinkSafety } from '../core/link-safety.js?v=3.0.1';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.1';
+import { Store, uid } from '../core/store.js?v=3.0.2';
+import { describeLinkSafety } from '../core/link-safety.js?v=3.0.2';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.2';
 
 export const LINK_CATEGORIES = Object.freeze([
   { value: 'Legislação', label: 'Legislação e Códigos' },

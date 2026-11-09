@@ -36,22 +36,26 @@ const flush = async (headers, revision, state) => {
 };
 
 async function loginWithTotp({ username, password, manualSecret, setupToken }) {
-  let response = await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken, code: generateTotp(manualSecret) });
-  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
-  response = await postJson(`${server.baseUrl}/api/auth/login`, { username, password, code: generateTotp(manualSecret) });
+  void setupToken;
+  let response = await postJson(`${server.baseUrl}/api/auth/login`, { username, password, code: generateTotp(manualSecret) });
   const body = await response.json();
   assert.equal(response.status, 200, JSON.stringify(body));
   return { cookie: response.headers.get('set-cookie').split(';')[0], csrf: body.csrfToken, id: body.user?.id };
 }
 
 async function joinAs(principal, { username, displayName, email, password, officeRoleId }) {
-  let response = await postJson(`${server.baseUrl}/api/auth/invitations`, { displayName, email, officeRoleId, sendEmail: false }, auth(principal.cookie, principal.csrf));
-  const invited = await response.json();
-  assert.equal(response.status, 201, JSON.stringify(invited));
-  response = await postJson(`${server.baseUrl}/api/auth/invitations/accept`, { inviteToken: invited.inviteToken, username, password });
-  const accepted = await response.json();
-  assert.equal(response.status, 200, JSON.stringify(accepted));
-  return loginWithTotp({ username, password, manualSecret: accepted.manualSecret, setupToken: accepted.setupToken });
+  const headers = auth(principal.cookie, principal.csrf);
+  let response = await postJson(`${server.baseUrl}/api/auth/register`, { username, displayName, email, password, officeRoleId }, headers);
+  const registered = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(registered));
+  response = await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: registered.setupToken, code: generateTotp(registered.manualSecret) });
+  assert.equal(response.status, 200, JSON.stringify(await response.json()));
+  const usersResponse = await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: principal.cookie } });
+  const memberUser = (await usersResponse.json()).users.find(user => user.username === username);
+  assert.ok(memberUser, 'membro não encontrado para aprovação');
+  response = await postJson(`${server.baseUrl}/api/auth/users/manage`, { userId: memberUser.id, status: 'active', password: PRINCIPAL_PASSWORD, code: generateTotp(principal.manualSecret) }, headers);
+  assert.equal(response.status, 200, JSON.stringify(await response.json()));
+  return loginWithTotp({ username, password, manualSecret: registered.manualSecret, setupToken: registered.setupToken });
 }
 
 try {
@@ -69,7 +73,7 @@ try {
   response = await postJson(`${server.baseUrl}/api/auth/setup/verify`, { setupToken: setup.setupToken, code: generateTotp(setup.manualSecret) });
   const verified = await response.json();
   assert.equal(response.status, 200, JSON.stringify(verified));
-  const principal = { cookie: response.headers.get('set-cookie').split(';')[0], csrf: verified.csrfToken, id: verified.user?.id };
+  const principal = { cookie: response.headers.get('set-cookie').split(';')[0], csrf: verified.csrfToken, id: verified.user?.id, manualSecret: setup.manualSecret };
 
   const associate = await joinAs(principal, {
     username: 'associada_financeiro',

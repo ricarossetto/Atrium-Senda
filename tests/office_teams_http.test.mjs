@@ -42,28 +42,9 @@ try {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ memberKind: 'lawyer', officeRoleId: 'office_principal' })
     });
-    const inviteResponse = await auth.secureFetch('/api/auth/invitations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ displayName: 'Convite HTTP Teste', email: `convite-http-${Date.now()}@example.test`, sendEmail: false })
-    });
-    const invite = await inviteResponse.json();
-    const emailInviteResponse = await auth.secureFetch('/api/auth/invitations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ displayName: 'Convite E-mail HTTP Teste', email: `convite-email-http-${Date.now()}@example.test`, sendEmail: true })
-    });
-    const emailInvite = await emailInviteResponse.json();
-    for (const item of [invite, emailInvite]) {
-      if (item?.invitation?.id) await auth.secureFetch('/api/auth/invitations', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ invitationId: item.invitation.id }) });
-    }
     return {
       memberUpdateStatus: memberUpdateResponse.status,
       memberUpdateKind: memberUpdate.member?.memberKind,
-      inviteStatus: inviteResponse.status,
-      inviteEmailStatus: invite.emailStatus,
-      emailInviteStatus: emailInviteResponse.status,
-      emailInviteEmailStatus: emailInvite.emailStatus,
       listStatus: list.status,
       createStatus: createdResponse.status,
       patchedStatus: patchedResponse.status,
@@ -80,10 +61,6 @@ try {
   assert.equal(result.stillThere, false);
   assert.equal(result.memberUpdateStatus, 200);
   assert.equal(result.memberUpdateKind, 'staff');
-  assert.equal(result.inviteStatus, 201);
-  assert.equal(result.inviteEmailStatus, 'not_requested');
-  assert.equal(result.emailInviteStatus, 201);
-  assert.equal(result.emailInviteEmailStatus, 'queued');
 
   // C-1: equipe atribuída a processo não pode ser excluída; a exclusão só passa depois
   // de remover a atribuição nos processos. Fixtures sintéticas.

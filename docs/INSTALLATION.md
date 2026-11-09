@@ -22,7 +22,7 @@ Abra `http://127.0.0.1:4173` e siga o primeiro uso (administrador do escritório
 
 ## Primeiro acesso
 
-Crie a conta como administrador no primeiro uso ou aceite o convite do escritório. Configure autenticação em duas etapas conforme a tela e guarde os códigos de recuperação. A administração do escritório resolve backups, permissões e credenciais judiciais pelas telas autenticadas do produto.
+Crie a conta como administrador no primeiro uso. Novos membros são adicionados pelo administrador em Configurações > Equipe > Escritório.uarde os códigos de recuperação. A administração do escritório resolve backups, permissões e credenciais judiciais pelas telas autenticadas do produto.
 
 A1 fica no cofre cifrado do workspace, no computador do escritório. Portais judiciais podem exigir certificado A1, PJeOffice, TOTP ou ação humana. Integrações judiciais são somente leitura e nunca produzem ciência, assinatura ou protocolo.
 

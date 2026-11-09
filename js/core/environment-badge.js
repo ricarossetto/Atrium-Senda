@@ -22,7 +22,7 @@ function buildBadge(status) {
   icon.setAttribute('class', 'atrium-icon atrium-env-badge__icon');
   icon.setAttribute('aria-hidden', 'true');
   const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttribute('href', 'assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-info');
+  use.setAttribute('href', 'assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-info');
   icon.append(use);
 
   const label = document.createElement('span');

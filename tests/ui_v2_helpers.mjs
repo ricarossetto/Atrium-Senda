@@ -89,7 +89,7 @@ export async function startUiV2Session({ viewport = { width: 1440, height: 900 }
     await server.stop();
   }
 
-  return Object.freeze({ server, browser, createContext, stop });
+  return Object.freeze({ server, browser, createContext, stop, adminPassword: password, manualSecret: setup.manualSecret });
 }
 
 export async function prepareUiV2Page(context, baseUrl, { theme = 'light', probe = false } = {}) {

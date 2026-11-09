@@ -1,7 +1,7 @@
 const SYSTEM_ADMIN_ICON_NAMES = new Set(['configuration', 'court', 'delete', 'download', 'edit', 'security', 'sync', 'theme-light', 'upload']);
 const iconSvg = name => {
   const safeName = SYSTEM_ADMIN_ICON_NAMES.has(name) ? name : 'configuration';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-${safeName}"></use></svg>`;
 };
 
 // Os códigos seguem iguais na API e no relatório exportado; aqui só muda o que aparece na tela.

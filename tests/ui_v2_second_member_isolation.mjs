@@ -15,40 +15,46 @@ try {
   const adminContext = await session.createContext();
   const { page: adminPage, pageErrors: adminErrors } = await prepareUiV2Page(adminContext, session.server.baseUrl, { theme: 'light' });
 
-  const created = await adminPage.evaluate(async ({ email }) => {
+  const created = await adminPage.evaluate(async ({ username, email, password }) => {
     const auth = window.AtriumAuth;
     const office = await (await auth.secureFetch('/api/office', { headers: { Accept: 'application/json' } })).json();
     const self = office.members.find(member => member.role === 'master_admin');
-    const response = await auth.secureFetch('/api/auth/invitations', {
+    const response = await auth.secureFetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ displayName: 'Colaborador Teste', email, officeRoleId: 'associate', sendEmail: false })
+      body: JSON.stringify({ username, displayName: 'Colaborador Teste', email, password, officeRoleId: 'associate' })
     });
     return { status: response.status, body: await response.json(), self };
-  }, { email: EMAIL });
-  assert.equal(created.status, 201);
-  assert.ok(created.body.inviteToken);
-
-  const acceptResponse = await fetch(`${session.server.baseUrl}/api/auth/invitations/accept`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ inviteToken: created.body.inviteToken, username: USERNAME, password: PASSWORD })
-  });
-  const accepted = await acceptResponse.json();
-  assert.equal(acceptResponse.status, 200, JSON.stringify(accepted));
+  }, { username: USERNAME, email: EMAIL, password: PASSWORD });
+  assert.equal(created.status, 200);
+  assert.ok(created.body.setupToken);
 
   const registerResponse = await fetch(`${session.server.baseUrl}/api/auth/register/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ setupToken: accepted.setupToken, code: generateTotp(accepted.manualSecret) })
+    body: JSON.stringify({ setupToken: created.body.setupToken, code: generateTotp(created.body.manualSecret) })
   });
   const registered = await registerResponse.json();
   assert.equal(registerResponse.status, 200, JSON.stringify(registered));
 
+  const approved = await adminPage.evaluate(async ({ username, adminPassword, totpCode }) => {
+    const auth = window.AtriumAuth;
+    const users = await (await auth.secureFetch('/api/auth/users', { headers: { Accept: 'application/json' } })).json();
+    const member = users.users.find(user => user.username === username);
+    if (!member) throw new Error('Segundo membro não apareceu no diretório.');
+    const response = await auth.secureFetch('/api/auth/users/manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ userId: member.id, status: 'active', password: adminPassword, code: totpCode })
+    });
+    return { status: response.status, body: await response.json() };
+  }, { username: USERNAME, adminPassword: session.adminPassword, totpCode: generateTotp(session.manualSecret) });
+  assert.equal(approved.status, 200, JSON.stringify(approved.body));
+
   const loginResponse = await fetch(`${session.server.baseUrl}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ username: USERNAME, password: PASSWORD, code: generateTotp(accepted.manualSecret) })
+    body: JSON.stringify({ username: USERNAME, password: PASSWORD, code: generateTotp(created.body.manualSecret, Math.floor(Date.now() / 30_000) + 1) })
   });
   const logged = await loginResponse.json();
   assert.equal(loginResponse.status, 200, JSON.stringify(logged));

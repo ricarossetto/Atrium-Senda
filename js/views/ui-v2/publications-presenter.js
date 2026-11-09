@@ -1,13 +1,13 @@
-import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.0.1';
-import { publicationReadableText } from '../../core/html-text.js?v=3.0.1';
-import { buildPublicationBrief, publicationTodayReason } from '../../core/publication-brief.js?v=3.0.1';
-import { isMergedIntimation } from '../../core/publication-scope.js?v=3.0.1';
-import { layoutPublicationText } from '../../core/publication-text-layout.js?v=3.0.1';
-import { SUSPENSION_NOTE, describeSuspension, suspensionForDate } from '../../core/suspension-calendar.js?v=3.0.1';
-import { isValidCnj } from '../../core/cnj.js?v=3.0.1';
-import { describeLinkSafety } from '../../core/link-safety.js?v=3.0.1';
-import { formatPublicationLawyers, officeLawyerMatch, publicationLawyersList } from '../../core/publication-lawyers.js?v=3.0.1';
-import { formatLawyerNames, officeSideLawyers } from '../../core/publication-parties.js?v=3.0.1';
+import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.0.2';
+import { publicationReadableText } from '../../core/html-text.js?v=3.0.2';
+import { buildPublicationBrief, publicationTodayReason } from '../../core/publication-brief.js?v=3.0.2';
+import { isMergedIntimation } from '../../core/publication-scope.js?v=3.0.2';
+import { layoutPublicationText } from '../../core/publication-text-layout.js?v=3.0.2';
+import { SUSPENSION_NOTE, describeSuspension, suspensionForDate } from '../../core/suspension-calendar.js?v=3.0.2';
+import { isValidCnj } from '../../core/cnj.js?v=3.0.2';
+import { describeLinkSafety } from '../../core/link-safety.js?v=3.0.2';
+import { formatPublicationLawyers, officeLawyerMatch, publicationLawyersList } from '../../core/publication-lawyers.js?v=3.0.2';
+import { formatLawyerNames, officeSideLawyers } from '../../core/publication-parties.js?v=3.0.2';
 
 /**
  * Conferência informativa do conteúdo mínimo da intimação no DJEN
@@ -406,7 +406,7 @@ export function renderPublicationRow({ item, act, parties, selected, escapeHtml,
     </span>
     <span class="publication-record-origin"><b>${escapeHtml(item.source || item.court || 'Origem não informada')}</b><small>${escapeHtml(item.court || 'Órgão não informado')}</small></span>
     <span class="publication-record-date"><b>${item.publishedAt ? escapeHtml(formatAge(item.publishedAt)) : item.disponibilizadoEm ? 'Disponibilização' : item.sourceReportedAt ? 'Data da fonte' : escapeHtml(formatAge(item.publishedAt))}</b><small>${escapeHtml(formatDate(item.publishedAt || item.disponibilizadoEm || item.sourceReportedAt))}</small></span>
-    <span class="publication-record-action" aria-hidden="true">Ler publicação <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-right"></use></svg></span>
+    <span class="publication-record-action" aria-hidden="true">Ler publicação <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-chevron-right"></use></svg></span>
   </button>
   ${aside}
 </div>`;
@@ -1022,4 +1022,4 @@ function toggleInert(element, inert) {
   if (inert) element.setAttribute('inert', '');
   else element.removeAttribute('inert');
 }
-import { iconSvg } from './icons.js?v=3.0.1';
+import { iconSvg } from './icons.js?v=3.0.2';

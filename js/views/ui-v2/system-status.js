@@ -1,4 +1,4 @@
-import { iconSvg } from './primitives.js?v=3.0.1';
+import { iconSvg } from './primitives.js?v=3.0.2';
 
 export const SYSTEM_STATUS_STATES = Object.freeze({
   ready: Object.freeze({ tone: 'neutral', label: 'Pronto', icon: 'ready', detail: 'Dados carregados; salvamento automático ativo.' }),

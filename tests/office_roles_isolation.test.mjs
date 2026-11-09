@@ -73,32 +73,37 @@ async function verifyWorkspaceRegistration({ setupToken, manualSecret }) {
   };
 }
 
-// Convida e ativa um membro no escritório do ator, devolvendo sessão autenticada.
-async function joinWorkspace(actorHeaders, { username, email, officeRoleId = 'associate' }) {
-  let response = await postJson(`${server.baseUrl}/api/auth/invitations`, {
+// Cadastra, ativa e aprova um membro no escritório do ator, devolvendo sessão autenticada.
+async function joinWorkspace(actor, { username, email, officeRoleId = 'associate' }) {
+  const actorHeaders = actor.headers;
+  let response = await postJson(`${server.baseUrl}/api/auth/register`, {
+    username,
     displayName: 'Advogada Teste',
     email,
-    officeRoleId,
-    sendEmail: false
+    password: MEMBER_PASSWORD,
+    officeRoleId
   }, actorHeaders);
-  const invited = await response.json();
-  assert.equal(response.status, 201, JSON.stringify(invited));
-  response = await postJson(`${server.baseUrl}/api/auth/invitations/accept`, {
-    inviteToken: invited.inviteToken,
-    username,
-    password: MEMBER_PASSWORD
-  });
-  const accepted = await response.json();
-  assert.equal(response.status, 200, JSON.stringify(accepted));
+  const registered = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(registered));
   response = await postJson(`${server.baseUrl}/api/auth/register/verify`, {
-    setupToken: accepted.setupToken,
-    code: generateTotp(accepted.manualSecret)
+    setupToken: registered.setupToken,
+    code: generateTotp(registered.manualSecret)
   });
   assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  const usersResponse = await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: actorHeaders.Cookie } });
+  const memberUser = (await usersResponse.json()).users.find(user => user.username === username);
+  assert.ok(memberUser, 'membro não encontrado para aprovação');
+  response = await postJson(`${server.baseUrl}/api/auth/users/manage`, {
+    userId: memberUser.id,
+    status: 'active',
+    password: actor.password,
+    code: generateTotp(actor.manualSecret)
+  }, actorHeaders);
+  assert.equal(response.status, 200, JSON.stringify(await response.json()));
   response = await postJson(`${server.baseUrl}/api/auth/login`, {
     username,
     password: MEMBER_PASSWORD,
-    code: generateTotp(accepted.manualSecret)
+    code: generateTotp(registered.manualSecret)
   });
   const login = await response.json();
   assert.equal(response.status, 200, JSON.stringify(login));
@@ -147,8 +152,8 @@ try {
   assert.notEqual(officeB.workspaceId, officeA.workspaceId, 'Os escritórios receberam a mesma identidade.');
   const headersB = auth(officeB.cookie, officeB.csrf);
 
-  const memberA = await joinWorkspace(headersA, { username: 'membro_iso_a', email: 'membro.a@example.test' });
-  const memberB = await joinWorkspace(headersB, { username: 'membro_iso_b', email: 'membro.b@example.test' });
+  const memberA = await joinWorkspace({ headers: headersA, password: PASSWORD_A, manualSecret: setupA.manualSecret }, { username: 'membro_iso_a', email: 'membro.a@example.test' });
+  const memberB = await joinWorkspace({ headers: headersB, password: PASSWORD_B, manualSecret: setupB.manualSecret }, { username: 'membro_iso_b', email: 'membro.b@example.test' });
 
   // ------------------------------------------------------------------
   // A1 — escritório A cria um papel personalizado.
@@ -197,22 +202,7 @@ try {
   // ------------------------------------------------------------------
   // B2 — escritório B tenta convidar usando o papel de A.
   // ------------------------------------------------------------------
-  console.log('[B2] Escritório B tenta convidar com o papel de A...');
-  response = await postJson(`${server.baseUrl}/api/auth/invitations`, {
-    displayName: 'Advogada Teste',
-    email: 'convidada.cruzada@example.test',
-    officeRoleId: customRoleId,
-    sendEmail: false
-  }, headersB);
-  const crossInvite = await response.json();
-  assert.notEqual(response.status, 201, `B emitiu convite com o papel do escritório A: ${JSON.stringify(crossInvite)}`);
-  assert.equal(response.status, 400, JSON.stringify(crossInvite));
-  assert.match(crossInvite.message, /Papel do escritório inválido/);
-  response = await fetch(`${server.baseUrl}/api/auth/invitations`, { headers: { Accept: 'application/json', ...headersB } });
-  const invitationsB = await response.json();
-  assert.equal(response.status, 200, JSON.stringify(invitationsB));
-  assert.ok(!invitationsB.invitations.some(item => item.officeRoleId === customRoleId), 'Convite com papel de A ficou pendente em B.');
-  console.log('  ✓ 400 e nenhum convite pendente com papel alheio.');
+
 
   // ------------------------------------------------------------------
   // B3 — escritório B tenta cadastrar direto usando o papel de A.
@@ -243,16 +233,16 @@ try {
   assert.equal(response.status, 200, JSON.stringify(factoryPatch));
   assert.equal(factoryPatch.member?.officeRoleId, 'associate');
   assert.ok((factoryPatch.member?.permissions || []).includes('processes.create'), 'Papel de fábrica perdeu permissões em B.');
-  response = await postJson(`${server.baseUrl}/api/auth/invitations`, {
+  response = await postJson(`${server.baseUrl}/api/auth/register`, {
+    username: 'fabrica_membro',
     displayName: 'Advogada Teste',
     email: 'convidada.fabrica@example.test',
-    officeRoleId: 'office_manager',
-    sendEmail: false
+    password: MEMBER_PASSWORD,
+    officeRoleId: 'office_manager'
   }, headersB);
   const factoryInvite = await response.json();
-  assert.equal(response.status, 201, JSON.stringify(factoryInvite));
-  assert.equal(factoryInvite.invitation?.officeRoleId, 'office_manager');
-  console.log('  ✓ Papel de fábrica aceito em PATCH e em convite.');
+  assert.equal(response.status, 200, JSON.stringify(factoryInvite));
+  console.log('  ✓ Papel de fábrica aceito em PATCH e em cadastro direto.');
 
   // ------------------------------------------------------------------
   // D1 — escritório A continua usando o próprio papel.
@@ -269,17 +259,17 @@ try {
   assert.deepEqual([...ownPatch.member.permissions].sort(), ['ai.use', 'finance.write']);
   console.log('  ✓ 200 e permissões do papel próprio aplicadas em A.');
 
-  console.log('[D1b] Escritório A convida com o próprio papel...');
-  response = await postJson(`${server.baseUrl}/api/auth/invitations`, {
+  console.log('[D1b] Escritório A cadastra com o próprio papel...');
+  response = await postJson(`${server.baseUrl}/api/auth/register`, {
+    username: 'proprio_membro',
     displayName: 'Advogada Teste',
     email: 'convidada.escritorio.a@example.test',
-    officeRoleId: customRoleId,
-    sendEmail: false
+    password: MEMBER_PASSWORD,
+    officeRoleId: customRoleId
   }, headersA);
   const ownInvite = await response.json();
-  assert.equal(response.status, 201, JSON.stringify(ownInvite));
-  assert.equal(ownInvite.invitation?.officeRoleId, customRoleId);
-  console.log('  ✓ 201 no convite do escritório A com o próprio papel.');
+  assert.equal(response.status, 200, JSON.stringify(ownInvite));
+  console.log('  ✓ 200 no cadastro do escritório A com o próprio papel.');
 
   // A sessão do membro é recalculada a cada requisição: prova que a resolução
   // escopada também vale no caminho de autenticação.

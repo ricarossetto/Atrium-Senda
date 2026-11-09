@@ -36,9 +36,8 @@ const auth = (cookie, csrf) => ({ Cookie: cookie, 'X-CSRF-Token': csrf, Accept: 
 const jsonHeaders = (cookie, csrf) => ({ ...auth(cookie, csrf), 'Content-Type': 'application/json' });
 
 async function loginWithTotp({ username, password, manualSecret, setupToken }) {
-  let response = await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken, code: generateTotp(manualSecret) });
-  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
-  response = await postJson(`${server.baseUrl}/api/auth/login`, { username, password, code: generateTotp(manualSecret) });
+  void setupToken;
+  let response = await postJson(`${server.baseUrl}/api/auth/login`, { username, password, code: generateTotp(manualSecret) });
   const body = await response.json();
   assert.equal(response.status, 200, JSON.stringify(body));
   const cookie = response.headers.get('set-cookie').split(';')[0];
@@ -46,14 +45,19 @@ async function loginWithTotp({ username, password, manualSecret, setupToken }) {
   return { cookie, csrf: body.csrfToken, id: body.user?.id, manualSecret, username, password };
 }
 
-async function joinAs(actorHeaders, { username, displayName, email, password, officeRoleId }) {
-  let response = await postJson(`${server.baseUrl}/api/auth/invitations`, { displayName, email, officeRoleId, sendEmail: false }, actorHeaders);
-  const invited = await response.json();
-  assert.equal(response.status, 201, JSON.stringify(invited));
-  response = await postJson(`${server.baseUrl}/api/auth/invitations/accept`, { inviteToken: invited.inviteToken, username, password });
-  const accepted = await response.json();
-  assert.equal(response.status, 200, JSON.stringify(accepted));
-  return loginWithTotp({ username, password, manualSecret: accepted.manualSecret, setupToken: accepted.setupToken });
+async function joinAs(principal, { username, displayName, email, password, officeRoleId }) {
+  const actorHeaders = auth(principal.cookie, principal.csrf);
+  let response = await postJson(`${server.baseUrl}/api/auth/register`, { username, displayName, email, password, officeRoleId }, actorHeaders);
+  const registered = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(registered));
+  response = await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: registered.setupToken, code: generateTotp(registered.manualSecret) });
+  assert.equal(response.status, 200, JSON.stringify(await response.json()));
+  const usersResponse = await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: principal.cookie } });
+  const memberUser = (await usersResponse.json()).users.find(user => user.username === username);
+  assert.ok(memberUser, 'membro não encontrado para aprovação');
+  response = await postJson(`${server.baseUrl}/api/auth/users/manage`, { userId: memberUser.id, status: 'active', password: principal.password, code: generateTotp(principal.manualSecret) }, actorHeaders);
+  assert.equal(response.status, 200, JSON.stringify(await response.json()));
+  return loginWithTotp({ username, password, manualSecret: registered.manualSecret, setupToken: registered.setupToken });
 }
 
 const readState = async headers => (await fetch(`${server.baseUrl}/api/state`, { headers: auth(headers.cookie, headers.csrf) })).json();
@@ -103,10 +107,10 @@ try {
   };
   assert.ok(principal.cookie && principal.csrf, 'Sessão do titular incompleta.');
 
-  const target = await joinAs(auth(principal.cookie, principal.csrf), TARGET);
-  const replacement = await joinAs(auth(principal.cookie, principal.csrf), REPLACEMENT);
-  const outsider = await joinAs(auth(principal.cookie, principal.csrf), OUTSIDER);
-  const manager = await joinAs(auth(principal.cookie, principal.csrf), MANAGER);
+  const target = await joinAs(principal, TARGET);
+  const replacement = await joinAs(principal, REPLACEMENT);
+  const outsider = await joinAs(principal, OUTSIDER);
+  const manager = await joinAs(principal, MANAGER);
 
   // --- Fixtures: equipe, processo e tarefas do membro --------------------
   response = await fetch(`${server.baseUrl}/api/office/teams`, {
@@ -287,7 +291,7 @@ try {
   // Achado da revisão do D-1: `office_principal` é único e privativo. Nenhum caminho
   // pode desativá-lo ou rebaixá-lo; campos que não ferem a titularidade seguem aceitos.
   console.log('[3b] Titular não pode ser desativado nem rebaixado por PATCH...');
-  const patchManager = await joinAs(auth(principal.cookie, principal.csrf), MANAGER_PATCH);
+  const patchManager = await joinAs(principal, MANAGER_PATCH);
   const principalInactive = await patchMember(principal, principal.id, { status: 'inactive' });
   assert.equal(principalInactive.status, 409, JSON.stringify(principalInactive.body));
   assert.match(principalInactive.body.message || '', /administrador principal/i);

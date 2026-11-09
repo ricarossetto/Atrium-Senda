@@ -1,9 +1,9 @@
-import { memberAvatarHtml } from '../core/member-avatar.js?v=3.0.1';
+import { memberAvatarHtml } from '../core/member-avatar.js?v=3.0.2';
 
 const CONFIGURATION_ICON_NAMES = new Set(['check', 'delete']);
 const iconSvg = name => {
   const safeName = CONFIGURATION_ICON_NAMES.has(name) ? name : 'check';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-${safeName}"></use></svg>`;
 };
 
 const CONFIGURATION_SECTIONS = [
@@ -218,7 +218,6 @@ export function createConfigurationFeature({
   let authUsers = [];
   let currentAuthRole = 'collaborator';
   let officeTeams = [];
-  let officeInvitations = [];
   let officeRoleCatalog = { permissions: [], factoryRoleIds: [] };
   let officePortfolio = null;
   let officeAccessAudit = null;
@@ -393,10 +392,9 @@ export function createConfigurationFeature({
     },
 
     async loadOfficeData(force = false) {
-      if (officeLoaded && !force) return { users: authUsers, teams: officeTeams, invitations: officeInvitations, profile: officeProfile };
-      const [officeResult, invitationsResult, rolesResult] = await Promise.allSettled([
+      if (officeLoaded && !force) return { users: authUsers, teams: officeTeams, profile: officeProfile };
+      const [officeResult, rolesResult] = await Promise.allSettled([
         secureFetch('/api/office', { headers: { Accept: 'application/json' } }),
-        secureFetch('/api/auth/invitations', { headers: { Accept: 'application/json' } }),
         secureFetch('/api/office/roles', { headers: { Accept: 'application/json' } })
       ]);
       if (officeResult.status === 'fulfilled' && officeResult.value?.ok) {
@@ -406,10 +404,6 @@ export function createConfigurationFeature({
         officeProfile = payload.profile || officeProfile;
         currentPermissions = Array.isArray(payload.permissions) ? payload.permissions : [];
         currentAuthRole = payload.currentRole || currentAuthRole;
-      }
-      if (invitationsResult.status === 'fulfilled' && invitationsResult.value?.ok) {
-        const payload = await invitationsResult.value.json().catch(() => ({}));
-        officeInvitations = Array.isArray(payload.invitations) ? payload.invitations : [];
       }
       if (rolesResult.status === 'fulfilled' && rolesResult.value?.ok) {
         const payload = await rolesResult.value.json().catch(() => ({}));
@@ -434,7 +428,7 @@ export function createConfigurationFeature({
         if (hygieneResponse?.ok) officeHygiene = await hygieneResponse.json().catch(() => null);
       }
       officeLoaded = true;
-      return { users: authUsers, teams: officeTeams, invitations: officeInvitations, profile: officeProfile };
+      return { users: authUsers, teams: officeTeams, profile: officeProfile };
     },
 
     async loadOfficeAccessAudit(page) {
@@ -455,7 +449,6 @@ export function createConfigurationFeature({
       const roleName = id => roles.find(role => role.id === id)?.name || 'Colaborador';
       const kindName = id => kinds.find(kind => kind.id === id)?.name || 'Advogado(a)';
       const canManageMembers = currentPermissions.includes('office.manage') || currentPermissions.includes('members.manage');
-      const canInvite = currentPermissions.includes('office.manage') || currentPermissions.includes('members.invite');
       const canManageTeams = currentPermissions.includes('office.manage') || currentPermissions.includes('teams.manage');
       const roleOptions = (selected = 'associate') => roles.map(role => `<option value="${escapeHtml(role.id)}" data-office-role-kinds="${escapeHtml((role.memberKinds || []).join(','))}" ${role.id === selected ? 'selected' : ''}>${escapeHtml(role.name)}</option>`).join('');
       const kindOptions = (selected = 'lawyer') => kinds.map(kind => `<option value="${escapeHtml(kind.id)}" ${kind.id === selected ? 'selected' : ''}>${escapeHtml(kind.name)}</option>`).join('');
@@ -483,13 +476,13 @@ export function createConfigurationFeature({
         const names = (team.memberIds || []).map(id => authUsers.find(user => String(user.id || user.username) === String(id))?.displayName || id).filter(Boolean);
         return `<div class="configuration-row office-team-row" data-office-team-id="${escapeHtml(team.id)}"><div class="config-row-text"><strong>${escapeHtml(team.name)}</strong><span>${escapeHtml(team.description || 'Sem descrição')}</span><small>${names.length ? escapeHtml(names.join(', ')) : 'Sem integrantes'}</small></div>${canManageTeams ? `<button type="button" class="button ghost danger-text" data-office-team-delete="${escapeHtml(team.id)}" aria-label="Excluir equipe ${escapeHtml(team.name)}">Excluir</button>` : ''}</div>`;
       }).join('') : '<div class="empty-detail"><h3>Nenhuma equipe ainda</h3><p>Crie a primeira equipe e defina quem trabalha em cada área.</p></div>';
-      const invites = officeInvitations.length ? officeInvitations.map(invite => `<div class="configuration-row office-invite-row" data-office-invite-id="${escapeHtml(invite.id)}"><div class="config-row-text"><strong>${escapeHtml(invite.displayName || invite.email)}</strong><span>${escapeHtml(invite.email)}</span><small>${escapeHtml(kindName(invite.memberKind))} · ${escapeHtml(roleName(invite.officeRoleId))} · Pendente até ${escapeHtml(new Date(invite.expiresAt).toLocaleString('pt-BR'))}</small></div><div class="configuration-row-actions"><button type="button" class="button ghost" data-office-invite-resend="${escapeHtml(invite.id)}">Reenviar</button><button type="button" class="button ghost danger-text" data-office-invite-revoke="${escapeHtml(invite.id)}" data-office-invite-email="${escapeHtml(invite.email)}">Revogar</button></div></div>`).join('') : '<div class="empty-detail"><h3>Nenhum convite pendente</h3><p>Gere um link de convite para uma pessoa entrar no escritório.</p></div>';
-      const inviteForm = canInvite
-        ? `<form id="officeInviteForm" class="office-form"><label>Nome<input id="officeInviteName" name="displayName" required minlength="3" maxlength="100" autocomplete="off" placeholder="Ex.: Dra. Marina Alves"></label><label>E-mail<input id="officeInviteEmail" name="email" type="email" required autocomplete="off" placeholder="nome@escritorio.adv.br"></label><div class="office-form-grid"><label>Tipo<select id="officeInviteKind">${kindOptions('lawyer')}</select></label><label>Papel<select id="officeInviteRole">${roleOptions('associate')}</select></label></div><fieldset class="office-members-fieldset"><legend>Equipe inicial</legend><div class="office-check-grid">${officeTeams.map(team => `<label class="office-check"><input type="checkbox" data-office-invite-team value="${escapeHtml(team.id)}"> <span>${escapeHtml(team.name)}</span></label>`).join('') || '<span class="office-muted">Nenhuma equipe criada.</span>'}</div></fieldset><label class="office-check office-invite-email-check"><input id="officeInviteSendEmail" type="checkbox" checked> Enviar também por e-mail</label><button class="button gold" type="submit">Gerar convite</button></form>`
-        : '<p class="office-note">Seu perfil pode consultar o escritório, mas não convidar integrantes. Peça a um gestor ou administrador.</p>';
       const teamForm = canManageTeams
         ? `<form id="officeTeamForm" class="office-form office-form-grid"><label>Nome da equipe<input id="officeTeamName" name="name" required minlength="2" maxlength="60" autocomplete="off" placeholder="Ex.: Previdenciário"></label><label>Descrição<input id="officeTeamDescription" name="description" maxlength="280" autocomplete="off" placeholder="Opcional"></label><fieldset class="office-members-fieldset"><legend>Integrantes</legend><div class="office-check-grid">${memberOptions || '<span class="office-muted">Nenhum membro disponível.</span>'}</div></fieldset><button class="button gold" type="submit">Criar equipe</button></form>`
         : '';
+      const newMemberForm = canManageMembers
+        ? `<form id="officeNewMemberForm" class="office-form"><label>Usuário de acesso<input id="officeNewMemberUsername" name="username" required pattern="[a-zA-Z0-9._\\-]{3,64}" maxlength="64" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="nome.sobrenome"></label><label>Nome completo<input id="officeNewMemberName" name="displayName" required minlength="3" maxlength="100" autocomplete="off" placeholder="Ex.: Dra. Marina Alves"></label><label>E-mail<input id="officeNewMemberEmail" name="email" type="email" required autocomplete="off" placeholder="nome@escritorio.adv.br"></label><label>Senha inicial<input id="officeNewMemberPassword" name="password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" placeholder="Será definida por você; peça para a pessoa trocar"></label><div class="office-form-grid"><label>Tipo<select id="officeNewMemberKind">${kindOptions('lawyer')}</select></label><label>Papel<select id="officeNewMemberRole">${roleOptions('associate')}</select></label></div><fieldset class="office-members-fieldset"><legend>Equipes iniciais</legend><div class="office-check-grid">${officeTeams.map(team => `<label class="office-check"><input type="checkbox" data-office-new-member-team value="${escapeHtml(team.id)}"> <span>${escapeHtml(team.name)}</span></label>`).join('') || '<span class="office-muted">Nenhuma equipe criada.</span>'}</div></fieldset><button class="button gold" type="submit">Criar membro</button></form>`
+        : '<p class="office-note">Seu perfil pode consultar o escritório, mas não adicionar integrantes. Peça a um gestor ou administrador.</p>';
+      const newMemberResult = result => `${result.qrCode ? `<img class="office-new-member-qr" src="${escapeHtml(result.qrCode)}" alt="QR Code para configurar o autenticador do membro" width="160" height="160">` : ''}<p class="office-note">Código de configuração (válido por 10 minutos): <strong class="office-new-member-token">${escapeHtml(result.setupToken || '')}</strong></p><p class="office-note">Segredo para o aplicativo autenticador: <strong>${escapeHtml(result.manualSecret || '')}</strong></p><p class="office-note">Entregue ao membro o usuário, a senha inicial, o código de configuração e o QR/segredo. Ele insere os dados na tela de login (Ativar conta), conclui a ativar o autenticador e o acesso libera após a sua aprovação nesta lista.</p>`;
       const canManageRoles = currentPermissions.includes('office.manage') || currentPermissions.includes('roles.manage');
       const riskGroups = [['critico', 'Risco crítico'], ['alto', 'Risco alto'], ['medio', 'Risco médio'], ['baixo', 'Risco baixo']];
       const permissionChecks = (selected = [], { disabled = false } = {}) => riskGroups.map(([risk, title]) => {
@@ -544,12 +537,11 @@ export function createConfigurationFeature({
           : '<p class="office-note">Nenhum processo aponta para equipe excluída.</p>'}</article>`
         : '';
       return `<div class="office-panel">
-        <section class="card office-intro"><p class="eyebrow">Gestão do escritório</p><h3>Pessoas, papéis, convites e equipes em um só lugar</h3><p>O escritório é compartilhado. Defina o tipo e o papel de cada membro, organize as equipes por área e convide novos integrantes. A atribuição de processos e o bloqueio de acesso por processo são aplicados pelo servidor.</p></section>
+        <section class="card office-intro"><p class="eyebrow">Gestão do escritório</p><h3>Pessoas, papéis e equipes em um só lugar</h3><p>O escritório é compartilhado. Defina o tipo e o papel de cada membro e organize as equipes por área. A atribuição de processos e o bloqueio de acesso por processo são aplicados pelo servidor.</p></section>
         <div class="office-grid">
-          <article class="card office-card"><header class="office-card-header"><div><p class="eyebrow">Membros</p><h3>Quem está no escritório</h3></div><span class="status-chip connected">${authUsers.length} pessoas</span></header><div class="office-list">${members || '<div class="empty-detail"><h3>Nenhum membro</h3><p>Convide a primeira pessoa pelo cartão de convites.</p></div>'}</div></article>
-          <article class="card office-card"><header class="office-card-header"><div><p class="eyebrow">Convites</p><h3>Convidar membro</h3></div></header>${inviteForm}<p id="officeInviteFeedback" class="office-feedback" role="status" aria-live="polite"></p><div class="office-list">${invites}</div></article>
+          <article class="card office-card"><header class="office-card-header"><div><p class="eyebrow">Membros</p><h3>Quem está no escritório</h3></div><span class="status-chip connected">${authUsers.length} pessoas</span></header><div class="office-list">${members || '<div class="empty-detail"><h3>Nenhum membro</h3><p>Adicione a primeira pessoa pelo formulário ao lado.</p></div>'}</div><h4 class="office-subtitle">Novo membro</h4>${newMemberForm}<p id="officeNewMemberFeedback" class="office-feedback" role="status" aria-live="polite"></p></article>
           <article class="card office-card office-card-wide"><header class="office-card-header"><div><p class="eyebrow">Equipes</p><h3>Equipes por área</h3></div><span class="status-chip">${officeTeams.length} equipes</span></header>${teamForm}<div class="office-list">${teams}</div></article>
-          <article class="card office-card office-card-wide"><header class="office-card-header"><div><p class="eyebrow">Papéis</p><h3>Catálogo do escritório</h3></div><span class="status-chip">${officeProfile.accessMode === 'enforced' ? 'Acesso aplicado' : 'Modo preparação'}</span></header><div class="office-role-list">${roleCards}${roleForm}</div><p id="officeRoleFeedback" class="office-feedback" role="status" aria-live="polite"></p>${accessModeControl}${privateMonitoringControl}<p class="office-note">O catálogo orienta convite, ficha e filtro por processo. O escopo privado de OAB é aplicado no monitoramento; desativá-lo impede novas capturas, sem apagar dados existentes.</p></article>
+          <article class="card office-card office-card-wide"><header class="office-card-header"><div><p class="eyebrow">Papéis</p><h3>Catálogo do escritório</h3></div><span class="status-chip">${officeProfile.accessMode === 'enforced' ? 'Acesso aplicado' : 'Modo preparação'}</span></header><div class="office-role-list">${roleCards}${roleForm}</div><p id="officeRoleFeedback" class="office-feedback" role="status" aria-live="polite"></p>${accessModeControl}${privateMonitoringControl}<p class="office-note">O catálogo orienta ficha e filtro por processo. O escopo privado de OAB é aplicado no monitoramento; desativá-lo impede novas capturas, sem apagar dados existentes.</p></article>
           ${portfolioCard}
           ${hygieneCard}
           ${auditCard}
@@ -568,44 +560,35 @@ export function createConfigurationFeature({
           if (first) roleSelect.value = first.value;
         }
       };
-      byId('officeInviteKind')?.addEventListener('change', event => filterRolesForKind(event.currentTarget, byId('officeInviteRole')));
       documentRef.addEventListener('change', event => {
         if (!event.target.matches?.('[data-office-member-kind]')) return;
         filterRolesForKind(event.target, documentRef.querySelector(`[data-office-member-role="${CSS.escape(event.target.dataset.officeMemberKind)}"]`));
       });
-      byId('officeInviteForm')?.addEventListener('submit', async event => {
+      byId('officeNewMemberKind')?.addEventListener('change', event => filterRolesForKind(event.currentTarget, byId('officeNewMemberRole')));
+      byId('officeNewMemberForm')?.addEventListener('submit', async event => {
         event.preventDefault();
-        const displayName = byId('officeInviteName')?.value.trim() || '';
-        const email = byId('officeInviteEmail')?.value.trim() || '';
-        const feedback = byId('officeInviteFeedback');
-        if (feedback) feedback.textContent = 'Gerando convite...';
+        const feedback = byId('officeNewMemberFeedback');
+        if (feedback) feedback.textContent = 'Criando membro...';
         try {
-          const response = await secureFetch('/api/auth/invitations', {
+          const response = await secureFetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
             body: JSON.stringify({
-              displayName,
-              email,
-              memberKind: byId('officeInviteKind')?.value || 'lawyer',
-              officeRoleId: byId('officeInviteRole')?.value || 'associate',
-              teamIds: [...documentRef.querySelectorAll('[data-office-invite-team]:checked')].map(input => input.value),
-              sendEmail: byId('officeInviteSendEmail')?.checked === true
+              username: byId('officeNewMemberUsername')?.value.trim() || '',
+              displayName: byId('officeNewMemberName')?.value.trim() || '',
+              email: byId('officeNewMemberEmail')?.value.trim() || '',
+              password: byId('officeNewMemberPassword')?.value || '',
+              memberKind: byId('officeNewMemberKind')?.value || 'lawyer',
+              officeRoleId: byId('officeNewMemberRole')?.value || 'associate',
+              teamIds: [...documentRef.querySelectorAll('[data-office-new-member-team]:checked')].map(input => input.value)
             })
           });
           const payload = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(payload.message || 'Não foi possível gerar o convite.');
-          const link = `${windowRef.location.origin}/login#invite=${encodeURIComponent(payload.inviteToken || '')}`;
-          const emailStatus = payload.emailStatus === 'queued'
-            ? 'E-mail enfileirado para envio.'
-            : payload.emailStatus === 'failed'
-              ? 'O e-mail não foi enfileirado; use o link abaixo.'
-              : payload.emailStatus === 'not_configured'
-                ? 'Envio por e-mail não configurado; use o link abaixo.'
-                : 'Convite gerado.';
+          if (!response.ok) throw new Error(payload.message || 'Não foi possível criar o membro.');
           await feature.loadOfficeData(true);
           feature.render();
-          const updatedFeedback = byId('officeInviteFeedback');
-          if (updatedFeedback) updatedFeedback.innerHTML = `${escapeHtml(emailStatus)} Link válido por 48h: <strong>${escapeHtml(link)}</strong>`;
+          const updatedFeedback = byId('officeNewMemberFeedback');
+          if (updatedFeedback) updatedFeedback.innerHTML = `A conta foi criada e aguarda ativação pelo membro. ${newMemberResult(payload)}`;
         } catch (error) {
           if (feedback) feedback.textContent = error.message;
         }
@@ -615,38 +598,6 @@ export function createConfigurationFeature({
         const response = await secureFetch(`/api/office/teams/${encodeURIComponent(button.dataset.officeTeamDelete)}`, { method: 'DELETE', headers: { Accept: 'application/json' } });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) { warn(payload.message || 'Não foi possível excluir a equipe.'); return; }
-        await feature.loadOfficeData(true);
-        feature.render();
-      }));
-      documentRef.querySelectorAll('[data-office-invite-resend]').forEach(button => button.addEventListener('click', async () => {
-        const response = await secureFetch('/api/auth/invitations/resend', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ invitationId: button.dataset.officeInviteResend, sendEmail: true })
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) { warn(payload.message || 'Não foi possível reenviar o convite.'); return; }
-        const link = `${windowRef.location.origin}/login#invite=${encodeURIComponent(payload.inviteToken || '')}`;
-        await feature.loadOfficeData(true);
-        feature.render();
-        const updatedFeedback = byId('officeInviteFeedback');
-        const resendStatus = payload.emailStatus === 'queued'
-          ? 'E-mail enfileirado para envio.'
-          : payload.emailStatus === 'failed'
-            ? 'O e-mail não foi enfileirado; use o novo link.'
-            : payload.emailStatus === 'not_configured'
-              ? 'Envio por e-mail não configurado; use o novo link.'
-              : 'Convite renovado.';
-        if (updatedFeedback) updatedFeedback.innerHTML = `${escapeHtml(resendStatus)} Novo link (48h): <strong>${escapeHtml(link)}</strong>`;
-      }));
-      documentRef.querySelectorAll('[data-office-invite-revoke]').forEach(button => button.addEventListener('click', async () => {
-        if (!windowRef.confirm(`Revogar o convite de ${button.dataset.officeInviteEmail}?`)) return;
-        const response = await secureFetch('/api/auth/invitations', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ invitationId: button.dataset.officeInviteRevoke })
-        });
-        if (!response.ok) { warn('Não foi possível revogar o convite.'); return; }
         await feature.loadOfficeData(true);
         feature.render();
       }));
@@ -1248,7 +1199,7 @@ export function createConfigurationFeature({
           <article class="configuration-row" role="listitem" data-config-index="${index}">
             <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(item)}">
               <span class="config-row-info"><strong>${escapeHtml(item)}</strong><span>Seção da caixa de entrada</span><small>Ativa</small></span>
-              <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-right"></use></svg></span>
+              <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-chevron-right"></use></svg></span>
             </button>
             <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(item)}">${iconSvg('delete')} Excluir</button>
           </article>`;
@@ -1347,7 +1298,7 @@ export function createConfigurationFeature({
         <article class="configuration-row" role="listitem" data-config-index="${index}">
           <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(primary)}">
             <span class="config-row-info"><strong>${escapeHtml(primary)}</strong><span>${escapeHtml(secondary)}</span>${meta}</span>
-            <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-right"></use></svg></span>
+            <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-chevron-right"></use></svg></span>
           </button>
           ${extraActions}
           <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(primary)}">${iconSvg('delete')} Excluir</button>
@@ -1381,7 +1332,7 @@ export function createConfigurationFeature({
             <p>${escapeHtml(target.description)}</p>
           </div>
           <button type="button" class="button ghost" data-modal-open-dedicated-integration="${escapeHtml(values.name)}">
-            ${escapeHtml(target.actionLabel)} <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-right"></use></svg>
+            ${escapeHtml(target.actionLabel)} <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-chevron-right"></use></svg>
           </button>
         </div>`;
       }

@@ -47,14 +47,9 @@ Garantir a separação entre e-mail judicial manual e notificações operacionai
 - O digest não entra no boletim das 20h e não consome a quota de três boletins/dia. A preferência do digest é própria; o padrão é ligado.
 - Implementado em 6.45.3: evento `TASK_COMPLETED`, central autenticada, digest transacional das 19h e scheduler. A UI de preferências do digest e a política de opt-out permanecem no escopo de `specs/office-teams-access.md`; nenhuma automação de prazo, ciência ou tratamento é criada.
 
-## Convite de equipe — transacional (CURRENT — 6.47.0)
+## Trilha atual
 
-- `TEAM_INVITE` é um transacional do mesmo pipeline Resend, disparado somente por ação administrativa explícita em `POST /api/auth/invitations` ou `/resend` com `sendEmail: true`.
-- O backend resolve o convite oficial persistido e enfileira destinatário, link e validade; o frontend não fornece conteúdo judicial nem link como autoridade.
-- Não entra na quota de três boletins, não é controlado pelo master switch de boletins e não usa o SMTP de publicações.
-- Sem provider configurado, a rota responde `emailStatus: not_configured` e o link manual de 48h continua disponível. Falha de enfileiramento responde `failed`, sem falso sucesso.
-- Reenvio renova o token e a geração de idempotência; o mesmo convite não gera dois e-mails para a mesma geração.
-- A mensagem contém nome do escritório, convidante, validade, CTA para `/login#invite=<token>` e aviso de que o ATRIUM não envia senhas. O e-mail não concede ciência, prazo ou ato processual.
+Os transacionais em uso são `PASSWORD_RESET` e `SYSTEM_TEST` (quota própria, fora dos boletins operacionais). O antigo `TEAM_INVITE` saiu da edição aberta junto com os convites — ver `specs/office-teams-access.md`.
 
 ## Allowed operations
 

@@ -12,7 +12,7 @@ const authSource = fs.readFileSync(path.join(ROOT, 'js', 'auth.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const expectedEndpoints = [
   '/api/auth/status', '/api/auth/setup', '/api/auth/setup/verify', '/api/auth/workspaces/register',
-  '/api/auth/workspaces/register/verify', '/api/auth/invitations/accept', '/api/auth/register/verify',
+  '/api/auth/workspaces/register/verify', '/api/auth/register/verify',
   '/api/auth/login', '/api/auth/logout', '/api/auth/profile', '/api/auth/profile/reset', '/api/auth/profile/delete',
   '/api/auth/password/forgot', '/api/auth/password/reset', '/api/auth/password/change',
   // 2FA opcional (o cliente expõe o autoatendimento; o recurso continua opcional por decisão do
@@ -46,7 +46,6 @@ const SCENARIOS = [
   { file: '11-dark-1920x1200-first-setup.png', theme: 'dark', viewport: { width: 1920, height: 1200 }, state: 'setup', configured: false },
   { file: '12-light-2560x1080-first-setup.png', theme: 'light', viewport: { width: 2560, height: 1080 }, state: 'setup', configured: false },
   { file: '13-light-1920x1080-monitoring-setup.png', theme: 'light', viewport: { width: 1920, height: 1080 }, state: 'setup-monitoring', configured: false },
-  { file: '14-light-1440-team-invitation.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'invitation', configured: true },
   { file: '15-light-1440-password-recovery.png', theme: 'light', viewport: { width: 1440, height: 900 }, state: 'forgot', configured: true },
   { file: '16-dark-1440-password-reset.png', theme: 'dark', viewport: { width: 1440, height: 900 }, state: 'reset', configured: true },
   { file: '17-light-390-password-recovery.png', theme: 'light', viewport: { width: 390, height: 844 }, state: 'forgot', configured: true }
@@ -73,12 +72,7 @@ try {
       contentType: 'application/json',
       body: JSON.stringify({ configured: scenario.configured, authenticated: false })
     }));
-    await page.route('**/api/auth/invitations/accept?*', route => route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ ok: true, invitation: { displayName: 'Colaboradora Teste', email: 'convidada@example.test', workspace: { id: 'ws-synthetic', name: 'Escritório Teste' } } })
-    }));
-    await page.goto(`${server.baseUrl}${scenario.state === 'invitation' ? '#invite=synthetic-invitation-token' : scenario.state === 'reset' ? '#reset=synthetic-reset-token' : ''}`, { waitUntil: 'networkidle' });
+    await page.goto(`${server.baseUrl}${scenario.state === 'reset' ? '#reset=synthetic-reset-token' : ''}`, { waitUntil: 'networkidle' });
     await page.locator('#authGate:not(.hidden)').waitFor();
     await page.evaluate(({ state, theme }) => {
       document.documentElement.dataset.theme = theme;
@@ -115,7 +109,7 @@ try {
       }
     }, { state: scenario.state, theme: scenario.theme });
 
-    const expectedId = ({ loading: 'authLoading', login: 'authLoginForm', 'login-error': 'authLoginForm', register: 'authRegisterForm', setup: 'authSetupForm', 'setup-monitoring': 'authSetupForm', invitation: 'authInvitationForm', totp: 'authTotpSetupForm', recovery: 'authRecoveryStep', forgot: 'authForgotForm', reset: 'authResetForm' })[scenario.state];
+    const expectedId = ({ loading: 'authLoading', login: 'authLoginForm', 'login-error': 'authLoginForm', register: 'authRegisterForm', setup: 'authSetupForm', 'setup-monitoring': 'authSetupForm', totp: 'authTotpSetupForm', recovery: 'authRecoveryStep', forgot: 'authForgotForm', reset: 'authResetForm' })[scenario.state];
     await page.locator(`#${expectedId}.active`).waitFor();
     await page.waitForFunction(() => [...document.querySelectorAll('#authGate *')]
       .flatMap(element => element.getAnimations())
@@ -276,7 +270,7 @@ try {
     await context.close();
     return names;
   })();
-  assert.deepEqual(fieldNames, ['bootstrapToken', 'code', 'confirmPassword', 'displayName', 'email', 'enableMonitoring', 'identifier', 'oab', 'oabUf', 'password', 'trustBrowser', 'username', 'workspaceName']);
+  assert.deepEqual(fieldNames, ['bootstrapToken', 'code', 'confirmPassword', 'displayName', 'email', 'enableMonitoring', 'identifier', 'oab', 'oabUf', 'password', 'setupToken', 'trustBrowser', 'username', 'workspaceName']);
 
   const publicThemeControl = await (async () => {
     const context = await browser.newContext();

@@ -106,8 +106,8 @@
       const logoImg = document.getElementById('headerLogoImg');
       if (logoImg) {
         logoImg.src = theme === 'light' 
-          ? 'assets/icons/atrium-logo-light.svg?v=3.0.1'
-          : 'assets/icons/atrium-logo.svg?v=3.0.1';
+          ? 'assets/icons/atrium-logo-light.svg?v=3.0.2'
+          : 'assets/icons/atrium-logo.svg?v=3.0.2';
       }
 
       // Update theme toggle button metadata & icon
@@ -120,7 +120,7 @@
       const themeUse = document.getElementById('themeToggleUse') || (btn ? btn.querySelector('use') : null);
       if (themeUse) {
         const iconSymbol = isLight ? 'atrium-icon-theme-dark' : 'atrium-icon-theme-light';
-        const iconHref = `assets/icons/atrium-ui-icons.svg?v=3.0.1#${iconSymbol}`;
+        const iconHref = `assets/icons/atrium-ui-icons.svg?v=3.0.2#${iconSymbol}`;
         themeUse.setAttribute('href', iconHref);
         themeUse.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', iconHref);
       }

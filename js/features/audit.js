@@ -1,6 +1,6 @@
-import { Store, isoDate } from '../core/store.js?v=3.0.1';
-import { readableAuditDetail } from '../views/ui-v2/audit-presenter.js?v=3.0.1';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.1';
+import { Store, isoDate } from '../core/store.js?v=3.0.2';
+import { readableAuditDetail } from '../views/ui-v2/audit-presenter.js?v=3.0.2';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.2';
 
 export const AUDIT_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
 export const AUDIT_DEFAULT_PAGE_SIZE = 25;
@@ -236,4 +236,4 @@ export function createAuditFeature({
 
   return feature;
 }
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.1';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.2';

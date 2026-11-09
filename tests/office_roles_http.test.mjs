@@ -25,12 +25,8 @@ const server = await startTestServer({ dataDirectory });
 const auth = (cookie, csrf) => ({ Cookie: cookie, 'X-CSRF-Token': csrf });
 
 async function loginWithTotp({ username, password, manualSecret, setupToken }) {
-  let response = await postJson(`${server.baseUrl}/api/auth/register/verify`, {
-    setupToken,
-    code: generateTotp(manualSecret)
-  });
-  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
-  response = await postJson(`${server.baseUrl}/api/auth/login`, {
+  void setupToken;
+  let response = await postJson(`${server.baseUrl}/api/auth/login`, {
     username,
     password,
     code: generateTotp(manualSecret)
@@ -42,26 +38,36 @@ async function loginWithTotp({ username, password, manualSecret, setupToken }) {
   return { cookie, csrf: body.csrfToken, id: body.user?.id };
 }
 
-async function joinAs(principalHeaders, { username, displayName, email, password, officeRoleId }) {
-  let response = await postJson(`${server.baseUrl}/api/auth/invitations`, {
+async function joinAs(principal, { username, displayName, email, password, officeRoleId }) {
+  const principalHeaders = auth(principal.cookie, principal.csrf);
+  let response = await postJson(`${server.baseUrl}/api/auth/register`, {
+    username,
     displayName,
     email,
-    officeRoleId,
-    sendEmail: false
+    password,
+    officeRoleId
   }, principalHeaders);
-  const invited = await response.json();
-  assert.equal(response.status, 201, JSON.stringify(invited));
-  response = await postJson(`${server.baseUrl}/api/auth/invitations/accept`, {
-    inviteToken: invited.inviteToken,
-    username,
-    password
+  const registered = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(registered));
+  response = await postJson(`${server.baseUrl}/api/auth/register/verify`, {
+    setupToken: registered.setupToken,
+    code: generateTotp(registered.manualSecret)
   });
-  const accepted = await response.json();
-  assert.equal(response.status, 200, JSON.stringify(accepted));
-  const session = await loginWithTotp({ username, password, manualSecret: accepted.manualSecret, setupToken: accepted.setupToken });
+  assert.equal(response.status, 200, JSON.stringify(await response.json()));
+  const usersResponse = await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: principal.cookie } });
+  const memberUser = (await usersResponse.json()).users.find(user => user.username === username);
+  assert.ok(memberUser, 'membro não encontrado para aprovação');
+  response = await postJson(`${server.baseUrl}/api/auth/users/manage`, {
+    userId: memberUser.id,
+    status: 'active',
+    password: principal.password,
+    code: generateTotp(principal.manualSecret)
+  }, principalHeaders);
+  assert.equal(response.status, 200, JSON.stringify(await response.json()));
+  const session = await loginWithTotp({ username, password, manualSecret: registered.manualSecret, setupToken: registered.setupToken });
   // O segredo fica disponível para religar a sessão depois de uma promoção,
   // que invalida as sessões abertas do usuário.
-  return { ...session, username, password, manualSecret: accepted.manualSecret };
+  return { ...session, username, password, manualSecret: registered.manualSecret };
 }
 
 // Login novo depois de uma promoção: updateUserStatus encerra as sessões do
@@ -100,13 +106,14 @@ try {
   const principal = {
     cookie: response.headers.get('set-cookie').split(';')[0],
     csrf: verified.csrfToken,
-    manualSecret: setup.manualSecret
+    manualSecret: setup.manualSecret,
+    password: PRINCIPAL_PASSWORD
   };
   assert.ok(principal.cookie && principal.csrf, 'Sessão do titular incompleta.');
   const principalHeaders = auth(principal.cookie, principal.csrf);
 
-  const manager = await joinAs(principalHeaders, { ...MANAGER, officeRoleId: 'office_manager' });
-  const associate = await joinAs(principalHeaders, { ...ASSOCIATE, officeRoleId: 'associate' });
+  const manager = await joinAs(principal, { ...MANAGER, officeRoleId: 'office_manager' });
+  const associate = await joinAs(principal, { ...ASSOCIATE, officeRoleId: 'associate' });
 
   // O titular delega members.manage ao associado sem lhe dar financeiro.
   response = await fetch(`${server.baseUrl}/api/office/members/${encodeURIComponent(associate.id)}`, {
@@ -119,18 +126,17 @@ try {
   assert.ok(delegated.member?.permissions?.includes('members.manage'));
   assert.ok(!delegated.member?.permissions?.includes('finance.read'));
 
-  console.log('[C1] Não-titular convida gestor...');
-  response = await postJson(`${server.baseUrl}/api/auth/invitations`, {
+  console.log('[C1] Não-titular cadastra membro...');
+  response = await postJson(`${server.baseUrl}/api/auth/register`, {
+    username: 'gestor_cadastro',
     displayName: 'Advogada Teste',
     email: 'gestor.convidado@example.test',
-    officeRoleId: 'office_manager',
-    sendEmail: false
+    password: 'Senha-Gestor-Cadastro-2026!',
+    officeRoleId: 'office_manager'
   }, auth(manager.cookie, manager.csrf));
   const escalatedInvite = await response.json();
-  assert.equal(response.status, 409, JSON.stringify(escalatedInvite));
-  assert.equal(escalatedInvite.code, 'ROLE_ESCALATION');
-  assert.match(escalatedInvite.message, /excede o que você pode conceder/);
-  console.log('  ✓ 409 ROLE_ESCALATION para convite de gestor por gestor.');
+  assert.equal(response.status, 403, JSON.stringify(escalatedInvite));
+  console.log('  ✓ 403 — cadastro de membro reservado a administradores.');
 
   console.log('[C2] Associado concede financeiro sem ter financeiro...');
   response = await fetch(`${server.baseUrl}/api/office/members/${encodeURIComponent(manager.id)}`, {
@@ -143,16 +149,7 @@ try {
   assert.equal(escalatedPermission.code, 'ROLE_ESCALATION');
   console.log('  ✓ 409 ROLE_ESCALATION ao conceder permissão ausente no ator.');
 
-  console.log('[C4] Papel fora do catálogo...');
-  response = await postJson(`${server.baseUrl}/api/auth/invitations`, {
-    displayName: 'Advogada Teste',
-    email: 'papel.invalido@example.test',
-    officeRoleId: 'super_admin',
-    sendEmail: false
-  }, principalHeaders);
-  const unknownRole = await response.json();
-  assert.equal(response.status, 400, JSON.stringify(unknownRole));
-  console.log('  ✓ Papel fora do catálogo recusado.');
+
 
   console.log('[C5] Permissão fora do catálogo...');
   response = await fetch(`${server.baseUrl}/api/office/members/${encodeURIComponent(associate.id)}`, {
@@ -165,30 +162,18 @@ try {
   assert.equal(unknownPermission.code, 'ROLE_ESCALATION');
   console.log('  ✓ Permissão fora do catálogo recusada.');
 
-  console.log('[C3] Titular convida gestor...');
-  response = await postJson(`${server.baseUrl}/api/auth/invitations`, {
+  console.log('[C3] Titular cadastra gestor...');
+  response = await postJson(`${server.baseUrl}/api/auth/register`, {
+    username: 'gestor_titular',
     displayName: 'Advogada Teste',
     email: 'gestor.titular@example.test',
-    officeRoleId: 'office_manager',
-    sendEmail: false
+    password: 'Senha-Gestor-Titular-2026!',
+    officeRoleId: 'office_manager'
   }, principalHeaders);
   const allowedInvite = await response.json();
-  assert.equal(response.status, 201, JSON.stringify(allowedInvite));
-  assert.equal(allowedInvite.invitation?.officeRoleId, 'office_manager');
-  console.log('  ✓ Titular concede gestor (201).');
-
-  console.log('[C6] Reenvio não entrega papel que o ator não concede...');
-  response = await postJson(`${server.baseUrl}/api/auth/invitations/resend`, {
-    invitationId: allowedInvite.invitation.id
-  }, auth(manager.cookie, manager.csrf));
-  const escalatedResend = await response.json();
-  assert.equal(response.status, 409, JSON.stringify(escalatedResend));
-  assert.equal(escalatedResend.code, 'ROLE_ESCALATION');
-  response = await postJson(`${server.baseUrl}/api/auth/invitations/resend`, {
-    invitationId: allowedInvite.invitation.id
-  }, principalHeaders);
-  assert.equal(response.status, 200, 'Titular deve conseguir reenviar o convite de gestor.');
-  console.log('  ✓ Reenvio de convite de gestor restrito ao titular.');
+  assert.equal(response.status, 200, JSON.stringify(allowedInvite));
+  assert.ok(allowedInvite.setupToken, 'cadastro de gestor não devolveu setupToken');
+  console.log('  ✓ Titular concede gestor (200).');
 
   // ---------------------------------------------------------------
   // A1..A4 — escalonamento na nomeação de membro e no cadastro direto.
@@ -238,7 +223,7 @@ try {
   // papel legado master_admin/admin. Um membro comum receberia 403 antes da
   // checagem de escalonamento; por isso o ator é promovido ao papel legado
   // admin mantendo officeRoleId 'office_manager' (sem office.principal).
-  const legacyAdmin = await joinAs(principalHeaders, {
+  const legacyAdmin = await joinAs(principal, {
     username: 'admin_legado_roles',
     displayName: 'Advogada Teste',
     email: 'admin.legado.roles@example.test',

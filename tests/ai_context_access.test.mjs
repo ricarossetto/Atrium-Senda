@@ -101,34 +101,38 @@ try {
   assert.equal(response.status, 200, JSON.stringify(configured));
 
   // ── Membro B (associado) no MESMO workspace ────────────────────────────────
-  response = await postJson(`${server.baseUrl}/api/auth/invitations`, {
+  response = await postJson(`${server.baseUrl}/api/auth/register`, {
+    username: MEMBER_USERNAME,
     displayName: 'Membro Contexto Sintetico',
     email: MEMBER_EMAIL,
-    officeRoleId: 'associate',
-    sendEmail: false
+    password: MEMBER_PASSWORD,
+    officeRoleId: 'associate'
   }, authHeaders(aCookie, aCsrf));
-  const invited = await response.json();
-  assert.equal(response.status, 201, JSON.stringify(invited));
-  assert.ok(invited.inviteToken, 'Convite sem token.');
-
-  response = await postJson(`${server.baseUrl}/api/auth/invitations/accept`, {
-    inviteToken: invited.inviteToken,
-    username: MEMBER_USERNAME,
-    password: MEMBER_PASSWORD
-  });
-  const accepted = await response.json();
-  assert.equal(response.status, 200, JSON.stringify(accepted));
+  const registered = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(registered));
 
   response = await postJson(`${server.baseUrl}/api/auth/register/verify`, {
-    setupToken: accepted.setupToken,
-    code: generateTotp(accepted.manualSecret)
+    setupToken: registered.setupToken,
+    code: generateTotp(registered.manualSecret)
   });
+  assert.equal(response.status, 200, JSON.stringify(await response.json()));
+
+  response = await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: aCookie } });
+  const usersList = await response.json();
+  const memberUser = usersList.users.find(user => user.username === MEMBER_USERNAME);
+  assert.ok(memberUser, 'membro não encontrado para aprovação');
+  response = await postJson(`${server.baseUrl}/api/auth/users/manage`, {
+    userId: memberUser.id,
+    status: 'active',
+    password: ADMIN_PASSWORD,
+    code: generateTotp(setup.manualSecret)
+  }, authHeaders(aCookie, aCsrf));
   assert.equal(response.status, 200, JSON.stringify(await response.json()));
 
   response = await postJson(`${server.baseUrl}/api/auth/login`, {
     username: MEMBER_USERNAME,
     password: MEMBER_PASSWORD,
-    code: generateTotp(accepted.manualSecret)
+    code: generateTotp(registered.manualSecret)
   });
   const logged = await response.json();
   assert.equal(response.status, 200, JSON.stringify(logged));

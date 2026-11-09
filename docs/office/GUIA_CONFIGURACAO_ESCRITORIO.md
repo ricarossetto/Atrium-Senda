@@ -12,26 +12,22 @@ A central de administração da plataforma é outra coisa: ela não lê conteúd
 
 ## O que já funciona
 
-- Convite por link e por e-mail, com tipo (`memberKind`), papel (`officeRoleId`) e equipes (`teamIds`) iniciais.
+- Cadastro de membros pelo administrador, com tipo (`memberKind`), papel (`officeRoleId`) e equipes (`teamIds`) iniciais.
 - Gestão de membros e de equipes.
 - Atribuição de processo com equipes, responsáveis e concessões.
 - Modo `shadow` e `enforced`.
 - Monitoramento privado de OAB com deduplicação.
 - Offboarding com transferência de processos e tarefas.
 
-## Como convidar alguém
+## Como adicionar um membro
 
 1. Abra **Configurações > Equipe > Escritório**.
-2. No cartão **Convidar integrante**, informe nome e e-mail.
-3. Deixe **Enviar também por e-mail** marcado se o escritório já tiver o envio configurado.
-4. Clique em **Gerar convite**.
-5. O sistema mostra o resultado honesto:
-   - `E-mail enfileirado para envio.`
-   - `O e-mail não foi enfileirado; use o link abaixo.`
-   - `Envio por e-mail não configurado; use o link abaixo.`
-6. O link manual também aparece e vale por 48 horas. A pessoa abre `/login#invite=<token>`, define a senha e ativa a proteção em duas etapas.
-
-O convite aceita **tipo** (`memberKind`: advogado ou colaborador), **papel** (`officeRoleId`) e **equipes** (`teamIds`) iniciais. Essas escolhas valem já no primeiro acesso.
+2. No cartão **Membros**, preencha usuário, nome, e-mail e senha inicial. Escolha o tipo, o papel e as equipes iniciais.
+3. Clique em **Criar membro**.
+4. O painel mostra o QR code do autenticador, o segredo manual e o código de configuração (válido por 10 minutos). Entregue esses dados ao membro.
+5. O membro abre a tela de login e clica em **Ativar conta nova**, insere o código de configuração e o código de 6 dígitos do autenticador.
+6. A conta fica **Pendente** na lista de membros. Aprove-a pelo botão **Aprovar** no próprio cartão.
+7. A partir daí o membro entra normalmente com usuário, senha e código do autenticador.
 
 ## Como criar uma equipe
 
@@ -115,7 +111,7 @@ O modo `enforced` já filtra `/api/state`, busca e documentos, mas a ativação 
 
 Testes de aceite que serão exigidos antes de declarar o modelo pronto:
 
-- gestor convida com papel/equipe e o membro aceita com o vínculo correto;
+- o administrador cria o membro com papel/equipe, o membro ativa a conta e o vínculo é aplicado;
 - associado não vê processo não atribuído nem financeiro;
 - atribuir equipe concede acesso; remover revoga na requisição seguinte;
 - busca, contadores, notificações e boletins respeitam o mesmo filtro;

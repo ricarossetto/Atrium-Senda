@@ -1,5 +1,5 @@
-import { iconSvg } from './icons.js?v=3.0.1';
-import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.0.1';
+import { iconSvg } from './icons.js?v=3.0.2';
+import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.0.2';
 
 export const KANBAN_COLUMN_LIMIT = 200;
 
@@ -508,7 +508,7 @@ export function renderTaskCard({
     <button type="button" class="task-card-open" data-task-open="${escapeHtml(task.id)}">
       <strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong>
       <span>${escapeHtml(task.description || 'Sem descrição')}</span>
-      <span class="task-card-action">Editar tarefa <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.1#atrium-icon-chevron-right"></use></svg></span>
+      <span class="task-card-action">Editar tarefa <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-chevron-right"></use></svg></span>
     </button>
     <div class="task-context">
       <span class="task-client ${clientResolved ? '' : 'task-client-unlinked'}">${escapeHtml(clientResolved || 'Cliente não vinculado')}</span>

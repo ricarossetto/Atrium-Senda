@@ -157,41 +157,37 @@ try {
   response = await fetch(`${server.baseUrl}/api/integrations/tjrs-sidecar/status`, { headers: { Cookie: secondCookie } });
   assert(response.status === 503, 'Escritório adicional alcançou o sidecar privado compartilhado.');
 
-  response = await postJson(`${server.baseUrl}/api/auth/invitations`, {
-    displayName: 'Colaboradora Convidada',
-    email: 'convidada@example.test'
-  }, { Cookie: firstCookie, 'X-CSRF-Token': first.csrfToken });
-  const invite = await response.json();
-  assert(response.status === 201 && invite.inviteToken && invite.invitation?.id, 'Administrador não conseguiu gerar convite de equipe.');
-  assert(!JSON.stringify(invite.invitation).includes(invite.inviteToken), 'Token do convite foi persistido no objeto público.');
-  const firstInvitations = await (await fetch(`${server.baseUrl}/api/auth/invitations`, { headers: { Cookie: firstCookie } })).json();
-  const secondInvitations = await (await fetch(`${server.baseUrl}/api/auth/invitations`, { headers: { Cookie: secondCookie } })).json();
-  assert(firstInvitations.invitations.length === 1 && secondInvitations.invitations.length === 0, 'Convite de equipe vazou entre escritórios.');
-  response = await fetch(`${server.baseUrl}/api/auth/invitations/accept?token=${encodeURIComponent(invite.inviteToken)}`);
-  const invitationDetails = await response.json();
-  assert(response.ok && invitationDetails.invitation.workspace.id === first.user.workspaceId, 'Convite não permaneceu vinculado ao escritório emissor.');
-  response = await postJson(`${server.baseUrl}/api/auth/invitations/accept`, {
-    inviteToken: invite.inviteToken,
+  response = await postJson(`${server.baseUrl}/api/auth/register`, {
     username: 'convidada-a',
+    displayName: 'Colaboradora Convidada',
+    email: 'convidada@example.test',
     password
-  });
-  const invitedSetup = await response.json();
-  assert(response.ok && invitedSetup.setupToken && invitedSetup.manualSecret, 'Convidada não conseguiu definir suas próprias credenciais.');
+  }, { Cookie: firstCookie, 'X-CSRF-Token': first.csrfToken });
+  const registered = await response.json();
+  assert(response.status === 200 && registered.setupToken && registered.manualSecret, 'Administrador não conseguiu cadastrar a colaboradora.');
   response = await postJson(`${server.baseUrl}/api/auth/register/verify`, {
-    setupToken: invitedSetup.setupToken,
-    code: generateTotp(invitedSetup.manualSecret)
+    setupToken: registered.setupToken,
+    code: generateTotp(registered.manualSecret)
   });
   const invitedVerification = await response.json();
-  assert(response.ok && invitedVerification.status === 'active' && invitedVerification.recoveryCodes.length === 8, 'Convite administrativo não ativou a conta protegida por MFA.');
+  assert(response.ok && invitedVerification.status === 'pending_approval' && invitedVerification.recoveryCodes.length === 8, 'Colaboradora não ativou a conta protegida por MFA.');
+  const firstUsersApproval = await (await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: firstCookie } })).json();
+  const collaboratorForApproval = firstUsersApproval.users.find(user => user.username === 'convidada-a');
+  assert(collaboratorForApproval, 'membro não encontrado para aprovação');
+  response = await postJson(`${server.baseUrl}/api/auth/users/manage`, {
+    userId: collaboratorForApproval.id,
+    status: 'active',
+    password,
+    code: stepUpCode(firstSecret)
+  }, { Cookie: firstCookie, 'X-CSRF-Token': first.csrfToken });
+  assert(response.ok, 'aprovação da colaboradora falhou');
   response = await postJson(`${server.baseUrl}/api/auth/login`, {
     username: 'convidada-a',
     password,
-    code: generateTotp(invitedSetup.manualSecret)
+    code: generateTotp(registered.manualSecret)
   });
   const invitedLogin = await response.json();
   assert(response.ok && invitedLogin.user.workspaceId === first.user.workspaceId, 'Convidada entrou no escritório incorreto.');
-  response = await fetch(`${server.baseUrl}/api/auth/invitations/accept?token=${encodeURIComponent(invite.inviteToken)}`);
-  assert(response.status === 401, 'Convite de uso único permaneceu válido após aceitação.');
 
   const firstUsers = await (await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: firstCookie } })).json();
   const secondUsers = await (await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: secondCookie } })).json();

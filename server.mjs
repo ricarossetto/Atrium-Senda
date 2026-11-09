@@ -55,7 +55,7 @@ import { GOOGLE_CALENDAR_ROUTE_MISS, handleGoogleCalendarRoute, isGoogleCalendar
 import { createGoogleCalendarApi } from './lib/calendar-sync/google-calendar-api.mjs';
 import { createGoogleCalendarService } from './lib/calendar-sync/google-calendar-service.mjs';
 import { COLLECTION_ADMIN_MESSAGE, handleJudicialRoute, isJudicialRoute, JUDICIAL_ROUTE_MISS } from './lib/http/judicial-routes.mjs';
-import { handleInvitationOrProfileRoute, isInvitationOrProfileRoute, INVITATION_ROUTE_MISS } from './lib/http/invitation-routes.mjs';
+import { handleProfileRoute, isProfileRoute, PROFILE_ROUTE_MISS } from './lib/http/profile-routes.mjs';
 import { handleNotificationInboxRoute, isNotificationInboxRoute, NOTIFICATION_INBOX_ROUTE_MISS } from './lib/http/notification-inbox-routes.mjs';
 import { handleOfficeRoute, isOfficeRoute, OFFICE_ROUTE_MISS } from './lib/http/office-routes.mjs';
 import { assertCanGrantOfficeRole, assertMemberKindMatchesRole, defaultMemberKind, isOfficePrincipalMember, principalProtectionError } from './lib/office/role-catalog.mjs';
@@ -5785,16 +5785,14 @@ const server = http.createServer(async (req, res) => {
     if (outcome !== NOTIFICATION_INBOX_ROUTE_MISS) return;
   }
 
-  if (isInvitationOrProfileRoute(url)) {
-      const outcome = await handleInvitationOrProfileRoute({
+  if (isProfileRoute(url)) {
+      const outcome = await handleProfileRoute({
         json,
         readJson,
         security,
-        assertAuthenticated,
-        assertAdmin,
-        getNotificationService: workspaceId => notificationServiceForWorkspace(workspaceId)
+        assertAuthenticated
       }, req, res, url);
-      if (outcome !== INVITATION_ROUTE_MISS) return;
+      if (outcome !== PROFILE_ROUTE_MISS) return;
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/register') {
       // Sem step-up por body.password: aqui a senha do body pertence ao NOVO usuario.

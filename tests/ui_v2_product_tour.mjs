@@ -46,10 +46,12 @@ try {
   const verified = await postJson(`${server.baseUrl}/api/auth/setup/verify`, { setupToken: setup.setupToken, code: generateTotp(setup.manualSecret) });
   const adminCookie = verified.headers.get('set-cookie').split(';')[0];
   const adminCsrf = (await verified.json()).csrfToken;
-  const invited = await (await postJson(`${server.baseUrl}/api/auth/invitations`, { email: 'membro.tour@example.test', displayName: 'Membro Teste', role: 'collaborator' }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf })).json();
-  const accepted = await (await postJson(`${server.baseUrl}/api/auth/invitations/accept`, { inviteToken: invited.inviteToken, username: 'membro_tour', password: PASSWORD })).json();
-  await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: accepted.setupToken, code: generateTotp(accepted.manualSecret) });
-  const login = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'membro_tour', password: PASSWORD, code: generateTotp(accepted.manualSecret, Math.floor(Date.now() / 30_000) + 1) });
+  const registered = await (await postJson(`${server.baseUrl}/api/auth/register`, { username: 'membro_tour', displayName: 'Membro Teste', email: 'membro.tour@example.test', password: PASSWORD, officeRoleId: 'associate' }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf })).json();
+  await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: registered.setupToken, code: generateTotp(registered.manualSecret) });
+  const listedUsers = await (await (await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: adminCookie } })).json());
+  const memberUser = listedUsers.users.find(user => user.username === 'membro_tour');
+  await postJson(`${server.baseUrl}/api/auth/users/manage`, { userId: memberUser.id, status: 'active', password: PASSWORD, code: generateTotp(setup.manualSecret) }, { Cookie: adminCookie, 'X-CSRF-Token': adminCsrf });
+  const login = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'membro_tour', password: PASSWORD, code: generateTotp(registered.manualSecret, Math.floor(Date.now() / 30_000) + 1) });
   assert.equal(login.status, 200);
   const memberCookie = login.headers.get('set-cookie').split(';')[0];
 

@@ -198,14 +198,21 @@ try {
   const setup = await (await postJson(`${server.baseUrl}/api/auth/setup`, { username: 'titular_judicial', displayName: 'Titular Teste', password: PASSWORD })).json();
   const verified = await postJson(`${server.baseUrl}/api/auth/setup/verify`, { setupToken: setup.setupToken, code: generateTotp(setup.manualSecret) });
   const admin = { cookie: verified.headers.get('set-cookie').split(';')[0], csrf: (await verified.json()).csrfToken };
-  const invited = await (await fetch(`${server.baseUrl}/api/auth/invitations`, {
+  const registered = await (await fetch(`${server.baseUrl}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Cookie: admin.cookie, 'X-CSRF-Token': admin.csrf },
-    body: JSON.stringify({ email: 'membro.judicial@example.test', displayName: 'Membro Teste', role: 'collaborator' })
+    body: JSON.stringify({ username: 'membro_judicial', displayName: 'Membro Teste', email: 'membro.judicial@example.test', password: PASSWORD, officeRoleId: 'associate' })
   })).json();
-  const accepted = await (await postJson(`${server.baseUrl}/api/auth/invitations/accept`, { inviteToken: invited.inviteToken, username: 'membro_judicial', password: PASSWORD })).json();
-  await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: accepted.setupToken, code: generateTotp(accepted.manualSecret) });
-  const login = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'membro_judicial', password: PASSWORD, code: generateTotp(accepted.manualSecret, Math.floor(Date.now() / 30_000) + 1) });
+  await postJson(`${server.baseUrl}/api/auth/register/verify`, { setupToken: registered.setupToken, code: generateTotp(registered.manualSecret) });
+  const usersForApproval = await (await fetch(`${server.baseUrl}/api/auth/users`, { headers: { Cookie: admin.cookie } })).json();
+  const memberForApproval = usersForApproval.users.find(u => u.username === 'membro_judicial');
+  const approval = await (await fetch(`${server.baseUrl}/api/auth/users/manage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: admin.cookie, 'X-CSRF-Token': admin.csrf },
+    body: JSON.stringify({ userId: memberForApproval.id, status: 'active', password: PASSWORD, code: generateTotp(setup.manualSecret) })
+  })).json();
+  assert.equal(approval.ok, true, 'aprovação do membro falhou');
+  const login = await postJson(`${server.baseUrl}/api/auth/login`, { username: 'membro_judicial', password: PASSWORD, code: generateTotp(registered.manualSecret, Math.floor(Date.now() / 30_000) + 1) });
   assert.equal(login.status, 200, 'membro não entrou');
   const member = { cookie: login.headers.get('set-cookie').split(';')[0], csrf: (await login.json()).csrfToken };
 

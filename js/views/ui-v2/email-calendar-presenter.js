@@ -1,5 +1,5 @@
-import { iconSvg } from './icons.js?v=3.0.1';
-import { installPanelSizeToggle, resetPanelSize } from '../../components/panel-size.js?v=3.0.1';
+import { iconSvg } from './icons.js?v=3.0.2';
+import { installPanelSizeToggle, resetPanelSize } from '../../components/panel-size.js?v=3.0.2';
 
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
