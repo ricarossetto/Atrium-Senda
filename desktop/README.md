@@ -5,7 +5,7 @@ Empacotamento **Tauri 2** (Rust + WebView2) do ATRIUM Senda. O instalador é aut
 ## Como funciona
 
 ```text
-ATRIUM_Setup_3.0.0_x64.exe
+ATRIUM_Setup_3.0.2_x64.exe
   └─ ATRIUM.exe            (shell Rust: janela, atualização, ciclo de vida)
       └─ node.exe          (Node.js 24 win-x64, empacotado em resources/node)
           └─ server.mjs    (o servidor local do ATRIUM Senda, em resources/app)

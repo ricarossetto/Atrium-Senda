@@ -4,7 +4,7 @@ O ATRIUM Senda roda no computador do escritório (ou em um servidor próprio). A
 
 ## 1. Instalar e abrir o ATRIUM
 
-No Windows, baixe o instalador `ATRIUM_Setup_3.0.0_x64.exe` em [releases](https://github.com/ricarossetto/Atrium-Senda/releases), verifique a soma SHA-256 (`SHA256SUMS.txt`) e execute. Em outros sistemas, siga a [instalação manual](INSTALLATION.md).
+No Windows, baixe o instalador `ATRIUM_Setup_3.0.2_x64.exe` em [releases](https://github.com/ricarossetto/Atrium-Senda/releases), verifique a soma SHA-256 (`SHA256SUMS.txt`) e execute. Em outros sistemas, siga a [instalação manual](INSTALLATION.md).
 
 Abra o aplicativo e crie a conta do administrador do escritório. Configure o segundo fator quando solicitado e guarde os códigos de recuperação fora do navegador.
 

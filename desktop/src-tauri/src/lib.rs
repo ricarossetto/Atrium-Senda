@@ -44,6 +44,120 @@ fn find_free_port() -> Option<u16> {
     Some(port)
 }
 
+/// Garante os segredos de runtime do servidor. Gera uma vez e persiste em
+/// `%APPDATA%\ATRIUM\.env` (sobrevive a atualizações); devolve o mapa de
+/// chave→valor para ser injetado diretamente no processo Node.
+fn ensure_runtime_env() -> Result<Vec<(String, String)>, String> {
+    use std::collections::BTreeMap;
+    use std::fmt::Write as _;
+    let env_path = config_root().join(".env");
+    if let Some(parent) = env_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let existing = fs::read_to_string(&env_path).unwrap_or_default();
+    let mut values: BTreeMap<String, String> = existing
+        .lines()
+        .filter_map(|line| line.split_once('='))
+        .filter(|(name, _)| !name.trim().starts_with('#'))
+        .map(|(name, value)| (name.trim().to_string(), value.trim().to_string()))
+        .filter(|(_, value)| !value.is_empty())
+        .collect();
+    let mut missing = Vec::new();
+    for key in ["AUTH_SESSION_SECRET", "AUTH_ENCRYPTION_KEY", "SETUP_BOOTSTRAP_TOKEN"] {
+        let value = values.get(key).map(|value| value.as_str());
+        let valid = match key {
+            "AUTH_ENCRYPTION_KEY" => matches!(value, Some(v) if v.len() == 44 && v.ends_with('=')),
+            _ => value.is_some(),
+        };
+        if !valid {
+            missing.push(key);
+        }
+    }
+    if !missing.is_empty() {
+        for key in &missing {
+            values.insert((*key).to_string(), generate_secret());
+        }
+        let mut contents = String::new();
+        writeln!(contents, "# Segredos locais gerados automaticamente. Nunca envie este arquivo ao GitHub.")
+            .map_err(|e| e.to_string())?;
+        for (key, value) in &values {
+            writeln!(contents, "{key}={value}").map_err(|e| e.to_string())?;
+        }
+        fs::write(&env_path, contents)
+            .map_err(|e| format!("Não foi possível gravar {}: {e}", env_path.display()))?;
+    }
+    Ok(values
+        .into_iter()
+        .filter(|(key, _)| SECRET_KEYS.contains(&key.as_str()))
+        .collect())
+}
+
+const SECRET_KEYS: [&str; 3] = ["AUTH_SESSION_SECRET", "AUTH_ENCRYPTION_KEY", "SETUP_BOOTSTRAP_TOKEN"];
+
+fn generate_secret() -> String {
+    // 32 bytes do gerador do sistema (BCryptGenRandom), codificados em base64
+    // (44 caracteres, com '=' final) — o formato exigido por AUTH_ENCRYPTION_KEY.
+    let mut bytes = [0u8; 32];
+    #[cfg(windows)]
+    unsafe {
+        // BCryptGenRandom com o gerador do sistema (bcryptprimitives).
+        #[link(name = "bcrypt")]
+        extern "system" {
+            fn BCryptGenRandom(
+                algorithm: *mut core::ffi::c_void,
+                buffer: *mut u8,
+                length: u32,
+                flags: u32,
+            ) -> i32;
+        }
+        const BCRYPT_USE_SYSTEM_PREFERRED_RNG: u32 = 0x0000_0002;
+        let status = BCryptGenRandom(
+            core::ptr::null_mut(),
+            bytes.as_mut_ptr(),
+            bytes.len() as u32,
+            BCRYPT_USE_SYSTEM_PREFERRED_RNG,
+        );
+        if status != 0 {
+            fallback_entropy(&mut bytes);
+        }
+    }
+    #[cfg(not(windows))]
+    fallback_entropy(&mut bytes);
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(44);
+    for chunk in bytes.chunks(3) {
+        if chunk.len() == 3 {
+            let triple = ((chunk[0] as u32) << 16) | ((chunk[1] as u32) << 8) | chunk[2] as u32;
+            out.push(ALPHABET[((triple >> 18) & 63) as usize] as char);
+            out.push(ALPHABET[((triple >> 12) & 63) as usize] as char);
+            out.push(ALPHABET[((triple >> 6) & 63) as usize] as char);
+            out.push(ALPHABET[(triple & 63) as usize] as char);
+        } else {
+            let two = ((chunk[0] as u32) << 16) | ((chunk[1] as u32) << 8);
+            out.push(ALPHABET[((two >> 18) & 63) as usize] as char);
+            out.push(ALPHABET[((two >> 12) & 63) as usize] as char);
+            out.push(ALPHABET[((two >> 6) & 63) as usize] as char);
+            out.push('=');
+        }
+    }
+    out
+}
+
+fn fallback_entropy(bytes: &mut [u8]) {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let mut state = seed ^ (std::process::id() as u128).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    for byte in bytes.iter_mut() {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        *byte = ((state >> 33) & 0xff) as u8;
+    }
+}
+
 /// Verificação mínima de /api/health sem depender de cliente HTTP.
 fn http_health_ok(port: u16) -> bool {
     let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port)) else {
@@ -125,6 +239,9 @@ fn spawn_server(app: &tauri::AppHandle, port: u16) -> Result<Child, String> {
     #[cfg(windows)]
     command.creation_flags(CREATE_NO_WINDOW);
 
+    ensure_runtime_env()?
+        .iter()
+        .for_each(|(key, value)| { command.env(key, value); });
     let mut child = command
         .spawn()
         .map_err(|e| format!("Não foi possível iniciar o servidor local: {e}"))?;

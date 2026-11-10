@@ -68,7 +68,11 @@ for (const dir of COPY_DIRS) {
 }
 
 console.log('[2/3] Instalando dependências de produção no diretório de recursos…');
-execFileSync('pnpm install --prod --frozen-lockfile', {
+// node-linker=hoisted gera uma árvore de pastas reais (sem junctions), que o
+// empacotamento e a instalação preservam. Sem isso, o instalador não leva os
+// links do pnpm e o servidor morre com ERR_MODULE_NOT_FOUND em app/node_modules.
+const installArgs = ['install', '--prod', '--frozen-lockfile', '--config.node-linker=hoisted'];
+execFileSync('pnpm', installArgs, {
   cwd: appDir,
   stdio: 'inherit',
   shell: true,

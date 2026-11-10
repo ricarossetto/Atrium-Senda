@@ -51,8 +51,8 @@
       }
     },
     "resources": {
-      "../resources/app/**/*": "app",
-      "../resources/node/**/*": "node"
+      "../resources/app": "app",
+      "../resources/node": "node"
     }
   },
   "plugins": {

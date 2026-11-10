@@ -6,7 +6,7 @@ O ATRIUM Senda é uma edição **open-source e self-hosted**: o escritório inst
 
 ### Aplicativo desktop (Windows)
 
-Baixe o instalador `ATRIUM_Setup_3.0.0_x64.exe` em [releases](https://github.com/ricarossetto/Atrium-Senda/releases), confira o SHA-256 (`SHA256SUMS.txt`) e execute. O aplicativo abre o próprio servidor local; nenhum dado sai da máquina. Os dados ficam em `%APPDATA%\ATRIUM\data` e os logs, em `%APPDATA%\ATRIUM\logs`.
+Baixe o instalador `ATRIUM_Setup_3.0.2_x64.exe` em [releases](https://github.com/ricarossetto/Atrium-Senda/releases), confira o SHA-256 (`SHA256SUMS.txt`) e execute. O aplicativo abre o próprio servidor local; nenhum dado sai da máquina. Os dados ficam em `%APPDATA%\ATRIUM\data` e os logs, em `%APPDATA%\ATRIUM\logs`.
 
 ### Instalação manual (Node.js 24+)
 

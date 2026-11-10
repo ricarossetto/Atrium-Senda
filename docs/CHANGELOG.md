@@ -2,6 +2,23 @@
 
 As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## 3.0.2 — 2026-11-09
+
+### Corrigido
+
+- **Executável não abria**: o instalador não levava as dependências de produção (junctions do pnpm não sobrevivem ao pacote) e o servidor morria com `ERR_MODULE_NOT_FOUND`. O staging agora instala com `node-linker=hoisted` (árvore real, sem links) e o mapa de recursos do Tauri preserva a estrutura de pastas; integralmente testado no ciclo instalação → primeiro acesso → `/api/health` 200 → reinício.
+- **Segredos de runtime do desktop**: o aplicativo agora gera `AUTH_SESSION_SECRET`, `AUTH_ENCRYPTION_KEY` (32 bytes em base64) e `SETUP_BOOTSTRAP_TOKEN` no primeiro boot com o gerador criptográfico do Windows (BCryptGenRandom), persiste em `%APPDATA%\ATRIUM\.env` (sobrevive a atualizações) e injeta as variáveis no processo do servidor. A chave recusada/AUSente é regenerada na inicialização.
+
+### Alterado
+
+- `ATRIUM_FRONTEND_ORIGINS` deixou de ser gravado com porta dinâmica (que ficava obsoleta no boot seguinte); as cadências de colete agendadas continuam fora da edição aberta (coleta é manual).
+
+## 3.0.1 — 2026-11-09
+
+### Corrigido
+
+- Referências à marca MinutaIA removidas de código, pedidos e testes (guardião de neutralidade de marca agora proíbe o termo).
+
 ## 3.0.0 — 2026-11-09
 
 ### Recomposição da edição aberta
