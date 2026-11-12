@@ -50,11 +50,29 @@ Abra `http://127.0.0.1:4173`. No Windows, o `ATRIUM.bat` automatiza as verifica�
 | Integrações judiciais | DJEN, DataJud, eproc nacional e PJe nacional — somente leitura |
 | Assistente | IA opcional (Google Gemini ou provedor compatível), com revisão profissional obrigatória |
 
-O que **não** está nesta edição (e faz diferença na prática hospedada):
+## Senda ou ATRIUM na nuvem?
 
-- Serviço hospedado com disponibilidade gerenciada (o ATRIUM em [atrium.adv.br](https://atrium.adv.br), operado pela mesma equipe).
-- Assistência jurídica com a base completa de habilidades jurídicas calibradas (disponível no produto hospedado).
-- Suporte, backups gerenciados e evolução contínua assistida.
+As duas edições têm a mesma base. A diferença está em quem cuida da operação.
+
+| | Senda (esta edição) | ATRIUM na nuvem |
+| --- | --- | --- |
+| Onde roda | No seu computador | Em [atrium.adv.br](https://atrium.adv.br), pelo navegador |
+| Custo | Gratuito, código aberto (MIT) | Assinatura por escritório, sem cobrança por usuário |
+| Dados | Ficam na sua máquina, cifrados | Ficam no serviço hospedado, cifrados |
+| Backup | Você exporta e guarda | Gerenciado pela equipe do ATRIUM |
+| Disponibilidade | Depende do seu computador ligado | Gerenciada pela equipe do ATRIUM |
+| Suporte | Documentação do projeto | Atendimento da equipe |
+| Assistente | IA opcional, com a sua própria chave | Assistência com a base completa de habilidades jurídicas |
+
+**Fique no Senda se** você quer tudo no seu computador, sem depender de terceiros, e aceita cuidar de backup e de manter a máquina ligada.
+
+**Vá para a nuvem se** o escritório tem mais de uma pessoa, precisa acessar de qualquer lugar e prefere não cuidar de servidor.
+
+Quem cria um escritório na nuvem começa com 14 dias de degustação, sem cartão.
+
+Nas duas edições, decisões jurídicas, conferência de prazos e atos processuais continuam com o advogado. O ATRIUM não dá ciência, não assina e não protocola.
+
+Dúvidas sobre a edição na nuvem: [contato@atrium.adv.br](mailto:contato@atrium.adv.br).
 
 Esta edição continua funcionando 100% offline para leitura e gestão do escritório; a IA é opcional e depende de chave própria.
 
