@@ -1160,7 +1160,7 @@ function passwordToggleIcon(visible) {
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
   const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
+  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
   svg.appendChild(use);
   return svg;
 }

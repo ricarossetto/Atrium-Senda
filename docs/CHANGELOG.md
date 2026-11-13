@@ -2,6 +2,30 @@
 
 As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## 3.1.0 — 2026-11-13
+
+### Novo
+
+- **Aplicativo desktop para Linux**: pacotes `.deb` (Debian 12+, Ubuntu 22.04+, Mint, Pop!_OS, Zorin), `.rpm` (Fedora 36+, RHEL 9+, Rocky, Alma, openSUSE) e AppImage para qualquer distribuição x64, com script `packaging/linux/install.sh` que detecta a família da distribuição e confere o SHA-256.
+- **Arch Linux**: `PKGBUILD` em `packaging/arch/` empacota o AppImage oficial como `atrium-senda-bin`, com entrada no menu e ícone.
+- **Aplicativo desktop para macOS**: builds separados para Apple Silicon (`aarch64`) e Intel (`x64`), com `.dmg`, ícone `.icns` e dados em `~/Library/Application Support/ATRIUM`.
+- **Aplicativo desktop para Windows ARM64**: instalador NSIS nativo com Node 24 `win-arm64` oficial, para Windows 11 em Snapdragon e outros ARM64.
+- **Camada de movimento da UI V2**: menus com origem no gatilho, entrada de modal, toast, tooltip com 80 ms de intenção, troca de ícone do tema, selo de notificações e indicador Lista/Kanban nos tokens do sistema.
+
+### Alterado
+
+- **Instalador Windows** atualizado para 3.1.0 (NSIS e MSI) e texto de metadados sem qualificador de marketing.
+- **Fim do Node exclusivo do Windows**: o staging baixa o Node 24 oficial da plataforma alvo (`win32`, `linux`, `darwin`; x64 e arm64) e extrai com `tar`, sem PowerShell.
+- **Caminhos por sistema**: `%APPDATA%\ATRIUM` no Windows, `~/Library/Application Support/ATRIUM` no macOS e `${XDG_DATA_HOME:-~/.local/share}/atrium` no Linux.
+- **Encerramento do servidor no Unix**: grupo de processos com `SIGTERM` e, se preciso, `SIGKILL`, alcançando coletor e Chromium.
+- **Entrada de view**: uma única animação direcional, removendo a sobreposição de 280 ms do CSS com 200 ms do controlador.
+- **Indicador Lista/Kanban** e chevrons de análise/publicações alinhados a `--v2-duration-*` e `--v2-ease-*`.
+
+### Corrigido
+
+- Geração de `AUTH_ENCRYPTION_KEY` no Unix passa a ler `/dev/urandom`, em vez do gerador de emergência baseado em tempo.
+- Publicação multi-plataforma usa um único `SHA256SUMS.txt` e um `latest.json` serializado por plataforma.
+
 ## 3.0.2 — 2026-11-09
 
 ### Corrigido

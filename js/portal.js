@@ -1,5 +1,5 @@
-import { openLinkedPublication } from './components/linked-publication-reader.js?v=3.0.2';
-import { requestAuthUsers } from './core/auth-users-request.js?v=3.0.2';
+import { openLinkedPublication } from './components/linked-publication-reader.js?v=3.1.0';
+import { requestAuthUsers } from './core/auth-users-request.js?v=3.1.0';
 import {
   ATRIUM_STORE_PERSISTENCE_ERROR_EVENT,
   STORE_PERSISTENCE_CONFLICT_EVENT,
@@ -7,56 +7,56 @@ import {
   Store,
   isoDate,
   uid
-} from './core/store.js?v=3.0.2';
-import { applyClientReconciliation } from './core/client-reconciliation.js?v=3.0.2';
-import { pathForView, publicationIdFromLocation, viewFromHash, viewFromPathname } from './core/routes.js?v=3.0.2';
-import { acknowledgeActivity } from './core/activity-inbox.js?v=3.0.2';
-import { getCompletionNotifications, markCompletionNotificationsRead, refreshCompletionNotifications } from './core/notification-inbox.js?v=3.0.2';
-import { searchContent } from './core/api.js?v=3.0.2';
-import { createReauthRunner } from './core/reauth.js?v=3.0.2';
-import { createGlobalSearch } from './components/global-search.js?v=3.0.2';
-import { createQuickAdd } from './components/quick-add.js?v=3.0.2';
-import { createModal, installModalComboboxes } from './components/modal.js?v=3.0.2';
-import { attachFieldSuggest } from './components/field-suggest.js?v=3.0.2';
-import { fieldContextOptions, teamEmailOptions, teamNameOptions } from './core/field-context.js?v=3.0.2';
-import { installPanelSizeToggle, resetPanelSize } from './components/panel-size.js?v=3.0.2';
-import { createOnboarding } from './components/onboarding.js?v=3.0.2';
-import { mountTotpGuide } from './components/totp-guide.js?v=3.0.2';
-import { createProductTour } from './components/product-tour.js?v=3.0.2';
-import { buildTourSteps, shouldStartTour } from './core/product-tour-steps.js?v=3.0.2';
-import { computeFirstSteps } from './views/ui-v2/first-steps.js?v=3.0.2';
-import { createSetupWizardFeature } from './features/setup-wizard.js?v=3.0.2';
-import { createTheme } from './components/theme.js?v=3.0.2';
-import { Toast } from './components/toast.js?v=3.0.2';
-import { createUiMode } from './views/ui-v2/mode.js?v=3.0.2';
-import { resolveDensityFromPlan } from './views/ui-v2/plan-density.js?v=3.0.2';
-import { hasMonitoredOab } from './views/ui-v2/first-steps.js?v=3.0.2';
-import { transitionPageContent } from './views/ui-v2/page-transition.js?v=3.0.2';
-import { createUiV2Shell } from './views/ui-v2/shell.js?v=3.0.2';
-import { createSystemStatusBar } from './views/ui-v2/system-status.js?v=3.0.2';
-import { officeScopeItems } from './core/office-scope.js?v=3.0.2';
-import { renderFinancialV2Workspace } from './views/ui-v2/financial-presenter.js?v=3.0.2';
+} from './core/store.js?v=3.1.0';
+import { applyClientReconciliation } from './core/client-reconciliation.js?v=3.1.0';
+import { pathForView, publicationIdFromLocation, viewFromHash, viewFromPathname } from './core/routes.js?v=3.1.0';
+import { acknowledgeActivity } from './core/activity-inbox.js?v=3.1.0';
+import { getCompletionNotifications, markCompletionNotificationsRead, refreshCompletionNotifications } from './core/notification-inbox.js?v=3.1.0';
+import { searchContent } from './core/api.js?v=3.1.0';
+import { createReauthRunner } from './core/reauth.js?v=3.1.0';
+import { createGlobalSearch } from './components/global-search.js?v=3.1.0';
+import { createQuickAdd } from './components/quick-add.js?v=3.1.0';
+import { createModal, installModalComboboxes } from './components/modal.js?v=3.1.0';
+import { attachFieldSuggest } from './components/field-suggest.js?v=3.1.0';
+import { fieldContextOptions, teamEmailOptions, teamNameOptions } from './core/field-context.js?v=3.1.0';
+import { installPanelSizeToggle, resetPanelSize } from './components/panel-size.js?v=3.1.0';
+import { createOnboarding } from './components/onboarding.js?v=3.1.0';
+import { mountTotpGuide } from './components/totp-guide.js?v=3.1.0';
+import { createProductTour } from './components/product-tour.js?v=3.1.0';
+import { buildTourSteps, shouldStartTour } from './core/product-tour-steps.js?v=3.1.0';
+import { computeFirstSteps } from './views/ui-v2/first-steps.js?v=3.1.0';
+import { createSetupWizardFeature } from './features/setup-wizard.js?v=3.1.0';
+import { createTheme } from './components/theme.js?v=3.1.0';
+import { Toast } from './components/toast.js?v=3.1.0';
+import { createUiMode } from './views/ui-v2/mode.js?v=3.1.0';
+import { resolveDensityFromPlan } from './views/ui-v2/plan-density.js?v=3.1.0';
+import { hasMonitoredOab } from './views/ui-v2/first-steps.js?v=3.1.0';
+import { transitionPageContent } from './views/ui-v2/page-transition.js?v=3.1.0';
+import { createUiV2Shell } from './views/ui-v2/shell.js?v=3.1.0';
+import { createSystemStatusBar } from './views/ui-v2/system-status.js?v=3.1.0';
+import { officeScopeItems } from './core/office-scope.js?v=3.1.0';
+import { renderFinancialV2Workspace } from './views/ui-v2/financial-presenter.js?v=3.1.0';
 /* `calculations-presenter.js` é versionado porque passou a carregar a superfície
  * LC 142: sem o `?v=`, a borda do Cloudflare (max-age=14400) continuaria
  * servindo a cópia sem o cenário previdenciário por até 4 h após o deploy. */
-import { renderCalculationsV2Workspace } from './views/ui-v2/calculations-presenter.js?v=3.0.2';
-import { renderDocumentsV2Catalog } from './views/ui-v2/documents-presenter.js?v=3.0.2';
-import { renderLeadsV2Workspace } from './views/ui-v2/leads-presenter.js?v=3.0.2';
-import { renderAssistantV2Presentation } from './views/ui-v2/assistant-presenter.js?v=3.0.2';
-import { renderPromptsV2Presentation } from './views/ui-v2/prompts-presenter.js?v=3.0.2';
-import { renderMonitoringV2Presentation, renderDjenCaptureErrorsV2Presentation } from './views/ui-v2/monitoring-presenter.js?v=3.0.2';
-import { createJudicialIntegrationsPresenter } from './views/ui-v2/judicial-integrations-presenter.js?v=3.0.2';
-import { createEmailCalendarPresenter } from './views/ui-v2/email-calendar-presenter.js?v=3.0.2';
-import { createConfigurationAdminPresenter } from './views/ui-v2/configuration-presenter.js?v=3.0.2';
-import { createImporterPresenter } from './views/ui-v2/importer-presenter.js?v=3.0.2';
-import { createAuditPresenter } from './views/ui-v2/audit-presenter.js?v=3.0.2';
-import { createAgendaFeature } from './features/agenda.js?v=3.0.2';
-import { createAssistantFeature } from './features/assistant.js?v=3.0.2';
-import { createAuditFeature } from './features/audit.js?v=3.0.2';
-import { createConfigurationFeature } from './features/configuration.js?v=3.0.2';
-import { createContactsFeature } from './features/contacts.js?v=3.0.2';
-import { createDashboardFeature } from './features/dashboard.js?v=3.0.2';
-import { treatPublicationForCompletedTask } from './features/publication-task-completion.js?v=3.0.2';
+import { renderCalculationsV2Workspace } from './views/ui-v2/calculations-presenter.js?v=3.1.0';
+import { renderDocumentsV2Catalog } from './views/ui-v2/documents-presenter.js?v=3.1.0';
+import { renderLeadsV2Workspace } from './views/ui-v2/leads-presenter.js?v=3.1.0';
+import { renderAssistantV2Presentation } from './views/ui-v2/assistant-presenter.js?v=3.1.0';
+import { renderPromptsV2Presentation } from './views/ui-v2/prompts-presenter.js?v=3.1.0';
+import { renderMonitoringV2Presentation, renderDjenCaptureErrorsV2Presentation } from './views/ui-v2/monitoring-presenter.js?v=3.1.0';
+import { createJudicialIntegrationsPresenter } from './views/ui-v2/judicial-integrations-presenter.js?v=3.1.0';
+import { createEmailCalendarPresenter } from './views/ui-v2/email-calendar-presenter.js?v=3.1.0';
+import { createConfigurationAdminPresenter } from './views/ui-v2/configuration-presenter.js?v=3.1.0';
+import { createImporterPresenter } from './views/ui-v2/importer-presenter.js?v=3.1.0';
+import { createAuditPresenter } from './views/ui-v2/audit-presenter.js?v=3.1.0';
+import { createAgendaFeature } from './features/agenda.js?v=3.1.0';
+import { createAssistantFeature } from './features/assistant.js?v=3.1.0';
+import { createAuditFeature } from './features/audit.js?v=3.1.0';
+import { createConfigurationFeature } from './features/configuration.js?v=3.1.0';
+import { createContactsFeature } from './features/contacts.js?v=3.1.0';
+import { createDashboardFeature } from './features/dashboard.js?v=3.1.0';
+import { treatPublicationForCompletedTask } from './features/publication-task-completion.js?v=3.1.0';
 import {
   DASHBOARD_WIDGETS,
   emptyDashboardWidgetPreferences,
@@ -66,28 +66,28 @@ import {
   writeDashboardWidgetPreferencesToState,
   writeUiDensityPreference,
   dashboardWorkspaceMode
-} from './core/dashboard-widgets.js?v=3.0.2';
-import { createDocumentsFeature } from './features/documents.js?v=3.0.2';
-import { createEmailIntegrationFeature } from './features/email-integration.js?v=3.0.2';
-import { createExternalCalendarFeature } from './features/external-calendar.js?v=3.0.2';
-import { createGoogleCalendarFeature } from './features/google-calendar.js?v=3.0.2';
-import { createFinancialFeature } from './features/financial.js?v=3.0.2';
-import { createCalculationsFeature } from './features/calculations.js?v=3.0.2';
-import { createImporterFeature } from './features/importer.js?v=3.0.2';
-import { createErrorReportFeature } from './features/error-report.js?v=3.0.2';
-import { createJudicialIntegrationsFeature } from './features/judicial-integrations.js?v=3.0.2';
-import { createInpiIntegrationFeature } from './features/inpi-integration.js?v=3.0.2';
-import { createLeadsFeature } from './features/leads.js?v=3.0.2';
-import { createLinksFeature } from './features/links.js?v=3.0.2';
-import { createMonitoringFeature } from './features/monitoring.js?v=3.0.2';
-import { createOfficeIdentityFeature } from './features/office-identity.js?v=3.0.2';
-import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js?v=3.0.2';
-import { publicationsInRecentScope, resolveIntimationId } from './core/publication-scope.js?v=3.0.2';
-import { createProcessesFeature } from './features/processes.js?v=3.0.2';
-import { createPromptsFeature } from './features/prompts.js?v=3.0.2';
-import { createSystemAdminFeature } from './features/system-admin.js?v=3.0.2';
-import { createTasksFeature } from './features/tasks.js?v=3.0.2';
-import { createReportsFeature } from './features/reports.js?v=3.0.2';
+} from './core/dashboard-widgets.js?v=3.1.0';
+import { createDocumentsFeature } from './features/documents.js?v=3.1.0';
+import { createEmailIntegrationFeature } from './features/email-integration.js?v=3.1.0';
+import { createExternalCalendarFeature } from './features/external-calendar.js?v=3.1.0';
+import { createGoogleCalendarFeature } from './features/google-calendar.js?v=3.1.0';
+import { createFinancialFeature } from './features/financial.js?v=3.1.0';
+import { createCalculationsFeature } from './features/calculations.js?v=3.1.0';
+import { createImporterFeature } from './features/importer.js?v=3.1.0';
+import { createErrorReportFeature } from './features/error-report.js?v=3.1.0';
+import { createJudicialIntegrationsFeature } from './features/judicial-integrations.js?v=3.1.0';
+import { createInpiIntegrationFeature } from './features/inpi-integration.js?v=3.1.0';
+import { createLeadsFeature } from './features/leads.js?v=3.1.0';
+import { createLinksFeature } from './features/links.js?v=3.1.0';
+import { createMonitoringFeature } from './features/monitoring.js?v=3.1.0';
+import { createOfficeIdentityFeature } from './features/office-identity.js?v=3.1.0';
+import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js?v=3.1.0';
+import { publicationsInRecentScope, resolveIntimationId } from './core/publication-scope.js?v=3.1.0';
+import { createProcessesFeature } from './features/processes.js?v=3.1.0';
+import { createPromptsFeature } from './features/prompts.js?v=3.1.0';
+import { createSystemAdminFeature } from './features/system-admin.js?v=3.1.0';
+import { createTasksFeature } from './features/tasks.js?v=3.1.0';
+import { createReportsFeature } from './features/reports.js?v=3.1.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 (() => {
@@ -469,7 +469,7 @@ function getAssistantContextSearchComponent() {
 
   function getSetupWizardFeature() {
     setupWizardComponent ||= createSetupWizardFeature({
-      iconSvg: name => `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-${name}"></use></svg>`,
+      iconSvg: name => `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-${name}"></use></svg>`,
       onComplete: profile => App.completeSetupWizard(profile),
       onOpenPanel: async (panel, profile) => {
         if (!await App.completeSetupWizard(profile)) return false;

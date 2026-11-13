@@ -10,13 +10,35 @@ const server = await read('server.mjs');
 const dockerfile = await read('Dockerfile');
 const compose = await read('docker-compose.yml');
 
-assert.equal(pkg.version, '3.0.2');
+assert.equal(pkg.version, '3.1.0');
 // Cadeia de entrada com a versão do pacote: sem isso, navegador com cache antigo segue
 // executando os módulos antigos (o HTML e o bootstrap são reusados).
 const bootstrap = await read('js/app/bootstrap.js');
 const escapeVersion = value => value.replace(/\./g, '\\.');
 assert.match(index, new RegExp(`js/app/bootstrap\\.js\\?v=${escapeVersion(pkg.version)}`), 'index.html aponta o bootstrap na versão publicada');
 assert.match(bootstrap, new RegExp(`portal\\.js\\?v=${escapeVersion(pkg.version)}`), 'bootstrap aponta o portal na versão publicada');
+
+// Desktop multiplataforma: a versão do bundle acompanha o pacote e os alvos
+// Linux/macOS fazem parte do contrato de release.
+const tauri = JSON.parse(await read('desktop/src-tauri/tauri.conf.json'));
+assert.equal(tauri.version, pkg.version, 'tauri.conf.json acompanha a versão do pacote');
+assert.equal(typeof tauri.bundle.macOS, 'object', 'bundle macOS configurado');
+assert.equal(typeof tauri.bundle.linux, 'object', 'bundle Linux configurado');
+assert.equal(tauri.bundle.icon.includes('icons/icon.icns'), true, 'ícone .icns presente para o macOS');
+for (const path of ['packaging/linux/install.sh', 'packaging/linux/atrium-senda.desktop', 'packaging/arch/PKGBUILD']) {
+  assert.equal(existsSync(new URL(`../${path}`, import.meta.url)), true, `${path}: instalador multiplataforma presente`);
+}
+const desktopResources = await read('desktop/scripts/build-desktop-resources.mjs');
+assert.match(desktopResources, /darwin/, 'staging baixa Node para macOS');
+assert.match(desktopResources, /linux/, 'staging baixa Node para Linux');
+assert.match(desktopResources, /win32-arm64/, 'staging baixa Node para Windows ARM64');
+const releaseWorkflow = await read('.github/workflows/desktop-release.yml');
+assert.match(releaseWorkflow, /ubuntu-22\.04/, 'release compila Linux em Ubuntu 22.04');
+assert.match(releaseWorkflow, /windows-11-arm/, 'release compila Windows ARM64 em runner ARM');
+assert.match(releaseWorkflow, /win32-arm64/, 'release empacota Node win-arm64');
+assert.match(releaseWorkflow, /macos-15/, 'release compila macOS em runner Apple');
+assert.match(releaseWorkflow, /darwin-arm64/, 'release cobre Apple Silicon');
+assert.match(releaseWorkflow, /darwin-x64/, 'release cobre macOS Intel');
 assert.equal(pkg.packageManager, 'pnpm@11.19.0');
 assert.match(pkg.engines.node, /^>=24/);
 assert.match(server, /GIT_SHA\s*=\s*'unknown'/);

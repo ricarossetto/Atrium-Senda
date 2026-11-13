@@ -1,0 +1,38 @@
+# Mantenedor: ATRIUM
+# Pacote binário do ATRIUM Senda para Arch Linux, Manjaro, EndeavourOS e
+# derivados. Usa o AppImage oficial (auto-contido) e instala a integração com
+# o menu de aplicativos. Para compilar do código-fonte, use o repositório:
+#   git clone https://github.com/ricarossetto/Atrium-Senda
+#
+# O sha256sums do AppImage corresponde ao artefato 3.1.0 publicado em
+# releases/atrium-senda-release-3.1.0. Se o release for recompilado, atualize
+# o hash junto com o SHA256SUMS.txt.
+pkgname=atrium-senda-bin
+pkgver=3.1.0
+pkgrel=1
+pkgdesc="Gestão jurídica local e privada para escritórios brasileiros"
+arch=('x86_64')
+url="https://github.com/ricarossetto/Atrium-Senda"
+license=('MIT')
+depends=('fuse2' 'gtk3')
+optdepends=(
+  'webkit2gtk-4.1: renderização da interface (o AppImage já inclui)'
+  'libayatana-appindicator: ícone na bandeja do sistema'
+)
+provides=('atrium-senda')
+conflicts=('atrium-senda')
+options=('!strip' '!debug')
+source=("ATRIUM-${pkgver}.AppImage::https://github.com/ricarossetto/Atrium-Senda/releases/download/v${pkgver}/ATRIUM_${pkgver}_amd64.AppImage"
+        "atrium-senda.desktop::https://raw.githubusercontent.com/ricarossetto/Atrium-Senda/v${pkgver}/packaging/linux/atrium-senda.desktop"
+        "atrium-senda.png::https://raw.githubusercontent.com/ricarossetto/Atrium-Senda/v${pkgver}/desktop/src-tauri/icons/icon.png")
+sha256sums=('07142aef4c5f806df791046d3f95da2ecd8a3a13b1340110313075d4012d477d'
+            '955228bab8884826813ea8df5a0baba526ebaa8eb49be6bbe48be7c7199b338f'
+            '283f55263a6aaced9aa13de9beb42a3d0160de6158cd8fd6d82aab48f193ff3d')
+
+package() {
+  install -Dm755 "${srcdir}/ATRIUM-${pkgver}.AppImage" "${pkgdir}/opt/atrium-senda/ATRIUM.AppImage"
+  install -Dm644 "${srcdir}/atrium-senda.desktop" "${pkgdir}/usr/share/applications/atrium-senda.desktop"
+  install -Dm644 "${srcdir}/atrium-senda.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/atrium-senda.png"
+  install -d "${pkgdir}/usr/bin"
+  ln -s /opt/atrium-senda/ATRIUM.AppImage "${pkgdir}/usr/bin/atrium-senda"
+}

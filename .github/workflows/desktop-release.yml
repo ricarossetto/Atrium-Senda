@@ -10,8 +10,38 @@ permissions:
   contents: write
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      # Serializa a publicação: cada job acrescenta o seu pacote ao mesmo
+      # release e ao mesmo latest.json sem corrida entre plataformas.
+      max-parallel: 1
+      matrix:
+        include:
+          - name: Windows (NSIS + MSI)
+            os: windows-latest
+            target: win32-x64
+            bundles: ''
+          - name: Windows ARM64 (NSIS)
+            os: windows-11-arm
+            target: win32-arm64
+            bundles: '--bundles nsis'
+          - name: Linux x64 (deb + rpm + AppImage)
+            os: ubuntu-22.04
+            target: linux-x64
+            bundles: '--bundles deb,rpm,appimage'
+          - name: macOS Apple Silicon
+            os: macos-15
+            target: darwin-arm64
+            bundles: '--bundles dmg'
+          - name: macOS Intel
+            os: macos-15-intel
+            target: darwin-x64
+            bundles: '--bundles dmg'
+
+    runs-on: ${{ matrix.os }}
+
     steps:
       - name: Obter o código
         uses: actions/checkout@v4
@@ -26,7 +56,34 @@ jobs:
         with:
           version: 11.19.0
 
-      - name: Instalar dependências
+      - name: Rust estável
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache do Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Dependências Linux (WebKitGTK 4.1)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libxdo-dev \
+            libssl-dev \
+            libfuse2 \
+            rpm
+
+      - name: LLVM para o ring no Windows ARM64
+        if: matrix.target == 'win32-arm64'
+        run: choco install llvm -y --no-progress
+
+      - name: Instalar dependências do projeto
         run: pnpm install --frozen-lockfile
 
       - name: Instalar CLI do Tauri (desktop)
@@ -34,36 +91,119 @@ jobs:
 
       - name: Montar recursos (Node empacotado + app)
         run: pnpm --dir desktop run build:resources
+        env:
+          ATRIUM_DESKTOP_TARGET: ${{ matrix.target }}
 
-      - name: Compilar instaladores (NSIS e MSI)
+      - name: Preparar notas do release
+        id: release_notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES="docs/RELEASE_NOTES_${VERSION}.md"
+          if [ -f "$NOTES" ]; then
+            BODY="$(cat "$NOTES")"
+          else
+            BODY="$(printf '# ATRIUM Senda %s\n\nConsulte o CHANGELOG do repositório.' "$VERSION")"
+          fi
+          {
+            echo 'body<<ATRIUM_NOTES_EOF'
+            printf '%s\n' "$BODY"
+            echo 'ATRIUM_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Compilar e publicar no release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Gere com `pnpm --dir desktop tauri signer generate` e cadastre:
-          #   TAURI_SIGNING_PRIVATE_KEY          (chave privada, idealmente com senha)
-          #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD (senha, se houver)
-          # Sem esses segredos, a compilação falha antes de assinar — de propósito.
+          # Assinatura do updater. Sem estes segredos, a compilação falha antes
+          # de assinar — de propósito.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Notarização e assinatura Apple (opcional; sem eles o .dmg sai sem assinatura).
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           projectPath: desktop
           tagName: ${{ github.ref_name }}
           releaseName: ATRIUM Senda ${{ github.ref_name }}
-          releaseBody: consulte docs/RELEASE_NOTES_3.0.0.md para as notas do release.
-          releaseDraft: false
+          releaseBody: ${{ steps.release_notes.outputs.body }}
+          releaseDraft: true
           prerelease: false
           includeUpdaterJson: true
+          args: ${{ matrix.bundles }}
 
-      - name: Somas de verificação (SHA-256)
-        shell: pwsh
+      - name: Reunir pacotes e somas da plataforma
+        shell: bash
         run: |
-          $dir = "desktop/src-tauri/target/release/bundle"
-          Get-ChildItem -Path $dir -Recurse -Include *.exe,*.msi,*.zip,*.sig |
-            ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash)  $(Resolve-Path -Relative $_.FullName)" } |
-            Out-File -FilePath "SHA256SUMS.txt" -Encoding ascii
+          set -euo pipefail
+          mkdir -p dist/"${{ matrix.target }}"
+          find desktop/src-tauri/target/release/bundle -type f \
+            \( -name '*.exe' -o -name '*.msi' -o -name '*.deb' -o -name '*.rpm' \
+               -o -name '*.AppImage' -o -name '*.dmg' -o -name '*.sig' \) \
+            -exec cp -v {} dist/"${{ matrix.target }}"/ \;
+          cd dist/"${{ matrix.target }}"
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum * > SHA256SUMS-"${{ matrix.target }}".txt || true
+          else
+            shasum -a 256 * > SHA256SUMS-"${{ matrix.target }}".txt || true
+          fi
+          ls -la
+
+      - name: Guardar pacotes como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}
+          path: dist/${{ matrix.target }}/*
+          if-no-files-found: error
+
+  publish:
+    name: Somas e scripts auxiliares
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obter o código
+        uses: actions/checkout@v4
+
+      - name: Baixar pacotes das plataformas
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: dist
+          merge-multiple: true
+
+      - name: Gerar SHA256SUMS único
+        run: |
+          set -euo pipefail
+          cd dist
+          find . -maxdepth 2 -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.deb' \
+            -o -name '*.rpm' -o -name '*.AppImage' -o -name '*.dmg' \) -print0 \
+            | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
-      - name: Publicar SHA256SUMS
+      - name: Preparar notas da versão
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES="docs/RELEASE_NOTES_${VERSION}.md"
+          if [ -f "$NOTES" ]; then
+            cp "$NOTES" dist/RELEASE_NOTES.md
+          else
+            printf '# ATRIUM Senda %s\n\nConsulte o CHANGELOG do repositório.\n' "$VERSION" > dist/RELEASE_NOTES.md
+          fi
+
+      - name: Publicar somas e scripts no release
         uses: softprops/action-gh-release@v2
         with:
-          files: SHA256SUMS.txt
+          tag_name: ${{ github.ref_name }}
+          name: ATRIUM Senda ${{ github.ref_name }}
+          draft: true
+          files: |
+            dist/SHA256SUMS.txt
+            dist/RELEASE_NOTES.md
+            packaging/linux/install.sh
+            packaging/arch/PKGBUILD

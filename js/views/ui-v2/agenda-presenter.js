@@ -1,4 +1,4 @@
-import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.0.2';
+import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.1.0';
 
 const DATE_LOCALE = 'pt-BR';
 
@@ -181,8 +181,8 @@ export function createAgendaPresenter({ escapeHtml, formatMinutes } = {}) {
       <header class="calendar-header">
         <div><p>Calendário mensal</p><h3 id="agendaCalendarMonth">${escapeHtml(monthName)}</h3></div>
         <div class="calendar-nav">
-          <button type="button" id="calPrevMonth" aria-label="Mostrar mês anterior" title="Mês anterior"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-chevron-left"></use></svg></button>
-          <button type="button" id="calNextMonth" aria-label="Mostrar próximo mês" title="Próximo mês"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-chevron-right"></use></svg></button>
+          <button type="button" id="calPrevMonth" aria-label="Mostrar mês anterior" title="Mês anterior"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-chevron-left"></use></svg></button>
+          <button type="button" id="calNextMonth" aria-label="Mostrar próximo mês" title="Próximo mês"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-chevron-right"></use></svg></button>
         </div>
       </header>
       <div class="calendar-grid ${direction ? `month-enter is-${direction}` : ''}" role="group" aria-labelledby="agendaCalendarMonth">

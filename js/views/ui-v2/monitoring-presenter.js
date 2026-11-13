@@ -1,5 +1,5 @@
-import { sourceMethodLabel } from '../../core/source-method-label.js?v=3.0.2';
-import { iconSvg } from './icons.js?v=3.0.2';
+import { sourceMethodLabel } from '../../core/source-method-label.js?v=3.1.0';
+import { iconSvg } from './icons.js?v=3.1.0';
 
 const SOURCE_STATUS = Object.freeze({
   ok: Object.freeze({ label: 'Ativo', className: 'connected' }),

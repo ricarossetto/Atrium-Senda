@@ -1,12 +1,12 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.0.2';
-import { createAttemptKey } from '../core/attempt-key.js?v=3.0.2';
+import { Store, isoDate, uid } from '../core/store.js?v=3.1.0';
+import { createAttemptKey } from '../core/attempt-key.js?v=3.1.0';
 import {
   activeIntimations,
   findIntimationRecord,
   isActiveIntimation,
   isMergedIntimation,
   resolveIntimationId
-} from '../core/publication-scope.js?v=3.0.2';
+} from '../core/publication-scope.js?v=3.1.0';
 import {
   createPublicationsV2Presenter,
   renderDuplicateReviewPanel,
@@ -14,19 +14,19 @@ import {
   renderPublicationDetail,
   renderPublicationEmpty,
   renderPublicationRow
-} from '../views/ui-v2/publications-presenter.js?v=3.0.2';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.0.2';
-import { publicationReadableText } from '../core/html-text.js?v=3.0.2';
-import { buildPublicationBrief, isHumanDeadlineSource, publicationTodayReason } from '../core/publication-brief.js?v=3.0.2';
-import { sanitizeRichHtml } from '../core/html-safety.js?v=3.0.2';
-import { installModalComboboxes } from '../components/modal.js?v=3.0.2';
-import { createRiskConfirm } from '../components/risk-confirm.js?v=3.0.2';
-import { publicationLawyersList } from '../core/publication-lawyers.js?v=3.0.2';
-import { officeOabKeys, officeSideLawyers } from '../core/publication-parties.js?v=3.0.2';
-import { renderOfficeInvolved, publicationInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.0.2';
-import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.0.2';
-import { matchMemberByName } from '../core/task-assignees.js?v=3.0.2';
-import { recordInvolvesMember } from '../core/office-involvement.js?v=3.0.2';
+} from '../views/ui-v2/publications-presenter.js?v=3.1.0';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.1.0';
+import { publicationReadableText } from '../core/html-text.js?v=3.1.0';
+import { buildPublicationBrief, isHumanDeadlineSource, publicationTodayReason } from '../core/publication-brief.js?v=3.1.0';
+import { sanitizeRichHtml } from '../core/html-safety.js?v=3.1.0';
+import { installModalComboboxes } from '../components/modal.js?v=3.1.0';
+import { createRiskConfirm } from '../components/risk-confirm.js?v=3.1.0';
+import { publicationLawyersList } from '../core/publication-lawyers.js?v=3.1.0';
+import { officeOabKeys, officeSideLawyers } from '../core/publication-parties.js?v=3.1.0';
+import { renderOfficeInvolved, publicationInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.1.0';
+import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.1.0';
+import { matchMemberByName } from '../core/task-assignees.js?v=3.1.0';
+import { recordInvolvesMember } from '../core/office-involvement.js?v=3.1.0';
 
 // A nova tentativa do mesmo envio, depois de uma queda de rede, não manda outro e-mail.
 const emailAttempt = createAttemptKey();

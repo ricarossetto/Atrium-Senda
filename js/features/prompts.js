@@ -1,7 +1,7 @@
 const PROMPTS_ICON_NAMES = new Set(['assistant', 'check', 'copy', 'search']);
 const iconSvg = name => {
   const safeName = PROMPTS_ICON_NAMES.has(name) ? name : 'search';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-${safeName}"></use></svg>`;
 };
 
 const promptTypeClass = value => {

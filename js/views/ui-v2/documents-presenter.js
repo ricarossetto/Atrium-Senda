@@ -12,7 +12,7 @@ export function renderDocumentsV2Catalog({ catalog, escapeHtml }) {
       </div>
       <div class="prompt-card-actions">
         <button type="button" class="button ghost btn-full" data-generate-doc-type="${escapeHtml(template.id)}" aria-label="Gerar ${escapeHtml(template.title)}">
-          Abrir modelo <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-chevron-right"></use></svg>
+          Abrir modelo <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-chevron-right"></use></svg>
         </button>
       </div>
     </article>

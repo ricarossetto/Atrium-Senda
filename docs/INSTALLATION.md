@@ -4,9 +4,28 @@ O ATRIUM Senda é uma edição **open-source e self-hosted**: o escritório inst
 
 ## Instalação (usuários)
 
-### Aplicativo desktop (Windows)
+### Aplicativo desktop (Windows, Linux e macOS)
 
-Baixe o instalador `ATRIUM_Setup_3.0.2_x64.exe` em [releases](https://github.com/ricarossetto/Atrium-Senda/releases), confira o SHA-256 (`SHA256SUMS.txt`) e execute. O aplicativo abre o próprio servidor local; nenhum dado sai da máquina. Os dados ficam em `%APPDATA%\ATRIUM\data` e os logs, em `%APPDATA%\ATRIUM\logs`.
+Baixe o pacote da sua plataforma em [releases](https://github.com/ricarossetto/Atrium-Senda/releases) e confira o `SHA256SUMS.txt`. O aplicativo abre o próprio servidor local; nenhum dado sai da máquina.
+
+| Sistema | Pacote | Dados e logs |
+| --- | --- | --- |
+| Windows 10/11 | `.exe` (NSIS) ou `.msi` | `%APPDATA%\ATRIUM\data` e `...\logs` |
+| Windows 11 ARM64 | `.exe` (NSIS) | idem |
+| Debian 12+, Ubuntu 22.04+, Mint, Pop!_OS, Zorin | `.deb` | `${XDG_DATA_HOME:-~/.local/share}/atrium/data` e `.../logs` |
+| Fedora (webkit2gtk4.1), RHEL 9+, Rocky, Alma, openSUSE | `.rpm` | idem |
+| Arch, Manjaro, EndeavourOS | AppImage ou `packaging/arch/PKGBUILD` | idem |
+| macOS 11+ (Apple Silicon ou Intel) | `.dmg` | `~/Library/Application Support/ATRIUM/data` e `.../logs` |
+
+No Linux, o script oficial escolhe o formato pela distribuição e confere o SHA-256:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ricarossetto/Atrium-Senda/main/packaging/linux/install.sh | bash
+```
+
+Para forçar um formato: `bash install.sh --deb`, `--rpm` ou `--appimage`. No Arch, o `PKGBUILD` em `packaging/arch/` instala o AppImage como `atrium-senda-bin`.
+
+No macOS, abra o `.dmg` e arraste o ATRIUM para Aplicativos. Se o Gatekeeper bloquear um build sem assinatura, use Ajustes do Sistema > Privacidade e Segurança > Abrir mesmo assim ou `xattr -dr com.apple.quarantine /Applications/ATRIUM.app`.
 
 ### Instalação manual (Node.js 24+)
 
@@ -18,11 +37,11 @@ pnpm exec playwright install chromium   # somente para sessões assistidas de co
 pnpm start
 ```
 
-Abra `http://127.0.0.1:4173` e siga o primeiro uso (administrador do escritório, verificação em duas etapas, OAB opcional). O `ATRIUM.bat --doctor` diagnostica o ambiente sem alterar dados.
+Abra `http://127.0.0.1:4173` e siga o primeiro uso (administrador do escritório, verificação em duas etapas, OAB opcional). No Windows, o `ATRIUM.bat --doctor` diagnostica o ambiente sem alterar dados.
 
 ## Primeiro acesso
 
-Crie a conta como administrador no primeiro uso. Novos membros são adicionados pelo administrador em Configurações > Equipe > Escritório.uarde os códigos de recuperação. A administração do escritório resolve backups, permissões e credenciais judiciais pelas telas autenticadas do produto.
+Crie a conta como administrador no primeiro uso. Novos membros são adicionados pelo administrador em Configurações > Equipe > Escritório. Guarde os códigos de recuperação. A administração do escritório resolve backups, permissões e credenciais judiciais pelas telas autenticadas do produto.
 
 A1 fica no cofre cifrado do workspace, no computador do escritório. Portais judiciais podem exigir certificado A1, PJeOffice, TOTP ou ação humana. Integrações judiciais são somente leitura e nunca produzem ciência, assinatura ou protocolo.
 

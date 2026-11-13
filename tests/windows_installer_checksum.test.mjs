@@ -10,5 +10,5 @@ for (const path of ['collector/install-scheduler.ps1', 'collector/run-collector.
   assert.equal(existsSync(new URL(`../${path}`, import.meta.url)), true, `${path}: script técnico permanece`);
 }
 const installer = await readFile(new URL('../install.ps1', import.meta.url), 'utf8');
-assert.match(installer, /v3\.0\.2/, 'install.ps1 deve preparar a release v3.0.2');
-console.log('Lançador Windows presente e coerente com a release v3.0.2.');
+assert.match(installer, /v3\.1\.0/, 'install.ps1 deve preparar a release v3.1.0');
+console.log('Lançador Windows presente e coerente com a release v3.1.0.');

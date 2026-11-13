@@ -224,7 +224,7 @@ function Invoke-Doctor {
 }
 
 Write-Host '==============================================================='
-Write-Host '  ATRIUM 3.0.2 — ESCRITÓRIO INTEGRADO'
+Write-Host '  ATRIUM 3.1.0 — ESCRITÓRIO INTEGRADO'
 Write-Host '==============================================================='
 
 if (-not [Environment]::OSVersion.Platform.ToString().StartsWith('Win')) {
