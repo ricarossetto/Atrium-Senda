@@ -105,4 +105,4 @@ jobs:
           releaseDraft: true
           prerelease: false
           includeUpdaterJson: true
-          args: --bundles dmg
+          args: --bundles dmg,app
