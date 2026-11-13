@@ -1,0 +1,184 @@
+/* ==========================================================================
+   Camada de movimento — receitas gratuitas do transitions.dev adaptadas ao
+   sistema mineral/editorial do ATRIUM.
+
+   Regras desta camada:
+   - Só entradas e microtransições; nada de animação contínua de descanso.
+   - Tokens de tokens.css (--v2-duration-*, --v2-ease-*), sem escala paralela.
+   - Abertura com --v2-ease-emphasized; onde a saída não pode ser animada
+     porque o DOM é removido, o fechamento continua imediato.
+   - Toda animação respeita o guarda global de prefers-reduced-motion do
+     motion.css, que zera duração e atraso de todo o html[data-ui="v2"].
+
+   Receitas usadas (transitions.dev, versão gratuita):
+   menu dropdown, modal open/close, toast open/close, tooltip open/close,
+   icon swap e notification badge.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Menu dropdown — o painel nasce do gatilho, não do centro da tela.
+   Alvo: central de notificações, menu "Novo", ferramentas e busca global.
+   -------------------------------------------------------------------------- */
+@keyframes v2-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+html[data-ui="v2"] .notification-panel:not(.hidden),
+html[data-ui="v2"] .v2-utilities-menu[open] .v2-utilities-menu-panel,
+html[data-ui="v2"] .quick-add-menu:not(.hidden) {
+  animation: v2-menu-enter var(--v2-duration-base) var(--v2-ease-emphasized) both;
+  transform-origin: top right;
+}
+
+html[data-ui="v2"] .quick-add-menu:not(.hidden),
+html[data-ui="v2"] .search-palette-dropdown:not(.hidden) {
+  transform-origin: top left;
+}
+
+html[data-ui="v2"] .search-palette-dropdown:not(.hidden) {
+  animation: v2-menu-enter var(--v2-duration-base) var(--v2-ease-emphasized) both;
+}
+
+/* --------------------------------------------------------------------------
+   2. Modal open/close — a entrada sobe 8px e resolve o desfoque. Sem escala no
+   próprio diálogo: a geometria dos controles é medida durante a abertura pelos
+   testes de alvo de toque (>=40px), e um scale de 0.96 encolhia o botão de
+   fechar para 39px. O movimento fica no eixo e no foco, não no tamanho.
+   -------------------------------------------------------------------------- */
+@keyframes v2-modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+html[data-ui="v2"] .modal-backdrop:not(.hidden) .modal {
+  animation: v2-modal-enter var(--v2-duration-base) var(--v2-ease-emphasized) both;
+  transform-origin: center;
+}
+
+/* --------------------------------------------------------------------------
+   3. Toast open/close — sobe 8px, resolve o blur e assenta. A entrada usa o
+   token mais longo do sistema (slow, 280ms) porque o aviso precisa ser lido
+   antes de sair; a remoção do DOM segue imediata, sem inventar saída falsa.
+   -------------------------------------------------------------------------- */
+@keyframes v2-toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+html[data-ui="v2"] .toast {
+  animation: v2-toast-enter var(--v2-duration-slow) var(--v2-ease-emphasized) both;
+  transform-origin: bottom right;
+}
+
+/* --------------------------------------------------------------------------
+   4. Tooltip open/close — 80ms de intenção na entrada (o cursor que só passa
+   não abre), saída imediata. O atraso vive no estado aberto, então fechar
+   nunca espera.
+   -------------------------------------------------------------------------- */
+html[data-ui="v2"] .ui-tooltip {
+  transform: translateY(3px);
+  filter: blur(2px);
+  transition:
+    opacity var(--v2-duration-fast) var(--v2-ease-standard),
+    transform var(--v2-duration-fast) var(--v2-ease-standard),
+    filter var(--v2-duration-fast) var(--v2-ease-standard),
+    visibility 0s linear var(--v2-duration-fast);
+}
+
+html[data-ui="v2"] .ui-tooltip[data-open='true'] {
+  transform: translateY(0);
+  filter: blur(0);
+  transition-delay: var(--v2-duration-micro, 80ms);
+}
+
+/* --------------------------------------------------------------------------
+   5. Icon swap — o novo ícone entra com escala e blur curtos, no lugar do
+   antigo. Vale para o botão de tema (sol/lua), que troca o SVG em memória.
+   -------------------------------------------------------------------------- */
+@keyframes v2-icon-swap-in {
+  from {
+    opacity: 0;
+    transform: scale(0.72) rotate(-12deg);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+    filter: blur(0);
+  }
+}
+
+html[data-ui="v2"] #themeToggleIcon svg {
+  animation: v2-icon-swap-in var(--v2-duration-fast) var(--v2-ease-emphasized) both;
+  transform-origin: center;
+}
+
+/* --------------------------------------------------------------------------
+   6. Notification badge — o contador aparece como um selo, não como texto que
+   "piscou". A geometria do badge é contrato (20px de altura, eixo óptico do
+   item), então a entrada usa apenas opacidade e desfoque: nada de escala no
+   próprio elemento medido. @starting-style cobre a troca de display:none para
+   inline-block feita pelo controlador do painel.
+   -------------------------------------------------------------------------- */
+html[data-ui="v2"] .nav-count {
+  transition:
+    opacity var(--v2-duration-slow) var(--v2-ease-emphasized),
+    filter var(--v2-duration-slow) var(--v2-ease-emphasized);
+}
+
+@starting-style {
+  html[data-ui="v2"] .nav-count {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+
+/* O ponto da central é absoluto (7px, fora do fluxo): pode escalar sem mexer em
+   geometria nenhuma. É o "selo" que aparece no sino quando há pendência. */
+html[data-ui="v2"] .notification-button > span {
+  transform-origin: center;
+  transition:
+    opacity var(--v2-duration-slow) var(--v2-ease-emphasized),
+    transform var(--v2-duration-slow) var(--v2-ease-bounce, cubic-bezier(0.34, 1.36, 0.64, 1));
+}
+
+@starting-style {
+  html[data-ui="v2"] .notification-button > span {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. Entrada de view — a direção (avançar/voltar) é decidida pelo controlador
+   em page-transition.js. Manter também a animação vertical aqui duplicava o
+   movimento por 80ms e produzia um salto no fim. Uma única fonte.
+   -------------------------------------------------------------------------- */
+html[data-ui="v2"] .view.active {
+  animation: none;
+}

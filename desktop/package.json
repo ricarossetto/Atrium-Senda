@@ -1,8 +1,8 @@
 {
   "name": "atrium-senda-desktop",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "private": true,
-  "description": "Empacotamento desktop (Tauri) do ATRIUM Senda para Windows.",
+  "description": "Empacotamento desktop (Tauri) do ATRIUM Senda para Windows, Linux e macOS.",
   "license": "MIT",
   "scripts": {
     "build:resources": "node scripts/build-desktop-resources.mjs",

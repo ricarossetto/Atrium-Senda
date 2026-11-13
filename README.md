@@ -1,24 +1,41 @@
 # ATRIUM — Edição Aberta (Senda)
 
-**Gestão jurídica soberana, local-first, para escritórios brasileiros.**
+**Gestão jurídica local e privada para escritórios brasileiros.**
 
 O **ATRIUM** reúne processos, publicações, contatos e CRM, tarefas (Kanban), agenda, financeiro, documentos com OCR local e integrações judiciais somente leitura (DJEN, DataJud e eproc/PJe nacional) em um único ambiente. É um projeto de código aberto (MIT): você instala, opera e audita tudo no seu computador, com os dados cifrados sob o seu controle.
 
 Decisões jurídicas, confirmação de prazos e atos processuais continuam sob responsabilidade humana. O ATRIUM nunca dá ciência, não assina e não protocola nada em portais judiciais.
 
 [![Licença](https://img.shields.io/badge/licença-MIT-blue)](LICENSE)
-[![Versão](https://img.shields.io/badge/versão-3.0.2-9b7a3c)](docs/RELEASE_NOTES_3.0.2.md)
+[![Versão](https://img.shields.io/badge/versão-3.1.0-9b7a3c)](docs/RELEASE_NOTES_3.1.0.md)
 [![Node.js](https://img.shields.io/badge/Node.js-24+-3c873a)](#instalação)
 
 ---
 
 ## Instalação
 
-### App desktop (Windows)
+### App desktop (Windows, Linux e macOS)
 
-Baixe o instalador **`ATRIUM_Setup_3.0.2_x64.exe`** (NSIS, instalação por usuário, sem administrador — 35,6 MB) na [página de releases](https://github.com/ricarossetto/Atrium-Senda/releases) e execute. O aplicativo abre direto no seu computador: o servidor local inicia sozinho, o primeiro acesso cria o administrador do escritório, e as atualizações chegam pela própria aplicação, assinadas digitalmente (Ed25519). Nenhum dado sai da sua máquina sem que você peça.
+Baixe o pacote da sua plataforma na [página de releases](https://github.com/ricarossetto/Atrium-Senda/releases). O aplicativo abre direto no computador: o servidor local inicia sozinho, o primeiro acesso cria o administrador do escritório e as atualizações chegam pela própria aplicação, assinadas com Ed25519.
 
-A soma SHA-256 do instalador 3.0.2 é `14c43e5f636e0631186f306aa4937bed5e1652c312dd68a11d12ec38e571dbaf` (também publicada como `SHA256SUMS.txt` no mesmo release; confira antes de instalar).
+| Sistema | Arquivo |
+| --- | --- |
+| Windows 10/11 x64 | `ATRIUM_3.1.0_x64-setup.exe` (NSIS) ou `ATRIUM_3.1.0_x64_pt-BR.msi` |
+| Windows 11 ARM64 | `ATRIUM_3.1.0_arm64-setup.exe` (NSIS) |
+| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.1.0_amd64.deb` |
+| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.1.0-1.x86_64.rpm` |
+| Arch, Manjaro, EndeavourOS | AppImage ou `packaging/arch/PKGBUILD` |
+| Qualquer Linux x64 | `ATRIUM_3.1.0_amd64.AppImage` |
+| macOS Apple Silicon | `ATRIUM_3.1.0_aarch64.dmg` |
+| macOS Intel | `ATRIUM_3.1.0_x64.dmg` |
+
+No Linux, o script oficial detecta a distribuição e instala o formato certo:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ricarossetto/Atrium-Senda/main/packaging/linux/install.sh | bash
+```
+
+As somas SHA-256 de todos os artefatos estão em `SHA256SUMS.txt` no mesmo release; o script de Linux confere automaticamente antes de instalar. No macOS sem assinatura, o Gatekeeper pede confirmação em Ajustes do Sistema > Privacidade e Segurança.
 
 ### Instalação manual (qualquer sistema com Node 24+)
 
@@ -132,7 +149,7 @@ Leia [docs/CONTRIBUTING.md](.github/CONTRIBUTING.md) ou os guardrails completos 
 ## Documentação
 
 - [Instalação](docs/INSTALLATION.md) · [Primeiros 10 minutos](docs/QUICK_START.md) · [Manual do usuário](docs/USER_MANUAL.md)
-- [Arquitetura](docs/ARCHITECTURE.md) · [Specs](specs/README.md) · [CHANGELOG](docs/CHANGELOG.md) · [Notas da 3.0.2](docs/RELEASE_NOTES_3.0.2.md)
+- [Arquitetura](docs/ARCHITECTURE.md) · [Specs](specs/README.md) · [CHANGELOG](docs/CHANGELOG.md) · [Notas da 3.1.0](docs/RELEASE_NOTES_3.1.0.md)
 
 ## Licença
 

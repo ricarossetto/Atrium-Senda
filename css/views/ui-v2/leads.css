@@ -684,7 +684,7 @@ html[data-ui="v2"] #view-leads .lead-view-switch::before {
   background: var(--v2-color-surface-elevated);
   border-radius: var(--v2-radius-round);
   box-shadow: var(--v2-shadow-subtle), 0 1px 3px rgba(0, 0, 0, 0.12);
-  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--v2-duration-base) var(--v2-ease-emphasized);
   pointer-events: none;
   z-index: 1;
 }

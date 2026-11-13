@@ -85,4 +85,4 @@ export function renderPromptsV2Presentation({
 
   return Object.freeze({ chipsHtml, libraryHtml });
 }
-import { iconSvg } from './icons.js?v=3.0.2';
+import { iconSvg } from './icons.js?v=3.1.0';

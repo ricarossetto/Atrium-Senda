@@ -106,7 +106,7 @@ export function renderReportsWorkspace({ report, sort = { key: 'points', dir: 'd
       <label class="reports-filter"><span>Até</span><input type="date" data-report-filter="dateTo" value="${escape(filters.dateTo, escapeHtml)}"></label>` : ''}
       ${filterSelect('responsible', 'responsável', filterOptions.responsibles, filters.responsible, escapeHtml)}
       ${filterSelect('taskType', 'tipo de atividade', filterOptions.taskTypes, filters.taskType, escapeHtml)}
-      <button type="button" class="button ghost" data-report-export><svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-download"></use></svg><span>Exportar CSV</span></button>
+      <button type="button" class="button ghost" data-report-export><svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-download"></use></svg><span>Exportar CSV</span></button>
     </div>
 
     <div class="reports-kpis" role="group" aria-label="Resumo do período">${kpis}</div>

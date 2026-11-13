@@ -15,18 +15,57 @@ use tauri::Manager;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
+
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// Sinais do Unix usados para encerrar o grupo do servidor sem depender de
+/// ferramentas externas (`kill` pode não estar no PATH em instalações mínimas).
+#[cfg(unix)]
+mod unix_signal {
+    pub const SIGTERM: i32 = 15;
+    pub const SIGKILL: i32 = 9;
+    unsafe extern "C" {
+        pub fn kill(pid: i32, sig: i32) -> i32;
+    }
+}
 
 /// Estado gerenciado pelo Tauri: id do processo do servidor Node.
 struct ServerChild(Mutex<Option<Child>>);
 
 fn config_root() -> PathBuf {
-    // %APPDATA%\ATRIUM — dados cifrados do escritório e logs do aplicativo.
-    std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::temp_dir())
-        .join("ATRIUM")
+    // Uma raiz por sistema, sempre no diretório de dados do usuário:
+    //   Windows  %APPDATA%\ATRIUM
+    //   macOS    ~/Library/Application Support/ATRIUM
+    //   Linux    $XDG_DATA_HOME/atrium (ou ~/.local/share/atrium)
+    #[cfg(windows)]
+    {
+        return std::env::var_os("APPDATA")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| std::env::temp_dir())
+            .join("ATRIUM");
+    }
+    #[cfg(target_os = "macos")]
+    {
+        return std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| std::env::temp_dir())
+            .join("Library")
+            .join("Application Support")
+            .join("ATRIUM");
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        return std::env::var_os("XDG_DATA_HOME")
+            .map(PathBuf::from)
+            .or_else(|| {
+                std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local").join("share"))
+            })
+            .unwrap_or_else(|| std::env::temp_dir())
+            .join("atrium");
+    }
 }
 
 fn logs_dir() -> PathBuf {
@@ -122,7 +161,17 @@ fn generate_secret() -> String {
         }
     }
     #[cfg(not(windows))]
-    fallback_entropy(&mut bytes);
+    {
+        // /dev/urandom é a fonte do sistema no Unix; se não abrir, cai no
+        // gerador de emergência (nunca silenciosamente previsível).
+        if let Ok(mut source) = fs::File::open("/dev/urandom") {
+            if source.read_exact(&mut bytes).is_err() {
+                fallback_entropy(&mut bytes);
+            }
+        } else {
+            fallback_entropy(&mut bytes);
+        }
+    }
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(44);
     for chunk in bytes.chunks(3) {
@@ -213,7 +262,8 @@ fn spawn_server(app: &tauri::AppHandle, port: u16) -> Result<Child, String> {
         .path()
         .resource_dir()
         .map_err(|e| format!("Diretório de recursos indisponível: {e}"))?;
-    let node = resource_dir.join("node").join("node.exe");
+    let node_bin = if cfg!(windows) { "node.exe" } else { "node" };
+    let node = resource_dir.join("node").join(node_bin);
     let app_dir = resource_dir.join("app");
     let server = app_dir.join("server.mjs");
     if !node.exists() {
@@ -238,6 +288,10 @@ fn spawn_server(app: &tauri::AppHandle, port: u16) -> Result<Child, String> {
         .stderr(Stdio::piped());
     #[cfg(windows)]
     command.creation_flags(CREATE_NO_WINDOW);
+    // No Unix, o servidor inicia o próprio grupo de processos; assim o
+    // encerramento atinge também coletor e Chromium, como o taskkill /T no Windows.
+    #[cfg(unix)]
+    command.process_group(0);
 
     ensure_runtime_env()?
         .iter()
@@ -266,9 +320,20 @@ fn kill_server(child: &mut Option<Child>) {
                 .stderr(Stdio::null())
                 .status();
         }
-        #[cfg(not(windows))]
+        #[cfg(unix)]
         {
-            let _ = child.kill();
+            // O servidor foi iniciado com process_group(0): o PID negativo
+            // encerra o grupo inteiro (servidor + coletor + Chromium).
+            let group = -(child.id() as i32);
+            unsafe {
+                let _ = unix_signal::kill(group, unix_signal::SIGTERM);
+            }
+            thread::sleep(Duration::from_millis(800));
+            if child.try_wait().ok().flatten().is_none() {
+                unsafe {
+                    let _ = unix_signal::kill(group, unix_signal::SIGKILL);
+                }
+            }
         }
         let _ = child.wait();
     }
@@ -367,7 +432,7 @@ pub fn run() {
                             logs_dir().join("startup-error.log"),
                             "O servidor local não respondeu /api/health em 90 segundos.",
                         );
-                        eprintln!("ATRIUM: o servidor local não respondeu a tempo; consulte logs\\server.log.");
+                        eprintln!("ATRIUM: o servidor local não respondeu a tempo; consulte logs/server.log.");
                         std::process::exit(1);
                     }
                 });

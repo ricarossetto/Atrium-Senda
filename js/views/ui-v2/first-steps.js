@@ -1,4 +1,4 @@
-import { HOW_TO } from '../../core/setup-how-to.js?v=3.0.2';
+import { HOW_TO } from '../../core/setup-how-to.js?v=3.1.0';
 /**
  * ATRIUM — bloco "Comece por aqui" do painel.
  *
@@ -110,7 +110,7 @@ export function renderFirstSteps({ documentRef, state, status = {}, canManage = 
     </header>
     <ol class="v2-first-steps-list">
       ${steps.map((step, index) => `<li class="v2-first-step${step.done ? ' is-done' : ''}" data-first-step="${escapeHtml(step.id)}">
-        <span class="v2-first-step-mark" aria-hidden="true">${step.done ? '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-check"></use></svg>' : index + 1}</span>
+        <span class="v2-first-step-mark" aria-hidden="true">${step.done ? '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-check"></use></svg>' : index + 1}</span>
         <div class="v2-first-step-copy">
           <strong>${escapeHtml(step.title)}${step.done ? '<span class="sr-only"> (concluído)</span>' : ''}</strong>
           <small>${escapeHtml(step.detail)}</small>

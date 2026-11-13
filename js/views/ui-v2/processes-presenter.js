@@ -1,9 +1,9 @@
-import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.0.2';
-import { compactSourceLabel } from '../../core/legal-timeline.js?v=3.0.2';
-import { describeCnj } from '../../core/cnj.js?v=3.0.2';
-import { safeImageSource } from '../../core/link-safety.js?v=3.0.2';
-import { sanitizeRichHtml } from '../../core/html-safety.js?v=3.0.2';
-import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.0.2';
+import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.1.0';
+import { compactSourceLabel } from '../../core/legal-timeline.js?v=3.1.0';
+import { describeCnj } from '../../core/cnj.js?v=3.1.0';
+import { safeImageSource } from '../../core/link-safety.js?v=3.1.0';
+import { sanitizeRichHtml } from '../../core/html-safety.js?v=3.1.0';
+import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.1.0';
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -267,19 +267,19 @@ export function createProcessesV2Presenter({
       a1Button.classList.remove('is-available', 'is-complete');
       if (isDownloaded) {
         a1Button.disabled = false;
-        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-check"></use></svg><span>Autos baixados</span>';
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-check"></use></svg><span>Autos baixados</span>';
         a1Button.title = 'Autos oficiais já baixados do eproc TJRS via Certificado A1.';
       } else if (!isTjrs) {
         a1Button.disabled = true;
-        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
         a1Button.title = 'Baixar autos com A1 disponível apenas para processos do TJRS (eproc).';
       } else if (!hasA1) {
         a1Button.disabled = true;
-        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
         a1Button.title = 'Requer Certificado Digital A1 ativo nas configurações do escritório.';
       } else {
         a1Button.disabled = false;
-        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
         a1Button.title = 'Baixar peças oficiais e autos integrais do eproc TJRS via Certificado A1.';
       }
     }
@@ -773,7 +773,7 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
   ${renderProcessFinance(item, escapeHtml, formatDate)}
 
   <section class="process-inspector-section" aria-labelledby="processTimelineHeading">
-    <div class="process-inspector-section-heading"><h3 id="processTimelineHeading">Linha do tempo jurídica</h3><button type="button" class="button ghost" data-process-new-movement><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-add"></use></svg><span>Novo andamento</span></button></div>
+    <div class="process-inspector-section-heading"><h3 id="processTimelineHeading">Linha do tempo jurídica</h3><button type="button" class="button ghost" data-process-new-movement><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-add"></use></svg><span>Novo andamento</span></button></div>
     ${renderLegalTimeline(summary.timeline || [], escapeHtml, formatDate)}
   </section>
 

@@ -1,9 +1,9 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.0.2';
-import { buildClientContext } from '../core/client-context.js?v=3.0.2';
-import { findStrongDuplicateIndexes, pickKeeperIndex } from '../core/contact-identity.js?v=3.0.2';
-import { renderContactsV2Workspace } from '../views/ui-v2/contacts-presenter.js?v=3.0.2';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.2';
-import { installPanelSizeToggleFor, isPanelMaximized, resetPanelSize, setPanelSize, syncPanelSizeControl } from '../components/panel-size.js?v=3.0.2';
+import { Store, isoDate, uid } from '../core/store.js?v=3.1.0';
+import { buildClientContext } from '../core/client-context.js?v=3.1.0';
+import { findStrongDuplicateIndexes, pickKeeperIndex } from '../core/contact-identity.js?v=3.1.0';
+import { renderContactsV2Workspace } from '../views/ui-v2/contacts-presenter.js?v=3.1.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.1.0';
+import { installPanelSizeToggleFor, isPanelMaximized, resetPanelSize, setPanelSize, syncPanelSizeControl } from '../components/panel-size.js?v=3.1.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 export const CONTACT_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);

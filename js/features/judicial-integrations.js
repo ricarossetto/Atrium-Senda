@@ -1,5 +1,5 @@
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
-const iconSvg = name => `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-${name}"></use></svg>`;
+const iconSvg = name => `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-${name}"></use></svg>`;
 
 export function createJudicialIntegrationsFeature({
   documentRef = globalThis.document,
@@ -1407,7 +1407,7 @@ export function createJudicialIntegrationsFeature({
           <article class="v2-eproc-portal-card" data-portal-id="${escapeHtml(p.id)}">
             <div class="v2-eproc-card-top">
               <span class="v2-eproc-court-badge">
-                ${presentation?.icon?.('court') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-court"></use></svg>'}
+                ${presentation?.icon?.('court') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-court"></use></svg>'}
                 ${escapeHtml(p.acronym || p.id)}
               </span>
               <span class="status-chip ${badgeClass}">${escapeHtml(p.statusLabel || (isConnected ? 'Conectado' : 'Disponível'))}</span>
@@ -1416,7 +1416,7 @@ export function createJudicialIntegrationsFeature({
               <h4>${escapeHtml(p.name)}</h4>
               <p>${escapeHtml(p.court)} · Grau ${p.level}</p>
               <div class="v2-eproc-auth-method">
-                ${presentation?.icon?.('security') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-security"></use></svg>'}
+                ${presentation?.icon?.('security') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-security"></use></svg>'}
                 <span>${escapeHtml(p.authType)}</span>
               </div>
               <div class="v2-eproc-card-metrics">
@@ -1432,7 +1432,7 @@ export function createJudicialIntegrationsFeature({
               <div class="v2-eproc-card-actions">
                 ${p.requiresA1 || p.requiresTotp ? `<button type="button" class="button ghost" data-open-portal-config="${escapeHtml(p.id)}">Configurar</button>` : ''}
                 <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer" class="button ghost" title="Abrir portal oficial do tribunal" aria-label="Abrir ${escapeHtml(p.name)}">
-                  ${presentation?.icon?.('external-link') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.0.2#atrium-icon-external-link"></use></svg>'}
+                  ${presentation?.icon?.('external-link') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-external-link"></use></svg>'}
                 </a>
               </div>
             </div>

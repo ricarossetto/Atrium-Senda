@@ -7,7 +7,7 @@
  * Configurações); o wizard nunca altera portais, certificado ou permissões por conta própria.
  */
 
-import { CNJ_SEGMENTS, CNJ_TRIBUNALS } from '../core/cnj.js?v=3.0.2';
+import { CNJ_SEGMENTS, CNJ_TRIBUNALS } from '../core/cnj.js?v=3.1.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 const courtOptions = Object.entries(CNJ_TRIBUNALS).map(([segment, tribunal]) => ({

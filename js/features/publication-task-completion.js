@@ -1,4 +1,4 @@
-import { applyTaskCompletionTreatment, planTaskCompletionTreatment } from '../core/publication-task-treatment.js?v=3.0.2';
+import { applyTaskCompletionTreatment, planTaskCompletionTreatment } from '../core/publication-task-treatment.js?v=3.1.0';
 
 const SNAPSHOT_FIELDS = [
   'treatmentStatus', 'treatedAt', 'treatedBy', 'discardedAt', 'discardedBy',

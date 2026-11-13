@@ -1,7 +1,7 @@
-import { Store } from '../core/store.js?v=3.0.2';
-import { computeProductivityReport, buildProductivityCsv } from '../core/task-performance.js?v=3.0.2';
-import { renderReportsWorkspace } from '../views/ui-v2/reports-presenter.js?v=3.0.2';
-import { officeScopeItems } from '../core/office-scope.js?v=3.0.2';
+import { Store } from '../core/store.js?v=3.1.0';
+import { computeProductivityReport, buildProductivityCsv } from '../core/task-performance.js?v=3.1.0';
+import { renderReportsWorkspace } from '../views/ui-v2/reports-presenter.js?v=3.1.0';
+import { officeScopeItems } from '../core/office-scope.js?v=3.1.0';
 
 /**
  * ATRIUM — Feature de Relatórios (produtividade de tarefas)

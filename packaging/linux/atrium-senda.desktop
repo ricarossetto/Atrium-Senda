@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=ATRIUM
+GenericName=Gestão jurídica
+Comment=Gestão jurídica local e privada para escritórios brasileiros
+Exec=atrium-senda %U
+Icon=atrium-senda
+Terminal=false
+Categories=Office;Finance;
+Keywords=juridico;advocacia;processos;publicacoes;atrium;
+StartupWMClass=ATRIUM
+StartupNotify=true

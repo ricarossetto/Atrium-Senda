@@ -1,0 +1,105 @@
+name: Desktop macOS
+
+# Rebuild apenas os DMGs de uma versão já tagueada. Serve para quando o build
+# principal falha por causa de assinatura Apple ou de um runner macOS, sem
+# recompilar Windows/Linux nem mover a tag.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag do release (ex.: v3.1.0)"
+        required: true
+        default: v3.1.0
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag }}
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: macOS Apple Silicon
+            os: macos-15
+            target: darwin-arm64
+          - name: macOS Intel
+            os: macos-15-intel
+            target: darwin-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Obter o código
+        uses: actions/checkout@v4
+
+      - name: Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+
+      - name: Rust estável
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache do Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - name: Instalar dependências do projeto
+        run: pnpm install --frozen-lockfile
+
+      - name: Instalar CLI do Tauri (desktop)
+        run: pnpm --dir desktop install
+
+      - name: Montar recursos (Node empacotado + app)
+        run: pnpm --dir desktop run build:resources
+        env:
+          ATRIUM_DESKTOP_TARGET: ${{ matrix.target }}
+
+      - name: Preparar notas do release
+        id: release_notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${RELEASE_TAG}"
+          VERSION="${VERSION#v}"
+          NOTES="docs/RELEASE_NOTES_${VERSION}.md"
+          if [ -f "$NOTES" ]; then
+            BODY="$(cat "$NOTES")"
+          else
+            BODY="$(printf '# ATRIUM Senda %s\n\nConsulte o CHANGELOG do repositório.' "$VERSION")"
+          fi
+          {
+            echo 'body<<ATRIUM_NOTES_EOF'
+            printf '%s\n' "$BODY"
+            echo 'ATRIUM_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Compilar e publicar no release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Sem segredos Apple o DMG é gerado sem assinatura. Não declare as
+          # chaves vazias: o Tauri tenta importar o certificado e falha.
+        with:
+          projectPath: desktop
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: ATRIUM Senda ${{ env.RELEASE_TAG }}
+          releaseBody: ${{ steps.release_notes.outputs.body }}
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: true
+          args: --bundles dmg,app

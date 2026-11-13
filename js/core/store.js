@@ -1,5 +1,5 @@
-import { fetchState, importLegacyState, persistState } from './api.js?v=3.0.2';
-import { rebaseClientState } from './state-rebase.js?v=3.0.2';
+import { fetchState, importLegacyState, persistState } from './api.js?v=3.1.0';
+import { rebaseClientState } from './state-rebase.js?v=3.1.0';
 
 const STORAGE_KEY = 'jurisflow_storage_v1';
 

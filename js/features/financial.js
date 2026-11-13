@@ -1,7 +1,7 @@
-import { Store } from '../core/store.js?v=3.0.2';
-import { installModalComboboxes } from '../components/modal.js?v=3.0.2';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.0.2';
-import { renderFinancialChart } from '../views/ui-v2/financial-chart.js?v=3.0.2';
+import { Store } from '../core/store.js?v=3.1.0';
+import { installModalComboboxes } from '../components/modal.js?v=3.1.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.1.0';
+import { renderFinancialChart } from '../views/ui-v2/financial-chart.js?v=3.1.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 export const FINANCIAL_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);

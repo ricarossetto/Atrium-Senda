@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ATRIUM",
-  "version": "3.0.2",
+  "version": "3.1.0",
   "identifier": "br.adv.atriumsenda",
   "build": {
     "frontendDist": "../www"
@@ -28,16 +28,19 @@
     "active": true,
     "targets": ["nsis", "msi"],
     "createUpdaterArtifacts": true,
-    "shortDescription": "ATRIUM — gestão jurídica soberana",
-    "longDescription": "ATRIUM é a edição open-source do ATRIUM: gestão jurídica local-first para escritórios brasileiros, com dados cifrados, fluxo supervisionado e integrações judiciais somente leitura.",
+    "category": "Business",
+    "shortDescription": "ATRIUM — gestão jurídica local e privada",
+    "longDescription": "ATRIUM é a edição aberta e self-hosted do ATRIUM: gestão jurídica local-first para escritórios brasileiros, com dados cifrados, fluxo supervisionado e integrações judiciais somente leitura.",
     "publisher": "ATRIUM",
     "homepage": "https://github.com/ricarossetto/Atrium-Senda",
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.png",
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/icon.icns"
     ],
     "windows": {
       "wix": {
@@ -53,6 +56,27 @@
     "resources": {
       "../resources/app": "app",
       "../resources/node": "node"
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "dmg": {
+        "windowSize": { "width": 660, "height": 400 },
+        "appPosition": { "x": 180, "y": 170 },
+        "applicationFolderPosition": { "x": 480, "y": 170 }
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0",
+          "libayatana-appindicator3-1",
+          "librsvg2-2"
+        ]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
     }
   },
   "plugins": {
