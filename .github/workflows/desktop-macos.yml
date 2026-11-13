@@ -10,9 +10,15 @@ on:
         description: "Tag do release (ex.: v3.1.0)"
         required: true
         default: v3.1.0
+  push:
+    branches:
+      - ci/macos-3.1.0
 
 permissions:
   contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || 'v3.1.0' }}
 
 jobs:
   build:
@@ -69,7 +75,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${{ inputs.tag }}"
+          VERSION="${RELEASE_TAG}"
           VERSION="${VERSION#v}"
           NOTES="docs/RELEASE_NOTES_${VERSION}.md"
           if [ -f "$NOTES" ]; then
@@ -93,8 +99,8 @@ jobs:
           # chaves vazias: o Tauri tenta importar o certificado e falha.
         with:
           projectPath: desktop
-          tagName: ${{ inputs.tag }}
-          releaseName: ATRIUM Senda ${{ inputs.tag }}
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: ATRIUM Senda ${{ env.RELEASE_TAG }}
           releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: true
           prerelease: false
