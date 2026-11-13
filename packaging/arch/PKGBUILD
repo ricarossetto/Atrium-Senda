@@ -25,7 +25,7 @@ options=('!strip' '!debug')
 source=("ATRIUM-${pkgver}.AppImage::https://github.com/ricarossetto/Atrium-Senda/releases/download/v${pkgver}/ATRIUM_${pkgver}_amd64.AppImage"
         "atrium-senda.desktop::https://raw.githubusercontent.com/ricarossetto/Atrium-Senda/v${pkgver}/packaging/linux/atrium-senda.desktop"
         "atrium-senda.png::https://raw.githubusercontent.com/ricarossetto/Atrium-Senda/v${pkgver}/desktop/src-tauri/icons/icon.png")
-sha256sums=('07142aef4c5f806df791046d3f95da2ecd8a3a13b1340110313075d4012d477d'
+sha256sums=('6eebc9f65cf846abef8ce200d682541eb360b437513f52d62a7a3e42a985eb2e'
             '955228bab8884826813ea8df5a0baba526ebaa8eb49be6bbe48be7c7199b338f'
             '283f55263a6aaced9aa13de9beb42a3d0160de6158cd8fd6d82aab48f193ff3d')
 
