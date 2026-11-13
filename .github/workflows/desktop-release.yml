@@ -34,11 +34,11 @@ jobs:
           - name: macOS Apple Silicon
             os: macos-15
             target: darwin-arm64
-            bundles: '--bundles dmg'
+            bundles: '--bundles dmg,app'
           - name: macOS Intel
             os: macos-15-intel
             target: darwin-x64
-            bundles: '--bundles dmg'
+            bundles: '--bundles dmg,app'
 
     runs-on: ${{ matrix.os }}
 
