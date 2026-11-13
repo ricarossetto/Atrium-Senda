@@ -10,15 +10,12 @@ on:
         description: "Tag do release (ex.: v3.1.0)"
         required: true
         default: v3.1.0
-  push:
-    branches:
-      - ci/macos-3.1.0
 
 permissions:
   contents: write
 
 env:
-  RELEASE_TAG: ${{ github.event.inputs.tag || 'v3.1.0' }}
+  RELEASE_TAG: ${{ github.event.inputs.tag }}
 
 jobs:
   build:
