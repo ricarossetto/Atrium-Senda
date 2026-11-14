@@ -9,6 +9,7 @@ As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O format
 - **Botão "Conheça o Atrium" não quebrava mais o aplicativo**: o link apontava para `/discover/`, rota que o servidor não atende. Na tela de acesso, o botão virou "Versão na nuvem", que abre o serviço hospedado em uma aba nova.
 - **Promoção da versão na nuvem**: a tela de acesso ganhou um bloco próprio com o botão "Conhecer a versão na nuvem", a navegação da landing page ganhou o link "Versão na nuvem" e o banner final ganhou a chamada "Ver planos na nuvem".
 - **Navegação da landing page em uma linha**: os links deixaram de quebrar em duas linhas e os itens menos usados somem progressivamente em telas estreitas, sem espremer o botão de acesso.
+- **Instaladores republicados** para Windows x64 e ARM64 (NSIS e MSI), Linux (deb, rpm e AppImage) e macOS (dmg), agora com a interface corrigida.
 
 ### Alterado
 

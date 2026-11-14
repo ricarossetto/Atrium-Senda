@@ -12,7 +12,9 @@ Correção da tela de acesso e da landing page, com promoção mais clara da ver
 
 ## Instalação
 
-Os instaladores da 3.1.0 continuam valendo: esta versão muda apenas a interface e não traz artefato empacotado novo. Quem prefere a versão na nuvem pode usar `https://atrium.adv.br` sem instalar nada.
+Os instaladores são republicados nesta versão com a interface corrigida. Baixe o pacote da sua plataforma na [página de releases](https://github.com/ricarossetto/Atrium-Senda/releases) e confira a soma SHA-256 no `SHA256SUMS.txt` antes de instalar.
+
+Quem prefere a versão na nuvem pode usar `https://atrium.adv.br` sem instalar nada.
 
 Para atualizar a edição local a partir do código:
 

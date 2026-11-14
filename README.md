@@ -20,14 +20,14 @@ Baixe o pacote da sua plataforma na [página de releases](https://github.com/ric
 
 | Sistema | Arquivo |
 | --- | --- |
-| Windows 10/11 x64 | `ATRIUM_3.1.0_x64-setup.exe` (NSIS) ou `ATRIUM_3.1.0_x64_pt-BR.msi` |
-| Windows 11 ARM64 | `ATRIUM_3.1.0_arm64-setup.exe` (NSIS) |
-| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.1.0_amd64.deb` |
-| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.1.0-1.x86_64.rpm` |
+| Windows 10/11 x64 | `ATRIUM_3.1.1_x64-setup.exe` (NSIS) ou `ATRIUM_3.1.1_x64_pt-BR.msi` |
+| Windows 11 ARM64 | `ATRIUM_3.1.1_arm64-setup.exe` (NSIS) |
+| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.1.1_amd64.deb` |
+| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.1.1-1.x86_64.rpm` |
 | Arch, Manjaro, EndeavourOS | AppImage ou `packaging/arch/PKGBUILD` |
-| Qualquer Linux x64 | `ATRIUM_3.1.0_amd64.AppImage` |
-| macOS Apple Silicon | `ATRIUM_3.1.0_aarch64.dmg` |
-| macOS Intel | `ATRIUM_3.1.0_x64.dmg` |
+| Qualquer Linux x64 | `ATRIUM_3.1.1_amd64.AppImage` |
+| macOS Apple Silicon | `ATRIUM_3.1.1_aarch64.dmg` |
+| macOS Intel | `ATRIUM_3.1.1_x64.dmg` |
 
 No Linux, o script oficial detecta a distribuição e instala o formato certo:
 
