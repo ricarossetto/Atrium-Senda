@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, workspaceSetupToken: null, resetToken: null, pendingUser: null, user: null, workspace: null, workspaceRegistrationEnabled: true, bootstrapRequired: false, setupMfaRequired: false, profileAvatarDraft: '', profileSnapshot: '' };
+  const state = { authenticated: false, configured: false, csrfToken: null, setupToken: null, workspaceSetupToken: null, resetToken: null, pendingUser: null, user: null, workspace: null, workspaceRegistrationEnabled: true, setupMfaRequired: false, profileAvatarDraft: '', profileSnapshot: '' };
   let pendingSetupSession = null;
   let runtimeSessionKey = null;
   let registrationStep = 0;
@@ -27,11 +27,8 @@
         const status = await request('/api/auth/status');
         state.configured = status.configured;
         state.workspaceRegistrationEnabled = status.workspaceRegistrationEnabled !== false;
-        state.bootstrapRequired = Boolean(status.bootstrapRequired);
         state.setupMfaRequired = Boolean(status.setupMfaRequired);
         byId('authTabRegister')?.classList.toggle('hidden', !state.workspaceRegistrationEnabled);
-        byId('authBootstrapField')?.toggleAttribute('hidden', !state.bootstrapRequired);
-        if (byId('authBootstrapToken')) byId('authBootstrapToken').required = state.bootstrapRequired;
         byId('skipMfaButton')?.classList.toggle('hidden', state.setupMfaRequired);
         const rawResetToken = new URLSearchParams(globalThis.location.search).get('reset')
           || new URLSearchParams(String(globalThis.location.hash || '').replace(/^#/, '')).get('reset');
@@ -674,8 +671,7 @@
           oab: form.get('oab'),
           oabUf: form.get('oabUf'),
           enableMonitoring: monitor,
-          password: form.get('password'),
-          bootstrapToken: form.get('bootstrapToken')
+          password: form.get('password')
         } });
         state.setupToken = result.setupToken; byId('authQrCode').src = result.qrCode; byId('authManualSecret').textContent = result.manualSecret;
         formElement.reset(); this.show('authTotpSetupForm'); byId('authTotpSetupForm').elements.code.focus();
@@ -1151,7 +1147,7 @@ function passwordToggleIcon(visible) {
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
   const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.1.2#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
+  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.1.3#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
   svg.appendChild(use);
   return svg;
 }

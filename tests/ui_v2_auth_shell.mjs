@@ -273,7 +273,7 @@ try {
     await context.close();
     return names;
   })();
-  assert.deepEqual(fieldNames, ['bootstrapToken', 'code', 'confirmPassword', 'displayName', 'email', 'enableMonitoring', 'identifier', 'oab', 'oabUf', 'password', 'setupToken', 'trustBrowser', 'username', 'workspaceName']);
+  assert.deepEqual(fieldNames, ['code', 'confirmPassword', 'displayName', 'email', 'enableMonitoring', 'identifier', 'oab', 'oabUf', 'password', 'setupToken', 'trustBrowser', 'username', 'workspaceName']);
 
   const publicThemeControl = await (async () => {
     const context = await browser.newContext();

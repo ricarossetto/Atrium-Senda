@@ -1,4 +1,4 @@
-import { iconSvg } from './icons.js?v=3.1.2';
+import { iconSvg } from './icons.js?v=3.1.3';
 
 const COUNT_DEFINITIONS = Object.freeze([
   Object.freeze({ key: 'processes', label: 'Processos', icon: 'processes' }),

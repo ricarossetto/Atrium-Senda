@@ -34,7 +34,6 @@ async function runDeploymentTests() {
       KELLER_CLOUD_MODE: '',
       AUTH_SESSION_SECRET: '',
       AUTH_ENCRYPTION_KEY: '',
-      SETUP_BOOTSTRAP_TOKEN: '',
       ATRIUM_FRONTEND_ORIGINS: '',
       COOKIE_SECURE: 'false',
       KELLER_SKIP_COLLECTOR_ENV: 'true'
@@ -54,7 +53,6 @@ async function runDeploymentTests() {
 
   const dataDirectory = await mkdtemp(path.join(tmpdir(), 'atrium-deploy-test-'));
   const port = await findAvailablePort();
-  const bootstrapToken = 'test-bootstrap-token-' + randomBytes(8).toString('hex');
   const collectorToken = randomBytes(32).toString('base64url');
   const sessionSecret = randomBytes(48).toString('base64url');
   const encryptionKey = randomBytes(32).toString('base64');
@@ -75,7 +73,6 @@ async function runDeploymentTests() {
       AUTH_SESSION_SECRET: sessionSecret,
       AUTH_ENCRYPTION_KEY: encryptionKey,
       COLLECTOR_INGEST_TOKEN: collectorToken,
-      SETUP_BOOTSTRAP_TOKEN: bootstrapToken,
       ATRIUM_FRONTEND_ORIGINS: 'https://app.atrium.example.test',
       ATRIUM_PUBLIC_SIGNUP: 'false'
     },
@@ -107,38 +104,22 @@ async function runDeploymentTests() {
     console.log('✓ Servidor de produção iniciou com sucesso (HTTP 200).');
 
     const publicStatus = await (await fetch(`${baseUrl}/api/auth/status`)).json();
-    assert.equal(publicStatus.bootstrapRequired, true, 'Frontend deve saber que o primeiro setup exige token de ativação.');
+    assert.equal(publicStatus.bootstrapRequired, undefined, 'O primeiro setup não exige mais token de ativação.');
     assert.equal(publicStatus.setupMfaRequired, false, 'MFA é opcional por decisão do operador (AGENTS.md §32).');
     assert.equal(publicStatus.workspaceRegistrationEnabled, false, 'Cadastro público cloud deve permanecer fechado sem opt-in.');
 
-    // 2. Validar bloqueio de bootstrap sem token secreto
-    console.log('\n2. Validando proteção contra sequestro de primeiro administrador (SETUP_BOOTSTRAP_TOKEN)...');
-    const unauthorizedSetup = await fetch(`${baseUrl}/api/auth/setup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        displayName: 'Hacker Anônimo',
-        username: 'admin',
-        password: 'Password123!@#',
-        bootstrapToken: 'token-errado-123'
-      })
-    });
-    assert.equal(unauthorizedSetup.status, 403, 'Acesso a setup sem bootstrapToken correto deve ser rejeitado com 403');
-    console.log('✓ Requisição de setup não autorizada bloqueada com HTTP 403 Forbidden.');
-
-    // 3. Validar bootstrap com token correto e ativação TOTP
-    console.log('\n3. Validando setup de primeiro administrador com token de bootstrap correto e 2FA...');
+    // 2. Validar que o primeiro setup acontece sem token de ativação
+    console.log('\n2. Validando setup do primeiro administrador sem token de ativação...');
     const authorizedSetup = await fetch(`${baseUrl}/api/auth/setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         displayName: 'Administrador Titular',
         username: 'admin',
-        password: 'Password123!@#',
-        bootstrapToken: bootstrapToken
+        password: 'Password123!@#'
       })
     });
-    assert.equal(authorizedSetup.status, 200, 'Setup com bootstrapToken correto deve retornar 200');
+    assert.equal(authorizedSetup.status, 200, 'Setup sem token deve retornar 200');
     const setupData = await authorizedSetup.json();
     assert.ok(setupData.setupToken, 'Deve retornar setupToken assinado');
     assert.ok(setupData.manualSecret, 'Deve retornar chave TOTP Base32');
@@ -158,6 +139,20 @@ async function runDeploymentTests() {
     assert.ok(sessionCookie, 'Deve gerar cookie de sessão');
     assert.ok(csrfToken, 'Deve gerar CSRF token');
     console.log('✓ Administrador autenticado com MFA/TOTP e sessão segura.');
+
+    // 3. Validar que a configuração não pode ser refeita depois de concluída
+    console.log('\n3. Validando que a configuração não pode ser refeita depois de concluída...');
+    const repeatedSetup = await fetch(`${baseUrl}/api/auth/setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        displayName: 'Hacker Anônimo',
+        username: 'admin',
+        password: 'Password123!@#'
+      })
+    });
+    assert.equal(repeatedSetup.status, 409, 'Setup repetido deve ser rejeitado com 409');
+    console.log('✓ Setup já configurado bloqueado com HTTP 409 Conflict.');
 
     // 4. Validar bloqueio de recursos locais do Windows na nuvem (Cloud Mode)
     console.log('\n4. Validando bloqueio de rotas legadas sem instalação end-user em produção cloud-only...');

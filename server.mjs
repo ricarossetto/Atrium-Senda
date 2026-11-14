@@ -372,7 +372,6 @@ const security = new SecurityManager({
   encryptionKey: process.env.AUTH_ENCRYPTION_KEY,
   secureCookies: envFlag(process.env.COOKIE_SECURE),
   allowWorkspaceRegistration: PUBLIC_WORKSPACE_REGISTRATION,
-  bootstrapRequired: Boolean(process.env.SETUP_BOOTSTRAP_TOKEN),
 });
 await security.init();
 const restoredSessions = await security.restoreSessionsSnapshot();
@@ -1607,7 +1606,7 @@ function envFlag(value) {
 
 function assertCloudConfiguration() {
   if (envFlag(process.env.ATRIUM_ALLOW_INSECURE_TEST_ENV)) return;
-  const required = ['AUTH_SESSION_SECRET', 'AUTH_ENCRYPTION_KEY', 'SETUP_BOOTSTRAP_TOKEN', 'ATRIUM_FRONTEND_ORIGINS'];
+  const required = ['AUTH_SESSION_SECRET', 'AUTH_ENCRYPTION_KEY', 'ATRIUM_FRONTEND_ORIGINS'];
   const missing = required.filter(key => {
     const value = String(process.env[key] || '').trim();
     return !value || /troque|gerad|exemplo|change|replace/i.test(value);
@@ -6098,7 +6097,6 @@ const server = http.createServer(async (req, res) => {
           encryption: 'AES-256-GCM com derivação Scrypt',
           twoFactor: 'TOTP RFC 6238 disponível por usuário',
           cookieSecure: Boolean(security.secureCookies),
-          bootstrapTokenConfigured: Boolean(process.env.SETUP_BOOTSTRAP_TOKEN),
           totalUsers: (security.listUsers ? security.listUsers(session.workspaceId).length : 1),
           currentUserRole: session.role || 'master_admin'
         },

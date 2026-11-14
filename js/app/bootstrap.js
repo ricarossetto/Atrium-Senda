@@ -1,5 +1,5 @@
-import '../portal.js?v=3.1.2';
-import '../core/environment-badge.js?v=3.1.2';
+import '../portal.js?v=3.1.3';
+import '../core/environment-badge.js?v=3.1.3';
 
 export const MODULE_FOUNDATION_READY_EVENT = 'atrium:module-foundation-ready';
 

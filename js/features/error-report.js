@@ -1,4 +1,4 @@
-import { buildErrorReportPayload, redactErrorReportText } from '../core/error-report.js?v=3.1.2';
+import { buildErrorReportPayload, redactErrorReportText } from '../core/error-report.js?v=3.1.3';
 
 /**
  * ATRIUM — Relato de erro com código próprio e envio opcional ao suporte.

@@ -102,7 +102,7 @@ fn ensure_runtime_env() -> Result<Vec<(String, String)>, String> {
         .filter(|(_, value)| !value.is_empty())
         .collect();
     let mut missing = Vec::new();
-    for key in ["AUTH_SESSION_SECRET", "AUTH_ENCRYPTION_KEY", "SETUP_BOOTSTRAP_TOKEN"] {
+    for key in ["AUTH_SESSION_SECRET", "AUTH_ENCRYPTION_KEY"] {
         let value = values.get(key).map(|value| value.as_str());
         let valid = match key {
             "AUTH_ENCRYPTION_KEY" => matches!(value, Some(v) if v.len() == 44 && v.ends_with('=')),
@@ -131,7 +131,7 @@ fn ensure_runtime_env() -> Result<Vec<(String, String)>, String> {
         .collect())
 }
 
-const SECRET_KEYS: [&str; 3] = ["AUTH_SESSION_SECRET", "AUTH_ENCRYPTION_KEY", "SETUP_BOOTSTRAP_TOKEN"];
+const SECRET_KEYS: [&str; 2] = ["AUTH_SESSION_SECRET", "AUTH_ENCRYPTION_KEY"];
 
 fn generate_secret() -> String {
     // 32 bytes do gerador do sistema (BCryptGenRandom), codificados em base64
