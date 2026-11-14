@@ -24,9 +24,10 @@ assert.deepEqual(endpoints, expectedEndpoints.toSorted());
 assert.match(indexSource, /css\/views\/ui-v2\/auth\.css/);
 assert.doesNotMatch(indexSource, /triagem autônoma/i);
 assert.match(indexSource, /class="theme-toggle-btn auth-theme-toggle" data-theme-toggle/);
-assert.match(indexSource, /Criptografia de ponta a ponta e isolamento total|Dados protegidos no cofre do escritório/);
-assert.match(indexSource, /Consulta judicial somente para leitura/);
-assert.match(indexSource, /Você confirma tarefas e prazos/);
+assert.match(indexSource, /auth-cloud-promo-cta/);
+assert.match(indexSource, /https:\/\/atrium\.adv\.br/);
+assert.doesNotMatch(indexSource, /auth-security-list/);
+assert.doesNotMatch(indexSource, /Criptografia de ponta a ponta e isolamento total|Dados protegidos no cofre do escritório/);
 assert.match(indexSource, /Crie seu acesso mestre/);
 assert.match(indexSource, /Ativar monitoramento automático/);
 assert.match(indexSource, /inicia a primeira busca nas fontes disponíveis/);
@@ -185,7 +186,8 @@ try {
         const card = document.querySelector('.auth-card');
         const brandTitle = document.querySelector('.auth-visual-copy h1');
         const brandSubtitle = brandTitle.querySelector('em');
-        const securityItems = [...document.querySelectorAll('.auth-security-list > span')];
+        const cloudPromo = document.querySelector('.auth-cloud-promo');
+        const cloudCta = cloudPromo?.querySelector('.auth-cloud-promo-cta');
         const cardBox = card.getBoundingClientRect();
         return {
           displayName: rect('displayName'), email: rect('email'), username: rect('username'),
@@ -196,12 +198,10 @@ try {
           brandSubtitleSize: Number.parseFloat(getComputedStyle(brandSubtitle).fontSize),
           brandSubtitleStyle: getComputedStyle(brandSubtitle).fontStyle,
           cardCenterOffset: Math.abs(cardBox.top + cardBox.height / 2 - (card.closest('.auth-panel').getBoundingClientRect().top + card.closest('.auth-panel').getBoundingClientRect().height / 2)),
-          securityItemsUseHangingIndent: securityItems.every(item => {
-            const text = item.querySelector(':scope > span');
-            return getComputedStyle(item).display === 'grid'
-              && getComputedStyle(item).gridTemplateColumns.split(' ').length === 2
-              && Boolean(text);
-          }),
+          cloudPromoVisible: Boolean(cloudPromo) && cloudPromo.getClientRects().length > 0,
+          cloudPromoCtaTarget: cloudCta?.getAttribute('target') || '',
+          cloudPromoCtaHref: cloudCta?.getAttribute('href') || '',
+          legacySecurityListRemoved: document.querySelectorAll('.auth-security-list').length === 0,
           oabRequired: document.querySelector('#authSetupForm [name="oab"]')?.required,
           oabUfRequired: document.querySelector('#authSetupForm [name="oabUf"]')?.required
         };
@@ -215,7 +215,10 @@ try {
       assert.equal(setupLayout.brandSubtitleStyle, 'normal'); assertions++;
       assert.ok(setupLayout.brandSubtitleSize < setupLayout.brandTitleSize * .8); assertions++;
       assert.ok(setupLayout.cardCenterOffset <= 2, `O cartão deve ficar centralizado verticalmente: desvio de ${setupLayout.cardCenterOffset}px.`); assertions++;
-      assert.equal(setupLayout.securityItemsUseHangingIndent, true); assertions++;
+      assert.equal(setupLayout.cloudPromoVisible, true, 'A promoção da versão na nuvem deve aparecer na tela de acesso.'); assertions++;
+      assert.equal(setupLayout.cloudPromoCtaTarget, '_blank'); assertions++;
+      assert.match(setupLayout.cloudPromoCtaHref, /^https:\/\/atrium\.adv\.br/); assertions++;
+      assert.equal(setupLayout.legacySecurityListRemoved, true, 'A lista de frases de segurança foi removida.'); assertions++;
       assert.equal(setupLayout.oabRequired, false); assertions++;
       assert.equal(setupLayout.oabUfRequired, false); assertions++;
       assert.equal(await page.locator('#authIdentityStep').isVisible(), true); assertions++;

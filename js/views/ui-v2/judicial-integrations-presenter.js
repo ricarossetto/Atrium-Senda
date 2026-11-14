@@ -1,4 +1,4 @@
-import { iconSvg } from './icons.js?v=3.1.0';
+import { iconSvg } from './icons.js?v=3.1.1';
 
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
