@@ -24,7 +24,7 @@ O contrato-alvo está em [`office-teams-access.md`](office-teams-access.md) e o 
 - O estado jurídico oficial e os blobs documentais usam diretórios físicos separados por escritório.
 - Uma revisão de estado só pode concorrer com revisões do mesmo escritório.
 - O cadastro adicional de escritório não exige MFA: o segundo fator é opcional em qualquer fluxo e nunca bloqueia acesso; quando habilitado pelo usuário, o login passa a exigir o código.
-- Em cloud, segredos, token de bootstrap, cookies seguros e origens do frontend são configuração obrigatória; o servidor falha antes de abrir a porta se estiverem ausentes.
+- Em cloud, segredos, cookies seguros e origens do frontend são configuração obrigatória; o servidor falha antes de abrir a porta se estiverem ausentes.
 - O autosserviço de novos escritórios em cloud só é exposto quando `ATRIUM_PUBLIC_SIGNUP=true`.
 - O backend aceita CORS com credenciais somente para origens exatas configuradas em `ATRIUM_FRONTEND_ORIGINS`.
 - O frontend hospedado recebe a origem da API por `ATRIUM_CONFIG.apiBaseUrl`; instalações locais mantêm mesma origem.

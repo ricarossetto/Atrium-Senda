@@ -28,7 +28,7 @@ console.log('  ✓ Nenhuma credencial literal encontrada.');
 console.log('[S2] .env.example não contém valores de segredo...');
 const envExample = readFileSync(path.join(ROOT, '.env.example'), 'utf8');
 for (const line of envExample.split(/\r?\n/)) {
-  const match = line.match(/^(A1_PFX_PATH|A1_PFX_PASSPHRASE|PJE_TOTP_SECRET|RESEND_API_KEY|RESEND_WEBHOOK_SECRET|AUTH_SESSION_SECRET|AUTH_ENCRYPTION_KEY|COLLECTOR_INGEST_TOKEN|SETUP_BOOTSTRAP_TOKEN)=(.*)$/);
+  const match = line.match(/^(A1_PFX_PATH|A1_PFX_PASSPHRASE|PJE_TOTP_SECRET|RESEND_API_KEY|RESEND_WEBHOOK_SECRET|AUTH_SESSION_SECRET|AUTH_ENCRYPTION_KEY|COLLECTOR_INGEST_TOKEN)=(.*)$/);
   if (!match) continue;
   const value = match[2].trim();
   assert.ok(value === '' || /^(?:troque|gerad|exemplo|change|replace|sua|seu|coloque)/i.test(value),

@@ -88,7 +88,7 @@ try {
   assert.ok(Array.isArray(health.enabledFeatureFlags), 'enabledFeatureFlags deve ser lista.');
   assert.ok(health.enabledFeatureFlags.includes('BETA_JUDICIAL_INTELLIGENCE'));
   const serialized = JSON.stringify(health);
-  for (const secretName of ['AUTH_SESSION_SECRET', 'AUTH_ENCRYPTION_KEY', 'COLLECTOR_INGEST_TOKEN', 'SETUP_BOOTSTRAP_TOKEN']) {
+  for (const secretName of ['AUTH_SESSION_SECRET', 'AUTH_ENCRYPTION_KEY', 'COLLECTOR_INGEST_TOKEN']) {
     assert.equal(serialized.includes(secretName), false, `health não deve mencionar ${secretName}.`);
   }
 } finally {

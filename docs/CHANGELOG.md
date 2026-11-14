@@ -2,6 +2,18 @@
 
 As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## 3.1.3 — 2026-11-14
+
+### Alterado
+
+- **A trava de token de ativação saiu do primeiro acesso**: quem instala o ATRIUM agora cria a conta de administrador sem precisar de token. O app desktop não gera mais `SETUP_BOOTSTRAP_TOKEN` e o campo "Token de ativação" deixou de existir na tela de primeiro acesso.
+- **Instalação manual e aplicativo desktop passam a se comportar igual**: a instalação por `pnpm start` nunca exigiu token; agora o aplicativo desktop também não exige.
+- A configuração cloud deixa de exigir `SETUP_BOOTSTRAP_TOKEN` e o painel administrativo deixou de reportar o status desse segredo.
+
+### Corrigido
+
+- A tela de primeiro acesso não pede mais um segredo que o aplicativo desktop gerava mas nunca exibia — o valor ficava apenas no arquivo `.env`, sem caminho de leitura para quem não conhecia o arquivo.
+
 ## 3.1.2 — 2026-11-14
 
 ### Corrigido

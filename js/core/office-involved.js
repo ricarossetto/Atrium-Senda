@@ -1,6 +1,6 @@
-import { memberAvatarHtml } from './member-avatar.js?v=3.1.2';
-import { publicationLawyersList } from './publication-lawyers.js?v=3.1.2';
-import { officeSideLawyers } from './publication-parties.js?v=3.1.2';
+import { memberAvatarHtml } from './member-avatar.js?v=3.1.3';
+import { publicationLawyersList } from './publication-lawyers.js?v=3.1.3';
+import { officeSideLawyers } from './publication-parties.js?v=3.1.3';
 
 const HONORIFICS = /^(?:dr|dra|adv|advogad[ao]|sr|sra)\.?$/i;
 
