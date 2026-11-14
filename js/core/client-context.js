@@ -1,5 +1,5 @@
-import { buildLegalTimeline } from './legal-timeline.js?v=3.1.1';
-import { normalizeProcessNumber } from './client-reconciliation.js?v=3.1.1';
+import { buildLegalTimeline } from './legal-timeline.js?v=3.1.2';
+import { normalizeProcessNumber } from './client-reconciliation.js?v=3.1.2';
 
 const TERMINAL_TASK_STATUSES = new Set(['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada']);
 

@@ -7,7 +7,7 @@ O **ATRIUM** reúne processos, publicações, contatos e CRM, tarefas (Kanban), 
 Decisões jurídicas, confirmação de prazos e atos processuais continuam sob responsabilidade humana. O ATRIUM nunca dá ciência, não assina e não protocola nada em portais judiciais.
 
 [![Licença](https://img.shields.io/badge/licença-MIT-blue)](LICENSE)
-[![Versão](https://img.shields.io/badge/versão-3.1.1-9b7a3c)](docs/RELEASE_NOTES_3.1.1.md)
+[![Versão](https://img.shields.io/badge/versão-3.1.2-9b7a3c)](docs/RELEASE_NOTES_3.1.2.md)
 [![Node.js](https://img.shields.io/badge/Node.js-24+-3c873a)](#instalação)
 
 ---
@@ -20,14 +20,14 @@ Baixe o pacote da sua plataforma na [página de releases](https://github.com/ric
 
 | Sistema | Arquivo |
 | --- | --- |
-| Windows 10/11 x64 | `ATRIUM_3.1.1_x64-setup.exe` (NSIS) ou `ATRIUM_3.1.1_x64_pt-BR.msi` |
-| Windows 11 ARM64 | `ATRIUM_3.1.1_arm64-setup.exe` (NSIS) |
-| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.1.1_amd64.deb` |
-| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.1.1-1.x86_64.rpm` |
+| Windows 10/11 x64 | `ATRIUM_3.1.2_x64-setup.exe` (NSIS) ou `ATRIUM_3.1.2_x64_pt-BR.msi` |
+| Windows 11 ARM64 | `ATRIUM_3.1.2_arm64-setup.exe` (NSIS) |
+| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.1.2_amd64.deb` |
+| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.1.2-1.x86_64.rpm` |
 | Arch, Manjaro, EndeavourOS | AppImage ou `packaging/arch/PKGBUILD` |
-| Qualquer Linux x64 | `ATRIUM_3.1.1_amd64.AppImage` |
-| macOS Apple Silicon | `ATRIUM_3.1.1_aarch64.dmg` |
-| macOS Intel | `ATRIUM_3.1.1_x64.dmg` |
+| Qualquer Linux x64 | `ATRIUM_3.1.2_amd64.AppImage` |
+| macOS Apple Silicon | `ATRIUM_3.1.2_aarch64.dmg` |
+| macOS Intel | `ATRIUM_3.1.2_x64.dmg` |
 
 No Linux, o script oficial detecta a distribuição e instala o formato certo:
 
@@ -149,7 +149,7 @@ Leia [docs/CONTRIBUTING.md](.github/CONTRIBUTING.md) ou os guardrails completos 
 ## Documentação
 
 - [Instalação](docs/INSTALLATION.md) · [Primeiros 10 minutos](docs/QUICK_START.md) · [Manual do usuário](docs/USER_MANUAL.md)
-- [Arquitetura](docs/ARCHITECTURE.md) · [Specs](specs/README.md) · [CHANGELOG](docs/CHANGELOG.md) · [Notas da 3.1.1](docs/RELEASE_NOTES_3.1.1.md)
+- [Arquitetura](docs/ARCHITECTURE.md) · [Specs](specs/README.md) · [CHANGELOG](docs/CHANGELOG.md) · [Notas da 3.1.2](docs/RELEASE_NOTES_3.1.2.md)
 
 ## Licença
 

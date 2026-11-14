@@ -2,6 +2,12 @@
 
 As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## 3.1.2 — 2026-11-14
+
+### Corrigido
+
+- **O endereço da versão na nuvem virou link no FAQ**: a resposta sobre Windows, Mac e Linux citava `atrium.adv.br` como texto simples, sem link para a versão hospedada.
+
 ## 3.1.1 — 2026-11-14
 
 ### Corrigido
