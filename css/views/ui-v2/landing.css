@@ -122,7 +122,8 @@ html[data-theme="light"] .landing-brand-logo.logo-light {
 .landing-nav-links {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 15px;
+  flex-wrap: nowrap;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -131,9 +132,10 @@ html[data-theme="light"] .landing-brand-logo.logo-light {
 .landing-nav-link {
   color: var(--v2-color-muted-foreground);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.01em;
+  white-space: nowrap;
   position: relative;
   padding: 6px 0;
   transition: color var(--v2-duration-fast) ease;
@@ -255,6 +257,62 @@ filter: brightness(1.04);
 
 .landing-btn-nav .btn-text-short {
   display: none;
+}
+
+/* Versão na nuvem: promoção explícita na navegação, com ponto de estado. */
+.landing-cloud-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--v2-color-gold, #c69f53);
+  background: color-mix(in srgb, var(--v2-color-gold-soft, #30291d) 26%, transparent);
+  border: 1px solid color-mix(in srgb, var(--v2-color-gold, #c69f53) 38%, transparent);
+  border-radius: var(--v2-radius-round);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--v2-duration-fast) var(--v2-ease-standard),
+    border-color var(--v2-duration-fast) var(--v2-ease-standard),
+    color var(--v2-duration-fast) var(--v2-ease-standard);
+}
+
+.landing-cloud-link:hover {
+  color: var(--v2-color-foreground);
+  border-color: var(--v2-color-gold, #c69f53);
+  background: color-mix(in srgb, var(--v2-color-gold-soft, #30291d) 42%, transparent);
+}
+
+.landing-cloud-link:focus-visible {
+  outline: 2px solid var(--v2-color-gold, #c69f53);
+  outline-offset: 2px;
+}
+
+.landing-cloud-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--v2-color-success, #8aa08e);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--v2-color-success, #8aa08e) 22%, transparent);
+}
+
+@media (max-width: 1180px) {
+  .landing-cloud-link .landing-cloud-dot { display: none; }
+  .landing-nav-links { gap: 16px; }
+  .landing-nav-link { font-size: 12px; }
+  /* Menos itens de navegação antes de comprimir o botão de acesso. */
+  .landing-nav-links li:nth-child(5) { display: none; }
+}
+
+@media (max-width: 1024px) {
+  .landing-nav-links li:nth-child(4) { display: none; }
+}
+
+@media (max-width: 900px) {
+  .landing-cloud-link { display: none; }
 }
 
 @media (max-width: 900px) {
@@ -1108,6 +1166,61 @@ overflow: hidden;
   color: var(--v2-color-muted-foreground);
   max-width: 640px;
   margin: 0 auto 32px;
+}
+
+/* Versão na nuvem: segunda via de conversão no banner final. */
+.landing-final-cta-cloud {
+  max-width: 640px;
+  margin: 26px auto 14px;
+  padding-top: 22px;
+  border-top: 1px solid color-mix(in srgb, var(--v2-color-gold, #c69f53) 26%, transparent);
+  color: var(--v2-color-muted-foreground);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.landing-final-cta-cloud a {
+  color: var(--v2-color-gold, #c69f53);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.landing-final-cta-cloud-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 22px;
+  color: var(--v2-color-gold, #c69f53);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--v2-color-gold, #c69f53) 46%, transparent);
+  border-radius: var(--v2-radius-round);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  text-decoration: none;
+  transition: color var(--v2-duration-fast) var(--v2-ease-standard),
+    border-color var(--v2-duration-fast) var(--v2-ease-standard),
+    background var(--v2-duration-fast) var(--v2-ease-standard);
+}
+
+.landing-final-cta-cloud-btn:hover {
+  color: var(--v2-color-on-primary, #11100c);
+  background: var(--v2-color-gold, #c69f53);
+  border-color: var(--v2-color-gold, #c69f53);
+}
+
+.landing-final-cta-cloud-btn:focus-visible {
+  outline: 2px solid var(--v2-color-gold, #c69f53);
+  outline-offset: 3px;
+}
+
+.landing-final-cta-cloud-btn svg.atrium-icon { width: 13px; height: 13px; }
+
+@media (max-width: 640px) {
+  .landing-final-cta-cloud { font-size: 13px; }
+  .landing-final-cta-cloud-btn { width: 100%; justify-content: center; }
 }
 
 /* ==========================================================================

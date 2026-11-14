@@ -209,15 +209,6 @@
         byId('authForgotForm').elements.identifier.focus();
       });
       // "Novo escritório" leva à aba de cadastro na primeira etapa.
-      byId('authTabNewOffice')?.addEventListener('click', () => {
-        if (!state.workspaceRegistrationEnabled) {
-          this.feedback('O cadastro de novos escritórios não está habilitado nesta instalação.', 'info');
-          return;
-        }
-        setTabActive('authTabRegister');
-        this.show('authRegisterForm');
-        this.showRegistrationStep(0, false);
-      });
       byId('skipMfaButton')?.addEventListener('click', async () => {
         this.feedback('');
         try {
@@ -1160,7 +1151,7 @@ function passwordToggleIcon(visible) {
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
   const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.1.0#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
+  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.1.1#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
   svg.appendChild(use);
   return svg;
 }

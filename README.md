@@ -7,7 +7,7 @@ O **ATRIUM** reúne processos, publicações, contatos e CRM, tarefas (Kanban), 
 Decisões jurídicas, confirmação de prazos e atos processuais continuam sob responsabilidade humana. O ATRIUM nunca dá ciência, não assina e não protocola nada em portais judiciais.
 
 [![Licença](https://img.shields.io/badge/licença-MIT-blue)](LICENSE)
-[![Versão](https://img.shields.io/badge/versão-3.1.0-9b7a3c)](docs/RELEASE_NOTES_3.1.0.md)
+[![Versão](https://img.shields.io/badge/versão-3.1.1-9b7a3c)](docs/RELEASE_NOTES_3.1.1.md)
 [![Node.js](https://img.shields.io/badge/Node.js-24+-3c873a)](#instalação)
 
 ---
@@ -149,7 +149,7 @@ Leia [docs/CONTRIBUTING.md](.github/CONTRIBUTING.md) ou os guardrails completos 
 ## Documentação
 
 - [Instalação](docs/INSTALLATION.md) · [Primeiros 10 minutos](docs/QUICK_START.md) · [Manual do usuário](docs/USER_MANUAL.md)
-- [Arquitetura](docs/ARCHITECTURE.md) · [Specs](specs/README.md) · [CHANGELOG](docs/CHANGELOG.md) · [Notas da 3.1.0](docs/RELEASE_NOTES_3.1.0.md)
+- [Arquitetura](docs/ARCHITECTURE.md) · [Specs](specs/README.md) · [CHANGELOG](docs/CHANGELOG.md) · [Notas da 3.1.1](docs/RELEASE_NOTES_3.1.1.md)
 
 ## Licença
 

@@ -174,7 +174,7 @@ html[data-theme="light"] .auth-gate {
 
 .auth-gate .auth-brand-logo,
 .auth-gate .auth-visual-copy,
-.auth-gate .auth-security-list {
+.auth-gate .auth-cloud-promo {
   position: relative;
   z-index: 1;
 }
@@ -241,38 +241,79 @@ html[data-theme="light"] .auth-gate .auth-brand-dark { display: none; }
 .auth-gate .auth-intro-flow strong { color: var(--auth-text); font-size: 12px; line-height: 1.35; }
 .auth-gate .auth-intro-flow small { color: var(--auth-muted); font-size: 12px; line-height: 1.45; }
 
-.auth-gate .auth-security-list {
+.auth-gate .auth-cloud-promo {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 24px;
-  color: var(--auth-muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .055em;
-  line-height: 1.45;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--v2-color-gold, #c69f53) 34%, var(--auth-line));
+  border-radius: var(--v2-radius-lg, 14px);
+  background: color-mix(in srgb, var(--v2-color-gold-soft, #30291d) 30%, var(--auth-card));
+}
+
+.auth-gate .auth-cloud-promo-eyebrow {
+  margin: 0;
+  color: var(--v2-color-gold, #c69f53);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .09em;
   text-transform: uppercase;
 }
 
-.auth-gate .auth-security-list span {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
+.auth-gate .auth-cloud-promo-title {
+  margin: 0;
+  color: var(--auth-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.auth-gate .auth-cloud-promo-desc {
+  margin: 0;
+  color: var(--auth-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.auth-gate .auth-cloud-promo-cta {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  padding-top: 10px;
-  border-top: 1px solid var(--auth-line);
+  min-height: 40px;
+  margin-top: 4px;
+  padding: 0 16px;
+  justify-self: start;
+  color: var(--v2-color-on-primary, #11100c);
+  background: var(--v2-color-gold, #c69f53);
+  border-radius: var(--v2-radius-round, 999px);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: filter var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease);
 }
 
-.auth-gate .auth-security-list span > span {
-  display: block;
-  padding: 0;
-  border: 0;
-  white-space: nowrap;
+.auth-gate .auth-cloud-promo-cta:hover { filter: brightness(1.08); }
+.auth-gate .auth-cloud-promo-cta:focus-visible { outline: 2px solid var(--auth-text); outline-offset: 3px; }
+.auth-gate .auth-cloud-promo-cta svg.atrium-icon { width: 13px; height: 13px; }
+
+.auth-gate .auth-plan-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 6px;
+  color: var(--v2-color-gold, #c69f53);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-/* Em telas estreitas, cada garantia empilha e pode quebrar: sem overflow horizontal. */
+.auth-gate .auth-plan-link:hover { color: var(--auth-text); }
+.auth-gate .auth-plan-link:focus-visible { outline: 2px solid var(--auth-text); outline-offset: 3px; }
+
+/* Em telas estreitas, a promoção empilha sem overflow horizontal. */
 @media (max-width: 980px) {
-  .auth-gate .auth-security-list { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .auth-gate .auth-security-list span > span { white-space: normal; }
+  .auth-gate .auth-cloud-promo { padding: 14px 15px; }
 }
 
 .auth-gate .auth-panel {
@@ -755,7 +796,7 @@ html[data-theme="light"] .auth-gate .auth-tab.active {
   .auth-gate .auth-visual-copy h1 { margin: 10px 0 12px; font-size: 40px; }
   .auth-gate .auth-visual-copy > p:last-child { max-width: 680px; }
   .auth-gate .auth-intro-flow { grid-template-columns: 1fr; margin-top: 18px; }
-  .auth-gate .auth-security-list { display: none; }
+  .auth-gate .auth-cloud-promo { display: none; }
   .auth-gate .auth-panel { padding: clamp(24px, 4vh, 48px) clamp(16px, 3.5vw, 28px); }
   .auth-gate .auth-card { max-height: none; }
 }

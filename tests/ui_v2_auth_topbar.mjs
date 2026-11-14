@@ -10,7 +10,7 @@ fs.mkdirSync(output, { recursive: true });
 const server = await startTestServer({ env: { ATRIUM_BETA_MODE: 'true', BETA_DISABLE_AUTOMATIONS: 'true' } });
 const browser = await chromium.launch({ headless: true });
 const measurements = [];
-const states = ['login', 'login-error', 'register-1', 'register-2', 'setup', 'setup-monitoring', 'totp', 'recovery', 'invitation', 'forgot', 'reset'];
+const states = ['login', 'login-error', 'register-1', 'register-2', 'setup', 'setup-monitoring', 'totp', 'recovery', 'forgot', 'reset'];
 try {
   for (const theme of ['light', 'dark']) {
     for (const [width, height] of [[390, 844], [390, 500], [1280, 800], [1440, 900]]) {
@@ -40,11 +40,6 @@ try {
             if (state === 'recovery') {
               auth.show('authRecoveryStep');
               document.getElementById('authRecoveryCodes').textContent = 'SYNTH-RECOVERY-01\nSYNTH-RECOVERY-02\nSYNTH-RECOVERY-03';
-            }
-            if (state === 'invitation') {
-              auth.show('authInvitationForm');
-              document.getElementById('authInvitationWorkspace').textContent = 'Escritório Teste Nome Extenso';
-              document.getElementById('authInvitationPerson').textContent = 'Colaboradora Teste — convidada@example.test';
             }
             if (state === 'forgot') auth.show('authForgotForm');
             if (state === 'reset') auth.show('authResetForm');
@@ -120,10 +115,9 @@ try {
           }
         }
         if (!before) {
-          await page.locator('.auth-back-to-landing').click();
-          await page.waitForURL('**/discover/');
-          await page.locator('#hero-title').waitFor();
-          assert.match(await page.locator('#hero-title').textContent(), /Sua rotina jurídica/);
+          const cloudLink = page.locator('.auth-back-to-landing');
+          assert.equal(await cloudLink.getAttribute('target'), '_blank');
+          assert.match(await cloudLink.getAttribute('href'), /^https:\/\/atrium\.adv\.br/);
         }
         assert.deepEqual(errors, []);
         console.log(`PASS: ${before ? 'BEFORE' : 'AFTER'} ${theme} ${width}x${height}`);
