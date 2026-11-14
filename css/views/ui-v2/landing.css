@@ -1133,6 +1133,21 @@ gap: 6px;
   line-height: 1.6;
 }
 
+.landing-faq-cloud-link {
+  color: var(--v2-color-gold, #c69f53);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.landing-faq-cloud-link:hover { color: var(--v2-color-foreground); }
+
+.landing-faq-cloud-link:focus-visible {
+  outline: 2px solid var(--v2-color-gold, #c69f53);
+  outline-offset: 3px;
+}
+
 /* ==========================================================================
    9. FINAL HIGH-CONVERSION CTA BANNER
    ========================================================================== */
