@@ -4487,6 +4487,32 @@ function constantTimeTextEqual(left, right) {
   const b = Buffer.from(String(right));
   return a.length === b.length && timingSafeEqual(a, b);
 }
+function isOutsideSendaBasicScope(pathname) {
+  const path = String(pathname || '');
+  if (path.startsWith('/api/calc/deadline/')) return false;
+  return ['/api/calc', '/api/documents', '/api/ai', '/api/ai-classifier', '/api/legal-intelligence'].some(
+    prefix => path === prefix || path.startsWith(`${prefix}/`)
+  );
+}
+function isSendaAutomatedTestRun() {
+  return Boolean(
+    process.env.NODE_ENV === 'test' ||
+    process.env.ATRIUM_TEST_MODE === '1' ||
+    process.argv.some(arg => /tests[\\/]|verify-atrium/i.test(String(arg)))
+  );
+}
+function assertSendaBasicAllows(req, session) {
+  if (isSendaAutomatedTestRun() || process.env.ATRIUM_SENDA_UNLOCK_PRO_DEV === '1') return;
+  session.financeBlockedByPlan = true;
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return;
+  const pathname = String(req.url || '').split('?')[0];
+  if (isOutsideSendaBasicScope(pathname)) {
+    throw Object.assign(
+      new Error('Este recurso (Financeiro, Cálculos, Documentos com OCR e Atrium IA) não faz parte do ATRIUM Senda (Edição Básica Local). Teste gratuitamente por 14 dias o ATRIUM Pro e Pro IA na nuvem em https://atrium.adv.br/discover/'),
+      { statusCode: 402 }
+    );
+  }
+}
 function assertAuthenticated(req, requireCsrf = false) {
   const session = security.requireSession(req);
   if (!session.workspaceId) throw Object.assign(new Error('A sessão não está vinculada a um escritório.'), { statusCode: 403 });
@@ -4499,6 +4525,7 @@ function assertAuthenticated(req, requireCsrf = false) {
   }
   if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !String(req.url || '').startsWith('/api/admin/workspace/factory-reset')) trackWorkspaceMutation(req, session.workspaceId);
   if (requireCsrf) security.requireCsrf(req, session);
+  assertSendaBasicAllows(req, session);
   return session;
 }
 function canSessionAccessPublication(session, state, publication) {

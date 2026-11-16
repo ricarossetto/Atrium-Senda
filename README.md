@@ -1,33 +1,90 @@
-# ATRIUM — Edição Aberta (Senda)
+# ATRIUM — Edição Senda (Básica Local)
 
-**Gestão jurídica local e privada para escritórios brasileiros.**
+**A base essencial do ATRIUM no seu computador — e a porta de entrada para o [ATRIUM Pro na Nuvem](https://atrium.adv.br/discover/).**
 
-O **ATRIUM** reúne processos, publicações, contatos e CRM, tarefas (Kanban), agenda, financeiro, documentos com OCR local e integrações judiciais somente leitura (DJEN, DataJud e eproc/PJe nacional) em um único ambiente. É um projeto de código aberto (MIT): você instala, opera e audita tudo no seu computador, com os dados cifrados sob o seu controle.
+[![ATRIUM Pro Cloud](https://img.shields.io/badge/%E2%98%81%EF%B8%8F_ATRIUM_Pro_na_Nuvem-Testar_14_dias_gr%C3%A1tis-DFBE6A?style=for-the-badge&labelColor=0B0D0E)](https://atrium.adv.br/discover/?utm_source=github-senda&utm_medium=badge)
+[![Página Oficial Senda](https://img.shields.io/badge/Página_Oficial-senda.atrium.adv.br%2Fdiscover-2f7d5b?style=for-the-badge&labelColor=0B0D0E)](https://senda.atrium.adv.br/discover/)
 
-Decisões jurídicas, confirmação de prazos e atos processuais continuam sob responsabilidade humana. O ATRIUM nunca dá ciência, não assina e não protocola nada em portais judiciais.
-
-[![Licença](https://img.shields.io/badge/licença-MIT-blue)](LICENSE)
-[![Versão](https://img.shields.io/badge/versão-3.1.3-9b7a3c)](docs/RELEASE_NOTES_3.1.3.md)
+[![Licença](https://img.shields.io/badge/licença-FSL--1.1_(Uso_Local_Não--Concorrente)-blue)](LICENSE)
+[![Versão](https://img.shields.io/badge/versão-3.1.4_(Escopo_Basic)-9b7a3c)](docs/RELEASE_NOTES_3.1.4.md)
 [![Node.js](https://img.shields.io/badge/Node.js-24+-3c873a)](#instalação)
 
 ---
 
-## Instalação
+> ### 🚀 Quer o sistema completo sem instalar servidor, com Financeiro (Asaas), Cálculos, Documentos com OCR, Equipe Ilimitada e o robô Atrium IA?
+> O **ATRIUM Senda** entrega apenas o **escopo Básico** para uso individual e local (exigindo que seu computador fique ligado e que você cuide de backups manuais).
+>
+> Para escritórios que precisam de **produtividade real, acesso pelo celular/qualquer lugar, equipe sem custo adicional por usuário e automação jurídica avançada**, conheça o **[ATRIUM Pro e ATRIUM Pro IA na nuvem](https://atrium.adv.br/discover/)**:
+> - **14 dias de degustação gratuita com TODAS as funções liberadas (sem cartão de crédito).**
+> - **Migração em 1 minuto:** comece no Senda hoje e importe seu arquivo `.atrium-backup` direto em **[atrium.adv.br](https://atrium.adv.br)** quando quiser subir de nível, sem perder nenhum processo ou contato.
+
+---
+
+## ⚡ Comparativo Completo: ATRIUM Senda (Local) vs. ATRIUM Pro & Pro IA (Nuvem)
+
+| Recurso / Operação | ATRIUM Senda (Esta Edição) | ATRIUM Basic (Nuvem) | ⭐ ATRIUM Pro (Nuvem) | 🧠 ATRIUM Pro IA (Nuvem) |
+| --- | :---: | :---: | :---: | :---: |
+| **Valor mensal** | Gratuito (Local) | R$ 97/mês por escritório | **R$ 197/mês por escritório** | **R$ 297/mês por escritório** |
+| **Usuários da equipe inclusos** | 1 máquina local | **Equipe ilimitada (R$ 0/usuário)** | **Equipe ilimitada (R$ 0/usuário)** | **Equipe ilimitada (R$ 0/usuário)** |
+| **Onde roda e disponibilidade** | Só no seu PC (exige máquina ligada) | **Nuvem 24/7 (PC, Mac e Celular)** | **Nuvem 24/7 (PC, Mac e Celular)** | **Nuvem 24/7 (PC, Mac e Celular)** |
+| **Backups e Atualizações** | Manual por arquivo `.atrium-backup` | **Diário e automático na nuvem** | **Diário e automático na nuvem** | **Diário e automático na nuvem** |
+| **Processos, Publicações, Tarefas e Agenda** | ✅ Incluso | ✅ Incluso | ✅ Incluso | ✅ Incluso |
+| **Contatos e Integrações Judiciais (DJEN/DataJud/eproc/PJe)** | ✅ Leitura local | ✅ Leitura em nuvem 24/7 | ✅ Leitura em nuvem 24/7 | ✅ Leitura em nuvem 24/7 |
+| **Certidão oficial em PDF direto do DJEN/CNJ** | ❌ Não disponível | ✅ Incluso | ✅ Incluso | ✅ Incluso |
+| **Sincronização oficial com Google Agenda e Alertas por E-mail** | ❌ Não disponível | ✅ Incluso | ✅ Incluso | ✅ Incluso |
+| **Monitoramento de Marcas (RPI / INPI) e Domicílio Judicial** | ❌ Não disponível | ✅ Incluso | ✅ Incluso | ✅ Incluso |
+| **Financeiro Jurídico Completo (Honorários, RPV, Fluxo de Caixa)** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
+| **Cobranças Asaas Integradas (Pix, Boleto, Cartão e Baixa Automática)** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
+| **Importação de Extrato Bancário, Recorrentes e Previsão de 6 Meses** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
+| **Cálculos Jurídicos (Cível, Trabalhista e Previdenciário/CNIS)** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
+| **Acervo de Documentos com OCR, Minutas e Busca no Texto** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
+| **Assistente de Redação Jurídica com IA (Pronto para uso, sem API key)** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
+| **Robô Atrium IA: Triagem automática de Publicações e Tarefas** | ❌ Exclusivo Pro IA | ❌ Exclusivo Pro IA | ❌ Exclusivo Pro IA | ✅ **Incluso (2.069 habilidades)** |
+| **Deduplicação inteligente lado a lado e aprendizado do escritório** | ❌ Exclusivo Pro IA | ❌ Exclusivo Pro IA | ❌ Exclusivo Pro IA | ✅ **Incluso** |
+
+👉 **[Clique aqui para testar o ATRIUM Pro IA gratuitamente por 14 dias (sem cartão)](https://atrium.adv.br/login?auth=register)** ou veja a apresentação completa em **[senda.atrium.adv.br/discover](https://senda.atrium.adv.br/discover/)**.
+
+---
+
+## O que é o ATRIUM Senda?
+
+O **ATRIUM Senda** é a edição **Básica e Local** do ecossistema ATRIUM. Ele reúne apenas o núcleo essencial (escopo Basic) para o advogado individual que prefere operar localmente no próprio computador:
+
+| Área (Escopo Básico Senda) | O que está disponível nesta edição local |
+| --- | --- |
+| **Dashboard** | Visão operacional do dia: indicadores essenciais, agenda, publicações e prioridades |
+| **Processos** | Cadastro por CNJ, partes, classe, assuntos, movimentos e navegação cruzada |
+| **Publicações** | Leitura integral, não lida/lida, triagem manual, tratamento e criação explícita de tarefa |
+| **Tarefas e Kanban** | Quadro visual ou lista, responsáveis, datas e vínculo com processo/publicação |
+| **Agenda** | Compromissos, tarefas e prazos confirmados manualmente |
+| **Contatos** | Cadastro de clientes e partes vinculadas aos processos |
+| **Integrações judiciais** | DJEN, DataJud, eproc nacional e PJe nacional — somente leitura local |
+| **Auditoria e Backup** | Registro local de ações e exportação `.atrium-backup` compatível com o **ATRIUM Pro** |
+
+> **Nota:** Módulos avançados de gestão e inteligência (**Financeiro Jurídico, Integração Asaas, Cálculos Cíveis/Trabalhistas/Previdenciários, Documentos com OCR, CRM/Leads, Relatórios de Produtividade, Assistente de Redação e o robô Atrium IA**) são exclusivos dos planos **[ATRIUM Pro e ATRIUM Pro IA na nuvem](https://atrium.adv.br/discover/#planos)**.
+
+Decisões jurídicas, confirmação de prazos e atos processuais continuam sempre sob responsabilidade humana. O ATRIUM nunca dá ciência, não assina e não protocola nada em portais judiciais.
+
+---
+
+## Instalação do ATRIUM Senda (Local)
+
+Você também pode baixar os instaladores e comparar as edições na página oficial do Senda: **[https://senda.atrium.adv.br/discover/](https://senda.atrium.adv.br/discover/)**.
 
 ### App desktop (Windows, Linux e macOS)
 
-Baixe o pacote da sua plataforma na [página de releases](https://github.com/ricarossetto/Atrium-Senda/releases). O aplicativo abre direto no computador: o servidor local inicia sozinho, o primeiro acesso cria o administrador do escritório e as atualizações chegam pela própria aplicação, assinadas com Ed25519.
+Baixe o pacote da sua plataforma na [página oficial do Senda](https://senda.atrium.adv.br/discover/#instaladores) ou na [página de releases](https://github.com/ricarossetto/Atrium-Senda/releases). O aplicativo abre direto no computador: o servidor local inicia sozinho e o primeiro acesso cria o administrador local.
 
 | Sistema | Arquivo |
 | --- | --- |
-| Windows 10/11 x64 | `ATRIUM_3.1.3_x64-setup.exe` (NSIS) ou `ATRIUM_3.1.3_x64_pt-BR.msi` |
-| Windows 11 ARM64 | `ATRIUM_3.1.3_arm64-setup.exe` (NSIS) |
-| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.1.3_amd64.deb` |
-| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.1.3-1.x86_64.rpm` |
+| Windows 10/11 x64 | `ATRIUM_3.1.4_x64-setup.exe` (NSIS) ou `ATRIUM_3.1.4_x64_pt-BR.msi` |
+| Windows 11 ARM64 | `ATRIUM_3.1.4_arm64-setup.exe` (NSIS) |
+| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.1.4_amd64.deb` |
+| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.1.4-1.x86_64.rpm` |
 | Arch, Manjaro, EndeavourOS | AppImage ou `packaging/arch/PKGBUILD` |
-| Qualquer Linux x64 | `ATRIUM_3.1.3_amd64.AppImage` |
-| macOS Apple Silicon | `ATRIUM_3.1.3_aarch64.dmg` |
-| macOS Intel | `ATRIUM_3.1.3_x64.dmg` |
+| Qualquer Linux x64 | `ATRIUM_3.1.4_amd64.AppImage` |
+| macOS Apple Silicon | `ATRIUM_3.1.4_aarch64.dmg` |
+| macOS Intel | `ATRIUM_3.1.4_x64.dmg` |
 
 No Linux, o script oficial detecta a distribuição e instala o formato certo:
 
@@ -35,122 +92,45 @@ No Linux, o script oficial detecta a distribuição e instala o formato certo:
 curl -fsSL https://raw.githubusercontent.com/ricarossetto/Atrium-Senda/main/packaging/linux/install.sh | bash
 ```
 
-As somas SHA-256 de todos os artefatos estão em `SHA256SUMS.txt` no mesmo release; o script de Linux confere automaticamente antes de instalar. No macOS sem assinatura, o Gatekeeper pede confirmação em Ajustes do Sistema > Privacidade e Segurança.
-
 ### Instalação manual (qualquer sistema com Node 24+)
 
 ```bash
 git clone https://github.com/ricarossetto/Atrium-Senda.git
 cd Atrium-Senda
 pnpm install --frozen-lockfile
-pnpm exec playwright install chromium   # apenas se for usar coleta judicial A1
+pnpm exec playwright install chromium   # apenas se for usar coleta judicial A1 local
 pnpm start
 ```
 
-Abra `http://127.0.0.1:4173`. No Windows, o `ATRIUM.bat` automatiza as verificações e abre o navegador. O diagnóstico do instalador fica disponível com `ATRIUM.bat --doctor`.
+Abra `http://127.0.0.1:4173`. No Windows, o `ATRIUM.bat` automatiza as verificações e abre o navegador.
 
-## O que esta edição oferece
+---
 
-| Área | O que já está disponível |
-| --- | --- |
-| Dashboard | Visão operacional do escritório: indicadores, agenda, publicações e prioridades |
-| Processos | Cadastro por CNJ, partes, classe, assuntos, movimentos e navegação cruzada |
-| Publicações | Leitura integral, não lida/lida, triagem, tratamento e criação explícita de tarefa |
-| Contatos e clientes | Cadastro único por papéis, vínculos manuais prioritários, deduplicação supervisionada |
-| CRM e oportunidades | Atendimento, etapas, responsável, origem e associação a contato |
-| Tarefas e Kanban | Fluxo visual, responsáveis, datas, apontamentos e vínculo com processo/publicação |
-| Agenda | Compromissos, tarefas, prazos confirmados e calendário externo opcional |
-| Documentos | Minutas, acervo privado, upload/download, preview seguro, OCR e busca full-text |
-| Financeiro e cálculos | Honorários, despesas, reembolsos, RPV/alvarás, vínculos processuais, módulo de cálculos |
-| Busca global | `Ctrl+K` / `Cmd+K` sobre entidades e conteúdo indexável |
-| Auditoria | Registro de ações relevantes, filtros e exportação local |
-| Integrações judiciais | DJEN, DataJud, eproc nacional e PJe nacional — somente leitura |
-| Assistente | IA opcional (Google Gemini ou provedor compatível), com revisão profissional obrigatória |
+## Como migrar do Senda para o ATRIUM Pro na nuvem em 1 minuto
 
-## Senda ou ATRIUM na nuvem?
+Começou pelo Senda e sentiu falta de acessar pelo celular, trabalhar em equipe, emitir cobranças pelo Asaas, fazer cálculos previdenciários/cíveis ou usar o robô **Atrium IA**?
 
-As duas edições têm a mesma base. A diferença está em quem cuida da operação.
-
-| | Senda (esta edição) | ATRIUM na nuvem |
-| --- | --- | --- |
-| Onde roda | No seu computador | Em [atrium.adv.br](https://atrium.adv.br), pelo navegador |
-| Custo | Gratuito, código aberto (MIT) | Assinatura por escritório, sem cobrança por usuário |
-| Dados | Ficam na sua máquina, cifrados | Ficam no serviço hospedado, cifrados |
-| Backup | Você exporta e guarda | Gerenciado pela equipe do ATRIUM |
-| Disponibilidade | Depende do seu computador ligado | Gerenciada pela equipe do ATRIUM |
-| Suporte | Documentação do projeto | Atendimento da equipe |
-| Assistente | IA opcional, com a sua própria chave | Assistência com a base completa de habilidades jurídicas |
-
-**Fique no Senda se** você quer tudo no seu computador, sem depender de terceiros, e aceita cuidar de backup e de manter a máquina ligada.
-
-**Vá para a nuvem se** o escritório tem mais de uma pessoa, precisa acessar de qualquer lugar e prefere não cuidar de servidor.
-
-Quem cria um escritório na nuvem começa com 14 dias de degustação, sem cartão.
-
-Nas duas edições, decisões jurídicas, conferência de prazos e atos processuais continuam com o advogado. O ATRIUM não dá ciência, não assina e não protocola.
+1. No Senda, abra **Configurações → Segurança / Backup** e clique em **Exportar Backup (`.atrium-backup`)**.
+2. Crie sua conta gratuita de 14 dias em **[https://atrium.adv.br/login?auth=register](https://atrium.adv.br/login?auth=register)**.
+3. Importe o arquivo `.atrium-backup`: todos os seus processos, publicações, tarefas e contatos entram na nuvem imediatamente.
 
 Dúvidas sobre a edição na nuvem: [contato@atrium.adv.br](mailto:contato@atrium.adv.br).
 
-Esta edição continua funcionando 100% offline para leitura e gestão do escritório; a IA é opcional e depende de chave própria.
-
-## Princípios
-
-- **Local-first:** o diretório de dados local é o modo principal; ele pertence ao escritório.
-- **Cifrado:** estado, backups e segredos judiciais usam proteção adequada a cada camada (AES-256-GCM, sessão HttpOnly/SameSite, CSRF e RBAC).
-- **Supervisionado:** integrações e IA apoiam o trabalho; nada é decidido pelo software em nome do advogado.
-- **Coleta judicial somente leitura:** autenticação, descoberta e consulta são permitidas; ciência, assinatura e protocolo nunca.
-- **Zero telemetria para terceiros:** nenhum dado sai da instalação sem ação explícita.
-
-## Primeiros passos
-
-1. Crie o administrador do escritório com nome, e-mail, usuário e senha.
-2. Informe OAB/UF se for advogado e escolha se deseja ativar o monitoramento automático.
-3. Conclua a verificação em duas etapas quando solicitada e guarde os códigos de recuperação.
-4. Cadastre um contato e um processo pelo número CNJ.
-5. Abra **Publicações** → pesquise por cliente ou CNJ → crie uma tarefa vinculada.
-
-Se algo não responder, execute `ATRIUM.bat --doctor` (Windows) ou `pnpm verify` no diretório do projeto.
+---
 
 ## Dados, backups e segurança
 
-- Os dados ficam em `data/` dentro da instalação, ou no diretório definido por `JURISFLOW_DATA_DIR`.
-- No app desktop, ficam em `%APPDATA%\ATRIUM\data`; logs, em `%APPDATA%\ATRIUM\logs`.
-- Backups `.atrium-backup` cifrados são exportáveis pela tela de administração; a restauração valida formato, checksum e migrações.
-- A chave `AUTH_ENCRYPTION_KEY` é indispensável para recuperar estado e backups cifrados: guarde-a em local seguro e separado.
-- `data/`, `.env` e perfis judiciais **não** fazem parte do repositório nem do instalador.
+- Os dados locais ficam em `data/` dentro da instalação, ou em `%APPDATA%\ATRIUM\data` no app desktop.
+- Backups `.atrium-backup` cifrados com AES-256-GCM são exportáveis pela tela de administração.
+- A chave `AUTH_ENCRYPTION_KEY` é indispensável para recuperar estado e backups cifrados locais: guarde-a em local seguro. No **[ATRIUM Pro na nuvem](https://atrium.adv.br)**, backups diários e infraestrutura são gerenciados automaticamente pela equipe do ATRIUM.
 
 Leia [.github/SECURITY.md](.github/SECURITY.md) e as [fronteiras de segurança](specs/security-boundaries.md).
 
-## Testes e CI
+---
 
-```bash
-pnpm check          # verificação de sintaxe de todo o código
-pnpm test           # suíte completa (Playwright + Node)
-pnpm test:ci-fast   # núcleo rápido: segurança, contratos e store
-```
+## Licença e Proteção Comercial (FSL-1.1)
 
-Os workflows em `.github/workflows/` são manuais (`workflow_dispatch`); a validação oficial é local e focada no escopo alterado. Veja [AGENTS.md](AGENTS.md) para as regras de contribuição e [docs/testing/REGRESSION_MATRIX.md](docs/testing/REGRESSION_MATRIX.md) para a matriz de regressão.
+Este repositório é distribuído sob a **Functional Source License (FSL-1.1) — Uso Local Não-Concorrente**. Veja [LICENSE](LICENSE) e [NOTICE.md](NOTICE.md).
 
-## Contribuindo
-
-Leia [docs/CONTRIBUTING.md](.github/CONTRIBUTING.md) ou os guardrails completos em [AGENTS.md](AGENTS.md). Em resumo:
-
-- Fixtures sempre sintéticas; nunca dados de cliente, OAB ou CPF reais.
-- Mudança funcional aprovada vem com teste no mesmo escopo.
-- Toda PR passa por revisão humana antes de merge.
-- Commits em português brasileiro, mensagens diretas.
-
-## Limitações conhecidas
-
-- DJEN, DataJud, BrasilAPI, ViaCEP e portais dependem de serviços externos e podem estar indisponíveis.
-- A autenticação em portais pode exigir certificado A1, PJeOffice, TOTP ou ação humana.
-- O ATRIUM não pratica atos judiciais e não substitui o profissional habilitado.
-
-## Documentação
-
-- [Instalação](docs/INSTALLATION.md) · [Primeiros 10 minutos](docs/QUICK_START.md) · [Manual do usuário](docs/USER_MANUAL.md)
-- [Arquitetura](docs/ARCHITECTURE.md) · [Specs](specs/README.md) · [CHANGELOG](docs/CHANGELOG.md) · [Notas da 3.1.3](docs/RELEASE_NOTES_3.1.3.md)
-
-## Licença
-
-MIT — veja [LICENSE](LICENSE) e [NOTICE.md](NOTICE.md).
+- **Permitido:** Instalar, auditar e utilizar gratuitamente no seu próprio escritório de advocacia em ambiente local.
+- **Proibido:** Hospedar, comercializar, sublicenciar ou oferecer o código deste repositório (ou derivados) como SaaS, serviço em nuvem, multi-tenant, white-label ou produto comercial concorrente do **[ATRIUM](https://atrium.adv.br)**.

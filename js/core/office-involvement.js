@@ -1,4 +1,4 @@
-import { memberKeys, normalizeMemberKey } from './task-assignees.js?v=3.1.3';
+import { memberKeys, normalizeMemberKey } from './task-assignees.js?v=3.1.4';
 
 function text(value) {
   return String(value || '').trim();

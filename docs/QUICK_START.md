@@ -1,10 +1,10 @@
-# ATRIUM — primeiros 10 minutos
+# ATRIUM Senda — primeiros 10 minutos (Edição Básica Local)
 
-O ATRIUM Senda roda no computador do escritório (ou em um servidor próprio). As decisões jurídicas e os atos processuais permanecem humanos.
+O **ATRIUM Senda** roda localmente no seu computador com o **escopo Básico** (Processos, Publicações, Tarefas, Agenda e Contatos). Para ter **Financeiro com Asaas, Cálculos, Documentos com OCR, Equipe Ilimitada e o robô Atrium IA** sem instalar nada no PC, comece direto pelo **[ATRIUM Pro na nuvem (14 dias grátis)](https://atrium.adv.br/discover/)**.
 
-## 1. Instalar e abrir o ATRIUM
+## 1. Instalar e abrir o ATRIUM Senda
 
-No Windows, baixe o instalador `ATRIUM_Setup_3.0.2_x64.exe` em [releases](https://github.com/ricarossetto/Atrium-Senda/releases), verifique a soma SHA-256 (`SHA256SUMS.txt`) e execute. Em outros sistemas, siga a [instalação manual](INSTALLATION.md).
+No Windows, baixe o instalador `ATRIUM_3.1.4_x64-setup.exe` em [senda.atrium.adv.br/discover](https://senda.atrium.adv.br/discover/#instaladores) ou em [releases](https://github.com/ricarossetto/Atrium-Senda/releases), verifique a soma SHA-256 (`SHA256SUMS.txt`) e execute. Em outros sistemas, siga a [instalação manual](INSTALLATION.md).
 
 Abra o aplicativo e crie a conta do administrador do escritório. Configure o segundo fator quando solicitado e guarde os códigos de recuperação fora do navegador.
 

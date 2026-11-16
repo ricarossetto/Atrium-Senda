@@ -1,9 +1,9 @@
-import { memberAvatarHtml } from '../core/member-avatar.js?v=3.1.3';
+import { memberAvatarHtml } from '../core/member-avatar.js?v=3.1.4';
 
 const CONFIGURATION_ICON_NAMES = new Set(['check', 'delete']);
 const iconSvg = name => {
   const safeName = CONFIGURATION_ICON_NAMES.has(name) ? name : 'check';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.3#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.4#atrium-icon-${safeName}"></use></svg>`;
 };
 
 const CONFIGURATION_SECTIONS = [
@@ -995,6 +995,22 @@ export function createConfigurationFeature({
       const stored = feature.densityPreference();
       const selected = stored || applied;
       return `<div class="configuration-experimental" data-experimental-panel>
+        <section class="configuration-experimental-block is-pro-upsell-block" aria-labelledby="sendaProUpgradeHeading" style="border-color: var(--v2-color-gold, #C0A261); background: linear-gradient(180deg, rgba(192, 162, 97, 0.12), transparent);">
+          <header>
+            <div>
+              <p style="color: var(--v2-color-gold, #C0A261); font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;">ATRIUM Pro &amp; Pro IA na Nuvem</p>
+              <h3 id="sendaProUpgradeHeading">Desbloqueie Financeiro com Asaas, Cálculos, Documentos com OCR e Atrium IA</h3>
+              <span>O ATRIUM Senda é a edição Básica e Local. No <strong>ATRIUM Pro (R$ 197/mês)</strong> e <strong>Pro IA (R$ 297/mês)</strong> na nuvem você libera Financeiro jurídico com cobrança Pix/Boleto automática, Cálculos cíveis/trabalhistas/previdenciários, Documentos com OCR, Google Agenda, monitoramento 24/7 com o PC desligado, acesso para toda a equipe sem custo por usuário e o robô Atrium IA com 2.069 habilidades jurídicas.</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
+              <a class="button gold" href="https://atrium.adv.br/discover/?utm_source=atrium-senda&utm_medium=config-upgrade" target="_blank" rel="noopener noreferrer" style="text-align: center; text-decoration: none;">Testar 14 dias grátis no Pro</a>
+              <a class="button ghost" href="https://senda.atrium.adv.br/discover/#comparativo" target="_blank" rel="noopener noreferrer" style="text-align: center; text-decoration: none;">Comparar Senda × Pro</a>
+            </div>
+          </header>
+          <footer>
+            <small>Migração em 1 minuto: exporte seu arquivo <code>.atrium-backup</code> na aba Segurança/Backup e importe direto em <strong>atrium.adv.br</strong> sem perder nenhum processo ou contato.</small>
+          </footer>
+        </section>
         <section class="configuration-experimental-block is-density-block" aria-labelledby="experimentalDensityHeading">
           <header>
             <div>
@@ -1199,7 +1215,7 @@ export function createConfigurationFeature({
           <article class="configuration-row" role="listitem" data-config-index="${index}">
             <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(item)}">
               <span class="config-row-info"><strong>${escapeHtml(item)}</strong><span>Seção da caixa de entrada</span><small>Ativa</small></span>
-              <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.3#atrium-icon-chevron-right"></use></svg></span>
+              <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.4#atrium-icon-chevron-right"></use></svg></span>
             </button>
             <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(item)}">${iconSvg('delete')} Excluir</button>
           </article>`;
@@ -1298,7 +1314,7 @@ export function createConfigurationFeature({
         <article class="configuration-row" role="listitem" data-config-index="${index}">
           <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(primary)}">
             <span class="config-row-info"><strong>${escapeHtml(primary)}</strong><span>${escapeHtml(secondary)}</span>${meta}</span>
-            <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.3#atrium-icon-chevron-right"></use></svg></span>
+            <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.4#atrium-icon-chevron-right"></use></svg></span>
           </button>
           ${extraActions}
           <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(primary)}">${iconSvg('delete')} Excluir</button>
@@ -1332,7 +1348,7 @@ export function createConfigurationFeature({
             <p>${escapeHtml(target.description)}</p>
           </div>
           <button type="button" class="button ghost" data-modal-open-dedicated-integration="${escapeHtml(values.name)}">
-            ${escapeHtml(target.actionLabel)} <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.3#atrium-icon-chevron-right"></use></svg>
+            ${escapeHtml(target.actionLabel)} <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.4#atrium-icon-chevron-right"></use></svg>
           </button>
         </div>`;
       }

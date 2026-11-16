@@ -1,7 +1,7 @@
 @echo off
 setlocal
 chcp 65001 >nul
-title ATRIUM 3.1.3 — Escritório Integrado
+title ATRIUM 3.1.4 — Escritório Integrado
 
 pushd "%~dp0" >nul
 set "ATRIUM_MODE="

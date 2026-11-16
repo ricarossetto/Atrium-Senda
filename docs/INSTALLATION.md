@@ -1,6 +1,9 @@
-# ATRIUM — instalação e ambiente
+# ATRIUM Senda — instalação e ambiente (Edição Básica Local)
 
-O ATRIUM Senda é uma edição **open-source e self-hosted**: o escritório instala no próprio computador (ou servidor) e opera com os seus dados. Nada é obrigatoriamente enviado a terceiros. Quem preferir uma operação hospedada e gerenciada encontra o mesmo produto em [atrium.adv.br](https://atrium.adv.br), fora deste repositório.
+O **ATRIUM Senda** é a edição **Básica e Local** (licença FSL-1.1 Não-Concorrente): o advogado instala no próprio computador e opera localmente o escopo Básico (Processos, Publicações, Tarefas, Agenda e Contatos).
+
+> **Prefere não instalar servidor local e precisa de Financeiro com Asaas, Cálculos, Documentos com OCR, Equipe Ilimitada e o robô Atrium IA?**
+> Teste gratuitamente por **14 dias (sem cartão)** o **[ATRIUM Pro e ATRIUM Pro IA na nuvem](https://atrium.adv.br/discover/)** ou veja o comparativo completo em **[senda.atrium.adv.br/discover](https://senda.atrium.adv.br/discover/)**.
 
 ## Instalação (usuários)
 

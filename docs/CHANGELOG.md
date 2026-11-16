@@ -2,6 +2,14 @@
 
 As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## 3.1.4 — 2026-11-15
+
+### Alterado
+
+- **Escopo Básico Local (`basic`) como padrão oficial do Senda**: o aplicativo inicia na superfície Basic (Processos, Publicações, Tarefas, Agenda, Contatos, Integrações Judiciais somente leitura, Auditoria e Configurações) e bloqueia mutações locais nos módulos exclusivos dos planos pagos na nuvem (Financeiro, Cálculos, Documentos com OCR e Atrium IA).
+- **Promoção direta do ATRIUM Pro & Pro IA na nuvem**: tela de acesso, painel de Configurações e documentação passam a destacar a degustação de 14 dias em `https://atrium.adv.br/discover/` e a nova página oficial `https://senda.atrium.adv.br/discover/`.
+- **Licença alterada para FSL-1.1 (Uso Local Não-Concorrente)**: mantém o uso local gratuito para advogados em suas próprias máquinas e veda a oferta do código como SaaS, serviço hospedado ou produto concorrente do ATRIUM.
+
 ## 3.1.3 — 2026-11-14
 
 ### Alterado

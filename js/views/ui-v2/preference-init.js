@@ -2,7 +2,7 @@
   document.documentElement.dataset.ui = 'v2';
   try {
     const host = String(location.hostname || '').toLowerCase();
-    const basicHost = host === 'basic.atrium.adv.br' || host.endsWith('.basic.atrium.adv.br');
+    const basicHost = host === 'basic.atrium.adv.br' || host.endsWith('.basic.atrium.adv.br') || host === 'senda.atrium.adv.br' || host.endsWith('.senda.atrium.adv.br') || host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '';
     let density = null;
     try { density = String(localStorage.getItem('atrium_ui_density') || '').trim().toLowerCase(); } catch {}
     if (density !== 'basic' && density !== 'pro') {
@@ -10,7 +10,7 @@
     }
     document.documentElement.dataset.uiDensity = density;
   } catch {
-    document.documentElement.dataset.uiDensity = 'pro';
+    document.documentElement.dataset.uiDensity = 'basic';
   }
   try {
     const p = String(location.pathname || '').toLowerCase();
