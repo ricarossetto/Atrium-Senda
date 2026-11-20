@@ -91,6 +91,10 @@
   cursor: pointer;
 }
 
+.calc-pdf-meta {
+  margin: var(--v2-space-3) 0 var(--v2-space-4);
+}
+
 .calc-header {
   display: flex;
   align-items: flex-start;
@@ -954,7 +958,8 @@ html[data-theme="light"] .calc-items select {
   body:has(#view-calculations.active) .calc-panel,
   body:has(#view-calculations.active) .calc-saved,
   body:has(#view-calculations.active) .calc-tempo,
-  body:has(#view-calculations.active) .calc-actions {
+  body:has(#view-calculations.active) .calc-actions,
+  body:has(#view-calculations.active) .calc-pdf-meta {
     display: none;
   }
 

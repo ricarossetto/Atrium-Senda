@@ -37,7 +37,9 @@ export function createCalculationsFeature({
   let conferenciaIndices = null;
   let conferindoIndices = false;
   let salvando = false;
+  let gerandoPdf = false;
   let importando = false;
+  const pdfMeta = { numero: '', autor: '', reu: '', vara: '', observacoes: '' };
   let pendingDelete = null;
   let aba = 'civel';
   let civelSub = 'judicial';
@@ -313,6 +315,8 @@ export function createCalculationsFeature({
       error,
       loading,
       salvando,
+      gerandoPdf,
+      pdfMeta,
       importando,
       pendingDelete,
       resultadoSalvoId,
@@ -390,6 +394,10 @@ export function createCalculationsFeature({
       const field = event.target?.dataset?.calcField;
       if (field && Object.hasOwn(form, field)) {
         form[field] = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+      }
+      const pdfField = event.target?.dataset?.pdfField;
+      if (pdfField && Object.hasOwn(pdfMeta, pdfField)) {
+        pdfMeta[pdfField] = event.target.value;
       }
       const compareSerie = event.target?.dataset?.csuiteCompareSerie;
       if (compareSerie) {
@@ -943,6 +951,10 @@ export function createCalculationsFeature({
       }
       if (action === 'imprimir') {
         if (typeof window !== 'undefined' && typeof window.print === 'function') window.print();
+        return;
+      }
+      if (action === 'baixar-pdf') {
+        void baixarPdfDetalhado();
         return;
       }
       if (action === 'reload-catalog') {
@@ -3464,6 +3476,90 @@ export function createCalculationsFeature({
     return { ok: !lc142.erro, error: lc142.erro };
   }
 
+  async function baixarPdfDetalhado() {
+    if (gerandoPdf) return { ok: false, error: 'Geração de PDF já em andamento.' };
+    const activeResult = result && resultAba === aba ? result : null;
+    const activeTempo = aba === 'previdenciario' ? (tempo?.resultado || null) : null;
+    if (!activeResult && !activeTempo) {
+      const msg = 'Execute o cálculo antes de exportar o memorial em PDF.';
+      showToast?.(msg, 'warning');
+      return { ok: false, error: msg };
+    }
+    gerandoPdf = true;
+    error = '';
+    render();
+    try {
+      const settings = store?.state?.settings || {};
+      const escritorio = {
+        officeName: settings.officeName || '',
+        officeSlogan: settings.officeSlogan || '',
+        lawyerName: settings.lawyerName || '',
+        lawyerOab: settings.lawyerOab || '',
+        lawyerAddress: settings.lawyerAddress || '',
+        city: settings.city || ''
+      };
+      const response = await secureFetch('/api/calc/relatorio-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/pdf, application/json' },
+        body: JSON.stringify({
+          aba,
+          resultado: activeResult,
+          tempoResultado: activeTempo,
+          conferencia: conferenciaIndices || null,
+          processo: { ...pdfMeta },
+          escritorio,
+          geradoEm: getIsoDate()
+        })
+      });
+      if (!response?.ok) {
+        let mensagem = `Não foi possível gerar o PDF (HTTP ${response?.status || 'erro'}).`;
+        try {
+          const payload = await response.json();
+          if (payload?.error || payload?.message) mensagem = payload.error || payload.message;
+        } catch { /* mantém mensagem padrão */ }
+        throw new Error(mensagem);
+      }
+      const contentType = String(response.headers?.get?.('content-type') || '');
+      let blob = null;
+      let filename = '';
+      if (contentType.includes('application/json')) {
+        const payload = await response.json().catch(() => ({}));
+        if (payload?.ok === false) throw new Error(payload?.error || payload?.message || 'Falha ao gerar o memorial PDF.');
+        const base64 = String(payload?.bytesBase64 || '').replace(/^data:.*?;base64,/, '');
+        if (!base64) throw new Error('O servidor respondeu sem os bytes do PDF.');
+        const bytes = Uint8Array.from(atob(base64), ch => ch.charCodeAt(0));
+        blob = new Blob([bytes], { type: 'application/pdf' });
+        filename = String(payload?.filename || '');
+      } else {
+        blob = await response.blob();
+        const disp = String(response.headers?.get?.('content-disposition') || '');
+        const match = /filename="([^"]+)"/i.exec(disp);
+        if (match) filename = match[1];
+      }
+      if (!blob || blob.size === 0) throw new Error('O servidor devolveu um PDF vazio.');
+      const resolvedFilename = filename || `atrium-memorial-${aba}-${getIsoDate()}.pdf`;
+      const creator = documentRef?.createElement ? documentRef : globalThis.document;
+      const urlApi = globalThis.URL;
+      if (creator?.createElement && typeof urlApi?.createObjectURL === 'function') {
+        const objectUrl = urlApi.createObjectURL(blob);
+        const link = creator.createElement('a');
+        link.href = objectUrl;
+        link.download = resolvedFilename;
+        link.click?.();
+        setTimeout(() => urlApi.revokeObjectURL?.(objectUrl), 30_000);
+      }
+      showToast?.('Memorial em PDF baixado.', 'success');
+      return { ok: true, filename: resolvedFilename, bytes: blob.size };
+    } catch (err) {
+      error = err?.message || 'Falha ao gerar o memorial em PDF.';
+      showToast?.(error, 'error');
+      return { ok: false, error };
+    } finally {
+      gerandoPdf = false;
+      render();
+    }
+  }
+
   return {
     get state() {
       return { ...estadoDoPresenter(), form, trabalhista, previdenciario };
@@ -3488,6 +3584,7 @@ export function createCalculationsFeature({
     render,
     calculate,
     calcularCivelSuite,
+    baixarPdfDetalhado,
     abrirFluxoCivel(sub) {
       civelSub = ['judicial', 'correcao', 'amortizacao', 'sfh', 'tvm', 'reajuste', 'htm'].includes(sub) ? sub : 'judicial';
       etapa = 'formulario';

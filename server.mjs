@@ -1080,7 +1080,12 @@ const calcSource = createCalcSource();
 // Fábrica de Cálculos (TRF3/PDPJ-Br): chave opcional via FC_API_KEY. Sem chave a
 // integração falha fechada e as rotas respondem 409 — nunca sucesso presumido.
 const fabricaCalculos = createFabricaClient({ apiKey: () => process.env.FC_API_KEY || '' });
-const handleCalcRequest = createCalcHttpHandler({ source: calcSource, assertAuthenticated, readJson, json, fabrica: fabricaCalculos });
+const sendCalcBinary = (res, status, bytes, headers = {}) => {
+  applySecurityHeaders(res);
+  res.writeHead(status, { ...apiContractHeaders(), ...headers, 'Content-Length': bytes.length });
+  res.end(bytes);
+};
+const handleCalcRequest = createCalcHttpHandler({ source: calcSource, assertAuthenticated, readJson, json, fabrica: fabricaCalculos, sendBinary: sendCalcBinary });
 // Perfil previdenciário LC 142/2013 de grau constante: rotas NOVAS, montadas antes
 // das rotas genéricas de cálculo para que o prefixo específico prevaleça.
 const handleLc142Request = createLc142HttpHandler({
@@ -1088,11 +1093,7 @@ const handleLc142Request = createLc142HttpHandler({
   readJson,
   json,
   fabricaClient: fabricaCalculos,
-  sendBinary: (res, status, bytes, headers = {}) => {
-    applySecurityHeaders(res);
-    res.writeHead(status, { ...apiContractHeaders(), ...headers, 'Content-Length': bytes.length });
-    res.end(bytes);
-  }
+  sendBinary: sendCalcBinary
 });
 const inpiService = new InpiService({
   dataDir: DATA_DIR,

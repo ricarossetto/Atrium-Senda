@@ -2644,6 +2644,8 @@ export function renderCalculationsWorkspace(state = {}) {
       : '';
     const tempoMarkup = tempoResultado ? renderTempoResultado(tempoResultado, escapeHtml, formatCurrency) : '';
     const complementarMarkup = aba === 'previdenciario' ? renderComplementar(state.complementar, escapeHtml, formatCurrency) : '';
+    const pdfMeta = state.pdfMeta || {};
+    const pdfMetaFilled = Boolean(pdfMeta.numero || pdfMeta.autor || pdfMeta.reu || pdfMeta.vara || pdfMeta.observacoes);
     return `<section class="calc-surface" aria-labelledby="calculationsHeading">
     ${header}
     <section class="calc-result" aria-label="Resultado do cálculo">
@@ -2654,12 +2656,35 @@ export function renderCalculationsWorkspace(state = {}) {
         </div>
         <div class="calc-actions">
           <button type="button" class="button ghost" data-calc-action="voltar-form">${icon('chevron-left')}<span>Editar dados</span></button>
+          <button type="button" class="button gold" data-calc-action="baixar-pdf"${state.gerandoPdf ? ' disabled aria-busy="true"' : ''}>${icon('download')}<span>${state.gerandoPdf ? 'Gerando PDF...' : 'Baixar PDF (ATRIUM)'}</span></button>
           ${aba === 'civel' && result ? `<button type="button" class="button ghost" data-calc-action="civel-copiar-resumo"><span>Copiar p/ petição</span></button>
           <button type="button" class="button ghost" data-calc-action="civel-exportar-csv">${icon('download')}<span>Exportar CSV</span></button>` : ''}
           <button type="button" class="button ghost" data-calc-action="imprimir">${icon('documents')}<span>Imprimir relatório</span></button>
           ${renderSaveButton(form)}
         </div>
       </header>
+      <details class="calc-import calc-pdf-meta"${pdfMetaFilled ? ' open' : ''}>
+        <summary>Dados do processo para o cabeçalho do PDF (opcional)</summary>
+        <div class="calc-row">
+          <label class="calc-field"><span>Número do processo</span>
+            <input data-pdf-field="numero" maxlength="40" value="${escapeHtml(pdfMeta.numero || '')}" placeholder="Ex.: 0001234-56.2025.8.26.0100">
+          </label>
+          <label class="calc-field"><span>Juízo / Vara</span>
+            <input data-pdf-field="vara" maxlength="100" value="${escapeHtml(pdfMeta.vara || '')}" placeholder="Ex.: 2ª Vara Cível">
+          </label>
+        </div>
+        <div class="calc-row">
+          <label class="calc-field"><span>Autor / Exequente</span>
+            <input data-pdf-field="autor" maxlength="120" value="${escapeHtml(pdfMeta.autor || '')}" placeholder="Opcional">
+          </label>
+          <label class="calc-field"><span>Réu / Executado</span>
+            <input data-pdf-field="reu" maxlength="120" value="${escapeHtml(pdfMeta.reu || '')}" placeholder="Opcional">
+          </label>
+        </div>
+        <label class="calc-field"><span>Observações no memorial PDF</span>
+          <input data-pdf-field="observacoes" maxlength="300" value="${escapeHtml(pdfMeta.observacoes || '')}" placeholder="Ex.: Critérios fixados na sentença de fls. ...">
+        </label>
+      </details>
       ${resultMarkup}
       ${tempoMarkup}
       ${complementarMarkup}

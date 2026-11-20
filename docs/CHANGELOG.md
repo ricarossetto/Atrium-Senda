@@ -11,6 +11,7 @@ As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O format
   - **Perfis jurídicos rápidos** (5 botões de preenchimento na Planilha Judicial: Lei 14.905/24, Cível 1% INPC, Fazenda EC 113 SELIC, Poupança e Desapropriação) e **gerador de parcelas mensais recorrentes** (1 a 120 meses).
   - **Série `POUPANCA` contínua pré/pós 04/05/2012**: emenda automática entre regra antiga (`SGS 25` até 04/2012) e regra nova (`SGS 195` a partir de 05/2012) em `lib/calc/source.mjs`.
   - **Sub-abas e exportações**: seleção livre de até 5 índices no comparativo de Correção e Deflação, seletor **Simples / Composta** no Solver TVM, download direto do `.htm` reparado com `https://`, botão para copiar a minuta de notificação no Reajuste de Aluguel, **Copiar p/ petição** e **Exportar CSV** para as planilhas cíveis e financeiras.
+  - **Memorial detalhado em PDF com identidade visual ATRIUM** (`lib/calc/pdf/calc-report.mjs`, `POST /api/calc/relatorio-pdf`): novo botão *Baixar PDF (ATRIUM)* com timbre do escritório, brasão vetorial, identificação opcional dos autos e assinatura técnica do advogado em todas as abas (`Cível`, `Trabalhista` e `Previdenciário`).
 
 ### Corrigido
 
