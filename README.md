@@ -6,12 +6,12 @@
 [![Página Oficial Senda](https://img.shields.io/badge/Página_Oficial-senda.atrium.adv.br%2Fdiscover-2f7d5b?style=for-the-badge&labelColor=0B0D0E)](https://senda.atrium.adv.br/discover/)
 
 [![Licença](https://img.shields.io/badge/licença-FSL--1.1_(Uso_Local_Não--Concorrente)-blue)](LICENSE)
-[![Versão](https://img.shields.io/badge/versão-3.1.4_(Escopo_Basic)-9b7a3c)](docs/RELEASE_NOTES_3.1.4.md)
+[![Versão](https://img.shields.io/badge/versão-3.2.0_(Escopo_Basic)-9b7a3c)](docs/RELEASE_NOTES_3.2.0.md)
 [![Node.js](https://img.shields.io/badge/Node.js-24+-3c873a)](#instalação)
 
 ---
 
-> ### 🚀 Quer o sistema completo sem instalar servidor, com Financeiro (Asaas), Cálculos, Documentos com OCR, Equipe Ilimitada e o robô Atrium IA?
+> ### 🚀 Quer o sistema completo sem instalar servidor, com Financeiro (Asaas), Documentos com OCR, Equipe Ilimitada e o robô Atrium IA?
 > O **ATRIUM Senda** entrega apenas o **escopo Básico** para uso individual e local (exigindo que seu computador fique ligado e que você cuide de backups manuais).
 >
 > Para escritórios que precisam de **produtividade real, acesso pelo celular/qualquer lugar, equipe sem custo adicional por usuário e automação jurídica avançada**, conheça o **[ATRIUM Pro e ATRIUM Pro IA na nuvem](https://atrium.adv.br/discover/)**:
@@ -36,7 +36,7 @@
 | **Financeiro Jurídico Completo (Honorários, RPV, Fluxo de Caixa)** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
 | **Cobranças Asaas Integradas (Pix, Boleto, Cartão e Baixa Automática)** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
 | **Importação de Extrato Bancário, Recorrentes e Previsão de 6 Meses** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
-| **Cálculos Jurídicos (Cível, Trabalhista e Previdenciário/CNIS)** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
+| **Cálculos Jurídicos (Central Cível, Financeira, Trabalhista e Previdenciário/CNIS)** | ✅ **Incluso** | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
 | **Acervo de Documentos com OCR, Minutas e Busca no Texto** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
 | **Assistente de Redação Jurídica com IA (Pronto para uso, sem API key)** | ❌ Exclusivo Pro | ❌ Exclusivo Pro | ✅ **Incluso** | ✅ **Incluso** |
 | **Robô Atrium IA: Triagem automática de Publicações e Tarefas** | ❌ Exclusivo Pro IA | ❌ Exclusivo Pro IA | ❌ Exclusivo Pro IA | ✅ **Incluso (2.069 habilidades)** |
@@ -58,10 +58,11 @@ O **ATRIUM Senda** é a edição **Básica e Local** do ecossistema ATRIUM. Ele 
 | **Tarefas e Kanban** | Quadro visual ou lista, responsáveis, datas e vínculo com processo/publicação |
 | **Agenda** | Compromissos, tarefas e prazos confirmados manualmente |
 | **Contatos** | Cadastro de clientes e partes vinculadas aos processos |
+| **Cálculos** | Central Cível e Financeira (Lei 14.905/24, Correção/Deflação, PRICE/SAC, SFH/SACRE, TVM, Reajuste e `.HTM`), Trabalhista e Previdenciário/CNIS |
 | **Integrações judiciais** | DJEN, DataJud, eproc nacional e PJe nacional — somente leitura local |
 | **Auditoria e Backup** | Registro local de ações e exportação `.atrium-backup` compatível com o **ATRIUM Pro** |
 
-> **Nota:** Módulos avançados de gestão e inteligência (**Financeiro Jurídico, Integração Asaas, Cálculos Cíveis/Trabalhistas/Previdenciários, Documentos com OCR, CRM/Leads, Relatórios de Produtividade, Assistente de Redação e o robô Atrium IA**) são exclusivos dos planos **[ATRIUM Pro e ATRIUM Pro IA na nuvem](https://atrium.adv.br/discover/#planos)**.
+> **Nota:** Módulos avançados de gestão e inteligência (**Financeiro Jurídico, Integração Asaas, Documentos com OCR, CRM/Leads, Relatórios de Produtividade, Assistente de Redação e o robô Atrium IA**) são exclusivos dos planos **[ATRIUM Pro e ATRIUM Pro IA na nuvem](https://atrium.adv.br/discover/#planos)**.
 
 Decisões jurídicas, confirmação de prazos e atos processuais continuam sempre sob responsabilidade humana. O ATRIUM nunca dá ciência, não assina e não protocola nada em portais judiciais.
 
@@ -77,14 +78,14 @@ Baixe o pacote da sua plataforma na [página oficial do Senda](https://senda.atr
 
 | Sistema | Arquivo |
 | --- | --- |
-| Windows 10/11 x64 | `ATRIUM_3.1.4_x64-setup.exe` (NSIS) ou `ATRIUM_3.1.4_x64_pt-BR.msi` |
-| Windows 11 ARM64 | `ATRIUM_3.1.4_arm64-setup.exe` (NSIS) |
-| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.1.4_amd64.deb` |
-| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.1.4-1.x86_64.rpm` |
+| Windows 10/11 x64 | `ATRIUM_3.2.0_x64-setup.exe` (NSIS) ou `ATRIUM_3.2.0_x64_pt-BR.msi` |
+| Windows 11 ARM64 | `ATRIUM_3.2.0_arm64-setup.exe` (NSIS) |
+| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.2.0_amd64.deb` |
+| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.2.0-1.x86_64.rpm` |
 | Arch, Manjaro, EndeavourOS | AppImage ou `packaging/arch/PKGBUILD` |
-| Qualquer Linux x64 | `ATRIUM_3.1.4_amd64.AppImage` |
-| macOS Apple Silicon | `ATRIUM_3.1.4_aarch64.dmg` |
-| macOS Intel | `ATRIUM_3.1.4_x64.dmg` |
+| Qualquer Linux x64 | `ATRIUM_3.2.0_amd64.AppImage` |
+| macOS Apple Silicon | `ATRIUM_3.2.0_aarch64.dmg` |
+| macOS Intel | `ATRIUM_3.2.0_x64.dmg` |
 
 No Linux, o script oficial detecta a distribuição e instala o formato certo:
 
@@ -108,7 +109,7 @@ Abra `http://127.0.0.1:4173`. No Windows, o `ATRIUM.bat` automatiza as verifica�
 
 ## Como migrar do Senda para o ATRIUM Pro na nuvem em 1 minuto
 
-Começou pelo Senda e sentiu falta de acessar pelo celular, trabalhar em equipe, emitir cobranças pelo Asaas, fazer cálculos previdenciários/cíveis ou usar o robô **Atrium IA**?
+Começou pelo Senda e sentiu falta de acessar pelo celular, trabalhar em equipe, emitir cobranças pelo Asaas, gerenciar documentos com OCR ou usar o robô **Atrium IA**?
 
 1. No Senda, abra **Configurações → Segurança / Backup** e clique em **Exportar Backup (`.atrium-backup`)**.
 2. Crie sua conta gratuita de 14 dias em **[https://atrium.adv.br/login?auth=register](https://atrium.adv.br/login?auth=register)**.

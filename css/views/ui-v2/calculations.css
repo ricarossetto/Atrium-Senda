@@ -46,6 +46,17 @@
   outline-offset: 1px;
 }
 
+.calc-civel-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  border-radius: var(--v2-radius-lg);
+}
+
+.calc-civel-subtabs .calc-tab {
+  flex: 0 1 auto;
+}
+
 .calc-header {
   display: flex;
   align-items: flex-start;

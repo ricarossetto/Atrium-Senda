@@ -1,8 +1,8 @@
-import { Store } from '../core/store.js?v=3.1.4';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.1.4';
-import { describeLinkSafety, safeImageSource } from '../core/link-safety.js?v=3.1.4';
-import { MAX_SUSPENSIONS, describeSuspension, normalizeSuspension, normalizeSuspensions } from '../core/suspension-calendar.js?v=3.1.4';
-import { installPanelSizeToggle, resetPanelSize } from '../components/panel-size.js?v=3.1.4';
+import { Store } from '../core/store.js?v=3.2.0';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.2.0';
+import { describeLinkSafety, safeImageSource } from '../core/link-safety.js?v=3.2.0';
+import { MAX_SUSPENSIONS, describeSuspension, normalizeSuspension, normalizeSuspensions } from '../core/suspension-calendar.js?v=3.2.0';
+import { installPanelSizeToggle, resetPanelSize } from '../components/panel-size.js?v=3.2.0';
 
 export function createOfficeIdentityFeature({
   store = Store,

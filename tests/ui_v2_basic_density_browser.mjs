@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
 
-const BASIC_HIDDEN_VIEWS = Object.freeze(['financial', 'calculations', 'reports', 'documents', 'assistant', 'prompts', 'links', 'leads']);
-const BASIC_VISIBLE_VIEWS = Object.freeze(['dashboard', 'kanban', 'inbox', 'agenda', 'processes', 'contacts', 'configuration', 'integrations']);
+const BASIC_HIDDEN_VIEWS = Object.freeze(['financial', 'reports', 'documents', 'assistant', 'prompts', 'links', 'leads']);
+const BASIC_VISIBLE_VIEWS = Object.freeze(['dashboard', 'kanban', 'inbox', 'agenda', 'processes', 'contacts', 'calculations', 'configuration', 'integrations']);
 
 const session = await startUiV2Session();
 
@@ -61,9 +61,9 @@ try {
     for (const view of BASIC_VISIBLE_VIEWS) {
       assert.equal(basic.navRects[view], true, `Basic deve preservar a navegação de ${view}.`);
     }
-    assert.equal(basic.groupHidden.management.navHidden, true, 'Gestão totalmente filtrada deve sair da navegação.');
+    assert.equal(basic.groupHidden.management.navHidden, false, 'Gestão deve permanecer visível no Basic para expor Cálculos.');
     assert.equal(basic.groupHidden.intelligence.navHidden, true, 'Inteligência totalmente filtrada deve sair da navegação.');
-    assert.equal(basic.groupHidden.management.toggleVisible, false, 'Toggle de grupo vazio não pode ficar órfão.');
+    assert.equal(basic.groupHidden.management.toggleVisible, true, 'Toggle de Gestão deve permanecer visível quando Cálculos está disponível no Basic.');
     assert.equal(basic.groupHidden.intelligence.toggleVisible, false, 'Toggle de grupo vazio não pode ficar órfão.');
     assert.deepEqual(basic.duplicateIds, [], 'O filtro Basic não pode duplicar ids.');
     assert.ok(basic.docOverflow <= 0, 'O filtro Basic não pode introduzir overflow horizontal no documento.');

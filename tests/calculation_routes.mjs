@@ -118,8 +118,9 @@ const catalog = await get('/api/calc/catalog');
 assert.equal(catalog.handled, true);
 assert.equal(catalog.res.statusCode, 200);
 assert.equal(catalog.res.body.ok, true);
-assert.equal(catalog.res.body.series.length, 11);
+assert.equal(catalog.res.body.series.length, 12);
 assert.ok(catalog.res.body.series.some(serie => serie.key === 'IPCA' && serie.code === 433));
+assert.ok(catalog.res.body.series.some(serie => serie.key === 'INCC-DI' && serie.code === 192));
 assert.ok(catalog.res.body.series.some(serie => serie.key === 'TR' && serie.code === 7811), 'Alias TR deve usar a série mensal 7811.');
 assert.equal(catalog.res.body.regimes.length, 4);
 assert.ok(catalog.res.body.regimes.find(track => track.track === 'geral').regimes.length === 3);
@@ -457,4 +458,94 @@ const semFabricaHandled = await semFabricaHandler(
 assert.equal(semFabricaHandled.statusCode, 409, 'Sem chave, a rota falha fechada com 409.');
 assert.equal(semFabricaHandled.code, 'FABRICA_NOT_CONFIGURED');
 
-console.log('Rotas de cálculo aprovadas: catálogo, séries, previews, CNIS por texto/CSV/XLSX/PDF com OCR, template e Fábrica de Cálculos (índices, documentos, cálculos e falha fechada) PASS.');
+// ── Central de Cálculos Cíveis e Financeiros: 6 novas rotas + transição Lei 14.905/24 ──
+const transicaoPreview = await post('/api/calc/civel/preview', {
+  atualizacaoAte: '2026-04-20',
+  correcao: { serie: 'IPCA' },
+  juros: { tipo: 'transicao-lei-14905' },
+  itens: [{ id: 'p-trans', especie: 'debito', descricao: 'Crédito cível', data: '2026-01-15', valor: '1000.00' }]
+}, { 'x-csrf-token': 'token-teste' });
+assert.equal(transicaoPreview.res.statusCode, 200);
+assert.equal(transicaoPreview.res.body.ok, true);
+assert.equal(transicaoPreview.res.body.calculo.resumo.total, '1023.41');
+
+const correcaoSemCsrf = await post('/api/calc/civel/correcao', {
+  valor: '1000',
+  dataInicial: '2026-01-15',
+  dataFinal: '2026-04-20',
+  serie: 'IPCA'
+}).catch(error => error);
+assert.equal(correcaoSemCsrf.statusCode, 403, 'Correção cível exige CSRF.');
+
+const correcaoDireta = await post('/api/calc/civel/correcao', {
+  valor: '1000.00',
+  dataInicial: '2026-01-15',
+  dataFinal: '2026-04-20',
+  serie: 'IPCA'
+}, { 'x-csrf-token': 'token-teste' });
+assert.equal(correcaoDireta.res.statusCode, 200);
+assert.equal(correcaoDireta.res.body.calculo.modalidade, 'correcao_monetaria');
+assert.equal(correcaoDireta.res.body.calculo.direcao, 'direta');
+
+const correcaoReversa = await post('/api/calc/civel/correcao', {
+  valor: '1000.00',
+  dataInicial: '2026-04-20',
+  dataFinal: '2026-01-15',
+  serie: 'IPCA'
+}, { 'x-csrf-token': 'token-teste' });
+assert.equal(correcaoReversa.res.statusCode, 200);
+assert.equal(correcaoReversa.res.body.calculo.modalidade, 'correcao_monetaria');
+assert.equal(correcaoReversa.res.body.calculo.direcao, 'reversa');
+
+const amortizacaoRota = await post('/api/calc/civel/amortizacao', {
+  sistema: 'COMPARATIVO',
+  valorBem: '10000',
+  taxaJuros: '1',
+  prazoMeses: 12
+}, { 'x-csrf-token': 'token-teste' });
+assert.equal(amortizacaoRota.res.statusCode, 200);
+assert.equal(amortizacaoRota.res.body.calculo.modalidade, 'amortizacao_price_sac');
+assert.ok(amortizacaoRota.res.body.calculo.comparativo?.price);
+assert.ok(amortizacaoRota.res.body.calculo.comparativo?.sac);
+
+const sfhRota = await post('/api/calc/civel/sfh', {
+  sistema: 'SACRE',
+  valorImovel: '120000',
+  valorFinanciado: '120000',
+  taxaJurosAnualNominalPct: '12',
+  trMensalPct: '0.5',
+  prazoAnos: 10,
+  usarArredondamentoBancario: true
+}, { 'x-csrf-token': 'token-teste' });
+assert.equal(sfhRota.res.statusCode, 200);
+assert.equal(sfhRota.res.body.calculo.cronograma[0].prestacaoTotal, '2200.00');
+assert.equal(sfhRota.res.body.calculo.cronograma[119].saldoDevedorFinal, '0.00');
+
+const tvmRota = await post('/api/calc/civel/tvm', {
+  ratePct: '1',
+  basis: 'mes',
+  tvm: { solveFor: 'pmt', pv: '100000', fv: '0', ratePct: '1', nper: '12', timing: 'vencido' }
+}, { 'x-csrf-token': 'token-teste' });
+assert.equal(tvmRota.res.statusCode, 200);
+assert.equal(tvmRota.res.body.calculo.tvm.pmt, '8884.88');
+
+const reajusteRota = await post('/api/calc/civel/reajuste', {
+  valorInicial: '3000',
+  serie: 'IPCA',
+  competenciaInicio: '2026-01',
+  competenciaFim: '2026-04',
+  periodicidadeMeses: 2
+}, { 'x-csrf-token': 'token-teste' });
+assert.equal(reajusteRota.res.statusCode, 200);
+assert.equal(reajusteRota.res.body.calculo.modalidade, 'reajuste_aluguel');
+assert.equal(reajusteRota.res.body.calculo.ciclos.length, 2);
+assert.ok(reajusteRota.res.body.calculo.notificacaoTexto.includes('NOTIFICAÇÃO'));
+
+const htmRota = await post('/api/calc/civel/importar-htm', {
+  html: '<html><head><title>Planilha 2022</title><link rel="stylesheet" href="http://legado.exemplo/a.css"></head><body><table><tr><td>10/01/2022</td><td>Parcela única</td><td>R$ 1.500,00</td></tr></table></body></html>'
+}, { 'x-csrf-token': 'token-teste' });
+assert.equal(htmRota.res.statusCode, 200);
+assert.ok(htmRota.res.body.diagnostico.detectedHttpLegacyUrls >= 1);
+assert.ok(htmRota.res.body.diagnostico.extractedItems.length >= 1);
+
+console.log('Rotas de cálculo aprovadas: catálogo, séries, previews, suíte cível/financeira, CNIS por texto/CSV/XLSX/PDF com OCR, template e Fábrica de Cálculos (índices, documentos, cálculos e falha fechada) PASS.');

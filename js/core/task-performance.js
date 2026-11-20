@@ -15,6 +15,26 @@ function monthKeyOf(date) {
   return { year: date.getFullYear(), month: date.getMonth() };
 }
 
+function parseLocalDayStart(value) {
+  const raw = String(value || '').trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (match) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 0, 0, 0, 0).getTime();
+  }
+  return Date.parse(raw);
+}
+
+function parseLocalDayEnd(value) {
+  const raw = String(value || '').trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (match) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 23, 59, 59, 999).getTime();
+  }
+  return Date.parse(raw);
+}
+
+const isTerminalTaskStatus = status => ['concluida', 'concluido', 'arquivada', 'cancelada', 'finalizada'].includes(String(status || '').toLowerCase().trim());
+
 function previousMonthOf({ year, month }) {
   return month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 };
 }
@@ -74,8 +94,8 @@ export function computeTaskPerformance(tasks = [], { goal = null, now = new Date
     if (task.active === false) continue;
     const completedAt = Date.parse(task.completedAt || '');
     if (Number.isFinite(completedAt)) { finished.push(task); continue; }
-    // Concluída sem carimbo de data (legado) fica fora das séries e dos pendentes.
-    if (task.status === 'concluida') continue;
+    // Concluída sem carimbo de data (legado) ou terminal fica fora das séries e dos pendentes.
+    if (isTerminalTaskStatus(task.status)) continue;
     live.push(task);
   }
 
@@ -88,7 +108,7 @@ export function computeTaskPerformance(tasks = [], { goal = null, now = new Date
 
   const pending = live.length;
   const late = live.filter(task => {
-    const deadline = Date.parse(task.deadline || task.fatalDeadline || '');
+    const deadline = parseLocalDayEnd(task.fatalDeadline || task.deadline || '');
     return Number.isFinite(deadline) && deadline < nowDate.getTime();
   }).length;
 
@@ -132,11 +152,11 @@ function resolveReportRange(period, now, dateFrom, dateTo) {
   if (period === '30d') return { start: ref.getTime() - 30 * 86400000, end: ref.getTime(), label: PERIOD_LABELS['30d'] };
   if (period === '90d') return { start: ref.getTime() - 90 * 86400000, end: ref.getTime(), label: PERIOD_LABELS['90d'] };
   if (period === 'custom') {
-    const start = Date.parse(dateFrom || '');
-    const endDate = Date.parse(dateTo || '');
+    const start = parseLocalDayStart(dateFrom || '');
+    const endDate = parseLocalDayEnd(dateTo || '');
     return {
       start: Number.isFinite(start) ? start : monthStart.getTime(),
-      end: Number.isFinite(endDate) ? endDate + 86399999 : ref.getTime(),
+      end: Number.isFinite(endDate) ? endDate : ref.getTime(),
       label: PERIOD_LABELS.custom
     };
   }
@@ -157,10 +177,13 @@ function durationMinutesOf(task) {
 
 function delayDaysOf(task) {
   const completedAt = Date.parse(task?.completedAt || '');
-  const deadline = Date.parse(task?.deadline || '');
-  return Number.isFinite(completedAt) && Number.isFinite(deadline)
-    ? Math.round(((completedAt - deadline) / 86400000) * 10) / 10
-    : null;
+  // Prazo sem horário vence no fim do dia local (23:59:59.999), como nos pendentes e no
+  // período personalizado. Com `Date.parse` puro, `2026-11-18` virava 21:00 BRT do dia
+  // anterior e a conclusão no próprio dia rendia ~0,8 dia de atraso.
+  const deadline = parseLocalDayEnd(task?.fatalDeadline || task?.deadline || '');
+  if (!Number.isFinite(completedAt) || !Number.isFinite(deadline)) return null;
+  // Atraso não é negativo: concluir antes do prazo é zero, não "adiantamento".
+  return Math.max(0, Math.round(((completedAt - deadline) / 86400000) * 10) / 10);
 }
 
 function loggedMinutesOf(task) {
@@ -201,11 +224,11 @@ export function computeProductivityReport(tasks = [], { configuration = {}, now 
     filterOptions.taskTypes.add(taskTypeOf(task));
     const completedAt = Date.parse(task.completedAt || '');
     if (!Number.isFinite(completedAt)) {
-      if (task.status === 'concluida') continue;
+      if (isTerminalTaskStatus(task.status)) continue;
       if (!matchFilters(task)) continue;
       const row = liveByResponsible.get(responsibilityOf(task)) || { pending: 0, late: 0 };
       row.pending += 1;
-      const deadline = Date.parse(task.deadline || task.fatalDeadline || '');
+      const deadline = parseLocalDayEnd(task.fatalDeadline || task.deadline || '');
       const isLate = Number.isFinite(deadline) && deadline < nowMs;
       if (isLate) row.late += 1;
       liveByResponsible.set(responsibilityOf(task), row);
@@ -309,7 +332,10 @@ export function computeProductivityReport(tasks = [], { configuration = {}, now 
 }
 
 function csvCell(value) {
-  const text = String(value ?? '');
+  let text = String(value ?? '');
+  if (typeof value !== 'number' && /^[=+\-@\t\r]/.test(text)) {
+    text = `'${text}`;
+  }
   return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
@@ -348,5 +374,5 @@ export function buildProductivityCsv(report) {
       item.points
     ].map(csvCell).join(','));
   }
-  return lines.join('\r\n');
+  return `\uFEFF${lines.join('\r\n')}`;
 }

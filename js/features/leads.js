@@ -1,5 +1,5 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.1.4';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.1.4';
+import { Store, isoDate, uid } from '../core/store.js?v=3.2.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.2.0';
 
 export const LEAD_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
 export const LEAD_DEFAULT_PAGE_SIZE = 25;

@@ -1,6 +1,6 @@
 [package]
 name = "atrium-senda-desktop"
-version = "3.1.4"
+version = "3.2.0"
 description = "Aplicativo desktop do ATRIUM Senda para Windows, Linux e macOS"
 authors = ["ATRIUM"]
 license = "MIT"

@@ -1,5 +1,5 @@
-import { fetchState, importLegacyState, persistState } from './api.js?v=3.1.4';
-import { rebaseClientState } from './state-rebase.js?v=3.1.4';
+import { fetchState, importLegacyState, persistState } from './api.js?v=3.2.0';
+import { rebaseClientState } from './state-rebase.js?v=3.2.0';
 
 const STORAGE_KEY = 'jurisflow_storage_v1';
 
@@ -185,11 +185,25 @@ export const Store = {
   canonicalRefreshSourceRevision: null,
   async load({ expectedFingerprint, expectedRevision, canApply = () => true } = {}) {
     const guarded = expectedFingerprint !== undefined;
+    const previousState = this.state;
+    const previousRevision = this.revision;
+    const previousStateStatus = this.stateStatus;
+    const previousRecoveryDetails = this.recoveryDetails;
+    const previousServerMeta = this.serverMeta;
+    const previousFingerprint = this.persistedFingerprint;
     let persisted = null;
     let serverPayload = null;
+    let serverReachable = false;
+    if (!guarded && !previousState) {
+      this.revision = null;
+      this.stateStatus = null;
+      this.recoveryDetails = null;
+      this.serverMeta = null;
+    }
     try {
       const response = await fetchState();
       if (response.ok) {
+        serverReachable = true;
         serverPayload = await response.json();
         if (guarded && (!canApply() || this.persistenceFingerprint() !== expectedFingerprint || this.revision !== expectedRevision)) return false;
         if (guarded && (!serverPayload.state || typeof serverPayload.state !== 'object' || Array.isArray(serverPayload.state) || serverPayload.stateStatus !== 'READY' || typeof serverPayload.revision !== 'string' || !serverPayload.revision)) return false;
@@ -206,7 +220,20 @@ export const Store = {
           dataVersion: serverPayload.dataVersion
         };
       }
-    } catch { /* servidor indisponível — modo offline seguro */ }
+    } catch (e) {
+      console.error('Falha ao carregar estado do servidor:', e);
+      serverReachable = false;
+    }
+
+    if (!serverReachable && previousState) {
+      this.state = previousState;
+      this.revision = previousRevision;
+      this.stateStatus = previousStateStatus;
+      this.recoveryDetails = previousRecoveryDetails;
+      this.serverMeta = previousServerMeta;
+      this.persistedFingerprint = previousFingerprint;
+      return false;
+    }
 
     if (guarded && !persisted) return false;
 
@@ -253,8 +280,10 @@ export const Store = {
     const seedConfigurationDefaults = !persisted;
     if (!persisted) {
       this.state = deepClone(sampleState);
-      if (this.stateStatus === 'NEW_INSTALL') {
-        for (const key of ['intimations', 'tasks', 'processes', 'agenda', 'audit']) this.state[key] = [];
+      if (this.stateStatus === 'NEW_INSTALL' || !serverReachable) {
+        for (const key of ['intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'leads', 'officeExpenses', 'financialEntries', 'officeRecurringExpenses', 'calculations']) {
+          this.state[key] = [];
+        }
         this.state.settings.demoMode = false;
         const authenticatedUser = globalThis.KellerAuth?.currentUser;
         if (authenticatedUser?.workspaceName) this.state.settings.officeName = authenticatedUser.workspaceName;
@@ -274,8 +303,8 @@ export const Store = {
     this.persistedFingerprint = persisted ? this.persistenceFingerprint() : null;
     this.canonicalRefreshPending = false;
     this.canonicalRefreshSourceRevision = null;
-    if (!guarded) this.save();
-    return true;
+    if (!guarded && serverReachable) this.save();
+    return serverReachable;
   },
   ensureShape({ seedConfigurationDefaults = false } = {}) {
     ['terms', 'sources', 'intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'documents', 'leads', 'customPrompts', 'customLinks', 'calculations'].forEach(key => {
@@ -428,8 +457,12 @@ export const Store = {
         const refreshed = await this.load({ expectedFingerprint, expectedRevision, canApply });
         return { ok: refreshed === true, reason: refreshed === true ? null : 'refresh', result };
       } catch (error) {
-        this.canonicalRefreshPending = true;
-        this.canonicalRefreshSourceRevision ||= expectedRevision;
+        const deterministicFailure = error?.deterministic === true
+          || [400, 401, 403, 404, 422, 429].includes(Number(error?.status));
+        if (!deterministicFailure) {
+          this.canonicalRefreshPending = true;
+          this.canonicalRefreshSourceRevision ||= expectedRevision;
+        }
         throw error;
       }
     };
@@ -517,6 +550,36 @@ export const Store = {
       const discardedCollections = Array.isArray(payload.discardedCollections)
         ? payload.discardedCollections.filter(name => typeof name === 'string')
         : [];
+      if (discardedCollections.length > 0 && this.state) {
+        try {
+          const syncResponse = await fetchState();
+          if (syncResponse.ok) {
+            const syncPayload = await syncResponse.json().catch(() => null);
+            if (syncPayload?.state && typeof syncPayload.state === 'object' && !Array.isArray(syncPayload.state)) {
+              for (const collection of discardedCollections) {
+                if (collection === 'processesFinance' || collection === 'processes') {
+                  if (Array.isArray(syncPayload.state.processes)) this.state.processes = syncPayload.state.processes;
+                } else if (collection in syncPayload.state) {
+                  this.state[collection] = syncPayload.state[collection];
+                }
+              }
+              if (discardedCollections.some(name => ['financialEntries', 'officeExpenses', 'officeRecurringExpenses'].includes(name)) && Array.isArray(syncPayload.state.processes)) {
+                this.state.processes = syncPayload.state.processes;
+              }
+              if (Array.isArray(syncPayload.state.audit)) this.state.audit = syncPayload.state.audit;
+              this.revision = syncPayload.revision || this.revision;
+              this.ensureShape();
+              this.persistedFingerprint = null;
+            } else {
+              this.persistedFingerprint = null;
+            }
+          } else {
+            this.persistedFingerprint = null;
+          }
+        } catch {
+          this.persistedFingerprint = null;
+        }
+      }
       return { ok: true, discardedCollections, revision: this.revision };
     } catch (error) {
       const detail = error?.persistenceDetail || persistenceFailureDetail(null, '');
@@ -535,12 +598,12 @@ export const Store = {
   async rebaseOnServerState() {
     if (!this.persistedFingerprint) return false;
     try {
+      const localState = this.state;
       const response = await fetchState();
       if (!response.ok) return false;
       const fresh = await response.json();
       // Mesma revisão: não há nada novo para reaplicar, e repetir só daria a mesma recusa.
       if (!fresh?.state || !fresh.revision || fresh.revision === this.revision) return false;
-      const localState = this.state;
       const base = JSON.parse(this.persistedFingerprint);
       try {
         this.state = fresh.state;
@@ -573,8 +636,38 @@ export const Store = {
     this.save();
     return entry;
   },
+  clearSession({ scrub = true } = {}) {
+    clearTimeout(this.saveTimer);
+    this.saveTimer = null;
+    this.revision = null;
+    this.stateStatus = null;
+    this.recoveryDetails = null;
+    this.serverMeta = null;
+    this.persistedFingerprint = null;
+    this.lastFlush = null;
+    this.canonicalRefreshPending = false;
+    this.canonicalRefreshSourceRevision = null;
+    if (scrub) {
+      this.state = deepClone(sampleState);
+      for (const key of ['intimations', 'tasks', 'processes', 'agenda', 'audit', 'contacts', 'leads', 'officeExpenses', 'financialEntries', 'officeRecurringExpenses', 'calculations']) {
+        this.state[key] = [];
+      }
+      this.state.settings.demoMode = false;
+      this.ensureShape();
+    }
+  },
   upsert(collection, record, externalKey = 'id') {
-    const index = this.state[collection].findIndex(item => item[externalKey] === record[externalKey]);
+    if (!Array.isArray(this.state[collection])) this.state[collection] = [];
+    const extVal = record?.[externalKey];
+    const hasExternal = extVal !== undefined && extVal !== null && String(extVal).trim() !== '';
+    let index = hasExternal
+      ? this.state[collection].findIndex(item => item?.[externalKey] === extVal)
+      : -1;
+    if (index < 0 && externalKey !== 'id') {
+      const idVal = record?.id;
+      const hasId = idVal !== undefined && idVal !== null && String(idVal).trim() !== '';
+      if (hasId) index = this.state[collection].findIndex(item => item?.id === idVal);
+    }
     if (index >= 0) this.state[collection][index] = { ...this.state[collection][index], ...record };
     else this.state[collection].unshift(record);
     this.save();

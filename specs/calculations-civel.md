@@ -55,6 +55,15 @@ Regras complementares que o motor deve oferecer como presets, nunca como inferê
 - Produzir número sem memória de cálculo, sem fonte de índice ou sem registro do critério escolhido.
 - Usar o cálculo como prazo, ciência, parecer ou ato processual.
 
+## Ferramentas complementares cíveis e financeiras
+
+- `lib/calc/civel-correcao.mjs` (`POST /api/calc/civel/correcao`): atualização monetária direta, desatualização reversa (`1 / fator`), pró-rata exponencial por dias corridos e comparativo entre índices.
+- `lib/calc/civel-amortizacao.mjs` (`POST /api/calc/civel/amortizacao`): tabelas PRICE e SAC analíticas com carência, tarifas/CET mensal e absorção de centavos na última parcela.
+- `lib/calc/civel-sfh.mjs` (`POST /api/calc/civel/sfh`): financiamento imobiliário SFH (`SACRE`, `SAC`, `PRICE`) com TR, recálculo cíclico anual, MIP, DFI, TCA e arredondamento bancário `half-down`.
+- `lib/calc/civel-juros-tvm.mjs` (`POST /api/calc/civel/tvm`): equivalência de taxas em 7 bases temporais (simples e composta) e solver TVM de 5 variáveis.
+- `lib/calc/civel-reajuste.mjs` (`POST /api/calc/civel/reajuste`): reajuste periódico de aluguéis e contratos com piso anti-deflação opcional e minuta de notificação.
+- `lib/calc/civel-htm-import.mjs` (`POST /api/calc/civel/importar-htm`): reparo de referências `http://` legadas pré-01/06/2023 para `https://` e extração assistida de parcelas para a Planilha Judicial.
+
 ## Testes relevantes
 
-`tests/calculation_decimal.mjs`, `tests/calculation_indices.mjs`, `tests/calculation_calendar.mjs`, `tests/calculation_regimes.mjs`, `tests/calculation_civel.mjs`, `tests/calculation_spec_contract.mjs`, `tests/calculation_civel_anchor.mjs` (âncora oficial 2025), `tests/calc_conferencia_indices.test.mjs`, `tests/calc_civel_conferencia_http.test.mjs`, `tests/calculation_routes.mjs`, `tests/ui_v2_calculations.mjs`, `tests/visual_ui_v2_calculations.mjs`.
+`tests/calculation_decimal.mjs`, `tests/calculation_indices.mjs`, `tests/calculation_calendar.mjs`, `tests/calculation_regimes.mjs`, `tests/calculation_civel.mjs`, `tests/calculation_civel_suite.mjs`, `tests/calculation_spec_contract.mjs`, `tests/calculation_civel_anchor.mjs` (âncora oficial 2025), `tests/calc_conferencia_indices.test.mjs`, `tests/calc_civel_conferencia_http.test.mjs`, `tests/calculation_routes.mjs`, `tests/ui_v2_calculations.mjs`, `tests/visual_ui_v2_calculations.mjs`.

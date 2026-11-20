@@ -41,7 +41,7 @@ import { ResendProvider } from '../lib/notifications/providers/resend-provider.m
     db.setSetting('notifications_enabled_at', '2026-10-09T00:00:00.000Z');
     record(db, 'window-publication');
     const service = new NotificationService({ db, provider, securityManager: { listUsers: () => users }, routingSecret: 'synthetic-routing-secret-test' });
-    assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(8) })).enqueued, 1);
+    assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(8) })).enqueued, 1);
     const item = outboxes(db)[0];
     const worker = () => new NotificationWorker({ getDatabases: () => [db], provider, now: () => clock, logger: { warn() {}, error() {} } });
     await worker().processCycle();
@@ -115,16 +115,18 @@ test('unknown legacy scopes hold old events durably while fresh events and other
     assert.equal(db.getPendingBulletinEvents(ws, hashRecipient(users[0].email), [EVENT_TYPES.PUBLICATION_NEW], '', new Date(at(8)).toISOString()).length, 0);
     assert(db.db.prepare('SELECT id FROM notification_events WHERE id = ?').get(old));
     assert.equal(db.db.prepare('SELECT count(*) AS n FROM notification_event_coverage WHERE event_id = ?').get(old).n, 0);
+    const priorState = syncedState(db);
     db.close();
     db = new NotificationDatabase({ dbPath });
+    publicationPayloadsByDb.set(db, priorState.intimations);
     const provider = { getFromAddress: () => 'teste@example.test', checkBudget: () => ({ allowed: true }), sendEmail: async () => ({ providerMessageId: 'synthetic-fresh' }) };
     const service = new NotificationService({ db, provider, securityManager: { listUsers: () => users }, routingSecret: 'synthetic-routing-secret-test' });
-    const blocked = await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(8) });
+    const blocked = await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(8) });
     assert.equal(blocked.enqueued, 0);
     assert.equal(blocked.reason, 'UNRESOLVED_LEGACY_COVERAGE');
     assert.equal(blocked.unresolvedLegacyCoverage, 1);
     const fresh = record(db, 'fresh-after-cutoff', undefined, undefined, at(9));
-    const result = await service.dispatchScheduledBulletins(ws, users, {}, { now: at(14) });
+    const result = await service.dispatchScheduledBulletins(ws, users, syncedState(db), { now: at(14) });
     assert.equal(result.enqueued, 2);
     assert.equal(result.unresolvedLegacyCoverage, 1);
     const bulletins = outboxes(db).filter(item => item.event_type === 'OPERATIONAL_BULLETIN');
@@ -154,10 +156,21 @@ function fixture(t, options = {}) {
   t.after(() => db.close());
   return { db, provider, service, calls };
 }
+// Estado sintético já sincronizado: o boletim PUBLICATION_NEW decide pelo registro
+// persistido, então cada evento de publicação precisa de sua intimação correspondente.
+const publicationPayloadsByDb = new WeakMap();
 function record(db, id, type = EVENT_TYPES.PUBLICATION_NEW, payload = { id, text: `Texto ${id}` }, time = at(7), workspaceId = ws) {
+  if (type === EVENT_TYPES.PUBLICATION_NEW && workspaceId === ws) {
+    const list = publicationPayloadsByDb.get(db) || [];
+    list.push({ ...payload });
+    publicationPayloadsByDb.set(db, list);
+  }
   const result = db.recordEvent({ workspaceId, eventType: type, fingerprint: `${type}:${id}`, payload });
   db.db.prepare('UPDATE notification_events SET created_at = ? WHERE id = ?').run(new Date(time).toISOString(), result.id);
   return result.id;
+}
+function syncedState(db) {
+  return { intimations: (publicationPayloadsByDb.get(db) || []).map(payload => ({ ...payload })) };
 }
 function outboxes(db) {
   return db.db.prepare('SELECT id FROM notification_outbox ORDER BY rowid').all().map(row => db.getOutboxItemById(row.id));
@@ -171,6 +184,9 @@ function outboxes(db) {
     assert.equal(db.getUserPreferences(ws, users[0].id)[0].cadence, cadence);
   }
   const pub = { id: 'pub-test', sourceText: 'Conteúdo sintético <b>escapado</b>', client: 'Cliente Teste', opposingParty: 'Parte Teste', term: 'Advogada Teste · OAB/RS 000000', description: 'Descrição Teste' };
+  const tracked = publicationPayloadsByDb.get(db) || [];
+  tracked.push({ ...pub, text: pub.sourceText });
+  publicationPayloadsByDb.set(db, tracked);
   assert.equal((await service.onNewPublications(ws, [pub])).enqueued, 0);
   assert.equal((await service.onNewPublications(ws, [pub])).recorded, 0);
   assert.equal((await service.onNewHearings(ws, [{ id: 'hearing-test', date: '2026-10-10' }])).enqueued, 0);
@@ -192,12 +208,13 @@ function outboxes(db) {
   }
   assert.equal(outboxes(db).length, 0);
   db.db.prepare('UPDATE notification_events SET created_at = ?').run(new Date(at(7)).toISOString());
-  assert.equal((await service.dispatchScheduledBulletins(ws, users, {}, { now: at(8) })).enqueued, 2);
+  assert.equal((await service.dispatchScheduledBulletins(ws, users, syncedState(db), { now: at(8) })).enqueued, 2);
   const admin = outboxes(db).find(item => item.recipient === users[0].email);
   const collab = outboxes(db).find(item => item.recipient === users[1].email);
   assert.equal(admin.payload.events.length, 6);
   assert.equal(collab.payload.events.length, 4);
-  assert.equal(admin.payload.events.find(event => event.event_type === EVENT_TYPES.PUBLICATION_NEW).payload.opposingParty, pub.opposingParty);
+  assert.equal(admin.payload.events.find(event => event.event_type === EVENT_TYPES.PUBLICATION_NEW).payload.opposingParty, undefined);
+  assert(admin.payload.text.includes(pub.opposingParty), 'Partes aparecem só no texto renderizado para o destinatário.');
   assert(admin.payload.text.includes(pub.sourceText));
   assert(admin.payload.html.includes('&lt;b&gt;escapado&lt;/b&gt;'));
   assert(!admin.payload.html.includes('<b>escapado</b>'));
@@ -215,7 +232,7 @@ test('first boot preserves explicit disable and activation watermark excludes hi
   const historical = record(db, 'historical');
   db.setSetting('notifications_enabled_at', new Date(at(7, '2026-10-11')).toISOString());
   assert.equal(db.ensureDefaultWorkspaceState(), false);
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(8, '2026-10-11') })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(8, '2026-10-11') })).enqueued, 0);
   assert(db.db.prepare('SELECT id FROM notification_events WHERE id = ?').get(historical));
   db.setWorkspaceEnabled(false);
   assert.equal(db.ensureDefaultWorkspaceState(), false);
@@ -225,19 +242,19 @@ test('first boot preserves explicit disable and activation watermark excludes hi
 test('BRT turns bound maximum three messages per recipient, late events carry, and empty turns reserve nothing', async t => {
   const { db, service } = fixture(t, { inMemory: true });
   record(db, 'morning');
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(7) })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(7) })).enqueued, 0);
   for (const [hour, id] of [[8, 'late-morning'], [14, 'late-afternoon'], [20, 'late-night']]) {
-    assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(hour) })).enqueued, 1);
+    assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(hour) })).enqueued, 1);
     record(db, id, undefined, undefined, at(hour + 1));
-    assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(hour + 1) })).enqueued, 0);
+    assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(hour + 1) })).enqueued, 0);
   }
   assert.deepEqual(outboxes(db).map(item => item.payload.bulletin.slot), [8, 14, 20]);
   assert.equal(outboxes(db).length, 3);
   const nightPending = db.getPendingBulletinEvents(ws, hashRecipient(users[0].email), [EVENT_TYPES.PUBLICATION_NEW], '', '9999', 100);
   assert.deepEqual(nightPending.map(event => event.payload.id), ['late-night']);
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(0, '2026-10-11') })).enqueued, 0);
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(8, '2026-10-11') })).enqueued, 1);
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(14, '2026-10-11') })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(0, '2026-10-11') })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(8, '2026-10-11') })).enqueued, 1);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(14, '2026-10-11') })).enqueued, 0);
   assert.equal(outboxes(db).length, 4);
   assert.equal(bulletinPeriod('2026-10-11T02:59:00Z').day, '2026-10-10');
   assert.equal(bulletinPeriod('2026-10-11T03:00:00Z').slot, null);
@@ -251,7 +268,7 @@ test('BRT turns bound maximum three messages per recipient, late events carry, a
     agenda: [{ id: 'today', title: 'Hoje Teste', date: '2026-10-10' }, { id: 'tomorrow', title: 'Amanhã Teste', date: '2026-10-11' }],
     tasks: [{ id: 'deadline', title: 'Prazo Teste', deadline: '2026-10-13' }, { id: 'reference-only', sourceReportedDeadlineAt: '2026-10-10' }, { id: 'absorbed', deadline: '2026-10-10', absorbedInto: 'deadline' }, { id: 'disabled', deadline: '2026-10-10', active: false }, { id: 'inferred', title: 'Recurso 15 dias' }]
   };
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], state, { now: at(8) })).enqueued, 1);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], { ...syncedState(db), ...state }, { now: at(8) })).enqueued, 1);
   const first = outboxes(db)[0].payload;
   assert.equal(first.bulletin.includeFullContext, true);
   assert.equal(first.digestContext.agendaToday.length, 1);
@@ -259,15 +276,15 @@ test('BRT turns bound maximum three messages per recipient, late events carry, a
   assert.equal(first.digestContext.deadlines.length, 1);
   const worker = new NotificationWorker({ getDatabases: () => [db], provider: service.provider });
   assert.equal((await worker.processCycle()).processedCount, 1);
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], state, { now: at(14) })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], { ...syncedState(db), ...state }, { now: at(14) })).enqueued, 0);
   record(db, 'new-event', undefined, undefined, at(13));
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], state, { now: at(14) })).enqueued, 1);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], { ...syncedState(db), ...state }, { now: at(14) })).enqueued, 1);
   assert.deepEqual(outboxes(db)[1].payload.digestContext, { agendaToday: [], agendaTomorrow: [], deadlines: [] });
   assert.equal(outboxes(db)[1].payload.bulletin.includeFullContext, false);
   state.agenda[0].time = '18:30';
   state.agenda[1].title = 'Amanhã alterada Teste';
   state.tasks.push({ id: 'fatal', fatalDeadline: '2026-10-11', title: 'Fatal Teste' });
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], state, { now: at(20) })).enqueued, 1);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], { ...syncedState(db), ...state }, { now: at(20) })).enqueued, 1);
   const changed = outboxes(db)[2].payload;
   assert.equal(changed.digestContext.agendaToday.length, 1);
   assert.equal(changed.digestContext.agendaTomorrow.length, 1);
@@ -280,16 +297,16 @@ test('BRT turns bound maximum three messages per recipient, late events carry, a
   const second = new NotificationService({ db, provider: service.provider, routingSecret: service.routingSecret });
   for (let index = 0; index < 5; index++) record(db, `page-${index}`);
   record(db, 'other-tenant', undefined, undefined, at(7), 'ws-other');
-  const results = await Promise.all(Array.from({ length: 10 }, (_, index) => (index % 2 ? second : service).dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(8), limit: 2 })));
+  const results = await Promise.all(Array.from({ length: 10 }, (_, index) => (index % 2 ? second : service).dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(8), limit: 2 })));
   assert.equal(results.reduce((total, result) => total + result.enqueued, 0), 1);
   assert.equal(db.getPendingEventsForDigest(ws, [EVENT_TYPES.PUBLICATION_NEW], '', hashRecipient(users[0].email)).length, 3);
   assert.equal(db.getPendingEventsForDigest(ws, [EVENT_TYPES.PUBLICATION_NEW], '', hashRecipient(users[1].email)).length, 5);
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[1]], {}, { now: at(8), limit: 2 })).enqueued, 1);
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(14), limit: 2 })).enqueued, 1);
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(20), limit: 2 })).enqueued, 1);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[1]], syncedState(db), { now: at(8), limit: 2 })).enqueued, 1);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(14), limit: 2 })).enqueued, 1);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(20), limit: 2 })).enqueued, 1);
   assert.equal(db.getPendingEventsForDigest(ws, [EVENT_TYPES.PUBLICATION_NEW], '', hashRecipient(users[0].email)).length, 0);
   assert.equal(db.getPendingEventsForDigest('ws-other', [EVENT_TYPES.PUBLICATION_NEW], '', hashRecipient(users[0].email)).length, 1);
-  await assert.rejects(service.dispatchScheduledBulletins('ws-other', users, {}, { now: at(8) }), /WORKSPACE_MISMATCH/);
+  await assert.rejects(service.dispatchScheduledBulletins('ws-other', users, syncedState(db), { now: at(8) }), /WORKSPACE_MISMATCH/);
 });
 
  test('queue failure rolls back quota and event coverage for A without losing recipient B', async t => {
@@ -298,12 +315,12 @@ test('BRT turns bound maximum three messages per recipient, late events carry, a
   const enqueue = db.enqueueOutbox.bind(db);
   let fail = true;
   db.enqueueOutbox = args => { if (fail && args.recipient === users[0].email) throw new Error('Synthetic queue failure'); return enqueue(args); };
-  const result = await service.dispatchScheduledBulletins(ws, users, {}, { now: at(8) });
+  const result = await service.dispatchScheduledBulletins(ws, users, syncedState(db), { now: at(8) });
   assert.equal(result.failed, 1);
   assert.equal(result.enqueued, 1);
   assert.equal(db.getPendingEventsForDigest(ws, [EVENT_TYPES.PUBLICATION_NEW], '', hashRecipient(users[0].email)).length, 1);
   fail = false;
-  assert.equal((await service.dispatchScheduledBulletins(ws, users, {}, { now: at(8) })).enqueued, 1);
+  assert.equal((await service.dispatchScheduledBulletins(ws, users, syncedState(db), { now: at(8) })).enqueued, 1);
   provider.sendEmail = async payload => {
     assert.equal(db.db.isTransaction, false);
     if (payload.to === users[0].email) throw Object.assign(new Error('Synthetic network failure'), { retryable: true });
@@ -314,7 +331,7 @@ test('BRT turns bound maximum three messages per recipient, late events carry, a
   assert.equal(outboxes(db).find(item => item.recipient === users[0].email).status, 'RETRYABLE_ERROR');
   assert.equal(outboxes(db).find(item => item.recipient === users[1].email).status, 'SENT');
   const retry = outboxes(db).find(item => item.recipient === users[0].email);
-  assert.equal((await service.dispatchScheduledBulletins(ws, users, {}, { now: at(9) })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, users, syncedState(db), { now: at(9) })).enqueued, 0);
   db.db.prepare('UPDATE notification_outbox SET next_attempt_at = ? WHERE id = ?').run('2000-01-01T00:00:00Z', retry.id);
   provider.sendEmail = async payload => {
     assert.equal(payload.idempotencyKey, retry.idempotency_key);
@@ -328,7 +345,7 @@ test('BRT turns bound maximum three messages per recipient, late events carry, a
  test('master disable cancels unsent operational quota, opt-outs skip backlog, transactional mail remains immediate', async t => {
   const { db, service, provider, calls } = fixture(t, { inMemory: true });
   record(db, 'queued-test');
-  await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(8) });
+  await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(8) });
   db.setWorkspaceEnabled(false);
   assert.equal(outboxes(db)[0].status, 'CANCELLED');
   await service.sendPasswordResetEmail({ workspaceId: ws, recipient: users[0].email, resetUrl: 'https://example.test/reset/synthetic' });
@@ -339,34 +356,34 @@ test('BRT turns bound maximum three messages per recipient, late events carry, a
   const old = record(db, 'disabled-test');
   db.setWorkspaceEnabled(true);
   db.db.prepare('UPDATE notification_events SET created_at = ? WHERE id = ?').run('2000-01-01T00:00:00.000Z', old);
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(14) })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(14) })).enqueued, 0);
   db.setSetting('notifications_enabled_at', '2026-10-09T00:00:00.000Z');
   record(db, 'optout-test');
   db.upsertPreference({ workspaceId: ws, userId: users[0].id, eventType: EVENT_TYPES.PUBLICATION_NEW, cadence: CADENCES.DISABLED, enabled: false });
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(14) })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(14) })).enqueued, 0);
   db.upsertPreference({ workspaceId: ws, userId: users[0].id, eventType: EVENT_TYPES.PUBLICATION_NEW, cadence: CADENCES.DAILY, enabled: true });
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(20) })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(20) })).enqueued, 0);
   const external = db.addRecipient({ workspaceId: ws, name: 'Destinatário Teste', email: 'external@example.test' });
   db.updateRecipient(ws, external.id, { enabled: false });
   record(db, 'suppressed-test');
   db.addSuppression(users[1].email, 'synthetic');
-  await service.dispatchScheduledBulletins(ws, [users[1]], {}, { now: at(20) });
+  await service.dispatchScheduledBulletins(ws, [users[1]], syncedState(db), { now: at(20) });
   db.removeSuppression(users[1].email);
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[1]], {}, { now: at(20) })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[1]], syncedState(db), { now: at(20) })).enqueued, 0);
 });
 
 test('personal and external opt-outs cancel unsent reservations before worker claim without retroactive reactivation', async t => {
   const { db, service } = fixture(t, { inMemory: true });
   const external = db.addRecipient({ workspaceId: ws, name: 'Externo Teste', email: 'external@example.test' });
   record(db, 'optout-reservation');
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(8) })).enqueued, 2);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(8) })).enqueued, 2);
   db.upsertPreference({ workspaceId: ws, userId: users[0].id, eventType: EVENT_TYPES.PUBLICATION_NEW, cadence: CADENCES.DISABLED, enabled: false });
   db.updateRecipient(ws, external.id, { enabled: false });
   assert.equal(db.claimNextOutboxBatch(10).length, 0);
   assert(outboxes(db).every(item => item.status === 'CANCELLED'));
   db.upsertPreference({ workspaceId: ws, userId: users[0].id, eventType: EVENT_TYPES.PUBLICATION_NEW, cadence: CADENCES.DAILY });
   db.updateRecipient(ws, external.id, { enabled: true });
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(14) })).enqueued, 0);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(14) })).enqueued, 0);
 });
 
 test('sensitive events and saved context use existing encryption; large canonical bodies are never truncated by cadence', async t => {
@@ -388,12 +405,13 @@ test('sensitive events and saved context use existing encryption; large canonica
   const text = 'Conteúdo sintético '.repeat(4000);
   record(db, 'large-canonical', EVENT_TYPES.PUBLICATION_NEW, { id: 'large-canonical', text });
   const state = { agenda: [{ id: 'private-context', title: 'Compromisso Teste', date: '2026-10-10' }] };
-  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], state, { now: at(8) })).enqueued, 1);
+  assert.equal((await service.dispatchScheduledBulletins(ws, [users[0]], { ...syncedState(db), ...state }, { now: at(8) })).enqueued, 1);
   const stored = db.db.prepare('SELECT recipient, payload FROM notification_outbox').get();
   assert(stored.recipient.startsWith('enc:v1:'));
   assert(stored.payload.startsWith('enc:v1:'));
   assert(db.db.prepare('SELECT context FROM notification_bulletins').get().context.startsWith('enc:v1:'));
-  assert.equal(outboxes(db)[0].payload.events[0].payload.text, text);
+  assert.equal(outboxes(db)[0].payload.events[0].payload.text, undefined, 'Trecho não vai no outbox; o template o gera para o destinatário.');
+  assert(outboxes(db)[0].payload.text.includes(text.trim().slice(0, 120)), 'O trecho autorizado permanece no texto do e-mail.');
   assert(!stored.payload.includes('Compromisso Teste'));
 });
 
@@ -426,7 +444,7 @@ test('each provider request rechecks canonical role, preferences, address, maste
     const external = change === 'external' ? db.addRecipient({ workspaceId: ws, name: 'Externo Teste', email: 'external@example.test' }) : null;
     record(db, 'delivery-publication');
     if (change === 'role') record(db, 'delivery-failure', EVENT_TYPES.SYNC_FAILED, { failures: [{ portal: 'Teste', category: 'Teste' }] });
-    await service.dispatchScheduledBulletins(ws, security.listUsers(ws), {}, { now: at(8) });
+    await service.dispatchScheduledBulletins(ws, security.listUsers(ws), syncedState(db), { now: at(8) });
     if (change === 'master' || change === 'role') {
       await service.sendPasswordResetEmail({ workspaceId: ws, recipient: 'second@example.test', resetUrl: 'https://example.test/reset/synthetic' });
       await service.sendTestEmail({ workspaceId: ws, recipient: 'second@example.test' });
@@ -459,7 +477,7 @@ test('each provider request rechecks canonical role, preferences, address, maste
       assert(outboxes(db).filter(item => ['PASSWORD_RESET', 'SYSTEM_TEST'].includes(item.event_type)).every(item => item.status === 'SENT'));
     }
     const count = outboxes(db).length;
-    assert.equal((await service.dispatchScheduledBulletins(ws, security.listUsers(ws), {}, { now: at(9) })).enqueued, 0);
+    assert.equal((await service.dispatchScheduledBulletins(ws, security.listUsers(ws), syncedState(db), { now: at(9) })).enqueued, 0);
     assert.equal(outboxes(db).length, count);
   }
 });
@@ -474,9 +492,9 @@ test('first actually sent context survives a failed morning reservation and late
   assert.equal(context.agendaToday[0].restricted, true);
   assert.equal(context.agendaTomorrow[0].segredoJustica, true);
   assert.equal(context.deadlines[0].isSecret, true);
-  await service.dispatchScheduledBulletins(ws, [users[0]], state, { now: at(8) });
+  await service.dispatchScheduledBulletins(ws, [users[0]], { ...syncedState(db), ...state }, { now: at(8) });
   db.markOutboxFailed(outboxes(db)[0].id, 'Synthetic permanent failure');
-  await service.dispatchScheduledBulletins(ws, [users[0]], state, { now: at(14) });
+  await service.dispatchScheduledBulletins(ws, [users[0]], { ...syncedState(db), ...state }, { now: at(14) });
   const afternoon = outboxes(db)[1];
   assert.equal(afternoon.payload.bulletin.includeFullContext, true);
   assert.equal(afternoon.payload.digestContext.agendaToday.length, 1);
@@ -485,7 +503,7 @@ test('first actually sent context survives a failed morning reservation and late
   assert(!afternoon.payload.html.includes('Cliente Privado Teste'));
   db.markOutboxSent(afternoon.id, { providerMessageId: 'synthetic', sentAt: new Date(at(14)).toISOString() });
   state.agenda[0].time = '18:00';
-  await service.dispatchScheduledBulletins(ws, [users[0]], state, { now: at(20) });
+  await service.dispatchScheduledBulletins(ws, [users[0]], { ...syncedState(db), ...state }, { now: at(20) });
   const evening = outboxes(db)[2];
   assert.equal(evening.payload.bulletin.includeFullContext, false);
   assert.equal(evening.payload.bulletin.noticeChanges.removed.agendaToday[0].restricted, true);
@@ -609,6 +627,7 @@ test('persistent SQLite restart recovers crash-before-queue and missed latest sl
   db.upsertPreference({ workspaceId: ws, userId: users[0].id, eventType: EVENT_TYPES.PUBLICATION_NEW, cadence: CADENCES.DAILY });
   db.addRecipient({ workspaceId: ws, name: 'Externo Teste', email: 'external@example.test' });
   record(db, 'crash-before-queue');
+  const persistedState = syncedState(db);
   db.close();
   const moduleUrl = new URL('../lib/notifications/db.mjs', import.meta.url).href;
   const serviceUrl = new URL('../lib/notifications/notification-service.mjs', import.meta.url).href;
@@ -617,7 +636,7 @@ test('persistent SQLite restart recovers crash-before-queue and missed latest sl
     import { NotificationService } from ${JSON.stringify(serviceUrl)};
     const db = new NotificationDatabase({ dbPath: ${JSON.stringify(dbPath)} });
     const service = new NotificationService({ db, provider: { getFromAddress: () => 'teste@example.test' }, routingSecret: 'synthetic-routing-secret-test' });
-    const result = await service.dispatchScheduledBulletins(${JSON.stringify(ws)}, ${JSON.stringify([users[0]])}, {}, { now: ${JSON.stringify(at(21))} });
+    const result = await service.dispatchScheduledBulletins(${JSON.stringify(ws)}, ${JSON.stringify([users[0]])}, ${JSON.stringify(persistedState)}, { now: ${JSON.stringify(at(21))} });
     if (result.enqueued !== 2) process.exitCode = 2;
     db.close();
   `], { encoding: 'utf8', timeout: 10000, env: { ...process.env, NODE_ENV: 'test' } });
@@ -627,7 +646,7 @@ test('persistent SQLite restart recovers crash-before-queue and missed latest sl
   assert.equal(outboxes(restarted).length, 2);
   assert.equal(outboxes(restarted)[0].payload.bulletin.slot, 20);
   const restartedService = new NotificationService({ db: restarted, provider: service.provider, routingSecret: service.routingSecret });
-  assert.equal((await restartedService.dispatchScheduledBulletins(ws, [users[0]], {}, { now: at(22) })).enqueued, 0);
+  assert.equal((await restartedService.dispatchScheduledBulletins(ws, [users[0]], syncedState(db), { now: at(22) })).enqueued, 0);
   restarted.db.exec('DROP TABLE notification_bulletins; DROP TABLE notification_event_coverage; DROP TABLE notification_preference_cutoffs; DROP TABLE notification_legacy_coverage_holds; ALTER TABLE notification_outbox DROP COLUMN first_provider_attempt_at; PRAGMA user_version = 17;');
   restarted.close();
   const migrated = new NotificationDatabase({ dbPath });

@@ -2,6 +2,17 @@
 
 As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## 3.2.0 — 2026-11-20
+
+### Adicionado
+
+- **Central de Cálculos Cíveis e Financeiros liberada nativamente na edição local**: além da Planilha Judicial (Lei 14.905/2024 e Resolução CMN 5.171/2024, com transição automática em 30/08/2024), a aba Cível passa a contar com sub-navegação para **Correção e Desatualização Reversa**, **Tabelas PRICE e SAC analíticas**, **Financiamento Imobiliário SFH (SACRE, SAC e PRICE com TR, MIP, DFI e TCA)**, **Equivalência de Taxas em 7 bases e Solver TVM**, **Reajuste de Aluguéis e Contratos** (com cláusula de piso zero em deflação e minuta de notificação) e **Importador e Reparador de Planilhas `.HTM` Legadas** (conversão automática de links `http://` pré-01/06/2023 para `https://`).
+- **Série `INCC-DI` (SGS 192)** adicionada ao catálogo oficial do BCB e `BigInt` decimal estendido com arredondamento bancário `half-down`, exponenciação inteira (`powInt`) e radiciação por Newton-Raphson (`nthRoot`).
+
+### Corrigido
+
+- **Sincronização das correções de segurança, cálculos e estabilidade do BugHunt**: correção do sinal de juros em amortizações e descontos no motor cível (`BUG-06`), isolamento de escopo privado e RBAC em `state.calculations` (`BUG-10`), proteção contra SSRF/DNS rebinding (`network-guard.mjs`), consistência de `Store.load()`/`rebaseOnServerState()`, projeção de avos e datas bissextas no motor trabalhista (`BUG-05`), concomitância em marcos de tempo de contribuição (`BUG-09`) e overrides/snapshots do assistente LC 142 (`BUG-07`, `BUG-08`, `BUG-17`).
+
 ## 3.1.4 — 2026-11-15
 
 ### Alterado

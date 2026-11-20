@@ -7,8 +7,41 @@
  * descartado em silêncio.
  */
 const SERVER_OWNED_FIELDS = new Set(['revision', 'updatedAt', 'appVersion', 'schemaVersion', 'dataVersion']);
+const SERVER_STAMPED_RECORD_FIELDS = new Set(['createdByUserId', 'assigneeUserId', 'followerUserIds', 'responsibleUserIds', 'completedAt', 'completedBy']);
 
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const isEmptyStampValue = value => value === undefined || value === null
+  || (typeof value === 'string' && value.trim() === '')
+  || (Array.isArray(value) && value.length === 0);
+
+/**
+ * Campo carimbado ou normalizado pelo servidor (ator em `createdByUserId`, `assigneeUserId`
+ * derivado de `responsible`, `completedAt` preenchido na conclusão) não é edição humana
+ * concorrente quando o valor apenas apareceu, sumiu ou passou de vazio para preenchido.
+ * Sem isso, um registro apagado de propósito voltava no rebase: a base guardava `''`/`[]`
+ * e o servidor devolvia o id resolvido. Dois valores preenchidos e diferentes continuam
+ * divergindo — o conflito legítimo não é enfraquecido.
+ */
+const sameOrServerNormalizedStamp = (original, row) => same(original, row)
+  || isEmptyStampValue(original)
+  || isEmptyStampValue(row);
+
+const sameExceptServerStamps = (original, row) => {
+  if (same(original, row)) return true;
+  if (!isPlainObject(original) || !isPlainObject(row)) return false;
+  const comparableOriginal = { ...original };
+  const comparableRow = { ...row };
+  for (const field of SERVER_STAMPED_RECORD_FIELDS) {
+    const inOriginal = field in comparableOriginal;
+    const inRow = field in comparableRow;
+    if (!inOriginal && !inRow) continue;
+    if (!inOriginal || !inRow || sameOrServerNormalizedStamp(comparableOriginal[field], comparableRow[field])) {
+      delete comparableOriginal[field];
+      delete comparableRow[field];
+    }
+  }
+  return same(comparableOriginal, comparableRow);
+};
 const isPlainObject = value => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const hasIdentity = list => Array.isArray(list)
   && list.every(item => isPlainObject(item) && item.id !== undefined && item.id !== null && item.id !== '');
@@ -24,7 +57,7 @@ function rebaseCollection(base, mine, theirs, conflicts, path) {
     const original = baseById.get(id);
     if (mineById.has(id)) {
       result.push(rebaseValue(original ?? {}, mineById.get(id), row, conflicts, `${path}/${id}`));
-    } else if (!original || !same(original, row)) {
+    } else if (!original || !sameExceptServerStamps(original, row)) {
       // Removido aqui, mas novo ou alterado no servidor: a alteração mais recente fica.
       result.push(row);
     }

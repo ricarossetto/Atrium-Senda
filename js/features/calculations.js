@@ -25,6 +25,81 @@ export function createCalculationsFeature({
   let importando = false;
   let pendingDelete = null;
   let aba = 'civel';
+  let civelSub = 'judicial';
+  const civelSuite = {
+    correcao: {
+      valor: '10000,00',
+      dataInicial: '2024-01-01',
+      dataFinal: '2025-01-01',
+      serie: 'IPCA',
+      proRata: true,
+      expurgarDeflacao: false,
+      compararIndices: false,
+      jurosMensalPct: '0',
+      capitalizacaoJuros: 'simples',
+      multaPct: '0',
+      honorariosPct: '0',
+      loading: false,
+      error: ''
+    },
+    amortizacao: {
+      sistema: 'COMPARATIVO',
+      valorBem: '100000,00',
+      entrada: '0,00',
+      tarifasFinanciadas: '0,00',
+      taxaJuros: '1,00',
+      periodicidadeTaxa: 'mensal',
+      prazoMeses: '12',
+      carenciaMeses: '0',
+      modoCarencia: 'juros_pagos',
+      loading: false,
+      error: ''
+    },
+    sfh: {
+      sistema: 'SACRE',
+      valorImovel: '120000,00',
+      valorFinanciado: '120000,00',
+      taxaJurosAnualNominalPct: '12,00',
+      trMensalPct: '0,50',
+      prazoAnos: '10',
+      cicloRecalculoMeses: '12',
+      mipPctMensal: '0,00',
+      dfiPctMensal: '0,00',
+      taxaAdministracaoMensal: '0,00',
+      usarArredondamentoBancario: true,
+      loading: false,
+      error: ''
+    },
+    tvm: {
+      ratePct: '1,00',
+      basis: 'mes',
+      solveFor: 'pmt',
+      timing: 'vencido',
+      pv: '100000,00',
+      fv: '0,00',
+      pmt: '8884,88',
+      tvmRatePct: '1,00',
+      nper: '12',
+      loading: false,
+      error: ''
+    },
+    reajuste: {
+      valorInicial: '3000,00',
+      serie: 'IGP-M',
+      competenciaInicio: '2024-09',
+      competenciaFim: '2026-08',
+      periodicidadeMeses: '12',
+      congelarDeflacao: true,
+      loading: false,
+      error: ''
+    },
+    htm: {
+      rawHtml: '',
+      diagnostico: null,
+      loading: false,
+      error: ''
+    }
+  };
   /* Sub-navegação da aba Previdenciário. A tela inicial é um hub com um fluxo por
    * cartão; cada fluxo abre a sua própria superfície. Antes tudo ficava empilhado na
    * mesma rolagem (seis superfícies, ~3.000px) e o usuário não sabia onde começar. */
@@ -197,6 +272,8 @@ export function createCalculationsFeature({
   function estadoDoPresenter() {
     return {
       aba,
+      civelSub,
+      civelSuite,
       prevSub,
       catalog,
       result,
@@ -337,6 +414,15 @@ export function createCalculationsFeature({
       if (compField && Object.hasOwn(complementar, compField)) {
         complementar[compField] = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
       }
+      const csuiteField = event.target?.dataset?.csuiteField;
+      if (csuiteField && csuiteField.includes('.')) {
+        const [tool, campo] = csuiteField.split('.');
+        if (civelSuite[tool] && Object.hasOwn(civelSuite[tool], campo)) {
+          civelSuite[tool][campo] = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+          if (event.target.type === 'checkbox' || event.target.tagName === 'SELECT') render();
+          return;
+        }
+      }
       // Superfície LC 142: os campos usam data-lc142-field / data-lc142-drawer-field.
       if (event.target?.dataset?.lc142Field) lc142SyncField(event);
       if (event.target?.dataset?.lc142DrawerField) lc142SyncDrawerField(event);
@@ -381,7 +467,28 @@ export function createCalculationsFeature({
         }
       })();
     });
+    workspace.addEventListener('change', event => {
+      const htmInput = event.target?.matches?.('[data-csuite-htm-file]') ? event.target : null;
+      if (!htmInput || !htmInput.files?.length) return;
+      const file = htmInput.files[0];
+      htmInput.value = '';
+      void (async () => {
+        try {
+          civelSuite.htm.rawHtml = await file.text();
+          civelSuite.htm.error = '';
+          render();
+        } catch (err) {
+          civelSuite.htm.error = err?.message || 'Não foi possível ler o arquivo .HTM selecionado.';
+          render();
+        }
+      })();
+    });
     workspace.addEventListener('submit', event => {
+      if (event.target?.id === 'calcCivelSuiteForm') {
+        event.preventDefault();
+        void calcularCivelSuite();
+        return;
+      }
       if (event.target?.id !== 'calcForm') return;
       event.preventDefault();
       calculate();
@@ -416,6 +523,59 @@ export function createCalculationsFeature({
           pendingDelete = null;
           render();
         }
+        return;
+      }
+      if (action === 'civel-sub') {
+        const target = ['judicial', 'correcao', 'amortizacao', 'sfh', 'tvm', 'reajuste', 'htm'].includes(button.dataset.civelSub)
+          ? button.dataset.civelSub
+          : 'judicial';
+        civelSub = target;
+        etapa = 'formulario';
+        error = '';
+        render();
+        return;
+      }
+      if (action === 'civel-inverter-datas') {
+        const tmp = civelSuite.correcao.dataInicial;
+        civelSuite.correcao.dataInicial = civelSuite.correcao.dataFinal;
+        civelSuite.correcao.dataFinal = tmp;
+        render();
+        return;
+      }
+      if (action === 'civel-htm-exemplo') {
+        civelSuite.htm.rawHtml = [
+          '<!DOCTYPE html><html><head><title>Planilha de Débito Judicial — Exportação Legada</title>',
+          '<link rel="stylesheet" href="http://exemplo.local/estilos.css"></head><body>',
+          '<table><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr>',
+          '<tr><td>10/01/2024</td><td>Parcela Principal Contratual</td><td>R$ 10.000,00</td></tr>',
+          '<tr><td>10/10/2024</td><td>Saldo Remanescente Pós-Lei 14.905</td><td>R$ 5.000,00</td></tr>',
+          '<tr><td>15/11/2024</td><td>Custas Processuais Iniciais</td><td>R$ 480,50</td></tr>',
+          '<tr><td>20/12/2024</td><td>Amortização Parcial Depositada</td><td>R$ 2.500,00</td></tr>',
+          '</table></body></html>'
+        ].join('\n');
+        render();
+        return;
+      }
+      if (action === 'civel-htm-importar') {
+        const items = civelSuite.htm.diagnostico?.extractedItems;
+        if (Array.isArray(items) && items.length > 0) {
+          form.itens = items.map((it, idx) => ({
+            id: it.id || `item-${idx + 1}`,
+            especie: it.especie || 'debito',
+            descricao: it.descricao || `Parcela ${idx + 1}`,
+            data: it.data || getIsoDate(),
+            valor: it.valor || '',
+            jurosDe: it.jurosDe || it.data || ''
+          }));
+          civelSub = 'judicial';
+          etapa = 'formulario';
+          showToast?.(`${items.length} item(ns) enviados para a Planilha Judicial.`, 'success');
+          render();
+        }
+        return;
+      }
+      if (action === 'civel-suite-calcular') {
+        void calcularCivelSuite();
         return;
       }
       /* Hub da aba Previdenciário: abrir um fluxo e voltar para o hub. */
@@ -719,6 +879,147 @@ export function createCalculationsFeature({
     return null;
   }
 
+  function buildCivelSuiteInput() {
+    if (civelSub === 'correcao') {
+      const c = civelSuite.correcao;
+      return {
+        modalidade: 'correcao',
+        valor: normalizeNumber(c.valor),
+        dataInicial: c.dataInicial,
+        dataFinal: c.dataFinal,
+        serie: c.serie || 'IPCA',
+        proRata: c.proRata !== false,
+        expurgarDeflacao: c.expurgarDeflacao === true,
+        jurosMensalPct: normalizeNumber(c.jurosMensalPct || '0'),
+        capitalizacaoJuros: c.capitalizacaoJuros || 'simples',
+        multaPct: normalizeNumber(c.multaPct || '0'),
+        honorariosPct: normalizeNumber(c.honorariosPct || '0'),
+        ...(c.compararIndices ? { seriesComparadas: ['IPCA', 'INPC', 'IGP-M', 'TR'] } : {})
+      };
+    }
+    if (civelSub === 'amortizacao') {
+      const a = civelSuite.amortizacao;
+      return {
+        modalidade: 'amortizacao',
+        sistema: a.sistema || 'COMPARATIVO',
+        valorBem: normalizeNumber(a.valorBem),
+        entrada: normalizeNumber(a.entrada || '0'),
+        tarifasFinanciadas: normalizeNumber(a.tarifasFinanciadas || '0'),
+        taxaJuros: normalizeNumber(a.taxaJuros),
+        periodicidadeTaxa: a.periodicidadeTaxa || 'mensal',
+        prazoMeses: Number(a.prazoMeses || 12),
+        carenciaMeses: Number(a.carenciaMeses || 0),
+        modoCarencia: a.modoCarencia || 'juros_pagos'
+      };
+    }
+    if (civelSub === 'sfh') {
+      const s = civelSuite.sfh;
+      return {
+        modalidade: 'sfh',
+        sistema: s.sistema || 'SACRE',
+        valorImovel: normalizeNumber(s.valorImovel),
+        valorFinanciado: normalizeNumber(s.valorFinanciado),
+        taxaJurosAnualNominalPct: normalizeNumber(s.taxaJurosAnualNominalPct),
+        trMensalPct: normalizeNumber(s.trMensalPct || '0'),
+        prazoAnos: Number(s.prazoAnos || 10),
+        cicloRecalculoMeses: Number(s.cicloRecalculoMeses || 12),
+        mipPctMensal: normalizeNumber(s.mipPctMensal || '0'),
+        dfiPctMensal: normalizeNumber(s.dfiPctMensal || '0'),
+        taxaAdministracaoMensal: normalizeNumber(s.taxaAdministracaoMensal || '0'),
+        usarArredondamentoBancario: s.usarArredondamentoBancario !== false
+      };
+    }
+    if (civelSub === 'tvm') {
+      const t = civelSuite.tvm;
+      return {
+        modalidade: 'tvm',
+        ratePct: normalizeNumber(t.ratePct || '1'),
+        basis: t.basis || 'mes',
+        tvm: {
+          solveFor: t.solveFor || 'pmt',
+          capitalizacao: 'composto',
+          timing: t.timing || 'vencido',
+          pv: normalizeNumber(t.pv || '0'),
+          fv: normalizeNumber(t.fv || '0'),
+          pmt: normalizeNumber(t.pmt || '0'),
+          ratePct: normalizeNumber(t.tvmRatePct || '0'),
+          nper: normalizeNumber(t.nper || '0')
+        }
+      };
+    }
+    if (civelSub === 'reajuste') {
+      const r = civelSuite.reajuste;
+      return {
+        modalidade: 'reajuste',
+        valorInicial: normalizeNumber(r.valorInicial),
+        serie: r.serie || 'IGP-M',
+        competenciaInicio: r.competenciaInicio,
+        competenciaFim: r.competenciaFim || undefined,
+        periodicidadeMeses: Number(r.periodicidadeMeses || 12),
+        congelarDeflacao: r.congelarDeflacao !== false
+      };
+    }
+    return buildCivelInput();
+  }
+
+  async function calcularCivelSuite() {
+    const tool = civelSuite[civelSub];
+    if (!tool) return { ok: false };
+    tool.loading = true;
+    tool.error = '';
+    error = '';
+    render();
+    try {
+      if (civelSub === 'htm') {
+        const res = await secureFetch('/api/calc/civel/importar-htm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ html: tool.rawHtml })
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || payload?.ok === false) {
+          throw new Error(payload?.error || payload?.message || 'Não foi possível analisar o HTML informado.');
+        }
+        tool.diagnostico = payload.diagnostico;
+        tool.loading = false;
+        render();
+        return { ok: true, diagnostico: payload.diagnostico };
+      }
+
+      const routeMap = {
+        correcao: '/api/calc/civel/correcao',
+        amortizacao: '/api/calc/civel/amortizacao',
+        sfh: '/api/calc/civel/sfh',
+        tvm: '/api/calc/civel/tvm',
+        reajuste: '/api/calc/civel/reajuste'
+      };
+      const endpoint = routeMap[civelSub];
+      const inputPayload = buildCivelSuiteInput();
+      const res = await secureFetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(inputPayload)
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || payload?.ok === false) {
+        throw new Error(payload?.error || payload?.message || 'Não foi possível concluir o cálculo.');
+      }
+      result = payload.calculo;
+      resultAba = 'civel';
+      resultadoSalvoId = null;
+      conferenciaIndices = null;
+      etapa = 'resultado';
+      tool.loading = false;
+      render();
+      return { ok: true, calculo: payload.calculo };
+    } catch (err) {
+      tool.error = err?.message || 'Falha ao executar o cálculo.';
+      tool.loading = false;
+      render();
+      return { ok: false, error: tool.error };
+    }
+  }
+
   function compactarResultado(resultado) {
     const original = JSON.stringify(resultado);
     if (original.length <= 120_000) return { resultado, compactada: false };
@@ -731,6 +1032,18 @@ export function createCalculationsFeature({
         const { meses, ...rest } = entry;
         return { ...rest, memoriaMensalRemovida: true };
       });
+    }
+    if (JSON.stringify(clone).length > 120_000 && Array.isArray(clone.cronograma) && clone.cronograma.length > 36) {
+      compactada = true;
+      clone.cronograma = [...clone.cronograma.slice(0, 24), ...clone.cronograma.slice(-12)];
+    }
+    if (JSON.stringify(clone).length > 120_000 && clone.comparativo && typeof clone.comparativo === 'object') {
+      for (const sys of ['price', 'sac', 'sacre']) {
+        if (clone.comparativo[sys]?.cronograma) {
+          compactada = true;
+          delete clone.comparativo[sys].cronograma;
+        }
+      }
     }
     if (compactada) clone.memoriaCompactada = true;
     if (JSON.stringify(clone).length > 140_000) {
@@ -746,7 +1059,12 @@ export function createCalculationsFeature({
       const ultima = input.competencias[input.competencias.length - 1]?.competencia || '';
       return `RMI · ${primeira} a ${ultima}`.trim();
     }
-    const primeiro = input.itens.find(item => item.descricao)?.descricao || 'Cálculo cível';
+    if (input.modalidade === 'correcao') return `Correção ${input.serie} · ${input.dataInicial} a ${input.dataFinal}`;
+    if (input.modalidade === 'amortizacao') return `Amortização ${input.sistema} · ${input.prazoMeses}m`;
+    if (input.modalidade === 'sfh') return `SFH ${input.sistema} · ${input.prazoAnos} anos`;
+    if (input.modalidade === 'tvm') return `Equivalência & TVM (${String(input.tvm?.solveFor || 'pmt').toUpperCase()})`;
+    if (input.modalidade === 'reajuste') return `Reajuste ${input.serie} · ${input.competenciaInicio}`;
+    const primeiro = input.itens?.find(item => item.descricao)?.descricao || 'Cálculo cível';
     return `${primeiro} · até ${input.atualizacaoAte || ''}`.trim();
   }
 
@@ -765,7 +1083,7 @@ export function createCalculationsFeature({
         ? buildTrabalhistaInput()
         : aba === 'previdenciario'
           ? buildPrevidenciarioInput()
-          : buildCivelInput();
+          : (civelSub !== 'judicial' && result?.modalidade ? buildCivelSuiteInput() : buildCivelInput());
       const { resultado } = compactarResultado(result);
       const record = {
         id: resultAba === aba && resultadoSalvoId ? resultadoSalvoId : `calc-${aba}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
@@ -799,29 +1117,50 @@ export function createCalculationsFeature({
       showToast?.('Cálculo salvo não encontrado.', 'error');
       return { ok: false };
     }
+    if (record.subtipo === 'lc142' || record.entrada?.subtipo === 'lc142' || String(record.id || '').startsWith('lc142-') || (record.resultado && !record.resultado.resumo && record.resultado.data)) {
+      aba = 'previdenciario';
+      hydrateLc142FromRecord(record);
+      pendingDelete = null;
+      error = '';
+      showToast?.('Simulação LC 142 aberta para conferência.', 'success');
+      render();
+      return { ok: true };
+    }
     aba = ['trabalhista', 'previdenciario'].includes(record.tipo) ? record.tipo : 'civel';
     const entrada = record.entrada || {};
     if (aba === 'civel') {
-      form.atualizacaoAte = entrada.atualizacaoAte || form.atualizacaoAte;
-      form.correcao = entrada.correcao?.serie ? entrada.correcao.serie : 'sem';
-      form.juros = entrada.juros?.tipo || 'sem';
-      form.jurosPercentual = entrada.juros?.percentual || '';
-      form.jurosSerie = entrada.juros?.serie || 'SELIC';
-      form.multaPercentual = entrada.multa?.percentual || '';
-      form.multaBase = entrada.multa?.base || 'debitos-atualizados';
-      form.honorariosPercentual = entrada.honorarios?.percentual || '';
-      form.honorariosBase = entrada.honorarios?.base || 'debitos-atualizados';
-      const itens = Array.isArray(entrada.itens) ? entrada.itens : [];
-      form.itens = itens.length > 0
-        ? itens.map((item, index) => ({
-            id: item.id || `item-${index + 1}`,
-            especie: item.especie || 'debito',
-            descricao: item.descricao || '',
-            data: item.data || '',
-            valor: item.valor || '',
-            jurosDe: item.jurosDe || ''
-          }))
-        : [{ id: 'item-1', especie: 'debito', descricao: '', data: getIsoDate(), valor: '', jurosDe: '' }];
+      if (entrada.modalidade && ['correcao', 'amortizacao', 'sfh', 'tvm', 'reajuste'].includes(entrada.modalidade)) {
+        civelSub = entrada.modalidade;
+        if (entrada.modalidade === 'tvm' && entrada.tvm && typeof entrada.tvm === 'object') {
+          Object.assign(civelSuite.tvm, entrada, entrada.tvm, {
+            tvmRatePct: entrada.tvm.ratePct ?? civelSuite.tvm.tvmRatePct
+          });
+        } else {
+          Object.assign(civelSuite[civelSub], entrada);
+        }
+      } else {
+        civelSub = 'judicial';
+        form.atualizacaoAte = entrada.atualizacaoAte || form.atualizacaoAte;
+        form.correcao = entrada.correcao?.serie ? entrada.correcao.serie : 'sem';
+        form.juros = entrada.juros?.tipo || 'sem';
+        form.jurosPercentual = entrada.juros?.percentual || '';
+        form.jurosSerie = entrada.juros?.serie || 'SELIC';
+        form.multaPercentual = entrada.multa?.percentual || '';
+        form.multaBase = entrada.multa?.base || 'debitos-atualizados';
+        form.honorariosPercentual = entrada.honorarios?.percentual || '';
+        form.honorariosBase = entrada.honorarios?.base || 'debitos-atualizados';
+        const itens = Array.isArray(entrada.itens) ? entrada.itens : [];
+        form.itens = itens.length > 0
+          ? itens.map((item, index) => ({
+              id: item.id || `item-${index + 1}`,
+              especie: item.especie || 'debito',
+              descricao: item.descricao || '',
+              data: item.data || '',
+              valor: item.valor || '',
+              jurosDe: item.jurosDe || ''
+            }))
+          : [{ id: 'item-1', especie: 'debito', descricao: '', data: getIsoDate(), valor: '', jurosDe: '' }];
+      }
     }
     if (aba === 'trabalhista') {
       trabalhista.salario = entrada.salario || '';
@@ -1289,7 +1628,7 @@ export function createCalculationsFeature({
 
   function idadeEmAnos() {
     if (!previdenciario.dataNascimento) return null;
-    const referencia = tempo.dataReferencia || new Date().toISOString().slice(0, 10);
+    const referencia = tempo.dataReferencia || getIsoDate();
     const nascimento = new Date(`${previdenciario.dataNascimento}T00:00:00Z`);
     const hoje = new Date(`${referencia}T00:00:00Z`);
     if (Number.isNaN(nascimento.getTime()) || Number.isNaN(hoje.getTime())) return null;
@@ -1666,7 +2005,84 @@ export function createCalculationsFeature({
   };
   let lc142NextVinculoId = 1;
 
+  function syncLc142HipotesesFromStore() {
+    const records = Array.isArray(store?.state?.calculations) ? store.state.calculations : [];
+    const saved = records
+      .filter(item => item && (item.subtipo === 'lc142' || item.entrada?.subtipo === 'lc142' || String(item.id || '').startsWith('lc142-')))
+      .map(item => ({
+        id: item.id,
+        titulo: item.titulo || `LC 142 · ${item.entrada?.grau || 'moderada'} · DIB ${item.entrada?.dib || 'não informada'}`,
+        grau: item.entrada?.grau || 'moderada',
+        dib: item.entrada?.dib || '—',
+        dataBase: item.entrada?.dataBase || '—',
+        atualizadoEm: item.createdAt || null,
+        status: item.status || (item.resultado ? 'simulacao' : 'rascunho'),
+        pendencias: Array.isArray(item.entrada?.blockers) ? item.entrada.blockers.length : 0,
+        resumo: item.resultado ? 'Simulação calculada; confira os avisos antes de usar.' : 'Rascunho salvo sem cálculo.'
+      }));
+    const savedIds = new Set(saved.map(item => item.id));
+    const localOnly = lc142.hipoteses.filter(item => item && !savedIds.has(item.id));
+    lc142.hipoteses = [...saved, ...localOnly];
+  }
+
+  function hydrateLc142FromRecord(record, { etapaDestino = null } = {}) {
+    if (!record || typeof record !== 'object') return false;
+    const entrada = record.entrada && typeof record.entrada === 'object' ? record.entrada : {};
+    lc142NextVinculoId = 1;
+    Object.assign(lc142, {
+      aberto: true,
+      hipoteseId: record.id || null,
+      grau: entrada.grau || 'moderada',
+      sexo: entrada.sexo || 'feminino',
+      nascimento: entrada.nascimento || '',
+      dib: entrada.dib || '',
+      dataBase: entrada.dataBase || '',
+      respostas: entrada.respostas && typeof entrada.respostas === 'object'
+        ? { ...entrada.respostas }
+        : {
+            ...(entrada.grau ? { grau: entrada.grau } : {}),
+            ...(entrada.sexo ? { sexo: entrada.sexo } : {}),
+            ...(entrada.nascimento ? { nascimento: entrada.nascimento } : {}),
+            ...(entrada.dib ? { dib: entrada.dib } : {}),
+            ...(entrada.dataBase ? { dataBase: entrada.dataBase } : {})
+          },
+      passoAssistente: 0,
+      modoEditor: false,
+      cnis: { status: 'idle', arquivo: null, arquivoBase64: null, erro: '', progresso: null, fonte: '', resumo: null, pendencias: [] },
+      cnisCancelado: false,
+      vinculos: Array.isArray(entrada.vinculos) ? JSON.parse(JSON.stringify(entrada.vinculos)) : [],
+      vinculoDrawer: null,
+      vinculoGatilho: null,
+      competencias: Array.isArray(entrada.competencias) ? JSON.parse(JSON.stringify(entrada.competencias)) : [],
+      parcelas: [],
+      selecionadas: [],
+      resumoParcelas: {},
+      snapshot: entrada.snapshot ? JSON.parse(JSON.stringify(entrada.snapshot)) : null,
+      snapshotBuscando: false,
+      premissasConfirmadas: Boolean(entrada.premissasConfirmadas),
+      revisaoGrupos: Array.isArray(entrada.revisaoGrupos) ? JSON.parse(JSON.stringify(entrada.revisaoGrupos)) : [],
+      revisaoConfirmada: Boolean(entrada.revisaoConfirmada),
+      reviewEvidence: entrada.reviewEvidence || '',
+      disabilityEvidence: entrada.disabilityEvidence || '',
+      blockers: Array.isArray(entrada.blockers) ? JSON.parse(JSON.stringify(entrada.blockers)) : [],
+      calculando: false,
+      resultado: record.resultado ? JSON.parse(JSON.stringify(record.resultado)) : null,
+      cenarioCalculado: entrada.cenarioCalculado ? JSON.parse(JSON.stringify(entrada.cenarioCalculado)) : null,
+      erro: ''
+    });
+    const rawEtapa = record.etapaLc142 || entrada.etapaLc142;
+    const destino = etapaDestino
+      || (LC142_ETAPAS_ORDEM.includes(rawEtapa) && rawEtapa !== 'hipoteses'
+        ? rawEtapa
+        : (record.resultado ? 'resultado' : 'assistente'));
+    lc142.etapa = destino;
+    syncLc142HipotesesFromStore();
+    if (lc142.capacidades.status === 'idle') void lc142CarregarCapacidades();
+    return true;
+  }
+
   function lc142Exposta() {
+    syncLc142HipotesesFromStore();
     return {
       ...lc142,
       // `parcelas` prioriza a correção devolvida pelo motor; antes disso mostra o
@@ -1760,6 +2176,7 @@ export function createCalculationsFeature({
   /* Abre a superfície LC 142 a partir da aba Previdenciário. Idempotente: só
    * consulta as capacidades declaradas do motor na primeira abertura. */
   function lc142Abrir() {
+    syncLc142HipotesesFromStore();
     lc142.aberto = true;
     lc142.etapa = 'hipoteses';
     render();
@@ -2659,11 +3076,25 @@ export function createCalculationsFeature({
       case 'nova-hipotese':
         lc142NovaHipotese();
         return true;
-      case 'abrir-hipotese':
-        lc142.aberto = true;
-        lc142.hipoteseId = button.dataset.id || null;
-        lc142IrPara('assistente');
+      case 'abrir-hipotese': {
+        const targetId = button.dataset.id || null;
+        const storedRecord = (Array.isArray(store?.state?.calculations) ? store.state.calculations : []).find(item => item?.id === targetId);
+        if (storedRecord) {
+          hydrateLc142FromRecord(storedRecord, { etapaDestino: 'assistente' });
+          lc142IrPara('assistente');
+        } else {
+          const summary = lc142.hipoteses.find(item => item?.id === targetId);
+          lc142NovaHipotese();
+          if (targetId) lc142.hipoteseId = targetId;
+          if (summary) {
+            lc142.grau = summary.grau || 'moderada';
+            lc142.dib = summary.dib && summary.dib !== '—' ? summary.dib : '';
+            lc142.dataBase = summary.dataBase && summary.dataBase !== '—' ? summary.dataBase : '';
+          }
+          lc142IrPara('assistente');
+        }
         return true;
+      }
       case 'assistente-opcao':
         lc142Responder(button.dataset.pergunta, button.dataset.valor);
         return true;
@@ -2726,7 +3157,7 @@ export function createCalculationsFeature({
         void lc142CarregarCapacidades();
         return true;
       case 'salvar-rascunho':
-        lc142SalvarRascunho();
+        void lc142SalvarRascunho({ exit: true });
         return true;
       case 'ir-para-campo':
         lc142IrParaCampo(button.dataset.campo || '');
@@ -2750,36 +3181,55 @@ export function createCalculationsFeature({
 
   /* Rascunho: grava só o que o operador declarou, no Store oficial. Sem
    * resultado e sem fingir conclusão — o registro é um rascunho de hipótese. */
-  function lc142SalvarRascunho() {
+  async function lc142SalvarRascunho({ exit = false } = {}) {
     if (!store) {
       lc142.erro = 'Persistência indisponível nesta sessão.';
       render();
       return { ok: false, error: lc142.erro };
     }
+    const previousCalculations = Array.isArray(store.state?.calculations) ? JSON.parse(JSON.stringify(store.state.calculations)) : [];
+    const previousHipoteses = JSON.parse(JSON.stringify(lc142.hipoteses));
+    const previousHipoteseId = lc142.hipoteseId;
     try {
+      const author = getCurrentUserName?.();
       const record = {
         id: lc142.hipoteseId || `lc142-${Date.now().toString(36)}`,
         tipo: 'previdenciario',
+        subtipo: 'lc142',
         titulo: `LC 142 · ${lc142.grau} · DIB ${lc142.dib || 'não informada'}`,
         entrada: {
+          subtipo: 'lc142',
+          etapaLc142: lc142.etapa,
           grau: lc142.grau,
           sexo: lc142.sexo,
           nascimento: lc142.nascimento,
           dib: lc142.dib,
           dataBase: lc142.dataBase,
+          respostas: lc142.respostas,
           competencias: lc142.competencias,
           vinculos: lc142.vinculos,
-          premissasConfirmadas: lc142.premissasConfirmadas
+          snapshot: lc142.snapshot,
+          premissasConfirmadas: lc142.premissasConfirmadas,
+          revisaoGrupos: lc142.revisaoGrupos,
+          revisaoConfirmada: lc142.revisaoConfirmada,
+          reviewEvidence: lc142.reviewEvidence,
+          disabilityEvidence: lc142.disabilityEvidence,
+          blockers: lc142.blockers,
+          cenarioCalculado: lc142.cenarioCalculado
         },
         resultado: lc142.resultado || null,
         etapaLc142: lc142.etapa,
         status: lc142.resultado ? 'simulacao' : 'rascunho',
         createdAt: new Date().toISOString(),
-        createdBy: getCurrentUserName?.() || null,
+        ...(typeof author === 'string' && author.trim() ? { createdBy: author } : {}),
         schemaVersion: 1
       };
       lc142.hipoteseId = record.id;
       store.upsert('calculations', record);
+      if (typeof store.flush === 'function') {
+        const flushed = await store.flush();
+        if (!flushed) throw new Error('Não foi possível salvar no servidor. A hipótese permanece apenas nesta sessão.');
+      }
       lc142.hipoteses = [...lc142.hipoteses.filter(item => item.id !== record.id), {
         id: record.id,
         titulo: record.titulo,
@@ -2792,8 +3242,12 @@ export function createCalculationsFeature({
         resumo: lc142.resultado ? 'Simulação calculada; confira os avisos antes de usar.' : 'Rascunho salvo sem cálculo.'
       }];
       lc142.erro = '';
+      if (exit) lc142.etapa = 'hipoteses';
       showToast?.('Rascunho da hipótese LC 142 salvo.', 'success');
     } catch (err) {
+      if (store.state) store.state.calculations = previousCalculations;
+      lc142.hipoteses = previousHipoteses;
+      lc142.hipoteseId = previousHipoteseId;
       lc142.erro = err?.message || 'Falha ao salvar o rascunho da hipótese.';
     }
     render();
@@ -2823,6 +3277,14 @@ export function createCalculationsFeature({
     },
     render,
     calculate,
+    calcularCivelSuite,
+    abrirFluxoCivel(sub) {
+      civelSub = ['judicial', 'correcao', 'amortizacao', 'sfh', 'tvm', 'reajuste', 'htm'].includes(sub) ? sub : 'judicial';
+      etapa = 'formulario';
+      error = '';
+      render();
+      return civelSub;
+    },
     calcularComplementar,
     avancadas,
     projetarAposentadoria,

@@ -218,7 +218,7 @@ for (const url of ['javascript:attack()', 'https://other.example.test/?resetToke
   assert.doesNotMatch(invalid.html, /class="btn-cta"|href="javascript:|resetToken=/);
   assert.match(invalid.html, /Link indisponível/);
 }
-const canonicalResetUrl = 'https://office.example.test/login#reset=synthetic_single_use_token';
+const canonicalResetUrl = 'https://atrium.adv.br/login#reset=synthetic_single_use_token';
 const canonicalReset = renderPasswordReset({ displayName: 'Advogada Teste', resetUrl: canonicalResetUrl });
 assert.ok(canonicalReset.text.includes(canonicalResetUrl));
 assert.ok(canonicalReset.html.includes(`href="${canonicalResetUrl}"`));

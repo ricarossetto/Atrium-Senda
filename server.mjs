@@ -4489,8 +4489,8 @@ function constantTimeTextEqual(left, right) {
 }
 function isOutsideSendaBasicScope(pathname) {
   const path = String(pathname || '');
-  if (path.startsWith('/api/calc/deadline/')) return false;
-  return ['/api/calc', '/api/documents', '/api/ai', '/api/ai-classifier', '/api/legal-intelligence'].some(
+  if (path.startsWith('/api/calc/')) return false;
+  return ['/api/documents', '/api/ai', '/api/ai-classifier', '/api/legal-intelligence'].some(
     prefix => path === prefix || path.startsWith(`${prefix}/`)
   );
 }
@@ -4508,7 +4508,7 @@ function assertSendaBasicAllows(req, session) {
   const pathname = String(req.url || '').split('?')[0];
   if (isOutsideSendaBasicScope(pathname)) {
     throw Object.assign(
-      new Error('Este recurso (Financeiro, Cálculos, Documentos com OCR e Atrium IA) não faz parte do ATRIUM Senda (Edição Básica Local). Teste gratuitamente por 14 dias o ATRIUM Pro e Pro IA na nuvem em https://atrium.adv.br/discover/'),
+      new Error('Este recurso (Financeiro, Documentos com OCR e Atrium IA) não faz parte do ATRIUM Senda (Edição Básica Local). Teste gratuitamente por 14 dias o ATRIUM Pro e Pro IA na nuvem em https://atrium.adv.br/discover/'),
       { statusCode: 402 }
     );
   }

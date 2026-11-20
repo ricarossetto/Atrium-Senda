@@ -22,7 +22,7 @@ const NAVIGATION_GROUPS = Object.freeze({
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const SYSTEM_ORDER = Object.freeze(['links', 'integrations', 'audit', 'configuration', 'admin']);
 const BASIC_SYSTEM_ORDER = Object.freeze(['integrations', 'audit', 'configuration', 'admin']);
-const BASIC_SECONDARY_VIEWS = Object.freeze(new Set(['financial', 'calculations', 'reports', 'documents', 'assistant', 'prompts', 'links', 'leads']));
+const BASIC_SECONDARY_VIEWS = Object.freeze(new Set(['financial', 'reports', 'documents', 'assistant', 'prompts', 'links', 'leads']));
 const WORK_ORDER = Object.freeze(['kanban', 'inbox', 'agenda', 'processes']);
 const RELATIONSHIP_ORDER = Object.freeze(['contacts', 'leads']);
 

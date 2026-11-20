@@ -1,3 +1,9 @@
+import {
+  renderCivelSubNav,
+  renderCivelSuiteForm,
+  renderCivelSuiteResult
+} from './calculations-civel-suite.js?v=3.2.0';
+
 const SPECIES_LABELS = Object.freeze({
   debito: 'Débito',
   amortizacao: 'Amortização',
@@ -35,7 +41,7 @@ const ABAS = Object.freeze([
 ]);
 
 function icon(name) {
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.1.4#atrium-icon-${name}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.2.0#atrium-icon-${name}"></use></svg>`;
 }
 
 function speciesBadge(especie, escapeHtml) {
@@ -75,6 +81,7 @@ function renderCivelForm(form, catalog, escapeHtml) {
   const jurosOptions = [
     { value: 'sem', label: 'Sem juros' },
     { value: 'taxa-legal', label: 'Taxa legal (Res. CMN 5.171/2024)' },
+    { value: 'transicao-lei-14905', label: 'Transição CC/2002 (1% a.m. até 29/08/2024) + Taxa legal' },
     { value: 'percentual-fixo', label: 'Percentual mensal fixo' },
     { value: 'serie-mensal', label: 'Série mensal (ex.: SELIC)' }
   ].map(option => `<option value="${option.value}"${form.juros === option.value ? ' selected' : ''}>${escapeHtml(option.label)}</option>`).join('');
@@ -604,6 +611,9 @@ function renderConferenciaIndices(conferencia, conferindo, escapeHtml) {
 }
 
 function renderCivelResult(result, escapeHtml, formatCurrency, conferencia = null, conferindo = false) {
+  if (result && result.modalidade) {
+    return renderCivelSuiteResult(result, escapeHtml, formatCurrency);
+  }
   const tiles = [
     ['Débitos atualizados', result.resumo.debitosAtualizados],
     ['Juros', result.resumo.juros],
@@ -2588,9 +2598,19 @@ export function renderCalculationsWorkspace(state = {}) {
     ${conteudo}
   </section>`;
   }
+  const civelSub = state.civelSub || 'judicial';
   const formMarkup = aba === 'trabalhista'
     ? renderTrabalhistaForm(trabalhistaForm, escapeHtml)
-    : renderCivelForm(baseForm, state.catalog, escapeHtml);
+    : `${renderCivelSubNav(civelSub, escapeHtml)}${civelSub === 'judicial'
+        ? renderCivelForm(baseForm, state.catalog, escapeHtml)
+        : renderCivelSuiteForm({
+            civelSub,
+            suite: state.civelSuite,
+            catalog: state.catalog,
+            icon,
+            escapeHtml,
+            formatCurrency
+          })}`;
   return `<section class="calc-surface" aria-labelledby="calculationsHeading">
     ${header}
     ${renderTabs(aba, escapeHtml)}

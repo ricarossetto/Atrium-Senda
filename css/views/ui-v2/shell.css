@@ -1244,7 +1244,6 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
 /* ATRIUM Basic: mesma App/Store/backend, superficie reduzida por apresentacao.
    Preferencia local `atrium_ui_density`; `basic.` usa basic por padrao. */
 html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"] .nav-item[data-view="financial"],
-html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"] .nav-item[data-view="calculations"],
 html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"] .nav-item[data-view="reports"],
 html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"] .nav-item[data-view="documents"],
 html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="intelligence"] .nav-item[data-view="assistant"],

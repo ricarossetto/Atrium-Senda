@@ -8,7 +8,7 @@
 # releases/atrium-senda-release-3.1.0. Se o release for recompilado, atualize
 # o hash junto com o SHA256SUMS.txt.
 pkgname=atrium-senda-bin
-pkgver=3.1.4
+pkgver=3.2.0
 pkgrel=1
 pkgdesc="Gestão jurídica básica local para advogados brasileiros (Edição Senda)"
 arch=('x86_64')
