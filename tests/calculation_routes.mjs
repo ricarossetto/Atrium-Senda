@@ -14,7 +14,14 @@ function monthlyRows(pairs) {
 }
 
 const FIXTURES = new Map([
+  [25, monthlyRows([['2012-03', '0.500000'], ['2012-04', '0.500000']])],
+  [188, monthlyRows([['2026-01', '0.40'], ['2026-02', '0.30'], ['2026-03', '0.20'], ['2026-04', '0.10']])],
+  [189, monthlyRows([['2026-01', '0.60'], ['2026-02', '0.50'], ['2026-03', '0.40'], ['2026-04', '0.30']])],
+  [190, monthlyRows([['2026-01', '0.55'], ['2026-02', '0.45'], ['2026-03', '0.35'], ['2026-04', '0.25']])],
+  [192, monthlyRows([['2026-01', '0.35'], ['2026-02', '0.30'], ['2026-03', '0.25'], ['2026-04', '0.20']])],
+  [195, monthlyRows([['2012-05', '0.410000'], ['2012-06', '0.420000']])],
   [433, monthlyRows([['2026-01', '0.50'], ['2026-02', '0.40'], ['2026-03', '0.30'], ['2026-04', '0.20']])],
+  [7811, monthlyRows([['2026-01', '0.10'], ['2026-02', '0.10'], ['2026-03', '0.10'], ['2026-04', '0.10']])],
   [29543, monthlyRows([['2026-01', '0.500000'], ['2026-02', '0.500000'], ['2026-03', '0.400000'], ['2026-04', '0.400000']])]
 ]);
 
@@ -548,4 +555,28 @@ assert.equal(htmRota.res.statusCode, 200);
 assert.ok(htmRota.res.body.diagnostico.detectedHttpLegacyUrls >= 1);
 assert.ok(htmRota.res.body.diagnostico.extractedItems.length >= 1);
 
-console.log('Rotas de cálculo aprovadas: catálogo, séries, previews, suíte cível/financeira, CNIS por texto/CSV/XLSX/PDF com OCR, template e Fábrica de Cálculos (índices, documentos, cálculos e falha fechada) PASS.');
+const correcaoComparativoLimitado = await post('/api/calc/civel/correcao', {
+  valor: '1000.00',
+  dataInicial: '2026-01-15',
+  dataFinal: '2026-04-20',
+  serie: 'IPCA',
+  seriesComparadas: ['IPCA', 'INPC', 'IGP-M', 'IGP-DI', 'INCC-DI', 'TR']
+}, { 'x-csrf-token': 'token-teste' });
+assert.equal(correcaoComparativoLimitado.res.statusCode, 200);
+assert.equal(correcaoComparativoLimitado.res.body.calculo.comparativo.length, 5);
+
+const tvmSimplesRota = await post('/api/calc/civel/tvm', {
+  ratePct: '1',
+  basis: 'mes',
+  tvm: { solveFor: 'fv', capitalizacao: 'simples', timing: 'vencido', pv: '10000', pmt: '0', ratePct: '1', nper: '12' }
+}, { 'x-csrf-token': 'token-teste' });
+assert.equal(tvmSimplesRota.res.statusCode, 200);
+assert.equal(tvmSimplesRota.res.body.calculo.tvm.fv, '11200.00');
+assert.equal(tvmSimplesRota.res.body.calculo.tvm.capitalizacao, 'simples');
+
+const poupancaRows = await source.rows('POUPANCA', '2012-03-01', '2012-06-30');
+assert.equal(poupancaRows.length, 4);
+assert.equal(poupancaRows[0].period, '2012-03');
+assert.equal(poupancaRows[3].period, '2012-06');
+
+console.log('Rotas de cálculo aprovadas: catálogo, séries, Poupança 2012, previews, suíte cível/financeira, CNIS por texto/CSV/XLSX/PDF com OCR, template e Fábrica de Cálculos (índices, documentos, cálculos e falha fechada) PASS.');

@@ -57,12 +57,14 @@ Regras complementares que o motor deve oferecer como presets, nunca como inferê
 
 ## Ferramentas complementares cíveis e financeiras
 
-- `lib/calc/civel-correcao.mjs` (`POST /api/calc/civel/correcao`): atualização monetária direta, desatualização reversa (`1 / fator`), pró-rata exponencial por dias corridos e comparativo entre índices.
+Além das expansões da planilha judicial (`lib/calc/civel.mjs` — capitalização composta opcional `capitalizacao: 'composto'`, juros compensatórios separados para desapropriação com opção `incidirMoratoriosSobreCompensatorios`, multa contratual, art. 523 §1º do CPC, custas finais fixas, perfis rápidos, gerador de parcelas recorrentes, exportação CSV/resumo e emenda automática da série `POUPANCA` em 04/05/2012 com SGS `25` + `195`), a aba Cível oferece seis ferramentas financeiras e de atualização com aritmética decimal exata (`BigInt`, 18 casas):
+
+- `lib/calc/civel-correcao.mjs` (`POST /api/calc/civel/correcao`): atualização monetária direta, desatualização reversa (`1 / fator`), pró-rata exponencial por dias corridos e comparativo entre até 5 índices selecionados pelo usuário.
 - `lib/calc/civel-amortizacao.mjs` (`POST /api/calc/civel/amortizacao`): tabelas PRICE e SAC analíticas com carência, tarifas/CET mensal e absorção de centavos na última parcela.
 - `lib/calc/civel-sfh.mjs` (`POST /api/calc/civel/sfh`): financiamento imobiliário SFH (`SACRE`, `SAC`, `PRICE`) com TR, recálculo cíclico anual, MIP, DFI, TCA e arredondamento bancário `half-down`.
-- `lib/calc/civel-juros-tvm.mjs` (`POST /api/calc/civel/tvm`): equivalência de taxas em 7 bases temporais (simples e composta) e solver TVM de 5 variáveis.
-- `lib/calc/civel-reajuste.mjs` (`POST /api/calc/civel/reajuste`): reajuste periódico de aluguéis e contratos com piso anti-deflação opcional e minuta de notificação.
-- `lib/calc/civel-htm-import.mjs` (`POST /api/calc/civel/importar-htm`): reparo de referências `http://` legadas pré-01/06/2023 para `https://` e extração assistida de parcelas para a Planilha Judicial.
+- `lib/calc/civel-juros-tvm.mjs` (`POST /api/calc/civel/tvm`): equivalência de taxas em 7 bases temporais (simples e composta) e solver TVM de 5 variáveis com capitalização simples ou composta selecionável.
+- `lib/calc/civel-reajuste.mjs` (`POST /api/calc/civel/reajuste`): reajuste periódico de aluguéis e contratos com piso anti-deflação opcional e minuta de notificação copiável.
+- `lib/calc/civel-htm-import.mjs` (`POST /api/calc/civel/importar-htm`): reparo de referências `http://` legadas pré-01/06/2023 para `https://` com download do `.htm` saneado e extração assistida de parcelas para a Planilha Judicial.
 
 ## Testes relevantes
 

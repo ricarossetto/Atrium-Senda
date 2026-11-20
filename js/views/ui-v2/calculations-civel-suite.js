@@ -8,6 +8,19 @@ export const CIVEL_TOOLS = Object.freeze([
   { id: 'htm', label: 'Importador .HTM Legado' }
 ]);
 
+export const COMPARE_SERIES_LIST = Object.freeze([
+  'IPCA',
+  'INPC',
+  'IGP-M',
+  'IGP-DI',
+  'INCC-DI',
+  'IPCA-E',
+  'IPC-FIPE',
+  'TR',
+  'SELIC',
+  'POUPANCA'
+]);
+
 export function renderCivelSubNav(civelSub = 'judicial', escapeHtml) {
   const active = CIVEL_TOOLS.some(t => t.id === civelSub) ? civelSub : 'judicial';
   return `<div class="calc-tabs calc-civel-subtabs" role="tablist" aria-label="Ferramentas de cálculo cível e financeiro">
@@ -85,9 +98,16 @@ export function renderCivelSuiteForm({ civelSub, suite = {}, catalog = null, ico
         </label>
         <label class="calc-option">
           <input data-csuite-field="correcao.compararIndices" type="checkbox"${st.compararIndices ? ' checked' : ''}>
-          <span>Comparar simultaneamente IPCA, INPC, IGP-M e TR</span>
+          <span>Comparar simultaneamente até 5 índices</span>
         </label>
       </fieldset>
+      ${st.compararIndices ? `<div class="calc-compare-grid" role="group" aria-label="Selecionar até 5 índices para comparação">
+        ${COMPARE_SERIES_LIST.map(code => {
+          const selecionadas = Array.isArray(st.seriesComparadas) ? st.seriesComparadas : ['IPCA', 'INPC', 'IGP-M', 'TR'];
+          const checked = selecionadas.includes(code);
+          return `<label class="calc-compare-chip"><input type="checkbox" data-csuite-compare-serie="${escapeHtml(code)}"${checked ? ' checked' : ''}><span>${escapeHtml(code === 'POUPANCA' ? 'Poupança' : code)}</span></label>`;
+        }).join('')}
+      </div>` : ''}
       <div class="calc-actions">
         <button type="button" class="button ghost" data-calc-action="civel-inverter-datas"><span>Inverter datas (Direta / Reversa)</span></button>
         <button type="button" class="button" data-calc-action="civel-suite-calcular"${st.loading ? ' disabled' : ''}>${icon('check')}<span>${st.loading ? 'Calculando...' : 'Calcular correção'}</span></button>
@@ -242,6 +262,12 @@ export function renderCivelSuiteForm({ civelSub, suite = {}, catalog = null, ico
             <option value="antecipado"${st.timing === 'antecipado' ? ' selected' : ''}>Antecipado (entrada no ato)</option>
           </select>
         </label>
+        <label class="calc-field"><span>Capitalização (Solver TVM)</span>
+          <select data-csuite-field="tvm.capitalizacao">
+            <option value="composto"${st.capitalizacao !== 'simples' ? ' selected' : ''}>Composta (exponencial)</option>
+            <option value="simples"${st.capitalizacao === 'simples' ? ' selected' : ''}>Simples (linear)</option>
+          </select>
+        </label>
       </div>
       <div class="calc-row">
         <label class="calc-field"><span>Valor presente — PV (R$)</span>
@@ -327,6 +353,7 @@ export function renderCivelSuiteForm({ civelSub, suite = {}, catalog = null, ico
       <div class="calc-actions">
         <button type="button" class="button ghost" data-calc-action="civel-htm-exemplo"><span>Carregar exemplo legado pré-2023</span></button>
         <button type="button" class="button" data-calc-action="civel-suite-calcular"${st.loading ? ' disabled' : ''}>${icon('check')}<span>${st.loading ? 'Analisando...' : 'Analisar planilha .HTM'}</span></button>
+        ${diag?.repairedHtml ? `<button type="button" class="button ghost" data-calc-action="civel-htm-baixar">${icon('download')}<span>Baixar .htm reparado</span></button>` : ''}
         ${diag?.extractedItems?.length ? `<button type="button" class="button gold" data-calc-action="civel-htm-importar">${icon('add')}<span>Enviar ${diag.extractedItems.length} item(ns) para Planilha Judicial</span></button>` : ''}
       </div>
       ${st.error ? `<p class="calc-feedback" role="alert">${escapeHtml(st.error)}</p>` : ''}
@@ -443,9 +470,9 @@ export function renderCivelSuiteResult(result, escapeHtml, formatCurrency) {
       <td class="calc-money">${escapeHtml(row.ratePct)}%</td>
       <td class="calc-money">${escapeHtml(eqSimp[idx]?.ratePct || '—')}%</td>
     </tr>`).join('');
-    return `<h3>Equivalência de Taxas e Solver TVM</h3>
+    return `<h3>Equivalência de Taxas e Solver TVM (${tvm?.capitalizacao === 'simples' ? 'Simples' : 'Composta'})</h3>
       ${tvm ? `<div class="calc-summary" aria-live="polite">
-        <div class="calc-tile"><span>Incógnita calculada</span><strong>${escapeHtml(String(tvm.solvedField || '').toUpperCase())}</strong></div>
+        <div class="calc-tile"><span>Incógnita / Capitalização</span><strong>${escapeHtml(String(tvm.solvedField || '').toUpperCase())} · ${escapeHtml(tvm.capitalizacao === 'simples' ? 'Simples' : 'Composta')}</strong></div>
         <div class="calc-tile"><span>Valor presente (PV)</span><strong>${escapeHtml(displayMoney(tvm.pv, formatCurrency))}</strong></div>
         <div class="calc-tile"><span>Prestação (PMT)</span><strong>${escapeHtml(displayMoney(tvm.pmt, formatCurrency))}</strong></div>
         <div class="calc-tile"><span>Valor futuro (FV)</span><strong>${escapeHtml(displayMoney(tvm.fv, formatCurrency))}</strong></div>
@@ -474,8 +501,135 @@ export function renderCivelSuiteResult(result, escapeHtml, formatCurrency) {
       <h3>Evolução por Ciclo Contratual</h3>
       <div class="calc-result-table"><table><thead><tr><th scope="col">Ciclo</th><th scope="col">Período</th><th scope="col" class="calc-money">Valor anterior</th><th scope="col" class="calc-money">Variação</th><th scope="col" class="calc-money">Valor reajustado</th></tr></thead><tbody>${rows}</tbody></table></div>
       <h3>Minuta de Notificação</h3>
+      <div class="calc-actions">
+        <button type="button" class="button ghost" data-calc-action="civel-copiar-notificacao"><span>Copiar minuta de notificação</span></button>
+      </div>
       <pre class="calc-resultado-json">${escapeHtml(result.notificacaoTexto || '')}</pre>`;
   }
 
   return '';
+}
+
+function moneyOut(value, formatCurrency) {
+  const formatted = displayMoney(value, formatCurrency);
+  return String(formatted ?? value ?? '');
+}
+
+function csvCell(value) {
+  const s = String(value ?? '');
+  return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function decBr(value) {
+  return String(value ?? '').replace('.', ',');
+}
+
+export function buildCivelSummaryText(result, formatCurrency = v => `R$ ${Number(v).toFixed(2).replace('.', ',')}`) {
+  if (!result || typeof result !== 'object') return '';
+  if (result.modalidade === 'correcao_monetaria') {
+    const r = result.resumo || {};
+    return [
+      `MEMÓRIA DE ATUALIZAÇÃO MONETÁRIA (${result.direcao === 'reversa' ? 'DESATUALIZAÇÃO REVERSA' : 'DIRETA'} · ${result.serie})`,
+      `Período: ${result.dataInicial} a ${result.dataFinal} (${result.diasCorridos} dias)`,
+      `Valor nominal: ${moneyOut(r.valorOriginal, formatCurrency)}`,
+      `Fator acumulado: ${r.fatorCorrecao} (${r.percentualCorrecao}%)`,
+      `Valor corrigido: ${moneyOut(r.valorCorrigido, formatCurrency)}`,
+      `Juros: ${moneyOut(r.juros, formatCurrency)} · Multa: ${moneyOut(r.multa, formatCurrency)} · Honorários: ${moneyOut(r.honorarios, formatCurrency)}`,
+      `Total consolidado: ${moneyOut(r.total, formatCurrency)}`
+    ].join('\n');
+  }
+  if (result.modalidade === 'amortizacao_price_sac') {
+    const r = result.resumo || {};
+    return [
+      `MEMÓRIA DE AMORTIZAÇÃO (${result.sistemaAtivo})`,
+      `Capital financiado: ${moneyOut(r.valorFinanciadoBase, formatCurrency)} · Prazo: ${result.prazoMeses || result.cronograma?.length || 0} meses`,
+      `1ª prestação: ${moneyOut(r.primeiraPrestacao, formatCurrency)} · Última prestação: ${moneyOut(r.ultimaPrestacao, formatCurrency)}`,
+      `Total de juros: ${moneyOut(r.totalJuros, formatCurrency)} · Economia SAC: ${moneyOut(r.economiaJurosSac, formatCurrency)}`,
+      `Total pago: ${moneyOut(r.total, formatCurrency)}`
+    ].join('\n');
+  }
+  if (result.modalidade === 'financiamento_sfh') {
+    const r = result.resumo || {};
+    return [
+      `MEMÓRIA FINANCIAMENTO IMOBILIÁRIO SFH (${result.sistemaAtivo})`,
+      `Valor financiado: ${moneyOut(r.valorFinanciado, formatCurrency)} (LTV ${r.ltvPct}%) · Prazo: ${result.prazoMeses} meses`,
+      `1ª prestação: ${moneyOut(r.primeiraPrestacaoTotal, formatCurrency)} · Maior: ${moneyOut(r.maiorPrestacaoTotal, formatCurrency)} · Última: ${moneyOut(r.ultimaPrestacaoTotal, formatCurrency)}`,
+      `Total juros: ${moneyOut(r.totalJuros, formatCurrency)} · Total TR: ${moneyOut(r.totalCorrecaoTr, formatCurrency)}`,
+      `Total pago: ${moneyOut(r.total, formatCurrency)}`
+    ].join('\n');
+  }
+  if (result.modalidade === 'juros_tvm') {
+    const t = result.tvm || {};
+    const linhas = ['EQUIVALÊNCIA DE TAXAS E SOLVER TVM'];
+    if (result.tvm) {
+      linhas.push(`Capitalização: ${t.capitalizacao === 'simples' ? 'Simples' : 'Composta'} · Incógnita: ${String(t.solvedField || '').toUpperCase()}`);
+      linhas.push(`PV: ${moneyOut(t.pv, formatCurrency)} · PMT: ${moneyOut(t.pmt, formatCurrency)} · FV: ${moneyOut(t.fv, formatCurrency)} · Taxa: ${t.ratePct}% · Períodos: ${t.nper}`);
+    }
+    return linhas.join('\n');
+  }
+  if (result.modalidade === 'reajuste_aluguel') {
+    return String(result.notificacaoTexto || '');
+  }
+  const r = result.resumo || {};
+  const lines = [
+    `DEMONSTRATIVO DE CÁLCULO CÍVEL (ATUALIZADO ATÉ ${result.atualizacaoAte || ''})`,
+    `Débitos atualizados: ${moneyOut(r.debitosAtualizados, formatCurrency)}`,
+    `Juros moratórios: ${moneyOut(r.juros, formatCurrency)}`,
+    ...(r.jurosCompensatorios ? [`Juros compensatórios: ${moneyOut(r.jurosCompensatorios, formatCurrency)}`] : []),
+    ...(Number(r.custasDespesas || 0) > 0 ? [`Custas/Despesas: ${moneyOut(r.custasDespesas, formatCurrency)}`] : []),
+    ...(Number(r.multa || 0) > 0 ? [`Multa: ${moneyOut(r.multa, formatCurrency)}`] : []),
+    ...(r.multaContratual ? [`Multa contratual: ${moneyOut(r.multaContratual, formatCurrency)}`] : []),
+    ...(r.multaArt523 ? [`Multa art. 523 §1º CPC: ${moneyOut(r.multaArt523, formatCurrency)}`] : []),
+    ...(r.honorariosArt523 ? [`Honorários art. 523 §1º CPC: ${moneyOut(r.honorariosArt523, formatCurrency)}`] : []),
+    ...(Number(r.honorarios || 0) > 0 ? [`Honorários: ${moneyOut(r.honorarios, formatCurrency)}`] : []),
+    ...(r.custasFinais ? [`Custas finais: ${moneyOut(r.custasFinais, formatCurrency)}`] : []),
+    ...(Number(r.abatimentos || 0) > 0 ? [`Abatimentos: -${moneyOut(r.abatimentos, formatCurrency)}`] : []),
+    `Total consolidado: ${moneyOut(r.total, formatCurrency)}`
+  ];
+  if (Array.isArray(result.itens) && result.itens.length > 0) {
+    lines.push('', 'Itens:');
+    result.itens.forEach((it, idx) => {
+      lines.push(`${idx + 1}. [${it.especie}] ${it.descricao || it.id} (${it.data}): Original ${moneyOut(it.valorOriginal, formatCurrency)} -> Corrigido ${moneyOut(it.valorCorrigido, formatCurrency)} + Juros ${moneyOut(it.juros, formatCurrency)}${it.jurosCompensatorios ? ` + Comp. ${moneyOut(it.jurosCompensatorios, formatCurrency)}` : ''} = ${moneyOut(it.total, formatCurrency)}`);
+    });
+  }
+  return lines.join('\n');
+}
+
+export function buildCivelCsv(result) {
+  if (!result || typeof result !== 'object') return '';
+  const rows = [];
+  if (result.modalidade === 'correcao_monetaria') {
+    rows.push(['Competencia', 'DiasCobertos', 'DiasNoMes', 'VariacaoMensalPct', 'VariacaoAplicadaPct', 'FatorAcumulado']);
+    for (const p of result.passos || []) {
+      rows.push([p.periodo, p.diasCobertos, p.diasNoMes, decBr(p.variacaoMensalPct), decBr(p.variacaoAplicadaPct), decBr(p.fatorAcumulado)]);
+    }
+  } else if (result.modalidade === 'amortizacao_price_sac') {
+    rows.push(['Parcela', 'Fase', 'SaldoInicial', 'Juros', 'Amortizacao', 'Prestacao', 'SaldoFinal']);
+    for (const row of result.cronograma || []) {
+      rows.push([row.parcela, row.fase, decBr(row.saldoInicial), decBr(row.juros), decBr(row.amortizacao), decBr(row.prestacao), decBr(row.saldoFinal)]);
+    }
+  } else if (result.modalidade === 'financiamento_sfh') {
+    rows.push(['Mes', 'AnoContrato', 'PrestacaoTotal', 'Amortizacao', 'Juros', 'CorrecaoTR', 'SeguroMIP', 'SeguroDFI', 'TCA', 'SaldoDevedorFinal']);
+    for (const row of result.cronograma || []) {
+      rows.push([row.mes, row.anoContrato, decBr(row.prestacaoTotal), decBr(row.amortizacao), decBr(row.juros), decBr(row.correcaoTr), decBr(row.seguroMip), decBr(row.seguroDfi), decBr(row.taxaAdministracao), decBr(row.saldoDevedorFinal)]);
+    }
+  } else if (result.modalidade === 'juros_tvm') {
+    rows.push(['BaseTemporal', 'Rotulo', 'TaxaCompostaPct', 'TaxaSimplesPct']);
+    const comp = result.equivalencia?.composto?.equivalents || [];
+    const simp = result.equivalencia?.simples?.equivalents || [];
+    comp.forEach((row, idx) => {
+      rows.push([row.basis, row.label, decBr(row.ratePct), decBr(simp[idx]?.ratePct || '')]);
+    });
+  } else if (result.modalidade === 'reajuste_aluguel') {
+    rows.push(['Ciclo', 'Inicio', 'Fim', 'ValorAnterior', 'FatorCiclo', 'PercentualCicloPct', 'DeflacaoCongelada', 'ValorReajustado']);
+    for (const c of result.ciclos || []) {
+      rows.push([c.ciclo, c.deCompetencia, c.ateCompetencia, decBr(c.valorAnterior), decBr(c.fatorCiclo), decBr(c.percentualCiclo), c.deflacaoCongelada ? 'Sim' : 'Nao', decBr(c.valorReajustado)]);
+    }
+  } else {
+    rows.push(['Especie', 'Descricao', 'DataBase', 'JurosDe', 'Original', 'FatorCorrecao', 'Corrigido', 'Juros', 'JurosCompensatorios', 'Total']);
+    for (const it of result.itens || []) {
+      rows.push([it.especie, it.descricao || it.id, it.data, it.jurosDe || it.data, decBr(it.valorOriginal), decBr(it.fatorCorrecao), decBr(it.valorCorrigido), decBr(it.juros), decBr(it.jurosCompensatorios || '0.00'), decBr(it.total)]);
+    }
+  }
+  return rows.map(r => r.map(csvCell).join(';')).join('\r\n');
 }

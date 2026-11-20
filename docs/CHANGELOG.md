@@ -2,6 +2,20 @@
 
 As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## 3.3.0 — 2026-11-20
+
+### Adicionado
+
+- **Paridade completa da Central Cível e Financeira**:
+  - **Juros simples ou compostos** (`juros.capitalizacao`), **juros compensatórios separados dos moratórios** (`jurosCompensatorios` — cenário de desapropriação com opção `incidirMoratoriosSobreCompensatorios`), **multa contratual independente**, **cumprimento de sentença art. 523 §1º CPC** (`multa_10` / `multa_e_honorarios_10`) e **custas finais fixas** (`custasFinais`) na Planilha Judicial (`lib/calc/civel.mjs`).
+  - **Perfis jurídicos rápidos** (5 botões de preenchimento na Planilha Judicial: Lei 14.905/24, Cível 1% INPC, Fazenda EC 113 SELIC, Poupança e Desapropriação) e **gerador de parcelas mensais recorrentes** (1 a 120 meses).
+  - **Série `POUPANCA` contínua pré/pós 04/05/2012**: emenda automática entre regra antiga (`SGS 25` até 04/2012) e regra nova (`SGS 195` a partir de 05/2012) em `lib/calc/source.mjs`.
+  - **Sub-abas e exportações**: seleção livre de até 5 índices no comparativo de Correção e Deflação, seletor **Simples / Composta** no Solver TVM, download direto do `.htm` reparado com `https://`, botão para copiar a minuta de notificação no Reajuste de Aluguel, **Copiar p/ petição** e **Exportar CSV** para as planilhas cíveis e financeiras.
+
+### Corrigido
+
+- **Solver TVM**: passa a devolver `capitalizacao` e `timing` explicitamente em `solveTvm` (`lib/calc/civel-juros-tvm.mjs`) e na rota `/api/calc/civel/tvm`.
+
 ## 3.2.0 — 2026-11-20
 
 ### Adicionado

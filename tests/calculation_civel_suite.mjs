@@ -7,6 +7,8 @@ import { buildReajusteCalculation } from '../lib/calc/civel-reajuste.mjs';
 import { auditLegacyHtmSheet } from '../lib/calc/civel-htm-import.mjs';
 import { buildCivelCalculation } from '../lib/calc/civel.mjs';
 import { parseDec } from '../lib/calc/decimal.mjs';
+import { createCalcSource } from '../lib/calc/source.mjs';
+import { buildCivelSummaryText, buildCivelCsv } from '../js/views/ui-v2/calculations-civel-suite.js';
 
 const IPCA_2024 = [
   ['2024-01', '0.42'], ['2024-02', '0.83'], ['2024-03', '0.16'], ['2024-04', '0.38'],
@@ -163,4 +165,73 @@ assert.ok(Number(transicaoRes.resumo.juros) > 100);
 assert.ok(transicaoRes.memoria[0].meses.some(m => m.regime?.includes('CC/2002')));
 assert.ok(transicaoRes.memoria[0].meses.some(m => m.regime?.includes('Lei 14.905')));
 
-console.log('Central de Cálculos Cíveis e Financeiros aprovada: Correção/Reversa, PRICE/SAC, SFH/SACRE 120m, Equivalência/TVM, Reajuste Locatício, Importador .HTM e Transição Lei 14.905 PASS.');
+// 8. Juros compostos na Planilha Judicial (12 meses cheios a 1% a.m. sobre R$ 10.000,00 = R$ 11.268,25)
+const compostoRes = buildCivelCalculation({
+  atualizacaoAte: '2025-01-31',
+  correcao: { tipo: 'sem' },
+  juros: { tipo: 'percentual-fixo', percentual: '1', capitalizacao: 'composto' },
+  itens: [{ id: 'comp-1', especie: 'debito', descricao: 'Principal', data: '2024-01-31', valor: '10000.00' }]
+});
+assert.equal(compostoRes.resumo.juros, '1268.25');
+assert.equal(compostoRes.resumo.total, '11268.25');
+
+// 9. Desapropriação: juros compensatórios com e sem incidência de moratórios sobre compensatórios (jmsobrejc)
+const desaprBase = {
+  atualizacaoAte: '2024-04-30',
+  correcao: { tipo: 'sem' },
+  juros: { tipo: 'percentual-fixo', percentual: '0.5' },
+  jurosCompensatorios: { percentual: '0.5', incidirMoratoriosSobreCompensatorios: false },
+  itens: [{ id: 'imovel', especie: 'debito', descricao: 'Indenização', data: '2024-01-31', valor: '10000.00' }]
+};
+const desaprSemSobre = buildCivelCalculation(desaprBase);
+const desaprComSobre = buildCivelCalculation({
+  ...desaprBase,
+  jurosCompensatorios: { percentual: '0.5', incidirMoratoriosSobreCompensatorios: true }
+});
+assert.equal(desaprSemSobre.resumo.jurosCompensatorios, '150.00');
+assert.equal(desaprSemSobre.resumo.juros, '150.00');
+assert.equal(desaprSemSobre.resumo.total, '10300.00');
+assert.equal(desaprComSobre.resumo.jurosCompensatorios, '150.00');
+assert.equal(desaprComSobre.resumo.juros, '152.25');
+assert.equal(desaprComSobre.resumo.total, '10302.25');
+
+// 10. Multa contratual + art. 523 §1º CPC (multa + honorários) + custas finais fixas
+const encargosRes = buildCivelCalculation({
+  atualizacaoAte: '2024-01-31',
+  correcao: { tipo: 'sem' },
+  juros: { tipo: 'sem' },
+  multaContratual: { percentual: '2', base: 'debitos-atualizados' },
+  art523: 'multa_e_honorarios_10',
+  custasFinais: '350.00',
+  itens: [{ id: 'deb-enc', especie: 'debito', descricao: 'Contrato', data: '2024-01-01', valor: '1000.00' }]
+});
+assert.equal(encargosRes.resumo.multaContratual, '20.00');
+assert.equal(encargosRes.resumo.multaArt523, '102.00');
+assert.equal(encargosRes.resumo.honorariosArt523, '102.00');
+assert.equal(encargosRes.resumo.custasFinais, '350.00');
+assert.equal(encargosRes.resumo.total, '1574.00');
+
+// 11. Série Poupança atravessando 04/05/2012 (emenda automática SGS 25 + SGS 195)
+const poupSource = createCalcSource({
+  fetchSeriesImpl: async code => {
+    if (code === 25) return [{ date: '2012-04-30', period: '2012-04', value: parseDec('0.500000') }];
+    if (code === 195) return [{ date: '2012-05-31', period: '2012-05', value: parseDec('0.400000') }];
+    throw new Error(`Código inesperado ${code}`);
+  }
+});
+const poupMerged = await poupSource.rows('POUPANCA', '2012-04-01', '2012-05-31');
+assert.equal(poupMerged.length, 2);
+assert.equal(poupMerged[0].period, '2012-04');
+assert.equal(poupMerged[1].period, '2012-05');
+
+// 12. Helpers de exportação CSV e resumo para petição
+const txtSummary = buildCivelSummaryText(encargosRes);
+assert.ok(txtSummary.includes('Multa contratual'));
+assert.ok(txtSummary.includes('Custas finais'));
+const csvJudicial = buildCivelCsv(encargosRes);
+assert.ok(csvJudicial.includes('Especie;Descricao;DataBase'));
+const csvSfh = buildCivelCsv(sfh);
+assert.ok(csvSfh.includes('Mes;AnoContrato;PrestacaoTotal'));
+assert.ok(csvSfh.includes('120;10;1452,60'));
+
+console.log('Central de Cálculos Cíveis e Financeiros aprovada: Correção/Reversa, PRICE/SAC, SFH/SACRE 120m, Equivalência/TVM, Reajuste Locatício, Importador .HTM, Lei 14.905, Juros Compostos, Desapropriação, Art. 523, Poupança 2012 e Exportação CSV PASS.');

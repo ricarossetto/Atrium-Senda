@@ -2,7 +2,7 @@ import {
   renderCivelSubNav,
   renderCivelSuiteForm,
   renderCivelSuiteResult
-} from './calculations-civel-suite.js?v=3.2.0';
+} from './calculations-civel-suite.js?v=3.3.0';
 
 const SPECIES_LABELS = Object.freeze({
   debito: 'Débito',
@@ -41,7 +41,7 @@ const ABAS = Object.freeze([
 ]);
 
 function icon(name) {
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.2.0#atrium-icon-${name}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.0#atrium-icon-${name}"></use></svg>`;
 }
 
 function speciesBadge(especie, escapeHtml) {
@@ -91,6 +91,13 @@ function renderCivelForm(form, catalog, escapeHtml) {
 
   return `<form id="calcForm" class="calc-panel" novalidate>
     <h3>Parâmetros</h3>
+    <div class="calc-preset-bar" role="group" aria-label="Perfis jurídicos de cálculo">
+      <button type="button" class="button ghost" data-calc-action="civel-preset" data-preset="lei-14905">Lei 14.905/24 (Transição)</button>
+      <button type="button" class="button ghost" data-calc-action="civel-preset" data-preset="cc2002">Cível 1% a.m. (INPC)</button>
+      <button type="button" class="button ghost" data-calc-action="civel-preset" data-preset="fazenda-ec113">Fazenda EC 113 (SELIC)</button>
+      <button type="button" class="button ghost" data-calc-action="civel-preset" data-preset="poupanca">Poupança (TR + Rem.)</button>
+      <button type="button" class="button ghost" data-calc-action="civel-preset" data-preset="desapropriacao">Desapropriação (Comp. + Mora)</button>
+    </div>
     <div class="calc-row">
       <label class="calc-field"><span>Atualizar até</span>
         <input id="calcAteInput" data-calc-field="atualizacaoAte" type="date" value="${escapeHtml(form.atualizacaoAte || '')}" required>
@@ -103,6 +110,12 @@ function renderCivelForm(form, catalog, escapeHtml) {
       <label class="calc-field"><span>Juros</span>
         <select data-calc-field="juros">${jurosOptions}</select>
       </label>
+      <label class="calc-field"><span>Capitalização (fixo/série)</span>
+        <select data-calc-field="jurosCapitalizacao">
+          <option value="simples"${form.jurosCapitalizacao !== 'composto' ? ' selected' : ''}>Simples (linear)</option>
+          <option value="composto"${form.jurosCapitalizacao === 'composto' ? ' selected' : ''}>Composta (exponencial)</option>
+        </select>
+      </label>
       <label class="calc-field"><span>Percentual mensal (%)</span>
         <input data-calc-field="jurosPercentual" inputmode="decimal" value="${escapeHtml(form.jurosPercentual || '')}" placeholder="Ex.: 1,00">
       </label>
@@ -111,7 +124,7 @@ function renderCivelForm(form, catalog, escapeHtml) {
       </label>
     </div>
     <div class="calc-row">
-      <label class="calc-field"><span>Multa art. 523 (%)</span>
+      <label class="calc-field"><span>Multa (%)</span>
         <input data-calc-field="multaPercentual" inputmode="decimal" value="${escapeHtml(form.multaPercentual || '')}" placeholder="Ex.: 10">
       </label>
       <label class="calc-field"><span>Base da multa</span>
@@ -124,7 +137,80 @@ function renderCivelForm(form, catalog, escapeHtml) {
         <select data-calc-field="honorariosBase">${baseOptions(form.honorariosBase)}</select>
       </label>
     </div>
+    <details class="calc-import"${form.compensatoriosAtivo || form.multaContratualPercentual || (form.art523 && form.art523 !== 'nao_aplicar') || form.custasFinais ? ' open' : ''}>
+      <summary>Encargos adicionais (Art. 523 CPC, multa contratual, juros compensatórios e custas finais)</summary>
+      <div class="calc-row">
+        <label class="calc-field"><span>Multa art. 523 §1º CPC (cumprimento de sentença)</span>
+          <select data-calc-field="art523">
+            <option value="nao_aplicar"${!form.art523 || form.art523 === 'nao_aplicar' ? ' selected' : ''}>Não aplicar art. 523</option>
+            <option value="multa_10"${form.art523 === 'multa_10' ? ' selected' : ''}>Multa de 10% (art. 523)</option>
+            <option value="multa_e_honorarios_10"${form.art523 === 'multa_e_honorarios_10' ? ' selected' : ''}>Multa 10% + Honorários 10% (art. 523)</option>
+          </select>
+        </label>
+        <label class="calc-field"><span>Multa contratual (%)</span>
+          <input data-calc-field="multaContratualPercentual" inputmode="decimal" value="${escapeHtml(form.multaContratualPercentual || '')}" placeholder="Ex.: 2,00">
+        </label>
+        <label class="calc-field"><span>Base multa contratual</span>
+          <select data-calc-field="multaContratualBase">${baseOptions(form.multaContratualBase || 'debitos-atualizados')}</select>
+        </label>
+        <label class="calc-field"><span>Custas finais fixas (R$)</span>
+          <input data-calc-field="custasFinais" inputmode="decimal" value="${escapeHtml(form.custasFinais || '')}" placeholder="0,00">
+        </label>
+      </div>
+      <fieldset class="calc-options">
+        <legend class="sr-only">Juros compensatórios (desapropriação / contratuais)</legend>
+        <label class="calc-option">
+          <input data-calc-field="compensatoriosAtivo" type="checkbox"${form.compensatoriosAtivo ? ' checked' : ''}>
+          <span>Ativar juros compensatórios (desapropriação / cumulação)</span>
+        </label>
+        <label class="calc-option">
+          <input data-calc-field="moratoriosSobreCompensatorios" type="checkbox"${form.moratoriosSobreCompensatorios ? ' checked' : ''}>
+          <span>Incidir juros moratórios sobre os compensatórios</span>
+        </label>
+      </fieldset>
+      <div class="calc-row">
+        <label class="calc-field"><span>Taxa compensatórios (% a.m.)</span>
+          <input data-calc-field="compensatoriosPercentual" inputmode="decimal" value="${escapeHtml(form.compensatoriosPercentual || '0,50')}" placeholder="0,50">
+        </label>
+        <label class="calc-field"><span>Capitalização compensatórios</span>
+          <select data-calc-field="compensatoriosCapitalizacao">
+            <option value="simples"${form.compensatoriosCapitalizacao !== 'composto' ? ' selected' : ''}>Simples</option>
+            <option value="composto"${form.compensatoriosCapitalizacao === 'composto' ? ' selected' : ''}>Composta</option>
+          </select>
+        </label>
+        <label class="calc-field"><span>Compensatórios a partir de (opcional)</span>
+          <input data-calc-field="compensatoriosDe" type="date" value="${escapeHtml(form.compensatoriosDe || '')}">
+        </label>
+      </div>
+    </details>
     <h3>Itens</h3>
+    <details class="calc-import">
+      <summary>Gerar parcelas mensais recorrentes (aluguéis, pensões, prestações)</summary>
+      <div class="calc-row">
+        <label class="calc-field"><span>Espécie</span>
+          <select data-calc-field="recEspecie">
+            <option value="debito"${form.recEspecie !== 'amortizacao' && form.recEspecie !== 'desconto' ? ' selected' : ''}>Débito</option>
+            <option value="amortizacao"${form.recEspecie === 'amortizacao' ? ' selected' : ''}>Amortização</option>
+            <option value="desconto"${form.recEspecie === 'desconto' ? ' selected' : ''}>Desconto</option>
+          </select>
+        </label>
+        <label class="calc-field"><span>Descrição base</span>
+          <input data-calc-field="recDescricao" maxlength="90" value="${escapeHtml(form.recDescricao || 'Parcela mensal')}">
+        </label>
+        <label class="calc-field"><span>1ª parcela em</span>
+          <input data-calc-field="recDataInicial" type="date" value="${escapeHtml(form.recDataInicial || form.atualizacaoAte || '')}">
+        </label>
+        <label class="calc-field"><span>Quantidade (meses)</span>
+          <input data-calc-field="recQuantidade" inputmode="numeric" value="${escapeHtml(form.recQuantidade || '12')}">
+        </label>
+        <label class="calc-field"><span>Valor mensal (R$)</span>
+          <input data-calc-field="recValor" inputmode="decimal" value="${escapeHtml(form.recValor || '')}" placeholder="1000,00">
+        </label>
+      </div>
+      <div class="calc-actions">
+        <button type="button" class="button ghost" data-calc-action="gerar-recorrentes">${icon('add')}<span>Inserir parcelas mensais</span></button>
+      </div>
+    </details>
     <div class="calc-items">
       <table>
         <caption class="sr-only">Itens do cálculo</caption>
@@ -525,16 +611,29 @@ function memorialDetails(entry, escapeHtml, formatCurrency) {
     return `<details><summary>Correção — ${escapeHtml(entry.itemId)} · fator ${escapeHtml(entry.fator)}</summary>
       <dl><div><dt>Valor</dt><dd>${escapeHtml(displayMoney(entry.valorAntes, formatCurrency))} → ${escapeHtml(displayMoney(entry.valorDepois, formatCurrency))}</dd></div>${segments}</dl></details>`;
   }
-  if (entry.tipo === 'juros') {
+  if (entry.tipo === 'juros' || entry.tipo === 'juros-compensatorios') {
     const months = (entry.meses || []).map(month =>
       `<div><dt>${escapeHtml(month.periodo)}</dt><dd>${month.dias}/${month.diasNoMes} dias · taxa ${escapeHtml(month.taxa)}% · aplicado ${escapeHtml(month.taxaAplicada)}%</dd></div>`).join('');
     const compactada = entry.memoriaMensalRemovida ? '<div><dt>Memória mensal</dt><dd>Resumida no salvamento; totais preservados.</dd></div>' : '';
-    return `<details><summary>Juros — ${escapeHtml(entry.itemId)} · ${escapeHtml(entry.taxaTotal)}% sobre ${escapeHtml(displayMoney(entry.base, formatCurrency))} = ${escapeHtml(displayMoney(entry.valor, formatCurrency))}</summary>
-      <dl><div><dt>Critério</dt><dd>${escapeHtml(entry.criterio)} — ${escapeHtml(entry.de)} a ${escapeHtml(entry.ate)}</dd></div>${compactada}${months}</dl></details>`;
+    const titulo = entry.tipo === 'juros-compensatorios' ? 'Juros compensatórios' : 'Juros';
+    const capRotulo = entry.capitalizacao === 'composto' ? ' (composto)' : '';
+    return `<details><summary>${titulo}${capRotulo} — ${escapeHtml(entry.itemId)} · ${escapeHtml(entry.taxaTotal)}% sobre ${escapeHtml(displayMoney(entry.base, formatCurrency))} = ${escapeHtml(displayMoney(entry.valor, formatCurrency))}</summary>
+      <dl><div><dt>Critério</dt><dd>${escapeHtml(entry.criterio)}${capRotulo} — ${escapeHtml(entry.de)} a ${escapeHtml(entry.ate)}</dd></div>${compactada}${months}</dl></details>`;
   }
-  if (entry.tipo === 'multa' || entry.tipo === 'honorarios') {
-    return `<details><summary>${entry.tipo === 'multa' ? 'Multa' : 'Honorários'} — ${escapeHtml(entry.percentual)}% sobre ${escapeHtml(entry.base)} = ${escapeHtml(displayMoney(entry.valor, formatCurrency))}</summary>
+  if (entry.tipo === 'multa' || entry.tipo === 'honorarios' || entry.tipo === 'multa-contratual' || entry.tipo === 'multa-art523' || entry.tipo === 'honorarios-art523') {
+    const labels = {
+      multa: 'Multa',
+      honorarios: 'Honorários',
+      'multa-contratual': 'Multa contratual',
+      'multa-art523': 'Multa art. 523 §1º CPC',
+      'honorarios-art523': 'Honorários art. 523 §1º CPC'
+    };
+    return `<details><summary>${labels[entry.tipo] || entry.tipo} — ${escapeHtml(entry.percentual)}% sobre ${escapeHtml(entry.base)} = ${escapeHtml(displayMoney(entry.valor, formatCurrency))}</summary>
       <dl><div><dt>Base</dt><dd>${escapeHtml(entry.base)}</dd></div><div><dt>Valor</dt><dd>${escapeHtml(displayMoney(entry.valor, formatCurrency))}</dd></div></dl></details>`;
+  }
+  if (entry.tipo === 'custas-finais') {
+    return `<details><summary>Custas finais — ${escapeHtml(displayMoney(entry.valor, formatCurrency))}</summary>
+      <dl><div><dt>Valor</dt><dd>${escapeHtml(displayMoney(entry.valor, formatCurrency))}</dd></div></dl></details>`;
   }
   if (entry.tipo === 'abatimento') {
     return `<details><summary>Abatimento — ${escapeHtml(displayMoney(entry.valor, formatCurrency))}</summary>
@@ -617,8 +716,13 @@ function renderCivelResult(result, escapeHtml, formatCurrency, conferencia = nul
   const tiles = [
     ['Débitos atualizados', result.resumo.debitosAtualizados],
     ['Juros', result.resumo.juros],
+    ...(result.resumo.jurosCompensatorios ? [['Juros compensatórios', result.resumo.jurosCompensatorios]] : []),
     ['Multa', result.resumo.multa],
+    ...(result.resumo.multaContratual ? [['Multa contratual', result.resumo.multaContratual]] : []),
+    ...(result.resumo.multaArt523 ? [['Multa art. 523 §1º', result.resumo.multaArt523]] : []),
+    ...(result.resumo.honorariosArt523 ? [['Honorários art. 523 §1º', result.resumo.honorariosArt523]] : []),
     ['Honorários', result.resumo.honorarios],
+    ...(result.resumo.custasFinais ? [['Custas finais', result.resumo.custasFinais]] : []),
     ['Abatimentos', result.resumo.abatimentos]
   ].map(([label, value]) => `<div class="calc-tile"><span>${label}</span><strong>${escapeHtml(displayMoney(value, formatCurrency))}</strong></div>`).join('');
   const sources = result.fontes.map(source =>
@@ -2503,8 +2607,9 @@ export function renderCalculationsWorkspace(state = {}) {
   const tempoResultado = aba === 'previdenciario' ? state.tempo?.resultado || null : null;
   const temResultado = Boolean(result || tempoResultado);
   const etapa = state.etapa === 'resultado' && temResultado ? 'resultado' : 'formulario';
+  const resumoValor = result?.resumo?.total ?? result?.resumo?.liquido ?? result?.resumo?.rmi ?? null;
   const badge = result
-    ? `Total ${result.resumo.total ?? result.resumo.liquido ?? result.resumo.rmi}`
+    ? (resumoValor != null ? `Total ${resumoValor}` : 'Simulação carregada')
     : state.catalog
       ? `${state.catalog.series.length} séries · ${state.catalog.tabelas.resumo.total} tabelas`
       : 'Carregando catálogo...';
@@ -2549,6 +2654,8 @@ export function renderCalculationsWorkspace(state = {}) {
         </div>
         <div class="calc-actions">
           <button type="button" class="button ghost" data-calc-action="voltar-form">${icon('chevron-left')}<span>Editar dados</span></button>
+          ${aba === 'civel' && result ? `<button type="button" class="button ghost" data-calc-action="civel-copiar-resumo"><span>Copiar p/ petição</span></button>
+          <button type="button" class="button ghost" data-calc-action="civel-exportar-csv">${icon('download')}<span>Exportar CSV</span></button>` : ''}
           <button type="button" class="button ghost" data-calc-action="imprimir">${icon('documents')}<span>Imprimir relatório</span></button>
           ${renderSaveButton(form)}
         </div>

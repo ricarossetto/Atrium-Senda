@@ -1,3 +1,18 @@
+import {
+  buildCivelSummaryText,
+  buildCivelCsv
+} from '../views/ui-v2/calculations-civel-suite.js?v=3.3.0';
+
+function addMonthsIso(iso, delta) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const total = (y * 12 + (m - 1)) + delta;
+  const ny = Math.floor(total / 12);
+  const nm = (total % 12) + 1;
+  const maxDay = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
+  return `${String(ny).padStart(4, '0')}-${String(nm).padStart(2, '0')}-${String(Math.min(d, maxDay)).padStart(2, '0')}`;
+}
+
 export function createCalculationsFeature({
   documentRef = globalThis.document,
   secureFetch = (...args) => globalThis.KellerAuth?.secureFetch?.(...args),
@@ -35,6 +50,7 @@ export function createCalculationsFeature({
       proRata: true,
       expurgarDeflacao: false,
       compararIndices: false,
+      seriesComparadas: ['IPCA', 'INPC', 'IGP-M', 'TR'],
       jurosMensalPct: '0',
       capitalizacaoJuros: 'simples',
       multaPct: '0',
@@ -75,6 +91,7 @@ export function createCalculationsFeature({
       basis: 'mes',
       solveFor: 'pmt',
       timing: 'vencido',
+      capitalizacao: 'composto',
       pv: '100000,00',
       fv: '0,00',
       pmt: '8884,88',
@@ -111,12 +128,27 @@ export function createCalculationsFeature({
     atualizacaoAte: getIsoDate(),
     correcao: 'IPCA',
     juros: 'sem',
+    jurosCapitalizacao: 'simples',
     jurosPercentual: '',
     jurosSerie: 'SELIC',
     multaPercentual: '',
     multaBase: 'debitos-atualizados',
     honorariosPercentual: '',
     honorariosBase: 'debitos-atualizados',
+    compensatoriosAtivo: false,
+    compensatoriosPercentual: '0,50',
+    compensatoriosCapitalizacao: 'simples',
+    compensatoriosDe: '',
+    moratoriosSobreCompensatorios: false,
+    multaContratualPercentual: '',
+    multaContratualBase: 'debitos-atualizados',
+    art523: 'nao_aplicar',
+    custasFinais: '',
+    recEspecie: 'debito',
+    recDescricao: 'Parcela mensal',
+    recDataInicial: getIsoDate(),
+    recQuantidade: '12',
+    recValor: '',
     itens: [{ id: 'item-1', especie: 'debito', descricao: 'Débito principal', data: getIsoDate(), valor: '', jurosDe: '' }]
   };
   const trabalhista = {
@@ -356,7 +388,32 @@ export function createCalculationsFeature({
     workspace.dataset.calcBound = 'true';
     const syncField = event => {
       const field = event.target?.dataset?.calcField;
-      if (field && Object.hasOwn(form, field)) form[field] = event.target.value;
+      if (field && Object.hasOwn(form, field)) {
+        form[field] = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+      }
+      const compareSerie = event.target?.dataset?.csuiteCompareSerie;
+      if (compareSerie) {
+        const current = Array.isArray(civelSuite.correcao.seriesComparadas) ? [...civelSuite.correcao.seriesComparadas] : ['IPCA', 'INPC', 'IGP-M', 'TR'];
+        if (event.target.checked) {
+          if (!current.includes(compareSerie)) {
+            if (current.length >= 5) {
+              event.target.checked = false;
+              showToast?.('Selecione no máximo 5 índices para comparar.', 'warning');
+              return;
+            }
+            current.push(compareSerie);
+          }
+        } else if (current.length > 1) {
+          const idx = current.indexOf(compareSerie);
+          if (idx >= 0) current.splice(idx, 1);
+        } else {
+          event.target.checked = true;
+          showToast?.('Mantenha pelo menos 1 índice selecionado para comparação.', 'warning');
+          return;
+        }
+        civelSuite.correcao.seriesComparadas = current;
+        return;
+      }
       const trabField = event.target?.dataset?.trabField;
       if (trabField && Object.hasOwn(trabalhista, trabField)) {
         trabalhista[trabField] = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
@@ -578,6 +635,128 @@ export function createCalculationsFeature({
         void calcularCivelSuite();
         return;
       }
+      if (action === 'civel-preset') {
+        const preset = String(button.dataset.preset || '');
+        form.compensatoriosAtivo = false;
+        form.moratoriosSobreCompensatorios = false;
+        form.jurosCapitalizacao = 'simples';
+        if (preset === 'lei-14905') {
+          form.correcao = 'IPCA';
+          form.juros = 'transicao-lei-14905';
+          form.jurosPercentual = '';
+        } else if (preset === 'cc2002') {
+          form.correcao = 'INPC';
+          form.juros = 'percentual-fixo';
+          form.jurosPercentual = '1,00';
+        } else if (preset === 'fazenda-ec113') {
+          form.correcao = 'sem';
+          form.juros = 'serie-mensal';
+          form.jurosSerie = 'SELIC';
+          form.jurosPercentual = '';
+        } else if (preset === 'poupanca') {
+          form.correcao = 'TR';
+          form.juros = 'serie-mensal';
+          form.jurosSerie = 'POUPANCA';
+          form.jurosPercentual = '';
+        } else if (preset === 'desapropriacao') {
+          form.correcao = 'IPCA-E';
+          form.juros = 'percentual-fixo';
+          form.jurosPercentual = '0,50';
+          form.compensatoriosAtivo = true;
+          form.compensatoriosPercentual = '0,50';
+          form.moratoriosSobreCompensatorios = true;
+        }
+        error = '';
+        render();
+        return;
+      }
+      if (action === 'gerar-recorrentes') {
+        const qtd = Math.trunc(Number(form.recQuantidade || 0));
+        const val = normalizeNumber(form.recValor);
+        if (!form.recDataInicial || !Number.isInteger(qtd) || qtd < 1 || qtd > 120 || !val) {
+          error = 'Informe 1ª parcela, quantidade (1 a 120) e valor mensal para gerar parcelas.';
+          render();
+          return;
+        }
+        const geradas = [];
+        for (let i = 0; i < qtd; i += 1) {
+          const dataIso = addMonthsIso(form.recDataInicial, i);
+          const id = `item-${nextItemId++}`;
+          geradas.push({
+            id,
+            especie: ['amortizacao', 'desconto'].includes(form.recEspecie) ? form.recEspecie : 'debito',
+            descricao: `${form.recDescricao || 'Parcela'} (${i + 1}/${qtd})`,
+            data: dataIso,
+            valor: form.recValor,
+            jurosDe: ''
+          });
+        }
+        const firstEmpty = form.itens.length === 1 && !String(form.itens[0].valor || '').trim();
+        form.itens = firstEmpty ? geradas : [...form.itens, ...geradas];
+        error = '';
+        showToast?.(`${qtd} parcela(s) adicionada(s) à planilha.`, 'success');
+        render();
+        return;
+      }
+      if (action === 'civel-htm-baixar') {
+        const html = civelSuite.htm.diagnostico?.repairedHtml;
+        if (html) {
+          const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = documentRef?.createElement?.('a');
+          if (a) {
+            a.href = url;
+            a.download = `planilha-reparada-https-${getIsoDate()}.htm`;
+            documentRef.body?.appendChild(a);
+            a.click();
+            documentRef.body?.removeChild(a);
+          }
+          URL.revokeObjectURL(url);
+          showToast?.('Planilha HTML reparada baixada.', 'success');
+        }
+        return;
+      }
+      if (action === 'civel-copiar-resumo' || action === 'civel-copiar-notificacao') {
+        const text = action === 'civel-copiar-notificacao'
+          ? String(result?.notificacaoTexto || '')
+          : buildCivelSummaryText(result, formatCurrency);
+        if (!text) return;
+        void (async () => {
+          try {
+            if (globalThis.navigator?.clipboard?.writeText) {
+              await globalThis.navigator.clipboard.writeText(text);
+            } else if (documentRef?.createElement) {
+              const ta = documentRef.createElement('textarea');
+              ta.value = text;
+              documentRef.body?.appendChild(ta);
+              ta.select();
+              documentRef.execCommand?.('copy');
+              documentRef.body?.removeChild(ta);
+            }
+            showToast?.(action === 'civel-copiar-notificacao' ? 'Minuta copiada para a área de transferência.' : 'Resumo copiado para petição.', 'success');
+          } catch {
+            showToast?.('Não foi possível copiar automaticamente no navegador.', 'error');
+          }
+        })();
+        return;
+      }
+      if (action === 'civel-exportar-csv') {
+        const csv = buildCivelCsv(result);
+        if (!csv) return;
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = documentRef?.createElement?.('a');
+        if (a) {
+          a.href = url;
+          a.download = `atrium-calculo-civel-${getIsoDate()}.csv`;
+          documentRef.body?.appendChild(a);
+          a.click();
+          documentRef.body?.removeChild(a);
+        }
+        URL.revokeObjectURL(url);
+        showToast?.('Planilha CSV exportada.', 'success');
+        return;
+      }
       /* Hub da aba Previdenciário: abrir um fluxo e voltar para o hub. */
       if (action === 'prev-abrir') {
         prevSub = ['rmi', 'tempo', 'avancadas', 'oficial'].includes(button.dataset.prevSub)
@@ -785,13 +964,29 @@ export function createCalculationsFeature({
     const input = { atualizacaoAte: form.atualizacaoAte, itens };
     if (form.correcao && form.correcao !== 'sem') input.correcao = { serie: form.correcao };
     const juros = form.juros === 'percentual-fixo'
-      ? { tipo: 'percentual-fixo', percentual: normalizeNumber(form.jurosPercentual) }
+      ? { tipo: 'percentual-fixo', percentual: normalizeNumber(form.jurosPercentual), ...(form.jurosCapitalizacao === 'composto' ? { capitalizacao: 'composto' } : {}) }
       : form.juros === 'serie-mensal'
-        ? { tipo: 'serie-mensal', serie: form.jurosSerie }
+        ? { tipo: 'serie-mensal', serie: form.jurosSerie, ...(form.jurosCapitalizacao === 'composto' ? { capitalizacao: 'composto' } : {}) }
         : { tipo: form.juros };
     input.juros = juros;
+    if (form.compensatoriosAtivo) {
+      const compPct = normalizeNumber(form.compensatoriosPercentual || '0');
+      if (compPct && Number(compPct) > 0) {
+        input.jurosCompensatorios = {
+          percentual: compPct,
+          capitalizacao: form.compensatoriosCapitalizacao === 'composto' ? 'composto' : 'simples',
+          ...(form.compensatoriosDe ? { jurosDe: form.compensatoriosDe } : {}),
+          incidirMoratoriosSobreCompensatorios: form.moratoriosSobreCompensatorios === true
+        };
+      }
+    }
     const multa = normalizeNumber(form.multaPercentual);
     if (multa && Number(multa) > 0) input.multa = { percentual: multa, base: form.multaBase };
+    const multaContratual = normalizeNumber(form.multaContratualPercentual);
+    if (multaContratual && Number(multaContratual) > 0) input.multaContratual = { percentual: multaContratual, base: form.multaContratualBase || 'debitos-atualizados' };
+    if (form.art523 && form.art523 !== 'nao_aplicar') input.art523 = form.art523;
+    const custasFinais = normalizeNumber(form.custasFinais);
+    if (custasFinais && Number(custasFinais) > 0) input.custasFinais = custasFinais;
     const honorarios = normalizeNumber(form.honorariosPercentual);
     if (honorarios && Number(honorarios) > 0) input.honorarios = { percentual: honorarios, base: form.honorariosBase };
     return input;
@@ -894,7 +1089,7 @@ export function createCalculationsFeature({
         capitalizacaoJuros: c.capitalizacaoJuros || 'simples',
         multaPct: normalizeNumber(c.multaPct || '0'),
         honorariosPct: normalizeNumber(c.honorariosPct || '0'),
-        ...(c.compararIndices ? { seriesComparadas: ['IPCA', 'INPC', 'IGP-M', 'TR'] } : {})
+        ...(c.compararIndices ? { seriesComparadas: Array.isArray(c.seriesComparadas) && c.seriesComparadas.length ? c.seriesComparadas.slice(0, 5) : ['IPCA', 'INPC', 'IGP-M', 'TR'] } : {})
       };
     }
     if (civelSub === 'amortizacao') {
@@ -937,7 +1132,7 @@ export function createCalculationsFeature({
         basis: t.basis || 'mes',
         tvm: {
           solveFor: t.solveFor || 'pmt',
-          capitalizacao: 'composto',
+          capitalizacao: t.capitalizacao === 'simples' ? 'simples' : 'composto',
           timing: t.timing || 'vencido',
           pv: normalizeNumber(t.pv || '0'),
           fv: normalizeNumber(t.fv || '0'),
@@ -1133,20 +1328,35 @@ export function createCalculationsFeature({
         civelSub = entrada.modalidade;
         if (entrada.modalidade === 'tvm' && entrada.tvm && typeof entrada.tvm === 'object') {
           Object.assign(civelSuite.tvm, entrada, entrada.tvm, {
-            tvmRatePct: entrada.tvm.ratePct ?? civelSuite.tvm.tvmRatePct
+            tvmRatePct: entrada.tvm.ratePct ?? civelSuite.tvm.tvmRatePct,
+            capitalizacao: entrada.tvm.capitalizacao === 'simples' ? 'simples' : 'composto'
           });
         } else {
           Object.assign(civelSuite[civelSub], entrada);
+          if (entrada.modalidade === 'correcao' && Array.isArray(entrada.seriesComparadas)) {
+            civelSuite.correcao.compararIndices = entrada.seriesComparadas.length > 0;
+            civelSuite.correcao.seriesComparadas = entrada.seriesComparadas.slice(0, 5);
+          }
         }
       } else {
         civelSub = 'judicial';
         form.atualizacaoAte = entrada.atualizacaoAte || form.atualizacaoAte;
         form.correcao = entrada.correcao?.serie ? entrada.correcao.serie : 'sem';
         form.juros = entrada.juros?.tipo || 'sem';
+        form.jurosCapitalizacao = entrada.juros?.capitalizacao === 'composto' ? 'composto' : 'simples';
         form.jurosPercentual = entrada.juros?.percentual || '';
         form.jurosSerie = entrada.juros?.serie || 'SELIC';
         form.multaPercentual = entrada.multa?.percentual || '';
         form.multaBase = entrada.multa?.base || 'debitos-atualizados';
+        form.multaContratualPercentual = entrada.multaContratual?.percentual || '';
+        form.multaContratualBase = entrada.multaContratual?.base || 'debitos-atualizados';
+        form.art523 = entrada.art523 || 'nao_aplicar';
+        form.custasFinais = entrada.custasFinais || '';
+        form.compensatoriosAtivo = Boolean(entrada.jurosCompensatorios && Number(entrada.jurosCompensatorios.percentual || 0) > 0);
+        form.compensatoriosPercentual = entrada.jurosCompensatorios?.percentual || '0,50';
+        form.compensatoriosCapitalizacao = entrada.jurosCompensatorios?.capitalizacao === 'composto' ? 'composto' : 'simples';
+        form.compensatoriosDe = entrada.jurosCompensatorios?.jurosDe || '';
+        form.moratoriosSobreCompensatorios = entrada.jurosCompensatorios?.incidirMoratoriosSobreCompensatorios === true;
         form.honorariosPercentual = entrada.honorarios?.percentual || '';
         form.honorariosBase = entrada.honorarios?.base || 'debitos-atualizados';
         const itens = Array.isArray(entrada.itens) ? entrada.itens : [];
