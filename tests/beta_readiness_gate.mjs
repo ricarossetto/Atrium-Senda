@@ -71,7 +71,7 @@ assert.ok(roadmapOrder.every(index => index >= 0), 'O roadmap deve conter a cone
 assert.ok(roadmapOrder[0] < roadmapOrder[1] && roadmapOrder[1] < roadmapOrder[2], 'A ordem BASELINE ATUAL → PRÓXIMO → FUTURO deve ser preservada.');
 assert.match(documents.roadmap, /Managed Judicial Connectivity opera A1, PJeOffice, TOTP e sess[oõ]es como estrat[eé]gias independentes e read-only/i);
 assert.match(documents.roadmap, /protocolos DAV verificados e API p[uú]blica\/versionada exigem evid[eê]ncia, threat model e subgates independentes/i);
-assert.match(documents.roadmap, /Migra[cç][aã]o UI V2 conclu[ií]da nas 17 views oficiais/i);
+assert.match(documents.roadmap, /Migra[cç][aã]o UI V2 conclu[ií]da nas 19 views oficiais/i);
 assert.match(documents.decisions, /ci[eê]ncia, assinatura, peti[cç][aã]o, protocolo/i);
 assert.match(documents.decisions, /pausam retries e exigem reconex[aã]o humana/i);
 

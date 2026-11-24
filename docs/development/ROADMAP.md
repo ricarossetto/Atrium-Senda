@@ -2,7 +2,7 @@
 
 ## BASELINE ATUAL — CONCLUÍDO
 
-- Migração UI V2 concluída nas 17 views oficiais.
+- Migração UI V2 concluída nas 19 views oficiais.
 - Um único App, Store e backend.
 - Frontend modular por domínio e composition shell.
 - Estado e backups em JSON cifrado.

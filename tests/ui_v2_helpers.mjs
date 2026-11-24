@@ -5,11 +5,11 @@ import { postJson, startTestServer } from './helpers.mjs';
 export const UI_V2_CANONICAL_VIEWS = Object.freeze([
   'dashboard', 'processes', 'inbox', 'kanban', 'agenda', 'contacts', 'leads',
   'financial', 'calculations', 'documents', 'reports', 'assistant', 'prompts', 'monitoring', 'integrations',
-  'configuration', 'importer', 'audit', 'links', 'admin'
+  'configuration', 'importer', 'audit', 'links'
 ]);
 
 export const UI_V2_PRIMARY_NAV_VIEWS = Object.freeze(
-  UI_V2_CANONICAL_VIEWS.filter(view => !['audit', 'admin', 'monitoring', 'importer'].includes(view))
+  UI_V2_CANONICAL_VIEWS.filter(view => !['audit', 'monitoring', 'importer'].includes(view))
 );
 
 export const UI_V2_OVERLAY_SELECTORS = Object.freeze([
