@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-24T05:00:50.807Z",
+  "generatedAt": "2026-11-24T05:45:25.740Z",
   "assets": {
     "assets/icons/atrium-logo-light.svg|3.3.1": "8ca4879d91c16b93",
     "assets/icons/atrium-logo.svg|3.3.1": "57aefeb535bb88fe",
@@ -131,7 +131,7 @@
     "js/features/reports.js|3.3.1": "2e032365357e34a8",
     "js/features/setup-wizard.js|3.3.1": "4487863284dfdab1",
     "js/features/system-admin.js|3.3.1": "5626aeee931d7efe",
-    "js/features/tasks.js|3.3.1": "846b37898166a1fa",
+    "js/features/tasks.js|3.3.1": "4d07b0bee5ea9a60",
     "js/jsqr.js|3.3.1": "bc40c8a15196236b",
     "js/office-data.js|3.3.1": "9106b22759504d7d",
     "js/portal.js|3.3.1": "d3ec86511bf16d8c",
@@ -168,6 +168,6 @@
     "js/views/ui-v2/reports-presenter.js|3.3.1": "9e4eb7d766877e99",
     "js/views/ui-v2/shell.js|3.3.1": "474a2f7688f13665",
     "js/views/ui-v2/system-status.js|3.3.1": "82f1a012536ca1b7",
-    "js/views/ui-v2/tasks-presenter.js|3.3.1": "f006b7b3913515d1"
+    "js/views/ui-v2/tasks-presenter.js|3.3.1": "76f83e0ee6a4c820"
   }
 }
