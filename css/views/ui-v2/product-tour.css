@@ -10,6 +10,7 @@ html[data-ui="v2"] .product-tour {
 html[data-ui="v2"] .product-tour-veil {
   position: absolute;
   inset: 0;
+  pointer-events: none;
   background: rgb(10 14 20 / 62%);
   transition: opacity var(--v2-duration-base) var(--v2-ease-standard);
 }
@@ -17,6 +18,7 @@ html[data-ui="v2"] .product-tour.has-spot .product-tour-veil { opacity: 0; }
 
 html[data-ui="v2"] .product-tour-spot {
   position: absolute;
+  pointer-events: none;
   top: 0;
   left: 0;
   width: 0;
@@ -34,6 +36,8 @@ html[data-ui="v2"] .product-tour.has-spot .product-tour-spot { opacity: 1; }
 
 html[data-ui="v2"] .product-tour-card {
   position: absolute;
+  z-index: 1;
+  pointer-events: auto;
   top: 0;
   left: 0;
   display: grid;

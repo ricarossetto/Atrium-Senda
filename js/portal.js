@@ -458,7 +458,7 @@ function getAssistantContextSearchComponent() {
         });
       },
       onFinish: outcome => {
-        App.markProductTourDone();
+        if (outcome !== 'guided') App.markProductTourDone();
         if (outcome === 'skipped') App.toast('Você pode rever o tour no menu de três pontos, no topo da tela.');
       },
       onChoice: (step, value) => (step === 'a1' ? App.saveCertificateAnswer(value) : undefined),
@@ -1635,6 +1635,7 @@ function getAssistantContextSearchComponent() {
       }
     },
     async startProductTour() {
+      getOnboardingComponent().close();
       await this.loadSetupStatus();
       return getProductTour().start();
     },
@@ -1653,6 +1654,8 @@ function getAssistantContextSearchComponent() {
       this.startProductTour();
     },
     openGuidedTour(force = false) {
+      const productTour = getProductTour();
+      if (productTour.isOpen()) productTour.finish('guided');
       getOnboardingComponent().open(force);
     },
     closeGuidedTour() {

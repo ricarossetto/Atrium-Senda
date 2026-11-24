@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-24T05:45:25.740Z",
+  "generatedAt": "2026-11-24T06:45:18.243Z",
   "assets": {
     "assets/icons/atrium-logo-light.svg|3.3.1": "8ca4879d91c16b93",
     "assets/icons/atrium-logo.svg|3.3.1": "57aefeb535bb88fe",
@@ -36,8 +36,8 @@
     "css/views/ui-v2/primitives.css|3.3.1": "1a0083dd6418dae5",
     "css/views/ui-v2/process-access.css|3.3.1": "33e379c10bc197c3",
     "css/views/ui-v2/processes.css|3.3.1": "2b27e317187a18df",
-    "css/views/ui-v2/product-tour.css|3.3.1": "3c9b220e233be2d3",
-    "css/views/ui-v2/prompts.css|3.3.1": "cdf8120a3bbe807c",
+    "css/views/ui-v2/product-tour.css|3.3.1": "4794dabae6aa417d",
+    "css/views/ui-v2/prompts.css|3.3.1": "8594f0bf7788b410",
     "css/views/ui-v2/publications.css|3.3.1": "cb0140f0b8f5399b",
     "css/views/ui-v2/reports.css|3.3.1": "92ee202ce84a17a1",
     "css/views/ui-v2/safe-area.css|3.3.1": "d002f8ce1e83207a",
@@ -134,7 +134,7 @@
     "js/features/tasks.js|3.3.1": "4d07b0bee5ea9a60",
     "js/jsqr.js|3.3.1": "bc40c8a15196236b",
     "js/office-data.js|3.3.1": "9106b22759504d7d",
-    "js/portal.js|3.3.1": "d3ec86511bf16d8c",
+    "js/portal.js|3.3.1": "9a0e066685c8095c",
     "js/prompts-data.js|3.3.1": "93a3b5e7a2d71934",
     "js/runtime-config.js|3.3.1": "78134f5278af8d68",
     "js/skills-data.js|3.3.1": "f67a9f30a030cab6",

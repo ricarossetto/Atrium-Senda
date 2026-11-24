@@ -442,10 +442,10 @@ html[data-ui="v2"] #promptsGrid .prompt-card-actions {
 html[data-ui="v2"] #promptsGrid .prompt-card-actions .button {
 min-width: 0;
 width: auto;
-/* Alvo de toque: o botão de ação do cartão tinha 32px de altura. */
-height: 40px;
-min-height: 40px;
-max-height: 40px;
+/* Desktop mantém a ação compacta; o mobile amplia o alvo de toque. */
+height: 32px;
+min-height: 32px;
+max-height: 32px;
 flex: 1 1 112px;
 padding: 0 10px;
 font: 750 12px/1.2 var(--v2-font-interface);
@@ -685,7 +685,7 @@ html[data-ui="v2"] .prompt-form-section textarea[name="prompt"] { min-height: 28
   html[data-ui="v2"] #promptsGrid .prompt-library-card { min-height: 0; padding: var(--v2-space-4) !important; border-radius: var(--v2-radius-lg); }
   html[data-ui="v2"] #promptsGrid .prompt-box { max-height: 210px; }
   html[data-ui="v2"] #promptsGrid .prompt-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  html[data-ui="v2"] #promptsGrid .prompt-card-actions .button { min-height: 44px; }
+  html[data-ui="v2"] #promptsGrid .prompt-card-actions .button { height: 44px; min-height: 44px; max-height: 44px; }
   html[data-ui="v2"] #btnClearPromptsSearch { width: 44px; height: 44px; }
   html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] .modal { width: 100vw; height: 100dvh; max-height: 100dvh; border: 0; }
   html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] .modal > header { padding: var(--v2-space-4); }
