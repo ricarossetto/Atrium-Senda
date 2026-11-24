@@ -48,7 +48,9 @@ export async function startUiV2Session({ viewport = { width: 1440, height: 900 }
   // teste (o binário real é lento/instável e prende o boot em `networkidle`): `node --version`
   // responde na hora, mantém a rota de status honesta e não chama provedor nenhum.
   const server = await startTestServer({
-    env: { JEV_CMD_BIN: process.execPath },
+    // A suíte UI exercita a superfície completa com dados sintéticos. O desbloqueio
+    // explícito evita que o Senda Basic rejeite campos financeiros durante o fixture.
+    env: { JEV_CMD_BIN: process.execPath, ATRIUM_SENDA_UNLOCK_PRO_DEV: '1' },
     ...(dataDirectory ? { dataDirectory } : {})
   });
   let browser;
