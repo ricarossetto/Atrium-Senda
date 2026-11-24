@@ -134,6 +134,28 @@ try {
     await page.waitForFunction(() => document.activeElement?.id === 'publicationDetailClose');
     await page.locator('[data-fold="conference"] > summary').click();
     await page.locator('[data-conference-days]').fill('23');
+    await page.locator('[data-conference-days]').evaluate(element => element.setAttribute('data-lpignore', 'true'));
+    const editedDays = await page.locator('[data-conference-days]').evaluate(element => ({
+      value: element.value,
+      defaultValue: element.defaultValue,
+      edited: element.value !== element.defaultValue
+    }));
+    assert.deepEqual(editedDays, { value: '23', defaultValue: '15', edited: true }, 'O campo de dias deve conter a edição não salva antes do rerender.');
+    const renderContext = await page.evaluate(() => {
+      const detail = document.getElementById('intimationDetail');
+      const item = window.Atrium.Store.state.intimations.find(record => record.id === 'ui-v2-publication-urgent');
+      const field = detail.querySelector('[data-conference-days]');
+      return {
+        detailId: detail.dataset.publicationId,
+        itemId: item.id,
+        fieldKey: [...field.attributes].filter(attribute => attribute.name.startsWith('data-')).map(attribute => [attribute.name, attribute.value]),
+        fieldEdited: field.value !== field.defaultValue
+      };
+    });
+    assert.equal(renderContext.detailId, renderContext.itemId, 'O snapshot só pode ser capturado para a publicação ativa.');
+    assert.ok(renderContext.fieldKey.some(([name]) => name === 'data-conference-days'), 'O campo editado precisa do atributo oficial de identificação.');
+    assert.ok(renderContext.fieldKey.some(([name]) => name === 'data-lpignore'), 'O teste deve simular o atributo instável adicionado por extensão.');
+    assert.equal(renderContext.fieldEdited, true);
     await page.evaluate(() => window.Atrium.App.renderIntimationDetail());
     assert.equal(await page.locator('[data-conference-days]').inputValue(), '23');
     assert.equal(await page.evaluate(() => document.activeElement?.hasAttribute('data-conference-days')), true);
