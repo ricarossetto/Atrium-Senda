@@ -26,7 +26,11 @@ try {
   assert.equal(await page.locator('.lead-form-section').count(), 6);
   assert.deepEqual(await page.locator('.lead-form-section legend').allTextContents(), ['Interessado', 'Demanda jurídica', 'Andamento', 'Origem', 'Estimativa', 'Relato']);
   for (const name of ['client', 'serviceType', 'status', 'origin', 'estimatedFee', 'responsible', 'notes']) {
-    assert.equal(await page.locator(`label[for="field-${name}"]`).count(), 1);
+    const fieldId = await page.locator(`#field-${name}`).evaluate(element => {
+      if (element.tagName === 'SELECT' && element.classList.contains('field-select-native')) return `${element.id}-busca`;
+      return element.id;
+    });
+    assert.equal(await page.locator(`label[for="${fieldId}"]`).count(), 1, `Label acessível ausente para ${name}.`);
   }
   await page.locator('#modalCancel').focus();
   await page.keyboard.press('Tab');
