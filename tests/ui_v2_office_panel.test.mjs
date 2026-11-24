@@ -10,7 +10,7 @@ try {
   await switchUiV2View(page, 'configuration');
   await page.locator('[data-config-section="office"]').click();
   await page.locator('#officeTeamForm').waitFor();
-  await page.locator('#officeInviteForm').waitFor();
+  await page.locator('#officeNewMemberForm').waitFor();
   assert.equal(await page.locator('[data-config-section="office"]').getAttribute('class'), 'active');
 
   const name = `Equipe Sintética ${Date.now()}`;
@@ -21,13 +21,23 @@ try {
   await page.locator('#officeTeamForm button[type="submit"]').click();
   await page.locator('[data-office-team-id]').filter({ hasText: name }).waitFor();
 
-  const email = `convite-${Date.now()}@example.test`;
-  await page.locator('#officeInviteName').fill('Pessoa Convidada Teste');
-  await page.locator('#officeInviteEmail').fill(email);
-  await page.locator('#officeInviteForm button[type="submit"]').click();
-  await page.locator('#officeInviteFeedback strong').waitFor();
-  const linkText = await page.locator('#officeInviteFeedback').innerText();
-  assert.match(linkText, /\/login#invite=/);
+  const suffix = Date.now();
+  await page.locator('#officeNewMemberUsername').fill(`pessoa.${suffix}`);
+  await page.locator('#officeNewMemberName').fill('Pessoa Criada Teste');
+  await page.locator('#officeNewMemberEmail').fill(`pessoa-${suffix}@example.test`);
+  await page.locator('#officeNewMemberPassword').fill('Senha-Sintetica-2026!');
+  const registerResponsePromise = page.waitForResponse(response => response.url().endsWith('/api/auth/register') && response.request().method() === 'POST');
+  await page.locator('#officeNewMemberForm button[type="submit"]').click();
+  const registerResponse = await registerResponsePromise;
+  const registerBody = await registerResponse.json();
+  assert.equal(registerResponse.status(), 200, JSON.stringify(registerBody));
+  await page.locator('#officeNewMemberFeedback .office-new-member-token').waitFor({ timeout: 15000 });
+  assert.match(await page.locator('#officeNewMemberFeedback').innerText(), /A conta foi criada/);
+  assert.ok((await page.locator('#officeNewMemberFeedback .office-new-member-token').textContent()).trim().length > 0);
+  const newMemberFeedback = await page.locator('#officeNewMemberFeedback').innerText();
+  assert.match(newMemberFeedback, /A conta foi criada/, `Feedback do cadastro: ${newMemberFeedback}`);
+  assert.ok((await page.locator('#officeNewMemberFeedback .office-new-member-token').textContent()).trim().length > 0);
+  assert.match(await page.locator('#officeNewMemberFeedback').innerText(), /aguarda ativação pelo membro/i);
 
   const geometry = await page.evaluate(() => {
     const panel = document.querySelector('.office-panel');
@@ -70,7 +80,7 @@ try {
     await mobileContext.close();
     throw error;
   }
-  console.log('  OK: painel ativo, convite gerado e equipe criada com geometria estável.');
+  console.log('  OK: painel ativo, membro pendente criado e equipe criada com geometria estável.');
   console.log('\n[PASS] Painel Escritório validado no app real.');
 } finally {
   await session.stop();

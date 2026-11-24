@@ -1,4 +1,4 @@
-import { renderPerformanceChart } from './performance-chart.js?v=3.3.1';
+import { renderPerformanceChart } from './performance-chart.js?v=3.3.2';
 
 function setText(documentRef, id, value) {
   const element = documentRef?.getElementById?.(id);

@@ -79,7 +79,7 @@ async function testWatermarkMonotonicity() {
   assert.ok(postRow.created_at > watermark, 'Post-activation event timestamp must be strictly greater than watermark');
   const clock = new Date(Date.parse(postRow.created_at) + 86400000);
   clock.setUTCHours(23, 0, 0, 0);
-  const bulletin = await service.dispatchScheduledBulletins(wsId, mockUsers, {}, { now: clock });
+  const bulletin = await service.dispatchScheduledBulletins(wsId, mockUsers, { intimations: [pubPost] }, { now: clock });
   assert.equal(bulletin.enqueued, 1, 'Post-activation event must survive until its scheduled bulletin');
   const queued = db.claimNextOutboxBatch(10);
   assert.equal(queued.length, 1);

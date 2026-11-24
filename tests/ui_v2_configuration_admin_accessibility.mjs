@@ -90,7 +90,13 @@ try {
   await page.locator('#btnOpenFeedbackModal').click();
   await page.locator('#modalBackdrop[data-modal-mode="feedback"]:not(.hidden)').waitFor();
   await page.waitForFunction(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement));
-  for (const id of ['field-type', 'field-component', 'field-message']) assert.equal(await page.locator(`label[for="${id}"]`).count(), 1);
+  for (const id of ['field-type', 'field-component', 'field-message']) {
+    const label = page.locator(`label[for="${id}"], label[for="${id}-busca"]`);
+    assert.equal(await label.count(), 1, `${id} precisa de exatamente um label associado`);
+    const target = await label.getAttribute('for');
+    assert.ok(target, `${id} precisa apontar para um controle`);
+    assert.equal(await page.locator(`#${target}`).count(), 1, `${id} precisa apontar para um controle existente`);
+  }
   await page.keyboard.press('Escape');
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnOpenFeedbackModal');

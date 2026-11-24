@@ -1117,10 +1117,18 @@ function placeTooltip(trigger, tip) {
   const margin = 8;
   const box = trigger.getBoundingClientRect();
   Object.assign(tip.style, { position: 'fixed', right: 'auto', bottom: 'auto', left: '0px', top: '0px' });
+  // A medição precisa incluir o deslocamento do bloco contentor, mas não o
+  // translateY(3px) da animação de entrada: sem neutralizá-lo, o vão fica em 3px.
+  const transition = tip.style.transition;
+  const transform = tip.style.transform;
+  tip.style.transition = 'none';
+  tip.style.transform = 'none';
   const origin = tip.getBoundingClientRect();
   const left = Math.min(Math.max(box.left + (box.width - origin.width) / 2, margin), window.innerWidth - origin.width - margin);
   tip.style.left = `${left - origin.left}px`;
   tip.style.top = `${box.bottom + 6 - origin.top}px`;
+  tip.style.transform = transform;
+  tip.style.transition = transition;
 }
 
 function installTooltipHints(root = document) {
@@ -1147,7 +1155,7 @@ function passwordToggleIcon(visible) {
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
   const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.3.1#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
+  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
   svg.appendChild(use);
   return svg;
 }

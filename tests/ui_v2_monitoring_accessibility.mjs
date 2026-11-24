@@ -34,7 +34,11 @@ try {
   assert.equal(await page.locator('#modalBackdrop .modal').getAttribute('aria-modal'), 'true');
   assert.equal(await page.locator('#appShell').getAttribute('inert'), '');
   assert.deepEqual(await page.locator('#modalFields fieldset legend').allTextContents(), ['Identidade', 'OAB', 'Documento']);
-  assert.equal(await page.locator('#modalForm label').count(), 6);
+  assert.deepEqual(await page.locator('#modalForm label').allTextContents(), [
+    'Nome completo ou razão social', 'Tipo de identificador',
+    'Número da OAB (somente números)', 'Estado / Seccional (UF)',
+    'Escopo do monitoramento', 'CPF ou CNPJ', 'Número do processo (CNJ)'
+  ]);
   assert.equal(await page.locator('#field-scope option').count(), 2);
   assert.equal(await page.locator('#field-oabUf option').count(), 28);
   assert.equal(await page.locator('#field-oabNumber').isVisible(), true);

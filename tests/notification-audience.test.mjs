@@ -21,7 +21,11 @@ const state = {
   tasks: [
     { id: 'task-a', title: 'Minuta do processo A', status: 'andamento', process: PROC_A, processId: 'proc-a', responsible: 'Rogerio Aud', assigneeUserId: 'u-rogerio', followerUserIds: [], deadline: '2026-10-11' }
   ],
-  agenda: []
+  agenda: [],
+  intimations: [
+    { id: 'pub-a', process: PROC_A, text: 'Publicação A', fullText: 'INTEGRA A SINTETICA '.repeat(20) },
+    { id: 'pub-b', process: PROC_B, text: 'Publicação B', fullText: 'INTEGRA B SINTETICA '.repeat(20) }
+  ]
 };
 
 function fixture(t) {

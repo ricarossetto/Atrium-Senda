@@ -1,5 +1,6 @@
 import { omniTestEnv } from './fixtures/omni-network.mjs';
 import assert from 'node:assert/strict';
+import { generateTotp } from '../lib/security.mjs';
 import { createSystemStatusBar, SYSTEM_STATUS_STATES } from '../js/views/ui-v2/system-status.js';
 import { startTestServer } from './helpers.mjs';
 
@@ -87,9 +88,9 @@ try {
   const verifyRes = await fetch(`${server.baseUrl}/api/auth/setup/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ setupToken: setupData.setupToken, code: setupData.syntheticCode })
+    body: JSON.stringify({ setupToken: setupData.setupToken, code: generateTotp(setupData.manualSecret) })
   });
-  const cookie = verifyRes.headers.get('set-cookie');
+  const cookie = verifyRes.headers.get('set-cookie')?.split(';')[0];
 
   const statusRes = await fetch(`${server.baseUrl}/api/sync/status`, {
     method: 'GET',

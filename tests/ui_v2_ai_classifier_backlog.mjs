@@ -47,6 +47,13 @@ async function installClassifierStubs(page) {
 
 async function runScenario(session, theme) {
   const context = await session.createContext({ viewport: { width: 1440, height: 900 } });
+  // O boot consulta o status antes de qualquer stub de página. Disponibilidade
+  // verdadeira com o recurso desligado é o estado inicial que o botão alterna.
+  await context.route('**/api/ai-classifier/status', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ ok: true, enabled: false, available: true, reason: 'operacional' })
+  }));
   const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme });
   await prepareUiV2PublicationsFixture(page);
   await installClassifierStubs(page);

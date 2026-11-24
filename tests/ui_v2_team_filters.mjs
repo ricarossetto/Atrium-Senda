@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { startUiV2Session, prepareUiV2Page, prepareUiV2TasksFixture, prepareUiV2ProcessesFixture, prepareUiV2PublicationsFixture, switchUiV2View } from './ui_v2_helpers.mjs';
 
-console.log('=== Equipe: filtros por membro e painel de convites (visual + comportamento) ===');
+console.log('=== Equipe: filtros por membro e lista de usuários (visual + comportamento) ===');
 const shots = fs.mkdtempSync(path.join(os.tmpdir(), 'atrium-team-filters-'));
 
 async function geometry(page, selector) {
@@ -80,19 +80,13 @@ try {
 
     await page.locator('#view-inbox .section-toolbar').screenshot({ path: path.join(shots, 'publications-toolbar-light-1280.png') });
 
-    await switchUiV2View(page, 'admin');
-    await page.locator('[data-admin-tab="users"]').click();
-    await page.locator('#adminInviteForm').waitFor();
-    assert.ok(await page.locator('#adminInviteName').isVisible(), 'Campo nome do convite visível.');
-    assert.ok(await page.locator('#adminInviteEmail').isVisible(), 'Campo e-mail do convite visível.');
-    await page.fill('#adminInviteName', 'Colega Teste');
-    await page.fill('#adminInviteEmail', 'colega@example.test');
-    await page.locator('#btnAdminInvite').click();
-    await page.locator('#toastRegion .toast.success', { hasText: 'Convite criado' }).waitFor();
-    await page.locator('.admin-table tbody tr', { hasText: 'colega@example.test' }).waitFor();
-    const inviteGeo = await geometry(page, '#adminInviteForm');
-    assert.ok(inviteGeo.overflow <= 1, 'Cartão de convites sem overflow global.');
-    await page.locator('.admin-invite-card').first().screenshot({ path: path.join(shots, 'admin-invites-light-1280.png') });
+    await switchUiV2View(page, 'configuration');
+    await page.locator('[data-config-section="users"]').click();
+    await page.locator('[data-auth-user-id]').first().waitFor();
+    assert.ok((await page.locator('[data-auth-user-id]').count()) >= 1, 'A aba Usuários lista as contas do escritório.');
+    const usersGeo = await geometry(page, '#configurationList');
+    assert.ok(usersGeo.overflow <= 1, 'Lista de usuários sem overflow global.');
+    await page.locator('#configurationList').screenshot({ path: path.join(shots, 'configuration-users-light-1280.png') });
 
     assert.equal(await page.locator('#sidebarOfficeLabel').textContent(), 'Escritório', 'Cartão usa rótulo fixo curto.');
     assert.equal(await page.locator('.profile-copy strong').textContent(), 'Advogada', 'Chip mostra o primeiro nome.');

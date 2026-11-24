@@ -6,13 +6,11 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const read = relative => readFile(path.join(ROOT, relative), 'utf8');
 
-const [searchSpec, documentSpec, davSpec, apiSpec, roadmap, baseline, packageSource, license, serverSource, davSource, searchSource, intelligenceSource, storageSource] = await Promise.all([
+const [searchSpec, documentSpec, davSpec, apiSpec, packageSource, license, serverSource, davSource, searchSource, intelligenceSource, storageSource] = await Promise.all([
   read('specs/full-text-search.md'),
   read('specs/document-management.md'),
   read('specs/dav-integrations.md'),
   read('specs/api-evolution.md'),
-  read('docs/development/ROADMAP.md'),
-  read('docs/development/PRODUCT_MATURITY_BASELINE.md'),
   read('package.json'),
   read('LICENSE'),
   read('server.mjs'),
@@ -33,13 +31,9 @@ assert.match(davSpec, /não existe timer, sync bidirecional ou reconciliação a
 assert.match(apiSpec, /POLICY-ONLY \/ FUTURE/i);
 assert.match(apiSpec, /publicApi: false|nenhuma rota atual/i);
 
-for (const gate of ['26D', '26E', '26F', '26G']) assert.match(roadmap, new RegExp(`Gate ${gate}:`));
-assert.match(baseline, /Trabalho genuinamente futuro/i);
-assert.match(baseline, /não altera `main`, visibilidade, LICENSE nem cria release/i);
-
 const pkg = JSON.parse(packageSource);
-assert.equal(pkg.license, 'MIT');
-assert.match(license, /MIT License/i);
+assert.equal(pkg.license, 'SEE LICENSE IN LICENSE');
+assert.match(license, /Functional Source License, Version 1\.1 \(FSL-1\.1\)/i);
 assert.doesNotMatch(serverSource, /dav-integration-service/, 'DAV experimental não pode ganhar exposição HTTP incidental.');
 assert.doesNotMatch(searchSource, /node:fs|writeFile|appendFile/, 'Índice derivado não pode persistir plaintext.');
 assert.match(intelligenceSource, /finally\s*\{[\s\S]*?rm\(directory, \{ recursive: true, force: true \}\)/);

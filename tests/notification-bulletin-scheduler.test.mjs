@@ -17,7 +17,8 @@ function fixture(t) {
   return { db, service };
 }
 
-function record(db, id, hour = 7) {
+function record(db, publications, id, hour = 7) {
+  publications.set(id, { id, process: '5000000-00.2026.8.21.0001', text: 'Publicação Teste' });
   const event = db.recordEvent({ workspaceId: 'ws-test', eventType: 'PUBLICATION_NEW', fingerprint: id, payload: { id, text: 'Publicação Teste' } });
   db.db.prepare('UPDATE notification_events SET created_at = ? WHERE id = ?').run(new Date(at(hour)).toISOString(), event.id);
 }
@@ -28,18 +29,19 @@ function outboxes(db) {
 
 test('independent cycles respect 08/14/20 BRT, carry late events and never create boot events', async t => {
   const { db, service } = fixture(t);
+  const publications = new Map();
   let now = at(7);
   const scheduler = new EmailBulletinScheduler({
     listWorkspaces: () => [{ id: 'ws-test', status: 'active' }],
-    getUsers: async () => [user], getState: async () => ({}), getService: () => service,
+    getUsers: async () => [user], getState: async () => ({ intimations: [...publications.values()] }), getService: () => service,
     now: () => now, logger: quiet
   });
-  record(db, 'morning');
+  record(db, publications, 'morning');
   assert.equal((await scheduler.processCycle()).enqueued, 0);
   for (const [hour, id] of [[8, 'late-morning'], [14, 'late-afternoon'], [20, 'late-night']]) {
     now = at(hour);
     assert.equal((await scheduler.processCycle()).enqueued, 1);
-    record(db, id, hour + 1);
+    record(db, publications, id, hour + 1);
     now = at(hour + 1);
     assert.equal((await scheduler.processCycle()).enqueued, 0);
   }
@@ -161,7 +163,7 @@ test('master switch off blocks bulletins but supervised test/password reset stil
   const provider = { getFromAddress: () => 'teste@example.test', checkBudget: () => ({ allowed: true }), sendEmail: async payload => { sent.push(payload); return { providerMessageId: `synthetic-${sent.length}` }; } };
   service.provider = provider;
   db.setWorkspaceEnabled(false);
-  record(db, 'pending-disabled');
+  record(db, new Map(), 'pending-disabled');
   const scheduler = new EmailBulletinScheduler({ listWorkspaces: () => [{ id: 'ws-test', status: 'active' }], getUsers: () => [user], getState: () => ({}), getService: () => service, now: () => at(8), logger: quiet });
   assert.equal((await scheduler.processCycle()).enqueued, 0);
   await service.sendTestEmail({ workspaceId: 'ws-test', recipient: 'test@example.test' });

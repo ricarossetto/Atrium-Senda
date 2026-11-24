@@ -4,7 +4,7 @@ import { isAvatarDataUrl, memberInitials, memberAvatarHtml } from '../js/core/me
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
 console.log('\n===============================================================');
-console.log('  ATRIUM — AVATAR DE INTEGRANTE (HELPER CANÔNICO)');
+console.log('  ATRIUM — AVATAR DE INTEGRANTE (HELPER OFICIAL)');
 console.log('===============================================================\n');
 
 assert.equal(isAvatarDataUrl(PNG), true);
@@ -15,7 +15,7 @@ assert.equal(isAvatarDataUrl('data:image/svg+xml;base64,AAAA'), false);
 assert.equal(isAvatarDataUrl(''), false);
 assert.equal(isAvatarDataUrl('x'.repeat(700001)), false, 'Acima do teto do cofre não entra.');
 
-assert.equal(memberInitials('Ricardo Teste'), 'RR');
+assert.equal(memberInitials('Ricardo Teste'), 'RT');
 assert.equal(memberInitials('  advogada   teste  '), 'AT');
 assert.equal(memberInitials('Advogada'), 'A');
 assert.equal(memberInitials(''), '?');
@@ -26,7 +26,7 @@ assert.match(withPhoto, /class="member-avatar"/);
 assert.match(withPhoto, /class="member-avatar-image"/);
 assert.ok(withPhoto.includes(PNG), 'A foto do integrante entra no markup.');
 const withoutPhoto = memberAvatarHtml({ displayName: 'Ricardo Teste' }, escapeHtml);
-assert.match(withoutPhoto, />RR</);
+assert.match(withoutPhoto, />RT</);
 assert.equal(withoutPhoto.includes('<img'), false, 'Sem foto, mantém iniciais.');
 const hostile = memberAvatarHtml({ displayName: '<b>X</b>', avatar: 'data:text/html;base64,AAAA' }, escapeHtml);
 assert.equal(hostile.includes('<img'), false, 'Avatar inválido não vira imagem.');

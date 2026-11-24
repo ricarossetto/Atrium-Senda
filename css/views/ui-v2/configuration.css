@@ -762,7 +762,7 @@ html[data-ui="v2"] .registry-config-error { color: var(--v2-color-danger); }
 
 @media (prefers-reduced-motion: reduce) {
   html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="configuration"], [data-modal-mode="feedback"]) > .modal,
-  html[data-ui="v2"] .modal-backdrop:not(.hidden) .office-setup-modal { animation: none; }
+  html[data-ui="v2"] .modal-backdrop:not(.hidden) .office-setup-modal { animation: none !important; }
   html[data-ui="v2"] .configuration-identity-entry { transition: none; }
 }
 
