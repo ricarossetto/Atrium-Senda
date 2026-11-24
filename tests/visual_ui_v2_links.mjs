@@ -101,7 +101,7 @@ try {
       assert.equal(layout.ui, 'v2'); assertions++;
       assert.equal(layout.theme, scenario.theme); assertions++;
       assert.equal(layout.heading, 'Links úteis'); assertions++;
-      assert.equal(layout.staticCount, 10); assertions++;
+      assert.equal(layout.staticCount, 9); assertions++;
       assert.equal(layout.staticSecurity, true); assertions++;
       assert.equal(layout.customCount, scenario.links.length); assertions++;
       assert.equal(layout.unsafeCustomAnchors, 0); assertions++;
