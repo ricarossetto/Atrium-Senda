@@ -37,7 +37,12 @@ try {
   assert.match((await page.locator('#btnNewLink').textContent()).replace(/\s+/g, ' ').trim(), /Novo Link Útil/);
 
   const staticLinks = page.locator('[data-links-group]:not([data-links-group="custom"]) > a.link-card');
-  assert.equal(await staticLinks.count(), 10);
+  assert.deepEqual(await Promise.all([
+    page.locator('[data-links-group="legislation"] > a.link-card').count(),
+    page.locator('[data-links-group="case-law"] > a.link-card').count(),
+    page.locator('[data-links-group="tools"] > a.link-card').count()
+  ]), [6, 1, 2], 'O inventário estático deve manter a distribuição oficial de links.');
+  assert.equal(await staticLinks.count(), 9);
   for (let index = 0; index < await staticLinks.count(); index++) {
     const link = staticLinks.nth(index);
     assert.match(await link.getAttribute('aria-label'), /^Abrir .+ em nova guia$/);
