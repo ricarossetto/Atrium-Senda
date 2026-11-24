@@ -1,6 +1,6 @@
 ﻿[CmdletBinding()]
 param(
-    [string]$ReleaseTag = 'v3.3.0',
+    [string]$ReleaseTag = 'v3.3.1',
     [string]$SourceRef = '',
     [string]$InstallDirectory = (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'ATRIUM')
 )
@@ -33,7 +33,7 @@ function Resolve-OfficialArchive {
     }
 
     if ($ReleaseTag -notmatch '^v\d+\.\d+\.\d+$') {
-        Stop-Install 'Informe uma tag estável no formato v3.3.0.'
+        Stop-Install 'Informe uma tag estável no formato v3.3.1.'
     }
     return [pscustomobject]@{
         Label = "release $ReleaseTag"
@@ -53,7 +53,7 @@ function Assert-DownloadedPackage([string]$SourceDirectory, [AllowNull()][string
     } catch {
         Stop-Install 'O package.json do pacote oficial é inválido.'
     }
-    if ($package.name -ne 'atrium' -or $package.version -notmatch '^\d+\.\d+\.\d+$') {
+    if (@('atrium', 'atrium-senda') -notcontains $package.name -or $package.version -notmatch '^\d+\.\d+\.\d+$') {
         Stop-Install 'O pacote baixado não foi reconhecido como uma distribuição do ATRIUM.'
     }
     if ($ExpectedVersion -and $package.version -ne $ExpectedVersion) {

@@ -1,7 +1,9 @@
-import { iconSvg } from './icons.js?v=3.3.0';
-import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.3.0';
+// Lucian UX/UI Prompt #440 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#440
+import { iconSvg } from './icons.js?v=3.3.1';
+import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.3.1';
 
 export const KANBAN_COLUMN_LIMIT = 200;
+const TERMINAL_TASK_STATUSES = new Set(['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada']);
 
 // Índice por render para resolver vínculos sem varredura por cartão.
 // Mesma semântica dos finds originais (first-match; String() em ids de
@@ -84,9 +86,102 @@ export function createTasksV2Presenter({
   totalTimeMinutes,
   daysUntil,
   initials,
-  memberFor = () => null
+  memberFor = () => null,
+  isTerminalStatus = status => TERMINAL_TASK_STATUSES.has(String(status || '').toLowerCase().trim())
 } = {}) {
   const byId = id => documentRef?.getElementById(id);
+  const emptyStateContainers = new WeakSet();
+
+  function renderTaskListEmptyState({ allTasks, openTasks, activeFilter }) {
+    const query = String(byId('taskListSearch')?.value || '').trim();
+    const riskFilter = String(byId('taskRiskFilter')?.value || 'all');
+    const hasActiveFilters = Boolean(query) || activeFilter !== 'active'
+      || byId('taskListMineOnly')?.checked === true || riskFilter !== 'all';
+    const state = !allTasks.length ? 'first-run' : (openTasks.length || hasActiveFilters) ? 'filtered' : 'completed';
+    const content = {
+      'first-run': {
+        title: 'Nenhuma tarefa ainda',
+        description: 'Crie sua primeira tarefa para organizar o trabalho do escritório.',
+        action: 'new',
+        label: 'Nova tarefa'
+      },
+      filtered: {
+        title: 'Nenhuma tarefa neste filtro.',
+        description: 'Ajuste a busca ou o filtro de situação.',
+        action: 'filters',
+        label: 'Revisar filtros'
+      },
+      completed: {
+        title: 'Nenhuma tarefa aberta.',
+        description: 'Não há tarefas abertas. Crie uma nova tarefa quando precisar.',
+        action: 'new',
+        label: 'Nova tarefa'
+      }
+    }[state];
+    const icon = iconSvg(content.action === 'filters' ? 'search' : 'add', { className: 'atrium-icon u440-go-icon' });
+    return `<div class="ux u440 task-list-empty" data-task-empty-state="${state}" role="listitem" aria-labelledby="taskEmptyStateTitle" aria-describedby="taskEmptyStateDescription">
+      <div class="u440-ill" aria-hidden="true">
+        <svg class="u440-il" viewBox="0 0 160 120">
+          <ellipse class="sh" cx="80" cy="116" rx="50" ry="5"/>
+          <path class="sp" d="M138 22l1.8 4.4 4.4 1.8-4.4 1.8-1.8 4.4-1.8-4.4-4.4-1.8 4.4-1.8z"/>
+          <path class="sp" d="M20 40l1.4 3.4 3.4 1.4-3.4 1.4-1.4 3.4-1.4-3.4-3.4-1.4 3.4-1.4z"/>
+          <path class="sp" d="M128 70l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z"/>
+          <g class="fol">
+            <path class="bk" d="M28 34a8 8 0 0 1 8-8h22a6 6 0 0 1 4.6 2.2l4.6 5.8H124a8 8 0 0 1 8 8v58a8 8 0 0 1-8 8H36a8 8 0 0 1-8-8z"/>
+            <g class="doc"><rect class="p" x="50" y="24" width="60" height="58" rx="6"/><rect class="hd" x="57" y="31" width="20" height="5" rx="2.5"/><rect class="ln" x="57" y="42" width="44" height="3.5" rx="1.75"/><rect class="ln" x="57" y="50" width="36" height="3.5" rx="1.75"/></g>
+            <path class="fr" d="M22 56a8 8 0 0 1 8-8h100a8 8 0 0 1 8 8.6l-4.4 44a8 8 0 0 1-8 7.4H34.4a8 8 0 0 1-8-7.4z"/>
+            <path class="fh" d="M30 48h100a8 8 0 0 1 8 8.6l-.3 3H22.1l-.1-3.6A8 8 0 0 1 30 48z"/>
+          </g>
+        </svg>
+        <span class="u440-burst"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
+      <div class="u440-h"><b aria-hidden="false"><span class="u440-title" id="taskEmptyStateTitle">${content.title}</span><span class="u440-description" id="taskEmptyStateDescription">${content.description}</span></b><b aria-hidden="true"></b></div>
+      <button type="button" class="u440-go" data-task-empty-action="${content.action}" aria-describedby="taskEmptyStateDescription">${icon}<span>${content.label}</span></button>
+      <p class="u440-live" role="status"></p>
+    </div>`;
+  }
+
+  function bindTaskListEmptyState(container) {
+    if (!container || typeof container.addEventListener !== 'function' || emptyStateContainers.has(container)) return;
+    emptyStateContainers.add(container);
+    container.addEventListener('click', event => {
+      const button = event.target.closest?.('[data-task-empty-action]');
+      if (!button) return;
+      const root = button.closest?.('.u440');
+      const live = root?.querySelector?.('.u440-live');
+      if (button.dataset.taskEmptyAction === 'filters') {
+        const toggle = byId('taskFiltersToggle');
+        if (toggle?.getAttribute('aria-expanded') === 'false') toggle.click();
+        const search = byId('taskListSearch');
+        const status = byId('taskListStatusFilter');
+        const mineOnly = byId('taskListMineOnly');
+        const risk = byId('taskRiskFilter');
+        const target = String(search?.value || '').trim() ? search
+          : status && status.value !== 'active' ? status
+            : mineOnly?.checked === true ? mineOnly
+              : risk && risk.value !== 'all' ? risk
+                : search;
+        target?.focus?.();
+        if (live) live.textContent = 'Filtros de tarefas abertos. Ajuste a busca ou a situação.';
+        return;
+      }
+      const newTaskButton = byId('newTaskButton');
+      if (!newTaskButton) {
+        if (live) live.textContent = 'A ação de nova tarefa está indisponível.';
+        return;
+      }
+      if (root) {
+        // A animação de entrada não afirma que a tarefa foi criada: o formulário existente
+        // continua responsável por salvar e anunciar o sucesso.
+        root.classList.remove('is-launching');
+        void root.offsetWidth;
+        root.classList.add('is-launching');
+        root.querySelector?.('.u440-il .doc')?.addEventListener?.('animationend', () => root.classList.remove('is-launching'), { once: true });
+      }
+      if (live) live.textContent = 'Abrindo o formulário de nova tarefa.';
+      newTaskButton.click();
+    });
+  }
 
   function render({ board, tasks, columns, activeTaskId, elapsedLabel, sourceLabel, processes = [], contacts = [], intimations = [], triageLookup = null, riskLookup = null, involvedLookup = null }) {
     if (!board) return;
@@ -135,7 +230,7 @@ export function createTasksV2Presenter({
     if (!container) return;
     const lookup = buildTaskLinkLookup(processes, contacts, intimations);
     if (!container) return;
-    const openTasks = allTasks.filter(task => task.status !== 'concluida');
+    const openTasks = allTasks.filter(task => !isTerminalStatus(task.status));
     const overdueTasks = openTasks.filter(task => {
       const deadline = task.fatalDeadline || task.deadline;
       return Boolean(deadline) && daysUntil(deadline) < 0;
@@ -180,7 +275,8 @@ export function createTasksV2Presenter({
           risk: typeof riskLookup === 'function' ? riskLookup(task) : null,
           involved: typeof involvedLookup === 'function' ? involvedLookup(task) : ''
         })).join('')
-      : (openTasks.length ? '<div class="task-list-empty"><strong>Nenhuma tarefa neste filtro.</strong><span>Ajuste a busca ou o filtro de situação.</span></div>' : '<div class="task-list-empty"><strong>Nenhuma tarefa aberta.</strong><span>Use Nova tarefa para criar a primeira.</span></div>');
+      : renderTaskListEmptyState({ allTasks, openTasks, activeFilter });
+    bindTaskListEmptyState(container);
     updateCount(allTasks.length);
   }
 
@@ -508,7 +604,7 @@ export function renderTaskCard({
     <button type="button" class="task-card-open" data-task-open="${escapeHtml(task.id)}">
       <strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong>
       <span>${escapeHtml(task.description || 'Sem descrição')}</span>
-      <span class="task-card-action">Editar tarefa <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.0#atrium-icon-chevron-right"></use></svg></span>
+      <span class="task-card-action">Editar tarefa <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.1#atrium-icon-chevron-right"></use></svg></span>
     </button>
     <div class="task-context">
       <span class="task-client ${clientResolved ? '' : 'task-client-unlinked'}">${escapeHtml(clientResolved || 'Cliente não vinculado')}</span>

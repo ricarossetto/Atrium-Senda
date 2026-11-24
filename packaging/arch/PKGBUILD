@@ -4,11 +4,10 @@
 # o menu de aplicativos. Para compilar do código-fonte, use o repositório:
 #   git clone https://github.com/ricarossetto/Atrium-Senda
 #
-# O sha256sums do AppImage corresponde ao artefato 3.1.0 publicado em
-# releases/atrium-senda-release-3.1.0. Se o release for recompilado, atualize
-# o hash junto com o SHA256SUMS.txt.
+# PKGBUILD de modelo: os hashes zerados impedem a instalação direta.
+# Use o PKGBUILD anexado à release, gerado com as somas reais dos três arquivos.
 pkgname=atrium-senda-bin
-pkgver=3.3.0
+pkgver=3.3.1
 pkgrel=1
 pkgdesc="Gestão jurídica básica local para advogados brasileiros (Edição Senda)"
 arch=('x86_64')
@@ -25,9 +24,9 @@ options=('!strip' '!debug')
 source=("ATRIUM-${pkgver}.AppImage::https://github.com/ricarossetto/Atrium-Senda/releases/download/v${pkgver}/ATRIUM_${pkgver}_amd64.AppImage"
         "atrium-senda.desktop::https://raw.githubusercontent.com/ricarossetto/Atrium-Senda/v${pkgver}/packaging/linux/atrium-senda.desktop"
         "atrium-senda.png::https://raw.githubusercontent.com/ricarossetto/Atrium-Senda/v${pkgver}/desktop/src-tauri/icons/icon.png")
-sha256sums=('6eebc9f65cf846abef8ce200d682541eb360b437513f52d62a7a3e42a985eb2e'
-            '955228bab8884826813ea8df5a0baba526ebaa8eb49be6bbe48be7c7199b338f'
-            '283f55263a6aaced9aa13de9beb42a3d0160de6158cd8fd6d82aab48f193ff3d')
+sha256sums=('0000000000000000000000000000000000000000000000000000000000000000'
+            '0000000000000000000000000000000000000000000000000000000000000000'
+            '0000000000000000000000000000000000000000000000000000000000000000')
 
 package() {
   install -Dm755 "${srcdir}/ATRIUM-${pkgver}.AppImage" "${pkgdir}/opt/atrium-senda/ATRIUM.AppImage"

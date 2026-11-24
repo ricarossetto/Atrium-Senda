@@ -1,7 +1,7 @@
 import {
   buildCivelSummaryText,
   buildCivelCsv
-} from '../views/ui-v2/calculations-civel-suite.js?v=3.3.0';
+} from '../views/ui-v2/calculations-civel-suite.js?v=3.3.1';
 
 function addMonthsIso(iso, delta) {
   const [y, m, d] = String(iso || '').split('-').map(Number);

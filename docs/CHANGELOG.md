@@ -2,6 +2,24 @@
 
 As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## 3.3.1 — 2026-11-24
+
+### Adicionado
+
+- **Estado vazio de Tarefas mais claro**: a lista agora distingue primeiro uso, resultado vazio por filtro e tarefas concluídas. Cada estado explica a situação e oferece a ação adequada, com navegação por teclado, aviso a leitores de tela e respeito a movimento reduzido.
+- **Teste dedicado do estado vazio**: cobertura sintética em 375px, temas claro e escuro, contrastes, ausência de overflow, foco visível, criação pelo botão existente e revisão de filtros.
+- **Documentação de validação consolidada**: guia do testador, readiness técnico, roadmap, decisões e plano mestre passam a descrever os contratos atuais da edição local.
+
+### Corrigido
+
+- **Publicações: edições preservadas com extensões do navegador.** A identificação dos controles do detalhe deixa de usar atributos `data-*` genéricos e passa a considerar apenas os atributos oficiais do ATRIUM. Assim, uma extensão não faz a tela perder alterações já feitas ao atualizar a publicação.
+- **Instalação manual no Windows**: `install.ps1` agora reconhece o pacote `atrium-senda`. Antes, a validação exigia o nome `atrium` e interrompia a instalação do pacote oficial.
+- **Pacote Arch gerado com somas corretas**: o workflow de release cria o `PKGBUILD` final com os hashes SHA-256 do AppImage, do arquivo `.desktop` e do ícone da própria versão, sem depender de hash antigo nem mover a tag. O modelo no repositório falha fechado e não deve ser compilado diretamente.
+
+### Alterado
+
+- **Versão 3.3.1 e cache do frontend**: pacote, desktop, instaladores, documentação e referências versionadas da cadeia de entrada foram atualizados para evitar que o navegador continue usando arquivos da versão anterior.
+
 ## 3.3.0 — 2026-11-20
 
 ### Adicionado

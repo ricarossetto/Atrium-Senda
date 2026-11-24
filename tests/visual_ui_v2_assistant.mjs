@@ -174,7 +174,7 @@ try {
         assert.equal(await page.locator('.citation-review-item').count(), 3, `${scenario.file}: três citações no painel.`); assertions++;
         assert.equal(await page.locator('.citation-review-blockers').count(), 1, `${scenario.file}: bloqueio visível.`); assertions++;
         assert.equal(await page.locator('[data-citation-justification]').count(), 1, `${scenario.file}: justificativa disponível.`); assertions++;
-        assert.match(await page.locator('.ai-citation-summary').textContent(), /3 citação\(ões\): 1 verificada\(s\) · 1 pendente\(s\) · 1 não verificada\(s\)/); assertions++;
+        assert.match(await page.locator('.ai-citation-summary').textContent(), /3 citações: 1 verificada · 1 pendente · 1 não verificada/); assertions++;
       }
 
       if (scenario.state === 'plan') {

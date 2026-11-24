@@ -43,7 +43,7 @@ O staging baixa o Node 24 Linux x64 oficial e copia `node` (sem `.exe`) para `de
 - `ATRIUM-<versão>-1.x86_64.rpm` — Fedora, RHEL, CentOS Stream, Rocky, Alma, Oracle Linux, openSUSE, SLES;
 - `ATRIUM_<versão>_amd64.AppImage` — qualquer distribuição x64, incluindo Arch, Manjaro, EndeavourOS, Garuda e CachyOS.
 
-O `packaging/linux/install.sh` escolhe o formato pela distribuição e confere o `SHA256SUMS.txt`. O `packaging/arch/PKGBUILD` empacota o AppImage como `atrium-senda-bin`.
+O `packaging/linux/install.sh` escolhe o formato pela distribuição e confere o `SHA256SUMS.txt`. Para Arch, use o `PKGBUILD` anexado à release: ele empacota o AppImage como `atrium-senda-bin` e contém os hashes reais. O modelo em `packaging/arch/PKGBUILD` não deve ser compilado diretamente.
 
 ## macOS
 

@@ -265,8 +265,22 @@ try {
     assert.equal(await page.locator('#field-accessKey').getAttribute('type'), 'password');
     assert.equal(await page.locator('#field-accessKey').getAttribute('name'), null, 'A chave não pode integrar o payload comum do Store.');
     assert.match(await page.locator('.process-tjrs-assist-key').textContent(), /cofre cifrado.*reutilizada no monitoramento/i);
+    const submittedFinancial = await page.evaluate(() => {
+      const data = Object.fromEntries(new FormData(document.getElementById('modalForm')).entries());
+      return { feeType: data.feeType, feePercentage: data.feePercentage, feeAmount: data.feeAmount, feeMonthly: data.feeMonthly };
+    });
+    assert.deepEqual(submittedFinancial, { feeType: 'misto', feePercentage: '25', feeAmount: '1250', feeMonthly: '300' }, 'O formulário deve enviar os honorários existentes sem alteração.');
     await page.fill('#field-stage', 'Instrução revisada na V2');
+    const stateSaveRequest = page.waitForRequest(request => {
+      if (request.method() !== 'POST' || new URL(request.url()).pathname !== '/api/state') return false;
+      const payload = request.postDataJSON();
+      const process = payload?.state?.processes?.find(item => item?.id === 'ui-v2-process-tjrs');
+      return process?.stage === 'Instrução revisada na V2';
+    });
     await page.locator('#modalForm button[type="submit"]').click();
+    const submittedState = (await stateSaveRequest).postDataJSON();
+    const submittedProcess = submittedState.state.processes.find(process => process.id === 'ui-v2-process-tjrs');
+    assert.equal(submittedProcess.feePercentage, 25, 'O flush deve enviar o percentual de honorários preservado.');
     await page.locator('#modalBackdrop.hidden').waitFor({ state: 'attached' });
     const preserved = await page.evaluate(() => {
       const item = window.Atrium.Store.state.processes.find(process => process.id === 'ui-v2-process-tjrs');

@@ -8,7 +8,8 @@ Use esta página como índice quando receber o projeto pelo GitHub.
 - [Instalação, backup e recuperação](INSTALLATION.md)
 - [Manual do usuário](USER_MANUAL.md)
 - [Guia de configuração do escritório](office/GUIA_CONFIGURACAO_ESCRITORIO.md)
-- [Notas da release 3.0.0](RELEASE_NOTES_3.0.0.md)
+- [Notas da release 3.3.1](RELEASE_NOTES_3.3.1.md)
+- [Guia do testador](BETA_TESTER_GUIDE.md)
 - [Changelog](CHANGELOG.md)
 
 ## Para entender o sistema
@@ -21,6 +22,10 @@ Use esta página como índice quando receber o projeto pelo GitHub.
 ## Material técnico
 
 - `development/`: decisões, roadmap, plano-mestre e gates de maturidade.
+- [Readiness técnico](development/BETA_READINESS.md)
+- [Roadmap](development/ROADMAP.md)
+- [Decisões de arquitetura e produto](development/DECISIONS.md)
+- [Plano mestre de desenvolvimento](development/DEVELOPMENT_MASTER_PLAN.md)
 - `judicial/`: A1, TOTP, PJe, eproc e conectividade gerenciada.
 - `ui-v2/`: contratos de interface, inventário de componentes e auditorias visuais.
 - `ui-v2/VISUAL_IMPLEMENTATION_GUIDE.md`: leitura obrigatória para qualquer missão de UI (identidade, contratos por componente, checklist de aprovação e registro de evidências da seção 21).

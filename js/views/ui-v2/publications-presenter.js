@@ -1,13 +1,13 @@
-import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.3.0';
-import { publicationReadableText } from '../../core/html-text.js?v=3.3.0';
-import { buildPublicationBrief, publicationTodayReason } from '../../core/publication-brief.js?v=3.3.0';
-import { isMergedIntimation } from '../../core/publication-scope.js?v=3.3.0';
-import { layoutPublicationText } from '../../core/publication-text-layout.js?v=3.3.0';
-import { SUSPENSION_NOTE, describeSuspension, suspensionForDate } from '../../core/suspension-calendar.js?v=3.3.0';
-import { isValidCnj } from '../../core/cnj.js?v=3.3.0';
-import { describeLinkSafety } from '../../core/link-safety.js?v=3.3.0';
-import { formatPublicationLawyers, officeLawyerMatch, publicationLawyersList } from '../../core/publication-lawyers.js?v=3.3.0';
-import { formatLawyerNames, officeSideLawyers } from '../../core/publication-parties.js?v=3.3.0';
+import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.3.1';
+import { publicationReadableText } from '../../core/html-text.js?v=3.3.1';
+import { buildPublicationBrief, publicationTodayReason } from '../../core/publication-brief.js?v=3.3.1';
+import { isMergedIntimation } from '../../core/publication-scope.js?v=3.3.1';
+import { layoutPublicationText } from '../../core/publication-text-layout.js?v=3.3.1';
+import { SUSPENSION_NOTE, describeSuspension, suspensionForDate } from '../../core/suspension-calendar.js?v=3.3.1';
+import { isValidCnj } from '../../core/cnj.js?v=3.3.1';
+import { describeLinkSafety } from '../../core/link-safety.js?v=3.3.1';
+import { formatPublicationLawyers, officeLawyerMatch, publicationLawyersList } from '../../core/publication-lawyers.js?v=3.3.1';
+import { formatLawyerNames, officeSideLawyers } from '../../core/publication-parties.js?v=3.3.1';
 
 /**
  * Conferência informativa do conteúdo mínimo da intimação no DJEN
@@ -24,6 +24,16 @@ function djenQualityIssues(item, parties) {
   if (!String(item?.disponibilizadoEm || item?.publishedAt || '').trim()) issues.push('data de disponibilização não informada');
   return issues;
 }
+
+const DETAIL_CONTROL_IDENTITY_ATTRIBUTES = Object.freeze([
+  'data-detail-action', 'data-detail-more', 'data-panel-size-toggle', 'data-fold',
+  'data-original-text-toggle', 'data-ai-classifier-action', 'data-ai-classifier-question',
+  'data-providence-action', 'data-providence-definition', 'data-providence-item-index',
+  'data-providence-item-batch', 'data-conference-start', 'data-conference-days',
+  'data-conference-counting', 'data-conference-direction', 'data-open-task-id',
+  'data-open-process-id', 'data-open-contact-id', 'data-open-agenda-id',
+  'data-duplicate-action', 'data-duplicate-open', 'data-row-action'
+]);
 
 const FOCUSABLE = 'summary, button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -133,9 +143,16 @@ export function createPublicationsV2Presenter({
     const detail = byId('intimationDetail');
     if (!detail || detail.dataset.publicationId !== String(id)) return null;
     const controls = [...detail.querySelectorAll(`${FOCUSABLE}, input, textarea, select`)];
-    const identity = element => element.id
-      ? [['id', element.id]]
-      : [...element.attributes].filter(attribute => attribute.name.startsWith('data-')).map(attribute => [attribute.name, attribute.value]);
+    // Atributos data-* de extensões não existem no HTML renderizado. A identidade
+    // usa somente id ou atributos oficiais do ATRIUM; o índice é apenas fallback.
+    const identity = element => {
+      if (element.id) return [['id', element.id]];
+      const official = DETAIL_CONTROL_IDENTITY_ATTRIBUTES
+        .filter(name => element.hasAttribute(name))
+        .map(name => [name, element.getAttribute(name)]);
+      if (official.length) return official;
+      return [['control-index', String(controls.indexOf(element))], ['tag', element.tagName.toLowerCase()]];
+    };
     const edited = controls.filter(isDetailControlEdited)
       .map(element => ({ key: identity(element), value: element.value, checked: element.checked }));
     const active = documentRef.activeElement;
@@ -157,7 +174,18 @@ export function createPublicationsV2Presenter({
     }
     if (snapshot.textExpanded) setOriginalTextExpanded(detail.querySelector('.publication-original'), true);
     const controls = [...detail.querySelectorAll(`${FOCUSABLE}, input, textarea, select`)];
-    const resolve = key => key.length ? controls.find(element => key.every(([name, value]) => element.getAttribute(name) === value)) : null;
+    const resolve = key => {
+      if (!key.length) return null;
+      const id = key.find(([name]) => name === 'id');
+      if (id) return controls.find(element => element.id === id[1]) || null;
+      const index = key.find(([name]) => name === 'control-index');
+      if (index) {
+        const control = controls[Number(index[1])];
+        const tag = key.find(([name]) => name === 'tag');
+        return control && (!tag || control.tagName.toLowerCase() === tag[1]) ? control : null;
+      }
+      return controls.find(element => key.every(([name, value]) => element.getAttribute(name) === value)) || null;
+    };
     for (const edit of snapshot.edited) {
       const control = resolve(edit.key);
       if (!control) continue;
@@ -406,7 +434,7 @@ export function renderPublicationRow({ item, act, parties, selected, escapeHtml,
     </span>
     <span class="publication-record-origin"><b>${escapeHtml(item.source || item.court || 'Origem não informada')}</b><small>${escapeHtml(item.court || 'Órgão não informado')}</small></span>
     <span class="publication-record-date"><b>${item.publishedAt ? escapeHtml(formatAge(item.publishedAt)) : item.disponibilizadoEm ? 'Disponibilização' : item.sourceReportedAt ? 'Data da fonte' : escapeHtml(formatAge(item.publishedAt))}</b><small>${escapeHtml(formatDate(item.publishedAt || item.disponibilizadoEm || item.sourceReportedAt))}</small></span>
-    <span class="publication-record-action" aria-hidden="true">Ler publicação <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.0#atrium-icon-chevron-right"></use></svg></span>
+    <span class="publication-record-action" aria-hidden="true">Ler publicação <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.1#atrium-icon-chevron-right"></use></svg></span>
   </button>
   ${aside}
 </div>`;
@@ -1022,4 +1050,4 @@ function toggleInert(element, inert) {
   if (inert) element.setAttribute('inert', '');
   else element.removeAttribute('inert');
 }
-import { iconSvg } from './icons.js?v=3.3.0';
+import { iconSvg } from './icons.js?v=3.3.1';

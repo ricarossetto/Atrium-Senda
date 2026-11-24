@@ -92,10 +92,11 @@ for (const collection of ['officeExpenses', 'financialEntries']) {
     assert.equal(canAccessFinancialEntry(associate, entries[3], index, teams), false);
   });
 
-  test(`${collection}: quem tem finance.read vê tudo`, () => {
-    for (const entry of entries) {
+  test(`${collection}: finance.read vê o financeiro do escritório, não o escopo privado alheio`, () => {
+    for (const entry of entries.filter(item => item.id !== 'fin-private-other')) {
       assert.equal(canAccessFinancialEntry(finance, entry, index, teams), true, entry.id);
     }
+    assert.equal(canAccessFinancialEntry(finance, entries[4], index, teams), false, 'escopo privado continua restrito ao dono');
   });
 
   test(`${collection}: processo de escopo privado de outro membro não vaza`, () => {
@@ -225,7 +226,7 @@ test('canWriteFinancial exige finance.write ou office.manage', () => {
 for (const collection of ['officeExpenses', 'financialEntries']) {
   test(`${collection}: quem não grava mantém a versão oficial no flush, inclusive de lançamento que vê`, () => {
     const state = stateFor(collection);
-    // `finance.read` vê tudo, mas não grava.
+    // `finance.read` vê o financeiro do escritório, mas não o escopo privado alheio; não grava.
     const incoming = {
       ...state,
       [collection]: [
@@ -287,7 +288,11 @@ for (const collection of ['officeExpenses', 'financialEntries']) {
       'associado sem finance.read continua vendo o que via, mesmo sem gravar'
     );
     const financeView = filterOfficeState(state, finance, { teams });
-    assert.deepEqual(idsOf(financeView[collection]), idsOf(entries), 'finance.read continua vendo tudo');
+    assert.deepEqual(
+      idsOf(financeView[collection]),
+      idsOf(entries.filter(entry => entry.id !== 'fin-private-other')),
+      'finance.read continua vendo o financeiro do escritório, sem o escopo privado alheio'
+    );
 
     // Os dois caminhos de projeção concordam para quem não grava.
     const merged = mergeVisibleClientState(state, { ...state, [collection]: structuredClone(entries) }, associate, { teams });

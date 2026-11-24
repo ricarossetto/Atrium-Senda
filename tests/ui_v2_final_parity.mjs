@@ -27,7 +27,7 @@ const expectedPrimaryNavigation = [...UI_V2_PRIMARY_NAV_VIEWS].sort();
 const navigationViews = [...indexSource.matchAll(/class="nav-item(?: active)?"[^>]*data-view="([^"]+)"/g)].map(match => match[1]).sort();
 const declaredViews = [...indexSource.matchAll(/id="view-([^"]+)"/g)].map(match => match[1]).sort();
 assert.deepEqual(navigationViews, expectedPrimaryNavigation, 'A sidebar deve listar exatamente os destinos primários oficiais uma vez.');
-assert.deepEqual(declaredViews, expectedViews, 'O DOM deve declarar exatamente as 18 views oficiais uma vez.');
+assert.deepEqual(declaredViews, expectedViews, 'O DOM deve declarar exatamente as views oficiais uma vez.');
 assert.match(await readFile(path.join(ROOT, 'js/views/ui-v2/configuration-presenter.js'), 'utf8'), /dataset\.viewLink\s*=\s*'audit'/, 'Auditoria deve permanecer acessível por Configurações > Sistema.');
 assert.equal((portalSource.match(/const App\s*=\s*\{/g) || []).length, 1, 'Deve existir um único App oficial.');
 /* O import carrega `?v=` por contrato de cache (AGENTS §36); a asserção que importa é

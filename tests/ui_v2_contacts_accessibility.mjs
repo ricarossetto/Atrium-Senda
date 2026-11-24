@@ -36,10 +36,15 @@ try {
   await page.waitForFunction(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement));
   assert.equal(await page.evaluate(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement)), true);
   assert.equal(await page.locator('.contact-form-section legend').count(), 5);
-  assert.equal(await page.locator('#modalForm [name]').evaluateAll(nodes => nodes.every(node => {
+  assert.equal(await page.locator('#modalForm [name]:not(.field-select-native)').evaluateAll(nodes => nodes.every(node => {
     const label = document.querySelector(`label[for="${node.id}"]`);
     return Boolean(label && label.textContent.trim());
-  })), true, 'Todos os 18 campos devem manter labels conectados.');
+  })), true, 'Todos os campos acessíveis devem manter labels conectados.');
+  assert.equal(await page.locator('#modalForm select.field-select-native').evaluateAll(nodes => nodes.every(node => {
+    const proxyId = `${node.id}-busca`;
+    const label = document.querySelector(`label[for="${proxyId}"]`);
+    return Boolean(label && label.textContent.trim());
+  })), true, 'Cada select nativo deve ter label conectado ao campo de busca acessível.');
   await page.keyboard.press('Escape');
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   assert.equal(await page.evaluate(() => document.activeElement?.hasAttribute('data-contact-edit')), true);

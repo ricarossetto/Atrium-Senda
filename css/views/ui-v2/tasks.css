@@ -1,3 +1,4 @@
+/* Lucian UX/UI Prompt #440 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#440 */
 html[data-ui="v2"] #view-kanban,
 html[data-ui="v2"] .main-content {
   min-width: 0;
@@ -886,21 +887,105 @@ html[data-ui="v2"] .task-list-timer-muted {
   padding: 6px 10px;
 }
 
-html[data-ui="v2"] .task-list-empty {
-  min-height: 220px;
-  display: grid;
-  place-content: center;
-  gap: var(--v2-space-2);
-  padding: var(--v2-space-5);
-  color: var(--v2-color-foreground-secondary);
-  background: var(--v2-color-surface);
-  border: 1px dashed var(--v2-color-border);
+/* Lucian UX/UI #440 — estrutura, ilustração e movimento preservados.
+   Os tokens --ux-* são mapeados em tokens.css para a paleta V2. */
+html[data-ui="v2"] .u440,
+html[data-ui="v2"] .u440 *,
+html[data-ui="v2"] .u440 *::before,
+html[data-ui="v2"] .u440 *::after { box-sizing: border-box; }
+
+html[data-ui="v2"] .u440 {
+  position: relative;
+  width: 340px;
+  max-width: 100%;
+  height: 300px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--ux-ink);
+  background: var(--ux-surface);
+  border: 1px dashed var(--ux-line-2);
   border-radius: var(--v2-radius-lg);
+  font-family: var(--v2-font-interface);
+  letter-spacing: 0;
   text-align: center;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
-html[data-ui="v2"] .task-list-empty strong { color: var(--v2-color-foreground); }
-html[data-ui="v2"] .task-list-empty span { font-size: 12px; }
+html[data-ui="v2"] .u440 :is(button, input, textarea, select) { font: inherit; color: inherit; }
+html[data-ui="v2"] .u440 button { cursor: pointer; }
+html[data-ui="v2"] .u440 [hidden] { display: none !important; }
+
+html[data-ui="v2"] .u440-il { width: 176px; height: 132px; overflow: visible; animation: u440-float 3.2s ease-in-out infinite; }
+@keyframes u440-float { 50% { transform: translateY(-6px); } }
+html[data-ui="v2"] .u440-il .sh { fill: var(--ux-ink); opacity: .08; transform-box: fill-box; transform-origin: center; animation: u440-sh 3.2s ease-in-out infinite; }
+@keyframes u440-sh { 50% { transform: scaleX(.86); opacity: .05; } }
+html[data-ui="v2"] .u440-il .bk { fill: color-mix(in srgb, var(--ux-accent) 38%, var(--ux-surface)); }
+html[data-ui="v2"] .u440-il .fr { fill: var(--ux-accent); }
+html[data-ui="v2"] .u440-il .fh { fill: #fff; opacity: .16; }
+html[data-ui="v2"] .u440-il .doc rect.p { fill: var(--ux-surface); stroke: var(--ux-line-2); stroke-width: 1.2; }
+html[data-ui="v2"] .u440-il .doc .ln { fill: var(--ux-line-2); }
+html[data-ui="v2"] .u440-il .doc .hd { fill: var(--ux-mint); }
+html[data-ui="v2"] .u440-il .doc { opacity: 0; transform: translateY(-110px) rotate(-10deg); transform-box: view-box; transform-origin: 80px 50px; }
+html[data-ui="v2"] .u440-il .fol { transform-box: view-box; transform-origin: 80px 112px; }
+html[data-ui="v2"] .u440-il .sp { fill: var(--ux-warn); transform-box: fill-box; transform-origin: center; animation: u440-tw 2.4s ease-in-out infinite; }
+html[data-ui="v2"] .u440-il .sp:nth-of-type(2) { animation-delay: -.8s; fill: var(--ux-mint); }
+html[data-ui="v2"] .u440-il .sp:nth-of-type(3) { animation-delay: -1.6s; fill: var(--ux-accent-2); }
+@keyframes u440-tw { 0%, 100% { transform: scale(.6); opacity: .35; } 50% { transform: scale(1); opacity: 1; } }
+html[data-ui="v2"] .u440.is-done .u440-il .doc,
+html[data-ui="v2"] .u440.is-launching .u440-il .doc { animation: u440-drop .8s cubic-bezier(.4, 0, .6, 1) forwards; }
+@keyframes u440-drop { 0% { opacity: 0; transform: translateY(-110px) rotate(-10deg); } 20% { opacity: 1; } 62% { transform: translateY(6px) rotate(2deg); } 80% { transform: translateY(-3px) rotate(-1deg); } 100% { opacity: 1; transform: none; } }
+html[data-ui="v2"] .u440.is-done .u440-il .fol,
+html[data-ui="v2"] .u440.is-launching .u440-il .fol { animation: u440-bump .9s cubic-bezier(.3, 1.4, .5, 1) .38s; }
+@keyframes u440-bump { 0% { transform: none; } 25% { transform: scale(1.06, .9); } 55% { transform: scale(.97, 1.04); } 100% { transform: none; } }
+html[data-ui="v2"] .u440-burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+html[data-ui="v2"] .u440-burst i { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--c); opacity: 0; }
+html[data-ui="v2"] .u440-burst i:nth-child(1) { --a: -60deg; --c: var(--ux-warn); }
+html[data-ui="v2"] .u440-burst i:nth-child(2) { --a: -25deg; --c: var(--ux-mint); }
+html[data-ui="v2"] .u440-burst i:nth-child(3) { --a: 10deg; --c: var(--ux-accent-2); }
+html[data-ui="v2"] .u440-burst i:nth-child(4) { --a: 45deg; --c: var(--ux-warn); }
+html[data-ui="v2"] .u440-burst i:nth-child(5) { --a: -95deg; --c: var(--ux-accent); }
+html[data-ui="v2"] .u440-burst i:nth-child(6) { --a: 80deg; --c: var(--ux-mint); }
+html[data-ui="v2"] .u440.is-done .u440-burst i,
+html[data-ui="v2"] .u440.is-launching .u440-burst i { animation: u440-pop .7s cubic-bezier(.2, .8, .3, 1) .42s forwards; }
+@keyframes u440-pop { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(1); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-58px) scale(.4); } }
+html[data-ui="v2"] .u440-ill { position: relative; }
+html[data-ui="v2"] .u440-h { display: grid; margin: 14px 0 16px; }
+html[data-ui="v2"] .u440-h b { grid-area: 1 / 1; font-size: 18px; font-weight: 700; letter-spacing: -.025em; transition: opacity .25s var(--ux-ease), transform .45s cubic-bezier(.3, 1.4, .5, 1), filter .25s; }
+html[data-ui="v2"] .u440-h b + b { opacity: 0; transform: translateY(8px); filter: blur(3px); }
+html[data-ui="v2"] .u440.is-done .u440-h b:first-child { opacity: 0; transform: translateY(-8px); filter: blur(3px); }
+html[data-ui="v2"] .u440.is-done .u440-h b + b { opacity: 1; transform: none; filter: none; transition-delay: .45s; }
+html[data-ui="v2"] .u440-title { display: block; }
+html[data-ui="v2"] .u440-description { display: block; margin-top: 6px; color: var(--ux-ink-2); font-size: 12px; font-weight: 400; line-height: 1.5; letter-spacing: 0; }
+html[data-ui="v2"] .u440-go { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--ux-accent); color: var(--ux-accent-ink); font-size: 14px; font-weight: 650; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 10px 22px -12px var(--ux-accent); transform: scale(var(--k, 1)); transition: transform .45s cubic-bezier(.34, 1.7, .5, 1), box-shadow .2s; }
+html[data-ui="v2"] .u440-go:hover { --k: 1.03; }
+html[data-ui="v2"] .u440-go:active { --k: .94; transition: transform .1s var(--ux-ease); }
+html[data-ui="v2"] .u440-go svg { width: 15px; height: 15px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+html[data-ui="v2"] .u440 .u440-go:focus-visible { outline: 2px solid var(--ux-accent); outline-offset: 3px; }
+html[data-ui="v2"] .u440-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (max-width: 480px) {
+  html[data-ui="v2"] .task-list-empty.u440 { height: auto; min-height: 300px; padding-block: var(--v2-space-4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="v2"] .u440,
+  html[data-ui="v2"] .u440 *,
+  html[data-ui="v2"] .u440 *::before,
+  html[data-ui="v2"] .u440 *::after {
+    animation-delay: 0s !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-delay: 0s !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 html[data-ui="v2"] #kanbanBoard {
   grid-auto-columns: minmax(286px, 1fr);

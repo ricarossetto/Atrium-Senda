@@ -272,7 +272,7 @@ assert.equal(await lifecycleFeature.reenableProcessDiscovery(disposableNumber), 
 assert.equal(lifecycleStore.state.settings.processDiscoverySuppressions.length, 0);
 assert.ok(lifecycleFeature.upsertExternalProcess(disposableProcess), 'Processo pode voltar somente depois de reativação explícita.');
 
-const server = await startTestServer();
+const server = await startTestServer({ env: { ATRIUM_SENDA_UNLOCK_PRO_DEV: '1' } });
 const browser = await chromium.launch({ headless: true });
 
 try {
