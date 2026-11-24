@@ -316,4 +316,4 @@ function roleCounts(records) {
     return counts;
   }, {});
 }
-import { iconSvg } from './icons.js?v=3.3.1';
+import { iconSvg } from './icons.js?v=3.3.2';

@@ -1,4 +1,10 @@
 import { spawn } from 'node:child_process';
+
+// A suíte completa usa apenas dados sintéticos. Sem estas flags, o servidor
+// trata a execução como instalação Basic e responde 402 em recursos Pro,
+// produzindo falsos negativos em testes que exercitam documentos e IA.
+process.env.NODE_ENV = 'test';
+process.env.ATRIUM_TEST_MODE = '1';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -725,7 +731,7 @@ const testSuites = [
   { name: 'Atrium IA: Carteira e Consistência das Tarefas (Determinístico)', file: 'tests/task_insights.mjs' },
   { name: 'Equipe: Delegação de Tarefas por Membro (Paridade e Flush Oficial)', file: 'tests/task_delegation.test.mjs' },
   { name: 'Equipe: Boletins por Responsável do Processo (Audiência de Entrega)', file: 'tests/notification-audience.test.mjs' },
-  { name: 'Equipe: Filtros por Membro e Convites (Visual e Comportamento)', file: 'tests/ui_v2_team_filters.mjs' },
+  { name: 'Equipe: Filtros por Membro e Usuários (Visual e Comportamento)', file: 'tests/ui_v2_team_filters.mjs' },
   { name: 'Processos: Envolvimento do Membro (Unidade)', file: 'tests/office_involvement.test.mjs' },
   { name: 'Segurança: Nome Reservado do Ator Autônomo (Atrium IA)', file: 'tests/reserved_actor_name.mjs' },
   { name: 'UI V2: Do Prazo à Providência no Detalhe da Publicação', file: 'tests/ui_v2_publication_action.mjs' },
@@ -753,7 +759,7 @@ const testSuites = [
   { name: 'UI V2 Membro Comum Não Inicia Coleta', file: 'tests/ui_v2_member_collection.mjs' },
   { name: 'Rotas de Documentos, Agenda, Integrações e Estado: Comportamento Registrado', file: 'tests/routes_characterization.mjs' },
   { name: 'Fusão Confirmada de Publicações', file: 'tests/intimation_pair_merge.mjs' },
-  { name: 'Lista de Módulos da Tela de Entrada', file: 'tests/frontend_module_preload.mjs' },
+  { name: 'Cadeia de Entrada e Versões de Módulos', file: 'tests/frontend_module_preload.mjs' },
   { name: 'Dependências das Rotas Movidas', file: 'tests/moved_routes_dependencies.mjs' },
   { name: 'UI V2 Tour de Primeiro Acesso', file: 'tests/ui_v2_product_tour.mjs' },
   { name: 'Feature Modular de Publicações e Intimações', file: 'tests/publications_feature.mjs' },
@@ -869,7 +875,7 @@ const testSuites = [
   { name: 'UI V2 Onboarding Visual, Temas e Responsividade', file: 'tests/visual_ui_v2_onboarding.mjs' },
   { name: 'UI V2 Foundation, Tokens, Primitives e Isolamento', file: 'tests/ui_v2_foundation.mjs' },
   { name: 'UI V2 Botão de Tema Compacto e Nome do Perfil no Topbar', file: 'tests/ui_v2_theme_toggle.test.mjs' },
-  { name: 'UI V2 Escritório: Membros, Convites e Equipes', file: 'tests/ui_v2_office_panel.test.mjs' },
+  { name: 'UI V2 Escritório: Membros, Cadastro e Equipes', file: 'tests/ui_v2_office_panel.test.mjs' },
   { name: 'Escritório: CRUD de Equipes e RBAC HTTP', file: 'tests/office_teams_http.test.mjs' },
   { name: 'Escritório: Escalonamento de Privilégio em Convite e Nomeação', file: 'tests/office_roles_http.test.mjs' },
   { name: 'Escritório: Offboarding com Transferência de Carteira e Auditoria', file: 'tests/office_offboard.test.mjs' },

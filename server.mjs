@@ -820,7 +820,6 @@ function notificationDbForWorkspace(workspaceId) {
 }
 
 const notificationServices = new Map();
-export let emailBulletinScheduler;
 // Sessões de dados carregam username, não o id oficial; preferências de notificação
 // devem ser gravadas/lidas pelo id de usuário usado pelo motor (listUsers).
 function canonicalNotificationUserId(session) {
@@ -894,7 +893,6 @@ globalThis.__atriumGracefulShutdown = createGracefulShutdown({
     }
   },
   drainPersistence: async () => {
-    await emailBulletinScheduler?.stop();
     const tails = [
       ...appStateMutationTails.values(),
       ...runtimeMutationTails.values()
@@ -907,7 +905,6 @@ globalThis.__atriumGracefulShutdown = createGracefulShutdown({
     return [...workspaceActiveMutations.values()].every(count => count === 0);
   },
   closeServer: () => new Promise(resolve => {
-    void emailBulletinScheduler?.stop();
     try {
       server.close(() => resolve());
       server.closeIdleConnections?.();
@@ -6047,7 +6044,7 @@ const server = http.createServer(async (req, res) => {
         lastCollectorRun: runtime.updatedAt,
         authentication: 'password; totp-optional-per-user',
         serverStartedAt: SERVER_STARTED_AT,
-        syncSchedule: { firstAccess: true, automaticAt: ['07:00', '12:00', '19:00'], manual: true, timeZone: SYNC_TIME_ZONE },
+        syncSchedule: { firstAccess: true, automaticAt: [], manual: true, timeZone: SYNC_TIME_ZONE },
         appVersion: APP_VERSION,
         version: APP_VERSION,
         gitSha: GIT_SHA,

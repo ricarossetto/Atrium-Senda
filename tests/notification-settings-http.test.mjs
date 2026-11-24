@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import { SecurityManager } from '../lib/security.mjs';
 import { NotificationDatabase } from '../lib/notifications/db.mjs';
-import { postJson } from './helpers.mjs';
-import { startNotificationRuntime } from './helpers-notification-runtime.mjs';
+import { postJson, startTestServer } from './helpers.mjs';
 import path from 'node:path';
 
 const types = ['PUBLICATION_NEW', 'DEADLINE_CRITICAL', 'HEARING_NEW', 'MOVEMENT_NEW', 'SYNC_FAILED', 'A1_CERT_EXPIRING'];
-const server = await startNotificationRuntime();
+const server = await startTestServer({
+  env: {
+    ATRIUM_MOCK_RESEND: 'true',
+    ATRIUM_MOCK_SMTP: 'true',
+    RESEND_API_KEY: '',
+    RESEND_WEBHOOK_SECRET: 'synthetic-notification-test-webhook-secret'
+  }
+});
 let db;
 try {
   const password = 'Synthetic-Settings-Password-2026!';

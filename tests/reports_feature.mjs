@@ -31,7 +31,9 @@ assert.equal(report.totals.completed, 2, 'Somente conclusões do mês atual.');
 assert.equal(report.totals.points, 35);
 assert.equal(report.totals.timeLoggedMinutes, 120);
 assert.equal(report.totals.avgDurationMinutes, Math.round(((5760 + 2880) / 2)), 'Duração = conclusão - criação.');
-assert.equal(report.totals.avgDelayDays, -3, 'Atraso = conclusão - prazo informado (1,5 d e -7,5 d).');
+assert.equal(report.totals.avgDelayDays, 0.2, 'Atraso médio usa o fim do dia local e não produz valor negativo.');
+assert.equal(report.completions.find(item => item.id === 'done-a')?.delayDays, 0.4, 'Conclusão após o prazo conta o atraso real.');
+assert.equal(report.completions.find(item => item.id === 'done-b')?.delayDays, 0, 'Conclusão antecipada não gera atraso negativo.');
 assert.equal(report.totals.pending, 1, 'Concluída legada sem data não conta como pendente.');
 assert.equal(report.totals.late, 1, 'Prazo 2026-09-01 é atrasado em 18/09.');
 

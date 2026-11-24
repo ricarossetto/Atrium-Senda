@@ -2,7 +2,7 @@ import {
   renderCivelSubNav,
   renderCivelSuiteForm,
   renderCivelSuiteResult
-} from './calculations-civel-suite.js?v=3.3.1';
+} from './calculations-civel-suite.js?v=3.3.2';
 
 const SPECIES_LABELS = Object.freeze({
   debito: 'Débito',
@@ -41,7 +41,7 @@ const ABAS = Object.freeze([
 ]);
 
 function icon(name) {
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.1#atrium-icon-${name}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${name}"></use></svg>`;
 }
 
 function speciesBadge(especie, escapeHtml) {

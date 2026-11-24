@@ -33,6 +33,7 @@ try {
   await mkdir(path.join(server.dataDirectory, 'system'), { recursive: true });
   await writeFile(path.join(server.dataDirectory, 'system', 'control-plane-marker.json'), '{"synthetic":true}');
   await writeFile(path.join(server.dataDirectory, 'system', 'tenants.json'), '[]');
+  await writeFile(path.join(server.dataDirectory, 'system', 'platform.sqlite'), 'synthetic-platform');
   await mkdir(path.join(server.dataDirectory, 'tenants', 'escritorio-sintetico'), { recursive: true });
   await writeFile(path.join(server.dataDirectory, 'tenants', 'escritorio-sintetico', 'tenant.json'), '{"slug":"escritorio-sintetico"}');
 

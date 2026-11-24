@@ -8,7 +8,7 @@ Use esta página como índice quando receber o projeto pelo GitHub.
 - [Instalação, backup e recuperação](INSTALLATION.md)
 - [Manual do usuário](USER_MANUAL.md)
 - [Guia de configuração do escritório](office/GUIA_CONFIGURACAO_ESCRITORIO.md)
-- [Notas da release 3.3.1](RELEASE_NOTES_3.3.1.md)
+- [Notas da release 3.3.2](RELEASE_NOTES_3.3.2.md)
 - [Guia do testador](BETA_TESTER_GUIDE.md)
 - [Changelog](CHANGELOG.md)
 

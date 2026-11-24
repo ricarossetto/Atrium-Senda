@@ -2,6 +2,23 @@
 
 As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## 3.3.2 — 2026-11-24
+
+### Corrigido
+
+- **Suíte completa de testes**: o orquestrador passa a executar as suítes no ambiente sintético, eliminando respostas 402 falsas em documentos, IA, segurança e multi-tenant.
+- **Tooltip do topo**: o balão de tema e notificações volta a ficar dentro da tela e mantém o vão de 6px sem cobrir o botão.
+- **Relatórios**: a view ganhou cabeçalho editorial e título acessível, corrigindo a hierarquia e o teste de movimento reduzido.
+- **Cadastro de membro no Escritório**: a confirmação com QR, código e segredo não é mais apagada por um render assíncrono; o contêiner também deixou de usar HTML inválido.
+- **Modal do escritório**: a animação é desativada de fato quando o usuário prefere movimento reduzido.
+- **Primeiro acesso**: removido o campo legado `bootstrapRequired`, que não era usado pelo servidor e contradizia o contrato de setup sem token.
+
+### Alterado
+
+- **Edição manual explicitada**: a UI de notificações não promete mais boletins automáticos; coleta e envio permanecem manuais nesta edição.
+- **Baseline de UI**: o orçamento de dívida passa a refletir as 19 views do Senda, com teto inicial de 1.333 achados e regra de não crescimento.
+- **Versão 3.3.2 e cache do frontend**: pacote, desktop, instaladores, documentação e referências versionadas foram atualizados para evitar cache antigo.
+
 ## 3.3.1 — 2026-11-24
 
 ### Adicionado
@@ -125,7 +142,7 @@ As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O format
 
 ### Corrigido
 
-- Referências à marca MinutaIA removidas de código, pedidos e testes (guardião de neutralidade de marca agora proíbe o termo).
+- Referências a marca concorrente removidas de código, pedidos e testes (guardião de neutralidade de marca agora proíbe o termo).
 
 ## 3.0.0 — 2026-11-09
 

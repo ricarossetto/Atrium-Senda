@@ -7,7 +7,7 @@
 # PKGBUILD de modelo: os hashes zerados impedem a instalação direta.
 # Use o PKGBUILD anexado à release, gerado com as somas reais dos três arquivos.
 pkgname=atrium-senda-bin
-pkgver=3.3.1
+pkgver=3.3.2
 pkgrel=1
 pkgdesc="Gestão jurídica básica local para advogados brasileiros (Edição Senda)"
 arch=('x86_64')

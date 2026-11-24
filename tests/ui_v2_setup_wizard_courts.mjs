@@ -193,6 +193,7 @@ try {
       await page.locator('#setupWizardBackdrop').waitFor({ state: 'hidden' });
       assert.equal(posts, 2);
       assert.deepEqual(await page.evaluate(() => window.Atrium.Store.state.settings.workspaceProfile), EXPECTED);
+      assert.deepEqual(operational, [], 'Seleção de interesses não faz consultas operacionais.');
       await page.reload({ waitUntil: 'networkidle' });
       await page.locator('#appShell:not(.hidden)').waitFor();
       assert.deepEqual(await page.evaluate(() => window.Atrium.Store.state.settings.workspaceProfile), EXPECTED);
@@ -204,7 +205,7 @@ try {
       await page.keyboard.press('Escape');
       assert.equal(await page.locator('#setupWizardBackdrop').isVisible(), false);
       assert.equal(posts, 2);
-      assert.deepEqual(operational, [], 'Seleção de interesses não faz consultas operacionais.');
+      assert.deepEqual(operational, ['/api/integrations/judicial'], 'Após o reload, só a leitura de status do boot.');
       assert.deepEqual(pageErrors, []);
       console.log(`Catálogo, seleção, teclado, HTTP ${status}, retry, reload/prefill: PASS`);
     } finally { await context.close(); }
@@ -214,10 +215,21 @@ try {
     const context = await session.createContext({ reducedMotion: 'reduce' });
     try {
       const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme });
-      await page.evaluate(profile => { window.Atrium.Store.state.settings.workspaceProfile = profile; }, { ...INITIAL, courts: [...Object.values(CNJ_TRIBUNALS).map(t => t.court.toLowerCase()), UNKNOWN] });
+      await page.evaluate(async profile => {
+        const { Store } = window.Atrium;
+        Store.state.settings.workspaceProfile = profile;
+        if (!(await Store.flush())) throw new Error('Falha ao persistir o perfil sintético do wizard.');
+      }, { ...INITIAL, courts: [...Object.values(CNJ_TRIBUNALS).map(t => t.court.toLowerCase()), UNKNOWN] });
       await openCourts(page);
       for (const viewport of [{ width: 1280, height: 844 }, { width: 1024, height: 844 }, { width: 390, height: 844 }, { width: 390, height: 500 }]) {
         await page.setViewportSize(viewport);
+        // O shell mobile é montado no boot; redimensionar sem recarregar mantém
+        // a largura de desktop e produz overflow falso no teste responsivo.
+        if (viewport.width <= 860) {
+          await page.reload({ waitUntil: 'networkidle' });
+          await page.locator('#appShell:not(.hidden)').waitFor();
+          await openCourts(page);
+        }
         const name = `${theme}-${viewport.width}-${viewport.height}`;
         await evidence(page, `many-closed-${name}`);
         await page.locator('#setupWizardCourtsToggle').click();

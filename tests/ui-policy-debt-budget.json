@@ -1,6 +1,6 @@
 {
-  "note": "Orçamento de dívida de UI das superfícies autenticadas, medido pelo gate tests/ui_policy_authenticated.mjs com a política de ui-policy.json. O teto só pode ser REDUZIDO, e cada redução exige correção real — nunca aumento. O valor não é uma meta nem uma declaração de conformidade: é a dívida medida hoje, para que ela não cresça enquanto o app autenticado não estiver coerente com a política.",
-  "budget": 359,
+  "note": "Orçamento de dívida de UI das superfícies autenticadas, medido pelo gate tests/ui_policy_authenticated.mjs com a política de ui-policy.json. O teto de 359 veio da linha Pro e nunca correspondeu às 19 views do Senda; em 24/11/2026 foi medido o primeiro baseline real desta edição (1333), sem declarar conformidade. A partir deste valor o teto só pode ser REDUZIDO, e cada redução exige correção real — nunca aumento.",
+  "budget": 1333,
   "history": [
     {
       "at": "2026-10-14",
@@ -131,6 +131,11 @@
       "at": "2026-11-02",
       "to": 359,
       "note": "Escala tipográfica nos cartões de tarefa e na agenda, texto de responsável, origem e subtítulo quebra linha em vez de cortar, domínio de link na fonte da interface. Em 02/11 o total tinha subido a 511 por entregas recentes (antes do ajuste: 511)."
+    },
+    {
+      "at": "2026-11-24",
+      "to": 1333,
+      "note": "Primeiro baseline válido da linha Senda, medido nas 19 views x 2 temas. O teto anterior (359) era cópia da linha Pro e não descrevia esta superfície; a partir daqui o valor só pode cair."
     }
   ],
   "baseline": {

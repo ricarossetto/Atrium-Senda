@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { generateTotp } from '../lib/security.mjs';
 import { postJson, startTestServer } from './helpers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,7 +20,7 @@ const [serverSource, portalSource] = await Promise.all([
 assert.doesNotMatch(serverSource, /claimAutomaticSync|syncTriggerFromRequest/, 'Servidor nao pode manter claim de startup/daily.');
 assert.doesNotMatch(portalSource, /scheduleDailySync|trigger: 'startup'/, 'Portal nao pode sincronizar na inicializacao nem agendar no navegador.');
 assert.match(portalSource, /atrium_initial_sync_pending/, 'Primeiro acesso deve consumir o marcador de sync completo.');
-assert.match(serverSource, /firstAccess: true, automaticAt: \['07:00', '12:00', '19:00'\], manual: true/, 'Status deve declarar a nova cadencia.');
+assert.match(serverSource, /firstAccess: true, automaticAt: \[\], manual: true/, 'Status deve declarar a edição manual.');
 console.log('  ✓ Startup/daily removidos; primeiro acesso e 07h/12h/19h declarados.');
 
 const server = await startTestServer();
@@ -32,7 +33,7 @@ try {
   const setup = await setupResponse.json();
   const verifyResponse = await postJson(`${server.baseUrl}/api/auth/setup/verify`, {
     setupToken: setup.setupToken,
-    code: setup.syntheticCode
+    code: generateTotp(setup.manualSecret)
   });
   const verified = await verifyResponse.json();
   const cookie = verifyResponse.headers.get('set-cookie').split(';')[0];
@@ -40,7 +41,7 @@ try {
 
   const statusResponse = await fetch(`${server.baseUrl}/api/status`, { headers: { Cookie: cookie } });
   const status = await statusResponse.json();
-  assert.deepEqual(status.syncSchedule.automaticAt, ['07:00', '12:00', '19:00'], 'Ciclos silenciosos do servidor sao 07h/12h/19h.');
+  assert.deepEqual(status.syncSchedule.automaticAt, [], 'Esta edição não executa coleta automática.');
   assert.equal(status.syncSchedule.firstAccess, true);
   assert.equal(status.syncSchedule.manual, true);
   assert.equal(status.syncSchedule.timeZone, 'America/Sao_Paulo');

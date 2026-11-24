@@ -1,4 +1,37 @@
 /* ATRIUM — Relatórios (produtividade de tarefas) — Mineral Editorial */
+html[data-ui="v2"] #view-reports .reports-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--v2-space-4);
+  margin-bottom: var(--v2-space-4);
+  padding: var(--v2-space-5) var(--v2-space-6);
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  box-shadow: var(--v2-shadow-card);
+}
+html[data-ui="v2"] #view-reports .reports-header p {
+  margin: 0 0 var(--v2-space-1);
+  color: var(--v2-color-gold);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+html[data-ui="v2"] #view-reports .reports-header h2 {
+  margin: 0 0 var(--v2-space-1);
+  color: var(--v2-color-foreground);
+  font-family: var(--v2-font-editorial);
+  font-size: clamp(18px, 2vw, 24px);
+  font-weight: 500;
+}
+html[data-ui="v2"] #view-reports .reports-header span {
+  display: block;
+  max-width: 64ch;
+  color: var(--v2-color-muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
 html[data-ui="v2"] #view-reports .reports-toolbar {
   display: flex;
   align-items: flex-end;

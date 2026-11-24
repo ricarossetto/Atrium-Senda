@@ -108,6 +108,14 @@ async function contrasteDe(page, seletor) {
 }
 
 async function abrirDetalhe(context, theme, { sugestao } = {}) {
+  await context.route('**/api/ai-classifier/status', async route => {
+    const response = await route.fetch();
+    const body = await response.json().catch(() => ({}));
+    await route.fulfill({
+      response,
+      json: { ...body, ok: true, enabled: true, available: true, reason: body.reason || 'operacional' }
+    });
+  });
   const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme });
   // A rota de sugestão é respondida com payload determinístico (a rota real tem contrato próprio em
   // tests/publication_action.mjs) — o par de ações NÃO é stubbado: exercita o servidor de verdade.

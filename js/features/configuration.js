@@ -1,9 +1,9 @@
-import { memberAvatarHtml } from '../core/member-avatar.js?v=3.3.1';
+import { memberAvatarHtml } from '../core/member-avatar.js?v=3.3.2';
 
 const CONFIGURATION_ICON_NAMES = new Set(['check', 'delete']);
 const iconSvg = name => {
   const safeName = CONFIGURATION_ICON_NAMES.has(name) ? name : 'check';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.1#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${safeName}"></use></svg>`;
 };
 
 const CONFIGURATION_SECTIONS = [
@@ -223,11 +223,13 @@ export function createConfigurationFeature({
   let officeAccessAudit = null;
   let officeHygiene = null;
   let officeProfile = { roles: [], memberKinds: [], permissions: [], accessMode: 'shadow', privateMonitoring: 'allowed' };
+  let officeNewMemberFeedback = '';
   let currentPermissions = [];
   let officeLoaded = false;
   let initialized = false;
   const byId = id => documentRef.getElementById(id);
   const windowRef = documentRef.defaultView || globalThis.window;
+  const newMemberResult = result => `${result.qrCode ? `<img class="office-new-member-qr" src="${escapeHtml(result.qrCode)}" alt="QR Code para configurar o autenticador do membro" width="160" height="160">` : ''}<p class="office-note">Código de configuração (válido por 10 minutos): <strong class="office-new-member-token">${escapeHtml(result.setupToken || '')}</strong></p><p class="office-note">Segredo para o aplicativo autenticador: <strong>${escapeHtml(result.manualSecret || '')}</strong></p><p class="office-note">Entregue ao membro o usuário, a senha inicial, o código de configuração e o QR/segredo. Ele insere os dados na tela de login (Ativar conta), conclui a ativação do autenticador e o acesso é liberado após a aprovação em Configurações > Usuários.</p>`;
 
   const feature = {
     get section() { return configurationSection; },
@@ -482,7 +484,6 @@ export function createConfigurationFeature({
       const newMemberForm = canManageMembers
         ? `<form id="officeNewMemberForm" class="office-form"><label>Usuário de acesso<input id="officeNewMemberUsername" name="username" required pattern="[a-zA-Z0-9._\\-]{3,64}" maxlength="64" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="nome.sobrenome"></label><label>Nome completo<input id="officeNewMemberName" name="displayName" required minlength="3" maxlength="100" autocomplete="off" placeholder="Ex.: Dra. Marina Alves"></label><label>E-mail<input id="officeNewMemberEmail" name="email" type="email" required autocomplete="off" placeholder="nome@escritorio.adv.br"></label><label>Senha inicial<input id="officeNewMemberPassword" name="password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" placeholder="Será definida por você; peça para a pessoa trocar"></label><div class="office-form-grid"><label>Tipo<select id="officeNewMemberKind">${kindOptions('lawyer')}</select></label><label>Papel<select id="officeNewMemberRole">${roleOptions('associate')}</select></label></div><fieldset class="office-members-fieldset"><legend>Equipes iniciais</legend><div class="office-check-grid">${officeTeams.map(team => `<label class="office-check"><input type="checkbox" data-office-new-member-team value="${escapeHtml(team.id)}"> <span>${escapeHtml(team.name)}</span></label>`).join('') || '<span class="office-muted">Nenhuma equipe criada.</span>'}</div></fieldset><button class="button gold" type="submit">Criar membro</button></form>`
         : '<p class="office-note">Seu perfil pode consultar o escritório, mas não adicionar integrantes. Peça a um gestor ou administrador.</p>';
-      const newMemberResult = result => `${result.qrCode ? `<img class="office-new-member-qr" src="${escapeHtml(result.qrCode)}" alt="QR Code para configurar o autenticador do membro" width="160" height="160">` : ''}<p class="office-note">Código de configuração (válido por 10 minutos): <strong class="office-new-member-token">${escapeHtml(result.setupToken || '')}</strong></p><p class="office-note">Segredo para o aplicativo autenticador: <strong>${escapeHtml(result.manualSecret || '')}</strong></p><p class="office-note">Entregue ao membro o usuário, a senha inicial, o código de configuração e o QR/segredo. Ele insere os dados na tela de login (Ativar conta), conclui a ativar o autenticador e o acesso libera após a sua aprovação nesta lista.</p>`;
       const canManageRoles = currentPermissions.includes('office.manage') || currentPermissions.includes('roles.manage');
       const riskGroups = [['critico', 'Risco crítico'], ['alto', 'Risco alto'], ['medio', 'Risco médio'], ['baixo', 'Risco baixo']];
       const permissionChecks = (selected = [], { disabled = false } = {}) => riskGroups.map(([risk, title]) => {
@@ -539,7 +540,7 @@ export function createConfigurationFeature({
       return `<div class="office-panel">
         <section class="card office-intro"><p class="eyebrow">Gestão do escritório</p><h3>Pessoas, papéis e equipes em um só lugar</h3><p>O escritório é compartilhado. Defina o tipo e o papel de cada membro e organize as equipes por área. A atribuição de processos e o bloqueio de acesso por processo são aplicados pelo servidor.</p></section>
         <div class="office-grid">
-          <article class="card office-card"><header class="office-card-header"><div><p class="eyebrow">Membros</p><h3>Quem está no escritório</h3></div><span class="status-chip connected">${authUsers.length} pessoas</span></header><div class="office-list">${members || '<div class="empty-detail"><h3>Nenhum membro</h3><p>Adicione a primeira pessoa pelo formulário ao lado.</p></div>'}</div><h4 class="office-subtitle">Novo membro</h4>${newMemberForm}<p id="officeNewMemberFeedback" class="office-feedback" role="status" aria-live="polite"></p></article>
+          <article class="card office-card"><header class="office-card-header"><div><p class="eyebrow">Membros</p><h3>Quem está no escritório</h3></div><span class="status-chip connected">${authUsers.length} pessoas</span></header><div class="office-list">${members || '<div class="empty-detail"><h3>Nenhum membro</h3><p>Adicione a primeira pessoa pelo formulário ao lado.</p></div>'}</div><h4 class="office-subtitle">Novo membro</h4>${newMemberForm}<div id="officeNewMemberFeedback" class="office-feedback" role="status" aria-live="polite">${officeNewMemberFeedback}</div></article>
           <article class="card office-card office-card-wide"><header class="office-card-header"><div><p class="eyebrow">Equipes</p><h3>Equipes por área</h3></div><span class="status-chip">${officeTeams.length} equipes</span></header>${teamForm}<div class="office-list">${teams}</div></article>
           <article class="card office-card office-card-wide"><header class="office-card-header"><div><p class="eyebrow">Papéis</p><h3>Catálogo do escritório</h3></div><span class="status-chip">${officeProfile.accessMode === 'enforced' ? 'Acesso aplicado' : 'Modo preparação'}</span></header><div class="office-role-list">${roleCards}${roleForm}</div><p id="officeRoleFeedback" class="office-feedback" role="status" aria-live="polite"></p>${accessModeControl}${privateMonitoringControl}<p class="office-note">O catálogo orienta ficha e filtro por processo. O escopo privado de OAB é aplicado no monitoramento; desativá-lo impede novas capturas, sem apagar dados existentes.</p></article>
           ${portfolioCard}
@@ -568,7 +569,8 @@ export function createConfigurationFeature({
       byId('officeNewMemberForm')?.addEventListener('submit', async event => {
         event.preventDefault();
         const feedback = byId('officeNewMemberFeedback');
-        if (feedback) feedback.textContent = 'Criando membro...';
+        officeNewMemberFeedback = 'Criando membro...';
+        if (feedback) feedback.textContent = officeNewMemberFeedback;
         try {
           const response = await secureFetch('/api/auth/register', {
             method: 'POST',
@@ -585,12 +587,12 @@ export function createConfigurationFeature({
           });
           const payload = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(payload.message || 'Não foi possível criar o membro.');
+          officeNewMemberFeedback = `A conta foi criada e aguarda ativação pelo membro. ${newMemberResult(payload)}`;
           await feature.loadOfficeData(true);
           feature.render();
-          const updatedFeedback = byId('officeNewMemberFeedback');
-          if (updatedFeedback) updatedFeedback.innerHTML = `A conta foi criada e aguarda ativação pelo membro. ${newMemberResult(payload)}`;
         } catch (error) {
-          if (feedback) feedback.textContent = error.message;
+          officeNewMemberFeedback = error.message;
+          if (feedback) feedback.textContent = officeNewMemberFeedback;
         }
       });
       documentRef.querySelectorAll('[data-office-team-delete]').forEach(button => button.addEventListener('click', async () => {
@@ -1215,7 +1217,7 @@ export function createConfigurationFeature({
           <article class="configuration-row" role="listitem" data-config-index="${index}">
             <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(item)}">
               <span class="config-row-info"><strong>${escapeHtml(item)}</strong><span>Seção da caixa de entrada</span><small>Ativa</small></span>
-              <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.1#atrium-icon-chevron-right"></use></svg></span>
+              <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-right"></use></svg></span>
             </button>
             <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(item)}">${iconSvg('delete')} Excluir</button>
           </article>`;
@@ -1314,7 +1316,7 @@ export function createConfigurationFeature({
         <article class="configuration-row" role="listitem" data-config-index="${index}">
           <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(primary)}">
             <span class="config-row-info"><strong>${escapeHtml(primary)}</strong><span>${escapeHtml(secondary)}</span>${meta}</span>
-            <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.1#atrium-icon-chevron-right"></use></svg></span>
+            <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-right"></use></svg></span>
           </button>
           ${extraActions}
           <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(primary)}">${iconSvg('delete')} Excluir</button>
@@ -1348,7 +1350,7 @@ export function createConfigurationFeature({
             <p>${escapeHtml(target.description)}</p>
           </div>
           <button type="button" class="button ghost" data-modal-open-dedicated-integration="${escapeHtml(values.name)}">
-            ${escapeHtml(target.actionLabel)} <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.1#atrium-icon-chevron-right"></use></svg>
+            ${escapeHtml(target.actionLabel)} <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-right"></use></svg>
           </button>
         </div>`;
       }

@@ -59,7 +59,15 @@ test('per-tenant canonical users/state never route events or recipients into a f
   const scheduler = new EmailBulletinScheduler({
     listWorkspaces: () => [{ id: 'ws-alpha', status: 'active' }, { id: 'ws-beta', status: 'active' }],
     getUsers: workspaceId => [{ ...users[0], workspaceId, email: `${workspaceId}@example.test` }, { ...users[0], id: 'foreign', workspaceId: workspaceId === 'ws-alpha' ? 'ws-beta' : 'ws-alpha', email: 'foreign@example.test' }],
-    getState: workspaceId => ({ agenda: [{ id: workspaceId, title: workspaceId, date: '2026-10-10' }] }),
+    getState: workspaceId => ({
+      agenda: [{ id: workspaceId, title: workspaceId, date: '2026-10-10' }],
+      intimations: [{
+        id: workspaceId === 'ws-alpha' ? 'alpha' : 'beta',
+        process: '5000000-00.2026.8.21.0001',
+        text: `Conteúdo ${workspaceId}`,
+        fullText: `Conteúdo ${workspaceId}`
+      }]
+    }),
     getService: id => id === 'ws-alpha' ? alpha.service : beta.service, now: () => at(8)
   });
   assert.equal((await scheduler.processCycle()).enqueued, 2);
