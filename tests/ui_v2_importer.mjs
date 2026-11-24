@@ -153,6 +153,9 @@ try {
   await page.evaluate(fixture => {
     window.__uiV2ImporterOps.length = 0;
     window.__uiV2ImporterToasts.length = 0;
+    window.Atrium.Store.state.processes = [];
+    window.Atrium.Store.state.contacts = [];
+    window.Atrium.Store.state.tasks = [];
     window.Atrium.App.importedSpreadsheetData = structuredClone(fixture);
     window.Atrium.App.renderSpreadsheetPreview(structuredClone(fixture));
   }, UI_V2_IMPORTER_FIXTURE);
