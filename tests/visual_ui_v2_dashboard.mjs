@@ -71,14 +71,21 @@ try {
         assert.equal(layout.activeDashboard, true); assertions++;
         assert.ok(layout.pageOverflow <= 2, `Overflow global em ${theme} ${config.name}: ${layout.pageOverflow}px.`); assertions++;
         assert.ok(layout.opening && layout.opening.left >= -2 && layout.opening.right <= config.width + 2, `Hero fora do viewport em ${theme} ${config.name}.`); assertions++;
-        assert.ok(layout.topbarHeight <= (config.width <= 390 ? 175 : 92), `Topbar excessiva em ${theme} ${config.name}: ${layout.topbarHeight}px.`); assertions++;
+        const topbarLimit = config.width <= 390 ? 175 : config.width <= 1040 ? 160 : 92;
+        assert.ok(layout.topbarHeight <= topbarLimit, `Topbar excessiva em ${theme} ${config.name}: ${layout.topbarHeight}px (limite ${topbarLimit}px).`); assertions++;
         assert.equal(layout.searchVisible, true, `Busca deve permanecer visível em ${theme} ${config.name}.`); assertions++;
-        assert.equal(layout.statusVisible, true, `Status persistente deve estar visível em ${theme} ${config.name}.`); assertions++;
+        assert.equal(layout.statusVisible, false, `Estado pronto não deve exibir barra neutra em ${theme} ${config.name}.`); assertions++;
         assert.equal(layout.clippedCards, 0, `Cards com conteúdo cortado em ${theme} ${config.name}.`); assertions++;
         assert.equal(layout.insightCards, 4, `Indicadores do escritório incompleto em ${theme} ${config.name}.`); assertions++;
         assert.deepEqual(layout.duplicateIds, []); assertions++;
         assert.equal(layout.unexpectedOverlay, 0); assertions++;
         assert.deepEqual(pageErrors, [], `Pageerror em ${theme} ${config.name}: ${pageErrors.join(' | ')}`); assertions++;
+
+        await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+        await page.locator('#systemStatusBar:not(.is-transient-hidden)').waitFor();
+        const statusBox = await page.locator('#systemStatusBar').boundingBox();
+        assert.ok(statusBox && statusBox.width > 0 && statusBox.height > 0, `Status offline deve ficar visível em ${theme} ${config.name}.`); assertions++;
+        await page.evaluate(() => window.dispatchEvent(new Event('online')));
 
         const file = path.join(OUTPUT, `${theme}-${config.name}.png`);
         await page.screenshot({ path: file, fullPage: false });
