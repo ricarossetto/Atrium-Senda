@@ -14,7 +14,7 @@ As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O format
 
 - **Publicações: edições preservadas com extensões do navegador.** A identificação dos controles do detalhe deixa de usar atributos `data-*` genéricos e passa a considerar apenas os atributos oficiais do ATRIUM. Assim, uma extensão não faz a tela perder alterações já feitas ao atualizar a publicação.
 - **Instalação manual no Windows**: `install.ps1` agora reconhece o pacote `atrium-senda`. Antes, a validação exigia o nome `atrium` e interrompia a instalação do pacote oficial.
-- **Pacote Arch gerado com somas corretas**: o workflow de release cria o `PKGBUILD` final com os hashes SHA-256 do AppImage, do arquivo `.desktop` e do ícone da própria versão, sem depender de hash antigo nem mover a tag.
+- **Pacote Arch gerado com somas corretas**: o workflow de release cria o `PKGBUILD` final com os hashes SHA-256 do AppImage, do arquivo `.desktop` e do ícone da própria versão, sem depender de hash antigo nem mover a tag. O modelo no repositório falha fechado e não deve ser compilado diretamente.
 
 ### Alterado
 

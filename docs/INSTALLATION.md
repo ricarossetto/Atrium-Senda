@@ -17,7 +17,7 @@ Baixe o pacote da sua plataforma em [releases](https://github.com/ricarossetto/A
 | Windows 11 ARM64 | `.exe` (NSIS) | idem |
 | Debian 12+, Ubuntu 22.04+, Mint, Pop!_OS, Zorin | `.deb` | `${XDG_DATA_HOME:-~/.local/share}/atrium/data` e `.../logs` |
 | Fedora (webkit2gtk4.1), RHEL 9+, Rocky, Alma, openSUSE | `.rpm` | idem |
-| Arch, Manjaro, EndeavourOS | AppImage ou `packaging/arch/PKGBUILD` | idem |
+| Arch, Manjaro, EndeavourOS | AppImage ou `PKGBUILD` anexado à release | idem |
 | macOS 11+ (Apple Silicon ou Intel) | `.dmg` | `~/Library/Application Support/ATRIUM/data` e `.../logs` |
 
 No Linux, o script oficial escolhe o formato pela distribuição e confere o SHA-256:
@@ -26,7 +26,7 @@ No Linux, o script oficial escolhe o formato pela distribuição e confere o SHA
 curl -fsSL https://raw.githubusercontent.com/ricarossetto/Atrium-Senda/main/packaging/linux/install.sh | bash
 ```
 
-Para forçar um formato: `bash install.sh --deb`, `--rpm` ou `--appimage`. No Arch, o `PKGBUILD` em `packaging/arch/` instala o AppImage como `atrium-senda-bin`.
+Para forçar um formato: `bash install.sh --deb`, `--rpm` ou `--appimage`. No Arch, use o `PKGBUILD` anexado à release: ele instala o AppImage como `atrium-senda-bin` e contém os hashes reais. O modelo em `packaging/arch/` não deve ser compilado diretamente.
 
 No macOS, abra o `.dmg` e arraste o ATRIUM para Aplicativos. Se o Gatekeeper bloquear um build sem assinatura, use Ajustes do Sistema > Privacidade e Segurança > Abrir mesmo assim ou `xattr -dr com.apple.quarantine /Applications/ATRIUM.app`.
 

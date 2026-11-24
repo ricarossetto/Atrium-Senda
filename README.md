@@ -88,7 +88,7 @@ Baixe o pacote da sua plataforma na [página oficial do Senda](https://senda.atr
 | Windows 11 ARM64 | `ATRIUM_3.3.1_arm64-setup.exe` (NSIS) |
 | Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.3.1_amd64.deb` |
 | Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.3.1-1.x86_64.rpm` |
-| Arch, Manjaro, EndeavourOS | AppImage ou `packaging/arch/PKGBUILD` |
+| Arch, Manjaro, EndeavourOS | AppImage ou `PKGBUILD` anexado à release |
 | Qualquer Linux x64 | `ATRIUM_3.3.1_amd64.AppImage` |
 | macOS Apple Silicon | `ATRIUM_3.3.1_aarch64.dmg` |
 | macOS Intel | `ATRIUM_3.3.1_x64.dmg` |
