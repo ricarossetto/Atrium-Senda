@@ -23,12 +23,17 @@ export function createGoogleCalendarFeature({
   showToast = () => {},
   confirmFn = message => windowRef?.confirm?.(message) ?? false,
   onStateChanged = () => {},
+  hasExternalCalendarConfigured = () => false,
+  hasUnsavedIcalChanges = () => false,
+  onRequestClose = null,
+  onShowIcalTab = null,
   presentation = null
 } = {}) {
   let initialized = false;
   let status = null;
   let pollTimer = null;
   let busy = false;
+  let activeTab = 'google';
   const byId = id => documentRef?.getElementById(id);
 
   async function request(path, body) {
@@ -68,42 +73,89 @@ export function createGoogleCalendarFeature({
     const detail = byId('googleCalendarDetail');
     const button = byId('googleCalendarButton');
     if (!chip || !detail || !button) return;
+    const hasIcal = Boolean(hasExternalCalendarConfigured?.());
     const needsReconnect = status?.status === 'reconnect_needed';
-    if (!status?.configured) {
-      chip.textContent = 'Em preparação';
-      chip.className = 'status-chip muted';
-      detail.textContent = 'A ligação com o Google ainda não está disponível. Até lá, a agenda externa por link traz compromissos para o ATRIUM.';
-      button.textContent = 'Indisponível';
-      button.disabled = true;
-    } else if (needsReconnect) {
+    button.disabled = false;
+    button.textContent = 'Gerenciar agendas';
+    if (needsReconnect) {
       chip.textContent = 'Conectar de novo';
       chip.className = 'status-chip warning';
-      detail.textContent = 'A autorização do Google terminou e a sincronização parou. Conecte a agenda de novo.';
-      button.textContent = 'Conectar de novo';
-      button.disabled = false;
-    } else if (status.connected) {
+      detail.textContent = `A autorização do Google terminou e a sincronização parou. Conecte a agenda de novo${hasIcal ? ' · Link iCal ativo.' : '.'}`;
+    } else if (status?.connected) {
       chip.textContent = status.lastError ? 'Com aviso' : 'Conectada';
       chip.className = `status-chip ${status.lastError ? 'warning' : 'connected'}`;
-      detail.textContent = status.account ? `Sincronizando com ${status.account}.` : 'Sincronizando com a sua conta Google.';
-      button.textContent = 'Gerenciar conexão';
-      button.disabled = false;
-    } else {
-      chip.textContent = 'Não conectada — opcional';
+      detail.textContent = `${status.account ? `Sincronizando com ${status.account}.` : 'Sincronizando com a sua conta Google.'}${hasIcal ? ' Link iCal também ativo.' : ''}`;
+    } else if (hasIcal) {
+      chip.textContent = 'iCal configurado';
+      chip.className = 'status-chip connected';
+      detail.textContent = status?.configured
+        ? 'Link iCal/Webcal ativo. Conecte também o Google Agenda para sincronizar nos dois sentidos.'
+        : 'Link Webcal / iCal ativo para complementar a agenda do ATRIUM, sem alterar prazos processuais.';
+    } else if (!status?.configured) {
+      chip.textContent = 'Webcal / iCal';
       chip.className = 'status-chip muted';
-      detail.textContent = 'Veja compromissos e prazos do ATRIUM na sua agenda pessoal, e os compromissos dela aqui. Cada pessoa conecta a própria conta.';
-      button.textContent = 'Conectar Google Agenda';
-      button.disabled = false;
+      detail.textContent = 'Conecte uma URL Webcal / iCal para complementar a agenda do ATRIUM, sem alterar prazos processuais.';
+    } else {
+      chip.textContent = 'Opcional';
+      chip.className = 'status-chip muted';
+      detail.textContent = 'Conecte o Google Agenda (nos dois sentidos) ou uma URL Webcal / iCal para complementar a agenda.';
+    }
+  }
+
+  function applyTabUi(tab) {
+    const normalized = tab === 'ical' ? 'ical' : 'google';
+    activeTab = normalized;
+    const isGoogle = normalized === 'google';
+    const googleTab = byId('calendarTabGoogle');
+    const icalTab = byId('configureCalendarButton');
+    const googlePanel = byId('calendarPanelGoogle');
+    const icalPanel = byId('calendarPanelIcal');
+    const googleFooter = byId('googleCalendarFooter');
+    const icalFooter = byId('calendarIcalFooter');
+
+    if (googleTab) {
+      googleTab.classList?.toggle('is-active', isGoogle);
+      googleTab.setAttribute?.('aria-selected', isGoogle ? 'true' : 'false');
+    }
+    if (icalTab) {
+      icalTab.classList?.toggle('is-active', !isGoogle);
+      icalTab.setAttribute?.('aria-selected', !isGoogle ? 'true' : 'false');
+    }
+    if (googlePanel) {
+      googlePanel.classList?.toggle('hidden', !isGoogle);
+      googlePanel.hidden = !isGoogle;
+    }
+    if (icalPanel) {
+      icalPanel.classList?.toggle('hidden', isGoogle);
+      icalPanel.hidden = isGoogle;
+    }
+    if (googleFooter) {
+      googleFooter.classList?.toggle('hidden', !isGoogle);
+      googleFooter.hidden = !isGoogle;
+    }
+    if (icalFooter) {
+      icalFooter.classList?.toggle('hidden', isGoogle);
+      icalFooter.hidden = isGoogle;
     }
   }
 
   function renderSheet() {
     const connected = Boolean(status?.connected);
     const needsReconnect = status?.status === 'reconnect_needed';
+    const configured = Boolean(status?.configured);
     byId('googleCalendarIntro')?.classList.toggle('hidden', connected && !needsReconnect);
     byId('googleCalendarConnected')?.classList.toggle('hidden', !connected);
     byId('googleCalendarDisconnect')?.classList.toggle('hidden', !connected);
     const primary = byId('googleCalendarPrimary');
-    if (primary) primary.textContent = needsReconnect ? 'Conectar de novo' : connected ? 'Sincronizar agora' : 'Conectar Google Agenda';
+    if (primary) {
+      if (!configured && !connected && !needsReconnect) {
+        primary.textContent = 'Em preparação';
+        primary.disabled = true;
+      } else {
+        primary.disabled = busy;
+        primary.textContent = needsReconnect ? 'Conectar de novo' : connected ? 'Sincronizar agora' : 'Conectar Google Agenda';
+      }
+    }
     if (!connected) return;
     const account = byId('googleCalendarAccount');
     if (account) account.textContent = status.account || 'Conta Google conectada';
@@ -175,11 +227,36 @@ export function createGoogleCalendarFeature({
       if (initialized) return false;
       initialized = true;
       presentation?.init?.();
-      byId('googleCalendarButton')?.addEventListener('click', () => this.open());
-      byId('googleCalendarClose')?.addEventListener('click', () => this.close());
-      byId('googleCalendarCancel')?.addEventListener('click', () => this.close());
+      byId('googleCalendarButton')?.addEventListener('click', () => this.open('google'));
+      byId('calendarTabGoogle')?.addEventListener('click', () => {
+        applyTabUi('google');
+        const primary = byId('googleCalendarPrimary');
+        if (primary && !primary.disabled) primary.focus?.();
+      });
+      byId('calendarTabGoogle')?.addEventListener('keydown', event => {
+        if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          byId('configureCalendarButton')?.click?.();
+          byId('configureCalendarButton')?.focus?.();
+        }
+      });
+      byId('configureCalendarButton')?.addEventListener('keydown', event => {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          applyTabUi('google');
+          byId('calendarTabGoogle')?.focus?.();
+        }
+      });
+      const requestCloseSheet = () => {
+        if ((activeTab === 'ical' || hasUnsavedIcalChanges?.()) && typeof onRequestClose === 'function') {
+          return onRequestClose();
+        }
+        return this.close();
+      };
+      byId('googleCalendarClose')?.addEventListener('click', () => requestCloseSheet());
+      byId('googleCalendarCancel')?.addEventListener('click', () => requestCloseSheet());
       byId('googleCalendarBackdrop')?.addEventListener('click', event => {
-        if (event.target === byId('googleCalendarBackdrop')) this.close();
+        if (event.target === byId('googleCalendarBackdrop')) requestCloseSheet();
       });
       byId('googleCalendarPrimary')?.addEventListener('click', () => this.primaryAction());
       byId('googleCalendarDisconnect')?.addEventListener('click', () => this.disconnect());
@@ -191,15 +268,29 @@ export function createGoogleCalendarFeature({
       return true;
     },
 
+    activateTab(tab = 'google') {
+      applyTabUi(tab);
+      return activeTab;
+    },
+
+    refreshCardSummary() {
+      renderCard();
+    },
+
     async refreshStatus() {
       try {
         return adopt(await request('status'));
       } catch {
+        renderCard();
         return status;
       }
     },
 
-    open() {
+    open(tab = 'google') {
+      if (tab === 'ical' && typeof onShowIcalTab === 'function') {
+        return onShowIcalTab();
+      }
+      applyTabUi('google');
       setMessage('');
       renderSheet();
       byId('googleCalendarBackdrop')?.classList.remove('hidden');

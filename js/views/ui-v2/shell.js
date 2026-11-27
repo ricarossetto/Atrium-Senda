@@ -4,27 +4,23 @@ const NAVIGATION_GROUPS = Object.freeze({
   inbox: 'work',
   kanban: 'work',
   agenda: 'work',
-  contacts: 'relationship',
-  leads: 'relationship',
-  financial: 'management',
-  reports: 'management',
-  calculations: 'management',
+  contacts: 'management',
+  leads: 'management',
   documents: 'management',
-  assistant: 'intelligence',
-  prompts: 'intelligence',
+  financial: 'management',
+  calculations: 'management',
+  reports: 'management',
+  assistant: 'management',
   integrations: 'system',
-  configuration: 'system',
-  admin: 'system',
-  audit: 'system',
-  links: 'system'
+  configuration: 'system'
 });
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-const SYSTEM_ORDER = Object.freeze(['links', 'integrations', 'audit', 'configuration', 'admin']);
-const BASIC_SYSTEM_ORDER = Object.freeze(['integrations', 'audit', 'configuration', 'admin']);
+const SYSTEM_ORDER = Object.freeze(['integrations', 'configuration']);
+const BASIC_SYSTEM_ORDER = Object.freeze(['integrations', 'configuration']);
 const BASIC_SECONDARY_VIEWS = Object.freeze(new Set(['financial', 'reports', 'documents', 'assistant', 'prompts', 'links', 'leads']));
 const WORK_ORDER = Object.freeze(['kanban', 'inbox', 'agenda', 'processes']);
-const RELATIONSHIP_ORDER = Object.freeze(['contacts', 'leads']);
+const MANAGEMENT_ORDER = Object.freeze(['contacts', 'leads', 'documents', 'financial', 'calculations', 'reports', 'assistant']);
 
 export function createUiV2Shell({
   documentRef = globalThis.document,
@@ -39,9 +35,8 @@ export function createUiV2Shell({
   let mobileChromeScrollTop = 0;
   let mobileChromeDirection = 0;
   let mobileChromeFrame = 0;
-  let mobileNavHideTimer = 0;
-  let mobileNavHideFrame = 0;
-  let mobileNavHideRun = 0;
+  let mobileChromeViewportWidth = 0;
+  let mobileChromeViewportHeight = 0;
   const originalNavPlacements = new Map();
   const originalUtilityPlacements = new Map();
 
@@ -82,7 +77,7 @@ export function createUiV2Shell({
   }
 
   function applyBasicGroupVisibility() {
-    for (const group of ['management', 'intelligence']) {
+    for (const group of ['management']) {
       const nav = documentRef?.querySelector?.(`[data-v2-nav-group="${group}"]`);
       const toggle = documentRef?.querySelector?.(`[data-v2-nav-toggle="${group}"]`);
       if (!nav || !toggle) continue;
@@ -104,10 +99,10 @@ export function createUiV2Shell({
       const basic = isBasicDensity();
       navItems.forEach(item => {
         const group = NAVIGATION_GROUPS[item.dataset.view];
-        if (isBasicFilteredView(item.dataset.view)) return;
+        if (!group || isBasicFilteredView(item.dataset.view)) return;
         documentRef?.querySelector?.(`[data-v2-nav-group="${group}"]`)?.appendChild(item);
       });
-      for (const [group, order] of [['work', WORK_ORDER], ['relationship', RELATIONSHIP_ORDER], ['system', basic ? BASIC_SYSTEM_ORDER : SYSTEM_ORDER]]) {
+      for (const [group, order] of [['work', WORK_ORDER], ['management', MANAGEMENT_ORDER], ['system', basic ? BASIC_SYSTEM_ORDER : SYSTEM_ORDER]]) {
         const nav = documentRef?.querySelector?.(`[data-v2-nav-group="${group}"]`);
         order.forEach(view => {
           const item = nav?.querySelector?.(`[data-view="${view}"]`);
@@ -128,7 +123,9 @@ export function createUiV2Shell({
   }
 
   function mobileChromeBlocked() {
-    const active = documentRef.activeElement;
+    const rawActive = documentRef.activeElement;
+    // Overlays sintéticos de retorno tátil iOS (.ios-haptic-hit) nunca são foco de teclado nem campo digitável.
+    const active = rawActive?.classList?.contains?.('ios-haptic-hit') ? null : rawActive;
     return documentRef.getElementById('sidebar')?.classList.contains('open')
       || !documentRef.getElementById('notificationPanel')?.classList.contains('hidden')
       || documentRef.getElementById('v2UtilitiesMenu')?.hasAttribute('open')
@@ -137,58 +134,14 @@ export function createUiV2Shell({
       || Boolean(active?.matches?.('input, textarea, select, [contenteditable="true"]'));
   }
 
-  function stopBottomNavHide() {
-    windowRef.clearTimeout(mobileNavHideTimer);
-    if (mobileNavHideFrame) windowRef.cancelAnimationFrame(mobileNavHideFrame);
-    mobileNavHideTimer = 0;
-    mobileNavHideFrame = 0;
-    mobileNavHideRun++;
-  }
-
-  function hideBottomNavAfterMotion() {
-    const root = documentRef.documentElement;
-    const nav = documentRef.getElementById('v2MobileNav');
-    if (!nav || root.dataset.v2MobileChrome !== 'reading' || !nav.inert || nav.getBoundingClientRect().top < windowRef.innerHeight - 1) return false;
-    stopBottomNavHide();
-    nav.classList.add('is-chrome-hidden');
-    root.classList.add('is-mobile-nav-hidden');
-    return true;
-  }
-
-  function checkBottomNavHide(nav, run, frames) {
-    if (run !== mobileNavHideRun || documentRef.documentElement.dataset.v2MobileChrome !== 'reading') return;
-    if (hideBottomNavAfterMotion() || frames <= 0) return;
-    mobileNavHideFrame = windowRef.requestAnimationFrame(() => checkBottomNavHide(nav, run, frames - 1));
-  }
-
-  function recoverBottomNavHide(run, deadline) {
-    if (run !== mobileNavHideRun || documentRef.documentElement.dataset.v2MobileChrome !== 'reading' || windowRef.performance.now() >= deadline) return;
-    mobileNavHideTimer = windowRef.setTimeout(() => {
-      mobileNavHideTimer = 0;
-      if (run !== mobileNavHideRun || hideBottomNavAfterMotion()) return;
-      recoverBottomNavHide(run, deadline);
-    }, Math.min(50, deadline - windowRef.performance.now()));
-  }
-
-  function scheduleBottomNavHide(nav) {
-    stopBottomNavHide();
-    if (!nav) return;
-    const styles = windowRef.getComputedStyle(nav);
-    const durations = styles.transitionDuration.split(',').map(value => value.trim());
-    const delays = styles.transitionDelay.split(',').map(value => value.trim());
-    const toMs = value => Number.parseFloat(value) * (value.endsWith('ms') ? 1 : 1000) || 0;
-    const properties = styles.transitionProperty.split(',').map(value => value.trim());
-    const index = properties.findIndex(value => value === 'transform' || value === 'all');
-    const duration = index < 0 ? 0 : toMs(durations[index % durations.length]) + toMs(delays[index % delays.length]);
-    const run = mobileNavHideRun;
-    if (duration <= 0) {
-      mobileNavHideFrame = windowRef.requestAnimationFrame(() => checkBottomNavHide(nav, run, 8));
-      return;
-    }
-    mobileNavHideTimer = windowRef.setTimeout(() => {
-      mobileNavHideTimer = 0;
-      checkBottomNavHide(nav, run, 8);
-    }, duration + 50);
+  function readScrollState() {
+    const doc = documentRef?.documentElement;
+    const maxScroll = Math.max(0, (doc?.scrollHeight || 0) - (windowRef?.innerHeight || 0));
+    const rawY = typeof windowRef?.scrollY === 'number'
+      ? windowRef.scrollY
+      : (typeof windowRef?.pageYOffset === 'number' ? windowRef.pageYOffset : (doc?.scrollTop || 0));
+    const y = Math.min(maxScroll, Math.max(0, rawY));
+    return { y, maxScroll };
   }
 
   function setMobileChrome(state) {
@@ -196,50 +149,59 @@ export function createUiV2Shell({
     const actions = documentRef.querySelector('.topbar-actions');
     const nav = documentRef.getElementById('v2MobileNav');
     if (!isV2Mobile() || documentRef.getElementById('appShell')?.classList.contains('hidden')) {
-      stopBottomNavHide();
       root.removeAttribute('data-v2-mobile-chrome');
-      nav?.classList.remove('is-chrome-hidden');
-      root.classList.remove('is-mobile-nav-hidden');
+      nav?.classList.remove('is-hidden');
       actions?.removeAttribute('inert');
       nav?.removeAttribute('inert');
       return;
     }
     if (root.dataset.v2MobileChrome === state) return;
-    stopBottomNavHide();
-    nav?.classList.remove('is-chrome-hidden');
-    root.classList.remove('is-mobile-nav-hidden');
+    const hidden = state === 'reading';
     root.dataset.v2MobileChrome = state;
-    if (actions) actions.inert = state === 'reading';
-    if (nav) nav.inert = state === 'reading';
-    if (state === 'reading') scheduleBottomNavHide(nav);
+    nav?.classList.toggle('is-hidden', hidden);
+    if (actions) actions.inert = hidden;
+    if (nav) nav.inert = hidden;
   }
 
   function resetMobileChrome() {
-    mobileChromeScrollTop = documentRef.body?.scrollTop || 0;
+    mobileChromeViewportWidth = Number(windowRef?.innerWidth || 0);
+    mobileChromeViewportHeight = Number(windowRef?.innerHeight || 0);
+    mobileChromeScrollTop = readScrollState().y;
     mobileChromeDirection = 0;
     setMobileChrome('expanded');
   }
 
   function updateMobileChrome() {
     mobileChromeFrame = 0;
-    const top = documentRef.body?.scrollTop || 0;
-    const delta = top - mobileChromeScrollTop;
-    mobileChromeScrollTop = top;
+    const nextWidth = Number(windowRef?.innerWidth || 0);
+    const nextHeight = Number(windowRef?.innerHeight || 0);
+    const { y, maxScroll } = readScrollState();
     if (!isV2Mobile() || documentRef.getElementById('appShell')?.classList.contains('hidden')) {
       resetMobileChrome();
       return;
     }
-    if (top <= 24 || mobileChromeBlocked()) {
+    // No iOS Safari, o recolhimento da barra em pílula altera `innerHeight` com largura estável e pode
+    // reduzir `maxScroll` durante a descida; reancora o scroll sem reabrir as barras por 1 frame.
+    if (Math.abs(nextWidth - mobileChromeViewportWidth) < 2 && Math.abs(nextHeight - mobileChromeViewportHeight) >= 2) {
+      mobileChromeViewportHeight = nextHeight;
+      mobileChromeScrollTop = y;
+      mobileChromeDirection = 0;
+      if (maxScroll <= 40 || y <= 24 || mobileChromeBlocked()) resetMobileChrome();
+      return;
+    }
+    const dy = y - mobileChromeScrollTop;
+    mobileChromeScrollTop = y;
+    if (maxScroll <= 40 || y <= 24 || mobileChromeBlocked()) {
       resetMobileChrome();
       return;
     }
-    if (Math.abs(delta) < 1) return;
-    if (Math.sign(delta) !== Math.sign(mobileChromeDirection)) mobileChromeDirection = 0;
-    mobileChromeDirection += delta;
-    if (mobileChromeDirection >= 10 && top >= 56) {
+    if (Math.abs(dy) < 1) return;
+    if (Math.sign(dy) !== Math.sign(mobileChromeDirection)) mobileChromeDirection = 0;
+    mobileChromeDirection += dy;
+    if (mobileChromeDirection >= 18) {
       setMobileChrome('reading');
       mobileChromeDirection = 0;
-    } else if (mobileChromeDirection <= -10) {
+    } else if (mobileChromeDirection <= -24) {
       setMobileChrome('expanded');
       mobileChromeDirection = 0;
     }
@@ -247,28 +209,12 @@ export function createUiV2Shell({
 
   function initMobileChrome() {
     resetMobileChrome();
-    const nav = documentRef.getElementById('v2MobileNav');
-    nav?.addEventListener('transitionend', event => {
-      if (event.target !== nav || event.propertyName !== 'transform') return;
-      if (documentRef.documentElement.dataset.v2MobileChrome === 'reading') {
-        stopBottomNavHide();
-        if (!hideBottomNavAfterMotion()) checkBottomNavHide(nav, mobileNavHideRun, 8);
-      }
-    });
-    nav?.addEventListener('transitioncancel', event => {
-      if (event.target !== nav || event.propertyName !== 'transform') return;
-      if (documentRef.documentElement.dataset.v2MobileChrome === 'reading') {
-        stopBottomNavHide();
-        if (!hideBottomNavAfterMotion()) {
-          const run = mobileNavHideRun;
-          checkBottomNavHide(nav, run, 8);
-          recoverBottomNavHide(run, windowRef.performance.now() + 600);
-        }
-      }
-    });
-    documentRef.body?.addEventListener('scroll', () => {
+    windowRef.addEventListener('scroll', () => {
       if (!mobileChromeFrame) mobileChromeFrame = windowRef.requestAnimationFrame(updateMobileChrome);
     }, { passive: true });
+    documentRef.addEventListener('gesturestart', event => {
+      if (isV2Mobile()) event.preventDefault();
+    }, { passive: false });
     documentRef.addEventListener('focusin', () => {
       if (mobileChromeBlocked()) resetMobileChrome();
     });
@@ -279,7 +225,14 @@ export function createUiV2Shell({
       if (key === 'Tab' || key.startsWith('Arrow') || ['Home', 'End', 'PageUp', 'PageDown'].includes(key)) resetMobileChrome();
     });
     documentRef.addEventListener('click', event => {
-      if (event.target.closest('.topbar, #v2MobileNav, [data-view-link], [data-view], .modal-backdrop')) resetMobileChrome();
+      if (event.target.closest('.topbar, #v2MobileNav, [data-view-link], [data-view], .modal-backdrop')) {
+        resetMobileChrome();
+        // Toque/clique de ponteiro na dock inferior não deve manter foco residual bloqueando o recolhimento no scroll.
+        if (event.detail > 0 && event.target.closest('#v2MobileNav [data-view-link]')) {
+          const active = documentRef.activeElement;
+          if (active?.closest?.('#v2MobileNav')) active.blur?.();
+        }
+      }
     });
     documentRef.getElementById('v2UtilitiesMenu')?.addEventListener('toggle', () => {
       if (mobileChromeBlocked()) resetMobileChrome();
@@ -292,12 +245,32 @@ export function createUiV2Shell({
         observer.observe(overlay, { attributes: true, attributeFilter: ['class', 'hidden'] });
       }
     }
-    documentRef.addEventListener('visibilitychange', () => {
-      if (!documentRef.hidden && documentRef.documentElement.dataset.v2MobileChrome === 'reading') {
-        if (!hideBottomNavAfterMotion() && !mobileNavHideTimer && !mobileNavHideFrame) scheduleBottomNavHide(nav);
+    let resizeChromeFrame = 0;
+    const handleChromeResize = () => {
+      resizeChromeFrame = 0;
+      const nextWidth = Number(windowRef?.innerWidth || 0);
+      const nextHeight = Number(windowRef?.innerHeight || 0);
+      const widthChanged = Math.abs(nextWidth - mobileChromeViewportWidth) >= 2;
+      mobileChromeViewportWidth = nextWidth;
+      mobileChromeViewportHeight = nextHeight;
+      if (!isV2Mobile() || widthChanged) {
+        resetMobileChrome();
+        return;
       }
-    });
-    windowRef.addEventListener('resize', resetMobileChrome);
+      // Resize apenas de altura (barra do Safari recolhendo/expandindo durante o scroll) mantém o estado atual.
+      const { y, maxScroll } = readScrollState();
+      mobileChromeScrollTop = y;
+      mobileChromeDirection = 0;
+      if (maxScroll <= 40 || y <= 24 || mobileChromeBlocked()) {
+        setMobileChrome('expanded');
+      }
+    };
+    windowRef.addEventListener('resize', () => {
+      if (resizeChromeFrame) return;
+      resizeChromeFrame = typeof windowRef.requestAnimationFrame === 'function'
+        ? windowRef.requestAnimationFrame(handleChromeResize)
+        : (handleChromeResize(), 0);
+    }, { passive: true });
   }
 
   function applyNavGroupState(button, nav, collapsed) {
@@ -406,7 +379,7 @@ export function createUiV2Shell({
   function fitViewTitle() {
     const title = documentRef?.getElementById?.('viewTitle');
     if (!title) return false;
-    title.style.removeProperty('font-size');
+    if (title.style.fontSize) title.style.removeProperty('font-size');
     if (!isV2Mobile()) return true;
     const base = Number.parseFloat(windowRef?.getComputedStyle?.(title)?.fontSize) || 18;
     let size = base;
@@ -490,7 +463,13 @@ export function createUiV2Shell({
     if (viewTitle && typeof windowRef?.MutationObserver === 'function') {
       new windowRef.MutationObserver(() => fitViewTitle()).observe(viewTitle, { childList: true, characterData: true, subtree: true });
     }
-    windowRef?.addEventListener?.('resize', () => fitViewTitle());
+    let resizeTitleFrame = 0;
+    windowRef?.addEventListener?.('resize', () => {
+      if (resizeTitleFrame) return;
+      resizeTitleFrame = typeof windowRef.requestAnimationFrame === 'function'
+        ? windowRef.requestAnimationFrame(() => { resizeTitleFrame = 0; fitViewTitle(); })
+        : (fitViewTitle(), 0);
+    }, { passive: true });
     documentRef?.fonts?.ready?.then?.(() => fitViewTitle()).catch?.(() => {});
     return true;
   }
@@ -499,12 +478,16 @@ export function createUiV2Shell({
 }
 
 function escapeText(value) {
-  const element = globalThis.document?.createElement?.('span');
-  if (!element) return String(value || '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-  element.textContent = String(value || '');
-  return element.innerHTML;
+  return String(value ?? '').replace(/[&<>"'`]/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '`': '&#96;'
+  })[character]);
 }
 
 function escapeAttribute(value) {
-  return escapeText(value).replace(/`/g, '&#96;');
+  return escapeText(value);
 }

@@ -199,7 +199,7 @@ try {
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
   await page.screenshot({ path: path.join(visualArtifactsDir, 'leads-desktop-light.png'), fullPage: true });
   await page.click('#themeToggleButton');
-  assert.equal(await page.locator('html').getAttribute('data-theme'), null);
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
   await page.waitForFunction(() => document.querySelectorAll('#toastRegion .toast').length === 0);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.locator('#leadStatusFilters').isVisible(), true);
@@ -208,7 +208,7 @@ try {
   await page.screenshot({ path: path.join(visualArtifactsDir, 'leads-mobile-dark.png'), fullPage: true });
   await page.setViewportSize({ width: 1440, height: 900 });
   assert.deepEqual(await page.locator('#leadStatusFilters button').evaluateAll(buttons => buttons.map(button => [button.dataset.leadFilter, button.textContent.trim()])), [
-    ['all', 'Todos'], ['novo', 'Novos'], ['em_analise', 'Em análise'], ['proposta', 'Proposta Enviada'], ['fechado', 'Fechados'], ['declinado', 'Declinados']
+    ['all', 'Todos'], ['novo', 'Novos'], ['em_analise', 'Em análise'], ['proposta', 'Proposta enviada'], ['fechado', 'Fechados'], ['declinado', 'Declinados']
   ]);
 
   const novoRow = page.locator('#leadTableBody [data-lead-id="lead-novo"]');
@@ -231,14 +231,14 @@ try {
     window.Atrium.Store.state.leads = window.Atrium.Store.state.leads.filter(item => item.id !== 'lead-fallback');
     window.portalApp.renderLeads();
   });
-  const statusExpectations = { novo: 'Novo', em_analise: 'Em análise', proposta: 'Proposta Enviada', fechado: 'Fechado', declinado: 'Declinado' };
+  const statusExpectations = { novo: 'Novo', em_analise: 'Em análise', proposta: 'Proposta enviada', fechado: 'Fechado', declinado: 'Declinado' };
   for (const [status, label] of Object.entries(statusExpectations)) {
     const button = page.locator(`#leadStatusFilters [data-lead-filter="${status}"]`);
     await button.click();
     assert.equal(await button.evaluate(element => element.classList.contains('active')), true);
     assert.equal(await page.locator('#leadStatusFilters button.active').count(), 1);
     assert.equal(await page.locator('#leadTableBody [data-lead-id]').count(), 1);
-    assert.equal(await page.locator('#leadCount').textContent(), '1 atendimentos');
+    assert.equal(await page.locator('#leadCount').textContent(), '1 atendimento');
     assert.equal(await page.locator(`#leadTableBody .lead-status-chip.${status}`).textContent(), label);
   }
   await page.locator('#leadStatusFilters [data-lead-filter="all"]').click();
@@ -263,12 +263,12 @@ try {
   await page.locator('#leadSearch').fill('');
 
   await page.locator('#leadTableBody [data-lead-id="lead-proposta"]').click();
-  await page.locator('#modalTitle', { hasText: 'Editar Atendimento' }).waitFor();
+  await page.locator('#modalTitle', { hasText: 'Editar atendimento' }).waitFor();
   await page.screenshot({ path: path.join(visualArtifactsDir, 'leads-modal-dark.png'), fullPage: true });
-  assert.equal(await page.locator('#modalEyebrow').textContent(), 'CRM Jurídico');
+  assert.equal(await page.locator('#modalEyebrow').textContent(), 'Atendimentos');
   assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)), ['client', 'contactId', 'serviceType', 'status', 'origin', 'estimatedFee', 'responsible', 'notes']);
   assert.deepEqual(await page.locator('#field-status option').evaluateAll(options => options.map(option => [option.value, option.textContent])), [
-    ['novo', 'Novo Lead / Contato Inicial'], ['em_analise', 'Em Análise Documental'], ['proposta', 'Proposta de Honorários Enviada'], ['fechado', 'Contrato Fechado (Virou Cliente)'], ['declinado', 'Declinado / Não Viável']
+    ['novo', 'Novo / primeiro contato'], ['em_analise', 'Em análise documental'], ['proposta', 'Proposta de honorários enviada'], ['fechado', 'Contrato fechado (virou cliente)'], ['declinado', 'Declinado / não viável']
   ]);
   assert.deepEqual(await page.locator('#field-origin option').evaluateAll(options => options.map(option => [option.value, option.textContent])), [
     ['Indicação de Cliente', 'Indicação de Cliente'], ['Google / Site', 'Google / Site'], ['Instagram / Redes Sociais', 'Instagram / Redes Sociais'],
@@ -289,7 +289,7 @@ try {
   assert.equal(await page.evaluate(() => window.Atrium.Store.state.audit.some(item => item.action === 'Atendimento atualizado' && item.detail === 'Caio Proposta Editado · Benefício Previdenciário')), true);
 
   await page.click('#newLeadButton');
-  await page.locator('#modalTitle', { hasText: 'Novo atendimento / Oportunidade' }).waitFor();
+  await page.locator('#modalTitle', { hasText: 'Novo atendimento' }).waitFor();
   assert.equal(await page.locator('#field-status').inputValue(), 'novo');
   assert.equal(await page.locator('#field-origin').inputValue(), 'Indicação de Cliente');
   assert.equal(await page.locator('#field-responsible').inputValue(), 'Advogada Leads');

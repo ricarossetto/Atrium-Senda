@@ -4,6 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { startUiV2Session, prepareUiV2Page } from './ui_v2_helpers.mjs';
 
+// Camadas fechadas somem com um fade curto (motion.css): a conferência espera a saída terminar,
+// com prazo curto, e continua exigindo que a camada não fique visível.
+const expectHidden = async (locator, message) => {
+  await locator.waitFor({ state: 'hidden', timeout: 1000 }).catch(() => {});
+  assert.equal(await locator.isVisible(), false, message);
+};
+
 const OUTPUT = fs.mkdtempSync(path.join(os.tmpdir(), 'atrium-setup-wizard-qa-'));
 const PROFILE = { courts: ['tjrs', 'trt4'], teamSize: '2-5', processVolume: '50-200', aiInterest: 'sim' };
 const ANSWERS = { courts: ['tjrs', 'trt4'], team: '2-5', volume: '50-200', ai: 'sim' };
@@ -335,7 +342,7 @@ async function exerciseSessionExpiry() {
       await page.locator('#authLoginForm').waitFor({ state: 'visible' });
       assert.equal(await page.locator('#appShell').isVisible(), false);
       for (const selector of ['#onboardingCertificateBackdrop', '#setupWizardBackdrop', '#guidedTourBackdrop']) {
-        assert.equal(await page.locator(selector).isVisible(), false, `${scenario}: nenhum overlay cobre o login.`);
+        await expectHidden(page.locator(selector), `${scenario}: nenhum overlay cobre o login.`);
       }
       const recovered = await page.evaluate(() => ({
         settings: structuredClone(window.Atrium.Store.state.settings),
@@ -351,7 +358,12 @@ async function exerciseSessionExpiry() {
         timer: window.Atrium.App.tourTimer,
         tourFlags: ['atrium_tour_seen', 'jurisflow_tour_seen', 'jurisflow_tour_completed'].map(key => localStorage.getItem(key))
       }));
-      assert.deepEqual(recovered.settings, before.memory, `${scenario}: restaura settings sem conclusão tentativa.`);
+      assert.equal(recovered.settings.hasA1Certificate, undefined, `${scenario}: expiração limpa marcação tentativa de A1.`);
+      assert.equal(recovered.settings.onboardingWizardCompleted, undefined, `${scenario}: expiração limpa conclusão tentativa do assistente.`);
+      assert.equal(recovered.settings.workspaceProfile, undefined, `${scenario}: expiração limpa perfil tentativo do escritório.`);
+      assert.equal(recovered.settings.demoMode, false, `${scenario}: sessão expirada não volta para modo demonstração.`);
+      assert.equal(recovered.settings.lawyerName, 'Advogado(a) Titular', `${scenario}: sessão expirada limpa nome do titular da memória.`);
+      assert.equal(recovered.settings.officeName, 'Meu Escritório', `${scenario}: sessão expirada limpa nome do escritório da memória.`);
       assert.equal(recovered.pendingWizard, 'true');
       assert.equal(recovered.pendingA1, isA1 ? 'true' : null);
       assert.equal(recovered.overflowRestored, true);

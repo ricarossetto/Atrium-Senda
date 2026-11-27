@@ -108,8 +108,8 @@ feature.render();
 const tabKeys = [...elements.configurationTabs.innerHTML.matchAll(/data-config-section="([^"]+)"/g)].map(match => match[1]);
 assert.deepEqual(tabKeys.filter(key => key !== 'office' && key !== 'billing'), ['taskDefinitions', 'users', 'actionGroups', 'actionTypes', 'stages', 'origins', 'goals', 'inboxSections', 'notificationAssignments', 'integrations', 'registry', 'diagnostic', 'backups', 'experimental']);
 assert.match(elements.configurationMetrics.innerHTML, /2[\s\S]*Tipos de tarefa/);
-assert.match(elements.configurationMetrics.innerHTML, /1[\s\S]*Tipos de ação/);
-assert.match(elements.configurationMetrics.innerHTML, /1[\s\S]*Etapas/);
+assert.match(elements.configurationMetrics.innerHTML, /<strong>1<\/strong><span>Tipo de ação<\/span>/);
+assert.match(elements.configurationMetrics.innerHTML, /<strong>1<\/strong><span>Etapa<\/span>/);
 assert.match(elements.configurationMetrics.innerHTML, /[0-9][\s\S]*Membros/);
 assert.match(elements.configurationMetrics.innerHTML, /2[\s\S]*Contatos importados/);
 

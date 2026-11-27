@@ -1,7 +1,14 @@
-import { requestAuthUsers } from './auth-users-request.js?v=3.3.2';
+import { invalidateAuthUsersCache, requestAuthUsers } from './auth-users-request.js?v=3.4.0';
 let directory = { users: [], teams: [] };
 let loadedAt = 0;
 let pending = null;
+
+export function resetOfficeDirectoryCache() {
+  directory = { users: [], teams: [] };
+  loadedAt = 0;
+  pending = null;
+  invalidateAuthUsersCache();
+}
 
 export function getOfficeDirectory() {
   return directory;

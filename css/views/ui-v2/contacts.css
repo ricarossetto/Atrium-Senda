@@ -112,6 +112,21 @@ html[data-ui="v2"] .contact-role-filters {
   border-bottom: 1px solid var(--v2-color-border);
 }
 
+/* Abas de papel: na tela larga quebram linha em vez de sumir na borda (em 1024px
+   "Correspondentes", "Prepostos" e "Outros" ficavam fora de vista sem pista). */
+@media (min-width: 761px) {
+  html[data-ui="v2"] .contact-role-filters { flex-wrap: wrap; overflow-x: visible; }
+}
+/* Celular: rolagem lateral com esmaecimento na borda direita indicando que há mais abas;
+   o respiro final deixa a última aba sair do esmaecimento ao rolar até o fim. */
+@media (max-width: 760px) {
+  html[data-ui="v2"] .contact-role-filters {
+    padding-right: var(--v2-space-8) !important;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+}
+
 html[data-ui="v2"] :is(.contact-role-filter, .contact-page-size-option) {
   min-height: 40px;
   display: inline-flex;
@@ -284,7 +299,7 @@ html[data-ui="v2"] .contacts-inspector {
   grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--v2-color-surface-elevated);
   overflow: hidden;
-  animation: contact-inspector-in 230ms var(--v2-ease-standard) both;
+  animation: contact-inspector-in var(--v2-duration-slow) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"]:has(#modalBackdrop[data-modal-mode="contact"]:not(.hidden)) .contacts-inspector.is-open {
@@ -395,6 +410,11 @@ html[data-ui="v2"] .contact-context-metrics { display: grid; grid-template-colum
 html[data-ui="v2"] .contact-context-metrics > div { min-width: 0; display: grid; gap: 1px; padding: var(--v2-space-2) var(--v2-space-3); background: var(--v2-color-surface-elevated); }
 html[data-ui="v2"] .contact-context-metrics strong { color: var(--v2-color-foreground); font-size: 18px; font-variant-numeric: tabular-nums; }
 html[data-ui="v2"] .contact-context-metrics span { overflow: hidden; color: var(--v2-color-muted-foreground); font-size: 12px; font-weight: 750; text-overflow: ellipsis; text-transform: uppercase; }
+html[data-ui="v2"] .contact-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--v2-space-2); margin-top: var(--v2-space-3); }
+/* Celular: duas colunas para os rótulos caberem ("PROVIDÊN…", "PUBLICAÇÕ…" eram cortados). */
+@media (max-width: 760px) {
+  html[data-ui="v2"] .contact-context-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 html[data-ui="v2"] .contact-context-integrity { margin: 0; color: var(--v2-color-foreground-secondary); font-size: 12px; line-height: 1.5; }
 
 html[data-ui="v2"] .contact-context-section { display: grid; gap: var(--v2-space-2); }
@@ -474,7 +494,7 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="contact"] {
 }
 
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="contact"] .modal {
-  width: min(700px, calc(100vw - 72px));
+  width: min(960px, 92vw); /* mesma largura do inspetor: editar não encolhe a gaveta */
   height: 100dvh;
   max-height: none;
   display: grid;
@@ -483,7 +503,7 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="contact"] .modal {
   border-width: 0 0 0 1px;
   border-radius: 0;
   box-shadow: var(--v2-shadow-elevated);
-  animation: contact-drawer-in 240ms var(--v2-ease-standard) both;
+  animation: v2-sheet-in var(--v2-duration-slow) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="contact"] .modal > header { padding: var(--v2-space-4) var(--v2-space-5); background: var(--v2-color-surface-elevated); }
@@ -501,7 +521,55 @@ html[data-ui="v2"] .contact-form-section .field.full { grid-column: 1 / -1; }
 html[data-ui="v2"] .contact-form-section .field label { color: var(--v2-color-foreground-secondary); font-size: 12px; }
 
 @keyframes contact-inspector-in { from { opacity: .35; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
-@keyframes contact-drawer-in { from { opacity: .4; clip-path: inset(0 0 0 100%); } to { opacity: 1; clip-path: inset(0); } }
+
+html[data-ui="v2"] .contact-registry-disclosure {
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface-secondary);
+}
+
+html[data-ui="v2"] .contact-registry-disclosure > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--v2-space-3);
+  color: var(--v2-color-foreground);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+html[data-ui="v2"] .contact-registry-disclosure > summary:focus-visible {
+  outline: 2px solid var(--v2-color-focus, currentColor);
+  outline-offset: 2px;
+}
+
+html[data-ui="v2"] .contact-registry-disclosure > summary::-webkit-details-marker { display: none; }
+
+html[data-ui="v2"] .contact-registry-disclosure > summary { list-style: none; justify-content: space-between; gap: var(--v2-space-3); }
+
+html[data-ui="v2"] .contact-registry-disclosure > summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  margin-top: -2px;
+  transform: rotate(45deg);
+  transition: transform var(--v2-duration-fast, 120ms) ease;
+}
+
+html[data-ui="v2"] .contact-registry-disclosure[open] > summary::after { margin-top: -2px; transform: rotate(-135deg); }
+
+html[data-ui="v2"] .contact-registry-disclosure[open] > summary {
+  border-bottom: 1px solid var(--v2-color-border-subtle);
+}
+
+html[data-ui="v2"] .contact-registry-disclosure > .contact-registry-review {
+  border: 0;
+  margin: 0;
+}
 
 html[data-ui="v2"] .contact-registry-review {
   margin: 0 0 var(--v2-space-4);
@@ -552,6 +620,7 @@ html[data-ui="v2"] .registry-company-summary small,
 html[data-ui="v2"] .registry-validation-card strong,
 html[data-ui="v2"] .registry-validation-card small { display: block; }
 html[data-ui="v2"] .registry-company-summary span { color: var(--v2-color-success); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+html[data-ui="v2"] .registry-company-summary span.is-inactive { color: var(--v2-color-danger); }
 html[data-ui="v2"] .registry-company-summary strong { margin: 4px 0; }
 html[data-ui="v2"] .registry-validation-card p { margin: 6px 0; }
 html[data-ui="v2"] .registry-validation-card.is-invalid { border-color: color-mix(in srgb, var(--v2-color-danger) 45%, var(--v2-color-border)); }
@@ -559,6 +628,7 @@ html[data-ui="v2"] .registry-field-review { display: grid; grid-template-columns
 html[data-ui="v2"] .registry-field-review legend { padding: 0 var(--v2-space-2); color: var(--v2-color-foreground-secondary); font-size: 12px; font-weight: 700; }
 html[data-ui="v2"] .registry-field-review label { min-width: 0; display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: var(--v2-space-2); padding: var(--v2-space-2); border-radius: var(--v2-radius-sm); cursor: pointer; }
 html[data-ui="v2"] .registry-field-review label:hover { background: var(--v2-color-surface-hover); }
+html[data-ui="v2"] .registry-field-review label:has(input:focus-visible) { outline: 2px solid var(--v2-color-primary); outline-offset: 2px; background: var(--v2-color-surface-hover); }
 html[data-ui="v2"] .registry-field-review input { width: 18px; height: 18px; margin: 1px 0 0; }
 html[data-ui="v2"] .registry-field-review strong,
 html[data-ui="v2"] .registry-field-review small { display: block; }
@@ -793,5 +863,286 @@ html[data-ui="classic"] .contacts-classic-pagination .contact-page-size {
     width: auto;
     justify-self: start;
     padding-inline: 12px;
+  }
+  html[data-ui="v2"] #contactRegistryReview button,
+  html[data-ui="v2"] .contact-company-refresh {
+    min-height: 44px;
+  }
+  html[data-ui="v2"] .registry-field-review {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  html[data-ui="v2"] .registry-review-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+  html[data-ui="v2"] .registry-review-actions .v2-button,
+  html[data-ui="v2"] .registry-apply {
+    width: 100%;
+    justify-self: stretch;
+  }
+}
+
+/* Dados judiciais (eproc) no inspetor de contatos — Mineral Editorial */
+html[data-ui="v2"] .contact-eproc-section {
+  display: grid;
+  gap: var(--v2-space-3);
+}
+
+html[data-ui="v2"] .contact-eproc-subsection {
+  min-width: 0;
+  display: grid;
+  gap: var(--v2-space-2);
+}
+
+html[data-ui="v2"] .contact-eproc-subsection h5 {
+  margin: 0;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] .contact-eproc-address-list,
+html[data-ui="v2"] .contact-eproc-name-list {
+  display: grid;
+  gap: var(--v2-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+html[data-ui="v2"] .contact-eproc-address-item,
+html[data-ui="v2"] .contact-eproc-name-list li {
+  min-width: 0;
+  display: grid;
+  gap: var(--v2-space-1);
+  padding: var(--v2-space-3);
+  background: var(--v2-color-surface-secondary);
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-md);
+}
+
+html[data-ui="v2"] .contact-eproc-address-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-2);
+}
+
+html[data-ui="v2"] .contact-eproc-address-type {
+  color: var(--v2-color-primary);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] .contact-eproc-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--v2-radius-round);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] .contact-eproc-badge.is-complete {
+  color: var(--v2-color-success);
+  background: var(--v2-color-success-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-success) 38%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .contact-eproc-badge.is-incomplete {
+  color: var(--v2-color-warning);
+  background: var(--v2-color-warning-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-warning) 38%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .contact-eproc-address-text {
+  margin: 0;
+  color: var(--v2-color-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui="v2"] .contact-eproc-address-date,
+html[data-ui="v2"] .contact-eproc-name-list li span {
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-ui="v2"] .contact-eproc-name-list li strong {
+  color: var(--v2-color-foreground);
+  font-size: 13px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+/* Perfil empresarial (CNPJ) no inspetor e lista de contatos */
+html[data-ui="v2"] .contact-company-alert {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--v2-space-2);
+  padding: 1px 7px;
+  border-radius: var(--v2-radius-round);
+  background: var(--v2-color-danger-soft);
+  color: var(--v2-color-danger);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] .contact-company-section {
+  display: grid;
+  gap: var(--v2-space-3);
+}
+
+html[data-ui="v2"] .contact-company-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-2);
+}
+
+html[data-ui="v2"] .contact-company-header > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v2-space-2);
+}
+
+html[data-ui="v2"] .contact-company-header h4 {
+  margin: 0;
+}
+
+html[data-ui="v2"] .contact-company-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--v2-radius-round);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+html[data-ui="v2"] .contact-company-status-badge.is-active {
+  color: var(--v2-color-success);
+  background: var(--v2-color-success-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-success) 38%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .contact-company-status-badge.is-inactive {
+  color: var(--v2-color-danger);
+  background: var(--v2-color-danger-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-danger) 38%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .contact-company-refresh {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+html[data-ui="v2"] .contact-company-placeholder {
+  margin: 0;
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+html[data-ui="v2"] .contact-company-subsection {
+  min-width: 0;
+  display: grid;
+  gap: var(--v2-space-2);
+}
+
+html[data-ui="v2"] .contact-company-subsection h5 {
+  margin: 0;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] .contact-company-cnae-list,
+html[data-ui="v2"] .contact-company-qsa-list {
+  display: grid;
+  gap: var(--v2-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+html[data-ui="v2"] .contact-company-cnae-list li,
+html[data-ui="v2"] .contact-company-qsa-list li {
+  min-width: 0;
+  padding: var(--v2-space-2) var(--v2-space-3);
+  border: 1px solid var(--v2-color-border-subtle);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+html[data-ui="v2"] .contact-company-qsa-list li {
+  display: grid;
+  gap: 2px;
+}
+
+html[data-ui="v2"] .contact-company-qsa-list li strong {
+  color: var(--v2-color-foreground);
+  font-size: 13px;
+}
+
+html[data-ui="v2"] .contact-company-qsa-list li span,
+html[data-ui="v2"] .contact-company-provenance {
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+}
+
+html[data-ui="v2"] .contact-company-section dd {
+  overflow-wrap: anywhere;
+}
+
+/* Celular: o título da lista e o rótulo da busca repetem o que já está na tela ("9 contatos" e o
+   texto do campo). Saem da vista, mas continuam para leitores de tela, e a lista sobe. */
+@media (max-width: 760px) {
+  html[data-ui="v2"] #view-contacts .contacts-master-header,
+  html[data-ui="v2"] #view-contacts .contacts-search > label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* Celular: o total de contatos é informação, não ação. Sem moldura de botão. */
+@media (max-width: 760px) {
+  html[data-ui="v2"] #view-contacts .toolbar-actions #contactCount.status-chip, html[data-ui="v2"] #view-contacts #contactCount.status-chip {
+    min-height: 0 !important;
+    padding-inline: 0 !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    color: var(--v2-color-muted-foreground) !important;
   }
 }

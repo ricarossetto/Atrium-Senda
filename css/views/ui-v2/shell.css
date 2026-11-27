@@ -14,6 +14,8 @@ html[data-ui="v2"] .sidebar {
   background: color-mix(in srgb, var(--v2-color-background-subtle) 88%, var(--v2-color-surface));
   border-right: 1px solid var(--v2-color-border);
   box-shadow: 12px 0 34px -32px color-mix(in srgb, var(--v2-color-primary) 48%, transparent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   z-index: var(--v2-z-navigation);
   transition: width var(--v2-duration-slow) var(--v2-ease-standard), transform var(--v2-duration-slow) var(--v2-ease-standard), box-shadow var(--v2-duration-slow) var(--v2-ease-standard);
 }
@@ -98,6 +100,12 @@ html[data-ui="v2"] .v2-navigation .main-nav {
   /* Alvo de toque: 2px de folga entre itens de menu não separa os alvos. */
   gap: 8px;
   margin-bottom: 4px;
+}
+
+html[data-ui="v2"] [data-v2-nav-group="system"] {
+  margin-top: var(--v2-space-2);
+  padding-top: var(--v2-space-2);
+  border-top: 1px solid var(--v2-color-border-subtle);
 }
 
 html[data-ui="v2"] .v2-nav-section-title {
@@ -219,16 +227,40 @@ html[data-ui="v2"] .sidebar.collapsed .nav-count {
 }
 
 html[data-ui="v2"] .sidebar-office {
+  padding-inline: var(--v2-space-3);
   color: var(--v2-color-foreground);
   background: color-mix(in srgb, var(--v2-color-surface-inset) 88%, var(--v2-color-gold-soft));
   border-color: var(--v2-color-border);
   border-radius: var(--v2-radius-md);
 }
 
+html[data-ui="v2"] .sidebar-office .office-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+html[data-ui="v2"] .sidebar-office .office-copy strong,
+html[data-ui="v2"] .sidebar-office .office-copy span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 html[data-ui="v2"] .sidebar-office:hover {
   background: var(--v2-color-surface-hover);
   border-color: var(--v2-color-primary);
 }
+
+html[data-ui="v2"] .office-plan-badge {
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-secondary);
+  border-color: color-mix(in srgb, var(--v2-color-gold-strong) 42%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .sidebar.collapsed .office-plan-badge { display: none; }
 
 html[data-ui="v2"] .main-content {
   margin-left: var(--v2-sidebar-width);
@@ -259,8 +291,14 @@ html[data-ui="v2"] .topbar {
 }
 
 html[data-ui="v2"] .topbar-left {
-  flex: 0 1 250px;
-  min-width: 165px;
+  flex: 0 1 240px;
+  min-width: 150px;
+  overflow: hidden;
+}
+
+html[data-ui="v2"] .topbar-left > div {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 html[data-ui="v2"] .v2-topbar-brand { display: none; }
@@ -437,6 +475,12 @@ html[data-ui="v2"] .global-search input {
 }
 
 html[data-ui="v2"] .global-search input::placeholder { color: var(--v2-color-foreground-secondary); }
+/* O placeholder já diz "Ctrl+K ou /": em larguras médias a tecla "/" cobria o texto
+   ("Pesquisar (Ctrl+K ou ,"). Some a tecla e o texto termina em reticências se faltar espaço. */
+html[data-ui="v2"] .global-search input { text-overflow: ellipsis; }
+@media (max-width: 1366px) {
+  html[data-ui="v2"] .global-search kbd { display: none; }
+}
 html[data-ui="v2"] .global-search kbd { color: var(--v2-color-foreground-secondary); background: var(--v2-color-surface); border-color: var(--v2-color-border); }
 
 html[data-ui="v2"] #syncButton { order: 2; }
@@ -765,7 +809,7 @@ html[data-ui="v2"] .view {
 }
 
 html[data-ui="v2"] .view.active {
-  animation: v2-view-enter var(--v2-duration-slow) var(--v2-ease-standard) both;
+  animation: v2-view-enter var(--v2-duration-fast) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"] .view:not(#view-dashboard) {
@@ -779,6 +823,10 @@ html[data-ui="v2"] .v2-sidebar-scrim {
 html[data-ui="v2"] .v2-mobile-nav { display: none; }
 
 @media (min-width: 861px) {
+  html[data-ui="v2"] .v2-navigation { gap: 2px; }
+  html[data-ui="v2"] .v2-navigation .main-nav { gap: 3px; margin-bottom: 2px; }
+  html[data-ui="v2"] .v2-nav-section-title { min-height: 30px; margin: 4px 0 1px; }
+  html[data-ui="v2"] .nav-item { min-height: 36px; padding: 4px var(--v2-space-2); }
   html[data-ui="v2"] .sidebar.collapsed .v2-nav-section-title { display: none; }
   html[data-ui="v2"] .sidebar.collapsed .nav-item { justify-content: center; padding-inline: var(--v2-space-2); }
 }
@@ -794,8 +842,15 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
   html[data-ui="v2"] .profile-copy { display: none; }
 }
 
-@media (min-width: 1181px) and (max-width: 1660px) {
-  html[data-ui="v2"] .global-search-container { flex-basis: 320px; }
+@media (min-width: 1341px) and (max-width: 1660px) {
+  html[data-ui="v2"] .global-search-container { flex-basis: 300px; }
+}
+
+@media (min-width: 1041px) and (max-width: 1340px) {
+  html[data-ui="v2"] .topbar { gap: var(--v2-space-3); padding-inline: var(--v2-space-4); }
+  html[data-ui="v2"] .topbar-left { flex: 0 1 215px; min-width: 150px; }
+  html[data-ui="v2"] #syncButton span { display: none; }
+  html[data-ui="v2"] #syncButton { width: 40px; padding: 0; }
 }
 
 @media (max-width: 1180px) {
@@ -805,8 +860,10 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
     font-size: 20px;
     line-height: 27px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  html[data-ui="v2"] .global-search-container { flex-basis: 240px; }
+  html[data-ui="v2"] .global-search-container { flex-basis: 220px; }
   html[data-ui="v2"] #syncButton span { display: none; }
   html[data-ui="v2"] #syncButton { width: 40px; padding: 0; }
   html[data-ui="v2"] .profile-copy { display: none; }
@@ -814,17 +871,21 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
   html[data-ui="v2"] .logout-button { width: auto; padding-inline: 10px; }
 }
 
+@media (max-width: 900px) {
+  html[data-ui="v2"] .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--v2-color-background);
+    background-color: var(--v2-color-background);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    padding-top: max(var(--v2-space-2), var(--atrium-safe-top));
+  }
+}
+
 @media (max-width: 860px) {
   html[data-ui="v2"]:has(#appShell:not(.hidden)) {
-    height: 100dvh;
-    overflow: hidden;
-  }
-
-  html[data-ui="v2"]:has(#appShell:not(.hidden)) body {
-    height: 100dvh;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
     overflow-anchor: none;
     scroll-padding-top: calc(var(--atrium-safe-top) + 2 * var(--v2-space-2) + 44px + var(--v2-space-1) + 2 * 44px + 2 * var(--v2-space-2) + 1px);
   }
@@ -832,31 +893,21 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
   html[data-ui="v2"],
   html[data-ui="v2"] body {
     background-color: var(--v2-color-background);
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   html[data-ui="v2"] .app-shell {
-    overflow: visible;
+    overflow-x: clip;
     background: var(--v2-color-background);
   }
 
   html[data-ui="v2"] .main-content {
-    overflow-x: visible;
+    overflow-x: clip;
     padding-top: calc(var(--atrium-safe-top) + 2 * var(--v2-space-2) + 44px + var(--v2-space-1) + 2 * 44px + var(--v2-space-2) + 1px);
-  }
-
-  html[data-ui="v2"] body::before { opacity: .01; }
-
-  /* Queda: o Safari pinta uma faixa neutra/clara atrás do toolbar de navegação.
-     Mantemos html/body na superfície ativa para que a página não exponha a faixa neutra. */
-  html[data-ui="v2"]:has(#appShell:not(.hidden)),
-  html[data-ui="v2"]:has(#appShell:not(.hidden)) body {
-    background-color: var(--v2-color-surface);
-    transition: none;
-  }
-
-  html[data-ui="v2"][data-v2-mobile-chrome="reading"].is-mobile-nav-hidden:has(#appShell:not(.hidden)),
-  html[data-ui="v2"][data-v2-mobile-chrome="reading"].is-mobile-nav-hidden:has(#appShell:not(.hidden)) body {
-    background-color: var(--v2-color-background);
   }
 
   /* O topo precisa selar a safe-area no iOS: fundo opaco, sem blur e com padding
@@ -866,6 +917,7 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
     top: 0;
     right: 0;
     left: 0;
+    z-index: 30;
     min-height: 0;
     height: auto;
     display: grid;
@@ -874,14 +926,10 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
     gap: var(--v2-space-1);
     padding: calc(var(--v2-space-2) + var(--atrium-safe-top)) var(--v2-space-3) var(--v2-space-2);
     background: var(--v2-color-background);
+    background-color: var(--v2-color-background);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-
-  /* Tampa opaca REAL (elemento, não pseudo-elemento: o Safari iOS 26 ignora pseudo-elementos
-     ao escolher o tint da safe area). Cobre a safe-area e também o deslocamento que o Safari
-     iOS 26 aplica a elementos sticky/fixed (visual viewport deslocado). A altura usa
-     --v2-topbar-gap, medido pelo shell a partir da posição real do header. */
 
   html[data-ui="v2"] .topbar-left {
     min-width: 0;
@@ -923,10 +971,13 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
 
   html[data-ui="v2"] .topbar-actions {
     width: 100%;
-    max-height: 100px;
+    max-height: 116px;
     overflow: visible;
     opacity: 1;
-    transition: max-height var(--v2-duration-max) var(--v2-ease-emphasized), opacity var(--v2-duration-slow) var(--v2-ease-standard), transform var(--v2-duration-max) var(--v2-ease-emphasized);
+    transition: max-height var(--v2-duration-slow) cubic-bezier(0.32, 0.72, 0, 1),
+      opacity var(--v2-duration-base) var(--v2-ease-standard) 60ms,
+      transform var(--v2-duration-slow) cubic-bezier(0.32, 0.72, 0, 1),
+      visibility 0s linear 0s;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--v2-space-2);
@@ -947,7 +998,10 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
     visibility: hidden;
     transform: translateY(-6px);
     pointer-events: none;
-    transition: max-height var(--v2-duration-max) var(--v2-ease-emphasized), opacity var(--v2-duration-slow) var(--v2-ease-standard), transform var(--v2-duration-max) var(--v2-ease-emphasized), visibility 0s linear var(--v2-duration-max);
+    transition: max-height var(--v2-duration-slow) cubic-bezier(0.32, 0.72, 0, 1),
+      opacity var(--v2-duration-fast) var(--v2-ease-exit),
+      transform var(--v2-duration-slow) cubic-bezier(0.32, 0.72, 0, 1),
+      visibility 0s linear var(--v2-duration-slow);
   }
 
   html[data-ui="v2"] .global-search-container {
@@ -1053,15 +1107,25 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
   html[data-ui="v2"] .sidebar.collapsed {
     width: min(290px, calc(100vw - 48px)) !important;
     transform: translateX(-102%);
+    visibility: hidden;
+    pointer-events: none;
     box-shadow: var(--v2-shadow-elevated);
     z-index: 100;
     padding-top: calc(var(--v2-space-4) + var(--atrium-safe-top));
     padding-bottom: calc(var(--v2-space-3) + var(--atrium-safe-bottom));
+    transition: transform var(--v2-duration-slow) var(--v2-ease-standard), visibility 0s linear var(--v2-duration-slow);
   }
 
   html[data-ui="v2"] .sidebar.open,
   html[data-ui="v2"] .sidebar.collapsed.open {
     transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition: transform var(--v2-duration-slow) var(--v2-ease-standard);
+  }
+
+  html[data-ui="v2"] .sidebar.open * {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
   }
 
   html[data-ui="v2"] .sidebar.collapsed .brand-wrapper {
@@ -1097,6 +1161,16 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
     display: flex !important;
   }
 
+  html[data-ui="v2"] #sidebar .sidebar-office {
+    background: var(--v2-color-surface-elevated);
+    z-index: 4;
+    box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.14);
+  }
+
+  html[data-ui="v2"] #sidebar .sidebar-nav-wrap {
+    padding-bottom: var(--v2-space-5);
+  }
+
   html[data-ui="v2"] .v2-mobile-nav {
     position: fixed;
     right: 0;
@@ -1106,21 +1180,26 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: var(--v2-space-1);
-    padding: var(--v2-space-2) max(var(--v2-space-2), var(--atrium-safe-right)) calc(var(--v2-space-2) + var(--atrium-safe-bottom)) max(var(--v2-space-2), var(--atrium-safe-left));
+    /* Aproxima os botões da barra em pílula do Safari iOS 26 mantendo respiro simétrico e acima do home indicator. */
+    padding: var(--v2-space-1-5) max(var(--v2-space-2), var(--atrium-safe-right)) max(var(--v2-space-1-5), calc(var(--atrium-safe-bottom) - 12px)) max(var(--v2-space-2), var(--atrium-safe-left));
     background: var(--v2-color-surface);
     border-top: 1px solid var(--v2-color-border);
     box-shadow: var(--v2-shadow-elevated);
-    transition: opacity var(--v2-duration-max) ease-in-out, transform var(--v2-duration-max) ease-in-out;
+    will-change: transform, opacity;
+    transition: transform var(--v2-duration-slow) cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 220ms ease,
+      visibility 0s linear 0s;
   }
 
-  html[data-ui="v2"][data-v2-mobile-chrome="reading"] .v2-mobile-nav {
+  html[data-ui="v2"][data-v2-mobile-chrome="reading"] .v2-mobile-nav,
+  html[data-ui="v2"] .v2-mobile-nav.is-hidden {
+    transform: translate3d(0, calc(100% + 28px + var(--atrium-safe-bottom)), 0);
     opacity: 0;
-    transform: translateY(calc(100% + var(--atrium-safe-bottom)));
-    pointer-events: none;
-  }
-
-  html[data-ui="v2"][data-v2-mobile-chrome="reading"] .v2-mobile-nav.is-chrome-hidden {
     visibility: hidden;
+    pointer-events: none;
+    transition: transform var(--v2-duration-slow) cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 220ms ease,
+      visibility 0s linear var(--v2-duration-slow);
   }
 
   html[data-ui="v2"] .v2-mobile-nav button {
@@ -1163,6 +1242,7 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
     width: 100%;
     max-width: 100%;
     padding-bottom: calc(220px + var(--atrium-safe-bottom));
+    transition: none;
   }
 
   html[data-ui="v2"] .v2-sidebar-scrim {
@@ -1171,6 +1251,7 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
     display: block;
     visibility: hidden;
     opacity: 0;
+    pointer-events: none;
     padding: 0;
     background: rgba(8, 10, 12, 0.75);
     backdrop-filter: blur(4px);
@@ -1183,6 +1264,7 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
   html[data-ui="v2"] .sidebar.open ~ .v2-sidebar-scrim {
     visibility: visible;
     opacity: 1;
+    pointer-events: auto;
   }
 
   html[data-ui="v2"] .toast-region {
@@ -1193,16 +1275,18 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
     right: var(--v2-space-3);
   }
 
+  /* Aviso logo abaixo do topo fixo, no fluxo da página (sticky): empurra o conteúdo em vez
+     de flutuar sobre os botões do rodapé, onde cobria "Em andamento"/"Iniciar" e colidia com
+     o toast. Decisão do operador em 24/11/2026 (shell, opção 1). */
   html[data-ui="v2"] .system-status-bar {
-    position: fixed;
-    left: var(--v2-space-2);
-    right: var(--v2-space-2);
-    bottom: calc(72px + var(--atrium-safe-bottom));
-    z-index: var(--v2-z-overlay);
-    margin: 0;
+    position: sticky;
+    top: calc(var(--atrium-safe-top) + 2 * var(--v2-space-2) + 44px + var(--v2-space-1) + 2 * 44px + var(--v2-space-2) + 1px);
+    bottom: auto;
+    z-index: var(--v2-z-sticky, 20);
+    margin: var(--v2-space-2) var(--v2-space-3) 0;
     grid-template-columns: 20px minmax(0, 1fr) auto;
-    max-height: min(120px, 30dvh);
-    overflow-y: auto;
+    max-height: none;
+    overflow: visible;
     box-shadow: var(--v2-shadow-elevated);
   }
 
@@ -1238,6 +1322,15 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
     pointer-events: none;
   }
 
+  html[data-ui="v2"] :where(.kanban-board, .responsive-table, .table-card, .filter-tabs, #agendaFilterTabs) {
+    touch-action: pan-x pan-y;
+    overscroll-behavior-x: contain;
+  }
+
+  html[data-ui="v2"] :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    font-size: 16px;
+  }
+
   html[data-ui="v2"] .global-search kbd { display: none; }
 }
 
@@ -1246,16 +1339,15 @@ html[data-ui="v2"] .v2-mobile-nav { display: none; }
 html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"] .nav-item[data-view="financial"],
 html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"] .nav-item[data-view="reports"],
 html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"] .nav-item[data-view="documents"],
-html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="intelligence"] .nav-item[data-view="assistant"],
-html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="intelligence"] .nav-item[data-view="prompts"],
-html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="system"] .nav-item[data-view="links"],
-html[data-ui="v2"][data-ui-density="basic"] .nav-item[data-view="leads"] {
+html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"] .nav-item[data-view="assistant"],
+html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"] .nav-item[data-view="leads"],
+html[data-ui="v2"][data-ui-density="basic"] [data-view-link="prompts"],
+html[data-ui="v2"][data-ui-density="basic"] [data-view-link="links"] {
   display: none !important;
 }
 
 /* Grupos totalmente filtrados no Basic saem da navegacao via [hidden] do shell. */
-html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"][hidden],
-html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="intelligence"][hidden] {
+html[data-ui="v2"][data-ui-density="basic"] [data-v2-nav-group="management"][hidden] {
   display: none !important;
 }
 
@@ -1306,11 +1398,13 @@ html[data-ui="v2"][data-ui-density="basic"] .brand-density-chip {
   html[data-ui="v2"] .system-status-bar {
     grid-template-columns: 20px minmax(0, 1fr);
   }
+  /* A mensagem de erro aparece inteira (até duas ou três linhas): cortada, o usuário não
+     sabia o que falhou. */
   html[data-ui="v2"] .system-status-bar > #systemStatusDetail {
     grid-column: 2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
   }
 }
 
@@ -1370,4 +1464,129 @@ html[data-can-collect="false"] #btnSyncEprocNow,
 html[data-can-collect="false"] [data-pje-sync],
 html[data-can-collect="false"] [data-retry-term-id] {
   display: none !important;
+}
+
+/* Os avisos passam os cliques adiante: um aviso por cima de um botão
+ * não pode impedir o clique. Só o botão de ação do próprio aviso recebe clique. */
+html[data-ui="v2"] .toast-region,
+html[data-ui="v2"] .toast-region .toast {
+  pointer-events: none;
+}
+
+html[data-ui="v2"] .toast-region .toast-action {
+  pointer-events: auto;
+}
+
+/* "Chave ativa" é estado, não ação: tom neutro, sem a faixa verde no celular. */
+html[data-ui="v2"] #view-assistant #aiKeyStatusChip.connected { color: var(--v2-color-success); background: transparent; border-color: color-mix(in srgb, var(--v2-color-success) 35%, transparent); box-shadow: none; }
+html[data-ui="v2"] #guidedTourBackdrop #tourPrevButton[hidden], #guidedTourBackdrop #tourPrevButton[hidden] { display: none !important; }
+
+/* Overlays de toque direto para acionar o Taptic Engine no iOS Safari 26.5+.
+   Estes nós só são criados em aparelhos iOS com retorno tátil ativo (`data-ios-haptics="1"`). */
+html[data-ios-haptics="1"] .ios-haptic-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+}
+html[data-ios-haptics="1"] .ios-haptic-wrap.is-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+}
+html[data-ios-haptics="1"] .ios-haptic-wrap.is-block > :not(.ios-haptic-hit) {
+  width: 100%;
+  min-width: 0;
+}
+html[data-ios-haptics="1"] .ios-haptic-wrap.is-bnav {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+}
+html[data-ios-haptics="1"] .ios-haptic-wrap.is-bnav > button {
+  width: 100%;
+}
+html[data-ios-haptics="1"] .ios-haptic-hit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  opacity: 0.001;
+  cursor: pointer;
+  z-index: 3;
+  -webkit-appearance: auto;
+  appearance: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+html[data-ios-haptics="1"] .financial-upcoming-in[switch] {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0.001;
+  pointer-events: auto;
+  z-index: 2;
+  -webkit-appearance: auto;
+  appearance: auto;
+}
+@media (max-width: 860px) {
+  /* No iOS Safari (`data-ios-haptics="1"`), os botões da topbar e da dock inferior recebem
+     wrapper `.ios-haptic-wrap` para o overlay switch nativo. O wrapper herda a célula da grade
+     e preenche 100% da largura, evitando botões estreitos ou desalinhados. */
+  html[data-ui="v2"][data-ios-haptics="1"] .topbar-left .ios-haptic-wrap:has(> #menuToggle) {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--v2-radius-md);
+  }
+  html[data-ui="v2"][data-ios-haptics="1"] .topbar-actions > .ios-haptic-wrap:has(> #themeToggleButton) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  html[data-ui="v2"][data-ios-haptics="1"] .topbar-actions > .ios-haptic-wrap:has(> #syncButton) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  html[data-ui="v2"][data-ios-haptics="1"] .topbar-actions .quick-add {
+    width: 100%;
+    min-width: 0;
+  }
+  html[data-ui="v2"][data-ios-haptics="1"] .topbar-actions .ios-haptic-wrap {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    border-radius: var(--v2-radius-md);
+  }
+  html[data-ui="v2"][data-ios-haptics="1"] .topbar-actions .ios-haptic-wrap > button {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: 44px;
+    min-height: 44px;
+  }
+  html[data-ui="v2"][data-ios-haptics="1"] .v2-mobile-nav .ios-haptic-wrap.is-bnav {
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+  }
+}
+@media (max-width: 760px) {
+  html[data-ios-haptics="1"] #view-financial .toolbar-actions .ios-haptic-wrap.is-span-full {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 860px) and (orientation: landscape) {
+  html[data-ui="v2"] .v2-mobile-nav {
+    padding-bottom: max(var(--v2-space-1-5), calc(var(--atrium-safe-bottom) - 6px));
+  }
 }

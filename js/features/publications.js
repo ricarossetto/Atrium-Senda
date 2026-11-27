@@ -1,12 +1,13 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.3.2';
-import { createAttemptKey } from '../core/attempt-key.js?v=3.3.2';
+import { Store, isoDate, uid } from '../core/store.js?v=3.4.0';
+import { createAttemptKey } from '../core/attempt-key.js?v=3.4.0';
 import {
   activeIntimations,
+  buildIntimationIndex,
   findIntimationRecord,
   isActiveIntimation,
   isMergedIntimation,
   resolveIntimationId
-} from '../core/publication-scope.js?v=3.3.2';
+} from '../core/publication-scope.js?v=3.4.0';
 import {
   createPublicationsV2Presenter,
   renderDuplicateReviewPanel,
@@ -14,19 +15,19 @@ import {
   renderPublicationDetail,
   renderPublicationEmpty,
   renderPublicationRow
-} from '../views/ui-v2/publications-presenter.js?v=3.3.2';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.3.2';
-import { publicationReadableText } from '../core/html-text.js?v=3.3.2';
-import { buildPublicationBrief, isHumanDeadlineSource, publicationTodayReason } from '../core/publication-brief.js?v=3.3.2';
-import { sanitizeRichHtml } from '../core/html-safety.js?v=3.3.2';
-import { installModalComboboxes } from '../components/modal.js?v=3.3.2';
-import { createRiskConfirm } from '../components/risk-confirm.js?v=3.3.2';
-import { publicationLawyersList } from '../core/publication-lawyers.js?v=3.3.2';
-import { officeOabKeys, officeSideLawyers } from '../core/publication-parties.js?v=3.3.2';
-import { renderOfficeInvolved, publicationInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.3.2';
-import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.3.2';
-import { matchMemberByName } from '../core/task-assignees.js?v=3.3.2';
-import { recordInvolvesMember } from '../core/office-involvement.js?v=3.3.2';
+} from '../views/ui-v2/publications-presenter.js?v=3.4.0';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.4.0';
+import { publicationReadableText } from '../core/html-text.js?v=3.4.0';
+import { buildPublicationBrief, isHumanDeadlineSource, publicationTodayReason } from '../core/publication-brief.js?v=3.4.0';
+import { sanitizeRichHtml } from '../core/html-safety.js?v=3.4.0';
+import { installModalComboboxes } from '../components/modal.js?v=3.4.0';
+import { createRiskConfirm } from '../components/risk-confirm.js?v=3.4.0';
+import { publicationLawyersList } from '../core/publication-lawyers.js?v=3.4.0';
+import { officeOabKeys, officeSideLawyers } from '../core/publication-parties.js?v=3.4.0';
+import { createInvolvementIndex, renderOfficeInvolved, publicationInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.4.0';
+import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.4.0';
+import { matchMemberByName } from '../core/task-assignees.js?v=3.4.0';
+import { recordInvolvesMember } from '../core/office-involvement.js?v=3.4.0';
 
 // A nova tentativa do mesmo envio, depois de uma queda de rede, não manda outro e-mail.
 const emailAttempt = createAttemptKey();
@@ -34,6 +35,7 @@ const emailAttempt = createAttemptKey();
 export { activeIntimations, findIntimationRecord, isActiveIntimation, isMergedIntimation, resolveIntimationId };
 
 const pluralize = (count, singular, plural) => `${count} ${count === 1 ? singular : plural}`;
+const PT_BR_COLLATOR = new Intl.Collator('pt-BR');
 
 export const ACT_RULES = [
   { regex: /\b(embargos?\s+de\s+declara[cç][aã]o|embargos?\s+declarat[oó]rios?)\b/i, category: 'Embargos de Declaração', priority: 'importante', label: 'Embargos', css: 'embargos' },
@@ -117,18 +119,22 @@ export function filterPublications(items, {
   countOnly = false,
   now = new Date()
 } = {}) {
-  const todayStr = isoDate(0, now);
+  const needsCutoff = cutoff === '2days' || cutoff === 'today' || cutoff === '7days' || cutoff === '30days';
+  const todayStr = needsCutoff ? isoDate(0, now) : '';
+  const cutoff2DaysStr = cutoff === '2days' ? isoDate(-1, now) : '';
+  const cutoff7DaysStr = cutoff === '7days' ? isoDate(-7, now) : '';
+  const cutoff30DaysStr = cutoff === '30days' ? isoDate(-30, now) : '';
   const filtered = (Array.isArray(items) ? items : []).filter(item => {
     if (!isActiveIntimation(item)) return false;
     if (mineOnly && (!me || !recordInvolvesMember(item, processes, me, teams))) return false;
-    const pubDate = formatPublicationIsoDate(item.publishedAt);
-    if (cutoff === '2days' && pubDate && pubDate < isoDate(-1, now)) return false;
-    if (cutoff === 'today' && pubDate && pubDate < todayStr) return false;
-    if (cutoff === '7days' && pubDate) {
-      if (pubDate < isoDate(-7, now)) return false;
-    }
-    if (cutoff === '30days' && pubDate) {
-      if (pubDate < isoDate(-30, now)) return false;
+    if (needsCutoff) {
+      const pubDate = formatPublicationIsoDate(item.publishedAt);
+      if (pubDate) {
+        if (cutoff === '2days' && pubDate < cutoff2DaysStr) return false;
+        if (cutoff === 'today' && pubDate < todayStr) return false;
+        if (cutoff === '7days' && pubDate < cutoff7DaysStr) return false;
+        if (cutoff === '30days' && pubDate < cutoff30DaysStr) return false;
+      }
     }
 
     const treatmentStatus = item.treatmentStatus || 'untreated';
@@ -154,6 +160,23 @@ export function filterPublications(items, {
 
   if (countOnly) return filtered;
 
+  const pubTimeCache = new Map();
+  const createdTimeCache = new Map();
+  const getPubTime = item => {
+    if (pubTimeCache.has(item)) return pubTimeCache.get(item);
+    const ts = parsePublicationLocalDate(item.publishedAt)?.getTime()
+      || (item.publishedAt ? new Date(item.publishedAt).getTime() : 0)
+      || 0;
+    pubTimeCache.set(item, ts);
+    return ts;
+  };
+  const getCreatedTime = item => {
+    if (createdTimeCache.has(item)) return createdTimeCache.get(item);
+    const ts = new Date(item.createdAt || 0).getTime() || 0;
+    createdTimeCache.set(item, ts);
+    return ts;
+  };
+
   filtered.sort((a, b) => {
     if (sort === 'priority-urgent') {
       const urgentA = (a.urgent || a.priority === 'urgente') ? 1 : 0;
@@ -163,42 +186,42 @@ export function filterPublications(items, {
       const importantB = b.important ? 1 : 0;
       if (importantA !== importantB) return importantB - importantA;
       if ((a.treatmentStatus || 'untreated') === 'untreated' && (b.treatmentStatus || 'untreated') === 'untreated') {
-        return new Date(a.publishedAt || 0) - new Date(b.publishedAt || 0);
+        return getPubTime(a) - getPubTime(b);
       }
-      return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+      return getPubTime(b) - getPubTime(a);
     }
     if (sort === 'priority-important') {
       const importantA = a.important ? 1 : 0;
       const importantB = b.important ? 1 : 0;
       if (importantA !== importantB) return importantB - importantA;
-      const timeB = parsePublicationLocalDate(b.publishedAt)?.getTime() || (b.publishedAt ? new Date(b.publishedAt).getTime() : 0) || 0;
-      const timeA = parsePublicationLocalDate(a.publishedAt)?.getTime() || (a.publishedAt ? new Date(a.publishedAt).getTime() : 0) || 0;
+      const timeB = getPubTime(b);
+      const timeA = getPubTime(a);
       if (timeB !== timeA) return timeB - timeA;
-      return String(b.id || '').localeCompare(String(a.id || ''));
+      return PT_BR_COLLATOR.compare(String(b.id || ''), String(a.id || ''));
     }
     if (sort === 'date-asc') {
-      const timeA = parsePublicationLocalDate(a.publishedAt)?.getTime() || (a.publishedAt ? new Date(a.publishedAt).getTime() : 0) || 0;
-      const timeB = parsePublicationLocalDate(b.publishedAt)?.getTime() || (b.publishedAt ? new Date(b.publishedAt).getTime() : 0) || 0;
+      const timeA = getPubTime(a);
+      const timeB = getPubTime(b);
       if (timeA !== timeB) return timeA - timeB;
-      const createdA = new Date(a.createdAt || 0).getTime() || 0;
-      const createdB = new Date(b.createdAt || 0).getTime() || 0;
+      const createdA = getCreatedTime(a);
+      const createdB = getCreatedTime(b);
       if (createdA !== createdB) return createdA - createdB;
-      return String(a.id || '').localeCompare(String(b.id || ''));
+      return PT_BR_COLLATOR.compare(String(a.id || ''), String(b.id || ''));
     }
     if (sort === 'date-desc') {
-      const timeB = parsePublicationLocalDate(b.publishedAt)?.getTime() || (b.publishedAt ? new Date(b.publishedAt).getTime() : 0) || 0;
-      const timeA = parsePublicationLocalDate(a.publishedAt)?.getTime() || (a.publishedAt ? new Date(a.publishedAt).getTime() : 0) || 0;
+      const timeB = getPubTime(b);
+      const timeA = getPubTime(a);
       if (timeB !== timeA) return timeB - timeA;
-      const createdB = new Date(b.createdAt || 0).getTime() || 0;
-      const createdA = new Date(a.createdAt || 0).getTime() || 0;
+      const createdB = getCreatedTime(b);
+      const createdA = getCreatedTime(a);
       if (createdB !== createdA) return createdB - createdA;
-      return String(b.id || '').localeCompare(String(a.id || ''));
+      return PT_BR_COLLATOR.compare(String(b.id || ''), String(a.id || ''));
     }
-    if (sort === 'process') return String(a.process || '').localeCompare(String(b.process || ''));
-    const timeB = parsePublicationLocalDate(b.publishedAt)?.getTime() || (b.publishedAt ? new Date(b.publishedAt).getTime() : 0) || 0;
-    const timeA = parsePublicationLocalDate(a.publishedAt)?.getTime() || (a.publishedAt ? new Date(a.publishedAt).getTime() : 0) || 0;
+    if (sort === 'process') return PT_BR_COLLATOR.compare(String(a.process || ''), String(b.process || ''));
+    const timeB = getPubTime(b);
+    const timeA = getPubTime(a);
     if (timeB !== timeA) return timeB - timeA;
-    return String(b.id || '').localeCompare(String(a.id || ''));
+    return PT_BR_COLLATOR.compare(String(b.id || ''), String(a.id || ''));
   });
 
   return filtered;
@@ -338,6 +361,7 @@ export function createPublicationsFeature({
   const INBOX_PAGE_SIZE = 80;
   let inboxVisibleLimit = INBOX_PAGE_SIZE;
   let inboxListSignature = '';
+  const boundInboxLists = new WeakSet();
   let currentEmailBulletin = null;
   let publicationsPresenter;
   // Escritas de tratamento saem em fila única: cada POST lê store.revision só
@@ -352,6 +376,8 @@ export function createPublicationsFeature({
     );
     return run;
   };
+  const pendingTreatmentIds = new Set();
+  const pendingQuickTreatIds = new Set();
   let aiClassifierStatus = { enabled: false, available: false, reason: '', loaded: false };
   const aiClassifierCache = new Map();
   const aiClassifierInflight = new Set();
@@ -492,6 +518,27 @@ const setBriefTaskBlocked = value => {
     },
 
     bindListeners() {
+      const ensureInboxListDelegation = list => {
+        if (!list || typeof list.addEventListener !== 'function' || boundInboxLists.has(list)) return;
+        boundInboxLists.add(list);
+        list.addEventListener('click', event => {
+          const actionButton = event.target?.closest?.('[data-row-action]');
+          if (actionButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            return this.handleRowAction(actionButton.dataset.publicationId, actionButton.dataset.rowAction, actionButton);
+          }
+          if (event.target?.closest?.('[data-inbox-load-more]')) {
+            inboxVisibleLimit += INBOX_PAGE_SIZE;
+            this.renderInbox();
+            return;
+          }
+          const rowButton = event.target?.closest?.('[data-intimation-id]');
+          if (rowButton) return this.select(rowButton.dataset.intimationId, rowButton);
+        });
+      };
+      this._ensureInboxListDelegation = ensureInboxListDelegation;
+      ensureInboxListDelegation(byId('inboxList'));
       byId('newIntimationButton')?.addEventListener('click', () => onOpenIntimation?.());
       byId('importIntimationButton')?.addEventListener('click', () => byId('jsonImportInput')?.click());
       byId('jsonImportInput')?.addEventListener('change', event => onImportJson?.(event.target.files[0]));
@@ -660,12 +707,18 @@ const setBriefTaskBlocked = value => {
 
     getMetrics(now = new Date()) {
       const intimations = activeIntimations(store.state.intimations);
-      return {
-        untreated: intimations.filter(item => (item.treatmentStatus || 'untreated') === 'untreated').length,
-        inReview: intimations.filter(item => item.treatmentStatus === 'in_review').length,
-        treatedToday: intimations.filter(item => item.treatmentStatus === 'treated' && isDateToday(item.treatedAt, now)).length,
-        discardedToday: intimations.filter(item => item.treatmentStatus === 'discarded' && isDateToday(item.discardedAt, now)).length
-      };
+      let untreated = 0;
+      let inReview = 0;
+      let treatedToday = 0;
+      let discardedToday = 0;
+      for (const item of intimations) {
+        const status = item.treatmentStatus || 'untreated';
+        if (status === 'untreated') untreated += 1;
+        else if (status === 'in_review') inReview += 1;
+        else if (status === 'treated' && isDateToday(item.treatedAt, now)) treatedToday += 1;
+        else if (status === 'discarded' && isDateToday(item.discardedAt, now)) discardedToday += 1;
+      }
+      return { untreated, inReview, treatedToday, discardedToday };
     },
 
     renderMetrics() {
@@ -693,11 +746,13 @@ const setBriefTaskBlocked = value => {
       });
     },
 
-    intimationParties(item) {
+    intimationParties(item, processByNumber = null) {
       if (isMergedIntimation(item)) return '';
-      const process = store.state.processes.find(record => record.number === item.process);
       const direct = String(item.client || '').trim();
       if (direct && !/^(?:cliente|partes?) (?:não|nao) identificad/i.test(direct)) return direct;
+      const process = processByNumber instanceof Map
+        ? processByNumber.get(item.process)
+        : store.state.processes.find(record => record.number === item.process);
       return [process?.client, process?.opposingParty]
         .map(value => String(value || '').trim())
         .filter(Boolean)
@@ -716,7 +771,7 @@ const setBriefTaskBlocked = value => {
       return `<span class="treatment-badge ${badge.css}">${badge.label}</span>`;
     },
 
-    renderInbox() {
+    renderInbox({ skipDetail = false } = {}) {
       if (byId('inboxCutoffSelect')) byId('inboxCutoffSelect').value = inboxCutoff;
       if (byId('inboxSortSelect')) byId('inboxSortSelect').value = inboxSort;
       const trackingLabel = byId('publicationTrackingLabel');
@@ -728,16 +783,26 @@ const setBriefTaskBlocked = value => {
         button.classList.toggle('active', active);
         button.setAttribute('aria-pressed', active ? 'true' : 'false');
       });
+      // Contadores já atualizados acima; a lista só é montada com a view aberta
+      // (switchView renderiza de novo ao entrar em Publicações).
+      const inboxSection = byId('view-inbox');
+      if (inboxSection && !inboxSection.classList.contains('active')) return;
       const items = this.filteredItems();
       const allItems = activeIntimations(store.state.intimations);
       if (!officeDirectoryLoaded()) {
         void refreshOfficeDirectory().then(directory => { if (directory.users.length || directory.teams.length) this.renderInbox(); });
       }
+      const directory = getOfficeDirectory();
+      const users = directory.users.length ? directory.users : (store.state.users || []);
+      const processes = store.state.processes || [];
+      const processByNumber = new Map();
+      for (const proc of processes) {
+        if (proc?.number && !processByNumber.has(proc.number)) processByNumber.set(proc.number, proc);
+      }
+      const involvementIndex = createInvolvementIndex({ processes, users, teams: directory.teams });
       const involvedFor = item => {
-        const directory = getOfficeDirectory();
-        const users = directory.users.length ? directory.users : (store.state.users || []);
-        const people = publicationInvolvedPeople(item, { users, processes: store.state.processes || [], lawyers: publicationLawyersFor(item) });
-        const team = teamForTask({ process: item.process }, directory.teams, store.state.processes || []) || teamForPeople(directory.teams, people);
+        const people = publicationInvolvedPeople(item, { users, processes, lawyers: publicationLawyersFor(item), index: involvementIndex });
+        const team = teamForTask({ process: item.process }, directory.teams, processes, involvementIndex) || teamForPeople(directory.teams, people);
         return renderOfficeInvolved({ people, team, escapeHtml, iconSvg });
       };
       const signature = [inboxFilter, inboxSort, inboxCutoff, byId('inboxSearch')?.value || ''].join('|');
@@ -758,14 +823,36 @@ const setBriefTaskBlocked = value => {
         : `<div class="empty-detail"><span>${iconSvg('check')}</span><h3>Nenhuma publicação encontrada</h3><p>Não há publicações para o filtro ou ordenação selecionados.</p></div>`;
       const list = byId('inboxList');
       if (!list) return;
+      const hasListDelegation = typeof list.addEventListener === 'function';
+      if (hasListDelegation) {
+        if (typeof this._ensureInboxListDelegation === 'function') this._ensureInboxListDelegation(list);
+        else if (!boundInboxLists.has(list)) {
+          boundInboxLists.add(list);
+          list.addEventListener('click', event => {
+            const actionButton = event.target?.closest?.('[data-row-action]');
+            if (actionButton) {
+              event.preventDefault();
+              event.stopPropagation();
+              return this.handleRowAction(actionButton.dataset.publicationId, actionButton.dataset.rowAction, actionButton);
+            }
+            if (event.target?.closest?.('[data-inbox-load-more]')) {
+              inboxVisibleLimit += INBOX_PAGE_SIZE;
+              this.renderInbox();
+              return;
+            }
+            const rowButton = event.target?.closest?.('[data-intimation-id]');
+            if (rowButton) return this.select(rowButton.dataset.intimationId, rowButton);
+          });
+        }
+      }
       if (isV2()) {
         getPresenter().updateCount({ visible: items.length, total: allItems.length });
         list.innerHTML = items.length ? `${visibleItems.map(item => renderPublicationRow({
           item,
           act: classifyIntimationAct(item.text, item.title, item.type),
-          parties: this.intimationParties(item),
+          parties: this.intimationParties(item, processByNumber),
           selected: selectedIntimation === item.id,
-          aiClassifier: this.aiClassifierBadgeState(canonicalIntimationId(item.id)),
+          aiClassifier: this.aiClassifierBadgeState(String(item.id)),
           involved: involvedFor(item),
           escapeHtml,
           formatDate,
@@ -778,7 +865,7 @@ const setBriefTaskBlocked = value => {
         const urgentBadge = urgent ? '<span class="badge-urgent">URGENTE</span>' : '';
         const importantBadge = item.important ? '<span class="badge-important">IMPORTANTE</span>' : '';
         const untreated = (item.treatmentStatus || 'untreated') === 'untreated';
-        const parties = this.intimationParties(item);
+        const parties = this.intimationParties(item, processByNumber);
         return `
         <button class="inbox-row ${selectedIntimation === item.id ? 'active' : ''} ${urgent ? 'is-urgent' : ''} ${item.important ? 'is-important' : ''} ${untreated ? 'row-untreated' : ''}" data-intimation-id="${escapeHtml(item.id)}" aria-label="Publicação ${escapeHtml(item.title)}">
           <span class="inbox-primary">
@@ -797,25 +884,38 @@ const setBriefTaskBlocked = value => {
         </button>`;
       }).join('')}${items.length > visibleItems.length ? `<div class="inbox-load-more"><button type="button" class="button ghost" data-inbox-load-more>Mostrar mais ${pluralize(items.length - visibleItems.length, 'publicação', 'publicações')}</button><small>${visibleItems.length} de ${items.length} publicações neste filtro</small></div>` : ''}` : emptyMessage;
 
-      list.querySelectorAll('[data-intimation-id]').forEach(button => {
-        button.addEventListener('click', () => this.select(button.dataset.intimationId, button));
-      });
+      if (pendingQuickTreatIds.size > 0 && typeof list.querySelectorAll === 'function') {
+        for (const rowEl of list.querySelectorAll('[data-intimation-id]')) {
+          if (!pendingQuickTreatIds.has(rowEl.dataset?.intimationId)) continue;
+          rowEl.classList?.add('is-treating');
+          const btn = rowEl.querySelector?.('[data-row-action="mark_treated"]');
+          if (btn) {
+            btn.disabled = true;
+            btn.setAttribute?.('aria-busy', 'true');
+          }
+        }
+      }
+
       this.renderDuplicateReview();
-      list.querySelectorAll('[data-inbox-load-more]').forEach(button => {
-        button.addEventListener('click', () => {
-          inboxVisibleLimit += INBOX_PAGE_SIZE;
-          this.renderInbox();
+      if (!hasListDelegation) {
+        list.querySelectorAll?.('[data-intimation-id]')?.forEach(button => {
+          button.addEventListener('click', () => this.select(button.dataset.intimationId, button));
         });
-      });
-      list.querySelectorAll('[data-row-action]').forEach(button => {
-        button.addEventListener('click', event => {
-          event.preventDefault();
-          event.stopPropagation();
-          return this.handleRowAction(button.dataset.publicationId, button.dataset.rowAction, button);
+        list.querySelectorAll?.('[data-inbox-load-more]')?.forEach(button => {
+          button.addEventListener('click', () => {
+            inboxVisibleLimit += INBOX_PAGE_SIZE;
+            this.renderInbox();
+          });
         });
-      });
-      if (selectedIntimation) this.renderDetail();
-      else if (isV2()) this.renderDetail();
+        list.querySelectorAll?.('[data-row-action]')?.forEach(button => {
+          button.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            return this.handleRowAction(button.dataset.publicationId, button.dataset.rowAction, button);
+          });
+        });
+      }
+      if (!skipDetail && (selectedIntimation || isV2())) this.renderDetail();
     },
 
     async handleRowAction(intimationId, action, sourceButton = null) {
@@ -823,41 +923,72 @@ const setBriefTaskBlocked = value => {
       const canonicalId = canonicalIntimationId(intimationId);
       const item = findIntimation(canonicalId);
       if (!item) return false;
-      if (item.unread) item.unread = false;
-      // Trava o botão durante o voo: sem duplo clique na mesma linha (que viraria
-      // transição inválida) e com retorno visual imediato.
-      if (sourceButton) sourceButton.disabled = true;
-      const shell = sourceButton?.closest?.('[data-intimation-id]') || null;
-      const rowIndex = shell
-        ? [...(byId('inboxList')?.querySelectorAll('[data-intimation-id]') || [])].indexOf(shell)
-        : -1;
-      const result = await this.applyTreatmentAction(canonicalId, 'mark_treated', null, { successToast: false, deferRender: true });
-      if (!result) {
-        if (sourceButton) sourceButton.disabled = false;
-        store.save();
+      if (pendingTreatmentIds.has(canonicalId) || (item.treatmentStatus || 'untreated') === 'treated') {
         return false;
       }
-      const canonical = findIntimation(canonicalId) || item;
-      if (canonical.unread) canonical.unread = false;
-      // Flush único com a revision já adotada — ENFILEIRADO na mesma cadeia das
-      // escritas de tratamento (sem isso, ele correria com o POST seguinte e
-      // tomaria 409 da própria fila: foi exatamente esse o reload duplo).
-      // Não aguardado: o toast/feedback não espera a rede.
-      enqueueTreatmentRequest(() => store.flush());
-      if (shell && !prefersReducedMotion()) {
-        shell.classList.add('is-treated-exit');
-        await delay(240);
+      pendingTreatmentIds.add(canonicalId);
+      pendingQuickTreatIds.add(canonicalId);
+      // Trava o botão e aplica retorno visual imediato durante o voo sem mutar store.state
+      // antes do servidor confirmar (evita duplo clique e preserva wasClean).
+      if (sourceButton) {
+        sourceButton.disabled = true;
+        sourceButton.setAttribute?.('aria-busy', 'true');
       }
-      this.renderInbox();
-      this.renderMetrics();
-      onRenderGlobalMetrics?.();
-      this.renderDetail();
-      toast('Publicação marcada como tratada.', 'success', {
-        label: 'Desfazer',
-        onClick: () => this.applyTreatmentAction(canonicalId, 'reopen')
-      });
-      focusNextQuickAction(rowIndex);
-      return true;
+      const initialShell = sourceButton?.closest?.('[data-intimation-id]') || null;
+      initialShell?.classList?.add('is-treating');
+      const rowIndex = initialShell
+        ? [...(byId('inboxList')?.querySelectorAll('[data-intimation-id]') || [])].indexOf(initialShell)
+        : -1;
+      const findRowShell = id => {
+        const listEl = byId('inboxList');
+        if (!listEl || typeof listEl.querySelectorAll !== 'function') return null;
+        for (const el of listEl.querySelectorAll('[data-intimation-id]')) {
+          if (el.dataset?.intimationId === id) return el;
+        }
+        return null;
+      };
+      let result = null;
+      try {
+        result = await this.applyTreatmentAction(canonicalId, 'mark_treated', null, { successToast: false, deferRender: true });
+        const liveShell = (initialShell && initialShell.isConnected !== false)
+          ? initialShell
+          : findRowShell(canonicalId);
+        const liveButton = (sourceButton && sourceButton.isConnected !== false)
+          ? sourceButton
+          : (liveShell?.querySelector?.('[data-row-action="mark_treated"]') || null);
+        if (!result) {
+          pendingQuickTreatIds.delete(canonicalId);
+          liveShell?.classList?.remove('is-treating');
+          if (liveButton) {
+            liveButton.disabled = false;
+            liveButton.removeAttribute?.('aria-busy');
+          }
+          return false;
+        }
+        const canonical = findIntimation(canonicalId) || item;
+        // Apenas fallback se resposta legada/mock ainda trouxe unread === true: servidor real já persiste unread = false.
+        if (canonical.unread) {
+          canonical.unread = false;
+          if (typeof store.flush === 'function') enqueueTreatmentRequest(() => store.flush());
+        }
+        if (liveShell && !prefersReducedMotion()) {
+          liveShell.classList?.remove('is-treating');
+          liveShell.classList?.add('is-treated-exit');
+          await delay(180);
+        }
+        pendingQuickTreatIds.delete(canonicalId);
+        this.renderInbox();
+        onRenderGlobalMetrics?.();
+        toast('Publicação marcada como tratada.', 'success', {
+          label: 'Desfazer',
+          onClick: () => this.applyTreatmentAction(canonicalId, 'reopen')
+        });
+        focusNextQuickAction(rowIndex);
+        return true;
+      } finally {
+        pendingTreatmentIds.delete(canonicalId);
+        pendingQuickTreatIds.delete(canonicalId);
+      }
     },
 
     renderAutoOrganizeToggle() {
@@ -891,17 +1022,54 @@ const setBriefTaskBlocked = value => {
     },
 
     select(id, invoker = null) {
-      const canonicalId = canonicalIntimationId(id);
-      selectedIntimation = canonicalId;
-      if (isV2()) getPresenter().prepareDetailOpen(invoker, canonicalId);
-      const item = findIntimation(canonicalId);
-      if (item && item.unread) {
+      const index = buildIntimationIndex(store.state.intimations);
+      const targetId = resolveIntimationId(store.state.intimations, id, index);
+      selectedIntimation = targetId;
+      if (isV2()) getPresenter().prepareDetailOpen(invoker, targetId);
+      const item = targetId ? (index.get(targetId) || findIntimationRecord(store.state.intimations, targetId, index)) : null;
+      const wasUnread = Boolean(item && item.unread);
+      if (wasUnread) {
         item.unread = false;
         store.save();
       }
-      this.renderInbox();
-      this.renderMetrics();
-      onRenderGlobalMetrics?.();
+      const list = byId('inboxList');
+      let updatedInPlace = false;
+      if (list && typeof list.querySelectorAll === 'function' && targetId) {
+        for (const prev of list.querySelectorAll('.inbox-row.active')) {
+          prev.classList.remove('active');
+          if (prev.hasAttribute('aria-pressed')) prev.setAttribute('aria-pressed', 'false');
+        }
+        for (const candidate of list.querySelectorAll('[data-intimation-id]')) {
+          if (candidate.dataset?.intimationId !== targetId) continue;
+          const row = candidate.classList?.contains('inbox-row') ? candidate : candidate.querySelector?.('.inbox-row');
+          if (row) {
+            row.classList.add('active');
+            if (row.hasAttribute('aria-pressed')) row.setAttribute('aria-pressed', 'true');
+            if (wasUnread) {
+              const ariaLabel = row.getAttribute('aria-label');
+              if (ariaLabel && ariaLabel.includes('Não lida.')) row.setAttribute('aria-label', ariaLabel.replace('Não lida.', 'Lida.'));
+            }
+          }
+          if (wasUnread) {
+            const dot = candidate.querySelector?.('.unread-dot');
+            if (dot) {
+              dot.classList.add('read');
+              if (dot.hasAttribute('title')) dot.setAttribute('title', 'Lida');
+            }
+            const statusText = candidate.querySelector?.('.publication-record-status span');
+            if (statusText) statusText.textContent = 'Lida';
+          }
+          updatedInPlace = true;
+          break;
+        }
+      }
+      if (!updatedInPlace) {
+        this.renderInbox({ skipDetail: true });
+      }
+      if (wasUnread || !updatedInPlace) {
+        this.renderMetrics();
+        onRenderGlobalMetrics?.();
+      }
       this.renderDetail();
     },
 
@@ -912,7 +1080,15 @@ const setBriefTaskBlocked = value => {
       const selectedId = selectedIntimation;
       selectedIntimation = null;
       getPresenter().closeDetail({ restoreFocus: false });
-      this.renderInbox();
+      const list = byId('inboxList');
+      if (list && typeof list.querySelectorAll === 'function') {
+        for (const prev of list.querySelectorAll('.inbox-row.active')) {
+          prev.classList.remove('active');
+          if (prev.hasAttribute('aria-pressed')) prev.setAttribute('aria-pressed', 'false');
+        }
+      } else {
+        this.renderInbox({ skipDetail: true });
+      }
       this.renderDetail();
       if (selectedId) {
         const returnRecord = [...(byId('inboxList')?.querySelectorAll('[data-intimation-id]') || [])]
@@ -944,7 +1120,7 @@ const setBriefTaskBlocked = value => {
 
       if (isV2()) {
         const linkedTaskIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : (item.taskId ? [item.taskId] : []);
-        const linkedTasks = (store.state.tasks || []).filter(task => task.active !== false && (linkedTaskIds.includes(task.id) || taskLinksToIntimation(task, item.id)));
+        const linkedTasks = (store.state.tasks || []).filter(task => task && task.active !== false && !task.absorbedInto && (linkedTaskIds.includes(task.id) || taskLinksToIntimation(task, item.id)));
         const linkedProcess = resolvePublicationProcess(store.state, item);
         const linkedContact = resolvePublicationContact(store.state, item);
         const linkedWorkActions = (Array.isArray(item.linkedWorkActions) ? item.linkedWorkActions : []).map(relation => ({
@@ -1117,7 +1293,7 @@ const setBriefTaskBlocked = value => {
       }
 
       const linkedTaskIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : (item.taskId ? [item.taskId] : []);
-      const linkedTasks = (store.state.tasks || []).filter(task => task.active !== false && (linkedTaskIds.includes(task.id) || taskLinksToIntimation(task, item.id)));
+      const linkedTasks = (store.state.tasks || []).filter(task => task && task.active !== false && !task.absorbedInto && (linkedTaskIds.includes(task.id) || taskLinksToIntimation(task, item.id)));
       const linkedTasksHtml = linkedTasks.length > 0 ? `
         <div class="linked-tasks-card">
           <div class="linked-tasks-header"><span>${iconSvg('tasks')} Providência criada (${linkedTasks.length})</span></div>
@@ -1377,11 +1553,7 @@ const setBriefTaskBlocked = value => {
 
     async createWorkAction(publicationId, action) {
       try {
-        const response = await windowRef.fetch(`/api/publications/${encodeURIComponent(publicationId)}/work-actions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': windowRef.KellerAuth?.csrfToken || '' },
-          body: JSON.stringify({ publicationId, revision: store.revision ?? store.state?.revision ?? undefined, action })
-        });
+        const response = await this.securePostJson(`/api/publications/${encodeURIComponent(publicationId)}/work-actions`, { publicationId, revision: store.revision ?? store.state?.revision ?? undefined, action });
         const data = await response.json().catch(() => ({}));
         if (response.status === 409) {
           toast(data.message || 'Esta publicação foi atualizada por outro usuário. Recarregue os dados.', 'warning');
@@ -1511,16 +1683,9 @@ const setBriefTaskBlocked = value => {
       const undo = this.briefTaskState(canonicalId).undo;
       if (!undo?.taskId) return false;
       try {
-        const response = await windowRef.fetch(`/api/publications/${encodeURIComponent(canonicalId)}/task/undo`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': windowRef.KellerAuth?.csrfToken || ''
-          },
-          body: JSON.stringify({
-            taskId: undo.taskId,
-            revision: store.revision ?? store.state?.revision ?? undefined
-          })
+        const response = await this.securePostJson(`/api/publications/${encodeURIComponent(canonicalId)}/task/undo`, {
+          taskId: undo.taskId,
+          revision: store.revision ?? store.state?.revision ?? undefined
         });
         const data = await response.json().catch(() => ({}));
         const message = String(data.error || data.message || '');
@@ -1535,7 +1700,19 @@ const setBriefTaskBlocked = value => {
           });
           briefTaskUndo = null;
           this.renderDetail();
-          toast(message || 'Não é possível desfazer esta tarefa.', 'warning');
+          // O aviso persistente só substitui o toast quando foi renderizado para esta
+          // publicação e está visível. A seleção pode mudar ou o detalhe pode fechar
+          // enquanto a requisição aguarda; nesse caso o aviso não está na tela e o toast
+          // continua sendo o único aviso da recusa.
+          const detail = byId('intimationDetail');
+          const notice = detail?.querySelector?.('.publication-brief-undo.is-blocked');
+          const noticeVisible = canonicalIntimationId(selectedIntimation) === canonicalId
+            && Boolean(byId('view-inbox')?.classList?.contains('publication-detail-open'))
+            && String(detail?.dataset?.publicationId) === String(canonicalId)
+            && Boolean(notice?.getClientRects?.().length);
+          if (!noticeVisible) {
+            toast(message || 'Não é possível desfazer esta tarefa.', 'warning');
+          }
           return false;
         }
         if (response.status === 409) {
@@ -1578,11 +1755,15 @@ const setBriefTaskBlocked = value => {
           restored.active = true;
         }
         if (data.revision) store.revision = data.revision;
+        // O servidor recusa por inteiro quando alguma absorvida está fora do acesso do ator,
+        // então `skippedAbsorbedTaskIds` chega sempre vazio. Se um servidor antigo ainda
+        // devolver ids pulados, o aviso manda conferir com quem tem acesso — nunca atribui
+        // a tarefa de prazo a outra pessoa como se estivesse tudo certo.
         const skippedCount = Array.isArray(data.skippedAbsorbedTaskIds) ? data.skippedAbsorbedTaskIds.length : 0;
         briefTaskUndo = null;
         setBriefTaskBlocked(null);
         toast(skippedCount
-          ? `Tarefa desfeita. ${skippedCount === 1 ? '1 tarefa de prazo foi reativada para o responsável.' : `${skippedCount} tarefas de prazo foram reativadas para os responsáveis.`}`
+          ? `Tarefa desfeita. ${skippedCount === 1 ? '1 tarefa de prazo absorvida não foi reativada' : `${skippedCount} tarefas de prazo absorvidas não foram reativadas`}: confira com quem tem acesso.`
           : 'Tarefa desfeita.', skippedCount ? 'warning' : 'success');
         this.renderInbox();
         this.renderMetrics();
@@ -1652,17 +1833,15 @@ const setBriefTaskBlocked = value => {
       if (!item) return null;
       return enqueueTreatmentRequest(async () => {
       try {
-        const response = await windowRef.fetch(`/api/intimations/${encodeURIComponent(canonicalId)}/treatment`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': windowRef.KellerAuth?.csrfToken || ''
-          },
-          body: JSON.stringify({
-            action,
-            note,
-            revision: store.revision || store.state?.revision || undefined
-          })
+        const currentItem = findIntimation(canonicalId);
+        if (!currentItem) return null;
+        if (action === 'mark_treated' && (currentItem.treatmentStatus || 'untreated') === 'treated' && !String(note || '').trim()) {
+          return { ok: true, action, intimation: currentItem, revision: store.revision, alreadyApplied: true };
+        }
+        const response = await this.securePostJson(`/api/intimations/${encodeURIComponent(canonicalId)}/treatment`, {
+          action,
+          note,
+          revision: store.revision || store.state?.revision || undefined
         });
         if (response.status === 409) {
           const errorData = await response.json().catch(() => ({}));
@@ -1673,9 +1852,15 @@ const setBriefTaskBlocked = value => {
         if (response.ok) {
           const data = await response.json();
           if (data.intimation) {
+            const wasClean = typeof store.persistenceFingerprint === 'function'
+              && store.persistedFingerprint != null
+              && store.persistenceFingerprint() === store.persistedFingerprint;
             const index = store.state.intimations.findIndex(record => record.id === canonicalId);
             if (index !== -1) store.state.intimations[index] = data.intimation;
-            if (data.revision) store.revision = data.revision;
+            if (data.revision) {
+              if (wasClean && typeof store.adoptServerRevision === 'function') store.adoptServerRevision(data.revision);
+              else store.revision = data.revision;
+            }
           }
           if (!deferRender) {
             this.renderInbox();

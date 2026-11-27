@@ -76,6 +76,9 @@ const unitFeature = createProcessesFeature({
   showToast: (message, type) => unitToasts.push({ message, type }),
   secureFetch: async (url, options) => {
     unitRequests.push({ url, options });
+    if (url.includes('access-key')) {
+      return { ok: true, json: async () => ({ ok: true, configured: true, collected: true }) };
+    }
     return {
       ok: true,
       json: async () => ({
@@ -168,6 +171,172 @@ assert.deepEqual(JSON.parse(keyRequest.options.body), {
 });
 delete fakeElements['field-accessKey'];
 
+// Preservação eproc, caseValue numérico e acesso multi-tribunal à chave de acesso.
+const eprocExisting = {
+  id: 'proc-eproc-jfrs',
+  number: '5004444-12.2026.4.04.7100',
+  client: 'Cliente JFRS Sintético',
+  court: 'JFRS',
+  source: 'eproc-jfrs',
+  hasAccessKey: true,
+  eprocDetails: { actionClass: 'Procedimento Comum Cível', subjects: [{ code: '6094', description: 'Benefício Sintético', principal: true }] },
+  structuredParties: { autor: [{ name: 'Cliente JFRS Sintético' }] },
+  judicialParties: [{ name: 'Cliente JFRS Sintético', role: 'AUTOR' }]
+};
+const eprocSaved = unitFeature.saveProcess({
+  number: eprocExisting.number,
+  client: eprocExisting.client,
+  actionClass: 'Procedimento Comum Revisado',
+  subject: 'Assunto Principal Revisado',
+  competence: 'Previdenciária',
+  judge: 'Juiz(a) Sintético(a)',
+  caseValue: '15432.5',
+  feePercentage: '',
+  feeAmount: '',
+  feeMonthly: '',
+  secrecy: 'true'
+}, eprocExisting);
+assert.equal(eprocSaved.actionClass, 'Procedimento Comum Revisado');
+assert.equal(eprocSaved.subject, 'Assunto Principal Revisado');
+assert.equal(eprocSaved.competence, 'Previdenciária');
+assert.equal(eprocSaved.judge, 'Juiz(a) Sintético(a)');
+assert.equal(eprocSaved.caseValue, 15432.5);
+assert.equal(eprocSaved.hasAccessKey, true, 'Edição pelo modal deve preservar hasAccessKey.');
+assert.deepEqual(eprocSaved.eprocDetails, eprocExisting.eprocDetails, 'Edição pelo modal deve preservar eprocDetails.');
+assert.deepEqual(eprocSaved.structuredParties, eprocExisting.structuredParties, 'Edição pelo modal deve preservar structuredParties.');
+assert.deepEqual(eprocSaved.judicialParties, eprocExisting.judicialParties, 'Edição pelo modal deve preservar judicialParties.');
+const eprocClearedValue = unitFeature.saveProcess({
+  number: eprocExisting.number,
+  client: eprocExisting.client,
+  caseValue: ''
+}, eprocSaved);
+assert.equal(eprocClearedValue.caseValue, null, 'caseValue vazio deve virar null.');
+
+const multiRequests = [];
+let multiRevCounter = 2;
+const multiStore = {
+  ...unitStore,
+  revision: 'rev-1',
+  persistedFingerprint: null,
+  adoptedRevisions: [],
+  state: {
+    processes: [structuredClone({ ...eprocExisting, hasAccessKey: false })],
+    tasks: [],
+    intimations: [],
+    audit: [],
+    settings: {},
+    documents: [],
+    configuration: {}
+  },
+  persistenceFingerprint() {
+    return JSON.stringify(this.state);
+  },
+  adoptServerRevision(rev) {
+    this.revision = rev;
+    this.persistedFingerprint = this.persistenceFingerprint();
+    this.adoptedRevisions.push(rev);
+    return rev;
+  }
+};
+const multiFakeDom = {
+  processAccessKeyNumber: { textContent: '' },
+  processAccessKeyMessage: { textContent: '' },
+  processAccessKeyInput: { value: '', focus() {} },
+  processAccessKeyBackdrop: { classList: { add() {}, remove() {} } },
+  processAccessKeySave: { disabled: false, textContent: '' },
+  processInspectorTitle: { textContent: '' },
+  processInspectorBackdrop: { classList: { add() {}, remove() {}, contains: () => false }, addEventListener() {} },
+  processInspectorContent: { innerHTML: '', querySelector: () => null, addEventListener() {} },
+  processSearch: { value: '' }
+};
+const multiFeature = createProcessesFeature({
+  store: multiStore,
+  documentRef: { getElementById: id => fakeElements[id] || multiFakeDom[id] || null, querySelectorAll: () => [] },
+  normalizeText: value => String(value || '').toLowerCase(),
+  escapeHtml: String,
+  formatDate: String,
+  formatMinutes: String,
+  totalTimeMinutes: () => 0,
+  sortRecords: records => records,
+  updateTableSortHeaders: () => {},
+  openModal: () => {},
+  showToast: () => {},
+  secureFetch: async (url, options = {}) => {
+    multiRequests.push({ url, options });
+    if (url.startsWith('/api/integrations/tjrs-sidecar/processes/access-key')) {
+      return { ok: false, status: 503, json: async () => ({ ok: false, message: 'Sidecar indisponível' }) };
+    }
+    if (url.startsWith('/api/judicial/processes/access-key/status')) {
+      return { ok: true, status: 200, json: async () => ({ ok: true, configured: true }) };
+    }
+    if (url === '/api/judicial/processes/access-key') {
+      const revision = `rev-${multiRevCounter++}`;
+      return { ok: true, status: 200, json: async () => ({ ok: true, configured: true, hasAccessKey: true, revision }) };
+    }
+    return { ok: true, status: 200, json: async () => ({ ok: true, configured: true }) };
+  },
+  getLinkedTasks: () => [],
+  getLinkedIntimations: () => [],
+  isTerminalStatus: () => false
+});
+multiFeature.render = () => [];
+assert.equal(await multiFeature.refreshAccessKeyStatus({ id: 'datajud-only', number: '5012345-67.2025.4.04.7100', court: 'TRF4', source: 'DataJud sintético' }), false);
+assert.equal(multiRequests.length, 0, 'Processo DataJud puro não pode consultar status de chave de acesso.');
+assert.equal(await multiFeature.refreshAccessKeyStatus(eprocSaved), true);
+assert.equal(multiRequests.at(-1).url, '/api/judicial/processes/access-key/status?processNumber=5004444-12.2026.4.04.7100');
+
+fakeElements['field-accessKey'] = { value: 'CHAVE-JFRS-SINTETICA' };
+const editedJfrsProcess = multiFeature.saveProcess(
+  { number: eprocExisting.number, client: eprocExisting.client, stage: 'Editado' },
+  { ...eprocSaved, hasAccessKey: false }
+);
+assert.equal(await multiFeature.persistAccessKey(editedJfrsProcess), true);
+assert.equal(multiRequests.at(-1).url, '/api/judicial/processes/access-key');
+assert.equal(editedJfrsProcess.hasAccessKey, true);
+assert.equal(
+  multiStore.state.processes.find(p => p.id === eprocExisting.id)?.hasAccessKey,
+  true,
+  'persistAccessKey deve marcar hasAccessKey também na cópia mantida em store.state.processes.'
+);
+assert.equal(multiStore.revision, 'rev-2', 'persistAccessKey deve atualizar store.revision com a revisão retornada.');
+assert.equal(multiStore.adoptedRevisions.length, 0, 'persistAccessKey não pode chamar adoptServerRevision pois há edição pendente de flush.');
+delete fakeElements['field-accessKey'];
+
+const tjrsFallbackItem = { id: 'proc-tjrs-fb', number: '5005555-00.2026.8.21.0001', court: 'TJRS', client: 'Cliente TJRS Fallback', hasAccessKey: false };
+assert.equal(await multiFeature.refreshAccessKeyStatus(tjrsFallbackItem), true, 'TJRS deve usar fallback em /api/judicial quando sidecar retornar 503.');
+assert.equal(multiRequests.slice(-2)[0].url, '/api/integrations/tjrs-sidecar/processes/access-key/status?processNumber=5005555-00.2026.8.21.0001');
+assert.equal(multiRequests.slice(-2)[1].url, '/api/judicial/processes/access-key/status?processNumber=5005555-00.2026.8.21.0001');
+fakeElements['field-accessKey'] = { value: 'CHAVE-TJRS-FB' };
+const savedTjrsFb = multiFeature.saveProcess({ number: tjrsFallbackItem.number, client: tjrsFallbackItem.client }, tjrsFallbackItem);
+assert.equal(await multiFeature.persistAccessKey(savedTjrsFb), true);
+assert.equal(multiRequests.slice(-2)[0].url, '/api/integrations/tjrs-sidecar/processes/access-key');
+assert.equal(multiRequests.slice(-2)[1].url, '/api/judicial/processes/access-key');
+assert.equal(multiStore.revision, 'rev-3', 'Fallback TJRS em persistAccessKey deve sincronizar store.revision.');
+delete fakeElements['field-accessKey'];
+
+// saveAccessKey: estado limpo adota revisão; estado sujo apenas atualiza store.revision sem mascarar edição pendente.
+const jfrsStoreItem = multiStore.state.processes.find(p => p.id === eprocExisting.id);
+jfrsStoreItem.hasAccessKey = false;
+multiStore.persistedFingerprint = multiStore.persistenceFingerprint();
+multiFeature.openAccessKeyDialog(jfrsStoreItem);
+multiFakeDom.processAccessKeyInput.value = 'CHAVE-SAVE-CLEAN';
+assert.equal(await multiFeature.saveAccessKey(), true);
+assert.equal(jfrsStoreItem.hasAccessKey, true);
+assert.equal(multiStore.revision, 'rev-4');
+assert.deepEqual(multiStore.adoptedRevisions, ['rev-4'], 'saveAccessKey em store limpo deve chamar adoptServerRevision.');
+assert.equal(multiStore.persistenceFingerprint(), multiStore.persistedFingerprint);
+
+jfrsStoreItem.hasAccessKey = false;
+jfrsStoreItem.stage = 'Edição pendente antes da chave';
+assert.notEqual(multiStore.persistenceFingerprint(), multiStore.persistedFingerprint);
+multiFeature.openAccessKeyDialog(jfrsStoreItem);
+multiFakeDom.processAccessKeyInput.value = 'CHAVE-SAVE-DIRTY';
+assert.equal(await multiFeature.saveAccessKey(), true);
+assert.equal(jfrsStoreItem.hasAccessKey, true);
+assert.equal(multiStore.revision, 'rev-5');
+assert.deepEqual(multiStore.adoptedRevisions, ['rev-4'], 'saveAccessKey em store sujo não pode chamar adoptServerRevision.');
+assert.notEqual(multiStore.persistenceFingerprint(), multiStore.persistedFingerprint);
+
 // Andamento manual append-only: entra no array principal, preserva o anterior e não rebaixa o último.
 const manualProcess = unitStore.state.processes[0];
 const manualMovement = await unitFeature.appendMovement('unit-process', { date: '2026-09-05', description: 'Petição protocolada sintética', author: 'Advogada Teste' });
@@ -192,11 +361,19 @@ assert.equal(unitStore.state.audit.some(entry => entry.detail.includes('Falha si
 unitStore.flushResult = true;
 
 const unitButton = { dataset: { tjrsConsult: '5000000-00.2026.8.21.0001' }, disabled: false, textContent: 'Atualizar TJRS' };
+// Sem A1, o TJRS não tem mais consulta por chave: nada é enviado e o usuário é orientado.
+assert.equal(await unitFeature.consultTjrs(unitButton), false);
+assert.equal(unitRequests.length, 1, 'Sem A1, nenhuma consulta ao TJRS por chave é enviada.');
+assert.deepEqual(unitToasts.at(-1), { message: 'Para atualizar processos do TJRS, cadastre o Certificado A1 em Conexões.', type: 'error' });
+assert.equal(unitButton.disabled, false);
+// Com A1, a atualização usa somente o eproc.
+unitStore.state.settings.hasA1Certificate = true;
 await unitFeature.consultTjrs(unitButton);
 assert.equal(unitRequests.length, 2);
-assert.equal(unitRequests[1].url, '/api/integrations/tjrs-sidecar/processes/sync');
+assert.equal(unitRequests[1].url, '/api/integrations/eproc/processes/enrich-single');
 assert.equal(unitRequests[1].options.method, 'POST');
 assert.deepEqual(JSON.parse(unitRequests[1].options.body), { processId: 'unit-process', processNumber: '5000000-00.2026.8.21.0001', revision: 'unit-revision-1' });
+assert.equal(unitRequests.some(request => request.url.includes('tjrs-sidecar/processes/sync')), false);
 assert.equal(unitStore.revision, 'unit-revision-2');
 assert.equal(unitStore.state.processes[0].lastMovement, 'Snapshot unitário');
 assert.equal(unitButton.disabled, false);
@@ -224,7 +401,7 @@ const rejectedFeature = createProcessesFeature({
 const rejectedButton = { dataset: { tjrsConsult: '5000000-00.2026.8.21.0001' }, disabled: false, textContent: 'Atualizar TJRS' };
 await rejectedFeature.consultTjrs(rejectedButton);
 assert.equal(rejectedButton.disabled, false, 'Botão TJRS deve ser restaurado após rejeição de rede.');
-assert.deepEqual(rejectedToasts.at(-1), { message: 'Falha ao consultar o coletor TJRS local: Rede TJRS indisponível', type: 'error' });
+assert.deepEqual(rejectedToasts.at(-1), { message: 'Não foi possível atualizar este processo pelo eproc com o Certificado A1. Confira o certificado em Conexões.', type: 'error' });
 
 const disposableNumber = '5009999-99.2026.8.21.0001';
 const disposableProcess = { id: 'process-disposable', externalId: 'datajud:process-disposable', number: disposableNumber, client: 'Cliente Descartável', source: 'DataJud / CNJ', movements: [{ code: '1', name: 'Movimento', at: '2026-09-01T00:00:00.000Z' }] };
@@ -272,7 +449,7 @@ assert.equal(await lifecycleFeature.reenableProcessDiscovery(disposableNumber), 
 assert.equal(lifecycleStore.state.settings.processDiscoverySuppressions.length, 0);
 assert.ok(lifecycleFeature.upsertExternalProcess(disposableProcess), 'Processo pode voltar somente depois de reativação explícita.');
 
-const server = await startTestServer({ env: { ATRIUM_SENDA_UNLOCK_PRO_DEV: '1' } });
+const server = await startTestServer({ env: { JEV_CMD_BIN: 'node', ATRIUM_SENDA_UNLOCK_PRO_DEV: '1' } });
 const browser = await chromium.launch({ headless: true });
 
 try {
@@ -313,6 +490,7 @@ try {
   });
   await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
+  await page.waitForFunction(() => Boolean(window.Atrium?.Store?.state));
 
   const fixture = await page.evaluate(async () => {
     // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
@@ -457,7 +635,8 @@ try {
   let requestStartedResolve;
   let requestStarted = new Promise(resolve => { requestStartedResolve = resolve; });
   const tjrsRevision = await page.evaluate(() => window.Atrium.Store.revision);
-  await page.route('**/api/integrations/tjrs-sidecar/processes/sync', async route => {
+  // A consulta por chave foi desativada: o botão do TJRS usa só o eproc com A1.
+  await page.route('**/api/integrations/eproc/processes/enrich-single', async route => {
     requestCount++;
     requestMethod = route.request().method();
     requestPayload = route.request().postDataJSON();
@@ -535,10 +714,11 @@ try {
   await page.locator('#modalTitle', { hasText: 'Cadastrar processo' }).waitFor();
   const expectedFields = [
     'number', 'oldNumber', 'originNumbers', 'nb', 'client', 'clientPosition', 'opposingParty', 'actionGroup', 'actionType',
-    'judicialPhase', 'risk', 'stage', 'protocol', 'caseFolder', 'court', 'county', 'courtUnit', 'responsible',
+    'actionClass', 'subject', 'judicialPhase', 'risk', 'stage', 'protocol', 'caseFolder', 'court', 'county', 'courtUnit',
+    'competence', 'judge', 'responsible',
     // Identidade oculta do combobox de responsáveis (mesmo contrato do assigneeUserId em Tarefas).
     'responsibleUserId',
-    'registeredAt', 'lastMovementAt', 'lastMovement', 'feeType', 'feePercentage', 'feeAmount', 'feeMonthly',
+    'registeredAt', 'lastMovementAt', 'lastMovement', 'feeType', 'feePercentage', 'feeAmount', 'feeMonthly', 'caseValue',
     'feeStatus', 'requisitionType', 'requisitionAmount', 'requisitionBank', 'requisitionStatus', 'feeNotes',
     'secrecy', 'monitoring', 'notes'
   ];
@@ -622,6 +802,7 @@ try {
   await page.evaluate(() => window.Atrium.Store.flush());
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
+  await page.waitForFunction(() => Boolean(window.Atrium?.Store?.state));
   await page.evaluate(() => window.Atrium.App.switchView('processes'));
   const persisted = await page.evaluate(id => window.Atrium.Store.state.processes.find(item => item.id === id), created.id);
   assert.equal(persisted.stage, 'Etapa editada Fase 9');

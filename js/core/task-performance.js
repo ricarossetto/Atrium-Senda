@@ -91,7 +91,7 @@ export function computeTaskPerformance(tasks = [], { goal = null, now = new Date
   const live = [];
   for (const task of list) {
     if (!task || typeof task !== 'object') continue;
-    if (task.active === false) continue;
+    if (task.active === false || task.absorbedInto) continue;
     const completedAt = Date.parse(task.completedAt || '');
     if (Number.isFinite(completedAt)) { finished.push(task); continue; }
     // Concluída sem carimbo de data (legado) ou terminal fica fora das séries e dos pendentes.
@@ -219,7 +219,7 @@ export function computeProductivityReport(tasks = [], { configuration = {}, now 
   let timeLoggedMinutes = 0;
 
   for (const task of list) {
-    if (!task || typeof task !== 'object' || task.active === false) continue;
+    if (!task || typeof task !== 'object' || task.active === false || task.absorbedInto) continue;
     filterOptions.responsibles.add(responsibilityOf(task));
     filterOptions.taskTypes.add(taskTypeOf(task));
     const completedAt = Date.parse(task.completedAt || '');

@@ -13,7 +13,7 @@ const measurements = [];
 const states = ['login', 'login-error', 'register-1', 'register-2', 'setup', 'setup-monitoring', 'totp', 'recovery', 'forgot', 'reset'];
 try {
   for (const theme of ['light', 'dark']) {
-    for (const [width, height] of [[390, 844], [390, 500], [1280, 800], [1440, 900]]) {
+    for (const [width, height] of [[390, 844], [390, 500], [1024, 768], [1280, 800], [1440, 900]]) {
       const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce', locale: 'pt-BR' });
       try {
         await context.addInitScript(value => localStorage.setItem('atrium_theme', value), theme);
@@ -45,7 +45,7 @@ try {
             if (state === 'reset') auth.show('authResetForm');
           }, state);
           if (state === 'register-2') {
-            for (const [name, value] of Object.entries({ displayName: 'Advogada Teste Nome Extenso', email: 'teste@example.test', username: 'advogada.teste', password: 'Senha-Sintetica-2026!', confirmPassword: 'Senha-Sintetica-2026!' })) {
+            for (const [name, value] of Object.entries({ displayName: 'Advogada Teste Nome Extenso', email: 'teste@example.test', password: 'Senha-Sintetica-2026!', confirmPassword: 'Senha-Sintetica-2026!' })) {
               await page.locator(`#authRegisterForm [name="${name}"]`).fill(value);
             }
             await page.locator('#authRegisterNext').click();
@@ -75,6 +75,7 @@ try {
               toolbarPosition: getComputedStyle(toolbar).position,
               panelDisplay: getComputedStyle(panel).display, panelPadding: getComputedStyle(panel).padding,
               overflow: document.documentElement.scrollWidth - innerWidth,
+              tabLabels: tabs && tabs.getClientRects().length ? [...tabs.querySelectorAll('.auth-tab')].map(element => ({ text: element.textContent.trim(), scrollWidth: element.scrollWidth, clientWidth: element.clientWidth })) : [],
               targets: controls.map(element => ({ ...box(element), hit: element.contains(document.elementFromPoint(box(element).left + box(element).width / 2, box(element).top + box(element).height / 2)) })),
               columns: getComputedStyle(document.getElementById('authGate')).gridTemplateColumns.split(' ').length
             };
@@ -83,6 +84,7 @@ try {
           if (!before) {
             assert.ok(evidence.toolbar.bottom < evidence.card.top, JSON.stringify(evidence));
             if (evidence.tabs) assert.ok(evidence.toolbar.bottom < evidence.tabs.top, JSON.stringify(evidence));
+            for (const tab of evidence.tabLabels) { assert.ok(tab.scrollWidth <= tab.clientWidth + 1, "rótulo de aba truncado: " + JSON.stringify(tab)); }
             assert.ok(evidence.overflow <= 1, JSON.stringify(evidence));
             assert.equal(evidence.columns, width > 900 ? 2 : 1);
             for (const target of evidence.targets) {

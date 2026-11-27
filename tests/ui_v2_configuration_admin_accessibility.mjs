@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  fieldLabelIssues,
   prepareUiV2ConfigurationAdminFixture,
   prepareUiV2Page,
   startUiV2Session
@@ -90,13 +91,7 @@ try {
   await page.locator('#btnOpenFeedbackModal').click();
   await page.locator('#modalBackdrop[data-modal-mode="feedback"]:not(.hidden)').waitFor();
   await page.waitForFunction(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement));
-  for (const id of ['field-type', 'field-component', 'field-message']) {
-    const label = page.locator(`label[for="${id}"], label[for="${id}-busca"]`);
-    assert.equal(await label.count(), 1, `${id} precisa de exatamente um label associado`);
-    const target = await label.getAttribute('for');
-    assert.ok(target, `${id} precisa apontar para um controle`);
-    assert.equal(await page.locator(`#${target}`).count(), 1, `${id} precisa apontar para um controle existente`);
-  }
+  assert.deepEqual(await fieldLabelIssues(page, ['type', 'component', 'message']), [], 'Todos os campos do retorno devem manter labels conectados ao controle visível.');
   await page.keyboard.press('Escape');
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnOpenFeedbackModal');

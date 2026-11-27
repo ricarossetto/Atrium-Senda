@@ -24,7 +24,7 @@ export const HOW_TO = Object.freeze({
     'Toque em Transferir contas e depois em Exportar contas.',
     'Marque só o tribunal que vai vincular e toque em Avançar.',
     'Quando aparecer o QR Code, tire um print da tela e toque em Cancelar.',
-    'No ATRIUM, em Integrações, abra Conexões com tribunais, na aba Credenciais. Na Etapa 3, escolha o tribunal, anexe o print e digite o código atual.',
+    'No ATRIUM, em Integrações, abra Conexões com tribunais, na aba Credenciais. Na Etapa 3, escolha o tribunal, anexe o print e clique em Vincular 2FA.',
     'Repita em cada tribunal: um print para cada um.'
   ],
   spreadsheet: [
@@ -41,5 +41,5 @@ export const TOTP_SLIDES = Object.freeze([
   { image: 'totp-3-exportar.jpg', caption: 'Toque em Exportar contas.' },
   { image: 'totp-4-selecionar.jpg', caption: 'Marque só o tribunal que vai vincular e toque em Avançar.' },
   { image: 'totp-5-print.jpg', caption: 'Tire um print desta tela e toque em Cancelar.' },
-  { image: 'totp-6-atrium.jpg', caption: 'No ATRIUM, escolha o tribunal, anexe o print e digite o código atual. Repita em cada tribunal.' }
+  { image: 'totp-6-atrium.jpg', caption: 'No ATRIUM, escolha o tribunal, anexe o print e clique em Vincular 2FA. Repita em cada tribunal.' }
 ]);

@@ -22,6 +22,10 @@ for (const relativePath of [spritePath, 'assets/icons/README.md', helperPath, cs
 }
 
 const sprite = read(spritePath);
+// "--" dentro de comentário torna o XML inválido e o navegador não desenha nenhum símbolo.
+for (const comment of sprite.matchAll(/<!--([\s\S]*?)-->/g)) {
+  assert.doesNotMatch(comment[1], /--/, 'Comentário do sprite não pode conter "--" (XML inválido apaga todos os ícones).');
+}
 const symbols = [...sprite.matchAll(/<symbol\b([^>]*)>([\s\S]*?)<\/symbol>/g)].map(match => ({
   attributes: match[1],
   body: match[2],
@@ -29,7 +33,15 @@ const symbols = [...sprite.matchAll(/<symbol\b([^>]*)>([\s\S]*?)<\/symbol>/g)].m
   viewBox: match[1].match(/\bviewBox="([^"]+)"/)?.[1]
 }));
 const symbolIds = symbols.map(symbol => symbol.id);
-assert.equal(symbols.length, 60, 'O sprite deve conter somente os 60 símbolos realmente usados e documentados.');
+// Inventário: o sprite contém exatamente os nomes registrados em ATRIUM_ICON_NAMES
+// (icons.js). Ícone novo entra pelo registro; símbolo sem registro é lixo e falha.
+const registeredNames = [...read(helperPath).match(/ATRIUM_ICON_NAMES = Object\.freeze\(\[([\s\S]*?)\]\)/)[1].matchAll(/'([a-z0-9-]+)'/g)].map(match => match[1]);
+assert.ok(registeredNames.length > 0, 'ATRIUM_ICON_NAMES deve existir em icons.js.');
+assert.deepEqual(
+  [...symbolIds].sort(),
+  registeredNames.map(name => `atrium-icon-${name}`).sort(),
+  'O sprite deve conter somente os símbolos registrados em ATRIUM_ICON_NAMES, sem faltas nem sobras.'
+);
 assert.equal(new Set(symbolIds).size, symbolIds.length, 'IDs de símbolos devem ser únicos.');
 assert.ok(symbolIds.every(Boolean), 'Todo símbolo deve possuir ID.');
 assert.ok(symbols.every(symbol => symbol.viewBox === '0 0 24 24'), 'Todo símbolo deve usar viewBox 0 0 24 24.');
@@ -50,6 +62,22 @@ for (const name of requiredNames) {
   assert.ok(symbolIds.includes(`atrium-icon-${name}`), `Símbolo obrigatório ausente: ${name}.`);
 }
 
+// Nome inexistente cai silenciosamente no ícone `info`; chamadas literais precisam estar registradas.
+const unknownIconCalls = [];
+for (const entry of fs.readdirSync(path.join(ROOT, 'js'), { recursive: true })) {
+  const relativePath = `js/${String(entry).replaceAll('\\', '/')}`;
+  if (!relativePath.endsWith('.js')) continue;
+  for (const match of read(relativePath).matchAll(/\biconSvg\('([a-z0-9-]+)'/g)) {
+    if (!registeredNames.includes(match[1])) unknownIconCalls.push(`${relativePath}: ${match[1]}`);
+  }
+}
+for (const relativePath of ['js/views/ui-v2/system-status.js', 'js/components/global-search.js']) {
+  for (const match of read(relativePath).matchAll(/\bicon:\s*'([a-z0-9-]+)'/g)) {
+    if (!registeredNames.includes(match[1])) unknownIconCalls.push(`${relativePath}: ${match[1]}`);
+  }
+}
+assert.deepEqual(unknownIconCalls, [], 'Toda chamada literal de ícone deve usar um nome registrado no sprite.');
+
 const index = read('index.html');
 for (const relativePath of ['index.html']) {
   const iconReferences = [...read(relativePath).matchAll(/#(atrium-icon-[a-z-]+)"/g)].map(match => match[1]);
@@ -61,16 +89,22 @@ const expectedNavigation = new Map([
   ['dashboard', 'dashboard'], ['processes', 'processes'], ['inbox', 'publications'],
   ['kanban', 'tasks'], ['agenda', 'agenda'], ['contacts', 'contacts'], ['leads', 'leads'],
   ['financial', 'financial'], ['calculations', 'calculations'], ['reports', 'reports'], ['documents', 'documents'],
-  ['assistant', 'assistant'], ['prompts', 'prompts'], ['integrations', 'integrations'],
-  ['configuration', 'configuration'], ['links', 'links']
+  ['assistant', 'assistant'], ['integrations', 'integrations'], ['configuration', 'configuration']
 ]);
 const navigationButtons = [...index.matchAll(/<button class="nav-item[^"]*" data-view="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g)];
-assert.equal(navigationButtons.length, expectedNavigation.size, 'A sidebar deve declarar somente os destinos mapeados.');
+assert.equal(navigationButtons.length, expectedNavigation.size, 'A sidebar deve declarar somente os 14 destinos condensados.');
 for (const [, view, markup] of navigationButtons) {
   const expectedIcon = expectedNavigation.get(view);
   assert.ok(expectedIcon, `View de navegação inesperada: ${view}.`);
   assert.match(markup, new RegExp(`href="assets/icons/atrium-ui-icons\\.svg(?:\\?v=[^"#]+)?#atrium-icon-${expectedIcon}"`), `${view} deve usar ${expectedIcon}.`);
   assert.doesNotMatch(markup, /<(?:path|circle|rect|line|polyline|polygon)\b/, `${view} não pode duplicar geometria SVG inline.`);
+}
+for (const [id, iconName] of [
+  ['btnOpenPromptsFromAssistant', 'prompts'],
+  ['v2UtilitiesLinks', 'links']
+]) {
+  const control = index.match(new RegExp(`<button[^>]*id="${id}"[\\s\\S]*?</button>`))?.[0] || '';
+  assert.match(control, new RegExp(`#atrium-icon-${iconName}"`), `${id} deve usar atrium-icon-${iconName}.`);
 }
 assert.match(index, /id="view-audit"/, 'A capacidade oficial de auditoria deve permanecer declarada.');
 assert.match(read('js/views/ui-v2/configuration-presenter.js'), /dataset\.viewLink\s*=\s*'audit'/, 'Auditoria deve continuar acessível por Configurações > Sistema.');
@@ -95,7 +129,8 @@ assert.doesNotMatch(index, /(?:fontawesome|font-awesome|material-icons|material-
 const brandHashes = {
   'assets/icons/atrium-logo.svg': '57aefeb535bb88fef83be1b1017b10705fab6b8942d141e11798e71f35086e75',
   'assets/icons/atrium-emblem.svg': '9a3e5e785f6f446a46c0719f8fe6fe4d6ea69e6f45c01204a6535d0fde5f0d23',
-  'assets/icons/favicon.svg': '379bcf9905c59b682097de70d706c3a65ef2722402a4d6fbd9d0fca3fd66d558'
+  // Favicon trocado de propósito na 6.71.0 (símbolo dourado sobre fundo transparente, commit 87daf09e).
+  'assets/icons/favicon.svg': '98c8abe7e7ceba1dd77f8358b9342b49854b1ec6b7ccd7fedc48eb957c2fc82d'
 };
 for (const [relativePath, expectedHash] of Object.entries(brandHashes)) {
   assert.equal(sha256CanonicalText(relativePath), expectedHash, `${relativePath} deve permanecer idêntico ao Gate 22, independentemente do EOL do checkout.`);
@@ -155,5 +190,5 @@ assert.match(read('js/features/system-admin.js'), /diagnosticV2Html\(d, runtime,
 assert.match(read('js/features/system-admin.js'), /backupsV2Html\(\)/);
 
 console.log(`✓ Sprite local: ${symbols.length} símbolos, IDs únicos, viewBox padronizado e currentColor.`);
-console.log(`✓ ${expectedNavigation.size - 1}/${expectedNavigation.size - 1} destinos primários mapeados; auditoria oficial preservada em Configurações > Sistema.`);
+console.log(`✓ ${expectedNavigation.size} destinos na sidebar + Prompts, Links Úteis, Admin e Auditoria mapeados.`);
 console.log('✓ Marca preservada, zero CDN/pacote de ícones e zero emojis Unicode no frontend.');

@@ -24,6 +24,17 @@ const ROUTE_VIEWS = Object.freeze(Object.fromEntries(
   Object.entries(VIEW_PATHS).map(([view, pathname]) => [normalizeRoute(pathname), view])
 ));
 
+const MOBILE_LINK_ORIGIN = 'https://atrium.adv.br';
+const MOBILE_LINK_PATHS = new Set(Object.values(VIEW_PATHS).filter(pathname =>
+  pathname === '/visao-geral' || /^\/(trabalho|relacionamento|gestao|inteligencia|sistema)\//.test(pathname)
+));
+
+export function pathForMobileLink(value) {
+  if (typeof value !== 'string' || !value.startsWith(MOBILE_LINK_ORIGIN)) return null;
+  const pathname = value.slice(MOBILE_LINK_ORIGIN.length);
+  return MOBILE_LINK_PATHS.has(pathname) ? pathname : null;
+}
+
 export function normalizeRoute(value) {
   return String(value || '')
     .split(/[?#]/)[0]

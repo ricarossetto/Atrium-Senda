@@ -5,6 +5,8 @@
   let pendingSetupSession = null;
   let runtimeSessionKey = null;
   let registrationStep = 0;
+  // Conta (0) → Escritório (1).
+  const LAST_REGISTER_STEP = 1;
   let registrationInFlight = false;
   let registrationLocks = [];
   const byId = id => document.getElementById(id);
@@ -123,9 +125,13 @@
       byId('authRegisterBack')?.addEventListener('click', () => {
         if (!registrationInFlight) this.showRegistrationStep(Math.max(0, registrationStep - 1));
       });
-      byId('authRegisterForm')?.addEventListener('input', () => {
-        if (!registrationInFlight) byId('authRegisterForm').elements.confirmPassword.setCustomValidity('');
+      byId('authRegisterForm')?.addEventListener('input', event => {
+        if (registrationInFlight) return;
+        byId('authRegisterForm').elements.confirmPassword.setCustomValidity('');
+        if (event.target?.name === 'email') this.toggleRegisterDuplicate(false);
+        if (event.target?.name === 'password') this.updateRegisterPasswordRules();
       });
+      this.updateRegisterPasswordRules();
       byId('authGate')?.addEventListener('click', event => {
         if (!registrationInFlight) return;
         event.preventDefault();
@@ -164,6 +170,22 @@
         this.feedback('');
         this.show('authForgotForm');
         byId('authForgotForm').elements.identifier.focus();
+      });
+      byId('authRegisterDuplicateLogin')?.addEventListener('click', () => {
+        const email = byId('authRegisterForm').elements.email.value.trim();
+        this.toggleRegisterDuplicate(false);
+        byId('authTabLogin')?.click();
+        const username = byId('authLoginForm')?.elements.username;
+        if (username && email) { username.value = email; byId('authLoginForm').elements.password.focus(); }
+      });
+      byId('authRegisterDuplicateReset')?.addEventListener('click', () => {
+        const email = byId('authRegisterForm').elements.email.value.trim();
+        this.toggleRegisterDuplicate(false);
+        this.feedback('');
+        this.show('authForgotForm');
+        const identifier = byId('authForgotForm').elements.identifier;
+        if (email) identifier.value = email;
+        identifier.focus();
       });
       byId('authActivateAccountLink')?.addEventListener('click', () => {
         this.feedback('');
@@ -212,6 +234,7 @@
           if (state.workspaceSetupToken) {
             const result = await request('/api/auth/workspaces/register/verify', { method: 'POST', body: { setupToken: state.workspaceSetupToken, skipMfa: true } });
             state.workspaceSetupToken = null;
+            sessionStorage.setItem('atrium_initial_sync_pending', 'true');
             sessionStorage.setItem('atrium_pending_product_tour', 'true');
             completeWorkspaceSession(result);
             return;
@@ -219,6 +242,7 @@
           if (state.setupToken) {
             const result = await request('/api/auth/setup/verify', { method: 'POST', body: { setupToken: state.setupToken, skipMfa: true } });
             state.setupToken = null;
+            sessionStorage.setItem('atrium_initial_sync_pending', 'true');
             await completeSetupSession(result);
             return;
           }
@@ -563,18 +587,38 @@
         element.hidden = Number(element.dataset.registerStep) !== step;
       });
       form.querySelectorAll('.auth-register-progress li').forEach((element, index) => {
-        if (index === Math.min(step, 1)) element.setAttribute('aria-current', 'step');
+        if (index === step) element.setAttribute('aria-current', 'step');
         else element.removeAttribute('aria-current');
       });
       byId('authRegisterBack').hidden = step === 0;
-      byId('authRegisterNext').textContent = step >= 1 ? 'Cadastrar escritório' : 'Continuar';
+      byId('authRegisterNext').textContent = step === LAST_REGISTER_STEP ? 'Criar escritório' : 'Continuar';
       if (focus) {
         const panel = form.querySelector(`[data-register-step="${step}"]`);
         (panel.querySelector('[aria-checked="true"]') || panel.querySelector('input, select, button'))?.focus();
       }
     },
+    // Mesma regra do servidor (lib/security.mjs, validatePassword): 10 a 128 caracteres e
+    // ao menos três grupos entre minúsculas, maiúsculas, números e símbolos. O servidor
+    // continua sendo a autoridade; aqui a regra só aparece antes do erro.
+    toggleRegisterDuplicate(visible) {
+      const box = byId('authRegisterDuplicate');
+      if (box) box.hidden = !visible;
+    },
+    updateRegisterPasswordRules() {
+      const form = byId('authRegisterForm');
+      const password = form?.elements.password;
+      if (!password) return;
+      const value = password.value;
+      const lengthOk = value.length >= 10 && value.length <= 128;
+      const groups = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(expression => expression.test(value)).length;
+      const groupsOk = groups >= 3;
+      form.querySelector('[data-password-rule="length"]')?.setAttribute('data-met', String(lengthOk));
+      form.querySelector('[data-password-rule="groups"]')?.setAttribute('data-met', String(groupsOk));
+      password.setCustomValidity(!value || (lengthOk && groupsOk) ? '' : (!lengthOk ? 'A senha deve ter entre 10 e 128 caracteres.' : 'Combine ao menos três grupos: minúsculas, maiúsculas, números e símbolos.'));
+    },
     validateRegistration(allSteps = false) {
       const form = byId('authRegisterForm');
+      this.updateRegisterPasswordRules();
       const confirmation = form.elements.confirmPassword;
       confirmation.setCustomValidity(form.elements.password.value !== confirmation.value ? 'As senhas não coincidem.' : '');
       const fields = allSteps ? [...form.elements] : [...form.querySelector(`[data-register-step="${registrationStep}"]`).querySelectorAll('input, select')];
@@ -605,8 +649,9 @@
       const formElement = byId('authRegisterForm');
       if (!formElement.classList.contains('active')) return;
       this.feedback('');
+      this.toggleRegisterDuplicate(false);
       if (!this.validateRegistration(registrationStep >= 1)) return;
-      if (registrationStep < 1) {
+      if (registrationStep < LAST_REGISTER_STEP) {
         this.showRegistrationStep(registrationStep + 1);
         return;
       }
@@ -622,27 +667,27 @@
             workspaceName: form.get('workspaceName'),
             displayName: form.get('displayName'),
             email: form.get('email'),
-            username: form.get('username'),
+            ...(form.get('username') ? { username: form.get('username') } : {}),
             password: form.get('password'),
             oab: form.get('oab') || '',
             oabUf: form.get('oabUf') || '',
             enableMonitoring: form.get('enableMonitoring') === 'on' || form.get('enableMonitoring') === 'true'
           }
         });
-        state.workspaceSetupToken = result.setupToken;
-        byId('authQrCode').src = result.qrCode;
-        byId('authManualSecret').textContent = result.manualSecret;
+        // A proteção em duas etapas é opcional e fica para depois, em Configurações:
+        // o cadastro termina aqui e o escritório entra direto.
+        const created = await request('/api/auth/workspaces/register/verify', { method: 'POST', body: { setupToken: result.setupToken, skipMfa: true } });
         formElement.reset();
         formElement.elements.confirmPassword.setCustomValidity('');
         this.registrationBusy(false);
         this.showRegistrationStep(0, false);
-        this.show('authTotpSetupForm');
-        if (byId('skipMfaButton')) byId('skipMfaButton').hidden = false;
-        this.feedback('Vincule o autenticador ou entre sem 2FA para prosseguir.', 'success');
-        byId('authTotpSetupForm').elements.code.focus();
+        sessionStorage.setItem('atrium_initial_sync_pending', 'true');
+        sessionStorage.setItem('atrium_pending_product_tour', 'true');
+        completeWorkspaceSession(created);
       } catch (error) {
         failed = true;
         this.feedback(error.message, 'error');
+        this.toggleRegisterDuplicate(Number(error?.statusCode) === 409);
       } finally {
         if (registrationInFlight) this.registrationBusy(false);
         if (failed && byId('authRegisterForm') === formElement && formElement.classList.contains('active') && registrationStep === submittedStep && formElement.querySelector(`[data-register-step="${submittedStep}"]`)?.getClientRects().length && formElement.contains(focusTarget) && !focusTarget.disabled && focusTarget.getClientRects().length) {
@@ -723,6 +768,7 @@
       }
       runtimeSessionKey = sessionKey;
       state.authenticated = true; state.pendingUser = null; state.user = user;
+      this.prepareSteps('authLoginForm');
       byId('authGate').classList.add('hidden');
       const landing = byId('landingPage');
       if (landing) landing.classList.add('hidden');
@@ -771,6 +817,8 @@
       byId('profileDisplayName').value = user.displayName || '';
       byId('profileEmail').value = user.email || '';
       byId('profilePhone').value = user.phone || '';
+      if (byId('profileEmailCurrentPassword')) byId('profileEmailCurrentPassword').value = '';
+      if (byId('profileEmailMfaCode')) byId('profileEmailMfaCode').value = '';
       state.profileAvatarDraft = user.avatar || '';
       this.renderProfileAvatar(state.profileAvatarDraft, byId('profileSettingsPreviewImage'), byId('profileSettingsPreviewInitials'));
       byId('btnWorkspaceFactoryReset')?.classList.toggle('hidden', user.role !== 'master_admin');
@@ -781,16 +829,20 @@
           return res.json();
         })
         .then(data => {
+          const normalizePrefCadence = p => {
+            if (!p || !p.enabled || p.cadence === 'DISABLED') return 'DISABLED';
+            return ['BULLETINS', 'IMMEDIATE', 'SYNC_DIGEST', 'DAILY'].includes(p.cadence) ? 'BULLETINS' : 'DISABLED';
+          };
           if (data && Array.isArray(data.preferences)) {
             for (const p of data.preferences) {
               if (p.event_type === 'PUBLICATION_NEW' && byId('userPrefPublicationCadence')) {
-                byId('userPrefPublicationCadence').value = p.enabled ? p.cadence : 'DISABLED';
+                byId('userPrefPublicationCadence').value = normalizePrefCadence(p);
               }
               if (p.event_type === 'DEADLINE_CRITICAL' && byId('userPrefDeadlineCadence')) {
-                byId('userPrefDeadlineCadence').value = p.enabled ? p.cadence : 'DISABLED';
+                byId('userPrefDeadlineCadence').value = normalizePrefCadence(p);
               }
               if (p.event_type === 'HEARING_NEW' && byId('userPrefHearingCadence')) {
-                byId('userPrefHearingCadence').value = p.enabled ? p.cadence : 'DISABLED';
+                byId('userPrefHearingCadence').value = normalizePrefCadence(p);
               }
             }
           }
@@ -857,6 +909,13 @@
         avatar: state.profileAvatarDraft || ''
       });
     },
+    // Espelha a decisão do backend: trocar ou limpar um e-mail existente exige
+    // step-up; nome, telefone e foto continuam sem confirmação adicional.
+    profileEmailChanged() {
+      const current = String(state.user?.email || '').trim().toLowerCase();
+      const next = String(byId('profileEmail')?.value || '').trim().toLowerCase();
+      return Boolean(current) && next !== current;
+    },
     closeProfile({ force = false } = {}) {
       const backdrop = byId('profileSettingsBackdrop');
       if (!backdrop || backdrop.classList.contains('hidden')) return true;
@@ -885,24 +944,56 @@
       this.renderProfileAvatar(source, byId('profileSettingsPreviewImage'), byId('profileSettingsPreviewInitials'));
       this.profileFeedback('Foto pronta para ser salva.', 'success');
     },
+    // Traz o bloco de confirmação de identidade para a área visível e foca o
+    // campo de senha dele. Deve rodar depois que busy() reabilita os controles:
+    // campo desabilitado não recebe foco e deixa o foco no BODY, além de manter
+    // a rolagem presa em outra seção do modal.
+    focusProfileReauthField() {
+      const block = byId('profileEmailReauthBlock');
+      const field = byId('profileEmailCurrentPassword');
+      if (!field) return;
+      if (block) {
+        block.hidden = false;
+        block.classList?.remove('hidden');
+        if (typeof block.scrollIntoView === 'function') {
+          block.scrollIntoView({ block: 'center', behavior: 'auto' });
+        }
+      }
+      field.focus({ preventScroll: true });
+    },
     async saveProfile(event) {
       event.preventDefault();
       const form = event.currentTarget;
+      let reauthFocus = false;
       this.busy(form, true);
       this.profileFeedback('Salvando…');
       try {
+        const emailChanged = this.profileEmailChanged();
+        const body = {
+          displayName: byId('profileDisplayName').value,
+          email: byId('profileEmail').value,
+          phone: byId('profilePhone').value,
+          avatar: state.profileAvatarDraft
+        };
+        if (emailChanged) {
+          body.currentPassword = byId('profileEmailCurrentPassword')?.value || '';
+          body.mfaCode = byId('profileEmailMfaCode')?.value || '';
+        }
         const response = await this.secureFetch('/api/auth/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({
-            displayName: byId('profileDisplayName').value,
-            email: byId('profileEmail').value,
-            phone: byId('profilePhone').value,
-            avatar: state.profileAvatarDraft
-          })
+          body: JSON.stringify(body)
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.message || 'Não foi possível salvar o perfil.');
+        if (!response.ok) {
+          const reauthHeader = typeof response.headers?.get === 'function' && response.headers.get('x-atrium-reauth') === 'required';
+          if (response.status === 403 && (payload?.code === 'REAUTH_REQUIRED' || reauthHeader)) {
+            this.profileFeedback('Para alterar o e-mail, confirme sua senha atual e, se a proteção em duas etapas estiver ativa, informe o código do autenticador.', 'error');
+            reauthFocus = true;
+            return;
+          }
+          throw new Error(payload.message || 'Não foi possível salvar o perfil.');
+        }
         this.applyProfile(payload.user);
 
         const pubCad = byId('userPrefPublicationCadence')?.value;
@@ -924,6 +1015,10 @@
           }
         }
 
+        if (emailChanged) {
+          if (byId('profileEmailCurrentPassword')) byId('profileEmailCurrentPassword').value = '';
+          if (byId('profileEmailMfaCode')) byId('profileEmailMfaCode').value = '';
+        }
         state.profileSnapshot = this.profileFormSnapshot();
         this.profileFeedback('Perfil atualizado com sucesso.', 'success');
         window.dispatchEvent(new CustomEvent('keller:profile-updated', { detail: payload.user }));
@@ -932,6 +1027,7 @@
         this.profileFeedback(error.message, 'error');
       } finally {
         this.busy(form, false);
+        if (reauthFocus) this.focusProfileReauthField();
       }
     },
     async resetProfile() {
@@ -959,18 +1055,32 @@
         ? 'ATENÇÃO: Você é o Administrador titular deste escritório. Excluir este perfil apagará seu acesso e, caso não haja outros administradores, reinicializará as credenciais do sistema.\n\nDeseja realmente prosseguir com a exclusão?'
         : 'ATENÇÃO: Deseja realmente excluir permanentemente seu perfil de acesso? Esta ação não pode ser desfeita.';
       if (!window.confirm(promptMsg)) return;
+      // A exclusão é irreversível: o backend exige reautenticação. Reaproveita o
+      // mesmo bloco de confirmação do modal (senha atual + código, quando o 2FA
+      // está ativo) em vez de abrir outra camada sobre o perfil já aberto.
+      const password = byId('profileEmailCurrentPassword')?.value || '';
+      const code = byId('profileEmailMfaCode')?.value || '';
       this.profileFeedback('Excluindo perfil…');
       try {
         const response = await this.secureFetch('/api/auth/profile/delete', {
           method: 'POST',
-          headers: { Accept: 'application/json' }
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ password, code })
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.message || 'Não foi possível excluir o perfil.');
-        state.authenticated = false;
-        state.csrfToken = null;
-        state.trustedDevice = false;
+        if (!response.ok) {
+          const reauthHeader = typeof response.headers?.get === 'function' && response.headers.get('x-atrium-reauth') === 'required';
+          if (response.status === 403 && (payload?.code === 'REAUTH_REQUIRED' || reauthHeader)) {
+            this.profileFeedback('Para excluir o perfil, confirme sua senha atual e, se a proteção em duas etapas estiver ativa, informe o código do autenticador no bloco de confirmação.', 'error');
+            this.focusProfileReauthField();
+            return;
+          }
+          throw new Error(payload.message || 'Não foi possível excluir o perfil.');
+        }
+        clearSessionIdentity();
         sessionStorage.clear();
+        try { globalThis.history.replaceState({}, '', '/login'); } catch { /* histórico indisponível */ }
+        window.dispatchEvent(new CustomEvent('keller:logged-out'));
         this.closeProfile({ force: true });
         this.show('authLoginForm');
         this.feedback('Perfil excluído com sucesso.', 'success');
@@ -991,6 +1101,7 @@
       // A tela de login tem URL oficial em /login; mantém o endereço coerente ao sair.
       try { globalThis.history.replaceState({}, '', '/login'); } catch { /* histórico indisponível */ }
       this.show('authLoginForm');
+      window.dispatchEvent(new CustomEvent('keller:logged-out'));
       this.feedback('Sessão encerrada com segurança.', 'success');
     },
     async secureFetch(url, options = {}) {
@@ -1018,7 +1129,14 @@
           } catch { /* mantém a resposta original quando a renovação não é possível */ }
         }
       }
-      if (response.status === 401) { state.authenticated = false; state.csrfToken = null; state.workspace = null; state.user = null; state.pendingUser = null; this.show('authLoginForm'); }
+      if (response.status === 401) {
+        const wasAuthenticated = state.authenticated;
+        clearSessionIdentity();
+        if (wasAuthenticated && !registrationInFlight) {
+          this.show('authLoginForm');
+          window.dispatchEvent(new CustomEvent('keller:auth-expired'));
+        }
+      }
       return response;
     },
     busy(form, active) {
@@ -1102,7 +1220,7 @@
   async function request(url, { method = 'GET', body } = {}) {
     const response = await fetch(resolveApiUrl(url), { method, credentials: 'include', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.message || 'Operação não concluída.');
+    if (!response.ok) throw Object.assign(new Error(payload.message || 'Operação não concluída.'), { statusCode: response.status });
     return payload;
   }
 
@@ -1117,18 +1235,10 @@ function placeTooltip(trigger, tip) {
   const margin = 8;
   const box = trigger.getBoundingClientRect();
   Object.assign(tip.style, { position: 'fixed', right: 'auto', bottom: 'auto', left: '0px', top: '0px' });
-  // A medição precisa incluir o deslocamento do bloco contentor, mas não o
-  // translateY(3px) da animação de entrada: sem neutralizá-lo, o vão fica em 3px.
-  const transition = tip.style.transition;
-  const transform = tip.style.transform;
-  tip.style.transition = 'none';
-  tip.style.transform = 'none';
   const origin = tip.getBoundingClientRect();
   const left = Math.min(Math.max(box.left + (box.width - origin.width) / 2, margin), window.innerWidth - origin.width - margin);
   tip.style.left = `${left - origin.left}px`;
   tip.style.top = `${box.bottom + 6 - origin.top}px`;
-  tip.style.transform = transform;
-  tip.style.transition = transition;
 }
 
 function installTooltipHints(root = document) {
@@ -1155,7 +1265,7 @@ function passwordToggleIcon(visible) {
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
   const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
+  use.setAttribute('href', `assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-${visible ? 'eye-off' : 'eye'}`);
   svg.appendChild(use);
   return svg;
 }
@@ -1170,11 +1280,19 @@ function installPasswordToggles(root = document) {
     tooltip.className = 'ui-tooltip'; tooltip.id = tooltipId; tooltip.setAttribute('role', 'tooltip');
     tooltip.textContent = 'Mostrar ou ocultar a senha digitada';
     const button = document.createElement('button'); button.type = 'button'; button.className = 'password-toggle'; button.setAttribute('aria-label', 'Mostrar conteúdo'); button.setAttribute('aria-pressed', 'false'); button.setAttribute('aria-describedby', tooltipId); button.appendChild(passwordToggleIcon(false));
+    const resetToggle = () => {
+      input.type = 'password';
+      button.setAttribute('aria-label', 'Mostrar conteúdo');
+      button.setAttribute('aria-pressed', 'false');
+      button.classList.remove('visible');
+      button.replaceChildren(passwordToggleIcon(false));
+    };
     button.addEventListener('click', () => {
     const visible = input.type === 'text'; input.type = visible ? 'password' : 'text';
     button.setAttribute('aria-label', visible ? 'Mostrar conteúdo' : 'Ocultar conteúdo'); button.setAttribute('aria-pressed', String(!visible)); button.classList.toggle('visible', !visible);
     button.replaceChildren(passwordToggleIcon(!visible));
     });
+    input.form?.addEventListener('reset', resetToggle);
     wrapper.appendChild(button);
     wrapper.appendChild(tooltip);
   });
@@ -1182,7 +1300,38 @@ function installPasswordToggles(root = document) {
 document.addEventListener('DOMContentLoaded', () => {
   installPasswordToggles();
   installTooltipHints();
-  new MutationObserver(mutations => mutations.forEach(mutation => mutation.addedNodes.forEach(node => { if (node.nodeType === 1) { installPasswordToggles(node); installTooltipHints(node); } }))).observe(document.body, { childList: true, subtree: true });
+  const pendingAuthRoots = new Set();
+  let authFlushScheduled = false;
+  const flushAuthObservers = () => {
+    authFlushScheduled = false;
+    const roots = [...pendingAuthRoots];
+    pendingAuthRoots.clear();
+    const rootSet = new Set(roots);
+    for (const node of roots) {
+      if (!node.isConnected) continue;
+      let ancestorQueued = false;
+      for (let p = node.parentElement; p; p = p.parentElement) {
+        if (rootSet.has(p)) { ancestorQueued = true; break; }
+      }
+      if (ancestorQueued) continue;
+      const target = node.childElementCount === 0 ? (node.parentElement || node) : node;
+      installPasswordToggles(target);
+      installTooltipHints(target);
+    }
+  };
+  new MutationObserver(mutations => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        if (node.childElementCount === 0 && node.tagName !== 'INPUT' && !(node.tagName === 'BUTTON' && node.hasAttribute('aria-describedby')) && !node.hasAttribute('aria-describedby')) continue;
+        pendingAuthRoots.add(node);
+      }
+    }
+    if (pendingAuthRoots.size && !authFlushScheduled) {
+      authFlushScheduled = true;
+      queueMicrotask(flushAuthObservers);
+    }
+  }).observe(document.body, { childList: true, subtree: true });
   Auth.init();
 });
 })();

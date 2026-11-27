@@ -39,7 +39,7 @@ try {
   assert.equal(await member.page.evaluate(() => document.documentElement.dataset.canCollect), 'false');
   assert.equal(await member.page.evaluate(() => getComputedStyle(document.getElementById('btnSyncEprocA1')).display), 'none', 'botão de varredura some');
   await member.page.locator('#syncButton').click();
-  await member.page.getByText('A coleta nos tribunais é manual').first().waitFor();
+  await member.page.getByText('A coleta nos tribunais roda nos ciclos automáticos').first().waitFor();
   assert.deepEqual(member.posts.filter(pathname => /\/api\/sync$|\/sync-all$|\/sweep$/.test(pathname)), [], 'botão não inicia coleta');
   assert.deepEqual(member.errors, []);
   await member.context.close();

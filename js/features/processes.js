@@ -1,16 +1,17 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.3.2';
-import { requestAuthUsers } from '../core/auth-users-request.js?v=3.3.2';
-import { resolveMemberIdList, matchMemberByName } from '../core/task-assignees.js?v=3.3.2';
-import { userInvolvedInProcess } from '../core/office-involvement.js?v=3.3.2';
-import { isAvatarDataUrl } from '../core/member-avatar.js?v=3.3.2';
-import { cleanCnj, formatCnj, isValidCnj, suggestCnjCorrection, describeCnj } from '../core/cnj.js?v=3.3.2';
-import { createProcessesV2Presenter } from '../views/ui-v2/processes-presenter.js?v=3.3.2';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.3.2';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.3.2';
-import { buildLegalTimeline } from '../core/legal-timeline.js?v=3.3.2';
-import { refreshProcessTriage, processTriageBadge } from '../core/process-triage.js?v=3.3.2';
-import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.3.2';
-import { isOfficeScopeItem } from '../core/office-scope.js?v=3.3.2';
+import { Store, isoDate, uid } from '../core/store.js?v=3.4.0';
+import { requestAuthUsers } from '../core/auth-users-request.js?v=3.4.0';
+import { resolveMemberIdList, matchMemberByName } from '../core/task-assignees.js?v=3.4.0';
+import { userInvolvedInProcess } from '../core/office-involvement.js?v=3.4.0';
+import { isAvatarDataUrl } from '../core/member-avatar.js?v=3.4.0';
+import { cleanCnj, formatCnj, isValidCnj, suggestCnjCorrection, describeCnj } from '../core/cnj.js?v=3.4.0';
+import { createProcessesV2Presenter, isEprocProcess } from '../views/ui-v2/processes-presenter.js?v=3.4.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.4.0';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.4.0';
+import { buildLegalTimeline } from '../core/legal-timeline.js?v=3.4.0';
+import { refreshProcessTriage, processTriageBadge } from '../core/process-triage.js?v=3.4.0';
+import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.4.0';
+import { isOfficeScopeItem } from '../core/office-scope.js?v=3.4.0';
+import { activeIntimations } from '../core/publication-scope.js?v=3.4.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 export const PROCESS_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
@@ -76,6 +77,8 @@ export function createProcessesFeature({
   let pendingTjrsAppliedFields = new Map();
   let pendingAccessKeyProcess = null;
   const processAccessKeys = new Map();
+  // Chaves legadas já migradas ao cofre nesta sessão; evita POST repetido.
+  const migratedAccessKeyProcesses = new Set();
   let currentPage = 1;
   let pageSize = PROCESS_DEFAULT_PAGE_SIZE;
   let lastFilteredTotal = 0;
@@ -196,6 +199,7 @@ export function createProcessesFeature({
         });
       },
       onCreateMovement: item => feature.openMovementModal(item),
+      onSaveAccess: item => feature.saveProcessAccess(item),
       onExport: item => feature.exportProcess(item),
       onDelete: item => feature.deleteProcess(item)
     });
@@ -246,7 +250,7 @@ export function createProcessesFeature({
     const numberLinks = records => (records || []).filter(record => processNumber && String(record?.process || record?.processNumber || '').trim() === processNumber);
     const uniqueLinks = records => [...new Map(records.filter(Boolean).map(record => [String(record.id || ''), record])).values()];
     const linkedTasks = item?.id ? uniqueLinks([...(getLinkedTasks?.(processNumber) || []), ...directLinks(store.state.tasks)]) : [];
-    const linkedIntimations = item?.id ? uniqueLinks([...(getLinkedIntimations?.(processNumber) || []), ...directLinks(store.state.intimations)]) : [];
+    const linkedIntimations = item?.id ? uniqueLinks([...(getLinkedIntimations?.(processNumber) || []), ...directLinks(activeIntimations(store.state.intimations))]) : [];
     const linkedAppointments = item?.id ? uniqueLinks([...directLinks(store.state.agenda), ...numberLinks(store.state.agenda)]) : [];
     const linkedDocuments = item?.id ? uniqueLinks([...ownerLinks(store.state.documents), ...directLinks(store.state.documents), ...numberLinks(store.state.documents)]).filter(record => !record.deletedAt) : [];
     const openTasks = linkedTasks.filter(task => !isTerminalStatus(task.status));
@@ -273,7 +277,7 @@ export function createProcessesFeature({
       linkedAppointments,
       linkedDocuments,
       movements: Array.isArray(item.movements) ? item.movements : [],
-      timeline: buildLegalTimeline(store.state, item, { order: 'autos' }),
+      timeline: buildLegalTimeline(store.state, item, { order: 'desc' }),
       canConsultTjrs: canConsultTjrs(item)
     });
   };
@@ -449,10 +453,11 @@ export function createProcessesFeature({
       const presenter = getPresenter();
       if (isV2()) {
         presenter.close({ restoreFocus: false });
-        presenter.updateCount({ visible: records.length, total: allProcesses.length, query: String(query || '').trim() });
+        const filtered = Boolean(String(query || '').trim() || mineOnlyActive);
+        presenter.updateCount({ visible: records.length, total: allProcesses.length, query: String(query || '').trim(), filtered });
         byId('processTableBody').innerHTML = records.length
           ? presenter.renderRows(pageRecords)
-          : presenter.renderEmpty({ hasProcesses: allProcesses.length > 0, query: String(query || '').trim() });
+          : presenter.renderEmpty({ hasProcesses: allProcesses.length > 0, query: String(query || '').trim(), filtered });
       } else {
         presenter.close({ restoreFocus: false });
         byId('processTableBody').innerHTML = records.length ? pageRecords.map(item => {
@@ -512,7 +517,6 @@ export function createProcessesFeature({
           await refreshTeamDirectory();
           if (!getOfficeDirectory().teams.length) await refreshOfficeDirectory();
           presenter.open(item, getProcessSummary(item), event.target.closest('[data-process-details]') || row);
-          this.bindProcessAccessControls(item);
         } else this.openProcessModal(item);
       }));
 
@@ -594,18 +598,47 @@ export function createProcessesFeature({
         button.classList.add('is-complete');
         button.title = 'Exportar novamente o backup técnico deste processo';
       }
-      showToast?.('Backup técnico exportado em JSON. Ele serve para guardar ou transferir os dados do processo; os autos em PDF ficam em “Gerar caderno em PDFs”.', 'success');
+      showToast?.('Backup técnico exportado em JSON. Ele serve para guardar ou transferir os dados do processo; os autos em PDF ficam em “Baixar Autos com A1”.', 'success');
       return dossier;
     },
 
     async refreshAccessKeyStatus(item) {
       const panel = byId('processInspectorContent')?.querySelector('[data-process-access-key-status]');
       const keyButton = byId('processInspectorAccessKey');
-      if (!item?.number) return false;
+      if (!item?.number || !isEprocProcess(item)) return false;
+      const isTjrs = canConsultTjrs(item);
+      const encodedNumber = encodeURIComponent(item.number);
+      const judicialStatusUrl = `/api/judicial/processes/access-key/status?processNumber=${encodedNumber}`;
       try {
-        const response = await secureFetch(`/api/integrations/tjrs-sidecar/processes/access-key/status?processNumber=${encodeURIComponent(item.number)}`, { headers: { Accept: 'application/json' } });
+        let response = await secureFetch(
+          isTjrs
+            ? `/api/integrations/tjrs-sidecar/processes/access-key/status?processNumber=${encodedNumber}`
+            : judicialStatusUrl,
+          { headers: { Accept: 'application/json' } }
+        );
+        let usedJudicialFallback = !isTjrs;
+        if (isTjrs && (response.status === 503 || response.status === 404)) {
+          response = await secureFetch(judicialStatusUrl, { headers: { Accept: 'application/json' } });
+          usedJudicialFallback = true;
+        }
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok) throw new Error(result.message || 'Status indisponível.');
+        // O GET só consulta. Quando o processo ainda traz a chave no estado legado,
+        // a migração para o cofre acontece por POST, com CSRF, uma única vez.
+        const chaveLegada = Boolean(item?.accessKey || item?.chaveAcesso);
+        if (isTjrs && !usedJudicialFallback && result.configured && chaveLegada && !migratedAccessKeyProcesses.has(item.id)) {
+          const migration = await secureFetch('/api/integrations/tjrs-sidecar/processes/access-key/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ processNumber: item.number })
+          });
+          const migrationResult = await migration.json().catch(() => ({}));
+          if (!migration.ok || !migrationResult.ok) {
+            throw new Error(migrationResult.message || 'Não foi possível guardar a chave no cofre cifrado.');
+          }
+          migratedAccessKeyProcesses.add(item.id);
+          result.configured = migrationResult.configured;
+        }
         if (panel) {
           panel.dataset.processAccessKeyStatus = result.configured ? 'configured' : 'missing';
           panel.querySelector('[data-process-access-key-copy]').textContent = result.configured
@@ -667,24 +700,59 @@ export function createProcessesFeature({
       const submit = byId('processAccessKeySave');
       if (submit) { submit.disabled = true; submit.textContent = 'Validando…'; }
       try {
-        const response = await secureFetch('/api/integrations/tjrs-sidecar/processes/access-key', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ processNumber: item.number, accessKey })
-        });
+        const isTjrs = canConsultTjrs(item);
+        let usedJudicialRoute = !isTjrs;
+        let response = await secureFetch(
+          isTjrs ? '/api/integrations/tjrs-sidecar/processes/access-key' : '/api/judicial/processes/access-key',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(
+              isTjrs
+                ? { processNumber: item.number, accessKey }
+                : { processId: item.id, processNumber: item.number, accessKey }
+            )
+          }
+        );
+        if (isTjrs && (response.status === 503 || response.status === 404)) {
+          usedJudicialRoute = true;
+          response = await secureFetch('/api/judicial/processes/access-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ processId: item.id, processNumber: item.number, accessKey })
+          });
+        }
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok) throw new Error(result.message || 'Não foi possível guardar a chave.');
+        const wasClean = typeof store.persistenceFingerprint === 'function'
+          && store.persistenceFingerprint() === store.persistedFingerprint;
         processAccessKeys.delete(item.id);
+        const stored = store.state.processes.find(process => process.id === item.id);
+        if (stored) stored.hasAccessKey = true;
+        if (result.revision) {
+          if (wasClean && typeof store.adoptServerRevision === 'function') {
+            store.adoptServerRevision(result.revision);
+          } else {
+            store.revision = result.revision;
+          }
+        }
         this.closeAccessKeyDialog();
-        await this.refreshAccessKeyStatus(item);
-        try {
-          const syncResult = await this.refreshProcessViaEproc(item);
+        await this.refreshAccessKeyStatus(stored || item);
+        if (isTjrs && !usedJudicialRoute) {
+          try {
+            const syncResult = await this.refreshProcessViaEproc(item);
+            this.render(byId('processSearch')?.value || '');
+            const refreshed = store.state.processes.find(process => process.id === item.id);
+            if (refreshed) getPresenter().open(refreshed, getProcessSummary(refreshed), null);
+            showToast?.(syncResult.message ? `Chave validada e processo atualizado: ${syncResult.message}` : 'Chave validada e processo atualizado com os dados oficiais do eproc.', 'success');
+          } catch (syncError) {
+            showToast?.(`A chave foi validada e guardada. A atualização da ficha do processo ficou pendente: ${syncError.message}`, 'error');
+          }
+        } else {
           this.render(byId('processSearch')?.value || '');
           const refreshed = store.state.processes.find(process => process.id === item.id);
           if (refreshed) getPresenter().open(refreshed, getProcessSummary(refreshed), null);
-          showToast?.(syncResult.message ? `Chave validada e processo atualizado: ${syncResult.message}` : 'Chave validada e processo atualizado com os dados oficiais do eproc.', 'success');
-        } catch (syncError) {
-          showToast?.(`A chave foi validada e guardada. A atualização da ficha do processo ficou pendente: ${syncError.message}`, 'error');
+          showToast?.(result.message || 'Chave de acesso guardada no cofre cifrado.', 'success');
         }
         return true;
       } catch (error) {
@@ -758,6 +826,11 @@ export function createProcessesFeature({
       const inspectorWasOpen = Boolean(byId('processInspectorBackdrop') && !byId('processInspectorBackdrop').classList.contains('hidden'));
       const isTjrs = normalizeCnj(processNumber).slice(13, 16) === '821';
       const hasA1 = store.state?.settings?.hasA1Certificate !== false;
+      if (isTjrs && !hasA1) {
+        // A consulta ao TJRS por chave foi desativada: sem A1 não há como atualizar.
+        showToast?.('Para atualizar processos do TJRS, cadastre o Certificado A1 em Conexões.', 'error');
+        return false;
+      }
       showToast?.(isTjrs ? `Buscando os dados mais recentes do processo ${processNumber} no TJRS…` : `Consultando fontes judiciais oficiais para ${processNumber}…`);
       if (button) {
         button.disabled = true;
@@ -777,14 +850,18 @@ export function createProcessesFeature({
             const enrichData = await enrichRes.json().catch(() => ({}));
             if (enrichRes.ok && enrichData.ok && enrichData.process) {
               result = enrichData;
+            } else if (isTjrs) {
+              // Sem alternativa por chave no TJRS: a mensagem do eproc é a resposta.
+              result = enrichData;
             }
           } catch (e1) {
             console.warn('[processes] Aviso consulta eproc A1 direta:', e1.message);
           }
         }
 
-        // Se não usou A1 ou se a consulta A1 falhou, utiliza o coletor / sidecar local
-        if (!result || !result.ok || !result.process) {
+        // Fora do TJRS, a alternativa é o coletor. No TJRS, a consulta por chave foi
+        // desativada: a atualização depende do eproc com o Certificado A1.
+        if ((!result || !result.ok || !result.process) && !isTjrs) {
           const syncUrl = isTjrs ? '/api/integrations/tjrs-sidecar/processes/sync' : '/api/integrations/omni/processes/sync';
           const payload = { processId: process.id, processNumber, revision: store.revision };
           const accessKey = processAccessKeys.get(process.id) || '';
@@ -809,7 +886,7 @@ export function createProcessesFeature({
           if (isTjrs && result?.state === 'STALE') {
             this.openAccessKeyDialog(process, { reason: 'Este processo ainda não foi consultado pelo coletor. Informe a chave do eproc para fazer a primeira consulta ao TJRS.' });
           }
-          showToast?.(result?.message || (isTjrs ? 'Não foi possível obter os dados deste processo no TJRS.' : 'Não foi possível sincronizar com as fontes judiciais.'), 'error');
+          showToast?.(result?.message || (isTjrs ? 'Não foi possível atualizar este processo pelo eproc com o Certificado A1. Confira o certificado em Conexões.' : 'Não foi possível sincronizar com as fontes judiciais.'), 'error');
           return false;
         }
 
@@ -824,7 +901,7 @@ export function createProcessesFeature({
         showToast?.(result.message || (isTjrs ? 'Dados mais recentes do TJRS incorporados ao processo.' : 'Dados judiciais incorporados ao processo.'), 'success');
         return true;
       } catch (error) {
-        showToast?.(isTjrs ? `Falha ao consultar o coletor TJRS local: ${error.message}` : `Falha ao consultar fontes judiciais: ${error.message}`, 'error');
+        showToast?.(isTjrs ? `Falha ao atualizar pelo eproc com o Certificado A1: ${error.message}` : `Falha ao consultar fontes judiciais: ${error.message}`, 'error');
         return false;
       } finally {
         if (button) {
@@ -835,6 +912,11 @@ export function createProcessesFeature({
     },
 
     async downloadAutos(button, item) {
+      // A consulta ao TJRS por chave foi desativada: os autos vêm do eproc com A1.
+      return this.downloadEprocA1(button, item);
+    },
+
+    async downloadAutosByAccessKeyRetired(button, item) {
       const process = item || store.state.processes.find(record => record.id === button?.dataset?.processId);
       if (!process?.id || !canConsultTjrs(process)) {
         showToast?.('Este recurso exige um processo TJRS cadastrado.', 'error');
@@ -910,7 +992,7 @@ export function createProcessesFeature({
       const originalHtml = button?.innerHTML || 'Atualizar com Certificado';
       if (button) {
         button.disabled = true;
-        button.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-sync"></use></svg><span>Atualizando pelo eproc…</span>`;
+        button.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-sync"></use></svg><span>Atualizando pelo eproc…</span>`;
       }
       try {
         const result = await this.refreshProcessViaEproc(process);
@@ -938,7 +1020,7 @@ export function createProcessesFeature({
       const originalHtml = button?.innerHTML || 'Baixar Autos com A1';
       if (button) {
         button.disabled = true;
-        button.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-sync"></use></svg><span>Baixando peças via A1…</span>`;
+        button.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-sync"></use></svg><span>Baixando peças via A1…</span>`;
       }
       showToast?.(`Solicitando as peças de ${process.number} ao eproc via Certificado A1. Se houver sincronização em andamento, o download entra na fila e começa em seguida.`, 'info');
       try {
@@ -1014,7 +1096,7 @@ export function createProcessesFeature({
       if (btn) {
         btn.classList.add('is-syncing');
         btn.setAttribute?.('aria-busy', 'true');
-        btn.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-sync"></use></svg><span>Sincronizando eproc...</span>`;
+        btn.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false" style="animation: v2-sync-spin 1s linear infinite;"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-sync"></use></svg><span>Sincronizando eproc...</span>`;
         btn.title = 'Sincronização eproc em andamento — clique para abrir o monitor';
       }
       if (topSyncBtn) {
@@ -1119,7 +1201,7 @@ export function createProcessesFeature({
           const fill = byId('systemStatusProgressFill');
 
           if (icon) {
-            icon.innerHTML = `<svg class="atrium-icon is-running" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-sync"></use></svg>`;
+            icon.innerHTML = `<svg class="atrium-icon is-running" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-sync"></use></svg>`;
           }
 
           if (lbl) lbl.textContent = label || 'Sincronizando';
@@ -1344,7 +1426,7 @@ export function createProcessesFeature({
           const track = byId('systemStatusProgressTrack');
           const fill = byId('systemStatusProgressFill');
           if (icon) {
-            icon.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-check"></use></svg>`;
+            icon.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-check"></use></svg>`;
           }
           if (lbl) lbl.textContent = 'Sincronização Concluída';
           if (percentEl) {
@@ -1396,7 +1478,7 @@ export function createProcessesFeature({
           const track = byId('systemStatusProgressTrack');
           const fill = byId('systemStatusProgressFill');
           if (icon) {
-            icon.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-warning"></use></svg>`;
+            icon.innerHTML = `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-warning"></use></svg>`;
           }
           if (lbl) lbl.textContent = 'Falha na Sincronização';
           if (percentEl) {
@@ -1424,33 +1506,42 @@ export function createProcessesFeature({
       return getPresenter().open(item, getProcessSummary(item), documentRef.activeElement);
     },
 
+    async saveProcessAccess(item) {
+      if (!item?.id) return false;
+      const content = byId('processInspectorContent');
+      if (!content) return false;
+      const button = content.querySelector(`[data-process-access-save="${CSS.escape(String(item.id))}"]`);
+      const teamIds = [...content.querySelectorAll('[data-process-access-team]:checked')].map(input => input.value);
+      const responsibleUserIds = [...content.querySelectorAll('[data-process-access-user]:checked')].map(input => input.value);
+      if (button) button.disabled = true;
+      try {
+        const response = await secureFetch(`/api/processes/${encodeURIComponent(item.id)}/assignment`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ teamIds, responsibleUserIds, expectedRevision: store.revision })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível salvar a atribuição.');
+        store.upsert('processes', payload.process);
+        store.adoptServerRevision(payload.revision);
+        showToast?.('Equipe e acesso do processo atualizados.', 'success');
+        getPresenter().close?.();
+        this.render();
+        return true;
+      } catch (error) {
+        console.warn('[processes] Atribuição processual:', error.message);
+        showToast?.(error.message || 'Não foi possível salvar a atribuição.', 'error');
+        return false;
+      } finally {
+        if (button) button.disabled = false;
+      }
+    },
+
     bindProcessAccessControls(item) {
       const button = byId('processInspectorContent')?.querySelector(`[data-process-access-save="${CSS.escape(String(item.id))}"]`);
-      if (!button) return;
-      button.addEventListener('click', async () => {
-        const teamIds = [...byId('processInspectorContent').querySelectorAll('[data-process-access-team]:checked')].map(input => input.value);
-        const responsibleUserIds = [...byId('processInspectorContent').querySelectorAll('[data-process-access-user]:checked')].map(input => input.value);
-        button.disabled = true;
-        try {
-          const response = await secureFetch(`/api/processes/${encodeURIComponent(item.id)}/assignment`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ teamIds, responsibleUserIds, expectedRevision: store.revision })
-          });
-          const payload = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(payload.message || 'Não foi possível salvar a atribuição.');
-          store.upsert('processes', payload.process);
-          store.adoptServerRevision(payload.revision);
-          showToast?.('Equipe e acesso do processo atualizados.');
-          presenter.close?.();
-          this.render();
-        } catch (error) {
-          console.warn('[processes] Atribuição processual:', error.message);
-          showToast?.(error.message);
-        } finally {
-          button.disabled = false;
-        }
-      });
+      if (!button || button.dataset.boundAccessSave) return;
+      button.dataset.boundAccessSave = 'true';
+      button.addEventListener('click', () => { void this.saveProcessAccess(item); });
     },
 
     openProcessModal(defaults = {}) {
@@ -1474,14 +1565,12 @@ export function createProcessesFeature({
       // A consulta assistida só existe no TJRS: em processo de outro tribunal ela só atrapalha.
       const showTjrsAssist = !defaults.id || /^\d{13}821\d{4}$/.test(String(defaults.number || '').replace(/\D/g, ''));
       const tjrsAssistHtml = !showTjrsAssist ? '' : `<section class="process-tjrs-assist" aria-labelledby="processTjrsAssistHeading">
-        <div><span>Cadastro assistido</span><strong id="processTjrsAssistHeading">Consultar processo no TJRS</strong><p>Preenche somente dados judiciais disponíveis. Cliente e posição processual continuam sob sua revisão.</p></div>
-        <button type="button" class="button ghost" id="processTjrsPreview">Consultar dados do TJRS</button>
+        <div><span>Processo do TJRS</span><strong id="processTjrsAssistHeading">Dados pela varredura do eproc com A1</strong><p>A chave abaixo só é necessária em processo com segredo de justiça.</p></div>
         <div class="process-tjrs-assist-key">
           <label for="field-accessKey">Chave de acesso do eproc</label>
           <input type="password" id="field-accessKey" class="v2-input" autocomplete="off" maxlength="500" placeholder="Informe para processo em segredo de justiça">
-          <small>A chave será guardada no cofre cifrado e reutilizada no monitoramento. Deixe em branco para manter a chave já cadastrada.</small>
+          <small>A chave fica no cofre cifrado e é usada pela varredura do eproc. Deixe em branco para manter a chave já cadastrada.</small>
         </div>
-        <div class="process-tjrs-preview-status" id="processTjrsPreviewStatus" aria-live="polite">Informe um CNJ do TJRS no campo abaixo.</div>
       </section>`;
 
       openModal?.('process', defaults.id ? 'Editar processo' : 'Cadastrar processo', 'Carteira processual', [
@@ -1494,6 +1583,8 @@ export function createProcessesFeature({
         { name: 'opposingParty', label: 'Parte contrária principal', placeholder: 'Nome da parte adversa' },
         { name: 'actionGroup', label: 'Grupo de ação', type: actionGroups.length ? 'select' : 'text', options: [{value:'',label:'Selecione o grupo'}, ...actionGroups] },
         { name: 'actionType', label: 'Tipo de ação / Matéria', type: actionTypes.length ? 'select' : 'text', options: [{value:'',label:'Selecione o tipo de ação'}, ...actionTypes] },
+        { name: 'actionClass', label: 'Classe judicial', placeholder: 'Ex: Procedimento Comum Cível' },
+        { name: 'subject', label: 'Assunto principal', placeholder: 'Ex: Benefício por Incapacidade' },
         { name: 'judicialPhase', label: 'Fase processual', type: 'select', options: [{value:'Conhecimento',label:'Conhecimento'},{value:'Recursal',label:'Recursal'},{value:'Execução / Cumprimento',label:'Execução / Cumprimento'},{value:'Acordo',label:'Acordo'},{value:'Administrativo',label:'Administrativo'},{value:'Arquivado',label:'Arquivado'}] },
         { name: 'risk', label: 'Risco / Probabilidade de êxito (Opcional)', type: 'select', options: [{value:'',label:'Não informado / Sem prognóstico'},{value:'provavel',label:'Provável (Alto êxito)'},{value:'possivel',label:'Possível (Médio risco)'},{value:'remoto',label:'Remoto (Alto risco)'}] },
         { name: 'stage', label: 'Etapa do fluxo' },
@@ -1502,6 +1593,8 @@ export function createProcessesFeature({
         { name: 'court', label: 'Tribunal / Órgão', placeholder: 'Ex: TJRS, TRF4, TST' },
         { name: 'county', label: 'Comarca / Seção Judiciária', placeholder: 'Ex: Ijuí, Porto Alegre' },
         { name: 'courtUnit', label: 'Vara / Unidade Judiciária', placeholder: 'Ex: 1ª Vara Cível, 2ª Vara Federal' },
+        { name: 'competence', label: 'Competência', placeholder: 'Ex: Previdenciária, Cível' },
+        { name: 'judge', label: 'Juiz(a) / Magistrado(a)', placeholder: 'Nome do(a) magistrado(a)' },
         { name: 'responsible', label: 'Responsáveis (nomes por vírgula)', type: 'combobox', identityName: 'responsibleUserId', suggestions: memberOptions(), placeholder: 'Ex: Ana Beatriz, João Pedro', note: 'Nomes de integrantes viram responsáveis vinculados e recebem as movimentações. É possível escolher um integrante ou digitar vários nomes.' },
         { name: 'registeredAt', label: 'Data de distribuição / cadastro', type: 'date' },
         { name: 'lastMovementAt', label: 'Data do último andamento', type: 'date' },
@@ -1510,6 +1603,7 @@ export function createProcessesFeature({
         { name: 'feePercentage', label: 'Percentual de êxito (%)', type: 'number', placeholder: 'Ex: 30' },
         { name: 'feeAmount', label: 'Valor fixo / causa (R$)', type: 'number', placeholder: 'Ex: 5000' },
         { name: 'feeMonthly', label: 'Valor mensal (R$)', type: 'number', placeholder: 'Ex: 1500' },
+        { name: 'caseValue', label: 'Valor da causa (R$)', type: 'number', step: '0.01', placeholder: 'Ex: 45000.00' },
         { name: 'feeStatus', label: 'Situação dos honorários', type: 'select', options: [{value:'em_dia',label:'Em dia / Regular'},{value:'aguardando_exito',label:'Aguardando êxito processual'},{value:'pendente',label:'Pendente / Cobrança'},{value:'quitado',label:'Quitado'},{value:'repassado',label:'Quitado (compatibilidade legada)'}] },
         { name: 'requisitionType', label: 'Requisição judicial (RPV / Alvará)', type: 'select', options: [{value:'',label:'Nenhuma requisição ativa'},{value:'rpv_federal',label:'RPV Federal (TRF4)'},{value:'precatorio_federal',label:'Precatório Federal (TRF4)'},{value:'alvara_estadual',label:'Alvará Judicial Estadual (TJRS)'},{value:'alvara_trabalhista',label:'Alvará Trabalhista (TRT4)'}] },
         { name: 'requisitionAmount', label: 'Valor bruto requisitado (R$)', type: 'number', placeholder: 'Ex: 45000' },
@@ -1726,10 +1820,21 @@ export function createProcessesFeature({
       const feeAmount = parseOptionalNumber(data.feeAmount);
       const feeMonthly = parseOptionalNumber(data.feeMonthly);
       const requisitionAmount = parseOptionalNumber(data.requisitionAmount);
-      if ([feePercentage, feeAmount, feeMonthly, requisitionAmount].includes(undefined)) {
+      const caseValue = parseOptionalNumber(data.caseValue);
+      if ([feePercentage, feeAmount, feeMonthly, requisitionAmount, caseValue].includes(undefined)) {
         showToast?.('Informe valores financeiros válidos, não negativos e percentual entre 0 e 100.', 'error');
         return null;
       }
+      const preservedEprocDetails = safeDefaults.eprocDetails && typeof safeDefaults.eprocDetails === 'object'
+        ? structuredClone(safeDefaults.eprocDetails)
+        : (assistedDraft.eprocDetails && typeof assistedDraft.eprocDetails === 'object' ? structuredClone(assistedDraft.eprocDetails) : undefined);
+      const preservedStructuredParties = Array.isArray(safeDefaults.structuredParties)
+        ? structuredClone(safeDefaults.structuredParties)
+        : (Array.isArray(assistedDraft.structuredParties) ? structuredClone(assistedDraft.structuredParties) : undefined);
+      const preservedJudicialParties = Array.isArray(safeDefaults.judicialParties)
+        ? structuredClone(safeDefaults.judicialParties)
+        : (Array.isArray(assistedDraft.judicialParties) ? structuredClone(assistedDraft.judicialParties) : undefined);
+      const hasStoredAccessKey = Object.hasOwn(safeDefaults, 'hasAccessKey') || Object.hasOwn(assistedDraft, 'hasAccessKey');
       const secrecyValue = data.secrecy === 'true';
       // Proveniência da marcação: só é manual quando o usuário definiu/alterou o
       // campo (ou já era manual). Marca da fonte pré-preenchida não vira manual,
@@ -1747,6 +1852,11 @@ export function createProcessesFeature({
         feeAmount,
         feeMonthly,
         requisitionAmount,
+        caseValue,
+        ...(preservedEprocDetails ? { eprocDetails: preservedEprocDetails } : {}),
+        ...(preservedStructuredParties ? { structuredParties: preservedStructuredParties } : {}),
+        ...(preservedJudicialParties ? { judicialParties: preservedJudicialParties } : {}),
+        ...(hasStoredAccessKey ? { hasAccessKey: Boolean(safeDefaults.hasAccessKey ?? assistedDraft.hasAccessKey) } : {}),
         secrecy: secrecyValue,
         secrecyManual,
         responsibleUserIds,
@@ -1868,13 +1978,32 @@ export function createProcessesFeature({
       const accessKey = processAccessKeys.get(process?.id) || '';
       if (!accessKey) return true;
       try {
-        const response = await secureFetch('/api/integrations/tjrs-sidecar/processes/access-key', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ processId: process.id, processNumber: process.number, accessKey, chaveAcesso: accessKey })
-        });
+        const isTjrs = canConsultTjrs(process);
+        const body = JSON.stringify({ processId: process.id, processNumber: process.number, accessKey, chaveAcesso: accessKey });
+        let response = await secureFetch(
+          isTjrs ? '/api/integrations/tjrs-sidecar/processes/access-key' : '/api/judicial/processes/access-key',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body
+          }
+        );
+        if (isTjrs && (response.status === 503 || response.status === 404)) {
+          response = await secureFetch('/api/judicial/processes/access-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body
+          });
+        }
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok) throw new Error(result.message || 'Não foi possível guardar a chave de acesso.');
+        processAccessKeys.delete(process.id);
+        process.hasAccessKey = true;
+        const stored = Array.isArray(store.state?.processes)
+          ? store.state.processes.find(entry => entry?.id === process.id)
+          : null;
+        if (stored) stored.hasAccessKey = true;
+        if (result.revision) store.revision = result.revision;
         return true;
       } catch (error) {
         showToast?.(error.message || 'Não foi possível guardar a chave de acesso.', 'error');

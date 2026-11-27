@@ -107,7 +107,44 @@ assert.equal(unitEdited.unknownField, 'preservado');
 assert.equal(unitEdited.profession, 'Profissão Editada');
 assert.deepEqual(unitAudits.at(-1), { action: 'Contato atualizado', detail: 'Contato Unitário Editado' });
 
-const server = await startTestServer();
+const eprocContact = unitFeature.saveContact({
+  name: 'Contato Eproc Sintético',
+  contactRole: 'cliente',
+  leadOrigin: 'indicacao',
+  gender: 'Feminino',
+  nationality: 'Brasileira',
+  birthPlace: 'Porto Alegre/RS',
+  motherName: 'Mãe Sintética Eproc',
+  fatherName: 'Pai Sintético Eproc'
+}, {
+  source: 'eproc-jfrs',
+  eprocPerson: {
+    personType: 'PF',
+    portalHost: 'eproc.jfrs.jus.br',
+    syncedAt: '2026-09-18T12:00:00.000Z',
+    addressHistory: [{ raw: 'Rua Sintética, 100', hasStreet: true, includedAtRaw: '18/09/2026' }],
+    nameHistory: [{ name: 'Contato Eproc Sintético', includedAtRaw: '18/09/2026' }]
+  },
+  relatedProcessNumbers: ['5000000-00.2026.4.04.7100']
+});
+assert.equal(eprocContact.gender, 'Feminino');
+assert.equal(eprocContact.nationality, 'Brasileira');
+assert.equal(eprocContact.birthPlace, 'Porto Alegre/RS');
+assert.equal(eprocContact.motherName, 'Mãe Sintética Eproc');
+assert.equal(eprocContact.fatherName, 'Pai Sintético Eproc');
+assert.equal(eprocContact.eprocPerson?.portalHost, 'eproc.jfrs.jus.br');
+assert.deepEqual(eprocContact.relatedProcessNumbers, ['5000000-00.2026.4.04.7100']);
+const eprocContactEdited = unitFeature.saveContact({
+  name: 'Contato Eproc Atualizado',
+  contactRole: 'cliente',
+  leadOrigin: 'indicacao'
+}, eprocContact);
+assert.equal(eprocContactEdited.eprocPerson?.personType, 'PF', 'Edição pelo modal deve preservar eprocPerson.');
+assert.equal(eprocContactEdited.eprocPerson?.addressHistory?.length, 1);
+assert.deepEqual(eprocContactEdited.relatedProcessNumbers, ['5000000-00.2026.4.04.7100'], 'Edição pelo modal deve preservar relatedProcessNumbers.');
+assert.equal(JSON.stringify(unitAudits.at(-1)).includes('Mãe Sintética'), false);
+
+const server = await startTestServer({ env: { JEV_CMD_BIN: 'node' } });
 const browser = await chromium.launch({ headless: true });
 
 try {
@@ -148,6 +185,7 @@ try {
   });
   await page.goto(server.baseUrl, { waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
+  await page.waitForFunction(() => Boolean(window.Atrium?.Store?.state));
 
   const fixture = await page.evaluate(async today => {
     // Exercita a compatibilidade interna legada; o bootstrap público continua exclusivamente V2.
@@ -224,11 +262,11 @@ try {
     await fillContactSearch(page, query, 1);
     await page.locator(`#contactTableBody [data-contact-id="${expectedId}"]`).waitFor();
     assert.equal(await page.locator('#contactTableBody [data-contact-id]').count(), 1, `Busca deve localizar apenas ${expectedId} por ${query}.`);
-    assert.equal(await page.locator('#contactCount').textContent(), '2 contatos', 'Count deve continuar representando o total geral.');
+    assert.equal(await page.locator('#contactCount').textContent(), '1 de 2 contatos', 'Count deve refletir o recorte da busca, com o total ao lado.');
   }
   await fillContactSearch(page, 'contato inexistente fase 10', 0);
   assert.match(await page.locator('#contactTableBody').textContent(), /Nenhum contato encontrado/);
-  assert.equal(await page.locator('#contactCount').textContent(), '2 contatos');
+  assert.equal(await page.locator('#contactCount').textContent(), '0 de 2 contatos', 'Count acompanha a busca sem resultado e mantém o total.');
   await fillContactSearch(page, '', 2);
 
   await page.locator('#contactTable th[data-sort-field="name"]').click();
@@ -243,6 +281,7 @@ try {
   assert.equal(await page.locator('#modalEyebrow').textContent(), 'Cadastro de pessoas');
   const expectedFields = [
     'name', 'contactRole', 'leadOrigin', 'document', 'rg', 'birthDate', 'profession', 'maritalStatus',
+    'gender', 'nationality', 'birthPlace', 'motherName', 'fatherName',
     'mobile', 'phone', 'email', 'origin', 'city', 'state', 'address', 'district', 'zip', 'notes'
   ];
   assert.deepEqual(await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name)), expectedFields);
@@ -308,7 +347,7 @@ try {
   assert.ok(createdAudit, 'Audit de cadastro deve conter somente o nome no detalhe.');
   assert.equal(JSON.stringify(createdAudit).includes('000.000.000-02'), false);
   assert.equal(JSON.stringify(createdAudit).includes('crud.contacts@example.test'), false);
-  assert.equal(await page.locator('#contactCount').textContent(), '3 contatos');
+  assert.equal(await page.locator('#contactCount').textContent(), '3 contatos', 'Sem filtro, o contador volta ao total geral.');
 
   await page.click('#btnGenDocContact');
   await page.locator('#docGeneratorBackdrop:not(.hidden)').waitFor();
@@ -362,6 +401,7 @@ try {
   await page.evaluate(() => window.Atrium.Store.flush());
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
+  await page.waitForFunction(() => Boolean(window.Atrium?.Store?.state));
   await page.evaluate(() => window.Atrium.App.switchView('contacts'));
   const persisted = await page.evaluate(({ createdId }) => ({
     created: window.Atrium.Store.state.contacts.find(item => item.id === createdId),

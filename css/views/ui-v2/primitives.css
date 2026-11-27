@@ -1,3 +1,8 @@
+html[data-ui="v2"],
+html[data-ui="v2"] body {
+  background-color: var(--v2-color-background);
+}
+
 html[data-ui="v2"] body {
   position: relative;
   color: var(--v2-color-foreground);
@@ -20,6 +25,13 @@ html[data-ui="v2"] body {
 @keyframes v2-overlay-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* Gaveta lateral sobreposta (modais em modo gaveta e painéis laterais): uma entrada só para
+   todas, no lugar das variações por tela. O v2-drawer-in segue para painéis dentro da página. */
+@keyframes v2-sheet-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
 }
 
 @keyframes v2-drawer-in {
@@ -80,6 +92,17 @@ html[data-ui="v2"] :where(button, input, select, textarea) {
   font: inherit;
 }
 
+/* No Chromium 135+, <select> com padding-block: 0 e altura maior que a linha encosta o texto no topo.
+   Usar :where(#appShell) mantém especificidade baixa (views de 36px/38px/42px prevalecem) e
+   padding simétrico igual à sobra de altura centraliza o texto em todos os motores. */
+html[data-ui="v2"] :where(#appShell) select:not([multiple]):not([size]) {
+  box-sizing: border-box;
+  height: 40px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 18px;
+}
+
 html[data-ui="v2"] :where(
   time,
   .metric-card strong,
@@ -101,8 +124,8 @@ html[data-ui="v2"] .v2-local-icon {
   flex: 0 0 auto;
 }
 
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .button,
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .icon-button,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .button,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .icon-button,
 html[data-ui="v2"] .v2-button {
   min-height: 40px;
   border-radius: var(--v2-radius-md);
@@ -114,17 +137,17 @@ html[data-ui="v2"] .v2-button {
   transition: background-color var(--v2-duration-fast) var(--v2-ease-standard), border-color var(--v2-duration-fast) var(--v2-ease-standard), box-shadow var(--v2-duration-fast) var(--v2-ease-standard), color var(--v2-duration-fast) var(--v2-ease-standard);
 }
 
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .button:hover,
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .icon-button:hover,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .button:hover,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .icon-button:hover,
 html[data-ui="v2"] .v2-button:hover { border-color: var(--v2-color-border-strong); }
 
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .button:active,
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .icon-button:active,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .button:active,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .icon-button:active,
 html[data-ui="v2"] .v2-button:active {
   transform: none;
 }
 
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .button.gold,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .button.gold,
 html[data-ui="v2"] .v2-button.is-primary {
   color: var(--v2-action-primary-text);
   background: var(--v2-action-primary-bg);
@@ -132,27 +155,27 @@ html[data-ui="v2"] .v2-button.is-primary {
   box-shadow: var(--v2-action-primary-shadow);
 }
 
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .button.gold:hover,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .button.gold:hover,
 html[data-ui="v2"] .v2-button.is-primary:hover {
   color: var(--v2-action-primary-text);
   background: var(--v2-action-primary-hover);
   border-color: var(--v2-action-primary-border);
 }
 
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .button.ghost,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .button.ghost,
 html[data-ui="v2"] .v2-button.is-secondary {
   color: var(--v2-color-foreground);
   background: var(--v2-color-surface-secondary);
   border-color: var(--v2-color-border);
 }
 
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .button.ghost:hover,
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .button.ghost:hover,
 html[data-ui="v2"] .v2-button.is-secondary:hover {
   background: var(--v2-color-surface-hover);
   border-color: var(--v2-color-primary);
 }
 
-html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal) .icon-button {
+html[data-ui="v2"] :where(.topbar, #view-dashboard, .modal, .task-compare-dialog, .task-ai-results-dialog) .icon-button {
   width: 40px;
   height: 40px;
   padding: 0;
@@ -233,16 +256,20 @@ html[data-ui="v2"] .v2-status-badge.is-info { color: var(--v2-color-info); backg
 html[data-ui="v2"] .v2-segmented-control,
 html[data-ui="v2"] #view-dashboard .filter-tabs {
   display: inline-flex;
-  gap: var(--v2-space-2);
-  padding: var(--v2-space-1);
+  align-items: stretch;
+  height: 40px;
+  gap: 4px;
+  padding: 3px;
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-md);
   background: var(--v2-color-surface-secondary);
+  box-sizing: border-box;
 }
 
 html[data-ui="v2"] #view-dashboard .filter-tabs button {
-  min-height: 40px;
-  padding: 0 var(--v2-space-3);
+  min-height: 0;
+  height: 100%;
+  padding: 0 10px;
   border: 0;
   border-radius: var(--v2-radius-sm);
   color: var(--v2-color-foreground-secondary);
@@ -375,7 +402,7 @@ html[data-ui="v2"] .system-status-progress-fill {
   );
   background-size: 200% 100%;
   border-radius: 999px;
-  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width var(--v2-duration-max) var(--v2-ease-standard);
   animation: v2-progress-shimmer 1.5s infinite linear;
 }
 
@@ -389,21 +416,29 @@ html[data-ui="v2"] .system-status-progress-track.is-indeterminate .system-status
 .eproc-sync-modal-track.is-indeterminate .eproc-sync-modal-fill {
   width: 40% !important;
   position: absolute;
+  left: 0;
   top: 0;
   bottom: 0;
   border-radius: 999px;
+  will-change: transform;
   animation: v2-indeterminate-slide 1.6s infinite ease-in-out;
 }
 
 @keyframes v2-indeterminate-slide {
-  0% { left: -40%; }
-  50% { left: 35%; }
-  100% { left: 105%; }
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(87.5%); }
+  100% { transform: translateX(262.5%); }
 }
 
 @keyframes v2-progress-shimmer {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
+}
+
+html[data-ui="v2"] .system-status-bar[data-status="ready"] .system-status-progress-fill,
+html[data-ui="v2"] .system-status-bar.is-transient-hidden .system-status-progress-fill,
+html[data-ui="v2"] .system-status-progress-track.hidden .system-status-progress-fill {
+  animation: none;
 }
 
 html[data-ui="v2"] .system-status-bar.is-transient-hidden {
@@ -739,12 +774,13 @@ html[data-ui="v2"] .office-involved {
 html[data-ui="v2"] .office-involved-avatars {
   display: inline-flex;
   align-items: center;
+  gap: 3px;
   flex: 0 0 auto;
 }
 
 html[data-ui="v2"] .office-involved-avatar {
   display: inline-flex;
-  margin-left: -6px;
+  margin-left: 0;
   border-radius: 50%;
   box-shadow: 0 0 0 2px var(--v2-color-surface-secondary);
 }
@@ -867,4 +903,156 @@ html[data-ui="v2"] [data-audit-page-size] {
   min-height: 44px;
   padding: 0 20px;
   font: inherit;
+}
+
+/* Esqueleto de carregamento com revelacao (js/views/ui-v2/skeleton.js). Fica aqui, junto dos
+   outros indicadores continuos de carregamento; motion.css guarda so transicoes curtas.
+   Barras pulsam enquanto os dados nao chegam; na chegada o esqueleto some em fade com leve
+   desfoque e o conteudo aparece no mesmo espaco. As duas camadas ficam empilhadas na mesma
+   celula da grade, entao a altura nao salta na troca. O pulso fica nas barras (e nao na
+   camada) para nao disputar a transicao de opacidade da camada. */
+html[data-ui="v2"] {
+  --v2-skeleton-pulse-duration: 1000ms;
+  --v2-skeleton-pulse-min: .5;
+  --v2-skeleton-reveal-duration: var(--v2-duration-max);
+  --v2-skeleton-reveal-blur: 2px;
+  --v2-skeleton-reveal-ease: ease-in-out;
+}
+
+/* O slot ocupa a largura do container mesmo quando o pai centraliza os filhos: as barras são
+   em porcentagem e, sem isso, o esqueleto encolheria até largura zero. */
+html[data-ui="v2"] .v2-skeleton-slot { position: relative; display: grid; justify-self: stretch; width: 100%; min-width: 0; }
+html[data-ui="v2"] .v2-skeleton-slot > .v2-skeleton,
+html[data-ui="v2"] .v2-skeleton-slot > .v2-skeleton-content {
+  grid-area: 1 / 1;
+  min-width: 0;
+  transition: opacity var(--v2-skeleton-reveal-duration) var(--v2-skeleton-reveal-ease),
+    filter var(--v2-skeleton-reveal-duration) var(--v2-skeleton-reveal-ease);
+}
+html[data-ui="v2"] .v2-skeleton-slot > .v2-skeleton { z-index: 1; opacity: 1; filter: blur(0); pointer-events: none; }
+html[data-ui="v2"] .v2-skeleton-slot > .v2-skeleton-content { z-index: 2; opacity: 0; filter: blur(var(--v2-skeleton-reveal-blur)); }
+html[data-ui="v2"] .v2-skeleton-slot:is([data-state="revealed"], [data-state="done"]) > .v2-skeleton { opacity: 0; filter: blur(var(--v2-skeleton-reveal-blur)); }
+html[data-ui="v2"] .v2-skeleton-slot:is([data-state="revealed"], [data-state="done"]) > .v2-skeleton-content { opacity: 1; filter: blur(0); }
+/* Terminada a troca, o conteudo fica sem filtro: filtro cria camada propria e afeta posicionamento fixo. */
+html[data-ui="v2"] .v2-skeleton-slot[data-state="done"] > .v2-skeleton-content { filter: none; transition: none; }
+
+html[data-ui="v2"] .v2-skeleton-bars { display: grid; gap: var(--v2-space-3); padding-block: var(--v2-space-1); }
+html[data-ui="v2"] .v2-skeleton-bars.is-list { gap: var(--v2-space-4); }
+html[data-ui="v2"] .v2-skeleton-row { display: grid; gap: var(--v2-space-2); }
+html[data-ui="v2"] .v2-skeleton-bar {
+  display: block;
+  height: 12px;
+  border-radius: var(--v2-radius-sm);
+  background: color-mix(in srgb, var(--v2-color-foreground) 12%, transparent);
+}
+html[data-ui="v2"] .v2-skeleton-bars.is-lines > .v2-skeleton-bar:nth-child(3n + 1) { width: 94%; }
+html[data-ui="v2"] .v2-skeleton-bars.is-lines > .v2-skeleton-bar:nth-child(3n + 2) { width: 78%; }
+html[data-ui="v2"] .v2-skeleton-bars.is-lines > .v2-skeleton-bar:nth-child(3n) { width: 58%; }
+html[data-ui="v2"] .v2-skeleton-bar.is-title { width: 62%; height: 14px; }
+html[data-ui="v2"] .v2-skeleton-bar.is-meta { width: 38%; height: 11px; }
+html[data-ui="v2"] .v2-skeleton.is-pulsing .v2-skeleton-bar {
+  animation: v2-skeleton-pulse var(--v2-skeleton-pulse-duration) ease-in-out infinite;
+}
+
+@keyframes v2-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: var(--v2-skeleton-pulse-min); }
+}
+
+/* Movimento reduzido: troca imediata e nada pulsa. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="v2"] .v2-skeleton-slot > .v2-skeleton,
+  html[data-ui="v2"] .v2-skeleton-slot > .v2-skeleton-content { transition: none !important; }
+  html[data-ui="v2"] .v2-skeleton.is-pulsing .v2-skeleton-bar { animation: none !important; }
+}
+
+/* Chave liga/desliga (role="switch"), compartilhada por Publicações (menu do Atrium IA) e Tarefas
+   (faixa do Atrium IA). O botão é a área de toque (44×44); o trilho 38×22 fica desenhado dentro
+   dele. A margem negativa mantém a linha compacta. */
+html[data-ui="v2"] button.ai-switch {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: -11px -3px -11px 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--v2-radius-md);
+  background: transparent;
+  cursor: pointer;
+}
+html[data-ui="v2"] .ai-switch-track {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border: 1px solid var(--v2-color-border-strong, var(--v2-color-border));
+  border-radius: var(--v2-radius-round);
+  background: var(--v2-color-surface-inset);
+  transition: background-color var(--v2-duration-fast) var(--v2-ease-standard), border-color var(--v2-duration-fast) var(--v2-ease-standard);
+}
+html[data-ui="v2"] .ai-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--v2-color-muted-foreground);
+  transition: transform var(--v2-duration-fast) var(--v2-ease-standard), background-color var(--v2-duration-fast) var(--v2-ease-standard);
+}
+html[data-ui="v2"] button.ai-switch[aria-checked="true"] .ai-switch-track {
+  background: var(--v2-color-primary);
+  border-color: var(--v2-color-primary);
+}
+html[data-ui="v2"] button.ai-switch[aria-checked="true"] .ai-switch-thumb {
+  transform: translateX(16px);
+  background: var(--v2-color-surface);
+}
+html[data-ui="v2"] button.ai-switch:focus-visible {
+  outline: 2px solid var(--v2-color-primary);
+  outline-offset: 2px;
+}
+html[data-ui="v2"] button.ai-switch:disabled {
+  cursor: not-allowed;
+}
+html[data-ui="v2"] button.ai-switch:disabled .ai-switch-track { opacity: .55; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="v2"] .ai-switch-track,
+  html[data-ui="v2"] .ai-switch-thumb { transition: none; }
+}
+
+html[data-ui="v2"] :where(.dashboard-task-item, .activity-inbox-item, .publication-record-shell, .task-list-row, .process-v2-record, .contact-record, .lead-v2-record, .document-record, .financial-v2-record, .audit-record, .configuration-row) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 84px;
+}
+
+html[data-ui="v2"] #promptsGrid :where(.prompt-card, .prompt-library-card) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 290px;
+}
+
+html[data-ui="v2"] #kanbanBoard .task-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 210px;
+}
+
+html[data-ui="v2"] .agenda-activity-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 76px;
+}
+
+@media (max-width: 768px) {
+  html[data-ui="v2"] .dashboard-task-item {
+    contain-intrinsic-size: auto 210px;
+  }
+}
+
+/* Selo de falha legível nos dois temas: o rosa-claro herdado sobre fundo rosa tinha contraste
+   baixo no tema claro ("FALHA" em Fontes monitoradas). */
+html[data-ui="v2"] .status-chip.danger {
+  color: var(--v2-color-danger);
+  background: var(--v2-color-danger-soft);
+  border-color: color-mix(in srgb, var(--v2-color-danger) 40%, transparent);
 }

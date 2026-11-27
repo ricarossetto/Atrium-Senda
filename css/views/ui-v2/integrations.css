@@ -166,7 +166,7 @@ html[data-ui="v2"] #judicialSetupBackdrop .judicial-setup-modal {
   border: 0;
   border-left: 1px solid var(--v2-color-border);
   border-radius: 0;
-  animation: judicial-workspace-in 240ms var(--v2-ease-standard) both;
+  animation: v2-sheet-in var(--v2-duration-slow) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"] #judicialSetupBackdrop .judicial-setup-modal > header {
@@ -379,17 +379,24 @@ html[data-ui="v2"] #judicialSetupBackdrop .setup-section {
   box-shadow: var(--v2-shadow-subtle);
 }
 
-html[data-ui="v2"] #judicialSetupBackdrop :where(.file-picker, .portal-qr-upload, .totp-qr-dropzone) {
+html[data-ui="v2"] #judicialSetupBackdrop label.file-picker,
+html[data-ui="v2"] #judicialSetupBackdrop label.file-picker:hover {
+  background: transparent !important;
+  border: 0 !important;
+}
+html[data-ui="v2"] #judicialSetupBackdrop :where(.portal-qr-upload, .totp-qr-dropzone) {
   color: var(--v2-color-foreground-secondary);
   background: var(--v2-color-surface-inset) !important;
   border-color: var(--v2-color-border) !important;
 }
-html[data-ui="v2"] #judicialSetupBackdrop :where(.file-picker, .portal-qr-upload, .totp-qr-dropzone):hover {
+html[data-ui="v2"] #judicialSetupBackdrop :where(.portal-qr-upload, .totp-qr-dropzone):hover {
   background: var(--v2-color-surface-hover) !important;
   border-color: var(--v2-color-primary) !important;
 }
 
 html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading { gap: var(--v2-space-4); }
+html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading > div { min-width: 0; }
+html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading > .status-chip { flex: 0 0 auto; white-space: nowrap; }
 html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading h3 { color: var(--v2-color-foreground); font-size: 18px; }
 html[data-ui="v2"] #judicialSetupBackdrop .setup-section-heading p:not(.eyebrow) { color: var(--v2-color-muted-foreground); line-height: 1.5; }
 html[data-ui="v2"] #judicialSetupBackdrop .eyebrow { color: var(--v2-color-gold); }
@@ -407,6 +414,8 @@ html[data-ui="v2"] #a1DocAndIssuer { color: var(--v2-color-muted-foreground) !im
 html[data-ui="v2"] #a1SandboxChecklist { color: var(--v2-color-foreground-secondary); background: var(--v2-color-surface-inset) !important; border-color: var(--v2-color-border-subtle) !important; }
 
 html[data-ui="v2"] #judicialSetupBackdrop :where(.setup-form-row, .totp-form) label { color: var(--v2-color-foreground-secondary); }
+html[data-ui="v2"] #judicialSetupBackdrop #portalTotpForm { align-items: end; }
+html[data-ui="v2"] #judicialSetupBackdrop #portalTotpForm > :is(.totp-portal-field, #portalTotpAccountField, .setup-feedback) { grid-column: 1 / -1; }
 
 /* Conta do tribunal (sem A1): seleção múltipla de tribunais com a mesma credencial. */
 html[data-ui="v2"] #judicialSetupBackdrop .account-portal-field { display: grid; gap: 8px; grid-column: 1 / -1; }
@@ -444,19 +453,44 @@ html[data-ui="v2"] #judicialSetupBackdrop .account-portal-row strong { color: va
 html[data-ui="v2"] #judicialSetupBackdrop .account-portal-row small { color: var(--v2-color-muted-foreground); font-size: 12px; }
 html[data-ui="v2"] #judicialSetupBackdrop .account-portal-empty { padding: 10px; color: var(--v2-color-muted-foreground); font-size: 12px; }
 html[data-ui="v2"] #judicialSetupBackdrop .account-portal-hint { margin: 0; color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.5; }
-html[data-ui="v2"] #judicialSetupBackdrop :where(input, select) {
+html[data-ui="v2"] #judicialSetupBackdrop :where(input:not([type="checkbox"]):not([type="radio"]), select) {
   min-height: 44px;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--v2-color-foreground);
   background: var(--v2-color-surface-inset);
   border-color: var(--v2-color-border);
   border-radius: var(--v2-radius-md);
 }
+html[data-ui="v2"] #judicialSetupBackdrop select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23a7adb4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 8px;
+}
+html[data-ui="v2"][data-theme="light"] #judicialSetupBackdrop select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%235e666e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+@media (max-width: 639px) {
+  html[data-ui="v2"] #judicialSetupBackdrop :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    font-size: 16px;
+  }
+}
 html[data-ui="v2"] #judicialSetupBackdrop :where(.setup-form-row, .totp-actions) .button { min-height: 44px; }
-html[data-ui="v2"] #judicialSetupBackdrop .file-picker small { min-height: 44px; }
 html[data-ui="v2"] #judicialSetupBackdrop .file-picker small {
+  min-height: 44px;
+  font-size: 13px;
   color: var(--v2-color-foreground-secondary) !important;
-  background: var(--v2-color-surface-secondary) !important;
-  border-color: var(--v2-color-border) !important;
+  background: var(--v2-color-surface-inset) !important;
+  border-color: color-mix(in srgb, var(--v2-color-foreground-secondary) 58%, var(--v2-color-border-strong)) !important;
 }
 html[data-ui="v2"] #judicialSetupBackdrop .file-picker:is(:hover, :focus-within) small {
   color: var(--v2-color-foreground) !important;
@@ -473,28 +507,47 @@ html[data-ui="v2"] #judicialSetupBackdrop .file-picker input[type="file"] {
 }
 
 html[data-ui="v2"] .portal-auth-guide {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--v2-space-5);
-  align-items: center;
-  padding: var(--v2-space-5);
+  display: block;
+  margin-bottom: var(--v2-space-4);
+  padding: 0;
   color: var(--v2-color-foreground-secondary);
   background: var(--v2-color-surface-secondary);
   border: 1px solid var(--v2-color-border);
-  border-radius: var(--v2-radius-xl);
+  border-radius: var(--v2-radius-lg);
 }
-
-html[data-ui="v2"] .portal-auth-guide h3 {
-  margin: 2px 0 10px;
+html[data-ui="v2"] .portal-auth-guide > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-3);
+  min-height: 44px;
+  padding: var(--v2-space-3) var(--v2-space-4);
   color: var(--v2-color-foreground);
-  font-size: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
 }
+html[data-ui="v2"] .portal-auth-guide > summary::-webkit-details-marker { display: none; }
+html[data-ui="v2"] .portal-auth-guide > summary small { color: var(--v2-color-muted-foreground); font-size: 12px; font-weight: 500; }
+html[data-ui="v2"] .portal-auth-guide > summary::after {
+  content: "";
+  width: 12px;
+  height: 8px;
+  flex: 0 0 auto;
+  background: var(--v2-color-muted-foreground);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
+  transition: transform var(--v2-duration-fast) var(--v2-ease-standard);
+}
+html[data-ui="v2"] .portal-auth-guide[open] > summary::after { transform: rotate(180deg); }
+html[data-ui="v2"] .portal-auth-guide-copy { padding: 0 var(--v2-space-4) var(--v2-space-4); border-top: 1px solid var(--v2-color-border-subtle); }
 
 html[data-ui="v2"] .portal-auth-guide ol {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 24px;
-  margin: 0 0 12px;
+  margin: var(--v2-space-3) 0 12px;
   padding-left: 20px;
   line-height: 1.45;
 }
@@ -555,8 +608,26 @@ html[data-ui="v2"] .judicial-setup-footer {
 }
 
 html[data-ui="v2"] .judicial-setup-footer strong { color: var(--v2-color-foreground); }
-html[data-ui="v2"] .judicial-setup-footer span { color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] .judicial-setup-footer > div > span { color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] #syncJudicialNowButton span { color: inherit; }
 html[data-ui="v2"] #syncJudicialNowButton { min-height: 46px; }
+@media (min-width: 1420px) {
+  html[data-ui="v2"] body:has(#judicialSetupBackdrop:not(.hidden)) .toast-region {
+    left: calc(22px + var(--atrium-safe-left, 0px));
+    right: auto;
+    bottom: calc(22px + var(--atrium-safe-bottom, 0px));
+  }
+}
+@media (max-width: 1419px) {
+  html[data-ui="v2"] body:has(#judicialSetupBackdrop:not(.hidden)) .toast-region {
+    bottom: calc(92px + var(--atrium-safe-bottom, 0px));
+  }
+}
+@media (max-width: 860px) {
+  html[data-ui="v2"] body:has(#judicialSetupBackdrop:not(.hidden)) .toast-region {
+    bottom: calc(136px + var(--atrium-safe-bottom, 0px));
+  }
+}
 
 html[data-ui="v2"] #view-integrations .connection-integration-card {
   position: relative;
@@ -573,11 +644,16 @@ html[data-ui="v2"] #view-integrations .connection-integration-card::before {
   background: color-mix(in srgb, var(--v2-color-primary) 56%, transparent);
 }
 
-html[data-ui="v2"] #view-integrations .connection-integration-card .integration-logo {
+html[data-ui="v2"] #view-integrations .connection-integration-card .integration-logo,
+html[data-ui="v2"] #view-integrations .importer-integration-card .legal-logo {
   color: var(--v2-color-primary);
   background: var(--v2-color-primary-soft);
   border: 1px solid color-mix(in srgb, var(--v2-color-primary) 28%, var(--v2-color-border));
   border-radius: var(--v2-radius-lg);
+}
+
+html[data-ui="v2"] #view-integrations .importer-integration-card {
+  grid-column: 1 / -1;
 }
 
 html[data-ui="v2"] #view-integrations .inpi-integration-card {
@@ -590,60 +666,6 @@ html[data-ui="v2"] #view-integrations .inpi-integration-card .integration-logo {
   color: var(--v2-color-gold);
   background: var(--v2-color-gold-soft);
   border: 1px solid color-mix(in srgb, var(--v2-color-gold) 32%, transparent);
-}
-
-html[data-ui="v2"] #view-integrations .email-integration-card {
-  grid-column: auto;
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  align-items: start;
-  gap: var(--v2-space-4);
-  padding: var(--v2-space-4);
-  align-self: start;
-}
-
-html[data-ui="v2"] #view-integrations .email-integration-card .integration-logo {
-  width: 46px;
-  height: 46px;
-}
-
-html[data-ui="v2"] #view-integrations .email-integration-card .integration-copy h3 {
-  margin-top: 8px;
-  font-size: clamp(16px, 1.5vw, 20px);
-}
-
-html[data-ui="v2"] #view-integrations .email-integration-card .integration-copy p {
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-html[data-ui="v2"] #view-integrations .email-integration-card #atriumMailTelemetry {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 8px !important;
-  margin: var(--v2-space-3) 0 !important;
-}
-
-html[data-ui="v2"] #view-integrations .email-integration-card #atriumMailTelemetry > div {
-  padding: 5px 7px !important;
-}
-
-html[data-ui="v2"] #view-integrations .email-integration-card #atriumMailTelemetry strong {
-  font-size: 12px !important;
-}
-
-html[data-ui="v2"] #view-integrations .email-integration-card .email-integration-actions {
-  gap: var(--v2-space-2) !important;
-  margin: var(--v2-space-3) 0 0 !important;
-}
-
-html[data-ui="v2"] #view-integrations .email-integration-card .email-integration-actions .button {
-  min-height: 40px;
-  padding: 6px 10px;
-  font-size: 12px;
-}
-
-html[data-ui="v2"] #view-integrations .email-integration-actions {
-  margin: var(--v2-space-4) 0 0 !important;
 }
 
 html[data-ui="v2"] #view-integrations .v2-connection-primary {
@@ -737,7 +759,8 @@ html[data-ui="v2"] .email-receiver-status.danger { color: var(--v2-color-danger)
 html[data-ui="v2"] .email-receiver-status.muted { color: var(--v2-color-muted-foreground); background: var(--v2-color-surface-secondary); border-color: var(--v2-color-border); }
 html[data-ui="v2"] .email-receiver-actions { flex: 0 0 auto; display: flex; align-items: center; gap: var(--v2-space-2); }
 html[data-ui="v2"] .email-receiver-actions .button { min-height: 40px; padding: 0 var(--v2-space-3); font-size: 12px; }
-html[data-ui="v2"] .email-receiver-actions .email-receiver-delete { min-width: 40px; padding: 0; color: var(--v2-color-danger); }
+/* "Excluir" com respiro lateral: em 40px sem padding o texto encostava nas bordas. */
+html[data-ui="v2"] .email-receiver-actions .email-receiver-delete { min-width: 40px; padding: 0 var(--v2-space-3); color: var(--v2-color-danger); }
 
 html[data-ui="v2"] .mail-preferences-drawer-backdrop {
   position: fixed;
@@ -816,7 +839,7 @@ html[data-ui="v2"] body > .connection-backdrop .connection-sheet {
   border-left: 1px solid var(--v2-color-border);
   border-radius: 0;
   box-shadow: var(--v2-shadow-overlay);
-  animation: connection-sheet-in 240ms var(--v2-ease-standard) both;
+  animation: v2-sheet-in var(--v2-duration-slow) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"] body > .connection-backdrop .connection-sheet.compact { width: min(600px, calc(100vw - 72px)) !important; }
@@ -894,7 +917,8 @@ html[data-ui="v2"] body > .connection-backdrop .connection-sheet :where(input[ty
 html[data-ui="v2"] body > .connection-backdrop .connection-sheet small { color: var(--v2-color-muted-foreground) !important; }
 
 html[data-ui="v2"] body > .connection-backdrop .connection-sheet .modal-footer,
-html[data-ui="v2"] body > #calendarConfigBackdrop .connection-sheet footer {
+html[data-ui="v2"] body > #calendarConfigBackdrop .connection-sheet footer,
+html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer {
   gap: var(--v2-space-3) !important;
   padding: var(--v2-space-4) var(--v2-space-6) !important;
   background: var(--v2-color-surface-elevated);
@@ -902,7 +926,8 @@ html[data-ui="v2"] body > #calendarConfigBackdrop .connection-sheet footer {
 }
 
 html[data-ui="v2"] body > .connection-backdrop .connection-sheet .modal-footer .button,
-html[data-ui="v2"] body > #calendarConfigBackdrop .connection-sheet footer .button { min-height: 44px; }
+html[data-ui="v2"] body > #calendarConfigBackdrop .connection-sheet footer .button,
+html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer .button { min-height: 44px; }
 
 html[data-ui="v2"] .connection-professional-warning {
   margin: var(--v2-space-3) 0;
@@ -923,15 +948,7 @@ html[data-ui="v2"] #calendarConfigStatus {
   line-height: 1.5;
 }
 
-@keyframes connection-sheet-in {
-  from { opacity: .78; transform: translateX(24px); }
-  to { opacity: 1; transform: translateX(0); }
-}
 
-@keyframes judicial-workspace-in {
-  from { opacity: .76; transform: translateX(28px); }
-  to { opacity: 1; transform: translateX(0); }
-}
 
 /* =========================================================================
    Painel Central Eproc Nacional · 4ª Região & Tribunais Integrados
@@ -1030,7 +1047,7 @@ html[data-ui="v2"] .v2-eproc-portal-card {
   background: rgba(255, 255, 255, 0.015);
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-lg);
-  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+  transition: border-color var(--v2-duration-fast) var(--v2-ease-standard), box-shadow var(--v2-duration-fast) var(--v2-ease-standard), transform var(--v2-duration-fast) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] .v2-eproc-portal-card:hover {
@@ -1141,8 +1158,65 @@ html[data-ui="v2"] .v2-eproc-card-actions .button {
   min-height: 28px;
 }
 
+html[data-ui="v2"] .eproc-sync-header-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+html[data-ui="v2"] .eproc-sync-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 2px 10px;
+  border-radius: var(--v2-radius-round);
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--v2-color-primary) 45%, var(--v2-color-border));
+  background: var(--v2-color-primary-soft);
+  color: var(--v2-color-foreground);
+}
+html[data-ui="v2"] .eproc-sync-profile-badge[data-scope="private"] {
+  border-color: color-mix(in srgb, var(--v2-color-gold) 55%, var(--v2-color-border));
+  background: var(--v2-color-gold-soft);
+}
+html[data-ui="v2"] .eproc-sync-profile-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: var(--v2-space-3);
+  padding-top: var(--v2-space-2);
+  border-top: 1px solid var(--v2-color-border-subtle);
+}
+html[data-ui="v2"] .eproc-sync-profile-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--v2-radius-round);
+  border: 1px solid var(--v2-color-border);
+  background: var(--v2-color-surface-inset);
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+  line-height: 1.3;
+}
+html[data-ui="v2"] .eproc-sync-profile-pill strong { color: var(--v2-color-foreground); font-weight: 600; }
+html[data-ui="v2"] .eproc-sync-profile-pill.is-success { background: var(--v2-color-success-soft); border-color: color-mix(in srgb, var(--v2-color-success) 45%, var(--v2-color-border)); }
+html[data-ui="v2"] .eproc-sync-profile-pill.is-running { background: var(--v2-color-primary-soft); border-color: color-mix(in srgb, var(--v2-color-primary) 50%, var(--v2-color-border)); }
+html[data-ui="v2"] .eproc-sync-profile-pill.is-warning { background: var(--v2-color-warning-soft); border-color: color-mix(in srgb, var(--v2-color-warning) 50%, var(--v2-color-border)); }
+html[data-ui="v2"] .eproc-sync-profile-pill.is-error { background: var(--v2-color-danger-soft); border-color: color-mix(in srgb, var(--v2-color-danger) 50%, var(--v2-color-border)); }
+
 html[data-ui="v2"] .eproc-sync-modal-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 3px 0 5px; color: var(--v2-color-muted-foreground); font-size: 12px; }
 html[data-ui="v2"] .eproc-sync-modal-meta span { white-space: nowrap; }
+html[data-ui="v2"] #eprocSyncModalBackdrop .eproc-sync-modal-body {
+  max-height: min(84vh, 760px);
+  overflow-y: auto;
+}
+html[data-ui="v2"] #eprocSyncModalBackdrop .eproc-sync-progress-card,
+html[data-ui="v2"] #eprocSyncModalBackdrop .eproc-sync-steps-list,
+html[data-ui="v2"] #eprocSyncModalBackdrop .eproc-sync-console-container {
+  flex-shrink: 0;
+}
+html[data-ui="v2"] #eprocSyncModalBackdrop .eproc-sync-console-logs {
+  min-height: 96px;
+  max-height: 156px;
+  overflow-y: auto;
+}
 
 @media (max-width: 1080px) {
   html[data-ui="v2"] .v2-eproc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1157,12 +1231,9 @@ html[data-ui="v2"] .eproc-sync-modal-meta span { white-space: nowrap; }
   html[data-ui="v2"] .v2-integrations-safety { align-self: flex-start; }
   html[data-ui="v2"] #view-integrations .integration-grid { grid-template-columns: minmax(0, 1fr); }
   html[data-ui="v2"] #view-integrations .judicial-integration-card { grid-column: auto; min-height: 0; grid-template-columns: minmax(0, 1fr); padding: var(--v2-space-4); }
+  html[data-ui="v2"] #view-integrations .importer-integration-card { grid-column: auto; }
   html[data-ui="v2"] #view-integrations .judicial-integration-card .integration-logo { width: 52px; height: 52px; }
   html[data-ui="v2"] #view-integrations .integration-copy .button { width: 100%; justify-content: center; }
-  html[data-ui="v2"] #view-integrations .email-integration-card { grid-column: auto; grid-template-columns: minmax(0, 1fr); gap: var(--v2-space-3); }
-  html[data-ui="v2"] #view-integrations .email-integration-card .integration-logo { width: 52px; height: 52px; }
-  html[data-ui="v2"] #view-integrations .email-integration-actions { display: grid !important; grid-template-columns: minmax(0, 1fr); }
-  html[data-ui="v2"] #view-integrations .email-integration-card .email-integration-actions .button { min-height: 44px; }
   html[data-ui="v2"] .email-receiver-item { align-items: stretch; flex-direction: column; padding: var(--v2-space-4); }
   html[data-ui="v2"] .email-receiver-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   html[data-ui="v2"] .email-receiver-actions .button { min-height: 44px; }
@@ -1281,7 +1352,11 @@ html[data-ui="v2"] .jco-tab:focus-visible { outline: 2px solid var(--v2-color-pr
 html[data-ui="v2"] .jco-panels { min-width: 0; }
 html[data-ui="v2"] .jco-panel[hidden] { display: none; }
 
-html[data-ui="v2"] .jco-panel[data-jco-panel="credentials"] > .setup-status-grid { margin-top: 0; }
+html[data-ui="v2"] .jco-panel[data-jco-panel="credentials"] > .setup-status-grid { margin-top: 0; gap: var(--v2-space-2); }
+html[data-ui="v2"] .jco-panel[data-jco-panel="credentials"] > .setup-status-grid article { min-height: 60px; padding: var(--v2-space-2) var(--v2-space-3); }
+html[data-ui="v2"] #jcoPanelCredentials .portal-auth-guide-details { margin: var(--v2-space-2) 0 0; }
+html[data-ui="v2"] #jcoPanelCredentials #a1ActiveCard { margin-bottom: var(--v2-space-3) !important; padding: var(--v2-space-3) !important; }
+html[data-ui="v2"] #jcoPanelCredentials .a1-sweep-card { margin-top: var(--v2-space-2) !important; padding: var(--v2-space-2) var(--v2-space-3) !important; }
 
 html[data-ui="v2"] .jco-preferences-card {
   padding: var(--v2-space-5);
@@ -1291,10 +1366,6 @@ html[data-ui="v2"] .jco-preferences-card {
 }
 html[data-ui="v2"] .jco-preferences-card .setup-section-heading { margin-bottom: var(--v2-space-4); }
 html[data-ui="v2"] .jco-preferences-card .pje-coverage-config { align-items: center; }
-
-@media (max-width: 640px) {
-  html[data-ui="v2"] .jco-tab { flex: 1 1 100%; justify-content: flex-start; }
-}
 
 /* Drawer de detalhe do portal: painel interno do modal (nao um segundo modal),
    coberto pelo mesmo focus trap. */
@@ -1402,10 +1473,387 @@ html[data-ui="v2"] .google-calendar-connected.hidden, html[data-ui="v2"] .google
 html[data-ui="v2"] .google-calendar-account { display: grid; gap: var(--v2-space-1); padding-bottom: var(--v2-space-3); border-bottom: 1px solid var(--v2-color-border); min-width: 0; }
 html[data-ui="v2"] .google-calendar-account strong { overflow-wrap: anywhere; }
 html[data-ui="v2"] .google-calendar-account small { color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] .calendar-sheet-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--v2-space-2);
+  padding: 4px;
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface-inset);
+  border: 1px solid var(--v2-color-border-subtle);
+}
+html[data-ui="v2"] .calendar-sheet-tab {
+  min-height: 38px;
+  padding: 6px var(--v2-space-3);
+  border-radius: calc(var(--v2-radius-md) - 2px);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--v2-color-muted-foreground);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+html[data-ui="v2"] .calendar-sheet-tab:hover { color: var(--v2-color-foreground); }
+html[data-ui="v2"] .calendar-sheet-tab[aria-selected="true"],
+html[data-ui="v2"] .calendar-sheet-tab.active {
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-surface);
+  border-color: var(--v2-color-border);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--v2-color-foreground) 8%, transparent);
+}
+html[data-ui="v2"] .calendar-sheet-panel[hidden],
+html[data-ui="v2"] #googleCalendarFooter[hidden],
+html[data-ui="v2"] #calendarIcalFooter[hidden] { display: none !important; }
+html[data-ui="v2"] .calendar-ical-status-row { display: flex; align-items: center; gap: var(--v2-space-2); }
+html[data-ui="v2"] .calendar-ical-description { margin: 0 0 var(--v2-space-3); font-size: 13px; line-height: 1.55; color: var(--v2-color-muted-foreground); }
 html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer { display: flex; flex-wrap: wrap; gap: var(--v2-space-2); justify-content: flex-end; }
 html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer .button { min-height: 44px; }
 html[data-ui="v2"] body > #googleCalendarBackdrop #googleCalendarDisconnect { margin-right: auto; }
 @media (max-width: 600px) {
-  html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer { display: grid; grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .calendar-sheet-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  html[data-ui="v2"] .calendar-sheet-tab { min-height: 44px; justify-content: center; }
+  html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer { display: grid; grid-template-columns: minmax(0, 1fr); padding-inline: var(--v2-space-4) !important; }
   html[data-ui="v2"] body > #googleCalendarBackdrop .connection-sheet footer .button { width: 100%; justify-content: center; }
+}
+
+/* Certificados por pessoa (specs/judicial-identities.md, J5): aba Credenciais do modal judicial. */
+html[data-ui="v2"] .judicial-identities-mount { display: grid; gap: var(--v2-space-4); min-width: 0; }
+html[data-ui="v2"] .judicial-identity-card { display: grid; gap: var(--v2-space-3); min-width: 0; padding: var(--v2-space-4); background: var(--v2-color-surface-secondary); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-md); }
+html[data-ui="v2"] .judicial-identity-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--v2-space-3); min-width: 0; }
+html[data-ui="v2"] .judicial-identity-copy { display: grid; gap: var(--v2-space-1); min-width: 0; }
+html[data-ui="v2"] .judicial-identity-copy small { color: var(--v2-color-muted-foreground); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+html[data-ui="v2"] .judicial-identity-copy strong { color: var(--v2-color-foreground); font-size: 15px; overflow-wrap: anywhere; }
+html[data-ui="v2"] .judicial-identity-meta { color: var(--v2-color-muted-foreground); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+html[data-ui="v2"] .judicial-identity-head .status-chip,
+html[data-ui="v2"] .judicial-identity-row .status-chip,
+html[data-ui="v2"] .judicial-identity-totp-row .status-chip,
+html[data-ui="v2"] .judicial-identity-account-row .status-chip { flex: 0 0 auto; white-space: nowrap; }
+html[data-ui="v2"] .judicial-identity-hint,
+html[data-ui="v2"] .judicial-identity-note { margin: 0; color: var(--v2-color-muted-foreground); font-size: 13px; line-height: 1.5; }
+html[data-ui="v2"] .judicial-identity-note { padding: var(--v2-space-3); color: var(--v2-color-foreground); background: color-mix(in srgb, var(--v2-color-warning) 10%, var(--v2-color-surface)); border: 1px solid color-mix(in srgb, var(--v2-color-warning) 35%, var(--v2-color-border)); border-radius: var(--v2-radius-sm); }
+html[data-ui="v2"] .judicial-identity-subtitle { margin: var(--v2-space-2) 0 0; color: var(--v2-color-foreground); font-size: 14px; font-weight: 600; line-height: 1.5; }
+html[data-ui="v2"] .judicial-identity-subtitle:first-child { margin-top: 0; }
+html[data-ui="v2"] .judicial-identity-count { display: inline-flex; margin-left: var(--v2-space-2); vertical-align: 1px; align-items: center; justify-content: center; min-width: 24px; padding: 0 var(--v2-space-2); color: var(--v2-color-muted-foreground); font-size: 12px; font-variant-numeric: tabular-nums; border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-round); }
+html[data-ui="v2"] .judicial-identity-list,
+html[data-ui="v2"] .judicial-identity-totp-list,
+html[data-ui="v2"] .judicial-identity-account-list { display: grid; gap: var(--v2-space-2); margin: 0; padding: 0; list-style: none; }
+html[data-ui="v2"] .judicial-identity-row,
+html[data-ui="v2"] .judicial-identity-totp-row,
+html[data-ui="v2"] .judicial-identity-account-row { display: flex; align-items: center; gap: var(--v2-space-3); min-width: 0; min-height: calc(44px + 2 * var(--v2-space-3)); padding: var(--v2-space-3); background: var(--v2-color-surface); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-sm); }
+html[data-ui="v2"] .judicial-identity-row .judicial-identity-copy { flex: 1 1 auto; }
+html[data-ui="v2"] .judicial-identity-totp-name,
+html[data-ui="v2"] .judicial-identity-account-name { flex: 1 1 auto; min-width: 0; color: var(--v2-color-foreground); font-size: 14px; overflow-wrap: anywhere; }
+html[data-ui="v2"] .judicial-identity-empty { padding: var(--v2-space-3); color: var(--v2-color-muted-foreground); font-size: 13px; border: 1px dashed var(--v2-color-border); border-radius: var(--v2-radius-sm); }
+html[data-ui="v2"] .judicial-identity-empty-alt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--v2-space-3); padding-top: var(--v2-space-3); border-top: 1px dashed var(--v2-color-border); }
+html[data-ui="v2"] .judicial-identity-empty-alt .judicial-identity-hint { flex: 1 1 260px; }
+html[data-ui="v2"] .judicial-identity-empty-alt .button { flex: 0 0 auto; min-height: 44px; }
+html[data-ui="v2"] .judicial-identity-totp,
+html[data-ui="v2"] .judicial-identity-account,
+html[data-ui="v2"] .judicial-identity-review { display: grid; gap: var(--v2-space-3); padding-top: var(--v2-space-3); border-top: 1px solid var(--v2-color-border); }
+html[data-ui="v2"] .judicial-identity-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--v2-space-2); }
+html[data-ui="v2"] .judicial-identity-review-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--v2-space-2); }
+html[data-ui="v2"] .judicial-identity-review-stats { display: flex; flex-wrap: wrap; gap: var(--v2-space-3); font-size: 13px; color: var(--v2-color-muted-foreground); font-variant-numeric: tabular-nums; }
+html[data-ui="v2"] .judicial-identity-review-list { display: grid; gap: var(--v2-space-2); margin: 0; padding: 0; list-style: none; }
+html[data-ui="v2"] .judicial-identity-review-row { display: flex; align-items: flex-start; gap: var(--v2-space-3); min-width: 0; min-height: 44px; padding: var(--v2-space-3); background: var(--v2-color-surface); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-sm); }
+html[data-ui="v2"] .judicial-identity-review-label { display: flex; align-items: flex-start; gap: var(--v2-space-3); width: 100%; min-width: 0; cursor: pointer; }
+html[data-ui="v2"] .judicial-identity-review-label input[type="checkbox"] { flex: 0 0 auto; width: 18px; height: 18px; min-height: 18px; margin: 2px 0 0; accent-color: var(--v2-color-gold); cursor: pointer; }
+html[data-ui="v2"] .judicial-identity-review-body { display: grid; gap: var(--v2-space-1); flex: 1 1 auto; min-width: 0; }
+html[data-ui="v2"] .judicial-identity-review-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--v2-space-2); min-width: 0; }
+html[data-ui="v2"] .judicial-identity-review-head strong { color: var(--v2-color-foreground); font-size: 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+html[data-ui="v2"] .judicial-identity-review-blocked { padding: var(--v2-space-2) var(--v2-space-3); background: var(--v2-color-surface); border: 1px solid var(--v2-color-border); border-radius: var(--v2-radius-sm); }
+html[data-ui="v2"] .judicial-identity-review-blocked summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-2);
+  min-height: 36px;
+  color: var(--v2-color-muted-foreground);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+html[data-ui="v2"] .judicial-identity-review-blocked summary::-webkit-details-marker { display: none; }
+html[data-ui="v2"] .judicial-identity-review-blocked summary::after {
+  content: "";
+  width: 12px;
+  height: 8px;
+  flex: 0 0 auto;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
+  transition: transform var(--v2-duration-fast) var(--v2-ease-standard);
+}
+html[data-ui="v2"] .judicial-identity-review-blocked[open] summary { margin-bottom: var(--v2-space-2); color: var(--v2-color-foreground); }
+html[data-ui="v2"] .judicial-identity-review-blocked[open] summary::after { transform: rotate(180deg); }
+html[data-ui="v2"] #judicialSetupBackdrop .judicial-identities-mount form { padding: 0; }
+html[data-ui="v2"] #judicialSetupBackdrop .judicial-identities-mount .file-picker,
+html[data-ui="v2"] #judicialSetupBackdrop .judicial-identities-mount .file-picker:hover {
+  background: transparent !important;
+  border: 0 !important;
+}
+html[data-ui="v2"] #judicialSetupBackdrop .judicial-identities-mount .file-picker small {
+  min-height: 44px;
+  padding: 9px 12px;
+  line-height: 1.3;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+html[data-ui="v2"] .judicial-identity-totp-form .judicial-identity-totp-portal { grid-column: 1 / -1; }
+@media (min-width: 900px) {
+  html[data-ui="v2"] .judicial-identity-totp-form,
+  html[data-ui="v2"] .judicial-identity-account-form { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
+  html[data-ui="v2"] .judicial-identity-totp-form :is(.judicial-identity-totp-portal, [data-qr-account-field]),
+  html[data-ui="v2"] .judicial-identity-account-form .judicial-identity-account-portal { grid-column: 1 / -1; }
+  html[data-ui="v2"] :where(.judicial-identity-totp-form, .judicial-identity-account-form) .totp-actions { grid-column: 1 / -1; justify-content: flex-end; }
+}
+html[data-ui="v2"] :where(.judicial-identity-row, .judicial-identity-totp-row, .judicial-identity-account-row, .judicial-identity-actions, .judicial-identity-review, .judicial-identity-upload, .judicial-identity-totp-form, .judicial-identity-account-form) .button { min-height: 44px; }
+html[data-ui="v2"] .judicial-identities-mount [data-identity-feedback]:not(.hidden) {
+  margin: 0;
+  padding: var(--v2-space-2) var(--v2-space-3);
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-info-soft);
+  border: 1px solid color-mix(in srgb, var(--v2-color-info) 35%, var(--v2-color-border));
+  border-radius: var(--v2-radius-sm);
+  font-size: 13px;
+  line-height: 1.45;
+}
+html[data-ui="v2"] .judicial-identities-mount [data-identity-feedback][data-state="error"]:not(.hidden) {
+  color: var(--v2-color-danger, var(--v2-color-foreground));
+  background: var(--v2-color-danger-soft);
+  border-color: color-mix(in srgb, var(--v2-color-danger) 45%, var(--v2-color-border));
+}
+@media (max-width: 640px) {
+  html[data-ui="v2"] .judicial-identity-head,
+  html[data-ui="v2"] .judicial-identity-empty-alt { flex-direction: column; align-items: stretch; }
+  html[data-ui="v2"] .judicial-identity-empty-alt .judicial-identity-hint { flex: 0 0 auto; }
+  html[data-ui="v2"] .judicial-identity-head .status-chip { align-self: flex-start; }
+  html[data-ui="v2"] .judicial-identity-upload,
+  html[data-ui="v2"] .judicial-identity-totp-form,
+  html[data-ui="v2"] .judicial-identity-account-form { grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] .judicial-identity-upload .button,
+  html[data-ui="v2"] .judicial-identity-empty-alt .button { width: 100%; justify-content: center; }
+  html[data-ui="v2"] .judicial-identity-row,
+  html[data-ui="v2"] .judicial-identity-totp-row,
+  html[data-ui="v2"] .judicial-identity-account-row { flex-direction: column; align-items: flex-start; min-height: 0; }
+  html[data-ui="v2"] .judicial-identity-row .judicial-identity-copy { width: 100%; }
+  html[data-ui="v2"] :where(.judicial-identity-row, .judicial-identity-totp-row, .judicial-identity-account-row) .button { width: 100%; justify-content: center; }
+  html[data-ui="v2"] .judicial-identity-actions,
+  html[data-ui="v2"] .judicial-identity-review-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); }
+  html[data-ui="v2"] :where(#judicialSetupBackdrop .totp-form, .judicial-identity-totp-form, .judicial-identity-account-form) .totp-actions { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; }
+  html[data-ui="v2"] .judicial-identity-actions .button,
+  html[data-ui="v2"] .judicial-identity-review-toolbar .button,
+  html[data-ui="v2"] :where(#judicialSetupBackdrop .totp-form, .judicial-identity-totp-form, .judicial-identity-account-form) .totp-actions .button { width: 100%; justify-content: center; }
+}
+
+/* Sub-abas de perfil (Acesso do escritorio | Meu acesso particular) e acordeoes */
+html[data-ui="v2"] .jco-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--v2-space-1);
+  margin: var(--v2-space-2) 0 var(--v2-space-3);
+  padding: var(--v2-space-1);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-lg);
+  background: var(--v2-color-surface-inset);
+}
+html[data-ui="v2"] .jco-subtab {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v2-space-2);
+  padding: var(--v2-space-2) var(--v2-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--v2-radius-md);
+  background: transparent;
+  color: var(--v2-color-muted-foreground);
+  font-family: var(--v2-font-interface);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color .16s ease, color .16s ease, border-color .16s ease;
+}
+html[data-ui="v2"] .jco-subtab:hover { color: var(--v2-color-foreground); background: var(--v2-color-surface-hover); }
+html[data-ui="v2"] .jco-subtab[aria-selected="true"] {
+  background: var(--v2-color-surface);
+  border-color: var(--v2-color-border-strong);
+  color: var(--v2-color-foreground);
+  box-shadow: var(--v2-shadow-xs);
+}
+html[data-ui="v2"] .jco-subtab:focus-visible { outline: 2px solid var(--v2-color-primary); outline-offset: 2px; }
+html[data-ui="v2"] .jco-subpanel[hidden] { display: none; }
+html[data-ui="v2"] .jco-subpanel { display: grid; gap: var(--v2-space-4); min-width: 0; }
+
+html[data-ui="v2"] .cred-scope-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-3) var(--v2-space-4);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface-secondary);
+}
+html[data-ui="v2"] .cred-scope-banner.is-office { border-left: 3px solid var(--v2-color-primary); }
+html[data-ui="v2"] .cred-scope-banner.is-personal { border-left: 3px solid var(--v2-color-gold); }
+html[data-ui="v2"] .cred-scope-banner .eyebrow { margin: 0 0 2px; }
+html[data-ui="v2"] .cred-scope-banner strong { display: block; color: var(--v2-color-foreground); font-size: 14px; }
+html[data-ui="v2"] .cred-scope-banner p:last-child { margin: 4px 0 0; color: var(--v2-color-muted-foreground); font-size: 13px; line-height: 1.45; }
+
+html[data-ui="v2"] .cred-scope-warning,
+html[data-ui="v2"] .cred-locked-banner {
+  margin: 0;
+  padding: var(--v2-space-3) var(--v2-space-4);
+  color: var(--v2-color-foreground);
+  background: color-mix(in srgb, var(--v2-color-warning) 12%, var(--v2-color-surface));
+  border: 1px solid color-mix(in srgb, var(--v2-color-warning) 45%, var(--v2-color-border));
+  border-radius: var(--v2-radius-md);
+  font-size: 13px;
+  line-height: 1.5;
+}
+html[data-ui="v2"] .cred-locked-banner {
+  background: color-mix(in srgb, var(--v2-color-warning) 10%, var(--v2-color-surface));
+  border-color: color-mix(in srgb, var(--v2-color-warning) 42%, var(--v2-color-border));
+}
+
+html[data-ui="v2"] .cred-accordions-stack { display: grid; gap: var(--v2-space-3); min-width: 0; }
+html[data-ui="v2"] .cred-accordion {
+  min-width: 0;
+  background: var(--v2-color-surface);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+}
+html[data-ui="v2"] .cred-accordion > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--v2-space-2) var(--v2-space-3);
+  min-height: 44px;
+  padding: var(--v2-space-3) var(--v2-space-4);
+  color: var(--v2-color-foreground);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+html[data-ui="v2"] .cred-accordion > summary::-webkit-details-marker { display: none; }
+html[data-ui="v2"] .cred-accordion > summary:hover { background: var(--v2-color-surface-hover); border-radius: var(--v2-radius-md); }
+html[data-ui="v2"] .cred-accordion > summary:focus-visible { outline: 2px solid var(--v2-color-primary); outline-offset: 2px; border-radius: var(--v2-radius-md); }
+html[data-ui="v2"] .cred-accordion-title { flex: 1 1 auto; min-width: 180px; }
+html[data-ui="v2"] .cred-accordion-meta {
+  padding: 3px 10px;
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-inset);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-round);
+  font-size: 12px;
+  font-weight: 500;
+}
+html[data-ui="v2"] .cred-accordion > summary::after {
+  content: "";
+  width: 12px;
+  height: 8px;
+  flex: 0 0 auto;
+  background: var(--v2-color-muted-foreground);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center / contain;
+  transition: transform var(--v2-duration-fast) var(--v2-ease-standard);
+}
+html[data-ui="v2"] .cred-accordion[open] > summary::after { transform: rotate(180deg); }
+html[data-ui="v2"] .cred-accordion-body { padding: 0 var(--v2-space-3) var(--v2-space-3); border-top: 1px solid var(--v2-color-border-subtle); }
+html[data-ui="v2"] .cred-accordions-stack .cred-accordion-body > .setup-section,
+html[data-ui="v2"] #credAccordionMembers .cred-accordion-body > .setup-section { margin: 0; border: 0; padding: var(--v2-space-3) var(--v2-space-1) 0; background: transparent; box-shadow: none; }
+html[data-ui="v2"] .judicial-identity-accordion { background: var(--v2-color-surface); }
+html[data-ui="v2"] .judicial-identity-accordion .cred-accordion-body { padding: var(--v2-space-3); }
+html[data-ui="v2"] .judicial-identity-accordion .judicial-identity-totp,
+html[data-ui="v2"] .judicial-identity-accordion .judicial-identity-account,
+html[data-ui="v2"] .judicial-identity-accordion .judicial-identity-review { padding-top: 0; border-top: 0; }
+html[data-ui="v2"] .judicial-identity-accordion .judicial-identity-subtitle { display: none; }
+html[data-ui="v2"] #jcoPanelCredentials .judicial-identities-section .setup-section-heading { margin-bottom: var(--v2-space-3); }
+
+html[data-ui="v2"] .office-totp-groups-list {
+  list-style: none;
+  margin: var(--v2-space-3) 0;
+  padding: 0;
+  display: grid;
+  gap: var(--v2-space-2);
+}
+html[data-ui="v2"] .office-totp-groups-list.hidden { display: none; }
+html[data-ui="v2"] .office-totp-group-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-space-2) var(--v2-space-3);
+  padding: var(--v2-space-2) var(--v2-space-3);
+  border: 1px solid var(--v2-color-border);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-color-surface-secondary);
+}
+html[data-ui="v2"] .office-totp-group-info { min-width: 0; flex: 1 1 220px; display: grid; gap: 2px; }
+html[data-ui="v2"] .office-totp-group-info strong { color: var(--v2-color-foreground); font-size: 13px; }
+html[data-ui="v2"] .office-totp-group-info span { color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.35; }
+html[data-ui="v2"] .office-totp-group-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--v2-space-2); }
+html[data-ui="v2"] .office-totp-group-actions .button { min-height: 36px; padding: 6px 12px; font-size: 12px; }
+
+@media (max-width: 640px) {
+  html[data-ui="v2"] .jco-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    margin-bottom: var(--v2-space-2);
+  }
+  html[data-ui="v2"] .jco-tab {
+    flex: none;
+    min-height: 44px;
+    padding: 6px;
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: center;
+    justify-content: center;
+    white-space: normal;
+  }
+  html[data-ui="v2"] .jco-panel[data-jco-panel="credentials"] > .setup-status-grid {
+    gap: var(--v2-space-2);
+  }
+  html[data-ui="v2"] .jco-panel[data-jco-panel="credentials"] > .setup-status-grid article {
+    min-height: 0;
+    padding: var(--v2-space-2) var(--v2-space-3);
+  }
+  html[data-ui="v2"] .jco-subtabs {
+    margin: var(--v2-space-2) 0;
+  }
+  html[data-ui="v2"] .jco-subtab {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    padding: var(--v2-space-2) var(--v2-space-3);
+  }
+  html[data-ui="v2"] .cred-scope-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--v2-space-2) var(--v2-space-3);
+  }
+  html[data-ui="v2"] .cred-accordion > summary {
+    padding: var(--v2-space-2) var(--v2-space-3);
+  }
+  html[data-ui="v2"] .office-totp-group-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  html[data-ui="v2"] .office-totp-group-info {
+    flex: 0 0 auto;
+    align-content: start;
+  }
+  html[data-ui="v2"] .office-totp-group-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  html[data-ui="v2"] .office-totp-group-actions .button {
+    min-height: 44px;
+  }
 }

@@ -162,7 +162,7 @@ assert.match(syncFailed.html, /eproc · TJRS · 1º grau/);
 assert.doesNotMatch(syncFailed.html + syncFailed.text, /SECRET_PROVIDER_ERROR|token=|concluída/);
 assertNoEmojis(syncFailed.html, 'Sync Failed');
 const a1 = renderA1CertExpiring({ holder: 'Titular Teste', documentMasked: '***.***.***-**', notAfter: '2026-10-14', milestoneDays: 30 });
-assert.match(a1.subject, /Certificado Digital A1 vence em 30 dia\(s\)/);
+assert.match(a1.subject, /Certificado Digital A1 vence em 30 dias/);
 assert.match(a1.html, /Titular Teste/);
 assert.match(a1.html, /\*\*\*\.\*\*\*\.\*\*\*-\*\*/);
 assertNoEmojis(a1.html, 'A1');

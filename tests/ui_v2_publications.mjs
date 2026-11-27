@@ -203,6 +203,83 @@ assert.equal(conflictHarness.store.revision, 'revision-1', '409 não pode sobres
 assert.equal(conflictHarness.toasts.some(entry => entry.action?.label === 'Desfazer'), false, '409 não pode oferecer desfazer de transição não aplicada.');
 assert.equal(conflictHarness.toasts.at(-1)?.type, 'warning');
 
+// Duplo clique concorrente no quick-check + resposta oficial já com unread: false sem flush adicional.
+{
+  let releaseFetch = null;
+  let flushCalls = 0;
+  const fetchCalls = [];
+  const toasts = [];
+  const listeners = [];
+  const state = {
+    intimations: [{ id: 'publication-unit', title: 'Título sintético', process: '5000000-00.2026.8.21.0001', text: 'Texto sintético.', publishedAt: '2026-08-30', treatmentStatus: 'untreated', unread: true }],
+    processes: [],
+    tasks: []
+  };
+  const store = {
+    revision: 'revision-1',
+    state,
+    persistedFingerprint: null,
+    persistenceFingerprint() { return JSON.stringify(this.state); },
+    adoptServerRevision(rev) {
+      this.revision = rev;
+      this.persistedFingerprint = this.persistenceFingerprint();
+      return this.revision;
+    },
+    save() { throw new Error('Quick-check com unread persistido pelo servidor não deve chamar save.'); },
+    flush: async () => { flushCalls += 1; return true; }
+  };
+  store.persistedFingerprint = store.persistenceFingerprint();
+  const quickButton = {
+    disabled: false,
+    dataset: { publicationId: 'publication-unit', rowAction: 'mark_treated' },
+    addEventListener(type, handler) { listeners.push({ type, handler }); }
+  };
+  const list = {
+    innerHTML: '',
+    querySelectorAll: selector => (selector === '[data-row-action]' ? [quickButton] : [])
+  };
+  const feature = createPublicationsFeature({
+    store,
+    documentRef: {
+      documentElement: { dataset: { ui: 'v2' } },
+      getElementById: id => (id === 'inboxList' ? list : null),
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      body: { style: {} }
+    },
+    windowRef: {
+      KellerAuth: { csrfToken: 'csrf-sintetico' },
+      fetch: (url, options) => new Promise(resolve => {
+        fetchCalls.push({ url, body: JSON.parse(options.body) });
+        releaseFetch = () => resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            intimation: { id: 'publication-unit', title: 'Título sintético', treatmentStatus: 'treated', treatedBy: 'Advogada Teste', unread: false },
+            revision: 'revision-2',
+            message: 'Tratamento atualizado.'
+          })
+        });
+      })
+    },
+    escapeHtml: String,
+    formatDate: String,
+    formatDateTime: String,
+    showToast: (message, type, action) => toasts.push({ message, type, action })
+  });
+  feature.renderInbox();
+  const firstClick = listeners[0].handler({ preventDefault() {}, stopPropagation() {} });
+  const secondClick = listeners[0].handler({ preventDefault() {}, stopPropagation() {} });
+  assert.equal(await secondClick, false, 'Segundo clique em voo na mesma linha deve ser ignorado.');
+  releaseFetch();
+  assert.equal(await firstClick, true, 'Primeiro clique deve concluir tratamento rápido.');
+  assert.equal(fetchCalls.length, 1, 'Duplo clique concorrente deve disparar exatamente 1 requisição.');
+  assert.equal(flushCalls, 0, 'Quando o backend já devolve unread: false, nenhum PUT /api/state extra deve sair.');
+  assert.equal(store.revision, 'revision-2');
+  assert.equal(store.persistedFingerprint, store.persistenceFingerprint(), 'Revisão oficial e snapshot local devem ficar sincronizados.');
+  assert.equal(toasts.some(entry => entry.type === 'error' || entry.type === 'warning'), false);
+}
+
 const unitDetail = renderPublicationDetail({
   item: unitItem, act: unitAct, parties: 'Cliente Sintético', linkedTasks: [], privileged: true,
   escapeHtml, formatDate, formatDateTime, formatAge

@@ -22,6 +22,14 @@ function reachLabel(reach) {
   return Number.isFinite(reach) ? `${Math.round(reach * 100)}%` : '—';
 }
 
+function localDateInput(value) {
+  if (!value && value !== 0) return '';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return value.trim();
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value ?? '');
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 function sortButton(sort, key, label, escapeHtml) {
   const active = sort.key === key;
   const direction = active && sort.dir === 'asc' ? 'ascendente' : 'descendente';
@@ -34,7 +42,8 @@ function option(value, label, selected, escapeHtml) {
 }
 
 function filterSelect(name, label, entries, selected, escapeHtml) {
-  const options = [option('all', `Todos (${label})`, selected === 'all', escapeHtml)]
+  // "Todos", sem repetir o rótulo do campo dentro da opção ("Todos (responsável)").
+  const options = [option('all', 'Todos', selected === 'all', escapeHtml)]
     .concat(entries.map(entry => option(entry, entry, selected === entry, escapeHtml)));
   return `<label class="reports-filter"><span>${escape(label, escapeHtml)}</span><select data-report-filter="${escape(name, escapeHtml)}">${options.join('')}</select></label>`;
 }
@@ -54,8 +63,8 @@ export function renderReportsWorkspace({ report, sort = { key: 'points', dir: 'd
     ['Tempo médio', durationLabel(totals.avgDurationMinutes, formatMinutes)],
     ['Atraso médio', delayLabel(totals.avgDelayDays)],
     ['Tempo apontado', formatMinutes(totals.timeLoggedMinutes) || '0m'],
-    ['Pendentes', `${totals.pending} (${totals.late} em atraso)`]
-  ].map(([label, value]) => `<div class="reports-kpi"><span>${escape(label, escapeHtml)}</span><strong>${escape(value, escapeHtml)}</strong></div>`).join('');
+    ['Pendentes', totals.pending, totals.late ? `${totals.late} em atraso` : '']
+  ].map(([label, value, detail]) => `<div class="reports-kpi"><span>${escape(label, escapeHtml)}</span><strong>${escape(value, escapeHtml)}</strong>${detail ? `<small>${escape(detail, escapeHtml)}</small>` : ''}</div>`).join('');
 
   const responsibleRows = sortedRows.map(row => `
     <tr>
@@ -79,7 +88,7 @@ export function renderReportsWorkspace({ report, sort = { key: 'points', dir: 'd
       <td>${escape(item.type, escapeHtml)}</td>
       <td>${escape(item.client || '—', escapeHtml)}</td>
       <td>${escape(item.process || '—', escapeHtml)}</td>
-      <td>${escape(formatDate(item.completedAt), escapeHtml)}</td>
+      <td>${escape(localDateInput(item.completedAt) ? formatDate(localDateInput(item.completedAt)) : formatDate(item.completedAt), escapeHtml)}</td>
       <td class="reports-number">${escape(durationLabel(item.durationMinutes, formatMinutes), escapeHtml)}</td>
       <td class="reports-number">${escape(delayLabel(item.delayDays), escapeHtml)}</td>
       <td class="reports-number">${item.points}</td>
@@ -99,7 +108,7 @@ export function renderReportsWorkspace({ report, sort = { key: 'points', dir: 'd
       </div>
     </header>
     <div class="reports-toolbar">
-      <label class="reports-filter"><span>Período</span>
+      <label class="reports-filter"><span>Período do relatório</span>
         <select data-report-filter="period">
           ${option('current-month', 'Mês atual', filters.period === 'current-month', escapeHtml)}
           ${option('previous-month', 'Mês anterior', filters.period === 'previous-month', escapeHtml)}
@@ -113,11 +122,11 @@ export function renderReportsWorkspace({ report, sort = { key: 'points', dir: 'd
       <label class="reports-filter"><span>Até</span><input type="date" data-report-filter="dateTo" value="${escape(filters.dateTo, escapeHtml)}"></label>` : ''}
       ${filterSelect('responsible', 'responsável', filterOptions.responsibles, filters.responsible, escapeHtml)}
       ${filterSelect('taskType', 'tipo de atividade', filterOptions.taskTypes, filters.taskType, escapeHtml)}
-      <button type="button" class="button ghost" data-report-export><svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-download"></use></svg><span>Exportar CSV</span></button>
+      <button type="button" class="button ghost" data-report-export><svg class="atrium-icon btn-svg" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-download"></use></svg><span>Exportar CSV</span></button>
     </div>
 
     <div class="reports-kpis" role="group" aria-label="Resumo do período">${kpis}</div>
-    <p class="reports-range">${escape(range.label, escapeHtml)} · ${escape(formatDate(new Date(range.start).toISOString()), escapeHtml)} — ${escape(formatDate(new Date(range.end).toISOString()), escapeHtml)}</p>
+    <p class="reports-range">${escape(range.label, escapeHtml)} · ${escape(formatDate(localDateInput(range.start)), escapeHtml)} — ${escape(formatDate(localDateInput(range.end)), escapeHtml)}</p>
 
     <section class="reports-block" aria-labelledby="reportsResponsibleHeading">
       <header class="reports-block-head"><h3 id="reportsResponsibleHeading">Produtividade por responsável</h3><span>${plural(rows.length, 'pessoa', 'pessoas')}</span></header>

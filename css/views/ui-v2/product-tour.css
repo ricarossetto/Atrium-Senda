@@ -9,8 +9,8 @@ html[data-ui="v2"] .product-tour {
 /* Sem área para destacar, a tela inteira escurece por igual. */
 html[data-ui="v2"] .product-tour-veil {
   position: absolute;
-  inset: 0;
   pointer-events: none;
+  inset: 0;
   background: rgb(10 14 20 / 62%);
   transition: opacity var(--v2-duration-base) var(--v2-ease-standard);
 }
@@ -154,4 +154,10 @@ html[data-ui="v2"] .product-tour-card button:focus-visible { outline: 2px solid 
   html[data-ui="v2"] .product-tour-card,
   html[data-ui="v2"] .product-tour-veil { transition: none; }
   html[data-ui="v2"] .product-tour-card > * { animation: none; }
+}
+
+/* O assistente de primeiro acesso tem prioridade: enquanto ele estiver aberto,
+ * o tour guiado fica escondido e não intercepta cliques. */
+body:has(#guidedTourBackdrop:not(.hidden)) #productTour {
+  display: none;
 }

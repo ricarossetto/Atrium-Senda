@@ -8,7 +8,7 @@ import { computeIntimationIdentity } from '../lib/publications/intimation-identi
 import { mergePjeInventoryIntoState } from '../lib/judicial/pje/sync/ingest-inventory.mjs';
 
 console.log('\n===============================================================');
-console.log('  ATRIUM — PROJEÇÃO PJe → PUBLICAÇÕES (INTIMAÇÕES CANÔNICAS)   ');
+console.log('  ATRIUM — PROJEÇÃO PJe → PUBLICAÇÕES (INTIMAÇÕES OFICIAIS)   ');
 console.log('===============================================================\n');
 
 const CNJ = '5000000-00.2026.8.12.0001';
@@ -34,7 +34,8 @@ const item = projectPjeCommunicationToIntimation(communication, { now });
 assert.ok(item, 'Comunicação com CNJ de 20 dígitos deve ser projetada.');
 assert.equal(item.externalId, 'pje:pje-tjmt-2g:id:53180112');
 assert.equal(item.id, item.externalId);
-assert.equal(item.process, '50000000020268120001');
+assert.equal(item.process, CNJ, 'A projeção grava o CNJ no formato oficial mascarado (specs/cnj-numbering.md).');
+assert.equal(item.processNumber, CNJ);
 assert.equal(item.source, 'pje');
 assert.equal(item.portalId, 'pje-tjmt-2g');
 assert.equal(item.treatmentStatus, 'untreated', 'Projeção entra como não tratada.');
@@ -46,6 +47,23 @@ assert.equal('deadline' in item, false, 'A projeção nunca calcula prazo.');
 assert.equal('fatalDeadline' in item, false, 'fatalDeadline permanece decisão humana.');
 assert.notEqual(item.treatmentStatus, communication.status, 'communication.status não pode virar treatmentStatus.');
 console.log('  ✓ Identidade, origem, tratamento inicial e limites de prazo.');
+
+console.log('[P1b] Entrada crua de 20 dígitos sai no formato oficial mascarado...');
+{
+  const rawDigits = CNJ.replace(/\D/g, '');
+  assert.equal(rawDigits.length, 20);
+  const fromRaw = projectPjeCommunicationToIntimation({ ...communication, processNumber: rawDigits }, { now });
+  assert.equal(fromRaw.process, '5000000-00.2026.8.12.0001', 'NNNNNNN-DD.AAAA.J.TR.OOOO é o formato de armazenamento.');
+  assert.equal(fromRaw.processNumber, '5000000-00.2026.8.12.0001');
+  // Entrada já mascarada não é reembaralhada nem perde a máscara.
+  const fromMasked = projectPjeCommunicationToIntimation(communication, { now });
+  assert.equal(fromMasked.process, fromRaw.process, 'A projeção é a mesma com entrada crua ou mascarada.');
+  // A junção por string exata com state.processes passa a funcionar (mesmo formato).
+  const stateProcesses = [{ id: 'proc-1', number: '5000000-00.2026.8.12.0001' }];
+  assert.equal(stateProcesses.some(proc => proc.number === fromRaw.process), true,
+    'Publicação e processo precisam compartilhar o mesmo formato para a junção por string.');
+  console.log('  ✓ CNJ cru vira formato oficial; junção por string restaurada.');
+}
 
 console.log('[P2] Comunicação sem CNJ, sem identidade de expediente ou removida não projeta...');
 assert.equal(projectPjeCommunicationToIntimation({ ...communication, processNumber: '5000000-00.2026.8.12.001' }), null, 'CNJ sem 20 dígitos não pode gerar intimação.');
@@ -132,7 +150,7 @@ console.log('[P6] Prazo PJe vira tarefa principal na Gestão de Tarefas...');
   assert.equal(task.deadline, '2026-10-23');
   assert.equal(task.deadlineSource, 'pje');
   assert.equal(task.sourceReportedDeadlineAt, '2026-10-23');
-  assert.equal(task.process, digitsCnj);
+  assert.equal(task.process, CNJ, 'A tarefa herda o CNJ no formato oficial mascarado, como em state.processes.');
   assert.equal(task.status, 'triagem');
   assert.match(task.title, /^Prazo PJe/);
   assert.ok(auto.state.intimations.some(item => item.deadline === '2026-10-23'), 'A intimação mantém o prazo.');

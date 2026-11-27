@@ -15,7 +15,7 @@ test('INPI Service - Extração dinâmica de advogados do estado do ATRIUM', asy
 
   const mockState = {
     settings: {
-      officeName: 'Teste & Associados',
+      officeName: 'Rossetto & Associados',
       lawyerName: 'Advogado Teste',
       lawyerOab: 'OAB/RS 135.294'
     },
@@ -44,7 +44,7 @@ test('INPI Service - Extração dinâmica de advogados do estado do ATRIUM', asy
   assert.ok(!names.includes('Termo Inativo Ignorado'), 'Não inclui termos inativos');
   assert.ok(!names.includes('Maria Assistente'), 'Não inclui funcionários que não são advogados');
 
-  // Verifica termos de busca do Dr. Ricardo Teste
+  // Verifica termos de busca do Dr. Ricardo Rossetto
   const ricardoMonitor = monitors.find(m => m.label === 'Advogado Teste');
   assert.ok(ricardoMonitor, 'Monitor do Ricardo encontrado');
   assert.ok(ricardoMonitor.terms.includes('Advogado Teste'));
@@ -70,6 +70,7 @@ test('INPI Service - Regras de agendamento da RPI (Terças no final da tarde vs 
 test('INPI HTTP Routes - Contratos das rotas sob /api/integrations/inpi/*', async () => {
   let scanCalled = false;
   let persistedCount = 0;
+  let syncCalls = 0;
   const mockService = {
     getStatus: async () => ({ ok: true, sidesystem: 'INPI_RPI_MONITOR', monitorsCount: 2 }),
     getDashboardData: async () => ({ ok: true, matches: [{ id: 'match-1', marca: { nome: 'PULO' } }], statistics: { totalMatches: 1 } }),
@@ -82,7 +83,7 @@ test('INPI HTTP Routes - Contratos das rotas sob /api/integrations/inpi/*', asyn
     saveCustomMonitor: async ({ term, type }) => ({ id: 'custom-new', term, type }),
     getCustomMonitors: async () => [{ id: 'custom-1', term: 'MARCA X', type: 'marca' }],
     deleteCustomMonitor: async () => [],
-    syncMatchesToState: async () => ({ added: 1 }),
+    syncMatchesToState: async () => { syncCalls += 1; return { added: 1 }; },
     runScan: async () => { scanCalled = true; return { ok: true, syncedToIntimations: 1, message: 'Sucesso' }; }
   };
 
@@ -106,13 +107,24 @@ test('INPI HTTP Routes - Contratos das rotas sob /api/integrations/inpi/*', asyn
   assert.equal(resStatus.statusCode, 200);
   assert.equal(resStatus.body.sidesystem, 'INPI_RPI_MONITOR');
 
-  // Teste GET data
+  // GET data: leitura pura, sem reconciliação nem persistência
   const resData = {};
   const handledData = await handler({ method: 'GET' }, resData, new URL('http://localhost/api/integrations/inpi/data'));
   assert.equal(handledData, true);
   assert.equal(resData.statusCode, 200);
   assert.equal(resData.body.matches.length, 1);
-  assert.equal(persistedCount, 1, 'GET data deve persistir somente quando importar nova ocorrência, preservando a revisão lida');
+  assert.equal(syncCalls, 0, 'GET data não pode reconciliar o estado');
+  assert.equal(persistedCount, 0, 'GET data não pode persistir estado');
+  assert.deepEqual(resData.body.newIntimations, []);
+
+  // POST data: reconciliação e persistência com CSRF
+  const resReconcile = {};
+  const handledReconcile = await handler({ method: 'POST' }, resReconcile, new URL('http://localhost/api/integrations/inpi/data'));
+  assert.equal(handledReconcile, true);
+  assert.equal(resReconcile.statusCode, 200);
+  assert.equal(syncCalls, 1, 'POST data deve reconciliar o estado');
+  assert.equal(persistedCount, 1, 'POST data deve persistir quando importar nova ocorrência, preservando a revisão lida');
+  assert.equal(authFlags.at(-1), true, 'POST data deve exigir CSRF');
 
   // Teste GET monitors
   const resMonitors = {};
@@ -341,10 +353,10 @@ test('INPI Service - Conversão de ocorrência da RPI em intimação e sincroniz
     marca: { nome: 'RESERVA CONSÓRCIO' },
     despachos: [{ codigo: 'IPAS005', nome: 'Deferimento do pedido', texto: 'Pedido deferido' }],
     requerentes: [{ nome: 'RESERVA ADMINISTRADORA LTDA', pais: 'BR', uf: 'RJ' }],
-    procuradores: ['Ricardo De Luca Teste'],
+    procuradores: ['Ricardo De Luca Rossetto'],
     classes: [{ codigo: '36', edicao: '12', especificacao: 'Serviços Financeiros' }],
     revista: { numero: '2802', data: '2026-09-15' },
-    monitores: [{ label: 'Ricardo De Luca Teste', matchedTerms: ['RICARDO DE LUCA TESTE'] }]
+    monitores: [{ label: 'Ricardo De Luca Rossetto', matchedTerms: ['RICARDO DE LUCA ROSSETTO'] }]
   };
 
   const intimation = service.convertMatchToIntimation(sampleMatch);
@@ -354,7 +366,7 @@ test('INPI Service - Conversão de ocorrência da RPI em intimação e sincroniz
   assert.equal(intimation.treatmentStatus, 'untreated');
   assert.equal(intimation.processNumber, '938701029');
   assert.match(intimation.text, /RESERVA ADMINISTRADORA LTDA/);
-  assert.match(intimation.text, /Ricardo De Luca Teste/);
+  assert.match(intimation.text, /Ricardo De Luca Rossetto/);
   assert.match(intimation.text, /Serviços Financeiros/);
 
   const mockState = { intimations: [] };

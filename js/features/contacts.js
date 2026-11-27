@@ -1,9 +1,9 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.3.2';
-import { buildClientContext } from '../core/client-context.js?v=3.3.2';
-import { findStrongDuplicateIndexes, pickKeeperIndex } from '../core/contact-identity.js?v=3.3.2';
-import { renderContactsV2Workspace } from '../views/ui-v2/contacts-presenter.js?v=3.3.2';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.3.2';
-import { installPanelSizeToggleFor, isPanelMaximized, resetPanelSize, setPanelSize, syncPanelSizeControl } from '../components/panel-size.js?v=3.3.2';
+import { Store, isoDate, uid } from '../core/store.js?v=3.4.0';
+import { buildClientContext } from '../core/client-context.js?v=3.4.0';
+import { findStrongDuplicateIndexes, pickKeeperIndex } from '../core/contact-identity.js?v=3.4.0';
+import { renderContactsV2Workspace } from '../views/ui-v2/contacts-presenter.js?v=3.4.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.4.0';
+import { installPanelSizeToggleFor, isPanelMaximized, resetPanelSize, setPanelSize, syncPanelSizeControl } from '../components/panel-size.js?v=3.4.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 export const CONTACT_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
@@ -72,7 +72,7 @@ export function createContactsFeature({
       && lastRole === roleFilter
       && lastSortField === sort.field
       && lastSortDir === sort.direction) return lastFilteredSorted;
-    const filtered = sortRecords(list.filter(item => !needle || normalizeText(`${item.name} ${item.document} ${item.mobile} ${item.phone} ${item.email} ${item.origin} ${item.contactRole || ''} ${item.leadOrigin || ''} ${item.city || ''} ${item.registeredAt || item.createdAt || ''}`).includes(needle)), sort);
+    const filtered = sortRecords(list.filter(item => !needle || normalizeText(`${item.name} ${item.document} ${item.mobile} ${item.phone} ${item.email} ${item.origin} ${item.contactRole || ''} ${item.leadOrigin || ''} ${item.city || ''} ${item.registeredAt || item.createdAt || ''} ${item.companyProfile?.tradeName || ''} ${item.companyProfile?.primaryActivity || ''} ${item.companyProfile?.status || ''} ${item.companyProfile?.legalNature || ''} ${(item.companyProfile?.qsa || []).map(p => p.name).join(' ')}`).includes(needle)), sort);
     lastListRef = list;
     lastListLength = list.length;
     lastDataVersion = contactsDataVersion;
@@ -220,13 +220,22 @@ export function createContactsFeature({
       if (resetPage) currentPage = 1;
       const needle = normalizeText(query);
       const records = getFilteredSorted(needle);
+      // Busca + papel definem o recorte visível. O contador do toolbar precisa acompanhar
+      // esse recorte; antes ele lia `store.state.contacts.length` e contradizia a lista e o
+      // rodapé ("250 contatos" acima de um resultado só).
+      const visibleFiltered = roleFilter === 'all'
+        ? records
+        : records.filter(item => String(item.contactRole || '').trim() === roleFilter);
       updateTableSortHeaders('contactTable', sort);
       const countTarget = byId('contactCount');
-      if (countTarget) countTarget.textContent = `${store.state.contacts.length} contatos`;
+      if (countTarget) {
+        const filteredRecords = isV2() ? visibleFiltered : records;
+        const total = store.state.contacts.length;
+        countTarget.textContent = (needle || (isV2() && roleFilter !== 'all'))
+          ? `${filteredRecords.length} de ${plural(total, 'contato', 'contatos')}`
+          : plural(total, 'contato', 'contatos');
+      }
       if (isV2()) {
-        const visibleFiltered = roleFilter === 'all'
-          ? records
-          : records.filter(item => item.contactRole === roleFilter);
         if (selectedContactId && !visibleFiltered.some(item => String(item.id) === String(selectedContactId))) selectedContactId = null;
         lastFilteredTotal = visibleFiltered.length;
         const totalPages = contactTotalPages(visibleFiltered.length, pageSize);
@@ -393,6 +402,11 @@ export function createContactsFeature({
         if (item) this.openContactModal(item);
         return;
       }
+      if (target.hasAttribute('data-contact-registry-refresh')) {
+        const item = store.state.contacts.find(record => String(record.id) === String(selectedContactId));
+        if (item) this.openContactModal(item, { autoLookupDocument: true });
+        return;
+      }
       if (target.hasAttribute('data-contact-documents')) {
         byId('btnGenDocContact')?.click();
         return;
@@ -459,6 +473,12 @@ export function createContactsFeature({
         return;
       }
       if (target.hasAttribute('data-contact-create')) this.openContactModal();
+      if (target.hasAttribute('data-contact-clear-search')) {
+        const search = byId('contactSearch');
+        if (search) search.value = '';
+        this.render('', { resetPage: true });
+        search?.focus();
+      }
     },
 
     handleWorkspaceKeydown(event) {
@@ -511,7 +531,7 @@ export function createContactsFeature({
       return Boolean(documentRef?.defaultView?.matchMedia?.('(max-width: 760px)').matches);
     },
 
-    openContactModal(defaults = {}) {
+    openContactModal(defaults = {}, { autoLookupDocument = false } = {}) {
       const v2 = isV2();
       const modalDefaults = { source: 'Interna', contactRole: 'cliente', leadOrigin: 'indicacao', ...defaults };
       openModal?.('contact', defaults.id ? (v2 ? 'Editar contato' : 'Detalhes do contato') : 'Novo contato', v2 ? 'Pessoas e relacionamentos' : 'Cadastro de pessoas', [
@@ -520,57 +540,121 @@ export function createContactsFeature({
         { name: 'leadOrigin', label: 'Origem do contato / captação', type: 'select', options: [{value:'indicacao',label:'Indicação de Cliente'},{value:'parceria',label:'Parceria Profissional'},{value:'balcao',label:'Balcão / Atendimento Direto'},{value:'redes_sociais',label:'Redes Sociais / WhatsApp'},{value:'google_site',label:'Google / Site do Escritório'},{value:'convenio',label:'Convênio / Entidade Sindical'},{value:'outro',label:'Outra Origem'}] },
         { name: 'document', label: 'CPF / CNPJ' }, { name: 'rg', label: 'RG' },
         { name: 'birthDate', label: 'Data de nascimento', type: 'date' }, { name: 'profession', label: 'Profissão' }, { name: 'maritalStatus', label: 'Estado civil' },
+        { name: 'gender', label: 'Sexo' }, { name: 'nationality', label: 'Nacionalidade' }, { name: 'birthPlace', label: 'Naturalidade' },
+        { name: 'motherName', label: 'Nome da mãe' }, { name: 'fatherName', label: 'Nome do pai' },
         { name: 'mobile', label: 'Celular' }, { name: 'phone', label: 'Telefone' }, { name: 'email', label: 'E-mail', type: 'email' },
         { name: 'origin', label: 'Origem (texto livre)' }, { name: 'city', label: 'Cidade' }, { name: 'state', label: 'Estado' },
         { name: 'address', label: 'Endereço', full: true }, { name: 'district', label: 'Bairro' }, { name: 'zip', label: 'CEP' },
         { name: 'notes', label: 'Anotações gerais', type: 'textarea', full: true }
-      ], modalDefaults, v2 ? registryReviewShell() : '');
-      if (v2) this.installRegistryReview(modalDefaults);
+      ], modalDefaults, v2 ? registryReviewShell({ collapsed: Boolean(defaults.id) && !autoLookupDocument }) : '');
+      if (v2) this.installRegistryReview(modalDefaults, { autoLookupDocument });
     },
 
-    installRegistryReview(modalDefaults) {
+    installRegistryReview(modalDefaults, { autoLookupDocument = false } = {}) {
       const panel = byId('contactRegistryReview');
       if (!panel || typeof secureFetch !== 'function') return false;
       let currentResult = null;
       let cepLookupActive = false;
+      let documentLookupActive = false;
+      let autoLookupTimer = 0;
+      let lastQueriedDocument = '';
       const setStatus = (message, state = 'neutral') => {
         const status = panel.querySelector('[data-registry-status]');
         if (!status) return;
         status.textContent = message;
         status.dataset.state = state;
       };
+      const applySelectedFields = (boxes, { formatDocumentField = false } = {}) => {
+        const appliedFields = [];
+        boxes.forEach(input => {
+          const target = byId(`field-${input.dataset.registryField}`);
+          if (!target) return;
+          target.value = input.dataset.registryValue || '';
+          target.dispatchEvent(new Event('input', { bubbles: true }));
+          appliedFields.push(input.dataset.registryField);
+        });
+        if (formatDocumentField && currentResult?.document) {
+          const docTarget = byId('field-document');
+          const rawDoc = String(docTarget?.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (docTarget && (!rawDoc || rawDoc === currentResult.normalizedDocument) && docTarget.value !== currentResult.document) {
+            docTarget.value = currentResult.document;
+            docTarget.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+        return appliedFields;
+      };
+      const runDocumentLookup = async ({ triggeredByAuto = false } = {}) => {
+        if (autoLookupTimer) { clearTimeout(autoLookupTimer); autoLookupTimer = 0; }
+        if (documentLookupActive || !panel.isConnected) return;
+        const documentInput = byId('field-document');
+        const value = documentInput?.value || '';
+        const normalizedRaw = String(value).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (!normalizedRaw) {
+          if (!triggeredByAuto) setStatus('Informe um CPF ou CNPJ para validar/consultar.', 'attention');
+          return;
+        }
+        documentLookupActive = true;
+        setStatus('Validando o documento informado…', 'loading');
+        try {
+          const validation = await registryRequest(secureFetch, `/api/registry/document/validate?value=${encodeURIComponent(value)}`);
+          if (!panel.isConnected) return;
+          if (validation.type === 'cpf') {
+            currentResult = null;
+            panel.querySelector('[data-registry-results]').innerHTML = registryCpfResult(validation, escapeHtml);
+            setStatus(validation.valid ? validation.message : 'CPF inválido. Revise os dígitos antes de salvar.', validation.valid ? 'attention' : 'error');
+            return;
+          }
+          if (validation.type !== 'cnpj' || !validation.valid) {
+            if (triggeredByAuto) {
+              setStatus('CNPJ com dígito verificador inválido. Revise antes de consultar.', 'attention');
+              return;
+            }
+            throw new Error('CNPJ inválido. Revise os caracteres e os dígitos verificadores.');
+          }
+          lastQueriedDocument = validation.normalized;
+          setStatus('Consultando CNPJ (CNPJá Open / fonte pública)…', 'loading');
+          store.audit('Consulta cadastral iniciada', 'CNPJ · fonte pública supervisionada');
+          currentResult = await registryRequest(secureFetch, `/api/registry/cnpj?value=${encodeURIComponent(validation.normalized)}`);
+          if (!panel.isConnected) return;
+          const candidates = registryDuplicateCandidates(store.state, currentResult, modalDefaults.id);
+          const currentValues = registryCurrentValues(byId);
+          panel.querySelector('[data-registry-results]').innerHTML = registryCnpjResult(currentResult, candidates, currentValues, escapeHtml);
+          setStatus(`Consulta ${currentResult.registry?.freshness === 'cached' ? 'em cache' : 'ao vivo'} concluída. Revise ou preencha os campos vazios antes de salvar.`, 'success');
+        } catch (error) {
+          lastQueriedDocument = '';
+          if (triggeredByAuto) {
+            setStatus(error.message || 'Não foi possível consultar o CNPJ automaticamente.', 'attention');
+            return;
+          }
+          currentResult = null;
+          const resultsEl = panel.querySelector('[data-registry-results]');
+          if (resultsEl) resultsEl.innerHTML = '';
+          setStatus(error.message || 'Não foi possível consultar o cadastro.', 'error');
+        } finally {
+          documentLookupActive = false;
+        }
+      };
+
+      byId('field-document')?.addEventListener('input', event => {
+        if (autoLookupTimer) { clearTimeout(autoLookupTimer); autoLookupTimer = 0; }
+        const normalized = String(event.target?.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (/^[A-Z0-9]{12}\d{2}$/.test(normalized) && normalized !== lastQueriedDocument) {
+          autoLookupTimer = setTimeout(() => {
+            autoLookupTimer = 0;
+            runDocumentLookup({ triggeredByAuto: true });
+          }, 450);
+        }
+      });
       byId('field-zip')?.addEventListener('change', () => {
         if (/^\d{8}$/.test(String(byId('field-zip')?.value || '').replace(/\D/g, ''))) panel.querySelector('[data-registry-action="cep"]')?.click();
       });
       panel.addEventListener('click', async event => {
-        const action = event.target.closest('[data-registry-action]')?.dataset.registryAction;
+        const actionEl = event.target.closest('[data-registry-action]');
+        const action = actionEl?.dataset.registryAction;
         if (!action) return;
         if (action === 'document') {
-          const documentInput = byId('field-document');
-          const value = documentInput?.value || '';
-          setStatus('Validando o documento informado…', 'loading');
-          try {
-            const validation = await registryRequest(secureFetch, `/api/registry/document/validate?value=${encodeURIComponent(value)}`);
-            if (validation.type === 'cpf') {
-              currentResult = null;
-              panel.querySelector('[data-registry-results]').innerHTML = registryCpfResult(validation, escapeHtml);
-              setStatus(validation.valid ? validation.message : 'CPF inválido. Revise os dígitos antes de salvar.', validation.valid ? 'attention' : 'error');
-              return;
-            }
-            if (validation.type !== 'cnpj' || !validation.valid) throw new Error('CNPJ inválido. Revise os caracteres e os dígitos verificadores.');
-            setStatus('Consultando a fonte pública de CNPJ…', 'loading');
-            store.audit('Consulta cadastral iniciada', 'CNPJ · fonte pública supervisionada');
-            currentResult = await registryRequest(secureFetch, `/api/registry/cnpj?value=${encodeURIComponent(validation.normalized)}`);
-            const candidates = registryDuplicateCandidates(store.state, currentResult, modalDefaults.id);
-            panel.querySelector('[data-registry-results]').innerHTML = registryCnpjResult(currentResult, candidates, registryCurrentValues(byId), escapeHtml);
-            setStatus(`Consulta ${currentResult.registry?.freshness === 'cached' ? 'em cache' : 'ao vivo'} concluída. Revise antes de aplicar.`, 'success');
-            return;
-          } catch (error) {
-            currentResult = null;
-            panel.querySelector('[data-registry-results]').innerHTML = '';
-            setStatus(error.message || 'Não foi possível consultar o cadastro.', 'error');
-            return;
-          }
+          await runDocumentLookup({ triggeredByAuto: false });
+          return;
         }
         if (action === 'cep') {
           if (cepLookupActive) return;
@@ -590,21 +674,44 @@ export function createContactsFeature({
           }
           return;
         }
+        if (action === 'toggle-all') {
+          const boxes = [...panel.querySelectorAll('[data-registry-field]')];
+          if (!boxes.length) return;
+          const nextState = boxes.some(box => !box.checked);
+          boxes.forEach(box => { box.checked = nextState; });
+          if (actionEl) actionEl.textContent = nextState ? 'Desmarcar todos' : 'Marcar todos';
+          return;
+        }
+        if (action === 'apply-empty') {
+          const emptyBoxes = [...panel.querySelectorAll('[data-registry-field]')].filter(input => {
+            const target = byId(`field-${input.dataset.registryField}`);
+            return target && !String(target.value || '').trim();
+          });
+          if (!emptyBoxes.length) {
+            setStatus('Todos os campos encontrados já estão preenchidos. Marque manualmente caso queira substituir.', 'attention');
+            return;
+          }
+          emptyBoxes.forEach(input => { input.checked = true; });
+          const appliedFields = applySelectedFields(emptyBoxes, { formatDocumentField: true });
+          modalDefaults.registryProvenance = mergeRegistryProvenance(modalDefaults.registryProvenance, currentResult, appliedFields);
+          if (currentResult?.normalizedDocument || currentResult?.legalName) {
+            modalDefaults.companyProfile = buildCompanyProfile(currentResult);
+          }
+          store.audit('Campos cadastrais revisados', `${appliedFields.join(', ')} · preenchimento de vazios`);
+          setStatus(`${plural(appliedFields.length, 'campo vazio preenchido', 'campos vazios preenchidos')}. O salvamento continua sob sua confirmação.`, 'success');
+          return;
+        }
         if (action === 'apply') {
           const selected = [...panel.querySelectorAll('[data-registry-field]:checked')];
-          const appliedFields = [];
-          selected.forEach(input => {
-            const target = byId(`field-${input.dataset.registryField}`);
-            if (!target) return;
-            target.value = input.dataset.registryValue || '';
-            target.dispatchEvent(new Event('input', { bubbles: true }));
-            appliedFields.push(input.dataset.registryField);
-          });
+          const appliedFields = applySelectedFields(selected, { formatDocumentField: true });
           if (!appliedFields.length) {
             setStatus('Selecione ao menos um campo para aplicar.', 'attention');
             return;
           }
           modalDefaults.registryProvenance = mergeRegistryProvenance(modalDefaults.registryProvenance, currentResult, appliedFields);
+          if (currentResult?.normalizedDocument || currentResult?.legalName) {
+            modalDefaults.companyProfile = buildCompanyProfile(currentResult);
+          }
           store.audit('Campos cadastrais revisados', `${appliedFields.join(', ')} · aplicação humana`);
           setStatus(`${plural(appliedFields.length, 'campo aplicado', 'campos aplicados')}. O salvamento continua sob sua confirmação.`, 'success');
           return;
@@ -625,14 +732,24 @@ export function createContactsFeature({
             return;
           }
           modalDefaults._registryQsaImports = Array.isArray(modalDefaults._registryQsaImports) ? modalDefaults._registryQsaImports : [];
+          const registrySource = currentResult.registry?.source || 'CNPJá Open · dados públicos de CNPJ';
+          const providerLabel = String(registrySource).split('·')[0].trim() || 'Fonte pública';
           if (!modalDefaults._registryQsaImports.some(item => normalizeIdentity(item.name) === normalizeIdentity(partner.name))) {
-            modalDefaults._registryQsaImports.push({ ...partner, sourceName: currentResult.legalName || currentResult.tradeName || 'Pessoa jurídica consultada' });
+            modalDefaults._registryQsaImports.push({
+              ...partner,
+              sourceName: currentResult.legalName || currentResult.tradeName || 'Pessoa jurídica consultada',
+              providerLabel,
+              registrySource
+            });
           }
           event.target.closest('[data-registry-partner-index]').disabled = true;
           event.target.closest('[data-registry-partner-index]').textContent = 'Importação preparada';
           setStatus('Sócio preparado como contato de papel “Outro”. A criação ocorrerá somente ao salvar.', 'success');
         }
       });
+      if (autoLookupDocument && /^[A-Z0-9]{12}\d{2}$/.test(String(byId('field-document')?.value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''))) {
+        queueMicrotask(() => runDocumentLookup({ triggeredByAuto: false }));
+      }
       return true;
     },
 
@@ -647,6 +764,15 @@ export function createContactsFeature({
         registeredAt: safeDefaults.registeredAt || isoDate(),
         ...safeDefaults,
         ...data,
+        ...(safeDefaults.companyProfile && typeof safeDefaults.companyProfile === 'object'
+          ? { companyProfile: structuredClone(safeDefaults.companyProfile) }
+          : {}),
+        ...(safeDefaults.eprocPerson && typeof safeDefaults.eprocPerson === 'object'
+          ? { eprocPerson: structuredClone(safeDefaults.eprocPerson) }
+          : {}),
+        ...(Array.isArray(safeDefaults.relatedProcessNumbers)
+          ? { relatedProcessNumbers: [...safeDefaults.relatedProcessNumbers] }
+          : {}),
         updatedAt: new Date().toISOString()
       };
       store.upsert('contacts', record);
@@ -654,11 +780,13 @@ export function createContactsFeature({
       store.audit(editing ? 'Contato atualizado' : 'Contato cadastrado', record.name);
       for (const partner of pendingQsaImports) {
         if (!partner?.name || registryPartnerMatch(store.state.contacts, partner.name)) continue;
+        const providerLabel = partner.providerLabel || 'CNPJá Open';
+        const registrySource = partner.registrySource || 'CNPJá Open · dados públicos de CNPJ';
         const related = {
           id: uid('contact'), externalId: null, registeredAt: isoDate(), updatedAt: new Date().toISOString(),
           name: partner.name, profession: partner.role || '', contactRole: 'outro', leadOrigin: 'outro',
-          origin: `Quadro societário de ${partner.sourceName}`, source: 'BrasilAPI · importação QSA supervisionada',
-          registryProvenance: [{ source: 'BrasilAPI · dados públicos de CNPJ', appliedFields: ['name', 'profession'], appliedAt: new Date().toISOString() }]
+          origin: `Quadro societário de ${partner.sourceName}`, source: `${providerLabel} · importação QSA supervisionada`,
+          registryProvenance: [{ source: registrySource, appliedFields: ['name', 'profession'], appliedAt: new Date().toISOString() }]
         };
         store.upsert('contacts', related);
         store.audit('Contato cadastrado', related.name);
@@ -758,8 +886,9 @@ function uniqueStrings(values) {
   return [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
 }
 
-function registryReviewShell() {
-  return `<section class="contact-registry-review" id="contactRegistryReview" aria-labelledby="contactRegistryHeading">
+function registryReviewShell({ collapsed = false } = {}) {
+  // Na edição o cadastro já existe: a consulta fica recolhida para a identificação aparecer primeiro.
+  const panel = `<section class="contact-registry-review" id="contactRegistryReview" aria-labelledby="contactRegistryHeading">
     <div class="contact-registry-heading"><div><span>INTELIGÊNCIA CADASTRAL</span><h3 id="contactRegistryHeading">Consultar antes de preencher</h3></div><p>Fontes públicas, com revisão humana antes de qualquer alteração.</p></div>
     <div class="contact-registry-actions">
       <button type="button" class="v2-button is-secondary" data-registry-action="document">Validar / consultar CPF ou CNPJ</button>
@@ -768,6 +897,8 @@ function registryReviewShell() {
     <p class="contact-registry-status" data-registry-status data-state="neutral" role="status" aria-live="polite">Nenhum dado é aplicado automaticamente.</p>
     <div class="contact-registry-results" data-registry-results></div>
   </section>`;
+  if (!collapsed) return panel;
+  return `<details class="contact-registry-disclosure"><summary>Consultar CPF, CNPJ ou CEP em fontes públicas</summary>${panel}</details>`;
 }
 
 async function registryRequest(secureFetch, url) {
@@ -783,15 +914,57 @@ function registryCpfResult(validation, escapeHtml) {
 
 function registryCnpjResult(result, candidates, currentValues, escapeHtml) {
   const fields = [
-    ['name', 'Razão social', result.legalName], ['email', 'E-mail', result.email], ['phone', 'Telefone', result.phone],
-    ['address', 'Endereço', result.address], ['district', 'Bairro', result.district], ['city', 'Cidade', result.city],
-    ['state', 'UF', result.state], ['zip', 'CEP', result.zip]
-  ];
+    ['name', 'Razão social', result.legalName],
+    ['email', 'E-mail', result.email],
+    ...(result.mobile && result.mobile !== result.phone ? [['mobile', 'Celular', result.mobile]] : []),
+    ['phone', 'Telefone', result.phone],
+    ['address', 'Endereço', result.address],
+    ['district', 'Bairro', result.district],
+    ['city', 'Cidade', result.city],
+    ['state', 'UF', result.state],
+    ['zip', 'CEP', result.zip]
+  ].filter(([, , value]) => value);
+  const emptyApplyCount = fields.filter(([field]) => !String(currentValues[field] || '').trim()).length;
   const duplicates = candidates.length ? `<div class="registry-duplicate-hint"><strong>Possíveis registros ou relações a revisar</strong>${candidates.map(item => `<p><span>Nível ${escapeHtml(item.level)}</span>${escapeHtml(item.name)} · ${escapeHtml(item.reason)}</p>`).join('')}<small>É apenas um indício cadastral. Nenhuma mesclagem, vínculo ou conclusão de conflito foi realizada.</small></div>` : '';
-  const qsa = result.qsa?.length ? `<section class="registry-qsa"><h4>Quadro societário</h4>${result.qsa.map((partner, index) => `<div><span><strong>${escapeHtml(partner.name)}</strong><small>${escapeHtml(partner.role || 'Qualificação não informada')}</small></span><button type="button" class="v2-button is-secondary" data-registry-action="qsa" data-registry-partner-index="${index}">Preparar contato</button></div>`).join('')}<p>Sócios são importados como “Outro” após confirmação; nunca como cliente automático.</p></section>` : '';
-  const facts = [result.tradeName && `Nome fantasia: ${result.tradeName}`, result.primaryActivity && `CNAE principal: ${result.primaryActivity}`, result.statusDate && `Situação desde: ${result.statusDate}`, result.municipalityIbgeCode && `IBGE: ${result.municipalityIbgeCode}`, typeof result.simpleNational === 'boolean' && `Simples Nacional: ${result.simpleNational ? 'Sim' : 'Não'}`, typeof result.mei === 'boolean' && `MEI: ${result.mei ? 'Sim' : 'Não'}`].filter(Boolean);
-  const registryLabel = `${result.registry?.freshness === 'cached' ? 'CACHE' : 'LIVE'} · ${result.registry?.source || 'Fonte pública'} · consulta ${result.registry?.consultedAt || 'sem horário informado'}`;
-  return `<div class="registry-company-summary"><div><span>${escapeHtml(result.status || 'Situação não informada')}</span><strong>${escapeHtml(result.legalName || result.tradeName || 'Pessoa jurídica')}</strong><small>${escapeHtml(result.document)} · ${escapeHtml(registryLabel)}</small>${facts.length ? `<p>${facts.map(escapeHtml).join(' · ')}</p>` : ''}</div></div>${duplicates}<fieldset class="registry-field-review"><legend>Cadastro atual versus dado encontrado</legend>${fields.filter(([, , value]) => value).map(([field, label, value]) => `<label><input type="checkbox" data-registry-field="${field}" data-registry-value="${escapeHtml(value)}"><span><strong>${label}</strong><small><b>Atual</b> ${escapeHtml(currentValues[field] || 'não informado')}</small><small><b>Encontrado</b> ${escapeHtml(value)}</small></span></label>`).join('')}</fieldset><div class="registry-review-actions"><button type="button" class="v2-button is-secondary" data-registry-action="cancel-review">Cancelar revisão</button><button type="button" class="v2-button is-secondary" data-registry-action="keep-current">Manter cadastro atual</button><button type="button" class="v2-button is-primary registry-apply" data-registry-action="apply">Aplicar campos selecionados</button></div>${qsa}`;
+  const qsa = result.qsa?.length ? `<section class="registry-qsa"><h4>Quadro societário (${result.qsa.length})</h4>${result.qsa.map((partner, index) => {
+    const metaParts = [partner.role || 'Qualificação não informada', partner.personType, partner.since ? `desde ${brDateTime(partner.since)}` : ''].filter(Boolean);
+    return `<div><span><strong>${escapeHtml(partner.name)}</strong><small>${escapeHtml(metaParts.join(' · '))}</small></span><button type="button" class="v2-button is-secondary" data-registry-action="qsa" data-registry-partner-index="${index}">Preparar contato</button></div>`;
+  }).join('')}<p>Sócios são importados como “Outro” após confirmação; nunca como cliente automático.</p></section>` : '';
+  function brDateTime(value) {
+    const text = String(value || '');
+    if (/^\d{4}-\d{2}-\d{2}T/.test(text) && !Number.isNaN(Date.parse(text))) {
+      return new Date(text).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}:\d{2}))?/.exec(text);
+    return m ? `${m[3]}/${m[2]}/${m[1]}${m[4] ? ` ${m[4]}` : ''}` : text;
+  }
+  const capitalLabel = Number.isFinite(Number(result.capital)) && Number(result.capital) > 0
+    ? `Capital social: R$ ${Number(result.capital).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : '';
+  const secondaryCount = Array.isArray(result.secondaryActivities) ? result.secondaryActivities.length : 0;
+  const cnaeLabel = result.primaryActivity
+    ? `CNAE principal: ${result.primaryActivityCode ? `${result.primaryActivityCode} — ` : ''}${result.primaryActivity}${secondaryCount ? ` (+${secondaryCount} secundário${secondaryCount === 1 ? '' : 's'})` : ''}`
+    : '';
+  const sizeLabel = result.size
+    ? `Porte: ${result.size}${result.sizeAcronym && !result.size.toUpperCase().includes(result.sizeAcronym.toUpperCase()) ? ` (${result.sizeAcronym})` : ''}`
+    : '';
+  const isInactiveStatus = Boolean(result.status && !/^ativa$/i.test(String(result.status).trim()));
+  const facts = [
+    result.establishmentType && `Tipo: ${result.establishmentType}`,
+    result.tradeName && `Nome fantasia: ${result.tradeName}`,
+    result.legalNature && `Natureza jurídica: ${result.legalNature}`,
+    sizeLabel,
+    capitalLabel,
+    result.openedAt && `Abertura: ${brDateTime(result.openedAt)}`,
+    cnaeLabel,
+    result.statusDate && `Situação desde: ${brDateTime(result.statusDate)}`,
+    result.municipalityIbgeCode && `IBGE: ${result.municipalityIbgeCode}`,
+    typeof result.simpleNational === 'boolean' && `Simples Nacional: ${result.simpleNational ? `Sim${result.simpleNationalSince ? ` (desde ${brDateTime(result.simpleNationalSince)})` : ''}` : 'Não'}`,
+    typeof result.mei === 'boolean' && `MEI: ${result.mei ? 'Sim' : 'Não'}`,
+    result.sourceUpdatedAt && `Base atualizada em: ${brDateTime(result.sourceUpdatedAt)}`
+  ].filter(Boolean);
+  const registryLabel = `${result.registry?.freshness === 'cached' ? 'Consulta guardada' : 'Consulta ao vivo'} · ${result.registry?.source || 'Fonte pública'} · ${result.registry?.consultedAt ? `consultado em ${brDateTime(result.registry.consultedAt)}` : 'sem horário informado'}`;
+  return `<div class="registry-company-summary"><div><span${isInactiveStatus ? ' class="is-inactive"' : ''}>${escapeHtml(result.status || 'Situação não informada')}${result.establishmentType ? ` · ${escapeHtml(result.establishmentType)}` : ''}</span><strong>${escapeHtml(result.legalName || result.tradeName || 'Pessoa jurídica')}</strong><small>${escapeHtml(result.document)} · ${escapeHtml(registryLabel)}</small>${facts.length ? `<p>${facts.map(escapeHtml).join(' · ')}</p>` : ''}</div></div>${duplicates}<fieldset class="registry-field-review"><legend>Cadastro atual versus dado encontrado</legend>${fields.map(([field, label, value]) => `<label><input type="checkbox" data-registry-field="${field}" data-registry-value="${escapeHtml(value)}"><span><strong>${label}</strong><small><b>Atual</b> ${escapeHtml(currentValues[field] || 'não informado')}</small><small><b>Encontrado</b> ${escapeHtml(value)}</small></span></label>`).join('')}</fieldset><div class="registry-review-actions"><button type="button" class="v2-button is-secondary" data-registry-action="cancel-review">Cancelar revisão</button><button type="button" class="v2-button is-secondary" data-registry-action="keep-current">Manter cadastro atual</button><button type="button" class="v2-button is-secondary" data-registry-action="toggle-all">Marcar todos</button>${emptyApplyCount ? `<button type="button" class="v2-button is-secondary" data-registry-action="apply-empty">Preencher vazios (${emptyApplyCount})</button>` : ''}<button type="button" class="v2-button is-primary registry-apply" data-registry-action="apply">Aplicar campos selecionados</button></div>${qsa}`;
 }
 
 function registryAddressResult(result, escapeHtml) {
@@ -802,29 +975,81 @@ function registryAddressResult(result, escapeHtml) {
 function registryDuplicateCandidates(state, result, currentId) {
   const contacts = state?.contacts || [];
   const document = normalizeDocument(result.normalizedDocument || result.document);
+  const rootCnpj = document.length === 14 ? document.slice(0, 8) : '';
   const email = normalizeIdentity(result.email);
   const phone = String(result.phone || '').replace(/\D/g, '');
   const names = [result.legalName, result.tradeName].map(normalizeIdentity).filter(Boolean);
   const contactCandidates = contacts.filter(item => String(item.id) !== String(currentId || '')).map(item => {
+    const itemDoc = normalizeDocument(item.document);
     const itemName = normalizeIdentity(item.name);
     const nameStrength = Math.max(...names.map(name => identitySimilarity(name, itemName)), 0);
     const sameChannel = (email && normalizeIdentity(item.email) === email) || (phone && [item.mobile, item.phone].some(value => String(value || '').replace(/\D/g, '') === phone));
     const sameLocation = Boolean(result.city && normalizeIdentity(item.city) === normalizeIdentity(result.city));
-    if ((document && normalizeDocument(item.document) === document) || (result.externalId && item.externalId === result.externalId)) return { level: 'A', name: item.name, reason: 'mesmo identificador forte' };
+    if ((document && itemDoc === document) || (result.externalId && item.externalId === result.externalId)) return { level: 'A', name: item.name, reason: 'mesmo identificador forte' };
+    if (rootCnpj && itemDoc.length === 14 && itemDoc.slice(0, 8) === rootCnpj) return { level: 'B', name: item.name, reason: 'mesmo grupo econômico (mesma raiz CNPJ — Matriz/Filial)' };
     if (nameStrength >= 0.72 && (sameChannel || sameLocation)) return { level: 'B', name: item.name, reason: `nome compatível + ${sameChannel ? 'canal de contato' : 'localidade'}` };
     if (nameStrength >= 0.72) return { level: 'C', name: item.name, reason: 'semelhança nominal; exige revisão humana' };
     return null;
   }).filter(Boolean);
+
+  const qsaPartnerCandidates = [];
+  for (const partner of result.qsa || []) {
+    const partnerName = normalizeIdentity(partner?.name);
+    if (!partnerName) continue;
+    const matched = contacts.find(item => String(item.id) !== String(currentId || '') && normalizeIdentity(item.name) === partnerName);
+    if (matched) {
+      qsaPartnerCandidates.push({ level: 'C', name: matched.name, reason: `sócio do QSA já cadastrado (${partner.role || 'sócio'}); vínculo não criado` });
+    }
+  }
+
   const relatedNames = new Set([...names, ...(result.qsa || []).map(item => normalizeIdentity(item.name))].filter(Boolean));
   const processCandidates = (state?.processes || []).flatMap(process => {
     const parties = [process.client, process.opponent, process.opposingParty].filter(Boolean);
     return parties.filter(party => [...relatedNames].some(name => identitySimilarity(name, normalizeIdentity(party)) >= 0.86)).map(party => ({ level: 'C', name: party, reason: `nome presente no processo ${process.number || 'sem número'}; vínculo não criado` }));
   });
-  return [...contactCandidates, ...processCandidates].slice(0, 8);
+  const leadCandidates = (state?.leads || []).filter(lead => {
+    const leadName = normalizeIdentity(lead?.client);
+    return leadName && [...relatedNames].some(name => identitySimilarity(name, leadName) >= 0.82);
+  }).map(lead => ({ level: 'C', name: lead.client, reason: `nome presente em atendimento CRM (${lead.status || 'novo'})` }));
+
+  return [...contactCandidates, ...qsaPartnerCandidates, ...processCandidates, ...leadCandidates].slice(0, 10);
 }
 
 function registryCurrentValues(byId) {
-  return Object.fromEntries(['name', 'email', 'phone', 'address', 'district', 'city', 'state', 'zip'].map(field => [field, byId(`field-${field}`)?.value || '']));
+  return Object.fromEntries(['name', 'email', 'mobile', 'phone', 'address', 'district', 'city', 'state', 'zip'].map(field => [field, byId(`field-${field}`)?.value || '']));
+}
+
+function buildCompanyProfile(result) {
+  if (!result || (!result.legalName && !result.normalizedDocument)) return null;
+  return {
+    document: result.document || '',
+    normalizedDocument: result.normalizedDocument || '',
+    establishmentType: result.establishmentType || '',
+    tradeName: result.tradeName || '',
+    status: result.status || '',
+    statusDate: result.statusDate || '',
+    statusReason: result.statusReason || '',
+    openedAt: result.openedAt || '',
+    legalNature: result.legalNature || '',
+    legalNatureCode: result.legalNatureCode || '',
+    size: result.size || '',
+    sizeAcronym: result.sizeAcronym || '',
+    capital: Number.isFinite(Number(result.capital)) ? Number(result.capital) : null,
+    primaryActivity: result.primaryActivity || '',
+    primaryActivityCode: result.primaryActivityCode || '',
+    secondaryActivities: Array.isArray(result.secondaryActivities) ? result.secondaryActivities.slice(0, 8) : [],
+    municipalityIbgeCode: result.municipalityIbgeCode || '',
+    simpleNational: typeof result.simpleNational === 'boolean' ? result.simpleNational : null,
+    simpleNationalSince: result.simpleNationalSince || '',
+    taxEvents: Array.isArray(result.taxEvents) ? result.taxEvents.slice(0, 6) : [],
+    mei: typeof result.mei === 'boolean' ? result.mei : null,
+    meiSince: result.meiSince || '',
+    suframaCount: Number(result.suframaCount) || 0,
+    qsa: Array.isArray(result.qsa) ? result.qsa.slice(0, 12) : [],
+    sourceUpdatedAt: result.sourceUpdatedAt || '',
+    source: result.registry?.source || 'CNPJá Open · dados públicos de CNPJ',
+    consultedAt: result.registry?.consultedAt || new Date().toISOString()
+  };
 }
 
 function identitySimilarity(left, right) {

@@ -192,20 +192,23 @@ try {
   const restorePromise = restore(server.baseUrl, candidateB, master.headers);
   const safetyFileName = await waitForNewSafetySnapshot(backupDir, snapshotsBeforeRace);
 
+  // O restore segura a fila de mutações; a gravação concorrente chega com a revisão
+  // anterior e espera a vez. O restore commita primeiro e o write obsoleto é recusado
+  // com 409 — sem rejeitar o restore por um conflito que só existia na leitura precoce.
   const stateC = makeState('C-CONCORRENTE');
-  const concurrentSave = await saveState(server.baseUrl, master.headers, stateC, stateBeforeRace.revision);
-  assert.ok(concurrentSave.revision && concurrentSave.revision !== stateBeforeRace.revision, 'Atualização concorrente deve avançar revision.');
-  const concurrentState = await captureState(server, master.headers);
+  const concurrentResponse = await saveStateRaw(server.baseUrl, master.headers, stateC, stateBeforeRace.revision);
 
-  const conflictResponse = await restorePromise;
-  assert.equal(conflictResponse.status, 409, 'Restore deve retornar 409 quando revision muda antes do commit.');
-  const conflictPayload = await conflictResponse.json();
-  assert.match(conflictPayload.message, /atualizados|recarregue/i, '409 deve explicar o conflito sem confirmar sucesso.');
+  const restoreResponse = await restorePromise;
+  assert.equal(restoreResponse.status, 200, 'Restore serializado na fila não pode ser recusado por write concorrente.');
+  const restoredPayload = await restoreResponse.json();
+  assert.equal(restoredPayload.ok, true);
+  assert.equal(concurrentResponse.status, 409, 'Write concorrente com revisão obsoleta deve ser recusado com 409.');
+  const conflictPayload = await concurrentResponse.json();
+  assert.match(conflictPayload.message, /atualizados|recarregue/i, '409 do write concorrente deve explicar o conflito sem confirmar sucesso.');
 
   const afterConflict = await captureState(server, master.headers);
-  assert.equal(afterConflict.raw, concurrentState.raw, 'Restore em conflito não pode alterar os bytes do estado concorrente.');
-  assert.equal(afterConflict.revision, concurrentSave.revision, 'Restore em conflito deve preservar revision concorrente.');
-  assert.equal(afterConflict.state.settings.officeName, stateC.settings.officeName, 'Restore em conflito deve preservar estado R2.');
+  assert.equal(afterConflict.state.settings.officeName, 'Escritório B', 'Restore deve prevalecer sobre a gravação concorrente recusada.');
+  assert.equal(afterConflict.revision, restoredPayload.revision, 'A revisão final é a devolvida pelo restore.');
   assert.equal((await listAppStateTemps(server.dataDirectory)).length, 0, 'Restore em conflito não deve deixar app-state parcial.');
 
   const safetyPath = path.join(backupDir, safetyFileName);
@@ -231,7 +234,7 @@ try {
     assert.equal(safetyStat.mode & 0o777, 0o600, 'Snapshot deve usar mode 0o600 quando suportado.');
   }
   assert.equal((await listBackupTemps(backupDir)).length, 0, 'Escrita atômica não deve deixar temporários de snapshot.');
-  console.log('✓ Concorrência retorna 409, preserva R2 e mantém snapshot cifrado recuperável.');
+  console.log('✓ Restore serializado na fila; write concorrente obsoleto recebe 409 e o snapshot segue cifrado e recuperável.');
 
   console.log('\n4. Validando restore populado bem-sucedido e contrato atômico de source...');
   const snapshotsBeforeSuccess = await listSafetySnapshots(backupDir);
@@ -248,7 +251,7 @@ try {
   const atomicHelper = sourceBlock(serverSource, 'async function writePrivateJsonAtomically', 'async function createPreRestoreSafetySnapshot');
   assert.match(atomicHelper, /writeFile\(tmpFile,[\s\S]*mode:\s*0o600/, 'Snapshot deve ser escrito primeiro em temporário privado.');
   assert.match(atomicHelper, /rename\(tmpFile,\s*targetPath\)/, 'Snapshot deve ser publicado por rename atômico.');
-  assert.match(serverSource, /saveAppStateDirect\(restoredState,\s*currentEnv\.revision(?:,\s*\{[^}]*allowDegraded:\s*true[^}]*\})?\)/, 'Restore deve passar a revision capturada ao save direto validado, inclusive em recovery mode.');
+  assert.match(serverSource, /enqueueAppStateMutation\(async \(\) => \{\s*const currentEnv = await readAppStateEnvelope\(\);[\s\S]*?saveAppStateDirectUnlocked\(restoredState,\s*currentEnv\.revision,\s*\{\s*allowDegraded:\s*true\s*\}\)/, 'Restore deve ler o envelope e gravar dentro da fila de mutações, com a revision capturada, inclusive em recovery mode.');
   assert.doesNotMatch(serverSource, /JSON\.stringify\(currentEnv\s*,/, 'Restore não pode serializar currentEnv descriptografado em snapshot.');
   console.log('✓ Estado populado, expectedRevision, temp+rename e ausência de app-state parcial validados.');
 
@@ -395,6 +398,12 @@ async function saveState(baseUrl, headers, state, revision) {
   const payload = await response.json();
   assert.equal(response.status, 200, payload.message || 'Estado sintético deve persistir.');
   return payload;
+}
+
+// Gravação concorrente sem expectativa de sucesso: devolve a resposta crua para o
+// teste conferir o 409 legítimo quando a revisão enviada já ficou obsoleta.
+async function saveStateRaw(baseUrl, headers, state, revision) {
+  return postJson(`${baseUrl}/api/state`, { state, revision }, headers);
 }
 
 async function readState(baseUrl, headers) {

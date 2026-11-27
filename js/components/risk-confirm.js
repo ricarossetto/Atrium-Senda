@@ -13,7 +13,7 @@
  * O texto é fixo (contrato) e o componente é puro na renderização; o `createRiskConfirm` monta
  * o overlay no documento, cuida de foco/escape e persiste a preferência de não perguntar.
  */
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.3.2';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.4.0';
 
 export const RISK_CONFIRM_COPY = Object.freeze({
   title: 'Você tem certeza que deseja confirmar todas as sugestões do Atrium IA?',
@@ -83,13 +83,20 @@ export function createRiskConfirm({
   storageKey = 'atrium:ai:bulk-confirm-skip',
   escapeHtml = String
 } = {}) {
+  const resolveStorageKey = () => {
+    const auth = documentRef?.defaultView?.AtriumAuth || documentRef?.defaultView?.KellerAuth;
+    const workspaceId = String(auth?.currentWorkspace?.id || '').trim();
+    const userId = String(auth?.currentUser?.id || '').trim();
+    return workspaceId && userId ? `${storageKey}:${workspaceId}:${userId}` : storageKey;
+  };
   const readSkip = () => {
-    try { return documentRef?.defaultView?.localStorage?.getItem(storageKey) === 'true'; } catch { return false; }
+    try { return documentRef?.defaultView?.localStorage?.getItem(resolveStorageKey()) === 'true'; } catch { return false; }
   };
   const writeSkip = value => {
     try {
-      if (value) documentRef?.defaultView?.localStorage?.setItem(storageKey, 'true');
-      else documentRef?.defaultView?.localStorage?.removeItem(storageKey);
+      const key = resolveStorageKey();
+      if (value) documentRef?.defaultView?.localStorage?.setItem(key, 'true');
+      else documentRef?.defaultView?.localStorage?.removeItem(key);
     } catch { /* preferência opcional */ }
   };
 
@@ -120,6 +127,7 @@ export function createRiskConfirm({
         const onKeydown = event => {
           if (event.key === 'Escape') {
             event.preventDefault();
+            event.stopImmediatePropagation();
             close(false);
           }
         };

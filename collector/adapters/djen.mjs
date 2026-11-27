@@ -2,7 +2,6 @@ import { mergeExternalContacts, mergeExternalProcesses } from './datajud.mjs';
 import { derivePublicationDate } from '../../lib/core/business-days.mjs';
 
 const DEFAULT_ENDPOINT = 'https://comunicaapi.pje.jus.br/api/v1/comunicacao';
-const PROCESS_DIGITS_RE = /\b\d{20}\b/;
 
 export async function collectDjen(portal, config, target, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;

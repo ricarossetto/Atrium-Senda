@@ -20,32 +20,32 @@ export const DOCUMENT_TYPES = Object.freeze([
 export const DOCUMENT_CATALOG = Object.freeze([
   Object.freeze({
     id: 'procuracao',
-    title: 'Procuração Ad Judicia et Extra',
-    category: 'Contratual / Mandato',
+    title: 'Procuração ad judicia et extra',
+    category: 'Contratual / mandato',
     description: 'Poderes gerais para o foro e poderes específicos para acordos, recebimento de RPVs e levantamento de alvarás.'
   }),
   Object.freeze({
     id: 'contrato_honorarios',
-    title: 'Contrato de Honorários Advocatícios (Quota Litis)',
-    category: 'Financeiro / Honorários',
+    title: 'Contrato de honorários advocatícios (quota litis)',
+    category: 'Financeiro / honorários',
     description: 'Fixação de honorários sobre o proveito econômico (Art. 50 do Código de Ética e Disciplina da OAB).'
   }),
   Object.freeze({
     id: 'declaracao_hipo',
-    title: 'Declaração de Hipossuficiência Econômica',
+    title: 'Declaração de hipossuficiência econômica',
     category: 'Processual',
     description: 'Pedido de Gratuidade da Justiça conforme Art. 98 e 99 do CPC/2015.'
   }),
   Object.freeze({
     id: 'quesitos_prev',
-    title: 'Quesitos Periciais Previdenciários / Médicos',
-    category: 'Provas / Perícia',
+    title: 'Quesitos periciais previdenciários e médicos',
+    category: 'Provas / perícia',
     description: 'Quesitação técnica oficial para perícia médica judicial (Art. 465 do CPC).'
   }),
   Object.freeze({
     id: 'prestacao_contas_rpv',
-    title: 'Termo de Prestação de Contas & Repasse de RPV',
-    category: 'Prestação de Contas',
+    title: 'Termo de prestação de contas e repasse de RPV',
+    category: 'Prestação de contas',
     description: 'Discriminação de valores brutos, retenções fiscais, honorários e comprovante de repasse ao cliente.'
   })
 ]);
@@ -1350,6 +1350,6 @@ ${id.lawyerOab} - ${id.officeName}`;
 
   return feature;
 }
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.3.2';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.3.2';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.4.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.4.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;

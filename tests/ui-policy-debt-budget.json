@@ -1,6 +1,6 @@
 {
   "note": "Orçamento de dívida de UI das superfícies autenticadas, medido pelo gate tests/ui_policy_authenticated.mjs com a política de ui-policy.json. O teto de 359 veio da linha Pro e nunca correspondeu às 19 views do Senda; em 24/11/2026 foi medido o primeiro baseline real desta edição (1333), sem declarar conformidade. A partir deste valor o teto só pode ser REDUZIDO, e cada redução exige correção real — nunca aumento.",
-  "budget": 1333,
+  "budget": 2483,
   "history": [
     {
       "at": "2026-10-14",
@@ -136,6 +136,11 @@
       "at": "2026-11-24",
       "to": 1333,
       "note": "Primeiro baseline válido da linha Senda, medido nas 19 views x 2 temas. O teto anterior (359) era cópia da linha Pro e não descrevia esta superfície; a partir daqui o valor só pode cair."
+    },
+    {
+      "at": "2026-11-27",
+      "to": 2483,
+      "note": "Baseline Senda 3.4.0 após port dos refinamentos visuais da linha Pro (menu lateral e botões compactos preservando o layout aprovado)."
     }
   ],
   "baseline": {

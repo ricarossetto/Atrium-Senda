@@ -523,9 +523,10 @@ html[data-ui="v2"] #view-importer #importerPreviewTable {
 }
 
 html[data-ui="v2"] #view-importer #importerPreviewTable :where(th, td) {
+  min-width: 120px;
   max-width: 320px;
   padding: 11px var(--v2-space-3);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--v2-color-border-subtle);

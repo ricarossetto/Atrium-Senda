@@ -1,7 +1,6 @@
+import { extractEprocFullCaptureInPage } from './eproc-full-capture.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { createHash, randomBytes } from 'node:crypto';
 import { generateTotp } from '../../lib/security.mjs';
 import { generateAutosIndexPdf } from '../../lib/judicial/tjrs-autos-service.mjs';
 import { PROCESS_SECRECY_LEVEL_PATTERN_SOURCES } from '../../lib/judicial/eproc/parsers/process-secrecy.mjs';
@@ -55,6 +54,52 @@ async function guardedPressEnter(page, locator, operation, action) {
   return await locator.press('Enter');
 }
 
+// Campo do segundo fator: Keycloak (TJRS e SSO antigo do TRF4) e tela própria
+// de dois fatores do eproc 9.24 da 4ª Região.
+export const EPROC_TOTP_INPUT_SELECTOR = [
+  '#otp', 'input[name="otp"]', 'input[name="totp"]', 'input[name="code"]',
+  'input[autocomplete="one-time-code"]', 'input[placeholder*="código" i]',
+  'input[name*="codigo" i]:not([type="hidden"])', 'input[id*="codigo" i]:not([type="hidden"])'
+].join(', ');
+
+/**
+ * Formulário do acesso principal por certificado do eproc 9.24: destino em
+ * #destino_v2_cert (acao=login_cert no mesmo eproc) e campos de #frmLogin, sem
+ * usuário nem senha. Devolve null quando a página não tem esse acesso.
+ */
+export async function readEprocCertLoginForm(page) {
+  const raw = await page.evaluate(() => {
+    const form = document.getElementById('frmLogin');
+    const destino = document.getElementById('destino_v2_cert')?.value || document.getElementById('destinoV2Cert')?.value || '';
+    if (!form || !destino) return null;
+    return { destino, fields: [...new FormData(form).entries()].map(([name, value]) => [name, String(value)]) };
+  }).catch(() => null);
+  return pickEprocCertLoginForm(raw, page.url());
+}
+
+export function pickEprocCertLoginForm(raw, pageUrl) {
+  if (!raw?.destino) return null;
+  let action;
+  try { action = new URL(raw.destino, pageUrl); } catch { return null; }
+  let pageOrigin = '';
+  try { pageOrigin = new URL(pageUrl).origin; } catch { return null; }
+  if (action.origin !== pageOrigin || action.searchParams.get('acao') !== 'login_cert') return null;
+  const fields = (Array.isArray(raw.fields) ? raw.fields : [])
+    .filter(([name]) => !/^(txtUsuario|pwdSenha|txtSenha)$/i.test(String(name)))
+    .map(([name, value]) => [String(name), String(value ?? '')]);
+  return { action: action.href, fields };
+}
+
+/** Remove a query do endereço antes de registrar: o retorno pode carregar parâmetros de sessão. */
+function redactAuthUrl(value) {
+  try {
+    const parsed = new URL(String(value));
+    return `${parsed.origin}${parsed.pathname}${parsed.search ? '?…' : ''}`;
+  } catch {
+    return '';
+  }
+}
+
 async function waitForAuthNavigation(page, stage) {
   try {
     await page.waitForLoadState('domcontentloaded', { timeout: 60_000 });
@@ -91,6 +136,36 @@ export function shouldRetryEprocLogin({ bodyText = '', outcome = {}, attempt = 1
   if (attempt >= attempts) return false;
   if (outcome?.state === 'UNKNOWN') return true;
   return /instabilidade tempor|configura[çc][ãa]o de credencial|Recarregar agora|Tente novamente/i.test(String(bodyText));
+}
+
+export async function selectEprocLawyerProfileIfPrompted(page, emit = () => {}, sleep = (ms) => page.waitForTimeout(ms)) {
+  const buttonsLocator = page.locator('#frmEscolherUsuario #tblPerfis button[onclick*="acaoLogar("]');
+  const count = await buttonsLocator.count().catch(() => 0);
+  if (count === 0) return false;
+
+  const candidates = [];
+  for (let i = 0; i < count; i++) {
+    const btn = buttonsLocator.nth(i);
+    const visible = await btn.isVisible().catch(() => false);
+    if (!visible) continue;
+    const desc = String(await btn.getAttribute('data-descricao').catch(() => '') || '').trim();
+    const text = String(await btn.innerText().catch(() => '') || '').replace(/\s+/g, ' ').trim();
+    const label = (desc || text).toUpperCase();
+    candidates.push({ index: i, btn, label, desc: desc || text });
+  }
+  if (!candidates.length) return false;
+
+  const chosen = candidates.find(c => c.label === 'ADVOGADO')
+    || candidates.find(c => /\bADVOGADO\b/.test(c.label) && !/ESTAGI[AÁ]RIO|SERVIDOR|ASSISTENTE|TITULAR/.test(c.label))
+    || candidates.find(c => /\bADVOGADO\b/.test(c.label))
+    || candidates[0];
+
+  console.log(`[eproc] Tela de seleção de perfil detectada; selecionando perfil: ${chosen.desc || chosen.label}`);
+  emit('profile_selected', `Selecionando perfil "${chosen.desc || chosen.label}" no eproc.`);
+  await guardedClick(page, chosen.btn, 'authenticate');
+  await waitForAuthNavigation(page, 'seleção de perfil').catch(() => {});
+  await sleep(2_000);
+  return true;
 }
 
 export async function authenticateEprocWithCertAndTotp(page, portalUrl, credentials = {}) {
@@ -163,6 +238,7 @@ async function authenticateWithCertOnce(page, portalUrl, credentials = {}) {
   if (!portalLoaded) throw lastNavigationError;
   if (page.url().includes('keycloak')) emit('keycloak_opened', 'Tela de identidade Keycloak TJRS aberta.');
   await page.waitForTimeout(1_500);
+  await selectEprocLawyerProfileIfPrompted(page, emit);
 
   // Se já estiver logado no eproc
   if (await isEprocSessionActive(page)) {
@@ -183,8 +259,43 @@ async function authenticateWithCertOnce(page, portalUrl, credentials = {}) {
     if (page.url().includes('keycloak')) emit('keycloak_opened', 'Tela de identidade Keycloak TJRS observada após o redirecionamento.');
   }
 
+  // eproc 9.24 da 4ª Região, acesso principal: o botão "Certificado Digital" envia o
+  // formulário de entrada a acao=login_cert e o eproc pede o A1 por renegociação
+  // TLS, que o navegador do robô não completa. O servidor envia esse formulário com
+  // o A1 e os cookies da sessão do navegador; os cookies devolvidos voltam ao navegador.
+  if (!await isEprocSessionActive(page) && typeof credentials.eprocCertLogin === 'function') {
+    const certLogin = await readEprocCertLoginForm(page);
+    if (certLogin) {
+      console.log('[eproc] Login próprio do eproc detectado. Entrando com o certificado pelo acesso principal...');
+      emit('cert_login_clicked', 'Acesso principal com certificado digital selecionado.');
+      assertReadOnlyEprocTarget({ operation: 'authenticate', url: certLogin.action, baseUrl: page.url() });
+      const origin = new URL(certLogin.action).origin;
+      const cookies = (await page.context().cookies(origin)).map(cookie => [cookie.name, cookie.value]);
+      const result = await credentials.eprocCertLogin({ url: certLogin.action, fields: certLogin.fields, cookies });
+      console.log(`[eproc] Acesso principal (${(result.trail || []).join(' → ')}) respondeu ${result.status}${result.location ? ` com destino ${redactAuthUrl(new URL(result.location, certLogin.action).href)}` : ''}; cookies: ${result.cookies.map(cookie => cookie.name).join(', ') || 'nenhum'}.`);
+      if (result.cookies.length) {
+        await page.context().addCookies(result.cookies.map(cookie => ({
+          name: cookie.name,
+          value: cookie.value,
+          url: origin,
+          ...(cookie.httpOnly ? { httpOnly: true } : {}),
+          secure: true
+        })));
+      }
+      const next = result.location ? new URL(result.location, certLogin.action).href : portalUrl;
+      if (new URL(next).origin === origin) {
+        await guardedGoto(page, next, 'authenticate', { timeoutMs: 90_000 }).catch(error => {
+          console.log('[eproc] Navegação após o acesso principal não concluída:', String(error?.message || error).slice(0, 160));
+        });
+        await waitForAuthNavigation(page, 'acesso principal com certificado');
+        await page.waitForTimeout(2_000);
+        console.log('[eproc] URL após o acesso principal:', redactAuthUrl(page.url()));
+      }
+    }
+  }
+
   // Verifica se a tela solicitou o código 2FA / TOTP
-  const totpInput = page.locator('#otp, input[name="otp"], input[name="totp"], input[name="code"], input[placeholder*="código" i]').first();
+  const totpInput = page.locator(EPROC_TOTP_INPUT_SELECTOR).first();
   if (await totpInput.count() > 0 && await totpInput.isVisible().catch(() => false)) {
     emit('totp_challenge_detected', 'Desafio TOTP detectado pelo tribunal.');
     console.log('[eproc] Desafio de Segundo Fator (2FA/TOTP) detectado.');
@@ -216,6 +327,9 @@ async function authenticateWithCertOnce(page, portalUrl, credentials = {}) {
   await page.waitForTimeout(2_000);
   emit('redirect_awaited', 'Redirecionamento pós-autenticação aguardado.');
 
+  // Perfis múltiplos no eproc (ex.: ADVOGADO / ADVOGADO-TITULAR após Keycloak): escolhe ADVOGADO
+  await selectEprocLawyerProfileIfPrompted(page, emit);
+
   // Valida a sessão final
   if (await isEprocSessionActive(page)) {
     emit('mtls_confirmed', 'Canal seguro mTLS confirmado por sessão autenticada do eproc.');
@@ -233,7 +347,8 @@ async function authenticateWithCertOnce(page, portalUrl, credentials = {}) {
     throw new Error('Código 2FA / TOTP incorreto ou rejeitado pelo Keycloak.');
   }
 
-  console.log('[eproc] URL atual pós-login:', page.url());
+  const pageTitle = await page.title().catch(() => '');
+  console.log('[eproc] URL atual pós-login:', redactAuthUrl(page.url()), pageTitle ? `| título="${pageTitle}"` : '');
   return { ok: await isEprocSessionActive(page), state: 'UNKNOWN' };
 }
 
@@ -364,6 +479,8 @@ export async function authenticateEprocWithCredentials(page, portalUrl, credenti
   if (/nome de usu[áa]rio ou senha inv[áa]lida|usu[áa]rio ou senha inv[áa]lid|senha inv[áa]lida|dados inv[áa]lidos|usu[áa]rio inexistente/i.test(bodyText)) {
     throw Object.assign(new Error('O tribunal recusou o usuário ou a senha da conta configurada.'), { code: 'AUTH-CREDENTIALS-INVALID', humanRequired: true });
   }
+
+  await selectEprocLawyerProfileIfPrompted(page, emit, sleep);
 
   if (await isSessionActive(page)) {
     emit('eproc_session_confirmed', 'Sessão eproc confirmada pelo painel autenticado.');
@@ -525,6 +642,9 @@ export async function navigateToEprocProcessReport(page) {
 export async function openEprocProcessDetails(page, cnj) {
   const cleanCnj = cnj.replace(/\D/g, '');
   const formattedCnj = cnj.trim();
+  if (cleanCnj.length !== 20) {
+    throw new Error(`Número CNJ inválido para abrir no eproc: ${formattedCnj || '(vazio)'}.`);
+  }
   console.log(`[eproc] Abrindo detalhes do processo: ${formattedCnj} (${cleanCnj})`);
 
   // 1. Navega até o Relatório de Processos do advogado
@@ -1243,8 +1363,49 @@ export async function extractProcessDetails(page, options = {}) {
   // fronteira dentro de um objeto serializável.
   const result = await page.evaluate(extractEprocDetailsInPage, {
     injectedNames: injectedLawyerNames,
+    injectedOabs: Array.isArray(options.lawyerOabs) ? options.lawyerOabs : [],
     secrecyPatterns: PROCESS_SECRECY_LEVEL_PATTERN_SOURCES
   });
+
+  // Captura completa (assuntos, comarca, ficha do cliente, Informações Adicionais),
+  // portada da extensão. Falha aqui nunca derruba a leitura principal.
+  if (result && options.fullCapture !== false) {
+    try {
+      // O eproc pode abrir "Consultar Pessoa" numa aba nova ao clicar no nome:
+      // escuta essa aba enquanto a captura roda e lê a ficha nela (só leitura).
+      const context = typeof page.context === 'function' ? page.context() : null;
+      let popupPage = null;
+      const onPopup = newPage => { popupPage = popupPage || newPage; };
+      context?.on?.('page', onPopup);
+      page.on?.('popup', onPopup);
+      try {
+        result.fullCapture = await page.evaluate(extractEprocFullCaptureInPage, {
+          clientName: result.clientName || '',
+          fetchPerson: options.fetchPerson !== false
+        });
+      } finally {
+        context?.off?.('page', onPopup);
+        page.off?.('popup', onPopup);
+      }
+      if (popupPage && result.fullCapture && result.fullCapture.personStatus !== 'ok') {
+        try {
+          await popupPage.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {});
+          const sheet = await popupPage.evaluate(extractEprocFullCaptureInPage, { personSheetOnly: true });
+          if (sheet?.person) {
+            result.fullCapture.person = sheet.person;
+            result.fullCapture.personStatus = sheet.personStatus === 'ok' ? 'ok_popup' : 'empty_popup';
+          }
+        } catch (err) {
+          result.fullCapture.personStatus = 'popup_read_failed';
+        } finally {
+          await popupPage.close().catch(() => {});
+        }
+      }
+    } catch (err) {
+      result.fullCapture = null;
+      result.fullCaptureError = String(err?.message || err).slice(0, 200);
+    }
+  }
 
   try {
     if (page.off) page.off('dialog', onDialog);
@@ -1263,7 +1424,7 @@ export async function extractProcessDetails(page, options = {}) {
 // Extração dos detalhes executada DENTRO da página (page.evaluate): a função
 // precisa ser autossuficiente — sem imports nem closures — e recebe UM único
 // objeto serializável (regra do Playwright para page.evaluate).
-export function extractEprocDetailsInPage({ injectedNames = [], secrecyPatterns = [] } = {}) {
+export function extractEprocDetailsInPage({ injectedNames = [], injectedOabs = [], secrecyPatterns = [] } = {}) {
     const getText = (selector) => {
       const el = document.querySelector(selector);
       return el ? el.innerText.trim().replace(/\s+/g, ' ') : '';
@@ -1441,7 +1602,14 @@ export function extractEprocDetailsInPage({ injectedNames = [], secrecyPatterns 
     ])].filter(name => name.length >= 3);
     if (loggedUserText.length >= 5) monitoredNames = [...new Set([...monitoredNames, loggedUserText])];
     const escapedNames = monitoredNames.map(name => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    const lawyerRe = escapedNames.length ? new RegExp(`(?:${escapedNames.join('|')})`, 'i') : /(?!)/;
+    // OAB do escritório (ex.: "RS000000") como na lista de representantes do
+    // eproc: identifica o polo representado mesmo sem o nome exato do advogado.
+    const oabPatterns = (Array.isArray(injectedOabs) ? injectedOabs : [])
+      .map(value => String(value || '').toUpperCase().match(/^([A-Z]{2})0*(\d{1,8})([A-Z]?)$/))
+      .filter(Boolean)
+      .map(([, uf, digits, suffix]) => `\\b${uf}\\s*(?:OAB[\\s/:-]*)?0*${digits}${suffix}\\b`);
+    const lawyerAlternatives = [...escapedNames, ...oabPatterns];
+    const lawyerRe = lawyerAlternatives.length ? new RegExp(`(?:${lawyerAlternatives.join('|')})`, 'i') : /(?!)/;
 
     const partesTable = document.querySelector('#tblPartesERepresentantes, #tblPartes, table[summary*="Partes"], .infraTablePartes, .infraCapaTabela');
     if (partesTable) {
@@ -1681,13 +1849,24 @@ export async function downloadAndOrganizeProcessDocuments(page, {
 
   for (let i = 0; i < limit; i++) {
     const piece = piecesToDownload[i];
-    const linkLocator = page.locator(`a[href="${piece.href}"]`).first();
-    if (await linkLocator.count() === 0) continue;
-
+    let docPage = null;
     try {
+      const escapedHref = String(piece.href || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\r/g, '\\d ')
+        .replace(/\n/g, '\\a ');
+      if (!escapedHref) continue;
+      const linkLocator = page.locator(`a[href="${escapedHref}"]`).first();
+      if (await linkLocator.count() === 0) continue;
+
       console.log(`[eproc] Baixando peça [${i + 1}/${limit}]: Evento ${piece.seq} — ${piece.linkText}...`);
-      const [docPage] = await Promise.all([
-        page.context().waitForEvent('page', { timeout: 15_000 }),
+      const pagePromise = page.context().waitForEvent('page', { timeout: 15_000 }).then(opened => {
+        docPage = opened;
+        return opened;
+      });
+      await Promise.all([
+        pagePromise,
         guardedClick(page, linkLocator, 'downloadDocuments', 'download_documents')
       ]);
 
@@ -1729,9 +1908,10 @@ export async function downloadAndOrganizeProcessDocuments(page, {
           }
         }
       }
-      await docPage.close().catch(() => {});
     } catch (pieceErr) {
       console.warn(`[eproc] Aviso ao baixar peça ${piece.linkText}: ${pieceErr.message}`);
+    } finally {
+      if (docPage) await docPage.close().catch(() => {});
     }
   }
 

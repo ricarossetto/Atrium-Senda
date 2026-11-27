@@ -1,7 +1,7 @@
-import { Store } from '../core/store.js?v=3.3.2';
-import { installModalComboboxes } from '../components/modal.js?v=3.3.2';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.3.2';
-import { renderFinancialChart } from '../views/ui-v2/financial-chart.js?v=3.3.2';
+import { Store } from '../core/store.js?v=3.4.0';
+import { installModalComboboxes } from '../components/modal.js?v=3.4.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.4.0';
+import { renderFinancialChart } from '../views/ui-v2/financial-chart.js?v=3.4.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 export const FINANCIAL_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
@@ -131,7 +131,10 @@ export function createFinancialFeature({
      * o selo é conferência e nunca grava no lançamento.
      */
     async loadFinancialSuggestions() {
-      const fetchImpl = documentRef?.defaultView?.fetch;
+      const auth = documentRef?.defaultView?.KellerAuth;
+      const fetchImpl = typeof auth?.secureFetch === 'function'
+        ? auth.secureFetch.bind(auth)
+        : documentRef?.defaultView?.fetch;
       if (typeof fetchImpl !== 'function') return financialSuggestions;
       try {
         const response = await fetchImpl('/api/ai-classifier/financial-suggestions', { headers: { Accept: 'application/json' } });
@@ -152,7 +155,10 @@ export function createFinancialFeature({
     /** Dispara a triagem assistiva da carteira (até 50 por invocação) e recarrega os selos. */
     async runFinancialTriage() {
       if (financialTriageRunning) return null;
-      const fetchImpl = documentRef?.defaultView?.fetch;
+      const auth = documentRef?.defaultView?.KellerAuth;
+      const fetchImpl = typeof auth?.secureFetch === 'function'
+        ? auth.secureFetch.bind(auth)
+        : documentRef?.defaultView?.fetch;
       if (typeof fetchImpl !== 'function') return null;
       financialTriageRunning = true;
       const botao = byId('financialSuggestButton');
@@ -360,7 +366,7 @@ export function createFinancialFeature({
               `);
             }
           }
-        } else if (filter === 'all' || filter === 'honorarios') {
+        } else {
           const hasFeeAmount = proc.feeAmount !== '' && proc.feeAmount !== null && proc.feeAmount !== undefined;
           const hasFeeMonthly = proc.feeMonthly !== '' && proc.feeMonthly !== null && proc.feeMonthly !== undefined;
           if (hasFeeAmount || hasFeeMonthly) {
@@ -368,7 +374,7 @@ export function createFinancialFeature({
               ? finiteAmount(proc.feeAmount) + finiteAmount(proc.feeMonthly)
               : Number(hasFeeAmount ? proc.feeAmount : proc.feeMonthly);
             if (!hasInstallmentSchedule && !isPaid) totalHonorariosAFaturar += feeVal;
-            if (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.feeType}`).includes(needle)) {
+            if ((filter === 'all' || filter === 'honorarios') && (!needle || normalizeText(`${proc.number} ${proc.client} ${proc.feeType}`).includes(needle))) {
               pushRecord({
                 id: proc.id || proc.number,
                 processId: proc.id,

@@ -65,6 +65,13 @@ export function findStrongDuplicateIndexes(records, incoming) {
       .filter(index => index >= 0);
     if (matches.length > 1) return matches;
   }
+  const id = String(incoming?.id || '').trim();
+  if (id) {
+    const matches = list
+      .map((record, index) => (String(record?.id || '').trim() === id ? index : -1))
+      .filter(index => index >= 0);
+    if (matches.length > 1) return matches;
+  }
   return [];
 }
 

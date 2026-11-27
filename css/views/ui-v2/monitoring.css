@@ -67,7 +67,7 @@ html[data-ui="v2"] #primaryTermCard {
   border-radius: var(--v2-radius-xl);
   box-shadow: var(--v2-shadow-card);
   cursor: pointer;
-  transition: border-color 160ms var(--v2-ease-standard), box-shadow 160ms var(--v2-ease-standard), transform 160ms var(--v2-ease-standard);
+  transition: border-color var(--v2-duration-fast) var(--v2-ease-standard), box-shadow var(--v2-duration-fast) var(--v2-ease-standard), transform var(--v2-duration-fast) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] #primaryTermCard {
@@ -291,7 +291,7 @@ html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row {
      a medicao automatica do contraste do texto da linha. */
   border-left: 3px solid color-mix(in srgb, var(--v2-color-muted-foreground) 35%, transparent);
   cursor: pointer;
-  transition: background 150ms var(--v2-ease-standard), box-shadow 150ms var(--v2-ease-standard);
+  transition: background var(--v2-duration-fast) var(--v2-ease-standard), box-shadow var(--v2-duration-fast) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row.status-ok { border-left-color: color-mix(in srgb, var(--v2-color-success) 80%, transparent); }
@@ -320,7 +320,7 @@ html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row {
   border-bottom: 1px solid var(--v2-color-border-subtle);
   border-left: 3px solid color-mix(in srgb, var(--v2-color-muted-foreground) 35%, transparent);
   cursor: pointer;
-  transition: background 150ms var(--v2-ease-standard), box-shadow 150ms var(--v2-ease-standard);
+  transition: background var(--v2-duration-fast) var(--v2-ease-standard), box-shadow var(--v2-duration-fast) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] #monitorSourceList .monitor-v2-source-row.status-ok { border-left-color: color-mix(in srgb, var(--v2-color-success) 80%, transparent); }
@@ -439,7 +439,7 @@ html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode=
   border-left: 1px solid var(--v2-color-border);
   border-radius: 0;
   box-shadow: var(--v2-shadow-elevated);
-  animation: monitoring-drawer-in 240ms var(--v2-ease-standard) both;
+  animation: v2-sheet-in var(--v2-duration-slow) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"] #modalBackdrop:is([data-modal-mode="term"], [data-modal-mode="source"], [data-modal-mode="datajud"]) .modal > header {
@@ -521,10 +521,6 @@ html[data-ui="v2"] .monitoring-form-section .field.full { grid-column: 1 / -1; }
 html[data-ui="v2"] .monitoring-form-section textarea { min-height: 160px; resize: vertical; }
 html[data-ui="v2"] .monitoring-form-section .field-note { color: var(--v2-color-muted-foreground); font-size: 12px; line-height: 1.4; }
 
-@keyframes monitoring-drawer-in {
-  from { opacity: .72; transform: translateX(28px); }
-  to { opacity: 1; transform: translateX(0); }
-}
 
 @media (max-width: 1120px) {
   html[data-ui="v2"] #primaryTermCard { grid-template-columns: auto minmax(220px, 1fr); }

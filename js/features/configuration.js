@@ -1,9 +1,10 @@
-import { memberAvatarHtml } from '../core/member-avatar.js?v=3.3.2';
+import { memberAvatarHtml } from '../core/member-avatar.js?v=3.4.0';
+const plural = (count, singular, pluralForm) => (Math.abs(Number(count)) === 1 ? singular : pluralForm);
 
 const CONFIGURATION_ICON_NAMES = new Set(['check', 'delete']);
 const iconSvg = name => {
   const safeName = CONFIGURATION_ICON_NAMES.has(name) ? name : 'check';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-${safeName}"></use></svg>`;
 };
 
 const CONFIGURATION_SECTIONS = [
@@ -23,6 +24,27 @@ const CONFIGURATION_SECTIONS = [
   ['backups', 'Cópias de segurança'],
   ['experimental', 'Preferências deste navegador']
 ];
+
+const NEW_ITEM_LABELS = {
+  taskDefinitions: 'Novo tipo de tarefa',
+  actionGroups: 'Novo grupo',
+  actionTypes: 'Novo tipo de ação',
+  stages: 'Nova etapa',
+  origins: 'Nova origem',
+  goals: 'Nova meta',
+  inboxSections: 'Nova seção',
+  notificationAssignments: 'Nova regra de notificação',
+  integrations: 'Nova integração'
+};
+
+// Rótulo acima do título do cartão: o grupo da barra lateral (antes era "Catálogo protegido"
+// em todas as seções, inclusive Usuários).
+const CONFIGURATION_GROUP_LABELS = {
+  taskDefinitions: 'Estrutura', actionGroups: 'Estrutura', actionTypes: 'Estrutura', stages: 'Estrutura', origins: 'Estrutura',
+  office: 'Equipe', users: 'Equipe', goals: 'Equipe',
+  inboxSections: 'Fluxo', notificationAssignments: 'Fluxo',
+  integrations: 'Sistema', registry: 'Sistema', diagnostic: 'Sistema', backups: 'Sistema', experimental: 'Sistema'
+};
 
 const FIELDS_BY_SECTION = {
   taskDefinitions: [
@@ -227,6 +249,7 @@ export function createConfigurationFeature({
   let currentPermissions = [];
   let officeLoaded = false;
   let initialized = false;
+  let lastMetricsSig = '';
   const byId = id => documentRef.getElementById(id);
   const windowRef = documentRef.defaultView || globalThis.window;
   const newMemberResult = result => `${result.qrCode ? `<img class="office-new-member-qr" src="${escapeHtml(result.qrCode)}" alt="QR Code para configurar o autenticador do membro" width="160" height="160">` : ''}<p class="office-note">Código de configuração (válido por 10 minutos): <strong class="office-new-member-token">${escapeHtml(result.setupToken || '')}</strong></p><p class="office-note">Segredo para o aplicativo autenticador: <strong>${escapeHtml(result.manualSecret || '')}</strong></p><p class="office-note">Entregue ao membro o usuário, a senha inicial, o código de configuração e o QR/segredo. Ele insere os dados na tela de login (Ativar conta), conclui a ativação do autenticador e o acesso é liberado após a aprovação em Configurações > Usuários.</p>`;
@@ -256,6 +279,23 @@ export function createConfigurationFeature({
       byId('btnConfigMyProfile')?.addEventListener('click', () => {
         if (window.KellerAuth?.openProfile) window.KellerAuth.openProfile();
         else byId('profileButton')?.click();
+      });
+      byId('configurationList')?.addEventListener('change', event => {
+        if (!event.target.matches?.('[data-office-member-kind]')) return;
+        const roleSelect = documentRef.querySelector(`[data-office-member-role="${CSS.escape(event.target.dataset.officeMemberKind)}"]`);
+        if (!roleSelect) return;
+        const kind = event.target.value;
+        roleSelect.querySelectorAll('option').forEach(option => {
+          const kinds = String(option.dataset.kinds || '').split(',').filter(Boolean);
+          const allowed = !kinds.length || kinds.includes(kind);
+          option.hidden = !allowed;
+          option.disabled = !allowed;
+        });
+        const selected = roleSelect.selectedOptions?.[0];
+        if (selected?.disabled) {
+          const first = [...roleSelect.options].find(option => !option.disabled);
+          if (first) roleSelect.value = first.value;
+        }
       });
       byId('configurationList')?.addEventListener('click', event => {
         const registryAction = event.target.closest('[data-registry-config-action]')?.dataset.registryConfigAction;
@@ -388,7 +428,9 @@ export function createConfigurationFeature({
       } catch (error) {
         authUsers = [];
         currentAuthRole = 'collaborator';
-        warn('Falha ao carregar usuários de autenticação.');
+        // Falha de leitura precisa chegar ao usuário: antes era um `warn` vazio e a seção
+        // ficava sem membros e sem explicação.
+        showToast('Não foi possível carregar os usuários de acesso. Tente de novo em instantes.', 'error');
         return [];
       }
     },
@@ -454,7 +496,7 @@ export function createConfigurationFeature({
       const canManageTeams = currentPermissions.includes('office.manage') || currentPermissions.includes('teams.manage');
       const roleOptions = (selected = 'associate') => roles.map(role => `<option value="${escapeHtml(role.id)}" data-office-role-kinds="${escapeHtml((role.memberKinds || []).join(','))}" ${role.id === selected ? 'selected' : ''}>${escapeHtml(role.name)}</option>`).join('');
       const kindOptions = (selected = 'lawyer') => kinds.map(kind => `<option value="${escapeHtml(kind.id)}" ${kind.id === selected ? 'selected' : ''}>${escapeHtml(kind.name)}</option>`).join('');
-      const openTasks = (store.state.tasks || []).filter(task => task && task.active !== false && !['concluida', 'cancelada'].includes(task.status));
+      const openTasks = (store.state.tasks || []).filter(task => task && task.active !== false && !task.absorbedInto && !['concluida', 'cancelada'].includes(task.status));
       const processes = store.state.processes || [];
       const members = authUsers.map(user => {
         const id = String(user.id || user.username || '');
@@ -469,7 +511,7 @@ export function createConfigurationFeature({
           ? `<div class="office-member-controls"><label class="office-inline-field">Tipo<select data-office-member-kind="${escapeHtml(id)}">${kindOptions(user.memberKind || 'lawyer')}</select></label><label class="office-inline-field">Papel<select data-office-member-role="${escapeHtml(id)}">${roleOptions(user.officeRoleId || 'associate')}</select></label><button type="button" class="button ghost" data-office-member-save="${escapeHtml(id)}">Salvar</button></div>${!user.isPrincipal && replacementOptions ? `<div class="office-offboard"><label class="office-inline-field">Desligar e transferir para<select data-office-member-transfer="${escapeHtml(id)}">${replacementOptions}</select></label><button type="button" class="button ghost danger-text" data-office-member-offboard="${escapeHtml(id)}">Desligar</button></div>` : ''}`
           : `<span class="configuration-user-status status-${escapeHtml(user.status || 'active')}">${escapeHtml(user.status === 'inactive' ? 'Suspenso' : user.status === 'pending_approval' ? 'Pendente' : 'Ativo')}</span>`;
         return `<div class="office-member" data-office-member-id="${escapeHtml(id)}">
-          <div class="config-row-info config-row-info-with-avatar">${memberAvatarHtml(user, escapeHtml)}<div class="config-row-text"><strong>${escapeHtml(user.displayName || user.username)}</strong><span>${escapeHtml(user.email || user.username)}</span><small>${escapeHtml(kindName(user.memberKind))} · ${escapeHtml(roleName(user.officeRoleId))} · ${tasks} tarefa(s) aberta(s) · ${matterCount} processo(s)${teamNames.length ? ` · ${escapeHtml(teamNames.join(', '))}` : ''}</small></div></div>
+          <div class="config-row-info config-row-info-with-avatar">${memberAvatarHtml(user, escapeHtml)}<div class="config-row-text"><strong>${escapeHtml(user.displayName || user.username)}</strong><span>${escapeHtml(user.email || user.username)}</span><small>${escapeHtml(kindName(user.memberKind))} · ${escapeHtml(roleName(user.officeRoleId))} · ${tasks} ${plural(tasks, 'tarefa', 'tarefas')} ${plural(tasks, 'aberta', 'abertas')} · ${matterCount} ${plural(matterCount, 'processo', 'processos')}${teamNames.length ? ` · ${escapeHtml(teamNames.join(', '))}` : ''}</small></div></div>
           ${controls}
         </div>`;
       }).join('');
@@ -515,7 +557,7 @@ export function createConfigurationFeature({
         ? `<div class="office-access-mode"><div><strong>${officeProfile.privateMonitoring === 'disabled' ? 'Monitoramento privado desativado' : 'Monitoramento privado permitido'}</strong><span>${officeProfile.privateMonitoring === 'disabled' ? 'Nenhuma nova captura privada será executada. Dados privados existentes são preservados.' : 'Cada advogado pode manter a própria OAB privada, visível apenas para ele.'}</span></div><button type="button" class="button ghost" data-office-private-monitoring="${officeProfile.privateMonitoring === 'disabled' ? 'allowed' : 'disabled'}">${officeProfile.privateMonitoring === 'disabled' ? 'Permitir monitoramento privado' : 'Desativar monitoramento privado'}</button></div>`
         : '';
       const accessModeControl = canManageOffice
-        ? `<div class="office-access-mode"><div><strong>${officeProfile.accessMode === 'enforced' ? 'Acesso por processo ativo' : 'Modo preparação'}</strong><span>${officeProfile.accessMode === 'enforced' ? 'O servidor filtra o acervo pelos processos atribuídos.' : `${unassignedProcesses} processo(s) sem equipe ou responsável. O acervo ainda não está filtrado.`}</span></div><button type="button" class="button ghost" data-office-access-mode="${officeProfile.accessMode === 'enforced' ? 'shadow' : 'enforced'}">${officeProfile.accessMode === 'enforced' ? 'Voltar para preparação' : 'Ativar acesso por processo'}</button></div>`
+        ? `<div class="office-access-mode"><div><strong>${officeProfile.accessMode === 'enforced' ? 'Acesso por processo ativo' : 'Modo preparação'}</strong><span>${officeProfile.accessMode === 'enforced' ? 'O servidor filtra o acervo pelos processos atribuídos.' : `${unassignedProcesses} ${plural(unassignedProcesses, 'processo', 'processos')} sem equipe ou responsável. O acervo ainda não está filtrado.`}</span></div><button type="button" class="button ghost" data-office-access-mode="${officeProfile.accessMode === 'enforced' ? 'shadow' : 'enforced'}">${officeProfile.accessMode === 'enforced' ? 'Voltar para preparação' : 'Ativar acesso por processo'}</button></div>`
         : '';
       const dateTimeBr = value => {
         const date = new Date(value);
@@ -561,10 +603,6 @@ export function createConfigurationFeature({
           if (first) roleSelect.value = first.value;
         }
       };
-      documentRef.addEventListener('change', event => {
-        if (!event.target.matches?.('[data-office-member-kind]')) return;
-        filterRolesForKind(event.target, documentRef.querySelector(`[data-office-member-role="${CSS.escape(event.target.dataset.officeMemberKind)}"]`));
-      });
       byId('officeNewMemberKind')?.addEventListener('change', event => filterRolesForKind(event.currentTarget, byId('officeNewMemberRole')));
       byId('officeNewMemberForm')?.addEventListener('submit', async event => {
         event.preventDefault();
@@ -599,21 +637,21 @@ export function createConfigurationFeature({
         if (!windowRef.confirm('Excluir esta equipe? Os membros continuam no escritório.')) return;
         const response = await secureFetch(`/api/office/teams/${encodeURIComponent(button.dataset.officeTeamDelete)}`, { method: 'DELETE', headers: { Accept: 'application/json' } });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) { warn(payload.message || 'Não foi possível excluir a equipe.'); return; }
+        if (!response.ok) { showToast(payload.message || 'Não foi possível excluir a equipe.', 'error'); return; }
         await feature.loadOfficeData(true);
         feature.render();
       }));
       documentRef.querySelectorAll('[data-office-access-mode]').forEach(button => button.addEventListener('click', async () => {
         const nextMode = button.dataset.officeAccessMode;
         const unassigned = (store.state.processes || []).filter(process => !(Array.isArray(process.responsibleUserIds) && process.responsibleUserIds.length) && !(Array.isArray(process.assignedTeamIds) && process.assignedTeamIds.length)).length;
-        if (nextMode === 'enforced' && !windowRef.confirm(`Ativar o acesso por processo?\n\n${unassigned} processo(s) sem equipe ou responsável ficarão visíveis apenas para gestores até a atribuição. Esta ação pode ser revertida.`)) return;
+        if (nextMode === 'enforced' && !windowRef.confirm(`Ativar o acesso por processo?\n\n${unassigned} ${plural(unassigned, 'processo', 'processos')} sem equipe ou responsável ${plural(unassigned, 'ficará visível', 'ficarão visíveis')} apenas para gestores até a atribuição. Esta ação pode ser revertida.`)) return;
         const response = await secureFetch('/api/office', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({ accessMode: nextMode })
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) { warn(payload.message || 'Não foi possível alterar o modo de acesso.'); return; }
+        if (!response.ok) { showToast(payload.message || 'Não foi possível alterar o modo de acesso.', 'error'); return; }
         officeProfile = { ...officeProfile, accessMode: payload.accessMode };
         await feature.loadOfficeData(true);
         feature.render();
@@ -627,7 +665,7 @@ export function createConfigurationFeature({
           body: JSON.stringify({ privateMonitoring: nextMode })
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) { warn(payload.message || 'Não foi possível alterar o monitoramento privado.'); return; }
+        if (!response.ok) { showToast(payload.message || 'Não foi possível alterar o monitoramento privado.', 'error'); return; }
         officeProfile = { ...officeProfile, privateMonitoring: payload.privateMonitoring };
         await feature.loadOfficeData(true);
         feature.render();
@@ -642,8 +680,9 @@ export function createConfigurationFeature({
           body: JSON.stringify({ transferToUserId, expectedRevision: store.revision })
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) { warn(payload.message || 'Não foi possível desligar o membro.'); return; }
+        if (!response.ok) { showToast(payload.message || 'Não foi possível desligar o membro.', 'error'); return; }
         store.adoptServerRevision(payload.revision);
+        await store.load?.();
         await feature.loadOfficeData(true);
         feature.render();
       }));
@@ -657,7 +696,7 @@ export function createConfigurationFeature({
           body: JSON.stringify({ memberKind: kind, officeRoleId: roleId })
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) { warn(payload.message || 'Não foi possível atualizar o membro.'); return; }
+        if (!response.ok) { showToast(payload.message || 'Não foi possível atualizar o membro.', 'error'); return; }
         await feature.loadOfficeData(true);
         feature.render();
       }));
@@ -671,7 +710,7 @@ export function createConfigurationFeature({
       };
       documentRef.querySelector('[data-office-audit-more]')?.addEventListener('click', async () => {
         const loaded = await feature.loadOfficeAccessAudit(Number(officeAccessAudit?.page || 1) + 1);
-        if (!loaded) { warn('Não foi possível carregar os registros anteriores. Tente de novo em instantes.'); return; }
+        if (!loaded) { showToast('Não foi possível carregar os registros anteriores. Tente de novo em instantes.', 'error'); return; }
         feature.render();
       });
       byId('officeRoleForm')?.addEventListener('submit', async event => {
@@ -723,7 +762,7 @@ export function createConfigurationFeature({
           body: JSON.stringify({ name: byId('officeTeamName')?.value.trim(), description: byId('officeTeamDescription')?.value.trim(), memberIds })
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) { warn(payload.message || 'Não foi possível criar a equipe.'); return; }
+        if (!response.ok) { showToast(payload.message || 'Não foi possível criar a equipe.', 'error'); return; }
         await feature.loadOfficeData(true);
         feature.render();
       });
@@ -814,33 +853,57 @@ export function createConfigurationFeature({
         return `<article class="configuration-row configuration-user-row" role="listitem" data-auth-user-id="${escapeHtml(user.id)}" data-auth-user-state="${escapeHtml(user.status || 'active')}">
           <div class="config-row-info config-row-info-with-avatar">${memberAvatarHtml(user, escapeHtml)}<div class="config-row-text"><strong>${escapeHtml(user.displayName || user.username)}</strong><span>${escapeHtml(user.email || user.username)}</span><small>${escapeHtml(roleLabel)}</small>${workloadLabel ? `<small class="config-user-workload" title="Vínculos contados por id oficial do integrante">${escapeHtml(workloadLabel)}</small>` : ''}</div></div>
           <span class="configuration-user-status status-${escapeHtml(user.status || 'active')}">${escapeHtml(statusLabel)}</span>
-          <div class="configuration-row-actions">${canManage && user.status === 'active' ? `<button type="button" class="button ghost" data-auth-transfer-principal>Tornar titular</button>` : ''}${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}" aria-label="${actionLabel} acesso de ${escapeHtml(user.displayName || user.username)}">${actionLabel}</button><button type="button" class="button ghost danger-text" data-auth-user-delete="${escapeHtml(user.id)}" aria-label="Excluir usuário ${escapeHtml(user.displayName || user.username)}">Excluir</button>` : '<button type="button" class="button ghost" data-open-my-profile="true" title="Abrir configurações, redefinir ou apagar meu perfil">Meu perfil</button>'}</div>
+          <div class="configuration-row-actions">${canManage && user.status === 'active' ? `<button type="button" class="button ghost" data-auth-transfer-principal>Tornar titular</button>` : ''}${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}" aria-label="${actionLabel} acesso de ${escapeHtml(user.displayName || user.username)}">${actionLabel}</button><button type="button" class="button ghost danger-text" data-auth-user-delete="${escapeHtml(user.id)}" aria-label="Excluir usuário ${escapeHtml(user.displayName || user.username)}">${iconSvg('delete')} Excluir</button>` : '<button type="button" class="button ghost" data-open-my-profile="true" title="Abrir configurações, redefinir ou apagar meu perfil">Meu perfil</button>'}</div>
         </article>`;
       }
       return `<div class="configuration-row" data-auth-user-id="${escapeHtml(user.id)}">
         <div class="config-row-info config-row-info-with-avatar">${memberAvatarHtml(user, escapeHtml)}<div class="config-row-text"><strong>${escapeHtml(user.displayName || user.username)}</strong><span>${escapeHtml(user.email || user.username)} · ${user.role === 'master_admin' ? 'Administrador' : 'Colaborador'}</span><small>${escapeHtml(labels[user.status] || user.status || 'Ativo')}</small>${workloadLabel ? `<small class="config-user-workload">${escapeHtml(workloadLabel)}</small>` : ''}</div></div>
-        ${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}">${actionLabel}</button><button type="button" class="button ghost danger-text" data-auth-user-delete="${escapeHtml(user.id)}">Excluir</button>` : '<button type="button" class="button ghost" data-open-my-profile="true">Meu perfil</button>'}
+        ${canManage ? `<button type="button" class="button ghost" data-auth-user-status="${nextStatus}">${actionLabel}</button><button type="button" class="button ghost danger-text" data-auth-user-delete="${escapeHtml(user.id)}">${iconSvg('delete')} Excluir</button>` : '<button type="button" class="button ghost" data-open-my-profile="true">Meu perfil</button>'}
       </div>`;
     },
 
     render(query = '') {
       const config = store.state.configuration || {};
       const tabs = byId('configurationTabs');
-      if (tabs) tabs.innerHTML = CONFIGURATION_SECTIONS.map(([key, label]) => `<button type="button" class="${configurationSection === key ? 'active' : ''}" data-config-section="${key}">${label}</button>`).join('');
+      if (tabs) {
+        const existingButtons = tabs.querySelectorAll?.('button[data-config-section]');
+        if (existingButtons && existingButtons.length === CONFIGURATION_SECTIONS.length) {
+          for (const btn of existingButtons) btn.classList.toggle('active', btn.dataset.configSection === configurationSection);
+        } else {
+          tabs.innerHTML = CONFIGURATION_SECTIONS.map(([key, label]) => `<button type="button" class="${configurationSection === key ? 'active' : ''}" data-config-section="${key}">${label}</button>`).join('');
+        }
+      }
       const metrics = byId('configurationMetrics');
       if (metrics) {
-        metrics.innerHTML = [
-          ['Tipos de tarefa', config.taskDefinitions?.length || 0],
-          ['Tipos de ação', config.actionTypes?.length || 0],
-          ['Etapas', config.stages?.length || 0],
-          ['Membros', authUsers.length],
-          ['Contatos importados', store.state.contacts.length]
-        ].map(([label, count]) => `<div class="configuration-metric"><strong>${count}</strong><span>${label}</span></div>`).join('');
+        const counts = [
+          config.taskDefinitions?.length || 0,
+          config.actionTypes?.length || 0,
+          config.stages?.length || 0,
+          authUsers.length,
+          store.state.contacts.length
+        ];
+        const sig = counts.join('|');
+        if (sig !== lastMetricsSig || !metrics.childElementCount) {
+          lastMetricsSig = sig;
+          // Singular com 1 ("1 Tipo de ação", não "1 Tipos de ação").
+          metrics.innerHTML = [
+            ['Tipo de tarefa', 'Tipos de tarefa', counts[0]],
+            ['Tipo de ação', 'Tipos de ação', counts[1]],
+            ['Etapa', 'Etapas', counts[2]],
+            ['Membro', 'Membros', counts[3]],
+            ['Contato importado', 'Contatos importados', counts[4]]
+          ].map(([singular, plural, count]) => `<div class="configuration-metric"><strong>${count}</strong><span>${count === 1 ? singular : plural}</span></div>`).join('');
+        }
       }
       const label = CONFIGURATION_SECTIONS.find(([key]) => key === configurationSection)?.[1] || 'Configuração';
       const isAuthUsers = configurationSection === 'users';
       const isSpecialSection = ['office', 'registry', 'diagnostic', 'backups', 'experimental'].includes(configurationSection);
       byId('newConfigurationButton')?.classList.toggle('hidden', isAuthUsers || isSpecialSection);
+      // O botão diz o que cria na seção aberta; "Novo item" fica só para seções sem nome próprio.
+      const newButton = byId('newConfigurationButton');
+      if (newButton) newButton.textContent = NEW_ITEM_LABELS[configurationSection] || 'Novo item';
+      const catalogEyebrow = byId('configurationCatalogEyebrow');
+      if (catalogEyebrow) catalogEyebrow.textContent = CONFIGURATION_GROUP_LABELS[configurationSection] || 'Configuração';
       byId('configurationSearch')?.closest('.table-search')?.classList.toggle('hidden', isSpecialSection);
 
       if (configurationSection === 'office') {
@@ -911,14 +974,26 @@ export function createConfigurationFeature({
       // Carga por integrante: leitura local do Store, contada por id oficial (sem rota nova).
       const workload = new Map();
       if (isAuthUsers) {
-        const openTasks = (store.state.tasks || []).filter(task => task && task.active !== false && !['concluida', 'cancelada'].includes(task.status));
-        const processes = store.state.processes || [];
+        const tasksByUser = new Map();
+        for (const task of store.state.tasks || []) {
+          if (!task || task.active === false || task.status === 'concluida' || task.status === 'cancelada') continue;
+          const uid = String(task.assigneeUserId || '');
+          if (uid) tasksByUser.set(uid, (tasksByUser.get(uid) || 0) + 1);
+        }
+        const processesByUser = new Map();
+        for (const proc of store.state.processes || []) {
+          if (!Array.isArray(proc?.responsibleUserIds)) continue;
+          for (const rawId of proc.responsibleUserIds) {
+            const uid = String(rawId || '');
+            if (uid) processesByUser.set(uid, (processesByUser.get(uid) || 0) + 1);
+          }
+        }
         authUsers.forEach(user => {
           const id = String(user.id || user.username || '');
           if (!id) return;
           workload.set(id, {
-            tasks: openTasks.filter(task => String(task.assigneeUserId || '') === id).length,
-            processes: processes.filter(process => (Array.isArray(process.responsibleUserIds) ? process.responsibleUserIds : []).some(value => String(value) === id)).length
+            tasks: tasksByUser.get(id) || 0,
+            processes: processesByUser.get(id) || 0
           });
         });
       }
@@ -1187,6 +1262,7 @@ export function createConfigurationFeature({
       if (!Array.isArray(list) || index < 0 || index >= list.length) return false;
       const record = list[index];
       if (!record || typeof record === 'string') return false;
+      const stateSnapshot = JSON.parse(JSON.stringify(store.state));
       if (section === 'integrations') {
         record.status = (record.status === 'Ativo' || record.status === 'ativo') ? 'Pausado' : 'Ativo';
       } else if (section === 'notificationAssignments') {
@@ -1199,11 +1275,13 @@ export function createConfigurationFeature({
       store.save();
       store.audit('Status de configuração alterado', `${section} · ${record.name || record.event || record.group || 'item'} → ${record.status}`);
       try {
-        await store.flush();
+        const flushed = await store.flush();
+        if (flushed === false) throw new Error('Não foi possível salvar a alteração de status.');
         feature.render();
         showToast(`Status atualizado para ${record.status}.`, 'success');
         return true;
-      } catch (error) {
+      } catch {
+        store.state = stateSnapshot;
         feature.render();
         showToast('Não foi possível salvar a alteração de status.', 'error');
         return false;
@@ -1217,7 +1295,7 @@ export function createConfigurationFeature({
           <article class="configuration-row" role="listitem" data-config-index="${index}">
             <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(item)}">
               <span class="config-row-info"><strong>${escapeHtml(item)}</strong><span>Seção da caixa de entrada</span><small>Ativa</small></span>
-              <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-right"></use></svg></span>
+              <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-chevron-right"></use></svg></span>
             </button>
             <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(item)}">${iconSvg('delete')} Excluir</button>
           </article>`;
@@ -1316,7 +1394,7 @@ export function createConfigurationFeature({
         <article class="configuration-row" role="listitem" data-config-index="${index}">
           <button type="button" class="config-row-open" aria-label="Editar ${escapeHtml(primary)}">
             <span class="config-row-info"><strong>${escapeHtml(primary)}</strong><span>${escapeHtml(secondary)}</span>${meta}</span>
-            <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-right"></use></svg></span>
+            <span class="configuration-edit-affordance" aria-hidden="true">Editar <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-chevron-right"></use></svg></span>
           </button>
           ${extraActions}
           <button type="button" class="btn-delete-config-row" data-delete-config="${index}" aria-label="Excluir ${escapeHtml(primary)}">${iconSvg('delete')} Excluir</button>
@@ -1350,7 +1428,7 @@ export function createConfigurationFeature({
             <p>${escapeHtml(target.description)}</p>
           </div>
           <button type="button" class="button ghost" data-modal-open-dedicated-integration="${escapeHtml(values.name)}">
-            ${escapeHtml(target.actionLabel)} <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-right"></use></svg>
+            ${escapeHtml(target.actionLabel)} <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-chevron-right"></use></svg>
           </button>
         </div>`;
       }
@@ -1438,8 +1516,9 @@ function registryProviderCard(provider, escapeHtml) {
   const stateLabels = { available: 'Disponível', temporarily_paused: 'Temporariamente pausada', not_configured: 'Não configurada' };
   const state = provider.state || (provider.configured ? 'available' : 'not_configured');
   const lastSuccess = provider.lastSuccessAt ? new Date(provider.lastSuccessAt).toLocaleString('pt-BR') : 'ainda não testada nesta execução';
+  const rateInfo = provider.rateLimitPerMinute ? ` · limite ${provider.rateLimitPerMinute} req/min (failover automático)` : '';
   const details = provider.id === 'cpf-local'
     ? 'Execução local · nenhum dado transmitido · disponível imediatamente'
-    : provider.configured ? `Prioridade ${provider.priority || '—'} · cache até ${provider.cacheTtlMs ? Math.round(provider.cacheTtlMs / 3_600_000) + 'h' : '—'} · última resposta ${lastSuccess}${provider.lastLatencyMs !== null && provider.lastLatencyMs !== undefined ? ` · ${provider.lastLatencyMs} ms` : ''}` : 'Integração não configurada.';
+    : provider.configured ? `Prioridade ${provider.priority || '—'} · cache até ${provider.cacheTtlMs ? Math.round(provider.cacheTtlMs / 3_600_000) + 'h' : '—'}${rateInfo} · última resposta ${lastSuccess}${provider.lastLatencyMs !== null && provider.lastLatencyMs !== undefined ? ` · ${provider.lastLatencyMs} ms` : ''}` : 'Integração não configurada.';
   return `<article class="registry-provider-card is-${escapeHtml(state)}"><span>${escapeHtml(stateLabels[state] || state)}</span><strong>${escapeHtml(provider.name)}</strong><p>${escapeHtml((provider.capabilities || []).join(' · '))}</p><small>${escapeHtml(details)}</small>${provider.configured ? `<button type="button" class="v2-button is-secondary" data-registry-config-action="test-provider" data-registry-provider="${escapeHtml(provider.id)}">Testar conexão</button>` : ''}</article>`;
 }

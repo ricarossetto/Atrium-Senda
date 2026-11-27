@@ -10,7 +10,7 @@ const resolvePrepaint = storage => {
   const documentElement = { dataset: {} };
   const themeMeta = { content: '', setAttribute(name, value) { if (name === 'content') this.content = value; } };
   vm.runInNewContext(preferenceInitSource, { localStorage: storage, document: { documentElement, querySelector: () => themeMeta } });
-  assert.equal(themeMeta.content, documentElement.dataset.theme === 'dark' ? '#0c0c0b' : '#eef1f1');
+  assert.equal(themeMeta.content, documentElement.dataset.theme === 'dark' ? '#111315' : '#f3f4f2');
   return documentElement.dataset.ui;
 };
 const storageFor = value => ({ getItem: () => value });

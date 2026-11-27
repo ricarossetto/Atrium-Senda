@@ -9,7 +9,7 @@ export const UI_V2_CANONICAL_VIEWS = Object.freeze([
 ]);
 
 export const UI_V2_PRIMARY_NAV_VIEWS = Object.freeze(
-  UI_V2_CANONICAL_VIEWS.filter(view => !['audit', 'monitoring', 'importer'].includes(view))
+  UI_V2_CANONICAL_VIEWS.filter(view => !['audit', 'monitoring', 'importer', 'prompts', 'links'].includes(view))
 );
 
 export const UI_V2_OVERLAY_SELECTORS = Object.freeze([
@@ -436,6 +436,11 @@ export async function prepareUiV2ConfigurationAdminFixture(page, {
       });
       if (url === '/api/system/backup/restore') return response({ ok: true });
       if (url === '/api/system/feedback') return response({ ok: true, received: request.body });
+      if (url === '/api/system/diagnostic') {
+        const diagnostic = clone(diagnosticFixture);
+        diagnostic.runtime.status = currentRuntimeStatus;
+        return response({ ok: true, diagnostic });
+      }
       return originalSecureFetch(url, options);
     };
     window.fetch = async (input, options = {}) => {
@@ -1395,4 +1400,24 @@ export async function fillContactSearch(page, query, expectedCount) {
     count => document.querySelectorAll('#contactsV2Workspace [data-contact-id], #contactTableBody [data-contact-id]').length === count,
     expectedCount
   );
+}
+
+/** Confere que cada campo do formulário tem label ligado ao controle que o usuário realmente alcança. */
+export async function fieldLabelIssues(page, names, scope = '#modalForm') {
+  return page.evaluate(({ names, scope }) => {
+    const root = document.querySelector(scope);
+    if (!root) return ['formulário ausente'];
+    return names.flatMap(name => {
+      const node = root.querySelector(`[name="${CSS.escape(name)}"]`);
+      if (!node) return [`${name}: campo ausente`];
+      const proxy = node.id ? document.getElementById(`${node.id}-busca`) : null;
+      const direct = node.id ? root.querySelector(`label[for="${CSS.escape(node.id)}"]`) : null;
+      const proxyLabel = node.id ? root.querySelector(`label[for="${CSS.escape(`${node.id}-busca`)}"]`) : null;
+      const label = direct || proxyLabel;
+      const target = direct ? node : proxy;
+      if (!label || !label.textContent.trim()) return [`${name}: sem label conectado`];
+      if (!target || target.getClientRects().length === 0) return [`${name}: o label aponta para um controle invisível`];
+      return [];
+    });
+  }, { names, scope });
 }

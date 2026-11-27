@@ -67,19 +67,18 @@ try {
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'btnAddExternalRecipient');
   assert.equal(await page.locator('[data-receiver-action="delete"]').count(), 3);
 
+  if (await page.locator('#googleCalendarBackdrop.hidden').count()) await page.locator('#googleCalendarButton').click();
   const calendarTrigger = page.locator('#configureCalendarButton');
   await calendarTrigger.focus();
   await calendarTrigger.click();
   await page.waitForFunction(() => document.activeElement?.id === 'calendarInputUrl');
-  assert.equal(await page.locator('#calendarConfigBackdrop [role="dialog"]').getAttribute('aria-labelledby'), 'calendarConfigTitle');
-  assert.equal(await page.locator('#calendarConfigBackdrop [role="dialog"]').getAttribute('aria-describedby'), 'calendarConfigDescription');
+  assert.equal(await page.locator('#googleCalendarBackdrop [role="dialog"]').getAttribute('aria-labelledby'), 'googleCalendarTitle');
   assert.equal(await page.locator('label[for="calendarInputUrl"]').count(), 1);
   assert.equal(await page.locator('#calendarInputUrl').getAttribute('aria-describedby'), 'calendarInputHelp calendarProfessionalWarning');
   assert.equal(await page.locator('#calendarConfigStatus').getAttribute('role'), 'status');
   assert.equal(await page.locator('#calendarConfigStatus').getAttribute('aria-live'), 'polite');
   await page.keyboard.press('Escape');
-  await page.locator('#calendarConfigBackdrop').waitFor({ state: 'hidden' });
-  assert.equal(await page.evaluate(() => document.activeElement?.id), 'configureCalendarButton');
+  await page.locator('#googleCalendarBackdrop').waitFor({ state: 'hidden' });
 
   const duplicates = await page.locator('[id]').evaluateAll(nodes => {
     const ids = nodes.map(node => node.id);
@@ -97,7 +96,7 @@ try {
     ['btnConfigureMailPreferences', 'mailPreferencesBackdrop'],
     ['btnTestAtriumMail', 'emailTestBackdrop'],
     ['btnAddExternalRecipient', 'emailReceiverModalBackdrop'],
-    ['configureCalendarButton', 'calendarConfigBackdrop']
+    ['googleCalendarButton', 'googleCalendarBackdrop']
   ];
   for (const [triggerId, backdropId] of surfaces) {
     await mobilePage.locator(`#${triggerId}`).click();

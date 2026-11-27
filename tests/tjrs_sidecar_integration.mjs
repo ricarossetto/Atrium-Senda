@@ -275,47 +275,28 @@ try {
   assert.equal(response.status, 200);
   assert.equal((await response.json()).state, 'AVAILABLE');
 
-  response = await postJson(`${appServer.baseUrl}/api/integrations/tjrs-sidecar/processes/preview`, {
-    processNumber: FORMATTED_CNJ
-  }, auth.headers);
-  assert.equal(response.status, 200);
-  const preview = await response.json();
-  assert.equal(preview.draft.client, '');
-  assert.equal(preview.draft.actionType, snapshotPayload.metadata.processClass);
-  assert.equal(preview.draft.judicialParties.some(party => party.role === 'REU'), true);
-
+  // A consulta ao TJRS por chave foi desativada no servidor (22/11/2026): as rotas de
+  // consulta respondem 410 depois da autenticação e não tocam no estado oficial.
+  for (const [route, body] of [
+    ['preview', { processNumber: FORMATTED_CNJ }],
+    ['sync', { processId: manualProcess.id, processNumber: manualProcess.number, revision }],
+    ['download-autos', { processId: manualProcess.id, processNumber: manualProcess.number, revision }]
+  ]) {
+    response = await postJson(`${appServer.baseUrl}/api/integrations/tjrs-sidecar/processes/${route}`, body, auth.headers);
+    assert.equal(response.status, 410, `Rota ${route} deve estar desativada.`);
+    const disabled = await response.json();
+    assert.equal(disabled.state, 'TJRS_KEY_CONSULTATION_DISABLED');
+    assert.match(disabled.message, /eproc com o Certificado A1/);
+  }
   response = await postJson(`${appServer.baseUrl}/api/integrations/tjrs-sidecar/processes/sync`, {
-    processId: manualProcess.id,
-    processNumber: manualProcess.number,
-    revision
-  }, auth.headers);
-  assert.equal(response.status, 200);
-  let syncResult = await response.json();
-  assert.equal(syncResult.idempotent, false);
-  revision = syncResult.revision;
-  assert.equal(syncResult.process.client, manualProcess.client);
-  assert.equal(syncResult.process.contactId, manualProcess.contactId);
-
-  response = await postJson(`${appServer.baseUrl}/api/integrations/tjrs-sidecar/processes/sync`, {
-    processId: manualProcess.id,
-    processNumber: manualProcess.number,
-    revision
-  }, auth.headers);
-  assert.equal(response.status, 200);
-  syncResult = await response.json();
-  assert.equal(syncResult.idempotent, true);
-  assert.equal(syncResult.revision, revision, 'Snapshot idempotente não pode trocar a revisão oficial.');
+    processId: manualProcess.id, processNumber: manualProcess.number, revision
+  }, { 'Content-Type': 'application/json' });
+  assert.notEqual(response.status, 410, 'Sem sessão, a autenticação continua barrando antes do aviso de desativação.');
 
   response = await fetch(`${appServer.baseUrl}/api/state`, { headers: { Cookie: auth.cookie } });
   const persisted = await response.json();
-  assert.equal(persisted.revision, revision);
-  assert.equal(persisted.state.processes[0].client, manualProcess.client);
-  assert.equal(persisted.state.processes[0].judicialParties.length, 2);
-  assert.equal(persisted.state.audit.filter(item => item.action === 'Snapshot TJRS importado').length, 1);
-
-  response = await fetch(`${appServer.baseUrl}/api/search?q=CLIENTE%20SINTÉTICA%20ALFA`, { headers: { Cookie: auth.cookie } });
-  const search = await response.json();
-  assert.equal(search.results.some(item => item.entityType === 'process' && item.id === manualProcess.id), true, 'Busca existente deve indexar as partes do snapshot.');
+  assert.equal(persisted.revision, revision, 'Rota desativada não pode alterar o estado oficial.');
+  assert.equal(persisted.state.audit.filter(item => item.action === 'Snapshot TJRS importado').length, 0);
 } finally {
   await appServer.stop();
   await new Promise(resolve => mockSidecar.close(resolve));

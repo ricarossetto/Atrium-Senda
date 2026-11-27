@@ -1,7 +1,7 @@
 const SYSTEM_ADMIN_ICON_NAMES = new Set(['configuration', 'court', 'delete', 'download', 'edit', 'security', 'sync', 'theme-light', 'upload']);
 const iconSvg = name => {
   const safeName = SYSTEM_ADMIN_ICON_NAMES.has(name) ? name : 'configuration';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-${safeName}"></use></svg>`;
 };
 
 // Os códigos seguem iguais na API e no relatório exportado; aqui só muda o que aparece na tela.
@@ -11,6 +11,10 @@ const STATUS_LABELS = new Map([
   ['EMPTY', 'Vazio'],
   ['QUARANTINED', 'Em quarentena'],
   ['UNKNOWN', 'Não informado'],
+  ['ATTENTION', 'Requer atenção'],
+  ['STALE', 'Desatualizado'],
+  ['ERROR', 'Com erro'],
+  ['DEGRADED', 'Parcial'],
   ['conectado', 'Conectado'],
   ['consulta_sob_demanda', 'Consulta quando solicitada']
 ]);
@@ -341,9 +345,9 @@ export function createSystemAdminFeature({
               <p class="eyebrow">Proteções</p>
               <h5 id="backupProtectionsTitle">Integridade antes da restauração</h5>
               <ul>
-                <li><strong>SHA-256</strong><span>checksum de integridade do arquivo</span></li>
+                <li><strong>SHA-256</strong><span>confere se o arquivo chegou íntegro</span></li>
                 <li><strong>AES-256-GCM</strong><span>conteúdo protegido por criptografia autenticada</span></li>
-                <li><strong>Cópia preventiva</strong><span>cópia criada pelo backend antes de restaurar</span></li>
+                <li><strong>Cópia preventiva</strong><span>o servidor guarda uma cópia antes de restaurar</span></li>
               </ul>
             </aside>
           </div>

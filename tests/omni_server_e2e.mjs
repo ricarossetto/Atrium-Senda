@@ -81,15 +81,13 @@ try {
   const db = new DatabaseSync(path.join(instance.dataDirectory, 'omni-cache-v1.sqlite'), { readOnly: true });
   const count = () => Number(db.prepare('SELECT COUNT(*) AS n FROM omni_cache').get().n);
   assert.equal(count(), 0);
-  for (const prefix of ['tjrs-sidecar', 'omni']) {
-    const preview = await postJson(`${instance.baseUrl}/api/integrations/${prefix}/processes/preview`,
-      { processNumber: CNJ }, { Cookie: authCookie, 'X-CSRF-Token': csrfToken });
-    assert.equal(preview.status, 200, await preview.clone().text());
-    const data = await preview.json();
-    assert.equal(data.draft.client, '');
-    assert.equal(data.draft.number, FORMATTED_CNJ);
-    assert.equal(count(), 0, 'Preview must not persist snapshots/diffs');
-  }
+  // A consulta ao TJRS por chave foi desativada: a rota antiga responde 410.
+  const retiredPreview = await postJson(`${instance.baseUrl}/api/integrations/tjrs-sidecar/processes/preview`,
+    { processNumber: CNJ }, { Cookie: authCookie, 'X-CSRF-Token': csrfToken });
+  assert.equal(retiredPreview.status, 410);
+  assert.equal((await retiredPreview.json()).state, 'TJRS_KEY_CONSULTATION_DISABLED');
+  // A consulta ao TJRS por chave foi desativada também pelo omni: prévia e
+  // sincronização de CNJ do TJRS respondem 410 e não tocam no cache nem no estado.
   const invalid = await postJson(`${instance.baseUrl}/api/integrations/omni/processes/preview`,
     { processNumber: '0'.repeat(20) }, authHeaders);
   assert.equal(invalid.status, 400);
@@ -100,31 +98,17 @@ try {
   const revision = (await seed.json()).revision;
   const syncBody = { processId: 'omni-test-process', processNumber: CNJ, revision };
   const endpoint = `${instance.baseUrl}/api/integrations/omni/processes/sync`;
-  assert.equal((await postJson(endpoint, syncBody, { Cookie: authCookie })).status, 403);
-  assert.equal((await postJson(endpoint, { ...syncBody, processNumber: syntheticCnj(2) }, authHeaders)).status, 409);
-  assert.equal(count(), 0, 'Invalid imports must not mutate the cache');
-  const syncedResponse = await postJson(endpoint, syncBody, authHeaders);
-  assert.equal(syncedResponse.status, 200, await syncedResponse.clone().text());
-  const synced = await syncedResponse.json();
-  assert.equal(synced.process.courtUnit, 'Vara Manual Sintética');
-  assert.equal(synced.process.client, 'Cliente Manual Sintético');
-  assert.equal(synced.process.contactId, 'manual-contact');
-  assert.notEqual(synced.revision, revision);
-  const countAfterSync = count();
-  assert.equal(countAfterSync, 2);
-  const repeated = await postJson(endpoint, { ...syncBody, revision: synced.revision }, authHeaders);
-  const repeatBody = await repeated.json();
-  assert.equal(repeated.status, 200);
-  assert.equal(repeatBody.idempotent, true);
-  assert.equal(repeatBody.revision, synced.revision);
-  assert.equal(count(), countAfterSync);
-  assert.equal((await postJson(endpoint, syncBody, authHeaders)).status, 409);
-  const rows = JSON.stringify(db.prepare('SELECT * FROM omni_cache').all());
-  assert.equal(rows.includes('Parte Adversa Sintética'), false);
-  assert.equal(rows.includes(CNJ), false);
-  assert.equal(rows.includes('Movimento sintético'), false);
+  assert.equal((await postJson(endpoint, syncBody, { Cookie: authCookie })).status, 403, 'CSRF continua barrando antes do aviso.');
+  for (const [route, body] of [['preview', { processNumber: CNJ }], ['sync', syncBody]]) {
+    const response = await postJson(`${instance.baseUrl}/api/integrations/omni/processes/${route}`, body, authHeaders);
+    assert.equal(response.status, 410, await response.clone().text());
+    assert.equal((await response.json()).state, 'TJRS_KEY_CONSULTATION_DISABLED');
+  }
+  assert.equal(count(), 0, 'Rota desativada não pode gravar no cache.');
+  const stateAfter = await (await fetch(`${instance.baseUrl}/api/state`, { headers: authHeaders })).json();
+  assert.equal(stateAfter.revision, revision, 'Rota desativada não pode alterar o estado oficial.');
   db.close();
-  console.log('  ✓ Dry-run, fallback HTTP, CNJ, CSRF, manual fields, encryption and idempotency');
+  console.log('  ✓ Consulta TJRS por chave desativada no omni, com CSRF e CNJ preservados');
 
   // 4. Test POST /api/integrations/omni/watchlist
   console.log('[E2E 4] Testando Watchlist (adição e listagem)...');

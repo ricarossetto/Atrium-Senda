@@ -1,4 +1,4 @@
-import { activeIntimations, publicationsInRecentScope } from './publication-scope.js?v=3.3.2';
+import { activeIntimations, publicationsInRecentScope } from './publication-scope.js?v=3.4.0';
 const DAY_MS = 86_400_000;
 const TERMINAL_STATUSES = new Set(['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada', 'descartada']);
 const SOURCE_PROBLEMS = new Set(['error', 'erro', 'attention', 'atencao', 'unavailable', 'indisponivel', 'stale']);
@@ -28,7 +28,7 @@ export function buildActivityInbox(state = {}, { now = new Date(), maxItems = 80
   }
 
   for (const task of state.tasks || []) {
-    if (!task?.id || task.active === false || TERMINAL_STATUSES.has(normalized(task.status))) continue;
+    if (!task?.id || task.active === false || task.absorbedInto || TERMINAL_STATUSES.has(normalized(task.status))) continue;
     const due = parseDate(task.fatalDeadline || task.deadline);
     if (!due || due > horizon) continue;
     const process = linkedProcess(task, processById, processByNumber);
@@ -165,7 +165,7 @@ function startOfDay(value) {
 function parseDate(value) {
   const raw = String(value || '').trim();
   if (!raw) return null;
-  const local = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+  const local = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
   if (local) return new Date(Number(local[1]), Number(local[2]) - 1, Number(local[3])).getTime();
   const parsed = Date.parse(raw);
   return Number.isFinite(parsed) ? startOfDay(new Date(parsed)) : null;

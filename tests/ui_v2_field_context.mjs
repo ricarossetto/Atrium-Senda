@@ -8,8 +8,8 @@ import { fieldContextOptions, filterSuggestions } from '../js/core/field-context
 console.log('--- Iniciando Testes: sugestões de contexto e preenchimento do navegador ---');
 
 // Regra: toda palavra precisa aparecer, em qualquer ordem, sem depender de acento.
-const sample = [{ value: 'LEANDRO RICARDO TESTE' }, { value: 'María Souza', label: 'Cliente · Porto Alegre' }, 'Araken'];
-assert.deepEqual(filterSuggestions(sample, 'teste leandro').map(item => item.value), ['LEANDRO RICARDO TESTE']);
+const sample = [{ value: 'LEANDRO RICARDO ROSSETTO' }, { value: 'María Souza', label: 'Cliente · Porto Alegre' }, 'Araken'];
+assert.deepEqual(filterSuggestions(sample, 'rossetto leandro').map(item => item.value), ['LEANDRO RICARDO ROSSETTO']);
 assert.deepEqual(filterSuggestions(sample, 'maria').map(item => item.value), ['María Souza']);
 assert.deepEqual(filterSuggestions(sample, 'porto').map(item => item.value), ['María Souza'], 'busca também na descrição');
 assert.deepEqual(filterSuggestions(sample, 'zzz'), []);
@@ -39,9 +39,18 @@ try {
     await page.waitForFunction(() => document.querySelector('#authGate input[autocomplete="off"]'));
     const auth = await page.evaluate(() => [...document.querySelectorAll('#authGate input')]
       .filter(input => !['hidden', 'checkbox', 'radio'].includes(input.type))
-      .map(input => input.getAttribute('autocomplete')));
-    assert.ok(auth.includes('username') && auth.includes('current-password'), 'entrada segue com gerenciador de senhas');
-    for (const token of ['name', 'email', 'organization', 'tel']) assert.ok(!auth.includes(token), `cadastro não pode pedir ${token}`);
+      .map(input => ({ token: input.getAttribute('autocomplete'), inRegister: Boolean(input.closest('#authRegisterForm')) })));
+    const tokens = auth.map(item => item.token);
+    const outsideRegister = auth.filter(item => !item.inRegister).map(item => item.token);
+    const insideRegister = auth.filter(item => item.inRegister).map(item => item.token);
+    assert.ok(tokens.includes('username') && tokens.includes('current-password'), 'entrada segue com gerenciador de senhas');
+    for (const token of ['name', 'email', 'organization', 'tel']) {
+      assert.ok(!outsideRegister.includes(token), `tela de entrada fora do cadastro público não pode pedir ${token}`);
+    }
+    for (const token of ['name', 'email', 'organization']) {
+      assert.ok(insideRegister.includes(token), `cadastro público preserva preenchimento de ${token}`);
+    }
+    assert.ok(!insideRegister.includes('tel'), 'cadastro público não pede telefone');
     await context.close();
   }
 
@@ -57,7 +66,7 @@ try {
       state: {
         ...(initial.state || {}),
         contacts: [
-          { id: 'c1', name: 'LEANDRO RICARDO TESTE', contactRole: 'cliente', document: '123.456.789-00', city: 'Porto Alegre' },
+          { id: 'c1', name: 'LEANDRO RICARDO ROSSETTO', contactRole: 'cliente', document: '123.456.789-00', city: 'Porto Alegre' },
           { id: 'c2', name: 'ARAKEN MAICA', contactRole: 'cliente' },
           { id: 'c3', name: 'VILSON DE LIMA', contactRole: 'parte contrária' }
         ],
@@ -95,9 +104,9 @@ try {
   assert.equal(await popup.isVisible(), false, 'abrir o painel não abre a lista');
 
   // Cliente principal busca nos contatos ao digitar, em qualquer ordem de palavras.
-  await page.locator('#field-client').pressSequentially('teste');
+  await page.locator('#field-client').pressSequentially('rossetto');
   await popup.waitFor();
-  assert.match(await popup.innerText(), /LEANDRO RICARDO TESTE/);
+  assert.match(await popup.innerText(), /LEANDRO RICARDO ROSSETTO/);
   assert.match(await popup.innerText(), /123\.456\.789-00/);
   assert.doesNotMatch(await popup.innerText(), /ARAKEN/);
   const inView = await popup.evaluate(element => { const box = element.getBoundingClientRect(); return box.top >= 0 && box.bottom <= innerHeight && box.width > 200; });
@@ -105,7 +114,7 @@ try {
   if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'cliente.png') });
   await page.locator('#field-client').press('ArrowDown');
   await page.locator('#field-client').press('Enter');
-  assert.equal(await page.locator('#field-client').inputValue(), 'LEANDRO RICARDO TESTE');
+  assert.equal(await page.locator('#field-client').inputValue(), 'LEANDRO RICARDO ROSSETTO');
   assert.equal(await popup.isVisible(), false);
 
   // Texto novo continua valendo: o campo é digitável.

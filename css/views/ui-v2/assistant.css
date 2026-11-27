@@ -528,18 +528,23 @@ html[data-ui="v2"] #view-assistant .ai-chat-input-form {
 }
 
 html[data-ui="v2"] #view-assistant .ai-input-wrapper {
-  gap: var(--v2-space-3);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--v2-space-2);
+  align-items: stretch;
 }
 
 html[data-ui="v2"] #view-assistant .ai-input-wrapper textarea {
+  width: 100%;
   min-width: 0;
-  min-height: 58px;
-  padding: 13px 15px;
+  /* Largura cheia acima da barra de ações: sem esmagar o campo de mensagem ao lado dos botões. */
+  min-height: 84px;
+  padding: 12px 15px;
   color: var(--v2-color-foreground);
   background: var(--v2-color-surface-inset);
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-md);
-  font: 13px/1.5 var(--v2-font-interface);
+  font: 13.5px/1.5 var(--v2-font-interface);
 }
 
 html[data-ui="v2"] #view-assistant .ai-input-wrapper textarea:focus,
@@ -552,22 +557,34 @@ html[data-ui="v2"] #view-assistant input:focus-visible {
   box-shadow: none;
 }
 
-html[data-ui="v2"] #view-assistant .ai-send-btn {
-  min-width: 108px;
-  min-height: 58px;
-  height: 58px;
-}
-
 html[data-ui="v2"] #view-assistant .ai-composer-actions {
-  gap: var(--v2-space-3);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--v2-space-2);
+  width: 100%;
 }
 
 html[data-ui="v2"] #view-assistant .ai-attach-btn {
-  width: 58px;
-  min-width: 58px;
-  height: 58px;
-  min-height: 58px;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
   padding: 0;
+  margin-right: auto;
+}
+
+html[data-ui="v2"] #view-assistant .ai-plan-btn {
+  min-height: 42px;
+  height: 42px;
+  padding: 0 14px;
+}
+
+html[data-ui="v2"] #view-assistant .ai-send-btn {
+  min-width: 112px;
+  min-height: 42px;
+  height: 42px;
+  padding: 0 18px !important;
 }
 
 html[data-ui="v2"] .assistant-composer-hint,
@@ -627,7 +644,7 @@ html[data-ui="v2"] #geminiKeyBackdrop .gemini-key-modal {
   border-radius: 0;
   box-shadow: var(--v2-shadow-elevated);
   justify-self: end;
-  animation: v2-key-drawer-in var(--v2-duration-slow) var(--v2-ease-emphasized) both;
+  animation: v2-sheet-in var(--v2-duration-slow) var(--v2-ease-standard) both;
 }
 
 /* A track de grid é empacotada ao fim; maximizado o drawer sai do fluxo e ancora na viewport. */
@@ -638,10 +655,6 @@ html[data-ui="v2"] #geminiKeyBackdrop .gemini-key-modal[data-panel-size="maximiz
   border-radius: 0;
 }
 
-@keyframes v2-key-drawer-in {
-  from { opacity: .55; transform: translateX(32px); }
-  to { opacity: 1; transform: none; }
-}
 
 html[data-ui="v2"] #geminiKeyBackdrop .gemini-key-modal > header,
 html[data-ui="v2"] #geminiKeyBackdrop .gemini-key-modal form {
@@ -689,8 +702,10 @@ html[data-ui="v2"] #view-assistant select,
 html[data-ui="v2"] #geminiKeyBackdrop select {
   appearance: none;
   -webkit-appearance: none;
+  box-sizing: border-box;
+  height: 42px;
   min-height: 42px;
-  padding: 9px 36px 9px 12px;
+  padding: 11px 36px 11px 12px;
   color: var(--v2-color-foreground);
   background-color: var(--v2-color-surface-inset);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23a7adb4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -699,7 +714,7 @@ html[data-ui="v2"] #geminiKeyBackdrop select {
   background-size: 12px 8px;
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-md);
-  font: 13px/1.35 var(--v2-font-interface);
+  font: 13px/18px var(--v2-font-interface);
   cursor: pointer;
 }
 
@@ -720,9 +735,12 @@ html[data-ui="v2"] #geminiKeyBackdrop select:focus-visible {
 }
 
 html[data-ui="v2"] #view-assistant .assistant-skill-select {
+  height: 38px;
   min-height: 38px;
-  padding-block: 6px;
+  padding-top: 9px;
+  padding-bottom: 9px;
   font-size: 12px;
+  line-height: 18px;
 }
 
 html[data-ui="v2"] #geminiKeyBackdrop footer .button,
@@ -827,6 +845,19 @@ html[data-ui="v2"] #geminiKeyBackdrop .modal-combobox-empty.hidden { display: no
   }
 }
 
+/* Entre 821px e 1024px o menu lateral do aplicativo continua aberto e sobra pouca largura:
+   duas colunas espremiam o campo de mensagem e jogavam "Enviar" para fora da borda. */
+@media (min-width: 821px) and (max-width: 1024px) {
+  html[data-ui="v2"] .assistant-workspace-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-ui="v2"] .assistant-context-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-row: 2;
+  }
+}
+
 @media (max-width: 820px) {
   html[data-ui="v2"] #view-assistant .ai-assistant-header {
     align-items: stretch;
@@ -834,12 +865,21 @@ html[data-ui="v2"] #geminiKeyBackdrop .modal-combobox-empty.hidden { display: no
   }
 
   html[data-ui="v2"] #view-assistant .ai-header-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: var(--v2-space-2);
   }
 
   html[data-ui="v2"] #view-assistant .ai-header-actions .status-chip {
-    grid-column: 1 / -1;
+    flex: 1 0 100%;
+    justify-content: center;
+  }
+
+  html[data-ui="v2"] #view-assistant .ai-header-actions .button {
+    flex: 1 1 calc(50% - var(--v2-space-2));
+    min-width: 140px;
+    justify-content: center;
   }
 
   html[data-ui="v2"] .assistant-workspace-layout {
@@ -870,9 +910,12 @@ html[data-ui="v2"] #geminiKeyBackdrop .modal-combobox-empty.hidden { display: no
     grid-template-columns: minmax(0, 1fr);
   }
 
-  html[data-ui="v2"] #view-assistant .ai-header-actions .button,
   html[data-ui="v2"] #view-assistant .ai-header-actions .status-chip {
     width: 100%;
+  }
+
+  html[data-ui="v2"] #view-assistant .ai-header-actions .button {
+    width: auto;
   }
 
   html[data-ui="v2"] #view-assistant .ai-chat-card {
@@ -925,6 +968,7 @@ html[data-ui="v2"] #geminiKeyBackdrop .modal-combobox-empty.hidden { display: no
     min-width: 48px;
     height: 48px;
     min-height: 48px;
+    margin-right: 0;
   }
 
   html[data-ui="v2"] #view-assistant .ai-plan-btn {

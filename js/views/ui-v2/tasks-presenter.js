@@ -1,6 +1,6 @@
 // Lucian UX/UI Prompt #440 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#440
-import { iconSvg } from './icons.js?v=3.3.2';
-import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.3.2';
+import { iconSvg } from './icons.js?v=3.4.0';
+import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.4.0';
 
 export const KANBAN_COLUMN_LIMIT = 200;
 const TERMINAL_TASK_STATUSES = new Set(['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada']);
@@ -186,8 +186,18 @@ export function createTasksV2Presenter({
   function render({ board, tasks, columns, activeTaskId, elapsedLabel, sourceLabel, processes = [], contacts = [], intimations = [], triageLookup = null, riskLookup = null, involvedLookup = null }) {
     if (!board) return;
     const lookup = buildTaskLinkLookup(processes, contacts, intimations);
+    const activeBoardTasks = (tasks || []).filter(task => task && task.active !== false && !task.absorbedInto);
+    const tasksByColumn = new Map();
+    for (const task of activeBoardTasks) {
+      let bucket = tasksByColumn.get(task.status);
+      if (!bucket) {
+        bucket = [];
+        tasksByColumn.set(task.status, bucket);
+      }
+      bucket.push(task);
+    }
     board.innerHTML = columns.map(column => {
-      const columnTasks = tasks.filter(task => task.status === column.id);
+      const columnTasks = tasksByColumn.get(column.id) || [];
       const shownTasks = columnTasks.slice(0, KANBAN_COLUMN_LIMIT);
       const hiddenCount = columnTasks.length - shownTasks.length;
       return `<section class="kanban-column" data-column="${escapeHtml(column.id)}" aria-labelledby="task-column-${escapeHtml(column.id)}">
@@ -213,12 +223,13 @@ export function createTasksV2Presenter({
               lookup,
               triage: typeof triageLookup === 'function' ? triageLookup(task) : null,
               risk: typeof riskLookup === 'function' ? riskLookup(task) : null,
-              involved: typeof involvedLookup === 'function' ? involvedLookup(task) : ''
+              involved: typeof involvedLookup === 'function' ? involvedLookup(task) : '',
+              isTerminalStatus
             })).join('')
           : '<div class="kanban-column-empty">Nenhuma tarefa nesta etapa.</div>'}${hiddenCount > 0 ? `<div class="kanban-column-more" role="note">Mostrando ${shownTasks.length} de ${columnTasks.length} — refine na lista</div>` : ''}</div>
       </section>`;
     }).join('');
-    updateCount(tasks.length);
+    updateCount(activeBoardTasks.length);
   }
 
   function updateCount(total) {
@@ -226,26 +237,30 @@ export function createTasksV2Presenter({
     if (target) target.textContent = `${total} tarefa${total === 1 ? '' : 's'}`;
   }
 
-  function renderList({ container, summary, tasks, allTasks, columns, activeTaskId, elapsedLabel, sourceLabel, processes = [], contacts = [], intimations = [], activeFilter = 'active', triageLookup = null, riskLookup = null, involvedLookup = null }) {
+  function renderList({ container, summary, tasks, allTasks, columns, activeTaskId, elapsedLabel, sourceLabel, processes = [], contacts = [], intimations = [], activeFilter = 'active', triageLookup = null, riskLookup = null, involvedLookup = null, terminalStatusCheck = isTerminalStatus }) {
     if (!container) return;
     const lookup = buildTaskLinkLookup(processes, contacts, intimations);
-    if (!container) return;
-    const openTasks = allTasks.filter(task => !isTerminalStatus(task.status));
-    const overdueTasks = openTasks.filter(task => {
+    const activeTasks = (allTasks || []).filter(task => task && task.active !== false && !task.absorbedInto);
+    const visibleListTasks = (tasks || []).filter(task => task && task.active !== false && !task.absorbedInto);
+    let openCount = 0;
+    let overdueCount = 0;
+    let nextSevenDaysCount = 0;
+    const openTasks = [];
+    for (const task of activeTasks) {
+      if (terminalStatusCheck(task.status)) continue;
+      openCount += 1;
+      openTasks.push(task);
       const deadline = task.fatalDeadline || task.deadline;
-      return Boolean(deadline) && daysUntil(deadline) < 0;
-    });
-    const nextSevenDays = openTasks.filter(task => {
-      const deadline = task.fatalDeadline || task.deadline;
-      if (!deadline) return false;
+      if (!deadline) continue;
       const distance = daysUntil(deadline);
-      return distance >= 0 && distance <= 7;
-    });
+      if (distance < 0) overdueCount += 1;
+      else if (distance <= 7) nextSevenDaysCount += 1;
+    }
     if (summary) summary.innerHTML = [
-      ['Abertas', openTasks.length, 'Fila ativa', 'active'],
-      ['Atrasadas', overdueTasks.length, 'Revisão prioritária', 'overdue'],
-      ['Próximos 7 dias', nextSevenDays.length, 'Datas informadas', 'week'],
-      ['Concluídas', allTasks.length - openTasks.length, 'Histórico preservado', 'completed']
+      ['Abertas', openCount, 'Fila ativa', 'active'],
+      ['Atrasadas', overdueCount, 'Revisão prioritária', 'overdue'],
+      ['Próximos 7 dias', nextSevenDaysCount, 'Datas informadas', 'week'],
+      ['Concluídas', activeTasks.length - openCount, 'Histórico preservado', 'completed']
     ].map(([label, value, detail, filterKey]) => `
       <article class="task-summary-card ${activeFilter === filterKey ? 'active' : ''}" data-task-summary-filter="${filterKey}" role="button" tabindex="0" title="Filtrar por ${escapeHtml(label)}">
         <span>${escapeHtml(label)}</span>
@@ -254,9 +269,9 @@ export function createTasksV2Presenter({
       </article>
     `).join('');
     const visibleCount = byId('taskListVisibleCount');
-    if (visibleCount) visibleCount.textContent = `${tasks.length} exibida${tasks.length === 1 ? '' : 's'}`;
-    container.innerHTML = tasks.length
-      ? tasks.map(task => renderTaskListRow({
+    if (visibleCount) visibleCount.textContent = `${visibleListTasks.length} exibida${visibleListTasks.length === 1 ? '' : 's'}`;
+    container.innerHTML = visibleListTasks.length
+      ? visibleListTasks.map(task => renderTaskListRow({
           task,
           columns,
           activeTaskId,
@@ -273,11 +288,12 @@ export function createTasksV2Presenter({
           lookup,
           triage: typeof triageLookup === 'function' ? triageLookup(task) : null,
           risk: typeof riskLookup === 'function' ? riskLookup(task) : null,
-          involved: typeof involvedLookup === 'function' ? involvedLookup(task) : ''
+          involved: typeof involvedLookup === 'function' ? involvedLookup(task) : '',
+          isTerminalStatus: terminalStatusCheck
         })).join('')
-      : renderTaskListEmptyState({ allTasks, openTasks, activeFilter });
+      : renderTaskListEmptyState({ allTasks: activeTasks, openTasks, activeFilter });
     bindTaskListEmptyState(container);
-    updateCount(allTasks.length);
+    updateCount(activeTasks.length);
   }
 
   function announce(message) {
@@ -431,9 +447,10 @@ export function renderTaskListRow({
   lookup = null,
   triage = null,
   risk = null,
-  involved = ''
+  involved = '',
+  isTerminalStatus = status => TERMINAL_TASK_STATUSES.has(String(status || '').toLowerCase().trim())
 }) {
-  const isDone = task.status === 'concluida';
+  const isDone = isTerminalStatus(task.status);
   const deadline = task.fatalDeadline || task.deadline;
   const overdue = Boolean(deadline) && daysUntil(deadline) < 0 && !isDone;
   const timeMinutes = totalTimeMinutes(task.timeLogs);
@@ -443,8 +460,8 @@ export function renderTaskListRow({
   const timerButton = isDone
     ? '<span class="task-list-timer-muted">Encerrada</span>'
     : isTimerRunning
-      ? `<button type="button" class="timesheet-btn active task-list-timesheet-live" data-task-list-timesheet-stop="${escapeHtml(task.id)}" aria-label="Pausar cronômetro da tarefa ${escapeHtml(task.title)}">⏹ <span>${escapeHtml(elapsedLabel)}</span></button>`
-      : `<button type="button" class="timesheet-btn" data-task-list-timesheet-start="${escapeHtml(task.id)}">▶ <span>Iniciar</span></button>`;
+      ? `<button type="button" class="timesheet-btn active task-list-timesheet-live" data-task-list-timesheet-stop="${escapeHtml(task.id)}" aria-label="Pausar cronômetro da tarefa ${escapeHtml(task.title)}">${iconSvg('check')} <span>${escapeHtml(elapsedLabel)}</span></button>`
+      : `<button type="button" class="timesheet-btn" data-task-list-timesheet-start="${escapeHtml(task.id)}">${iconSvg('deadline')} <span>Iniciar</span></button>`;
 
   const clientResolved = resolveTaskClient(task, processes, contacts, [], lookup);
   const stageColumn = columns.find(c => c.id === task.status) || columns[0];
@@ -568,18 +585,20 @@ export function renderTaskCard({
   lookup = null,
   triage = null,
   risk = null,
-  involved = ''
+  involved = '',
+  isTerminalStatus = status => TERMINAL_TASK_STATUSES.has(String(status || '').toLowerCase().trim())
 }) {
-  const isDone = task.status === 'concluida';
-  const overdue = Boolean(task.deadline) && daysUntil(task.deadline) < 0 && !isDone;
+  const isDone = isTerminalStatus(task.status);
+  const effectiveDeadline = task.fatalDeadline || task.deadline;
+  const overdue = Boolean(effectiveDeadline) && daysUntil(effectiveDeadline) < 0 && !isDone;
   const timeMinutes = totalTimeMinutes(task.timeLogs);
   const isTimerRunning = activeTaskId === task.id;
   const points = Number(task.points) || (task.priority === 'urgente' ? 25 : 10);
   const priority = ({ urgente: 'Urgente', importante: 'Importante', normal: 'Normal' })[task.priority] || 'Normal';
   const deadlineLabel = task.deadline ? `${overdue ? 'Atrasada · ' : `${deadlineSourceKicker(task, { fatal: false })} · `}${formatDate(task.deadline)}` : 'Sem prazo informado';
   const timerButton = isTimerRunning
-    ? `<button type="button" class="timesheet-btn active timesheet-live" data-timesheet-stop="${escapeHtml(task.id)}" aria-label="Pausar cronômetro da tarefa ${escapeHtml(task.title)}">⏹ <span>${escapeHtml(elapsedLabel)}</span></button>`
-      : `<button type="button" class="timesheet-btn" data-timesheet-start="${escapeHtml(task.id)}">▶ <span>Iniciar tempo</span></button>`;
+    ? `<button type="button" class="timesheet-btn active timesheet-live" data-timesheet-stop="${escapeHtml(task.id)}" aria-label="Pausar cronômetro da tarefa ${escapeHtml(task.title)}">${iconSvg('check')} <span>${escapeHtml(elapsedLabel)}</span></button>`
+      : `<button type="button" class="timesheet-btn" data-timesheet-start="${escapeHtml(task.id)}">${iconSvg('deadline')} <span>Iniciar tempo</span></button>`;
 
   const clientResolved = resolveTaskClient(task, processes, contacts, [], lookup);
   const conflictNotice = deadlineConflictNotice(task);
@@ -604,7 +623,7 @@ export function renderTaskCard({
     <button type="button" class="task-card-open" data-task-open="${escapeHtml(task.id)}">
       <strong>${escapeHtml(task.title || 'Tarefa sem título')}</strong>
       <span>${escapeHtml(task.description || 'Sem descrição')}</span>
-      <span class="task-card-action">Editar tarefa <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-right"></use></svg></span>
+      <span class="task-card-action">Editar tarefa <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-chevron-right"></use></svg></span>
     </button>
     <div class="task-context">
       <span class="task-client ${clientResolved ? '' : 'task-client-unlinked'}">${escapeHtml(clientResolved || 'Cliente não vinculado')}</span>

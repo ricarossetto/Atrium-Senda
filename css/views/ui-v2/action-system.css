@@ -1,7 +1,17 @@
 /* Loaded after feature styles so every authenticated V2 primary action shares one material. */
 html[data-ui="v2"] #appShell .button.gold,
+html[data-ui="v2"] #appShell .v2-button.is-primary,
 html[data-ui="v2"] body > .modal-backdrop .button.gold,
-html[data-ui="v2"] .process-inspector .button.gold {
+html[data-ui="v2"] body > .modal-backdrop .v2-button.is-primary,
+html[data-ui="v2"] .process-inspector .button.gold,
+html[data-ui="v2"] .process-print-backdrop .button.gold,
+html[data-ui="v2"] .eproc-sync-modal-backdrop .button.gold,
+html[data-ui="v2"] .process-documents-backdrop .button.gold,
+html[data-ui="v2"] .prompt-preview-backdrop .button.gold,
+html[data-ui="v2"] .publication-inspector-backdrop .button.gold,
+html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold,
+html[data-ui="v2"] [role="dialog"]:not(#authGate) .button.gold,
+html[data-ui="v2"] [role="dialog"]:not(#authGate) .v2-button.is-primary {
   color: var(--v2-action-primary-text) !important;
   background: var(--v2-action-primary-bg);
   border-color: var(--v2-action-primary-border);
@@ -14,8 +24,18 @@ html[data-ui="v2"] .process-inspector .button.gold {
 }
 
 html[data-ui="v2"] #appShell .button.gold:hover,
+html[data-ui="v2"] #appShell .v2-button.is-primary:hover,
 html[data-ui="v2"] body > .modal-backdrop .button.gold:hover,
-html[data-ui="v2"] .process-inspector .button.gold:hover {
+html[data-ui="v2"] body > .modal-backdrop .v2-button.is-primary:hover,
+html[data-ui="v2"] .process-inspector .button.gold:hover,
+html[data-ui="v2"] .process-print-backdrop .button.gold:hover,
+html[data-ui="v2"] .eproc-sync-modal-backdrop .button.gold:hover,
+html[data-ui="v2"] .process-documents-backdrop .button.gold:hover,
+html[data-ui="v2"] .prompt-preview-backdrop .button.gold:hover,
+html[data-ui="v2"] .publication-inspector-backdrop .button.gold:hover,
+html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold:hover,
+html[data-ui="v2"] [role="dialog"]:not(#authGate) .button.gold:hover,
+html[data-ui="v2"] [role="dialog"]:not(#authGate) .v2-button.is-primary:hover {
   color: var(--v2-action-primary-text) !important;
   background: var(--v2-action-primary-hover);
   border-color: var(--v2-action-primary-border);
@@ -24,47 +44,35 @@ html[data-ui="v2"] .process-inspector .button.gold:hover {
 }
 
 html[data-ui="v2"] #appShell .button.gold:active,
+html[data-ui="v2"] #appShell .v2-button.is-primary:active,
 html[data-ui="v2"] body > .modal-backdrop .button.gold:active,
-html[data-ui="v2"] .process-inspector .button.gold:active {
+html[data-ui="v2"] body > .modal-backdrop .v2-button.is-primary:active,
+html[data-ui="v2"] .process-inspector .button.gold:active,
+html[data-ui="v2"] .process-print-backdrop .button.gold:active,
+html[data-ui="v2"] .eproc-sync-modal-backdrop .button.gold:active,
+html[data-ui="v2"] .process-documents-backdrop .button.gold:active,
+html[data-ui="v2"] .prompt-preview-backdrop .button.gold:active,
+html[data-ui="v2"] .publication-inspector-backdrop .button.gold:active,
+html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold:active,
+html[data-ui="v2"] [role="dialog"]:not(#authGate) .button.gold:active,
+html[data-ui="v2"] [role="dialog"]:not(#authGate) .v2-button.is-primary:active {
   box-shadow: var(--v2-action-primary-shadow-pressed);
   transform: none;
 }
 
 html[data-ui="v2"] #appShell .button.gold:disabled,
+html[data-ui="v2"] #appShell .v2-button.is-primary:disabled,
 html[data-ui="v2"] body > .modal-backdrop .button.gold:disabled,
-html[data-ui="v2"] .process-inspector .button.gold:disabled {
-  cursor: not-allowed;
-  opacity: .54;
-  box-shadow: none;
-  transform: none;
-}
-
-html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold {
-  color: var(--v2-action-primary-text) !important;
-  background: var(--v2-action-primary-bg);
-  border-color: var(--v2-action-primary-border);
-  box-shadow: var(--v2-action-primary-shadow);
-  backdrop-filter: blur(8px) saturate(.94);
-  -webkit-backdrop-filter: blur(8px) saturate(.94);
-  text-shadow: none;
-  transform: none;
-  transition: background-color var(--v2-duration-base) var(--v2-ease-standard), border-color var(--v2-duration-base) var(--v2-ease-standard), box-shadow var(--v2-duration-base) var(--v2-ease-standard), color var(--v2-duration-base) var(--v2-ease-standard);
-}
-
-html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold:hover {
-  color: var(--v2-action-primary-text) !important;
-  background: var(--v2-action-primary-hover);
-  border-color: var(--v2-action-primary-border);
-  box-shadow: var(--v2-action-primary-shadow);
-  transform: none;
-}
-
-html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold:active {
-  box-shadow: var(--v2-action-primary-shadow-pressed);
-  transform: none;
-}
-
-html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold:disabled {
+html[data-ui="v2"] body > .modal-backdrop .v2-button.is-primary:disabled,
+html[data-ui="v2"] .process-inspector .button.gold:disabled,
+html[data-ui="v2"] .process-print-backdrop .button.gold:disabled,
+html[data-ui="v2"] .eproc-sync-modal-backdrop .button.gold:disabled,
+html[data-ui="v2"] .process-documents-backdrop .button.gold:disabled,
+html[data-ui="v2"] .prompt-preview-backdrop .button.gold:disabled,
+html[data-ui="v2"] .publication-inspector-backdrop .button.gold:disabled,
+html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold:disabled,
+html[data-ui="v2"] [role="dialog"]:not(#authGate) .button.gold:disabled,
+html[data-ui="v2"] [role="dialog"]:not(#authGate) .v2-button.is-primary:disabled {
   cursor: not-allowed;
   opacity: .54;
   box-shadow: none;
@@ -74,6 +82,14 @@ html[data-ui="v2"] body > .mail-preferences-drawer-backdrop .button.gold:disable
 @media (max-width: 860px) {
   html[data-ui="v2"] .view.active :where(button, [role="button"], input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
     min-height: 44px !important;
+  }
+
+  html[data-ui="v2"] .view.active select:not([multiple]):not([size]) {
+    box-sizing: border-box;
+    height: 44px !important;
+    padding-top: 11px !important;
+    padding-bottom: 11px !important;
+    line-height: 20px !important;
   }
 
   html[data-ui="v2"] .view.active :where(.icon-button, button:has(> .atrium-icon:only-child), button:has(> .v2-local-icon:only-child)) {

@@ -18,26 +18,38 @@ try {
   assert.match(workLabels[1], /Publicações/);
   assert.match(workLabels[2], /Agenda/);
   assert.match(workLabels[3], /Processos e casos/);
-  console.log('✓ Ordem do grupo Trabalho: Tarefas, Publicações, Agenda, Processos e casos.');
+  console.log('✓ Ordem do grupo Dia a dia: Tarefas, Publicações, Agenda, Processos e casos.');
 
-  // Padrão: todos os grupos expandidos, com toggle acessível por grupo.
+  const sidebarGeometry = await page.evaluate(() => {
+    const wrap = document.querySelector('#sidebar .sidebar-nav-wrap');
+    return {
+      overflowY: wrap ? wrap.scrollHeight - wrap.clientHeight : 0,
+      prevCount: document.querySelectorAll('#sidebar [data-nav-action="atrium-prev-open"]').length,
+      totalItems: document.querySelectorAll('#sidebar .nav-item[data-view]').length
+    };
+  });
+  assert.ok(sidebarGeometry.overflowY <= 1, `Menu lateral não deve exigir scroll em 1440x900 (excesso: ${sidebarGeometry.overflowY}px).`);
+  assert.equal(sidebarGeometry.prevCount, 0, 'Atalho ATRIUM Prev não deve ficar duplicado no menu lateral.');
+  assert.equal(sidebarGeometry.totalItems, 14, 'Menu lateral condensado deve reunir 14 destinos.');
+
+  // Padrão: grupos Dia a dia e Escritório expandidos, com toggle acessível por grupo.
   const initial = await page.$$eval('[data-v2-nav-toggle]', elements => elements.map(element => ({
     group: element.dataset.v2NavToggle,
     expanded: element.getAttribute('aria-expanded'),
     controls: element.getAttribute('aria-controls'),
     hidden: document.getElementById(element.getAttribute('aria-controls'))?.hidden
   })));
-  assert.equal(initial.length, 6, 'Todos os grupos devem ter toggle.');
+  assert.equal(initial.length, 2, 'Grupos recolhíveis (Dia a dia e Escritório) devem ter toggle.');
   assert.ok(initial.every(item => item.expanded === 'true' && item.hidden === false), 'O padrão é todos os grupos expandidos.');
   assert.ok(initial.every(item => item.controls), 'Cada toggle deve apontar para o seu grupo.');
-  console.log('✓ Seis grupos com toggle, todos expandidos por padrão.');
+  console.log('✓ Dois grupos recolhíveis expandidos por padrão e zero scroll no menu.');
 
   // Recolher e expandir (estado em memória; sem persistência no shell).
   await page.locator('[data-v2-nav-toggle="work"]').click();
   assert.equal(await page.locator('[data-v2-nav-toggle="work"]').getAttribute('aria-expanded'), 'false');
   assert.equal(await page.locator('#v2NavWork').evaluate(element => element.hidden), true);
   assert.equal(await page.locator('[data-v2-nav-toggle="work"]').evaluate(element => element.classList.contains('is-collapsed')), true);
-  assert.equal(await page.locator('[data-v2-nav-toggle="relationship"]').getAttribute('aria-expanded'), 'true', 'Recolher um grupo não afeta os demais.');
+  assert.equal(await page.locator('[data-v2-nav-toggle="management"]').getAttribute('aria-expanded'), 'true', 'Recolher um grupo não afeta o outro.');
 
   await page.locator('[data-v2-nav-toggle="work"]').focus();
   await page.keyboard.press('Enter');
@@ -49,10 +61,17 @@ try {
   assert.equal(await page.locator('[data-v2-nav-toggle="work"]').getAttribute('aria-expanded'), 'true');
   console.log('✓ Recolher/expandir com teclado e sem afetar os demais grupos.');
 
-  // Navegação continua funcionando com o grupo expandido.
+  // Navegação e destinos reposicionados (Prompts no Assistente; Links Úteis no menu utilitário).
   await page.locator('#v2NavWork [data-view="inbox"]').click();
   await page.locator('#view-inbox.active').waitFor();
-  console.log('✓ Navegação do grupo permanece funcional.');
+  await page.locator('#v2NavManagement [data-view="assistant"]').click();
+  await page.locator('#view-assistant.active').waitFor();
+  await page.locator('#btnOpenPromptsFromAssistant').click();
+  await page.locator('#view-prompts.active').waitFor();
+  await page.locator('#v2UtilitiesMenu > summary').click();
+  await page.locator('#v2UtilitiesLinks').click();
+  await page.locator('#view-links.active').waitFor();
+  console.log('✓ Navegação do grupo e acessos reposicionados (Prompts/Links) funcionais.');
 
   assert.deepEqual(pageErrors, [], `Erros de página: ${pageErrors.join(' | ')}`);
   await context.close();
@@ -61,12 +80,12 @@ try {
   const routeContext = await session.createContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'no-preference' });
   try {
     const { page } = await prepareUiV2Page(routeContext, session.server.baseUrl, { theme: 'light' });
-    await page.evaluate(() => document.body.scrollTo({ top: 650, behavior: 'instant' }));
+    await page.evaluate(() => window.scrollTo({ top: 650, behavior: 'instant' }));
     await page.waitForFunction(() => document.documentElement.dataset.v2MobileChrome === 'reading');
     const routeStart = await page.evaluate(() => {
-      const previous = document.body.scrollTop;
+      const previous = window.scrollY;
       window.Atrium.App.switchView('kanban');
-      return { previous, current: document.body.scrollTop, chrome: document.documentElement.dataset.v2MobileChrome };
+      return { previous, current: window.scrollY, chrome: document.documentElement.dataset.v2MobileChrome };
     });
     assert.ok(routeStart.previous > 0 && routeStart.current === 0 && routeStart.chrome === 'expanded', `A troca de view deve trazer conteúdo e chrome ao topo juntos: ${JSON.stringify(routeStart)}`);
   } finally {
@@ -78,26 +97,26 @@ try {
     const mobileNav = mobile.page.locator('#v2MobileNav');
     assert.equal(await mobileNav.isVisible(), true);
     assert.deepEqual(await mobileNav.locator('button').evaluateAll(buttons => buttons.map(button => button.textContent.trim())), ['Hoje', 'Tarefas', 'Publicações', 'Agenda', 'Mais']);
-    await mobile.page.evaluate(() => document.body.scrollTo(0, 650));
-    assert.ok(await mobile.page.evaluate(() => document.body.scrollTop) > 0, 'O conteúdo móvel deve rolar no body.');
+    await mobile.page.evaluate(() => window.scrollTo(0, 650));
+    assert.ok(await mobile.page.evaluate(() => window.scrollY) > 0, 'O conteúdo móvel deve rolar no window.');
     await mobile.page.waitForFunction(() => document.documentElement.dataset.v2MobileChrome === 'reading');
-    await mobile.page.evaluate(() => document.body.scrollTo(0, 0));
+    await mobile.page.evaluate(() => window.scrollTo(0, 0));
     await mobile.page.waitForFunction(() => document.documentElement.dataset.v2MobileChrome === 'expanded');
     await mobileNav.locator('[data-view-link="kanban"]').click();
     await mobile.page.locator('#view-kanban.active').waitFor();
-    assert.equal(await mobile.page.evaluate(() => document.body.scrollTop), 0, 'Trocar de view deve voltar ao topo do body.');
+    assert.equal(await mobile.page.evaluate(() => window.scrollY), 0, 'Trocar de view deve voltar ao topo do window.');
     await mobileNav.locator('[data-view-link="dashboard"]').click();
     await mobile.page.locator('#view-dashboard.active').waitFor();
     await mobileNav.locator('#v2MobileMore').focus();
-    await mobile.page.evaluate(() => document.body.scrollTo(0, 500));
-    const scrollBeforeMenu = await mobile.page.evaluate(() => document.body.scrollTop);
+    await mobile.page.evaluate(() => window.scrollTo(0, 500));
+    const scrollBeforeMenu = await mobile.page.evaluate(() => window.scrollY);
     assert.equal(await mobile.page.evaluate(() => document.documentElement.dataset.v2MobileChrome), 'expanded', 'Navegação focada deve permanecer visível durante o scroll.');
     await mobileNav.locator('#v2MobileMore').click();
     assert.equal(await mobile.page.evaluate(() => getComputedStyle(document.body).overflowY), 'hidden', 'Menu lateral bloqueia o scroller efetivo.');
     await mobile.page.keyboard.press('Escape');
-    assert.equal(await mobile.page.evaluate(() => document.body.scrollTop), scrollBeforeMenu, 'Fechar o menu preserva a posição de leitura.');
-    assert.equal(await mobile.page.evaluate(() => getComputedStyle(document.body).overflowY), 'auto', 'Fechar o menu restaura o body scroller.');
-    await mobile.page.evaluate(() => document.body.scrollTo(0, 0));
+    assert.equal(await mobile.page.evaluate(() => window.scrollY), scrollBeforeMenu, 'Fechar o menu preserva a posição de leitura.');
+    assert.notEqual(await mobile.page.evaluate(() => getComputedStyle(document.body).overflowY), 'hidden', 'Fechar o menu libera o scroll.');
+    await mobile.page.evaluate(() => window.scrollTo(0, 0));
     for (const [view, path] of [['kanban', '/trabalho/tarefas'], ['inbox', '/trabalho/publicacoes'], ['agenda', '/trabalho/agenda']]) {
       await mobileNav.locator(`[data-view-link="${view}"]`).click();
       await mobile.page.locator(`#view-${view}.active`).waitFor();

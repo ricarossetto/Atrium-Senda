@@ -10,6 +10,12 @@ let cachedAt = 0;
 
 const copyOf = response => (typeof response?.clone === 'function' ? response.clone() : response);
 
+export function invalidateAuthUsersCache() {
+  pending = null;
+  cached = null;
+  cachedAt = 0;
+}
+
 export async function requestAuthUsers(fallbackFetch, { force = false } = {}) {
   const shared = globalThis.KellerAuth?.secureFetch;
   const options = { headers: { Accept: 'application/json' } };

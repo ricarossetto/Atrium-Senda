@@ -5,6 +5,13 @@ import path from 'node:path';
 import { CNJ_SEGMENTS, CNJ_TRIBUNALS } from '../js/core/cnj.js';
 import { startUiV2Session, prepareUiV2Page } from './ui_v2_helpers.mjs';
 
+// Camadas fechadas somem com um fade curto (motion.css): a conferência espera a saída terminar,
+// com prazo curto, e continua exigindo que a camada não fique visível.
+const expectHidden = async (locator, message) => {
+  await locator.waitFor({ state: 'hidden', timeout: 1000 }).catch(() => {});
+  assert.equal(await locator.isVisible(), false, message);
+};
+
 const OUTPUT = fs.mkdtempSync(path.join(os.tmpdir(), 'atrium-wizard-courts-'));
 const UNKNOWN = '<img src=x onerror="window.__courtInjection=1">Órgão sintético de nome muito extenso ' + 'X'.repeat(120);
 const LEGACY = ['tjrs', 'trt4', 'trf4', 'tjdft'];
@@ -197,15 +204,18 @@ try {
       await page.reload({ waitUntil: 'networkidle' });
       await page.locator('#appShell:not(.hidden)').waitFor();
       assert.deepEqual(await page.evaluate(() => window.Atrium.Store.state.settings.workspaceProfile), EXPECTED);
+      // O boot recarrega o status das integrações com GET somente leitura. A proteção
+      // abaixo vale para as interações do wizard, não para a inicialização da página.
+      operational.length = 0;
       await openCourts(page);
       await page.locator('#setupWizardCourtsToggle').click();
       assert.equal(await page.locator('[data-wizard-option]').last().isChecked(), true);
       for (const value of ADDED) assert.equal(await page.locator(`[data-wizard-option][value="${value}"]`).isChecked(), true);
       await page.keyboard.press('Escape');
       await page.keyboard.press('Escape');
-      assert.equal(await page.locator('#setupWizardBackdrop').isVisible(), false);
+      await expectHidden(page.locator('#setupWizardBackdrop'), 'O wizard fecha no segundo Escape.');
       assert.equal(posts, 2);
-      assert.deepEqual(operational, ['/api/integrations/judicial'], 'Após o reload, só a leitura de status do boot.');
+      assert.deepEqual(operational, [], 'Seleção de interesses não faz consultas operacionais.');
       assert.deepEqual(pageErrors, []);
       console.log(`Catálogo, seleção, teclado, HTTP ${status}, retry, reload/prefill: PASS`);
     } finally { await context.close(); }
@@ -215,21 +225,10 @@ try {
     const context = await session.createContext({ reducedMotion: 'reduce' });
     try {
       const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme });
-      await page.evaluate(async profile => {
-        const { Store } = window.Atrium;
-        Store.state.settings.workspaceProfile = profile;
-        if (!(await Store.flush())) throw new Error('Falha ao persistir o perfil sintético do wizard.');
-      }, { ...INITIAL, courts: [...Object.values(CNJ_TRIBUNALS).map(t => t.court.toLowerCase()), UNKNOWN] });
+      await page.evaluate(profile => { window.Atrium.Store.state.settings.workspaceProfile = profile; }, { ...INITIAL, courts: [...Object.values(CNJ_TRIBUNALS).map(t => t.court.toLowerCase()), UNKNOWN] });
       await openCourts(page);
       for (const viewport of [{ width: 1280, height: 844 }, { width: 1024, height: 844 }, { width: 390, height: 844 }, { width: 390, height: 500 }]) {
         await page.setViewportSize(viewport);
-        // O shell mobile é montado no boot; redimensionar sem recarregar mantém
-        // a largura de desktop e produz overflow falso no teste responsivo.
-        if (viewport.width <= 860) {
-          await page.reload({ waitUntil: 'networkidle' });
-          await page.locator('#appShell:not(.hidden)').waitFor();
-          await openCourts(page);
-        }
         const name = `${theme}-${viewport.width}-${viewport.height}`;
         await evidence(page, `many-closed-${name}`);
         await page.locator('#setupWizardCourtsToggle').click();

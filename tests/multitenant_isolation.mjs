@@ -160,6 +160,17 @@ try {
   const reqRoot = { headers: { host: 'atrium.adv.br' }, url: '/' };
   assert.equal(tenantManager.resolveTenant(reqRoot), null, 'Domínio raiz deve resolver null para abrir o portal SaaS!');
 
+    await assert.rejects(
+    () => registry.resolveContextFromRequest(reqHeader),
+    /sessão autenticada/i,
+    'Sem autorização explícita da sessão, o contexto não pode ser resolvido.'
+  );
+  await assert.rejects(
+    () => registry.resolveContextFromRequest(reqHeader, { authorizeTenant: () => false }),
+    /não corresponde ao da sessão/i,
+    'Escritório diferente do autorizado precisa ser recusado.'
+  );
+
   console.log('\n✅ TODOS OS 8 TESTES DE ISOLAMENTO MULTI-TENANT PASSARAM COM 100% DE SUCESSO!\n');
 } finally {
   try { await registry?.dispose?.(); } catch {}

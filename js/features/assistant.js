@@ -313,7 +313,7 @@ export function createAssistantFeature({
         configured = false;
       }
       if (chip) {
-        chip.textContent = configured ? 'Chave Ativa' : 'Chave não configurada';
+        chip.textContent = configured ? 'Chave ativa' : 'Chave não configurada';
         chip.className = configured ? 'status-chip connected' : 'status-chip warning';
       }
       if (banner) banner.style.display = configured ? 'none' : 'block';
@@ -660,7 +660,7 @@ export function createAssistantFeature({
       }
     },
 
-    clearConversation() {
+    clearConversation({ silent = false } = {}) {
       chatHistory = [];
       const container = byId('aiChatMessages');
       if (container) {
@@ -677,7 +677,7 @@ export function createAssistantFeature({
             </div>
           </div>`;
       }
-      showToast('Conversa reiniciada.', 'success');
+      if (!silent) showToast('Conversa reiniciada.', 'success');
     },
 
     sendQuickPrompt(promptText) {
@@ -763,6 +763,12 @@ export function createAssistantFeature({
         typingDiv.remove();
         const replyHtml = formatMarkdown(data.reply);
         const intelligenceNote = feature.describeIntelligence(data.intelligence, data.reply);
+        const uniqueToolLabels = Array.isArray(data.toolsUsed)
+          ? [...new Set(data.toolsUsed.map(item => String(item?.label || item?.name || '').trim()).filter(Boolean))]
+          : [];
+        const toolsMeta = uniqueToolLabels.length
+          ? ` · Consultou: ${escapeHtml(uniqueToolLabels.join(', '))}`
+          : '';
         const assistantDiv = documentRef.createElement('div');
         assistantDiv.className = 'ai-message assistant-message';
         assistantDiv.innerHTML = `
@@ -771,7 +777,7 @@ export function createAssistantFeature({
           </div>
           <div class="message-body">
             <div class="message-text">${replyHtml}</div>
-            <div class="message-meta">${escapeHtml(data.model || 'Assistente IA')} · ${new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date())}</div>
+            <div class="message-meta">${escapeHtml(data.model || 'Assistente IA')}${toolsMeta} · ${new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date())}</div>
             ${intelligenceNote}
           </div>`;
         container.appendChild(assistantDiv);
@@ -1239,4 +1245,4 @@ export function createAssistantFeature({
 
   return feature;
 }
-const ASSISTANT_ICON = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-assistant"></use></svg>';
+const ASSISTANT_ICON = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-assistant"></use></svg>';

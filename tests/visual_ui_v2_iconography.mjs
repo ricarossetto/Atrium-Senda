@@ -29,7 +29,7 @@ const SCENARIOS = [
   { file: '11-system-group-light.png', theme: 'light', viewport: { width: 1024, height: 768 }, view: 'integrations', nav: 'integrations' },
   { file: '12-audit-via-configuration-dark.png', theme: 'dark', viewport: { width: 1024, height: 768 }, view: 'configuration', targetView: 'audit', entry: '[data-view-link="audit"]' },
   { file: '13-mobile-navigation-light.png', theme: 'light', viewport: { width: 390, height: 844 }, view: 'dashboard', nav: 'dashboard', mobile: true },
-  { file: '14-mobile-navigation-dark.png', theme: 'dark', viewport: { width: 390, height: 844 }, view: 'links', nav: 'links', mobile: true }
+  { file: '14-mobile-navigation-dark.png', theme: 'dark', viewport: { width: 390, height: 844 }, view: 'reports', nav: 'reports', mobile: true }
 ];
 
 async function waitForStableLayout(page) {

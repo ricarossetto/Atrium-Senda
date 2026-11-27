@@ -1,4 +1,4 @@
-# Guia do testador — ATRIUM Senda 3.3.2
+# Guia do testador — ATRIUM Senda 3.4.0
 
 Este guia orienta a validação da edição local com dados sintéticos. Ele não substitui a conferência profissional de informações judiciais.
 

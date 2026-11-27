@@ -92,7 +92,7 @@ try {
   await assertSlide(1, 'Anterior deve voltar um slide.');
   await page.locator('#tourDots [data-slide-target="5"]').click();
   await assertSlide(5, 'Indicador deve navegar diretamente ao slide escolhido.');
-  assert.equal(await page.locator('#tourNextButton').textContent(), 'Começar a usar o Atrium', 'Último passo deve preservar o texto de conclusão sem emoji decorativo.');
+  assert.equal(await page.locator('#tourNextButton').textContent(), 'Começar a usar o ATRIUM', 'Último passo deve preservar o texto de conclusão sem emoji decorativo.');
 
   const finishSave = waitForStateSave();
   await page.locator('#tourNextButton').click();
@@ -197,7 +197,8 @@ try {
   }
   assert.deepEqual(await readProbe(), beforeRepeatedOpen, 'Aberturas repetidas não podem registrar novos listeners ou timers.');
   assert.equal(await page.locator('.guided-tour-modal').count(), 1, 'Aberturas repetidas não podem duplicar o markup do tour.');
-  // A abertura automática passou para o tour novo: ver tests/ui_v2_product_tour.mjs.
+  await page.locator('#view-dashboard.active').waitFor();
+
   await assertOnboardingRecovery();
   assert.deepEqual(pageErrors, [], `Onboarding gerou pageerror: ${pageErrors.join(' | ')}`);
 

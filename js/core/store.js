@@ -1,5 +1,5 @@
-import { fetchState, importLegacyState, persistState } from './api.js?v=3.3.2';
-import { rebaseClientState } from './state-rebase.js?v=3.3.2';
+import { fetchState, importLegacyState, persistState } from './api.js?v=3.4.0';
+import { rebaseClientState } from './state-rebase.js?v=3.4.0';
 
 const STORAGE_KEY = 'jurisflow_storage_v1';
 
@@ -303,7 +303,7 @@ export const Store = {
     this.persistedFingerprint = persisted ? this.persistenceFingerprint() : null;
     this.canonicalRefreshPending = false;
     this.canonicalRefreshSourceRevision = null;
-    if (!guarded && serverReachable) this.save();
+    if (!guarded && serverReachable && !persisted) this.save();
     return serverReachable;
   },
   ensureShape({ seedConfigurationDefaults = false } = {}) {
@@ -383,16 +383,31 @@ export const Store = {
 
     // Reconciliação e higienização automática de clientes reais nos processos, tarefas e intimações
     const isGenericClient = (c) => !c || /^(?:cliente\s+)?(?:geral|n[aã]o\s+informado|n[aã]o\s+identificado|modelo|do\s+escrit[oó]rio|sigilo|n\/?i|sem\s+cliente)$/i.test(String(c).trim());
-    (this.state.processes || []).forEach(proc => {
+    const processes = this.state.processes || [];
+    const processById = new Map();
+    const processByCnj = new Map();
+    processes.forEach((proc, index) => {
       if (isGenericClient(proc.client)) {
         if (proc.author && !isGenericClient(proc.author)) proc.client = proc.author;
         else if (proc.clientName && !isGenericClient(proc.clientName)) proc.client = proc.clientName;
       }
+      if (proc?.id != null) {
+        const key = String(proc.id);
+        if (!processById.has(key)) processById.set(key, { proc, index });
+      }
+      const cnjDigits = String(proc?.number || '').replace(/\D/g, '');
+      if (cnjDigits && !processByCnj.has(cnjDigits)) processByCnj.set(cnjDigits, { proc, index });
     });
+    const findLinkedProcess = record => {
+      const idMatch = record?.processId ? processById.get(String(record.processId)) : null;
+      const cnjDigits = String(record?.process || record?.processNumber || '').replace(/\D/g, '');
+      const cnjMatch = cnjDigits ? processByCnj.get(cnjDigits) : null;
+      if (idMatch && cnjMatch) return idMatch.index <= cnjMatch.index ? idMatch.proc : cnjMatch.proc;
+      return idMatch?.proc || cnjMatch?.proc || null;
+    };
     (this.state.tasks || []).forEach(task => {
       if (isGenericClient(task.client)) {
-        const taskCnjNorm = String(task.process || task.processNumber || '').replace(/\D/g, '');
-        const proc = (this.state.processes || []).find(p => (task.processId && String(p.id) === String(task.processId)) || (taskCnjNorm && String(p.number || '').replace(/\D/g, '') === taskCnjNorm));
+        const proc = findLinkedProcess(task);
         if (proc && !isGenericClient(proc.client)) {
           task.client = proc.client;
           if (!task.processId && proc.id) task.processId = proc.id;
@@ -401,8 +416,7 @@ export const Store = {
     });
     (this.state.intimations || []).forEach(item => {
       if (isGenericClient(item.client)) {
-        const itemCnjNorm = String(item.process || item.processNumber || '').replace(/\D/g, '');
-        const proc = (this.state.processes || []).find(p => (item.processId && String(p.id) === String(item.processId)) || (itemCnjNorm && String(p.number || '').replace(/\D/g, '') === itemCnjNorm));
+        const proc = findLinkedProcess(item);
         if (proc && !isGenericClient(proc.client)) {
           item.client = proc.client;
           if (!item.processId && proc.id) item.processId = proc.id;

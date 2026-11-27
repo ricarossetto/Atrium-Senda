@@ -1,6 +1,6 @@
 // O sprite é servido com cache longo no hosting; a versão na URL garante que um
 // símbolo novo (ex.: cálculos) chegue ao navegador mesmo com cache antigo.
-const ICON_SPRITE_PATH = 'assets/icons/atrium-ui-icons.svg?v=3.3.2';
+const ICON_SPRITE_PATH = 'assets/icons/atrium-ui-icons.svg?v=3.4.0';
 
 export const ATRIUM_ICON_NAMES = Object.freeze([
   'dashboard', 'processes', 'publications', 'tasks', 'agenda', 'contacts', 'leads',
@@ -10,7 +10,9 @@ export const ATRIUM_ICON_NAMES = Object.freeze([
   'download', 'upload', 'external-link', 'filter', 'more', 'chevron-left',
   'chevron-right', 'chevron-down', 'check', 'warning', 'info', 'copy', 'send',
   'reopen', 'court', 'certificate', 'security', 'deadline', 'office', 'email',
-  'disconnected', 'conflict', 'lock'
+  'disconnected', 'conflict', 'lock', 'eye', 'eye-off', 'maximize', 'restore',
+  'ready', 'status-untreated', 'status-in-review', 'status-treated', 'status-discarded',
+  'source-portal', 'source-database', 'source-mailbox', 'bulletin'
 ]);
 
 const ICON_NAME_SET = new Set(ATRIUM_ICON_NAMES);

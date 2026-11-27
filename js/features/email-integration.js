@@ -271,12 +271,13 @@ export function createEmailIntegrationFeature({
         .map(p => {
           const labels = {
             PUBLICATION_NEW: 'Publicações',
+            MOVEMENT_NEW: 'Andamentos',
             HEARING_NEW: 'Audiências',
             DEADLINE_CRITICAL: 'Prazos',
             SYNC_FAILED: 'Falhas Sync',
             A1_CERT_EXPIRING: 'Certificado A1'
           };
-          return `<span class="badge-chip" style="font-size:10px; background:var(--panel-soft); border:1px solid var(--line);">${labels[p.eventType] || p.eventType}</span>`;
+          return `<span class="badge-chip" style="font-size:10px; background:var(--panel-soft); border:1px solid var(--line);">${escapeHtml(labels[p.eventType] || p.eventType)}</span>`;
         })
         .join(' ');
 

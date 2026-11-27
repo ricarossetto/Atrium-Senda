@@ -1,4 +1,4 @@
-import { iconSvg } from './primitives.js?v=3.3.2';
+import { iconSvg } from './primitives.js?v=3.4.0';
 
 export const SYSTEM_STATUS_STATES = Object.freeze({
   ready: Object.freeze({ tone: 'neutral', label: 'Pronto', icon: 'ready', detail: 'Dados carregados; salvamento automático ativo.' }),
@@ -6,7 +6,7 @@ export const SYSTEM_STATUS_STATES = Object.freeze({
   saved: Object.freeze({ tone: 'success', label: 'Salvo e sincronizado', icon: 'ready', detail: 'A operação foi confirmada e persistida.' }),
   partial: Object.freeze({ tone: 'warning', label: 'Sincronização parcial', icon: 'warning', detail: 'Parte da operação exige revisão.' }),
   error: Object.freeze({ tone: 'danger', label: 'Alterações não salvas', icon: 'warning', detail: 'A persistência não foi confirmada.' }),
-  offline: Object.freeze({ tone: 'warning', label: 'Offline', icon: 'offline', detail: 'A conexão está indisponível; não há confirmação de sincronização.' }),
+  offline: Object.freeze({ tone: 'warning', label: 'Offline', icon: 'disconnected', detail: 'A conexão está indisponível; não há confirmação de sincronização.' }),
   conflict: Object.freeze({ tone: 'danger', label: 'Conflito de versão', icon: 'conflict', detail: 'Outra revisão venceu. Aguarde a recuperação segura.' }),
   reauth: Object.freeze({ tone: 'danger', label: 'Reautenticação necessária', icon: 'warning', detail: 'Entre novamente antes de salvar.' })
 });

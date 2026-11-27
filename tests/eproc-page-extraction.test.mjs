@@ -61,7 +61,7 @@ console.log('✓ Extração da página e do Node permanecem idênticas.');
 const adapterSource = await readFile(path.join(ROOT, 'collector/adapters/eproc.mjs'), 'utf8');
 assert.match(
   adapterSource,
-  /page\.evaluate\(extractEprocDetailsInPage, \{\s*injectedNames: injectedLawyerNames,\s*secrecyPatterns: PROCESS_SECRECY_LEVEL_PATTERN_SOURCES\s*\}\)/,
+  /page\.evaluate\(extractEprocDetailsInPage, \{\s*injectedNames: injectedLawyerNames,\s*injectedOabs: [^,]+,\s*secrecyPatterns: PROCESS_SECRECY_LEVEL_PATTERN_SOURCES\s*\}\)/,
   'A página deve receber a função autossuficiente e UM objeto com nomes e expressões.'
 );
 assert.doesNotMatch(
@@ -69,7 +69,7 @@ assert.doesNotMatch(
   /page\.evaluate\(extractEprocDetailsInPage, injectedLawyerNames/,
   'A forma antiga (dois argumentos) não pode voltar: Playwright recusa com "Too many arguments".'
 );
-assert.match(adapterSource, /export function extractEprocDetailsInPage\(\{ injectedNames = \[\], secrecyPatterns = \[\] \} = \{\}\)/, 'A função da página deve desestruturar o objeto recebido.');
+assert.match(adapterSource, /export function extractEprocDetailsInPage\(\{ injectedNames = \[\], injectedOabs = \[\], secrecyPatterns = \[\] \} = \{\}\)/, 'A função da página deve desestruturar o objeto recebido.');
 assert.doesNotMatch(adapterSource, /extractProcessSecrecy\s*\(/, 'O adapter não pode chamar extractProcessSecrecy dentro do contexto da página.');
 assert.doesNotMatch(adapterSource, /describeProcessSecrecy\s*\(/, 'O adapter não pode chamar describeProcessSecrecy dentro do contexto da página.');
 console.log('✓ Guarda estática do contrato page.evaluate presente (um argumento, função autossuficiente).');

@@ -119,7 +119,7 @@ console.log('--- Iniciando Testes Unitários: Triagem assistiva do financeiro (F
   const blocoTriage = routes.slice(inicioBloco, inicioBloco + 900);
   assert.match(blocoTriage, /assertAuthenticated\(req, true\)/, 'lote exige sessão e CSRF');
   assert.match(blocoTriage, /enforceSuggestRateLimit\(req\)/, 'lote respeita rate limit');
-  assert.match(blocoTriage, /runFinancialTriage\(\{ ids, limit, session:/, 'lote executa a triagem com ids/limite/sessão');
+  assert.match(blocoTriage, /runFinancialTriage\(\{ ids, limit, session\b/, 'lote executa a triagem com ids/limite/sessão');
   assert.match(routes, /collectFinancialRecords\(state\)/, 'leitura usa a coleta oficial da carteira');
   assert.match(routes, /runFinancialTriage/, 'lote disponível para o hook pós-sync');
 

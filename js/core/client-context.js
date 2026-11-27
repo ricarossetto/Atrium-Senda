@@ -1,5 +1,6 @@
-import { buildLegalTimeline } from './legal-timeline.js?v=3.3.2';
-import { normalizeProcessNumber } from './client-reconciliation.js?v=3.3.2';
+import { buildLegalTimeline } from './legal-timeline.js?v=3.4.0';
+import { normalizeProcessNumber } from './client-reconciliation.js?v=3.4.0';
+import { activeIntimations } from './publication-scope.js?v=3.4.0';
 
 const TERMINAL_TASK_STATUSES = new Set(['concluida', 'concluido', 'arquivada', 'arquivado', 'finalizada', 'cancelada']);
 
@@ -25,8 +26,8 @@ export function buildClientContext(state, contact, { timelineLimit = 80 } = {}) 
     || (record?.ownerType === 'process' && processIds.has(String(record.ownerId || '')))
     || processNumbers.has(normalizeProcessNumber(record?.process || record?.processNumber || record?.number));
 
-  const tasks = uniqueById((state.tasks || []).filter(task => task && task.active !== false).filter(linked));
-  const publications = uniqueById((state.intimations || []).filter(linked));
+  const tasks = uniqueById((state.tasks || []).filter(task => task && task.active !== false && !task.absorbedInto).filter(linked));
+  const publications = uniqueById(activeIntimations(state.intimations || []).filter(linked));
   const appointments = uniqueById([...(state.agenda || []), ...(state.events || [])].filter(linked));
   const documents = uniqueById((state.documents || []).filter(document => linked(document)
     || (document?.ownerType === 'contact' && String(document.ownerId || '') === contactId)));
@@ -45,9 +46,12 @@ export function buildClientContext(state, contact, { timelineLimit = 80 } = {}) 
   const openTasks = tasks.filter(task => !TERMINAL_TASK_STATUSES.has(String(task.status || '').toLowerCase()));
   const nextDeadline = openTasks.map(task => task.fatalDeadline || task.deadline).filter(Boolean).sort()[0] || '';
 
+  const companySummary = summarizeCompanyProfile(contact.companyProfile);
+
   return Object.freeze({
     contactId,
     role: String(contact.contactRole || ''),
+    companySummary,
     processes: Object.freeze(processes),
     tasks: Object.freeze(tasks),
     publications: Object.freeze(publications),
@@ -66,6 +70,28 @@ export function buildClientContext(state, contact, { timelineLimit = 80 } = {}) 
       financial: financialRecords.length + financialProcesses.length
     }),
     nextDeadline
+  });
+}
+
+function summarizeCompanyProfile(profile) {
+  if (!profile || typeof profile !== 'object') return null;
+  const status = String(profile.status || '').trim();
+  const qsa = Array.isArray(profile.qsa) ? profile.qsa : [];
+  return Object.freeze({
+    status,
+    isIrregular: Boolean(status && !/^ativa$/i.test(status)),
+    tradeName: String(profile.tradeName || '').trim(),
+    establishmentType: String(profile.establishmentType || '').trim(),
+    legalNature: String(profile.legalNature || '').trim(),
+    size: String(profile.size || '').trim(),
+    sizeAcronym: String(profile.sizeAcronym || '').trim(),
+    capital: Number.isFinite(Number(profile.capital)) ? Number(profile.capital) : null,
+    primaryActivity: String(profile.primaryActivity || '').trim(),
+    simpleNational: typeof profile.simpleNational === 'boolean' ? profile.simpleNational : null,
+    mei: typeof profile.mei === 'boolean' ? profile.mei : null,
+    partnersCount: qsa.length,
+    source: String(profile.source || '').trim(),
+    consultedAt: String(profile.consultedAt || '').trim()
   });
 }
 
@@ -128,13 +154,18 @@ function isSettled(value) {
 }
 
 function eventTimestamp(value) {
-  const parsed = Date.parse(String(value || ''));
+  const raw = String(value || '').trim();
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]), 12, 0, 0).getTime();
+  }
+  const parsed = Date.parse(raw);
   return Number.isFinite(parsed) ? parsed : -Infinity;
 }
 
 function emptyContext() {
   return Object.freeze({
-    contactId: '', role: '', processes: Object.freeze([]), tasks: Object.freeze([]), publications: Object.freeze([]),
+    contactId: '', role: '', companySummary: null, processes: Object.freeze([]), tasks: Object.freeze([]), publications: Object.freeze([]),
     appointments: Object.freeze([]), documents: Object.freeze([]), financialRecords: Object.freeze([]),
     financialProcesses: Object.freeze([]), financialSummary: Object.freeze({ contracted: 0, received: 0, pending: 0, expenses: 0, pendingExpenses: 0, installments: 0, receipts: 0 }), timeline: Object.freeze([]),
     metrics: Object.freeze({ processes: 0, openTasks: 0, publications: 0, appointments: 0, documents: 0, financial: 0 }),

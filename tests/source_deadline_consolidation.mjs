@@ -282,16 +282,16 @@ function projectedTask({ id, deadline, sourceValue, intimationId, title = `Prazo
     ['lib/ai-context.mjs', 'lib/ai-context.mjs', /\.filter\(task => task && task\.active !== false && !task\.absorbedInto\)/],
     ['lib/http/ai-classifier-routes.mjs (lote)', 'lib/http/ai-classifier-routes.mjs', /tasks: \(Array\.isArray\(state\.tasks\) \? state\.tasks : \[\]\)\.filter\(task => task && task\.active !== false && !task\.absorbedInto\)/],
     ['lib/http/ai-classifier-routes.mjs (poda)', 'lib/http/ai-classifier-routes.mjs', /\.filter\(record => record && record\.active !== false && !record\.absorbedInto\)/],
-    ['js/portal.js (alertas)', 'js/portal.js', /item\.active !== false && !TERMINAL_STATUSES\.includes\(item\.status\)/],
-    ['js/portal.js (inspetor de processo)', 'js/portal.js', /getLinkedTasks: processNumber => Store\.state\.tasks\.filter\(task => task\.active !== false/],
-    ['js/core/activity-inbox.js', 'js/core/activity-inbox.js', /task\.active === false \|\| TERMINAL_STATUSES/],
-    ['js/features/agenda.js (lista)', 'js/features/agenda.js', /tasks: \(store\.state\.tasks \|\| \[\]\)\.filter\(task => task && task\.active !== false\)/],
-    ['js/features/agenda.js (calendário)', 'js/features/agenda.js', /const tasks = \(store\.state\.tasks \|\| \[\]\)\.filter\(task => task && task\.active !== false\);/],
-    ['js/features/dashboard.js (3 superfícies)', 'js/features/dashboard.js', /const tasks = \(store\.state\.tasks \|\| \[\]\)\.filter\(task => task && task\.active !== false\);/],
-    ['js/features/publications.js (providências)', 'js/features/publications.js', /filter\(task => task\.active !== false && \(linkedTaskIds\.includes\(task\.id\)/],
-    ['js/components/global-search.js', 'js/components/global-search.js', /matches\(\(state\.tasks \|\| \[\]\)\.filter\(item => item && item\.active !== false\)/],
-    ['js/core/client-context.js', 'js/core/client-context.js', /\(state\.tasks \|\| \[\]\)\.filter\(task => task && task\.active !== false\)/],
-    ['js/core/legal-timeline.js', 'js/core/legal-timeline.js', /\(state\.tasks \|\| \[\]\)\.filter\(task => task && task\.active !== false\)/]
+    ['js/portal.js (alertas)', 'js/portal.js', /item\.active !== false && !item\.absorbedInto && !TERMINAL_STATUSES\.includes\(item\.status\)/],
+    ['js/portal.js (inspetor de processo)', 'js/portal.js', /getLinkedTasks: processNumber => Store\.state\.tasks\.filter\(task => task && task\.active !== false && !task\.absorbedInto/],
+    ['js/core/activity-inbox.js', 'js/core/activity-inbox.js', /task\.active === false \|\| task\.absorbedInto \|\| TERMINAL_STATUSES/],
+    ['js/features/agenda.js (lista)', 'js/features/agenda.js', /tasks: \(store\.state\.tasks \|\| \[\]\)\.filter\(task => task && task\.active !== false && !task\.absorbedInto/],
+    ['js/features/agenda.js (calendário)', 'js/features/agenda.js', /const tasks = \(store\.state\.tasks \|\| \[\]\)\.filter\(task => task && task\.active !== false && !task\.absorbedInto/],
+    ['js/features/dashboard.js (3 superfícies)', 'js/features/dashboard.js', /const tasks = \(store\.state\.tasks \|\| \[\]\)\.filter\(task => task && task\.active !== false && !task\.absorbedInto/],
+    ['js/features/publications.js (providências)', 'js/features/publications.js', /filter\(task => task && task\.active !== false && !task\.absorbedInto && \(linkedTaskIds\.includes\(task\.id\)/],
+    ['js/components/global-search.js', 'js/components/global-search.js', /matches\(\(state\.tasks \|\| \[\]\)\.filter\(item => item && item\.active !== false && !item\.absorbedInto/],
+    ['js/core/client-context.js', 'js/core/client-context.js', /\(state\.tasks \|\| \[\]\)\.filter\(task => task && task\.active !== false && !task\.absorbedInto/],
+    ['js/core/legal-timeline.js', 'js/core/legal-timeline.js', /\(state\.tasks \|\| \[\]\)\.filter\(task => task && task\.active !== false && !task\.absorbedInto/]
   ];
   const faltando = [];
   for (const [rotulo, arquivo, esperado] of caso) {

@@ -1,12 +1,14 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.3.2';
+import { Store, isoDate, uid } from '../core/store.js?v=3.4.0';
 import {
   RECURRENCE_FREQUENCIES,
   applyRecurrenceEdit,
   describeRecurrence,
   materializeCollection,
   parseOccurrenceId
-} from '../core/recurrence.js?v=3.3.2';
-import { createAgendaPresenter } from '../views/ui-v2/agenda-presenter.js?v=3.3.2';
+} from '../core/recurrence.js?v=3.4.0';
+import { createAgendaPresenter } from '../views/ui-v2/agenda-presenter.js?v=3.4.0';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.4.0';
+import { activeIntimations } from '../core/publication-scope.js?v=3.4.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 function addDaysIso(dateOnly, days) {
@@ -43,25 +45,48 @@ export function collectAgendaActivities({
   getTeamMember = () => null,
   totalTimeMinutes
 } = {}) {
-  let events = agenda.map(event => ({
-    type: 'event',
-    id: event.id,
-    date: event.date,
-    time: event.time || 'Dia inteiro',
-    title: event.title,
-    subtitle: `${event.client || event.process || (event.source === 'Agenda pessoal' ? 'Agenda pessoal' : 'Compromisso interno')}${event.location ? ` · ${event.location}` : ''}${event.seriesId || event.recurrence?.exceptionOf ? ' · Série recorrente' : ''}`,
-    source: event.source || 'Interna',
-    recurring: Boolean(event.seriesId || event.recurrence?.seriesId),
-    raw: event
-  }));
+  const matchesDate = date => (selectedDate ? date === selectedDate : (!date || date >= today));
+  // "00:00" sozinho não é horário confiável: a agenda externa (Webcal) grava compromisso sem
+  // hora como T000000, e a sessão virtual do eproc começa às 00:00 e vai até `sessionEnd`.
+  // Só a apresentação muda; o registro gravado fica intacto.
+  const agendaTimeLabel = event => {
+    const time = String(event.time || '').trim();
+    if (!time) return 'Dia inteiro';
+    if (time !== '00:00') return time;
+    const end = String(event.sessionEnd || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(end)) return `Sessão virtual · até ${end.slice(8, 10)}/${end.slice(5, 7)} ${end.slice(11, 16)}`;
+    const text = `${event.title || ''} ${event.description || ''}`;
+    if (event.source === 'Agenda externa' && !/\b0?0[:h]00\b|meia-noite/i.test(text)) return 'Dia inteiro';
+    return time;
+  };
 
-  let taskActivities = tasks.filter(task => task.fatalDeadline || task.deadline).map(task => {
+  const events = [];
+  for (const event of agenda) {
+    if (!matchesDate(event.date)) continue;
+    events.push({
+      type: 'event',
+      id: event.id,
+      date: event.date,
+      time: agendaTimeLabel(event),
+      sortTime: String(event.time || '').trim(),
+      title: event.title,
+      subtitle: `${event.client || event.process || (event.source === 'Agenda pessoal' ? 'Agenda pessoal' : 'Compromisso interno')}${event.location ? ` · ${event.location}` : ''}${event.seriesId || event.recurrence?.exceptionOf ? ' · Série recorrente' : ''}`,
+      source: event.source || 'Interna',
+      recurring: Boolean(event.seriesId || event.recurrence?.seriesId),
+      raw: event
+    });
+  }
+
+  const taskActivities = [];
+  for (const task of tasks) {
+    if (!task.fatalDeadline && !task.deadline) continue;
     const isFatal = Boolean(task.fatalDeadline);
     const targetDate = task.fatalDeadline || task.deadline;
+    if (!matchesDate(targetDate)) continue;
     const timeMins = totalTimeMinutes(task.timeLogs);
     const rawTime = String(task.time || '').trim();
     const shortTime = /^\d{1,2}:\d{2}/.test(rawTime) ? rawTime.slice(0, 5) : '';
-    return {
+    taskActivities.push({
       type: 'task',
       id: task.id,
       date: targetDate,
@@ -75,13 +100,15 @@ export function collectAgendaActivities({
       source: isFatal ? 'Fatal' : 'Tarefa',
       member: getTeamMember(task) || null,
       raw: task
-    };
-  });
+    });
+  }
 
-  let intimationActivities = intimations.map(intimation => {
-    const act = classifyIntimation(intimation);
+  const intimationActivities = [];
+  for (const intimation of intimations) {
     const targetDate = intimation.publishedAt || (intimation.createdAt ? intimation.createdAt.slice(0, 10) : today);
-    return {
+    if (!matchesDate(targetDate)) continue;
+    const act = classifyIntimation(intimation);
+    intimationActivities.push({
       type: 'intimation',
       id: intimation.id,
       date: targetDate,
@@ -91,17 +118,7 @@ export function collectAgendaActivities({
       act,
       source: 'Intimação',
       raw: intimation
-    };
-  });
-
-  if (selectedDate) {
-    events = events.filter(event => event.date === selectedDate);
-    taskActivities = taskActivities.filter(task => task.date === selectedDate);
-    intimationActivities = intimationActivities.filter(intimation => intimation.date === selectedDate);
-  } else {
-    events = events.filter(event => !event.date || event.date >= today);
-    taskActivities = taskActivities.filter(task => !task.date || task.date >= today);
-    intimationActivities = intimationActivities.filter(intimation => !intimation.date || intimation.date >= today);
+    });
   }
 
   let activities;
@@ -110,7 +127,8 @@ export function collectAgendaActivities({
   else if (typeFilter === 'intimation') activities = [...intimationActivities];
   else activities = [...events, ...taskActivities, ...intimationActivities];
 
-  activities.sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
+  // Ordena pelo horário gravado, não pelo rótulo ("Dia inteiro" e "Sessão virtual" ficam no começo do dia, como antes).
+  activities.sort((a, b) => `${a.date || ''} ${a.sortTime ?? a.time ?? ''}`.localeCompare(`${b.date || ''} ${b.sortTime ?? b.time ?? ''}`));
   return { events, tasks: taskActivities, intimations: intimationActivities, activities };
 }
 
@@ -133,6 +151,9 @@ export function createAgendaFeature({
   let selectedDate = null;
   let calendarMonthOffset = 0;
   let typeFilter = 'all';
+  let lastMaterializedAgenda = [];
+  const boundAgendaLists = new WeakSet();
+  const boundCalendars = new WeakSet();
   const presenter = createAgendaPresenter({ escapeHtml, formatMinutes });
 
   const byId = id => documentRef?.getElementById(id);
@@ -283,10 +304,11 @@ export function createAgendaFeature({
         ? { from: selectedDate, to: selectedDate }
         : { from: today, to: addDaysIso(today, 120) };
       const materializedAgenda = materializeCollection(store.state.agenda || [], agendaWindow);
+      lastMaterializedAgenda = materializedAgenda;
       const result = collectAgendaActivities({
         agenda: materializedAgenda,
-        tasks: (store.state.tasks || []).filter(task => task && task.active !== false),
-        intimations: store.state.intimations,
+        tasks: (store.state.tasks || []).filter(task => task && task.active !== false && !task.absorbedInto),
+        intimations: activeIntimations(store.state.intimations || []),
         selectedDate,
         typeFilter,
         today,
@@ -344,7 +366,7 @@ export function createAgendaFeature({
             chipHtml = `<span class="status-chip ${internalSource ? 'muted' : 'planned'}">${internalSource ? 'Interna' : 'Agenda externa'}</span>`;
           } else if (item.type === 'task') {
             typeClass = item.isFatal ? 'fatal-type' : 'task-type';
-            const timeBadge = item.timeMins > 0 ? `<span class="task-timelog">⏱ ${formatMinutes(item.timeMins)}</span>` : '';
+            const timeBadge = item.timeMins > 0 ? `<span class="task-timelog">${iconSvg('deadline')} ${formatMinutes(item.timeMins)}</span>` : '';
             chipHtml = `<div style="display:flex;gap:5px;align-items:center;">${timeBadge}<span class="status-chip ${item.isFatal ? 'danger' : 'connected'}">${item.isFatal ? 'Prazo Fatal' : 'Tarefa'}</span></div>`;
           } else if (item.type === 'intimation') {
             typeClass = 'intimation-type';
@@ -364,13 +386,15 @@ export function createAgendaFeature({
               ${chipHtml}
             </div>
           `;
-        }).join('') : `<div class="empty-detail"><span>□</span><h3>Nenhuma atividade</h3><p>${selectedDate ? 'Não há eventos, tarefas ou intimações para esta data.' : 'Nenhuma atividade próxima encontrada.'}</p></div>`;
+        }).join('') : `<div class="empty-detail"><span>□</span><h3>Nenhuma atividade</h3><p>${selectedDate ? 'Não há eventos, tarefas ou intimações para esta data.' : 'Crie um compromisso ou uma tarefa com data para vê-los aqui.'}</p></div>`;
 
-        const openActivity = row => {
+        if (!boundAgendaLists.has(listEl)) {
+          boundAgendaLists.add(listEl);
+          const openActivity = row => {
             const activityType = row.dataset.agendaActivityType;
             const id = row.dataset.agendaActivityId;
             if (activityType === 'event') {
-              const event = store.state.agenda.find(record => record.id === id);
+              const event = lastMaterializedAgenda.find(record => record.id === id) || store.state.agenda.find(record => record.id === id);
               if (event) this.openModal(event);
             } else if (activityType === 'task') {
               const task = store.state.tasks.find(record => record.id === id);
@@ -379,15 +403,19 @@ export function createAgendaFeature({
               const intimation = store.state.intimations.find(record => record.id === id);
               if (intimation) onOpenIntimation?.(intimation);
             }
-        };
-        listEl.querySelectorAll('[data-agenda-activity-type]').forEach(row => {
-          row.addEventListener('click', () => openActivity(row));
-          if (row.tagName !== 'BUTTON') row.addEventListener('keydown', event => {
+          };
+          listEl.addEventListener('click', event => {
+            const row = event.target.closest?.('[data-agenda-activity-type]');
+            if (row && listEl.contains(row)) openActivity(row);
+          });
+          listEl.addEventListener('keydown', event => {
             if (event.key !== 'Enter' && event.key !== ' ') return;
+            const row = event.target.closest?.('[data-agenda-activity-type]');
+            if (!row || row.tagName === 'BUTTON' || !listEl.contains(row)) return;
             event.preventDefault();
             openActivity(row);
           });
-        });
+        }
       }
 
       this.renderMiniCalendar();
@@ -404,86 +432,95 @@ export function createAgendaFeature({
       const first = new Date(year, month, 1);
       const last = new Date(year, month + 1, 0);
 
-      const days = [];
-      for (let index = 0; index < first.getDay(); index++) {
-        days.push('<span class="calendar-day muted"></span>');
-      }
-
       const monthPad = value => String(value).padStart(2, '0');
+      const monthPrefix = `${year}-${monthPad(month + 1)}`;
+      const todayStr = isoDate();
       const agendaEvents = materializeCollection(store.state.agenda || [], {
-        from: `${year}-${monthPad(month + 1)}-01`,
-        to: `${year}-${monthPad(month + 1)}-${monthPad(last.getDate())}`
+        from: `${monthPrefix}-01`,
+        to: `${monthPrefix}-${monthPad(last.getDate())}`
       });
-      const tasks = (store.state.tasks || []).filter(task => task && task.active !== false);
-      const intimations = store.state.intimations || [];
+      const tasks = (store.state.tasks || []).filter(task => task && task.active !== false && !task.absorbedInto);
+      const intimations = activeIntimations(store.state.intimations || []);
 
-      for (let day = 1; day <= last.getDate(); day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const hasEvent = agendaEvents.some(event => event.date === dateStr);
-        const hasTask = tasks.some(task => task.deadline === dateStr);
-        const hasFatal = tasks.some(task => task.fatalDeadline === dateStr);
-        const hasIntimation = intimations.some(intimation => intimation.publishedAt === dateStr || (intimation.createdAt && intimation.createdAt.slice(0, 10) === dateStr));
-
-        const indicators = [];
-        if (hasEvent) indicators.push('<i class="cal-dot event" title="Compromisso"></i>');
-        if (hasFatal) indicators.push('<i class="cal-dot fatal" title="Prazo fatal"></i>');
-        else if (hasTask) indicators.push('<i class="cal-dot task" title="Tarefa/prazo"></i>');
-        if (hasIntimation) indicators.push('<i class="cal-dot intimation" title="Intimação"></i>');
-
-        const isToday = dateStr === isoDate();
-        const isSelected = dateStr === selectedDate;
-
-        days.push(`
-          <button class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-cal-date="${dateStr}">
-            <span>${day}</span>
-            <span class="cal-indicators">${indicators.join('')}</span>
-          </button>
-        `);
-      }
-
-      const monthName = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(baseDate);
       const calEl = byId('miniCalendar');
       if (calEl) {
-        calEl.innerHTML = isV2() ? presenter.renderCalendar({
-          year,
-          month,
-          selectedDate,
-          today: isoDate(),
-          agenda: agendaEvents,
-          tasks,
-          intimations,
-          direction
-        }) : `
-          <header class="calendar-header">
-            <h3>${monthName}</h3>
-            <div class="calendar-nav">
-              <button id="calPrevMonth" title="Mês anterior">◀</button>
-              <button id="calNextMonth" title="Próximo mês">▶</button>
-            </div>
-          </header>
-          <div class="calendar-grid">
-            ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(day => `<span class="calendar-weekday">${day}</span>`).join('')}
-            ${days.join('')}
-          </div>
-        `;
+        if (isV2()) {
+          calEl.innerHTML = presenter.renderCalendar({
+            year,
+            month,
+            selectedDate,
+            today: todayStr,
+            agenda: agendaEvents,
+            tasks,
+            intimations,
+            direction
+          });
+        } else {
+          const days = [];
+          for (let index = 0; index < first.getDay(); index++) {
+            days.push('<span class="calendar-day muted"></span>');
+          }
+          for (let day = 1; day <= last.getDate(); day++) {
+            const dateStr = `${monthPrefix}-${String(day).padStart(2, '0')}`;
+            const hasEvent = agendaEvents.some(event => event.date === dateStr);
+            const hasTask = tasks.some(task => task.deadline === dateStr);
+            const hasFatal = tasks.some(task => task.fatalDeadline === dateStr);
+            const hasIntimation = intimations.some(intimation => (intimation.publishedAt || intimation.createdAt?.slice(0, 10)) === dateStr);
 
-        calEl.querySelector('#calPrevMonth')?.addEventListener('click', event => {
-          event.stopPropagation();
-          calendarMonthOffset = (calendarMonthOffset || 0) - 1;
-          this.renderMiniCalendar('previous');
-        });
-        calEl.querySelector('#calNextMonth')?.addEventListener('click', event => {
-          event.stopPropagation();
-          calendarMonthOffset = (calendarMonthOffset || 0) + 1;
-          this.renderMiniCalendar('next');
-        });
-        calEl.querySelectorAll('.calendar-day[data-cal-date]').forEach(button => {
-          button.addEventListener('click', () => {
-            const clickedDate = button.dataset.calDate;
+            const indicators = [];
+            if (hasEvent) indicators.push('<i class="cal-dot event" title="Compromisso"></i>');
+            if (hasFatal) indicators.push('<i class="cal-dot fatal" title="Prazo fatal"></i>');
+            else if (hasTask) indicators.push('<i class="cal-dot task" title="Tarefa/prazo"></i>');
+            if (hasIntimation) indicators.push('<i class="cal-dot intimation" title="Intimação"></i>');
+
+            const isToday = dateStr === todayStr;
+            const isSelected = dateStr === selectedDate;
+
+            days.push(`
+              <button class="calendar-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-cal-date="${dateStr}">
+                <span>${day}</span>
+                <span class="cal-indicators">${indicators.join('')}</span>
+              </button>
+            `);
+          }
+          const monthName = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(baseDate);
+          calEl.innerHTML = `
+            <header class="calendar-header">
+              <h3>${monthName}</h3>
+              <div class="calendar-nav">
+                <button id="calPrevMonth" title="Mês anterior">${iconSvg('chevron-left')}</button>
+                <button id="calNextMonth" title="Próximo mês">${iconSvg('chevron-right')}</button>
+              </div>
+            </header>
+            <div class="calendar-grid">
+              ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(day => `<span class="calendar-weekday">${day}</span>`).join('')}
+              ${days.join('')}
+            </div>
+          `;
+        }
+
+        if (!boundCalendars.has(calEl)) {
+          boundCalendars.add(calEl);
+          calEl.addEventListener('click', event => {
+            if (event.target.closest?.('#calPrevMonth')) {
+              event.stopPropagation();
+              calendarMonthOffset = (calendarMonthOffset || 0) - 1;
+              this.renderMiniCalendar('previous');
+              return;
+            }
+            if (event.target.closest?.('#calNextMonth')) {
+              event.stopPropagation();
+              calendarMonthOffset = (calendarMonthOffset || 0) + 1;
+              this.renderMiniCalendar('next');
+              return;
+            }
+            const dayButton = event.target.closest?.('.calendar-day[data-cal-date]');
+            if (!dayButton || !calEl.contains(dayButton)) return;
+            const clickedDate = dayButton.dataset.calDate;
             selectedDate = selectedDate === clickedDate ? null : clickedDate;
             this.render();
           });
-        });
+        }
       }
     }
   };

@@ -290,9 +290,9 @@ try {
     await context.close();
     return result;
   })();
-  assert.deepEqual(publicThemeControl.initial, { theme: 'light', saved: 'light', tint: '#eef1f1' });
-  assert.deepEqual(publicThemeControl.dark, { theme: 'dark', saved: 'dark', tint: '#0c0c0b', toasts: 0 });
-  assert.deepEqual(publicThemeControl.light, { theme: 'light', saved: 'light', tint: '#eef1f1' });
+  assert.deepEqual(publicThemeControl.initial, { theme: 'light', saved: 'light', tint: '#f3f4f2' });
+  assert.deepEqual(publicThemeControl.dark, { theme: 'dark', saved: 'dark', tint: '#111315', toasts: 0 });
+  assert.deepEqual(publicThemeControl.light, { theme: 'light', saved: 'light', tint: '#f3f4f2' });
   assert.equal(publicThemeControl.visible, true);
   assert.equal(publicThemeControl.label, 'Tema claro ativo. Alternar para tema escuro');
 
@@ -313,10 +313,10 @@ try {
     await page.goto(`${server.baseUrl}/?discover=1`, { waitUntil: 'networkidle' });
     await page.locator('#landingPage:not(.hidden)').waitFor();
     const initial = await page.evaluate(() => ({ prepaint: window.__prepaintTint, meta: document.querySelector('meta[name="theme-color"]').content }));
-    const expected = theme === 'light' ? '#eef1f1' : '#0c0c0b';
+    const expected = theme === 'light' ? '#f3f4f2' : '#111315';
     assert.deepEqual(initial, { prepaint: expected, meta: expected });
     await page.locator('[data-landing-theme-toggle]').click();
-    const toggled = theme === 'light' ? '#0c0c0b' : '#eef1f1';
+    const toggled = theme === 'light' ? '#111315' : '#f3f4f2';
     assert.equal(await page.locator('meta[name="theme-color"]').getAttribute('content'), toggled);
     await page.locator('[data-landing-action="login"]').first().click();
     await page.locator('#authGate:not(.hidden)').waitFor();

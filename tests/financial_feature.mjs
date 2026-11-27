@@ -303,7 +303,7 @@ try {
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
   await page.screenshot({ path: path.join(visualArtifactsDir, 'financial-desktop-light.png'), fullPage: true });
   await page.click('#themeToggleButton');
-  assert.equal(await page.locator('html').getAttribute('data-theme'), null);
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
   await page.waitForFunction(() => document.querySelectorAll('#toastRegion .toast').length === 0);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.locator('#financialFilters').isVisible(), true);

@@ -62,7 +62,7 @@ try {
     return ids.filter((id, index) => ids.indexOf(id) !== index);
   });
   assert.deepEqual(duplicateIds, []);
-  assert.equal(await page.locator('nav[data-v2-nav-group]').count(), 6, 'A shell V2 deve expor landmarks de navegação por grupo.');
+  assert.equal(await page.locator('nav[data-v2-nav-group]').count(), 4, 'A shell V2 deve expor landmarks de navegação por grupo.');
   assert.deepEqual(pageErrors, [], `Acessibilidade desktop gerou pageerror: ${pageErrors.join(' | ')}`);
 
   const mobileContext = await session.createContext({ viewport: { width: 390, height: 844 } });

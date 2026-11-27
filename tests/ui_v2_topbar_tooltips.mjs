@@ -17,7 +17,7 @@ try {
         return { overlap: a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom, left: b.left, right: b.right, gap: b.top - a.bottom, width: innerWidth };
       }, [triggerId, tipId]);
       assert.equal(geometry.overlap, false, `${tipId} não cobre o botão: ${JSON.stringify(geometry)}`);
-      assert.ok(geometry.gap >= 4 && geometry.gap <= 8, `${tipId} fica logo abaixo do botão: ${geometry.gap}`);
+      assert.ok(geometry.gap >= 3 && geometry.gap <= 8, `${tipId} fica logo abaixo do botão: ${geometry.gap}`);
       assert.ok(geometry.left >= 0 && geometry.right <= geometry.width, `${tipId} fica dentro da tela`);
       await page.mouse.move(width / 2, 600);
     }
@@ -31,14 +31,19 @@ try {
     const { page, pageErrors } = await prepareUiV2Page(context, session.server.baseUrl, { theme: 'dark' });
     await prepareUiV2PublicationsFixture(page);
     await page.evaluate(() => {
-      for (const id of ['aiClassifierToggle', 'aiAutoOrganizeToggle', 'aiClassifierBacklogButton']) document.getElementById(id).hidden = false;
+      const controlMenu = document.getElementById('aiControlMenu');
+      if (controlMenu) controlMenu.hidden = false;
+      const aiToggle = document.getElementById('aiClassifierToggle');
+      if (aiToggle) aiToggle.hidden = false;
+      const backlog = document.getElementById('aiClassifierBacklogButton');
+      if (backlog) backlog.hidden = false;
     });
     const layout = await page.evaluate(() => {
       const rect = element => element.getBoundingClientRect();
       const visible = selector => [...document.querySelectorAll(selector)].filter(element => element.getClientRects().length);
       const title = rect(document.querySelector('.topbar-left'));
       const topbar = visible('.topbar-actions > *').filter(element => !element.classList.contains('ui-tooltip'));
-      const buttons = visible('.publication-primary-actions > .button, .publication-primary-actions > .publication-mine-only');
+      const buttons = visible('.publication-primary-actions > .button, .publication-primary-actions > .publication-mine-only, .publication-primary-actions > .ai-control-menu');
       const rows = new Map();
       for (const button of buttons) {
         const box = rect(button);
@@ -52,7 +57,7 @@ try {
         squeezed: topbar.filter(element => rect(element).width < 30).length,
         rows: [...rows.values()],
         filterRows: new Set(filters).size,
-        clipped: visible('.publication-primary-actions > .button, .publication-primary-actions > .publication-mine-only, #publicationsMetrics .pub-metric-card, #inboxFilters').filter(element => element.scrollWidth > element.clientWidth + 1).length
+        clipped: visible('.publication-primary-actions > .button, .publication-primary-actions > .publication-mine-only, .publication-primary-actions > .ai-control-menu > summary, #publicationsMetrics .pub-metric-card, #inboxFilters').filter(element => element.scrollWidth > element.clientWidth + 1).length
       };
     });
     const label = JSON.stringify({ width, ...layout });

@@ -47,11 +47,11 @@ const EXPECTED_HASHES = {
 };
 
 const EXPECTED_CARDS = [
-  ['procuracao', 'Procuração Ad Judicia et Extra', 'Contratual / Mandato'],
-  ['contrato_honorarios', 'Contrato de Honorários Advocatícios (Quota Litis)', 'Financeiro / Honorários'],
-  ['declaracao_hipo', 'Declaração de Hipossuficiência Econômica', 'Processual'],
-  ['quesitos_prev', 'Quesitos Periciais Previdenciários / Médicos', 'Provas / Perícia'],
-  ['prestacao_contas_rpv', 'Termo de Prestação de Contas & Repasse de RPV', 'Prestação de Contas']
+  ['procuracao', 'Procuração ad judicia et extra', 'Contratual / mandato'],
+  ['contrato_honorarios', 'Contrato de honorários advocatícios (quota litis)', 'Financeiro / honorários'],
+  ['declaracao_hipo', 'Declaração de hipossuficiência econômica', 'Processual'],
+  ['quesitos_prev', 'Quesitos periciais previdenciários e médicos', 'Provas / perícia'],
+  ['prestacao_contas_rpv', 'Termo de prestação de contas e repasse de RPV', 'Prestação de contas']
 ];
 
 const documentsSource = fs.readFileSync(new URL('../js/features/documents.js', import.meta.url), 'utf8');

@@ -1,21 +1,23 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.3.2';
-import { requestAuthUsers } from '../core/auth-users-request.js?v=3.3.2';
-import { resolveTaskAssignees, matchMemberByName, memberIdOf, memberKeys } from '../core/task-assignees.js?v=3.3.2';
-import { findProcessForRecord, userInvolvedInProcess } from '../core/office-involvement.js?v=3.3.2';
-import { isAvatarDataUrl, memberAvatarHtml } from '../core/member-avatar.js?v=3.3.2';
-import { resolveIntimationId, findIntimationRecord } from '../core/publication-scope.js?v=3.3.2';
-import { formatCnj } from '../core/cnj.js?v=3.3.2';
-import { refreshTaskTriage, taskTriageBadge } from '../core/task-triage.js?v=3.3.2';
-import { KANBAN_COLUMN_LIMIT, createTasksV2Presenter } from '../views/ui-v2/tasks-presenter.js?v=3.3.2';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.3.2';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.3.2';
-import { createRiskConfirm } from '../components/risk-confirm.js?v=3.3.2';
-import { refreshCompletionNotifications } from '../core/notification-inbox.js?v=3.3.2';
-import { renderOfficeInvolved, taskInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.3.2';
-import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.3.2';
-import { officeOabKeys } from '../core/publication-parties.js?v=3.3.2';
+import { Store, isoDate, uid } from '../core/store.js?v=3.4.0';
+import { plural } from '../core/plural.js?v=3.4.0';
+import { requestAuthUsers } from '../core/auth-users-request.js?v=3.4.0';
+import { resolveTaskAssignees, matchMemberByName, memberIdOf, memberKeys } from '../core/task-assignees.js?v=3.4.0';
+import { findProcessForRecord, userInvolvedInProcess } from '../core/office-involvement.js?v=3.4.0';
+import { isAvatarDataUrl, memberAvatarHtml } from '../core/member-avatar.js?v=3.4.0';
+import { resolveIntimationId, findIntimationRecord } from '../core/publication-scope.js?v=3.4.0';
+import { formatCnj } from '../core/cnj.js?v=3.4.0';
+import { refreshTaskTriage, taskTriageBadge } from '../core/task-triage.js?v=3.4.0';
+import { KANBAN_COLUMN_LIMIT, createTasksV2Presenter } from '../views/ui-v2/tasks-presenter.js?v=3.4.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.4.0';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.4.0';
+import { createRiskConfirm } from '../components/risk-confirm.js?v=3.4.0';
+import { refreshCompletionNotifications } from '../core/notification-inbox.js?v=3.4.0';
+import { createInvolvementIndex, renderOfficeInvolved, taskInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.4.0';
+import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.4.0';
+import { officeOabKeys } from '../core/publication-parties.js?v=3.4.0';
 
 const pluralize = (count, singular, plural) => `${count} ${count === 1 ? singular : plural}`;
+const PT_BR_COLLATOR = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
 
 export const TASK_COLUMNS = Object.freeze([
   { id: 'triagem', title: 'Entrada e triagem', color: '#c9a84c' },
@@ -81,6 +83,7 @@ export function createTasksFeature({
   let tasksPresenter;
   let kanbanColumnsDraft = [];
   let taskViewMode = 'list';
+  const boundBoards = new WeakSet();
   let taskListQuery = '';
   let taskListFilter = 'active';
   let taskListSort = 'deadline';
@@ -193,7 +196,7 @@ export function createTasksFeature({
     return (definitions || [])
       .map(definition => ({ definition, area: resolveTaskArea(definition) }))
       .sort((left, right) => (order.get(left.area) ?? order.size) - (order.get(right.area) ?? order.size)
-        || String(left.definition?.name || '').localeCompare(String(right.definition?.name || ''), 'pt-BR'))
+        || PT_BR_COLLATOR.compare(String(left.definition?.name || ''), String(right.definition?.name || '')))
       .map(({ definition, area }) => ({
         value: String(definition?.name || ''),
         label: `${area} · ${Number(definition?.points) || 0} pts`,
@@ -1367,7 +1370,7 @@ export function createTasksFeature({
       const list = byId('kanbanColumnsList');
       if (!list) return;
       list.innerHTML = kanbanColumnsDraft.map((column, index) => {
-        const taskCount = store.state.tasks.filter(task => task.active !== false && task.status === column.id).length;
+        const taskCount = store.state.tasks.filter(task => task && task.active !== false && !task.absorbedInto && task.status === column.id).length;
         const structural = column.id === 'triagem' || column.id === 'concluida';
         const removable = !structural && taskCount === 0 && kanbanColumnsDraft.length > 2;
         const reason = structural ? 'Etapa estrutural' : taskCount ? `${taskCount} tarefa${taskCount === 1 ? '' : 's'} nesta coluna` : 'Remover coluna';
@@ -1400,11 +1403,27 @@ export function createTasksFeature({
 
     memberFor(task) { return resolveMemberFor(task); },
 
+    // O responsável já aparece no cartão (rodapé com foto e na lista). Repetir o mesmo nome no
+    // bloco de envolvidos não acrescenta nada; o bloco só aparece quando há outra pessoa ou equipe.
+    involvedIsOnlyResponsible(task, people, team) {
+      if (team || !Array.isArray(people) || people.length !== 1) return false;
+      const person = people[0] || {};
+      if (task?.assigneeUserId && String(person.id || '') === String(task.assigneeUserId)) return true;
+      const normalizeName = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+      const responsible = normalizeName(task?.responsible);
+      if (!responsible) return false;
+      return [person.displayName, person.name, person.username].some(name => normalizeName(name) === responsible);
+    },
+
     // Atualiza só o avatar do responsável quando o diretório chega, sem trocar o board/cards.
     refreshMemberAvatars() {
+      const taskById = new Map();
+      for (const task of store.state.tasks || []) {
+        if (task?.id !== undefined) taskById.set(String(task.id), task);
+      }
       documentRef.querySelectorAll?.('[data-task-owner], [data-task-owner-tag]').forEach(element => {
         const taskId = element.dataset.taskOwner || element.dataset.taskOwnerTag;
-        const task = (store.state.tasks || []).find(item => String(item.id) === String(taskId));
+        const task = taskById.get(String(taskId));
         if (!task) return;
         const avatar = memberAvatarHtml(resolveMemberFor(task) || { displayName: task.responsible }, escapeHtml);
         element.innerHTML = element.hasAttribute('data-task-owner-tag')
@@ -1417,6 +1436,17 @@ export function createTasksFeature({
       if (!['list', 'kanban'].includes(mode)) return false;
       taskViewMode = mode;
       try { windowRef?.localStorage?.setItem('atrium:tasks:view', mode); } catch {}
+      if (isV2()) {
+        if (mode === 'list') {
+          this.renderTaskList();
+          const board = byId('kanbanBoard');
+          if (board && board.innerHTML) board.innerHTML = '';
+          this.applyTaskViewMode();
+        } else {
+          this.renderKanban();
+        }
+        return true;
+      }
       if (mode === 'list') this.renderTaskList();
       this.applyTaskViewMode();
       return true;
@@ -1444,7 +1474,7 @@ export function createTasksFeature({
     getTaskListRecords() {
       const needle = String(taskListQuery || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
       const records = (store.state.tasks || []).filter(task => {
-        if (task.active === false) return false;
+        if (!task || task.active === false || task.absorbedInto) return false;
         // Filtro de risco de estouro (sugestão do Atrium IA): só recorta a fila visível.
         if (!taskRiskMatches(task)) return false;
         if (!taskVisibleToMe(task)) return false;
@@ -1464,12 +1494,13 @@ export function createTasksFeature({
       });
       const priorityRank = { urgente: 0, importante: 1, normal: 2 };
       return records.slice().sort((left, right) => {
-        if (taskListSort === 'title') return String(left.title || '').localeCompare(String(right.title || ''), 'pt-BR');
-        if (taskListSort === 'priority') return (priorityRank[left.priority] ?? 3) - (priorityRank[right.priority] ?? 3) || String(left.title || '').localeCompare(String(right.title || ''), 'pt-BR');
+        if (taskListSort === 'title') return PT_BR_COLLATOR.compare(String(left.title || ''), String(right.title || ''));
+        if (taskListSort === 'priority') return (priorityRank[left.priority] ?? 3) - (priorityRank[right.priority] ?? 3) || PT_BR_COLLATOR.compare(String(left.title || ''), String(right.title || ''));
         if (taskListSort === 'updated') return (Date.parse(right.updatedAt || right.createdAt || 0) || 0) - (Date.parse(left.updatedAt || left.createdAt || 0) || 0);
         const leftDeadline = left.fatalDeadline || left.deadline || '9999-12-31';
         const rightDeadline = right.fatalDeadline || right.deadline || '9999-12-31';
-        return leftDeadline.localeCompare(rightDeadline) || String(left.title || '').localeCompare(String(right.title || ''), 'pt-BR');
+        if (leftDeadline !== rightDeadline) return leftDeadline < rightDeadline ? -1 : 1;
+        return PT_BR_COLLATOR.compare(String(left.title || ''), String(right.title || ''));
       });
     },
 
@@ -1501,17 +1532,23 @@ export function createTasksFeature({
       const start = (taskListPage - 1) * taskListPageSize;
       const pageRecords = filtered.slice(start, start + taskListPageSize);
       const pagination = { page: taskListPage, pageSize: taskListPageSize, total: filtered.length, totalPages };
+      const taskListUsers = getTeamDirectory();
+      const taskListTeams = getOfficeDirectory().teams;
+      const taskListProcesses = store.state.processes || [];
+      const taskListIntimations = store.state.intimations || [];
+      const taskListOabKeys = officeOabKeys({ terms: store.state.terms || [], users: taskListUsers });
+      const taskListIndex = createInvolvementIndex({ processes: taskListProcesses, intimations: taskListIntimations, users: taskListUsers, teams: taskListTeams });
       const involvedFor = task => {
-        const processList = store.state.processes || [];
-        const people = taskInvolvedPeople(task, getTeamDirectory(), processList, store.state.intimations || [], officeOabKeys({ terms: store.state.terms || [], users: getTeamDirectory() }));
-        const team = teamForTask(task, getOfficeDirectory().teams, processList) || teamForPeople(getOfficeDirectory().teams, people);
+        const people = taskInvolvedPeople(task, taskListUsers, taskListProcesses, taskListIntimations, taskListOabKeys, taskListIndex);
+        const team = teamForTask(task, taskListTeams, taskListProcesses, taskListIndex) || teamForPeople(taskListTeams, people);
+        if (this.involvedIsOnlyResponsible(task, people, team)) return '';
         return renderOfficeInvolved({ people, team, escapeHtml: safeEscape, iconSvg }) || '<span class="office-involved office-involved-empty">Sem responsável</span>';
       };
       getPresenter().renderList({
         container: byId('taskList'),
         summary: byId('taskListSummary'),
         tasks: pageRecords,
-        allTasks: (store.state.tasks || []).filter(task => task.active !== false),
+        allTasks: (store.state.tasks || []).filter(task => task && task.active !== false && !task.absorbedInto),
         columns: getColumns(),
         activeTaskId: activeTimeSheetTaskId,
         elapsedLabel: this.formatElapsedTimer(),
@@ -1630,12 +1667,6 @@ export function createTasksFeature({
       if (!officeDirectoryLoaded()) {
         void refreshOfficeDirectory().then(() => this.renderKanban());
       }
-      const involvedFor = task => {
-        const processList = store.state.processes || [];
-        const people = taskInvolvedPeople(task, getTeamDirectory(), processList, store.state.intimations || [], officeOabKeys({ terms: store.state.terms || [], users: getTeamDirectory() }));
-        const team = teamForTask(task, getOfficeDirectory().teams, processList) || teamForPeople(getOfficeDirectory().teams, people);
-        return renderOfficeInvolved({ people, team, escapeHtml: safeEscape, iconSvg }) || '<span class="office-involved office-involved-empty">Sem responsável</span>';
-      };
       void loadTaskDuplicateGroups();
       void loadTaskAiDuplicates();
       void loadTaskRisks();
@@ -1643,10 +1674,29 @@ export function createTasksFeature({
       renderTaskAiPanelSafely();
       const board = byId('kanbanBoard');
       if (!board) return;
-      if (isV2()) {
+      const v2 = isV2();
+      if (v2 && taskViewMode === 'list') {
+        this.renderTaskList();
+        if (board.innerHTML) board.innerHTML = '';
+        this.applyTaskViewMode();
+        return;
+      }
+      const kanbanUsers = getTeamDirectory();
+      const kanbanTeams = getOfficeDirectory().teams;
+      const kanbanProcesses = store.state.processes || [];
+      const kanbanIntimations = store.state.intimations || [];
+      const kanbanOabKeys = officeOabKeys({ terms: store.state.terms || [], users: kanbanUsers });
+      const kanbanIndex = createInvolvementIndex({ processes: kanbanProcesses, intimations: kanbanIntimations, users: kanbanUsers, teams: kanbanTeams });
+      const involvedFor = task => {
+        const people = taskInvolvedPeople(task, kanbanUsers, kanbanProcesses, kanbanIntimations, kanbanOabKeys, kanbanIndex);
+        const team = teamForTask(task, kanbanTeams, kanbanProcesses, kanbanIndex) || teamForPeople(kanbanTeams, people);
+        if (this.involvedIsOnlyResponsible(task, people, team)) return '';
+        return renderOfficeInvolved({ people, team, escapeHtml: safeEscape, iconSvg }) || '<span class="office-involved office-involved-empty">Sem responsável</span>';
+      };
+      if (v2) {
         getPresenter().render({
           board,
-          tasks: store.state.tasks.filter(task => task.active !== false && taskRiskMatches(task) && taskVisibleToMe(task)),
+          tasks: store.state.tasks.filter(task => task && task.active !== false && !task.absorbedInto && taskRiskMatches(task) && taskVisibleToMe(task)),
           columns: getColumns(),
           activeTaskId: activeTimeSheetTaskId,
           elapsedLabel: this.formatElapsedTimer(),
@@ -1657,47 +1707,93 @@ export function createTasksFeature({
           riskLookup: task => taskRiskOf(task?.id),
           involvedLookup: involvedFor
         });
-        this.renderTaskList();
+        const listEl = byId('taskList');
+        if (listEl && listEl.innerHTML) listEl.innerHTML = '';
         this.applyTaskViewMode();
       } else {
         board.classList.remove('hidden');
         byId('taskListPanel')?.classList.add('hidden');
         board.innerHTML = getColumns().map(column => {
-          const tasks = store.state.tasks.filter(task => task.active !== false && task.status === column.id && taskVisibleToMe(task));
+          const tasks = store.state.tasks.filter(task => task && task.active !== false && !task.absorbedInto && task.status === column.id && taskVisibleToMe(task));
           const shown = tasks.slice(0, KANBAN_COLUMN_LIMIT);
           const hidden = tasks.length - shown.length;
           return `<section class="kanban-column" data-column="${safeEscape(column.id)}"><header class="column-header"><div class="column-title"><i class="column-dot" style="background:${safeColumnColor(column.color)}"></i>${escapeHtml(column.title)}<span class="column-count">${tasks.length}</span></div><span>···</span></header><div class="column-cards">${shown.length ? shown.map(task => this.renderCard(task)).join('') : '<div class="empty-column">Arraste tarefas para cá</div>'}${hidden > 0 ? `<div class="kanban-column-more" role="note">Mostrando ${shown.length} de ${tasks.length} — refine na lista</div>` : ''}</div></section>`;
         }).join('');
       }
-      board.querySelectorAll('.task-card').forEach(card => {
-        card.addEventListener('dragstart', () => { card.classList.add('dragging'); card.dataset.dragging = 'true'; });
-        card.addEventListener('dragend', () => { card.classList.remove('dragging'); delete card.dataset.dragging; });
-        card.addEventListener('click', event => {
-          if (event.target.closest('.timesheet-btn, [data-task-move], [data-task-complete], .task-card-checkbox-label')) return;
+      if (!boundBoards.has(board)) {
+        boundBoards.add(board);
+        board.addEventListener('dragstart', event => {
+          const card = event.target.closest?.('.task-card');
+          if (!card || !board.contains(card)) return;
+          card.classList.add('dragging');
+          card.dataset.dragging = 'true';
+        });
+        board.addEventListener('dragend', event => {
+          const card = event.target.closest?.('.task-card');
+          if (!card || !board.contains(card)) return;
+          card.classList.remove('dragging');
+          delete card.dataset.dragging;
+        });
+        board.addEventListener('dragover', event => {
+          const column = event.target.closest?.('.kanban-column');
+          if (!column || !board.contains(column)) return;
+          event.preventDefault();
+          column.classList.add('drag-over');
+        });
+        board.addEventListener('dragleave', event => {
+          const column = event.target.closest?.('.kanban-column');
+          if (!column || !board.contains(column)) return;
+          column.classList.remove('drag-over');
+        });
+        board.addEventListener('drop', event => {
+          const column = event.target.closest?.('.kanban-column');
+          if (!column || !board.contains(column)) return;
+          event.preventDefault();
+          column.classList.remove('drag-over');
+          const dragged = board.querySelector('.task-card[data-dragging="true"]');
+          if (dragged) void this.moveTask(dragged.dataset.taskId, column.dataset.column);
+        });
+        board.addEventListener('click', event => {
+          const startBtn = event.target.closest?.('[data-timesheet-start]');
+          if (startBtn && board.contains(startBtn)) {
+            event.stopPropagation();
+            this.startTimeSheet(startBtn.dataset.timesheetStart);
+            return;
+          }
+          const stopBtn = event.target.closest?.('[data-timesheet-stop]');
+          if (stopBtn && board.contains(stopBtn)) {
+            event.stopPropagation();
+            this.stopTimeSheet();
+            return;
+          }
+          const openBtn = event.target.closest?.('[data-task-open]');
+          if (openBtn && board.contains(openBtn)) {
+            event.stopPropagation();
+            const task = store.state.tasks.find(item => item.id === openBtn.dataset.taskOpen);
+            if (task) this.openTaskModal(task);
+            return;
+          }
+          if (event.target.closest?.('.timesheet-btn, [data-task-move], [data-task-complete], .task-card-checkbox-label')) {
+            event.stopPropagation();
+            return;
+          }
+          const card = event.target.closest?.('.task-card');
+          if (!card || !board.contains(card)) return;
           const task = store.state.tasks.find(item => item.id === card.dataset.taskId);
           if (task) this.openTaskModal(task);
         });
-      });
-      board.querySelectorAll('[data-task-complete]').forEach(checkbox => {
-        checkbox.addEventListener('click', event => event.stopPropagation());
-        checkbox.addEventListener('change', async event => {
-          event.stopPropagation();
-          const taskId = checkbox.dataset.taskComplete;
-          const task = store.state.tasks.find(item => String(item.id) === String(taskId));
-          if (!task) return;
-          await this.toggleTaskDone(task, checkbox);
-        });
-      });
-      board.querySelectorAll('[data-task-open]').forEach(button => {
-        button.addEventListener('click', event => {
-          event.stopPropagation();
-          const task = store.state.tasks.find(item => item.id === button.dataset.taskOpen);
-          if (task) this.openTaskModal(task);
-        });
-      });
-      board.querySelectorAll('[data-task-move]').forEach(select => {
-        select.addEventListener('click', event => event.stopPropagation());
-        select.addEventListener('change', async event => {
+        board.addEventListener('change', async event => {
+          const checkbox = event.target.closest?.('[data-task-complete]');
+          if (checkbox && board.contains(checkbox)) {
+            event.stopPropagation();
+            const taskId = checkbox.dataset.taskComplete;
+            const task = store.state.tasks.find(item => String(item.id) === String(taskId));
+            if (!task) return;
+            await this.toggleTaskDone(task, checkbox);
+            return;
+          }
+          const select = event.target.closest?.('[data-task-move]');
+          if (!select || !board.contains(select)) return;
           event.stopPropagation();
           const task = store.state.tasks.find(item => item.id === select.dataset.taskMove);
           const previous = task?.status;
@@ -1709,33 +1805,11 @@ export function createTasksFeature({
             select.value = previous;
           }
         });
-      });
-      board.querySelectorAll('[data-timesheet-start]').forEach(button => {
-        button.addEventListener('click', event => {
-          event.stopPropagation();
-          this.startTimeSheet(button.dataset.timesheetStart);
-        });
-      });
-      board.querySelectorAll('[data-timesheet-stop]').forEach(button => {
-        button.addEventListener('click', event => {
-          event.stopPropagation();
-          this.stopTimeSheet();
-        });
-      });
-      board.querySelectorAll('.kanban-column').forEach(column => {
-        column.addEventListener('dragover', event => { event.preventDefault(); column.classList.add('drag-over'); });
-        column.addEventListener('dragleave', () => column.classList.remove('drag-over'));
-        column.addEventListener('drop', event => {
-          event.preventDefault();
-          column.classList.remove('drag-over');
-          const dragged = board.querySelector('.task-card[data-dragging="true"]');
-          if (dragged) void this.moveTask(dragged.dataset.taskId, column.dataset.column);
-        });
-      });
+      }
     },
 
     renderCard(task) {
-      const overdue = daysUntil(task.deadline) < 0 && task.status !== 'concluida';
+      const overdue = daysUntil(task.fatalDeadline || task.deadline) < 0 && !isTerminalStatus(task.status);
       const timeMins = totalTimeMinutes(task.timeLogs);
       const timeBadge = timeMins > 0 ? `<span class="task-timelog" title="Tempo total registrado no TimeSheet">${iconSvg('deadline')} ${formatMinutes(timeMins)}</span>` : '';
       const isTimerRunning = activeTimeSheetTaskId === task.id;
@@ -1944,7 +2018,7 @@ export function createTasksFeature({
       const unowned = this.getTaskListRecords().filter(task => !String(task.responsible || '').trim() && !task.assigneeUserId);
       if (!name || !unowned.length) return 0;
       unowned.forEach(task => { task.responsible = name; });
-      store.audit('Tarefas atribuídas em lote', `${unowned.length} tarefa(s) para ${name}`);
+      store.audit('Tarefas atribuídas em lote', `${unowned.length} ${plural(unowned.length, 'tarefa', 'tarefas')} para ${name}`);
       if (await store.flush()) return unowned.length;
       unowned.forEach(task => { task.responsible = ''; });
       showToast?.('Não foi possível atribuir as tarefas. Tente novamente.', 'error');
@@ -2448,7 +2522,14 @@ export function createTasksFeature({
         }
         if (value !== '' && value !== null && value !== undefined) merged[field] = value;
       }
-      store.upsert('tasks', merged, 'id');
+      const matchKey = (merged.id && 'id') || (merged[externalKey] && externalKey) || (merged.externalId && 'externalId');
+      if (matchKey) {
+        store.upsert('tasks', merged, matchKey);
+      } else {
+        const idx = store.state.tasks.indexOf(existing);
+        if (idx >= 0) store.state.tasks[idx] = merged;
+        store.save();
+      }
       return merged;
     },
 

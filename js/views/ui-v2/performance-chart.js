@@ -70,7 +70,7 @@ export function renderPerformanceChart({ performance, escapeHtml = value => Stri
     performance.goal || 0
   ));
 
-  const currentPath = smoothPath(pointList(current.pointsCumulative, ceiling, shownDays));
+  const currentPath = smoothPath(pointList(current.pointsCumulative, ceiling, monthDays));
   const previousPath = smoothPath(pointList(previous.pointsCumulative.slice(0, monthDays), ceiling, monthDays));
 
   const yTicks = [0, 0.5, 1].map(ratio => {
@@ -92,7 +92,7 @@ export function renderPerformanceChart({ performance, escapeHtml = value => Stri
 
   const lastIndex = Math.max(0, current.pointsCumulative.length - 1);
   const lastValue = current.pointsCumulative[lastIndex] || 0;
-  const lastDot = `<circle class="v2-perf-dot is-current" cx="${(PLOT.left + (lastIndex / Math.max(1, shownDays - 1)) * (PLOT.right - PLOT.left)).toFixed(1)}" cy="${(PLOT.bottom - (lastValue / ceiling) * (PLOT.bottom - PLOT.top)).toFixed(1)}" r="3.2"><title>${escapeHtml(`Hoje: ${lastValue.toLocaleString('pt-BR')} pts acumulados no mês atual`)}</title></circle>`;
+  const lastDot = `<circle class="v2-perf-dot is-current" cx="${(PLOT.left + (lastIndex / Math.max(1, monthDays - 1)) * (PLOT.right - PLOT.left)).toFixed(1)}" cy="${(PLOT.bottom - (lastValue / ceiling) * (PLOT.bottom - PLOT.top)).toFixed(1)}" r="3.2"><title>${escapeHtml(`Hoje: ${lastValue.toLocaleString('pt-BR')} pts acumulados no mês atual`)}</title></circle>`;
 
   const goalLabel = Number.isFinite(performance?.goal) && performance.goal > 0
     ? `meta ${performance.goal.toLocaleString('pt-BR')} pts`

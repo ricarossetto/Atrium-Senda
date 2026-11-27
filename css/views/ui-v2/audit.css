@@ -108,6 +108,7 @@ html[data-ui="v2"] #view-audit #auditSearch {
   border-radius: var(--v2-radius-md);
 }
 
+html[data-ui="v2"] #view-audit #auditSearch { text-overflow: ellipsis; }
 html[data-ui="v2"] #view-audit #auditSearch::placeholder {
   color: var(--v2-color-muted-foreground);
 }
@@ -244,7 +245,8 @@ html[data-ui="v2"] #view-audit .audit-ledger-table caption.sr-only {
 html[data-ui="v2"] #view-audit .audit-ledger-table th:nth-child(1) { width: 145px; }
 html[data-ui="v2"] #view-audit .audit-ledger-table th:nth-child(2) { width: 135px; }
 html[data-ui="v2"] #view-audit .audit-ledger-table th:nth-child(3) { width: 190px; }
-html[data-ui="v2"] #view-audit .audit-ledger-table th:nth-child(5) { width: 95px; }
+/* "Registrado" precisa de ~100px com o padding da célula: em 95px o selo era cortado na borda. */
+html[data-ui="v2"] #view-audit .audit-ledger-table th:nth-child(5) { width: 124px; }
 
 html[data-ui="v2"] #view-audit .audit-ledger-table td {
   min-width: 0;
@@ -375,7 +377,7 @@ html[data-ui="v2"] #view-audit :where(button, input):focus-visible {
     white-space: normal;
   }
 
-  html[data-ui="v2"] #view-audit #auditFilters button:first-child {
+  html[data-ui="v2"] #view-audit #auditFilters button:first-of-type {
     grid-column: 1 / -1;
   }
 

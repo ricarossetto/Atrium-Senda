@@ -1,13 +1,13 @@
-import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.3.2';
-import { publicationReadableText } from '../../core/html-text.js?v=3.3.2';
-import { buildPublicationBrief, publicationTodayReason } from '../../core/publication-brief.js?v=3.3.2';
-import { isMergedIntimation } from '../../core/publication-scope.js?v=3.3.2';
-import { layoutPublicationText } from '../../core/publication-text-layout.js?v=3.3.2';
-import { SUSPENSION_NOTE, describeSuspension, suspensionForDate } from '../../core/suspension-calendar.js?v=3.3.2';
-import { isValidCnj } from '../../core/cnj.js?v=3.3.2';
-import { describeLinkSafety } from '../../core/link-safety.js?v=3.3.2';
-import { formatPublicationLawyers, officeLawyerMatch, publicationLawyersList } from '../../core/publication-lawyers.js?v=3.3.2';
-import { formatLawyerNames, officeSideLawyers } from '../../core/publication-parties.js?v=3.3.2';
+import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.4.0';
+import { publicationReadableText } from '../../core/html-text.js?v=3.4.0';
+import { buildPublicationBrief, publicationTodayReason } from '../../core/publication-brief.js?v=3.4.0';
+import { isMergedIntimation } from '../../core/publication-scope.js?v=3.4.0';
+import { layoutPublicationText } from '../../core/publication-text-layout.js?v=3.4.0';
+import { SUSPENSION_NOTE, describeSuspension, suspensionForDate } from '../../core/suspension-calendar.js?v=3.4.0';
+import { isValidCnj } from '../../core/cnj.js?v=3.4.0';
+import { describeLinkSafety } from '../../core/link-safety.js?v=3.4.0';
+import { formatPublicationLawyers, officeLawyerMatch, publicationLawyersList } from '../../core/publication-lawyers.js?v=3.4.0';
+import { formatLawyerNames, officeSideLawyers } from '../../core/publication-parties.js?v=3.4.0';
 
 /**
  * Conferência informativa do conteúdo mínimo da intimação no DJEN
@@ -36,6 +36,9 @@ const DETAIL_CONTROL_IDENTITY_ATTRIBUTES = Object.freeze([
 ]);
 
 const FOCUSABLE = 'summary, button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+// O guardião de autofill (js/core/browser-autofill-guard.js) injeta estes atributos
+// depois do innerHTML. Eles não identificam o campo e não podem entrar na chave.
+const AUTOFILL_GUARD_ATTRIBUTES = new Set(['data-lpignore', 'data-1p-ignore', 'data-bwignore', 'data-form-type']);
 
 function publicationDisplayText(item) {
   const original = String(item?.text || item?.sourceText || item?.description || 'Sem texto original.');
@@ -148,7 +151,7 @@ export function createPublicationsV2Presenter({
     const identity = element => {
       if (element.id) return [['id', element.id]];
       const official = DETAIL_CONTROL_IDENTITY_ATTRIBUTES
-        .filter(name => element.hasAttribute(name))
+        .filter(name => element.hasAttribute(name) && !AUTOFILL_GUARD_ATTRIBUTES.has(name))
         .map(name => [name, element.getAttribute(name)]);
       if (official.length) return official;
       return [['control-index', String(controls.indexOf(element))], ['tag', element.tagName.toLowerCase()]];
@@ -400,7 +403,8 @@ export function renderPublicationRow({ item, act, parties, selected, escapeHtml,
       ? `${todayReason.charAt(0).toUpperCase()}${todayReason.slice(1)}`
       : `Hoje · ${todayReason}`)
     : '';
-  const todayChip = todayLabel
+  // "Urgente" já aparece como prioridade; repetir "Hoje · urgente" ao lado não acrescenta nada.
+  const todayChip = todayLabel && !(todayReason === 'urgente' && urgent)
     ? `<span class="publication-today-chip" title="Entra na fila do dia">${escapeHtml(todayLabel)}</span>`
     : '';
   const aiHint = aiChip ? 'Atrium IA sugere uma área para conferência. ' : '';
@@ -434,7 +438,7 @@ export function renderPublicationRow({ item, act, parties, selected, escapeHtml,
     </span>
     <span class="publication-record-origin"><b>${escapeHtml(item.source || item.court || 'Origem não informada')}</b><small>${escapeHtml(item.court || 'Órgão não informado')}</small></span>
     <span class="publication-record-date"><b>${item.publishedAt ? escapeHtml(formatAge(item.publishedAt)) : item.disponibilizadoEm ? 'Disponibilização' : item.sourceReportedAt ? 'Data da fonte' : escapeHtml(formatAge(item.publishedAt))}</b><small>${escapeHtml(formatDate(item.publishedAt || item.disponibilizadoEm || item.sourceReportedAt))}</small></span>
-    <span class="publication-record-action" aria-hidden="true">Ler publicação <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-right"></use></svg></span>
+    <span class="publication-record-action" aria-hidden="true">Ler publicação <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-chevron-right"></use></svg></span>
   </button>
   ${aside}
 </div>`;
@@ -951,10 +955,32 @@ export function renderDeadlineConference({ item, escapeHtml, aiClassifier = null
   </section>`;
 }
 
+// Só aceita a certidão emitida pelo próprio DJEN (mesma regra do coletor no servidor).
+export function djenCertificateUrl(item) {
+  const raw = String(item?.certificateUrl || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' || url.hostname !== 'comunicaapi.pje.jus.br') return '';
+    if (!/^\/api\/v1\/comunicacao\/[A-Za-z0-9_-]{10,200}\/certidao$/.test(url.pathname)) return '';
+    return url.href;
+  } catch {
+    return '';
+  }
+}
+
 export function renderDecisionToolbar({ item, escapeHtml }) {
-  if (!item?.hasHtml || !String(item.rawHtml || '').trim()) return '';
+  const hasHtml = Boolean(item?.hasHtml && String(item.rawHtml || '').trim());
+  const certificate = djenCertificateUrl(item);
+  if (!hasHtml && !certificate) return '';
   const label = escapeHtml(item.title || 'publicação');
-  return `<div class="publication-decision-toolbar" aria-label="Documento HTML de ${label}"><button type="button" class="button ghost publication-doc-btn" data-detail-action="view-decision-html">Decisão completa (HTML)</button><button type="button" class="button ghost publication-doc-btn" data-detail-action="download-decision-html">Baixar (.html)</button></div>`;
+  const htmlButtons = hasHtml
+    ? '<button type="button" class="button ghost publication-doc-btn" data-detail-action="view-decision-html">Decisão completa (HTML)</button><button type="button" class="button ghost publication-doc-btn" data-detail-action="download-decision-html">Baixar (.html)</button>'
+    : '';
+  const certificateLink = certificate
+    ? `<a class="button ghost publication-doc-btn" data-publication-certificate href="${escapeHtml(certificate)}" target="_blank" rel="noopener noreferrer" title="Certidão emitida pelo DJEN/CNJ. Abre em nova aba.">Certidão da publicação (PDF)</a>`
+    : '';
+  return `<div class="publication-decision-toolbar" aria-label="Documentos oficiais de ${label}">${htmlButtons}${certificateLink}</div>`;
 }
 
 function renderTreatmentInfo({ item, treatment, escapeHtml, formatDateTime }) {
@@ -1050,4 +1076,4 @@ function toggleInert(element, inert) {
   if (inert) element.setAttribute('inert', '');
   else element.removeAttribute('inert');
 }
-import { iconSvg } from './icons.js?v=3.3.2';
+import { iconSvg } from './icons.js?v=3.4.0';

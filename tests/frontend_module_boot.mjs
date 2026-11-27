@@ -116,6 +116,7 @@ try {
   assert.equal(firstBootSchedule.timer, undefined, 'O navegador não pode agendar sincronização automática.');
   assert.equal(firstBootSchedule.next, undefined, 'Não existe próxima sincronização agendada no navegador.');
   assert.ok(firstBootProbe.navigationListeners >= 2, 'A navegação principal não foi vinculada.');
+  // js/jsqr.js é injetado sob demanda ao ler QR TOTP (js/features/judicial-integrations.js).
   assert.deepEqual(firstBootProbe.dependencySnapshots, [{
     auth: true,
     prompts: true,
@@ -126,6 +127,7 @@ try {
     app: true,
     dom: true
   }], 'As dependências clássicas devem existir antes de Store.load e App.init.');
+  assert.equal(scriptRequests.includes('/js/jsqr.js'), true, 'js/jsqr.js deve carregar no boot local.');
 
   await page.locator('button[data-view="contacts"]').click();
   await page.locator('#view-contacts.active').waitFor();

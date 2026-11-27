@@ -33,7 +33,7 @@ async function run() {
   assert.equal(injectedRefs.length, 2, 'injectedLawyerNames só pode existir no escopo Node (declaração + argumento do evaluate)');
   assert.match(adapterSource, /page\.evaluate\(extractEprocDetailsInPage, \{\s*injectedNames: injectedLawyerNames,/, 'Nomes e expressões atravessam a fronteira em UM objeto (Playwright aceita um argumento)');
   assert.doesNotMatch(adapterSource, /page\.evaluate\(extractEprocDetailsInPage, injectedLawyerNames/, 'A forma antiga (dois argumentos) não pode voltar.');
-  assert.match(adapterSource, /export function extractEprocDetailsInPage\(\{ injectedNames = \[\], secrecyPatterns = \[\] \} = \{\}\) \{/, 'Função executada no browser recebe os nomes por parâmetro (objeto único)');
+  assert.match(adapterSource, /export function extractEprocDetailsInPage\(\{ injectedNames = \[\], injectedOabs = \[\], secrecyPatterns = \[\] \} = \{\}\) \{/, 'Função executada no browser recebe os nomes por parâmetro (objeto único)');
 
   console.log('✓ Contrato de download A1 sem plaintext de chave validado (inclui fronteira browser/Node).');
   console.log('\n>>> EPROC A1 DOWNLOAD KEY PROPAGATION CONTRACT: PASS <<<\n');

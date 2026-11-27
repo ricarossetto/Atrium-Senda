@@ -100,14 +100,26 @@
         });
       });
 
-      // Synchronize browser history navigation between /discover and /
+      // Synchronize browser history navigation between /discover and / only when unauthenticated
       window.addEventListener('popstate', () => {
+        const appShell = document.getElementById('appShell');
+        const isAuthenticated = Boolean(
+          globalThis.KellerAuth?.authenticated
+          || globalThis.AtriumAuth?.authenticated
+          || (appShell && !appShell.classList.contains('hidden'))
+        );
+        const landing = document.getElementById('landingPage');
+        const authGate = document.getElementById('authGate');
+        if (isAuthenticated) {
+          document.documentElement.dataset.route = 'app';
+          if (landing) landing.classList.add('hidden');
+          if (authGate) authGate.classList.add('hidden');
+          return;
+        }
         const pathname = String(globalThis.location.pathname || '').toLowerCase();
         const urlParams = new URLSearchParams(globalThis.location.search);
         const isDiscover = pathname.includes('/discover') || pathname.includes('/landing') || urlParams.has('discover');
         document.documentElement.dataset.route = isDiscover ? 'discover' : 'app';
-        const landing = document.getElementById('landingPage');
-        const authGate = document.getElementById('authGate');
         if (isDiscover) {
           if (authGate) authGate.classList.add('hidden');
           if (landing) landing.classList.remove('hidden');
@@ -127,8 +139,23 @@
     toggleTheme() {
       const current = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
       const next = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.dataset.theme = next;
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', next === 'light' ? '#eef1f1' : '#0c0c0b');
+      if (typeof globalThis.__atriumApplyThemeChrome === 'function') {
+        globalThis.__atriumApplyThemeChrome(next);
+      } else {
+        const dark = next === 'dark';
+        const bg = dark ? '#111315' : '#f3f4f2';
+        const r = document.documentElement;
+        r.dataset.theme = dark ? 'dark' : 'light';
+        r.style.colorScheme = dark ? 'dark' : 'light';
+        r.style.backgroundColor = bg;
+        if (document.head) {
+          document.head.querySelectorAll('meta[name="theme-color"]').forEach(m => m.remove());
+          const meta = document.createElement('meta');
+          meta.name = 'theme-color';
+          meta.content = bg;
+          document.head.appendChild(meta);
+        }
+      }
       try {
         localStorage.setItem('atrium_theme', next);
       } catch {}

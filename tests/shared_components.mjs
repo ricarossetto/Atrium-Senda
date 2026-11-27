@@ -50,11 +50,16 @@ try {
   await assertGlobalSearchBehavior();
   await assertConflictToast();
 
+  const beforeReauth = await readListeners();
+  for (const key of expectedListenerKeys) {
+    assert.equal(beforeReauth[key], 1, `${key} deve permanecer único após exercícios dos componentes.`);
+  }
+
   await page.evaluate(() => {
     window.dispatchEvent(new CustomEvent('keller:authenticated', { detail: window.KellerAuth.currentUser }));
   });
   await page.waitForTimeout(250);
-  assert.deepEqual(await readListeners(), initialListeners, 'Autenticação repetida não pode duplicar listeners compartilhados.');
+  assert.deepEqual(await readListeners(), beforeReauth, 'Autenticação repetida não pode duplicar listeners compartilhados.');
 
   await page.reload({ waitUntil: 'networkidle' });
   await page.locator('#appShell:not(.hidden)').waitFor();
@@ -180,7 +185,7 @@ async function assertToastBehavior() {
 
 async function assertThemeBehavior() {
   await page.evaluate(() => window.Atrium.App.setTheme('dark'));
-  assert.equal(await page.locator('html').getAttribute('data-theme'), null, 'O tema escuro deve remover o atributo data-theme.');
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark', 'O tema escuro deve definir data-theme="dark".');
   assert.equal(await page.evaluate(() => localStorage.getItem('atrium_theme')), 'dark', 'O tema escuro deve usar a chave de armazenamento vigente.');
   await page.locator('#themeToggleButton').click();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'light', 'O toggle deve aplicar o tema claro.');

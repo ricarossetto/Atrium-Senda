@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { prepareUiV2LeadsFixture, prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
+import { fieldLabelIssues, prepareUiV2LeadsFixture, prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
 
 console.log('\n===============================================================');
 console.log('  ATRIUM — UI V2 LEADS ACCESSIBILITY & RESPONSIVE');
@@ -25,13 +25,8 @@ try {
   assert.equal(await page.locator('#appShell').getAttribute('inert'), '');
   assert.equal(await page.locator('.lead-form-section').count(), 6);
   assert.deepEqual(await page.locator('.lead-form-section legend').allTextContents(), ['Interessado', 'Demanda jurídica', 'Andamento', 'Origem', 'Estimativa', 'Relato']);
-  for (const name of ['client', 'serviceType', 'status', 'origin', 'estimatedFee', 'responsible', 'notes']) {
-    const fieldId = await page.locator(`#field-${name}`).evaluate(element => {
-      if (element.tagName === 'SELECT' && element.classList.contains('field-select-native')) return `${element.id}-busca`;
-      return element.id;
-    });
-    assert.equal(await page.locator(`label[for="${fieldId}"]`).count(), 1, `Label acessível ausente para ${name}.`);
-  }
+  const leadFields = ['client', 'serviceType', 'status', 'origin', 'estimatedFee', 'responsible', 'notes'];
+  assert.deepEqual(await fieldLabelIssues(page, leadFields), [], 'Todos os campos do lead devem manter labels conectados ao controle visível.');
   await page.locator('#modalCancel').focus();
   await page.keyboard.press('Tab');
   assert.equal(await page.evaluate(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement)), true);

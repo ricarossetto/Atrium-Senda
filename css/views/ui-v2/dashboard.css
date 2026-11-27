@@ -283,7 +283,7 @@ html[data-ui="v2"] .v2-performance-empty {
 }
 
 html[data-ui="v2"] .view.active .v2-attention-item {
-  animation: v2-view-enter var(--v2-duration-slow) var(--v2-ease-standard) both;
+  animation: v2-view-enter var(--v2-duration-fast) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"] .view.active .v2-attention-item:nth-child(2) { animation-delay: 35ms; }
@@ -354,6 +354,10 @@ html[data-ui="v2"] #view-dashboard .gold-pill {
   border: 0;
   font-size: 13px;
   font-weight: 500;
+}
+
+html[data-ui="v2"] #view-dashboard .gold-pill > .atrium-icon {
+  margin-inline-end: var(--v2-space-1);
 }
 
 html[data-ui="v2"] .v2-section-heading {
@@ -450,7 +454,9 @@ html[data-ui="v2"] #view-dashboard .activity-inbox-header { display: flex; align
 html[data-ui="v2"] #view-dashboard .activity-inbox-header h3 { margin: 2px 0; color: var(--v2-color-foreground); font: 700 20px/24px var(--v2-font-editorial); }
 html[data-ui="v2"] #view-dashboard .activity-inbox-header > div:first-child > span { color: var(--v2-color-foreground-secondary); font-size: 12px; }
 html[data-ui="v2"] #view-dashboard .activity-inbox-header > div:last-child { display: flex; align-items: center; gap: var(--v2-space-2); }
-html[data-ui="v2"] #view-dashboard .activity-inbox-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--v2-space-2); }
+html[data-ui="v2"] #activityInboxCount { display: inline-flex; align-items: center; height: 40px; padding: 0 12px; box-sizing: border-box; }
+/* auto-fit: com um item só, ele ocupa a linha inteira em vez de deixar meia caixa vazia. */
+html[data-ui="v2"] #view-dashboard .activity-inbox-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: var(--v2-space-2); }
 html[data-ui="v2"] #view-dashboard .activity-inbox-item { min-width: 0; display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: var(--v2-space-3); align-items: stretch; padding: var(--v2-space-3); background: var(--v2-color-surface-secondary); border: 1px solid var(--v2-color-border-subtle); border-radius: var(--v2-radius-md); }
 html[data-ui="v2"] #view-dashboard .activity-inbox-item:focus-within { border-color: var(--v2-color-primary); }
 html[data-ui="v2"] #view-dashboard .activity-inbox-marker { border-radius: 999px; background: var(--v2-color-border-strong); }
@@ -495,6 +501,13 @@ html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly thead th { color: va
 html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly thead th:first-child { text-align: left; }
 html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly tbody th { color: var(--v2-color-foreground-secondary); font-weight: 650; text-align: left; }
 html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly tbody td { color: var(--v2-color-foreground); white-space: nowrap; }
+/* Funil: datas do cabeçalho e rótulos tinham espaço zero entre si ("31/08 07/09", "DESCARTADAS 2").
+   Rótulo da linha sem caixa alta, mais respiro lateral e datas sem espaçamento extra. */
+html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly th:first-child { padding-left: 0; }
+html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly td:last-child,
+html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly thead th:last-child { padding-right: 2px; }
+html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly thead th:not(:first-child) { padding-inline: 2px; letter-spacing: 0; font-size: 11px; font-weight: 700; }
+html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly tbody th { text-transform: none; letter-spacing: 0; font-size: 12px; }
 html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly tbody tr:last-child th,
 html[data-ui="v2"] #view-dashboard .dashboard-funnel-weekly tbody tr:last-child td { border-bottom: 0; }
 
@@ -531,9 +544,13 @@ html[data-ui="v2"] #view-dashboard .dashboard-tasks-title > span {
 
 html[data-ui="v2"] #dashboardTaskCount {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
   border-radius: var(--v2-radius-md);
-  padding: 8px 10px;
+  padding: 0 10px;
   line-height: 1;
+  box-sizing: border-box;
 }
 
 html[data-ui="v2"] #view-dashboard .dashboard-tasks-header > div:last-child {
@@ -542,7 +559,7 @@ html[data-ui="v2"] #view-dashboard .dashboard-tasks-header > div:last-child {
 }
 
 html[data-ui="v2"] #dashboardTaskFilters { flex: 0 0 auto; }
-html[data-ui="v2"] #dashboardTaskFilters button { padding-inline: 8px; font-size: 12px; }
+html[data-ui="v2"] #dashboardTaskFilters button { padding-inline: 10px; font-size: 12px; }
 
 html[data-ui="v2"] #dashboardTaskFilters button,
 html[data-ui="v2"] #view-dashboard .dashboard-tasks-header .inbox-sort-control {
@@ -551,17 +568,29 @@ html[data-ui="v2"] #view-dashboard .dashboard-tasks-header .inbox-sort-control {
 }
 
 html[data-ui="v2"] #view-dashboard .dashboard-tasks-header .inbox-sort-control {
-  min-height: 34px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 10px !important;
   color: var(--v2-color-foreground-secondary) !important;
   background: var(--v2-color-surface-secondary) !important;
   border-color: var(--v2-color-border) !important;
   border-radius: var(--v2-radius-md) !important;
+  box-sizing: border-box;
+}
+
+html[data-ui="v2"] #view-dashboard #dashboardTaskLimitSelect {
+  width: 58px;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  color: var(--v2-color-foreground) !important;
 }
 
 html[data-ui="v2"] #view-dashboard #dashboardTaskSortSelect {
-  width: 156px;
+  width: 152px;
   min-width: 0;
-  min-height: 30px;
+  height: 100%;
+  min-height: 0;
   color: var(--v2-color-foreground) !important;
   /* Sem !important no font-size: o valor 12px vem da regra .dashboard-task-sort
      e o piso mobile de 16px (primitives) precisa vencer a cascata. */
@@ -870,9 +899,10 @@ html[data-ui="v2"] #view-dashboard .dashboard-reminder-date {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--v2-space-2);
   }
-  html[data-ui="v2"] #view-dashboard .dashboard-tasks-header .inbox-sort-control { width: 100%; min-height: 44px; }
+  html[data-ui="v2"] #view-dashboard .dashboard-tasks-header .inbox-sort-control { width: 100%; height: auto; min-height: 44px; }
+  html[data-ui="v2"] #view-dashboard #dashboardTaskLimitSelect,
   html[data-ui="v2"] #view-dashboard #dashboardTaskSortSelect { width: auto; min-width: 0; flex: 1 1 auto; min-height: 40px; }
-  html[data-ui="v2"] #dashboardTaskFilters { width: 100%; }
+  html[data-ui="v2"] #dashboardTaskFilters { width: 100%; height: auto; }
   html[data-ui="v2"] #view-dashboard .dashboard-task-item { align-items: flex-start; }
   html[data-ui="v2"] #view-dashboard .dashboard-task-date { align-self: center; max-width: 72px; white-space: normal; text-align: right; }
   html[data-ui="v2"] #view-dashboard .dashboard-widgets-column { grid-template-columns: 1fr; }
@@ -901,7 +931,8 @@ html[data-ui="v2"] #view-dashboard .dashboard-reminder-date {
   html[data-ui="v2"] .v2-attention-item strong { font-size: 18px; line-height: 22px; }
 html[data-ui="v2"] .v2-performance-kpis { grid-template-columns: 1fr 1fr; }
   html[data-ui="v2"] #view-dashboard .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  html[data-ui="v2"] #view-dashboard .filter-tabs { width: 100%; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  html[data-ui="v2"] #view-dashboard .filter-tabs { width: 100%; height: auto; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  html[data-ui="v2"] #view-dashboard .filter-tabs button { min-height: 44px; height: auto; }
   html[data-ui="v2"] #view-dashboard .dashboard-task-item { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; }
   html[data-ui="v2"] #view-dashboard .dashboard-task-check { grid-column: 1; grid-row: 1; }
   html[data-ui="v2"] #view-dashboard .dashboard-task-date { grid-column: 2; grid-row: 1; justify-self: end; max-width: 100%; text-align: right; }
@@ -1024,7 +1055,7 @@ html[data-ui="v2"] .v2-hearing-item {
   cursor: pointer;
   color: inherit;
   font: inherit;
-  transition: background-color 120ms ease;
+  transition: background-color var(--v2-duration-fast) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] .v2-hearing-item:first-child {
@@ -1184,6 +1215,13 @@ html[data-ui="v2"] .v2-first-steps-head {
   flex-wrap: wrap;
 }
 
+@media (max-width: 760px) {
+  html[data-ui="v2"] .v2-first-steps-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
 html[data-ui="v2"] .v2-first-steps-head h3 {
   margin: 0;
   font-family: var(--v2-font-editorial);
@@ -1236,9 +1274,42 @@ html[data-ui="v2"] .v2-first-step-copy small {
   font-size: 13px;
 }
 
+/* Primeira busca da OAB em andamento: o marcador ganha borda dourada tracejada que gira
+   devagar. Com movimento reduzido, fica parado; o texto já diz que está em andamento. */
+html[data-ui="v2"] .v2-first-step.is-busy .v2-first-step-mark {
+  position: relative;
+  border-color: transparent;
+}
+
+html[data-ui="v2"] .v2-first-step.is-busy .v2-first-step-mark::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 2px dashed var(--v2-color-gold);
+  border-radius: inherit;
+  animation: v2-first-step-busy 2.4s linear infinite;
+}
+
+@keyframes v2-first-step-busy {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="v2"] .v2-first-step.is-busy .v2-first-step-mark::after { animation: none; }
+}
+
 html[data-ui="v2"] .v2-first-step.is-done .v2-first-step-copy strong {
   color: var(--v2-color-muted-foreground);
   font-weight: 500;
+}
+
+/* A conclusão é anunciada só ao leitor de tela. O `.sr-only` esconde com overflow:hidden num
+   caixa de 1px; aqui o recorte visual fica por conta do clip-path, porque o overflow de um
+   texto oculto de propósito não é corte de conteúdo para quem enxerga. */
+html[data-ui="v2"] .v2-first-step-status {
+  overflow: visible;
+  clip: auto;
+  clip-path: inset(50%);
 }
 
 html[data-ui="v2"] .v2-first-step-actions {
@@ -1284,4 +1355,11 @@ html[data-ui="v2"] .v2-first-step-how ol {
   color: var(--v2-color-foreground-secondary);
   font-size: 13px;
   line-height: 19px;
+}
+
+html[data-ui="v2"] .dashboard-tasks-more {
+  width: 100%;
+  margin-top: var(--v2-space-3);
+  min-height: 44px;
+  justify-content: center;
 }

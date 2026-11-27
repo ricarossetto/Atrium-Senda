@@ -47,7 +47,10 @@ if (/feTurbulence/.test(primitives)) {
 assert.match(primitives, /prefers-reduced-motion:\s*reduce/, 'A direção visual deve respeitar reduced motion.');
 assert.match(primitives, /@keyframes v2-view-enter/, 'A entrada curta de layout deve existir.');
 assert.match(primitives, /@keyframes v2-drawer-in/, 'O inspector deve possuir movimento curto dedicado.');
-const restingCss = componentCss.replace(/animation:\s*v2-(?:sync-spin|progress-shimmer|indeterminate-slide)[^;]*;/gi, '');
+// Exceções: indicadores de carregamento, que só rodam enquanto algo carrega e param ao terminar.
+// O pulso do esqueleto (`v2-skeleton-pulse`) é desse tipo: some na revelação do conteúdo.
+// O anel do passo em andamento do "Comece por aqui" (`v2-first-step-busy`) só gira enquanto a busca da OAB roda.
+const restingCss = componentCss.replace(/animation:\s*v2-(?:sync-spin|progress-shimmer|indeterminate-slide|skeleton-pulse|first-step-busy)[^;]*;/gi, '');
 assert.doesNotMatch(restingCss, /animation[^;{}]*infinite/i, 'A UI V2 não pode introduzir animações infinitas de descanso.');
 assert.match(shell, /\.nav-count\s*\{[\s\S]*?min-width:\s*20px;[\s\S]*?height:\s*20px;[\s\S]*?display:\s*inline-flex;/, 'O badge deve possuir geometria explícita.');
 assert.match(dashboard, /\.v2-dashboard-opening\s*\{[\s\S]*?border-radius:\s*var\(--v2-radius-xl\)/, 'O foco editorial deve usar geometria mineral precisa e tokenizada.');
