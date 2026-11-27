@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +34,7 @@ const ALLOW_GLOBAL_FALLBACKS = workspaceContext.allowGlobalFallbacks;
 const JUDICIAL_INTEGRATIONS_FILE = path.join(DATA_DIR, 'judicial-integrations.json');
 const PROCESS_RE = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/;
 const DATE_RE = /\b(\d{2})\/(\d{2})\/(\d{4})\b/;
+const KEEP_BROWSER_PROFILE = /^(?:1|true|yes|on)$/i.test(String(process.env.ATRIUM_KEEP_BROWSER_PROFILE || ''));
 
 await loadEnv(path.join(ROOT, '.env'));
 if (IS_DEFAULT_WORKSPACE) await loadEnv(path.join(ROOT, '.env.collector'));
@@ -116,6 +117,7 @@ try {
     let releaseLock = null;
     let modernCertCleanup = null;
     let context = null;
+    let removeProfileOnExit = true;
 
     try {
       releaseLock = await sessionManager.acquireLock('agent-local', portal.id, judicialIdentityId);
@@ -134,6 +136,9 @@ try {
         portal.strategy === 'eproc' ? AUTH_STRATEGIES.CREDENTIALS_TOTP :
         AUTH_STRATEGIES.MANUAL_PERSISTENT_SESSION
       );
+      // Sessão manual persistente depende do perfil em disco; nas demais o login é
+      // automatizado por A1/TOTP e o perfil pode ser descartado ao fim do ciclo.
+      removeProfileOnExit = authStrategy !== AUTH_STRATEGIES.MANUAL_PERSISTENT_SESSION;
       const authAdapter = getAuthAdapter(authStrategy);
       const portalCreds = judicialSecrets.portalCredentials?.[portal.id] || null;
       let totpSecret = judicialSecrets.totpSecrets?.[portal.id]?.secret
@@ -230,6 +235,12 @@ try {
     } finally {
       if (context) { try { await context.close(); } catch {} }
       if (modernCertCleanup) { try { await modernCertCleanup(); } catch {} }
+      // O perfil do Chromium guarda cookies de sessão judicial em claro. Como o login
+      // é automatizado, ele é removido ao fim do ciclo; ATRIUM_KEEP_BROWSER_PROFILE=1
+      // preserva o perfil para diagnóstico ou portal que exija sessão persistente.
+      if (removeProfileOnExit && !KEEP_BROWSER_PROFILE) {
+        try { await rm(profileDir, { recursive: true, force: true }); } catch {}
+      }
       if (releaseLock) releaseLock();
     }
   }
@@ -563,18 +574,23 @@ async function collectEprocProcessPages(page, portal) {
         const secrecyTitle = [...row.querySelectorAll('[title], [aria-label]')]
           .map(element => `${element.getAttribute('title') || ''} ${element.getAttribute('aria-label') || ''}`)
           .join(' ');
-        const secrecy = looksLikeSecrecySignal(secrecyTitle) || looksLikeSecrecySignal(row.innerText);
         return {
           id: `${metadata.id}:process:${number}`, externalId: `${metadata.id}:process:${number}`, number,
           client: cells[3] || 'Cliente não identificado', opposingParty: cells[4] || '',
           court: `${metadata.court}${cells[5] ? ` · ${cells[5]}` : ''}`, locality: cells[5] || '',
           actionType: cells[2] || '', subject: cells[6] || '', lastMovement: cells[7] || '',
           lastMovementAt: cells[8] || '', filedAt: cells[9] || '', caseValue: cells[10] || '',
-          secrecy, monitoring: 'active', source: metadata.name, collectedAt: new Date().toISOString()
+          secrecyTitle, rowText: row.innerText || '',
+          monitoring: 'active', source: metadata.name, collectedAt: new Date().toISOString()
         };
       }).filter(record => record.number);
     }, { id: portal.id, name: portal.name, court: portal.court || portal.name });
-    for (const row of rows) row.lastMovementAt = parseBrazilianDate(row.lastMovementAt);
+    for (const row of rows) {
+      row.secrecy = looksLikeSecrecySignal(row.secrecyTitle) || looksLikeSecrecySignal(row.rowText);
+      delete row.secrecyTitle;
+      delete row.rowText;
+      row.lastMovementAt = parseBrazilianDate(row.lastMovementAt);
+    }
     collected.push(...rows);
     if (pageIndex + 1 >= totalPages) break;
     const pager = page.locator('select#selInfraPaginacaoSuperior').first();
@@ -829,13 +845,6 @@ function source(portal, status, lastCheck, detail) {
   return { id: portal.id, name: portal.name, short: portal.short || portal.name.slice(0, 3).toUpperCase(), method, status, lastCheck, detail };
 }
 
-async function pjeOfficeAvailable() {
-  try {
-    const response = await fetch('http://127.0.0.1:8800/pjeOffice/', { signal: AbortSignal.timeout(3_000) });
-    return response.ok && /image\/gif/i.test(response.headers.get('content-type') || '');
-  } catch { return false; }
-}
-
 async function tryAutomatedTotp(page, portal) {
   const secret = judicialSecrets.totpSecrets?.[portal.id]?.secret
     || (ALLOW_GLOBAL_FALLBACKS && portal.autoTotpEnv ? process.env[portal.autoTotpEnv] : '');
@@ -922,42 +931,10 @@ async function tryAutomatedTotp(page, portal) {
   return true;
 }
 
-async function tryAutomatedCertificateLogin(page, portal) {
-  const allowedOrigins = new Set([new URL(portal.url).origin, ...(portal.trustedAuthOrigins || [])]);
-  if (/tjrs\.jus\.br/i.test(portal.url) || portal.id.includes('tjrs')) {
-    allowedOrigins.add('https://keycloak-httpd-mtls.tjrs.jus.br');
-  }
-  if (!allowedOrigins.has(new URL(page.url()).origin)) return false;
-
-  const candidates = [
-    page.locator('#kc-login-certificate, button[name="loginCertificate"], #kc-form-login-certificate, button:has-text("Certificado Digital"), a:has-text("Certificado Digital")').first(),
-    page.getByRole('button', { name: /certificado\s+digital/i }),
-    page.getByRole('link', { name: /certificado\s+digital/i }),
-    page.getByText(/acesso\s+com\s+certificado\s+digital/i, { exact: false }),
-    page.getByRole('button', { name: /certificado\s+a1/i }),
-    page.getByRole('link', { name: /certificado\s+a1/i }),
-    page.getByRole('button', { name: /entrar\s+com\s+certificado/i }),
-    page.getByRole('link', { name: /entrar\s+com\s+certificado/i }),
-    page.locator('button#btnCertificado, a#btnCertificado, button#btn-login-cert, a#btn-login-cert').first()
-  ];
-  for (const candidate of candidates) {
-    if (!(await candidate.count().catch(() => 0))) continue;
-    const element = candidate.first();
-    if (!(await element.isVisible().catch(() => false))) continue;
-    console.log(`[A1 Robô]: Clicando automaticamente no acesso por Certificado em ${portal.name}…`);
-    await element.click({ timeout: 5_000 }).catch(() => {});
-    await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => {});
-    await page.waitForTimeout(1_500);
-    return true;
-  }
-  return false;
-}
-
 function normalizeLine(value) { return String(value || '').replace(/\s+/g, ' ').trim(); }
 function normalizeSearch(value) { return normalizeLine(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 function parseBrazilianDate(text) { const match = text.match(DATE_RE); return match ? `${match[3]}-${match[2]}-${match[1]}` : ''; }
 function inferClient(text, number) { return normalizeLine(text.replace(number, '')).slice(0, 120) || 'Cliente não identificado'; }
-function safeMessage(error) { return String(error?.message || error || 'Falha não identificada').replace(/(?:password|senha|token|passphrase)=[^\s&]+/gi, '[segredo oculto]').slice(0, 300); }
 function hash(value) { let hashValue = 2166136261; for (const char of value) { hashValue ^= char.charCodeAt(0); hashValue = Math.imul(hashValue, 16777619); } return (hashValue >>> 0).toString(36); }
 
 async function loadEnv(file) {

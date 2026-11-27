@@ -1,7 +1,8 @@
 import http from 'node:http';
+import { plural } from './lib/plural.mjs';
 import { createGracefulShutdown } from './lib/graceful-shutdown.mjs';
 import https from 'node:https';
-import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm, readdir, copyFile, chmod, open, statfs } from 'node:fs/promises';
+import { appendFile, readFile, writeFile, mkdir, stat, unlink, rename, rm, readdir, copyFile, chmod, open, statfs, realpath } from 'node:fs/promises';
 import { existsSync, constants as fsConstants, unlinkSync, rmdirSync, mkdirSync, readFileSync } from 'node:fs';
 import { randomBytes, timingSafeEqual, createHash, X509Certificate } from 'node:crypto';
 import { spawn } from 'node:child_process';
@@ -59,15 +60,14 @@ import { handleProfileRoute, isProfileRoute, PROFILE_ROUTE_MISS } from './lib/ht
 import { handleNotificationInboxRoute, isNotificationInboxRoute, NOTIFICATION_INBOX_ROUTE_MISS } from './lib/http/notification-inbox-routes.mjs';
 import { handleOfficeRoute, isOfficeRoute, OFFICE_ROUTE_MISS } from './lib/http/office-routes.mjs';
 import { assertCanGrantOfficeRole, assertMemberKindMatchesRole, defaultMemberKind, isOfficePrincipalMember, principalProtectionError } from './lib/office/role-catalog.mjs';
-import { buildProcessIndex, canAccessAgenda, canAccessContact, canAccessDocument, canAccessProcess, canAccessPublication, canAccessSearchResult, canAccessTask, canWriteFinancial, filterOfficeState, filterPrivateScopeState, filterPrivateSearchResults, restoreRecordsUnseenByClient, isSuppressedRecord, mergePrivateScopeState, mergeVisibleClientState } from './lib/office/access-control.mjs';
+import { buildContactIndex, buildProcessIndex, canAccessAgenda, canAccessContact, canAccessDocument, canAccessProcess, canAccessPublication, canAccessTask, canWriteFinancial, createSearchAccessFilter, filterOfficeState, filterPrivateScopeState, restoreRecordsUnseenByClient, isSuppressedRecord, mergePrivateScopeState, mergeVisibleClientState } from './lib/office/access-control.mjs';
 import { normalizeFinanceEntries, discardedFinanceCollections } from './lib/office/finance-entry-scope.mjs';
 import { applyMonitoringScopes, formatMonitoredProcessNumber, isProcessMonitoringTerm, monitoringTermProcessDigits, monitoringTermsById, normalizeMonitoringTerms, ownerMatchesUser, privateOwnerForRecord } from './lib/office/monitoring-scope.mjs';
 import { collapseDuplicateProcessRows } from './lib/office/process-rows.mjs';
-import { keepNewestSourceChecks, mergeSourceChecks } from './lib/office/source-status.mjs';
+import { keepNewestSourceChecks, mergeSourceChecks, withoutRetiredSources } from './lib/office/source-status.mjs';
 import { officeStats, restoreProcessFinanceFields } from './lib/office/office-insights.mjs';
 import { handleProcessAccessRoute, handleProcessAccessRevoke, isProcessAccessRoute, processAccessMatch } from './lib/http/process-access-routes.mjs';
 import { TjrsSidecarClient } from './lib/judicial/tjrs-sidecar-client.mjs';
-import { refreshMonitoredTjrsProcesses } from './lib/judicial/tjrs-monitoring.mjs';
 import { createTjrsSidecarHttpHandler } from './lib/http/tjrs-sidecar-routes.mjs';
 import { downloadProcessWithA1, sweepAndEnrichProcessesWithA1 } from './lib/judicial/eproc-a1-downloader.mjs';
 import { createEprocRuntimeExecutor } from './lib/judicial/eproc/runtime-executor.mjs';
@@ -181,6 +181,7 @@ import {
 
 import ExcelJS from 'exceljs';
 import * as xlsxModule from 'xlsx';
+import { publicClientAddress } from './lib/http/client-address.mjs';
 const XLSX = xlsxModule.default || xlsxModule;
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -375,7 +376,7 @@ const security = new SecurityManager({
 });
 await security.init();
 const restoredSessions = await security.restoreSessionsSnapshot();
-if (restoredSessions) console.log(`[ATRIUM Segurança]: ${restoredSessions} sessão(ões) mantida(s) após o reinício.`);
+if (restoredSessions) console.log(`[ATRIUM Segurança]: ${restoredSessions} ${plural(restoredSessions, 'sessão mantida', 'sessões mantidas')} após o reinício.`);
 await recoverInterruptedFactoryResets({ dataDirectory: DATA_DIR, securityAdapter: security });
 
 const workspaceRequestContext = new AsyncLocalStorage();
@@ -447,11 +448,16 @@ async function writeJevSecret(apiKey) {
     updatedAt: new Date().toISOString()
   };
   const target = jevSecretsFile();
-  const temp = `${target}.tmp-${process.pid}`;
-  await writeFile(temp, JSON.stringify(envelope), { mode: 0o600 });
-  await chmod(temp, 0o600).catch(() => {});
-  await rename(temp, target);
-  await chmod(target, 0o600).catch(() => {});
+  const temp = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
+  try {
+    await writeFile(temp, JSON.stringify(envelope), { mode: 0o600 });
+    await chmod(temp, 0o600).catch(() => {});
+    await rename(temp, target);
+    await chmod(target, 0o600).catch(() => {});
+  } catch (error) {
+    await unlink(temp).catch(() => {});
+    throw error;
+  }
 }
 
 async function clearJevSecret() {
@@ -521,6 +527,7 @@ const defaultPortalsList = existsSync(PORTALS_FILE) ? JSON.parse(await readFile(
 const eprocPublicSearchRuntimePromise = createEprocPublicSearchRuntime({ logger: console, env: process.env });
 const judicialOrchestratorInstances = new Map();
 const domicilioRunnerInstances = new Map();
+const domicilioActiveRuns = new Map();
 
 /**
  * Runner do Domicílio Eletrônico por workspace: roda NO SERVIDOR (cloud-first), com
@@ -554,9 +561,23 @@ function domicilioRunnerForWorkspace(workspaceId, credentialManager) {
 }
 
 async function runDomicilioCaptureForWorkspace(workspaceId, { headed = false } = {}) {
-  const orch = await judicialOrchestratorForCurrentWorkspace();
-  const runner = domicilioRunnerForWorkspace(workspaceId, orch.credentialManager);
-  return await runner.run({ headed });
+  const runKey = workspaceId;
+  if (domicilioActiveRuns.has(runKey)) {
+    return await domicilioActiveRuns.get(runKey);
+  }
+  const runPromise = workspaceRequestContext.run({ workspaceId }, async () => {
+    const orch = await judicialOrchestratorForCurrentWorkspace();
+    const runner = domicilioRunnerForWorkspace(workspaceId, orch.credentialManager);
+    return await runner.run({ headed });
+  });
+  domicilioActiveRuns.set(runKey, runPromise);
+  try {
+    return await runPromise;
+  } finally {
+    if (domicilioActiveRuns.get(runKey) === runPromise) {
+      domicilioActiveRuns.delete(runKey);
+    }
+  }
 }
 
 async function judicialOrchestratorForCurrentWorkspace() {
@@ -948,6 +969,11 @@ async function clearWorkspaceRuntimeInstances(workspaceId) {
   documentStorageInstances.delete(workspaceId);
   eprocSweepJobs.delete(workspaceId);
   collectorRegistry.removeJob(workspaceId);
+  if (publicAppStateCache.key === directory) {
+    publicAppStateCache.key = '';
+    publicAppStateCache.stamp = '';
+    publicAppStateCache.payload = null;
+  }
   workspaceSearchIndexes.delete(directory);
   workspaceRuntimeHealth.delete(directory);
   workspaceStateHealth.delete(directory);
@@ -1126,9 +1152,11 @@ const handleTjrsSidecarRequest = createTjrsSidecarHttpHandler({
   saveState: saveAppStateDirect,
   documentStorage,
   credentialManager: workspaceCredentialManager,
+  canAccessProcess: isProcessAllowedForSession,
   // H3: o sidecar é físico/global e indexado por CNJ; para workspace não-default
   // exigimos a chave de acesso do processo antes de servir snapshot cacheado.
   requireAccessKeyForPreview: () => currentWorkspaceId() !== security.state.defaultWorkspaceId,
+  consultationDisabled: true,
   json
 });
 const omniServiceInstances = new Map();
@@ -1155,12 +1183,15 @@ const handleOmniRequest = createOmniHttpHandler({
   saveState: saveAppStateDirect,
   json,
   credentialManager: workspaceCredentialManager,
+  canAccessProcess: isProcessAllowedForSession,
   // H4: o sidecar físico é compartilhado e indexado por CNJ; workspace não-default
   // que alcança esse cache exige a chave de acesso do processo.
   requireAccessKey: () => {
     const workspaceId = currentWorkspaceId();
     return workspaceId !== security.state.defaultWorkspaceId && sharedSidecarAvailableForWorkspace(workspaceId);
-  }
+  },
+  // A consulta ao TJRS por chave foi desativada (22/11/2026).
+  disabledCourts: ['TJRS']
 });
 const legalIntelligenceService = await createLegalIntelligenceService({ rootDir: ROOT, env: process.env }).catch(error => {
   console.warn(`[ATRIUM Inteligência Jurídica]: indisponível (${error.message}).`);
@@ -1198,11 +1229,12 @@ function projectRuntimeForSession(runtime, session, state) {
   const accessMode = security.officeProfile(session.workspaceId).accessMode;
   const sessionId = String(session.id || session.userId || session.username || '');
   const processIndex = buildProcessIndex([...(state?.processes || []), ...(runtime.processes || [])]);
+  const contactIndex = buildContactIndex(state?.contacts);
   const termsById = monitoringTermsById(state?.terms);
   const keep = (record, predicate) => {
     if (!record || typeof record !== 'object') return true;
     if (isSuppressedRecord(record)) return false;
-    const owner = privateOwnerForRecord(record, { termsById, processIndex });
+    const owner = privateOwnerForRecord(record, { termsById, processIndex, contactIndex });
     if (owner && !ownerMatchesUser(owner, session)) return false;
     if (accessMode === 'enforced' && typeof predicate === 'function') return predicate(record);
     return true;
@@ -1214,7 +1246,7 @@ function projectRuntimeForSession(runtime, session, state) {
     tasks: record => canAccessTask(session, record, processIndex, teams),
     events: record => canAccessAgenda(session, record, processIndex, teams),
     contacts: record => canAccessContact(session, record, processIndex, teams),
-    documents: record => canAccessDocument(session, record, processIndex, teams)
+    documents: record => canAccessDocument(session, record, processIndex, teams, contactIndex)
   };
   for (const [key, predicate] of Object.entries(filters)) {
     if (Array.isArray(runtime[key])) result[key] = runtime[key].filter(record => keep(record, predicate));
@@ -1262,18 +1294,19 @@ function filterRequestedContextByAccess(state, requestedContext, session) {
   const teams = security.listTeams(session.workspaceId);
   const accessMode = security.officeProfile(session.workspaceId).accessMode;
   const processIndex = buildProcessIndex(state.processes);
+  const contactIndex = buildContactIndex(state.contacts);
   const termsById = monitoringTermsById(state.terms);
   const sessionId = String(session.id || session.userId || session.username || '');
   // Espelha a leitura: escopo privado sempre; RBAC de escritório só em `enforced`.
   const privateAllowed = record => {
-    const owner = privateOwnerForRecord(record, { termsById, processIndex });
+    const owner = privateOwnerForRecord(record, { termsById, processIndex, contactIndex });
     return !owner || ownerMatchesUser(owner, session);
   };
   const enforcedOnly = predicate => record => privateAllowed(record) && (accessMode !== 'enforced' || predicate(record));
   const predicates = {
     process: enforcedOnly(record => canAccessProcess(session, record, teams)),
     intimation: enforcedOnly(record => canAccessPublication(session, record, processIndex, teams)),
-    document: enforcedOnly(record => canAccessDocument(session, record, processIndex, teams)),
+    document: enforcedOnly(record => canAccessDocument(session, record, processIndex, teams, contactIndex)),
     contact: enforcedOnly(record => canAccessContact(session, record, processIndex, teams))
   };
   const collections = {
@@ -1323,7 +1356,7 @@ async function recordCitationOverride({ justification, actor, blockers = [], rev
     id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
     at: new Date().toISOString(),
     action: 'Revisão de citações com override',
-    detail: `${blockers.length} bloqueio(s) assumido(s) na exportação · ${String(justification).slice(0, 300)}`,
+    detail: `${blockers.length} ${plural(blockers.length, 'bloqueio', 'bloqueios')} ${plural(blockers.length, 'assumido', 'assumidos')} na exportação · ${String(justification).slice(0, 300)}`,
     actor: actor || 'Usuário autenticado'
   });
   state.audit = state.audit.slice(0, 1000);
@@ -1349,13 +1382,14 @@ async function readAgenticPlans() {
 }
 
 async function saveAgenticPlans(file) {
+  const target = agenticPlansFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = agenticPlansFile();
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify(file, null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Inteligência Jurídica] Falha ao persistir os planos agênticos:', error?.message || error);
     return false;
   }
@@ -1383,7 +1417,10 @@ const handleTaskRequest = createTaskHttpHandler({
   enqueueAppStateMutation,
   resolveIntimationAlias,
   buildPublicationTask: buildCanonicalPublicationTask,
-  listTeams: workspaceId => security.listTeams(workspaceId)
+  listTeams: workspaceId => security.listTeams(workspaceId),
+  canAccessPublication: isPublicationAllowedForSession,
+  canAccessTask: isTaskAllowedForSession,
+  canAccessProcess: isProcessAllowedForSession
 });
 
 const handleAiClassifierRequest = createAiClassifierHttpHandler({
@@ -1452,7 +1489,7 @@ function currentSearchIndex() {
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp', '.ttf': 'font/ttf',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp', '.ttf': 'font/ttf', '.woff2': 'font/woff2',
   '.mp4': 'video/mp4', '.webm': 'video/webm'
 };
 const publicFiles = new Set([
@@ -1487,11 +1524,16 @@ const RUNTIME_COLLECTION_LIMITS = Object.freeze({
 function capRuntimeCollections(payload) {
   const next = { ...payload };
   for (const [key, limit] of Object.entries(RUNTIME_COLLECTION_LIMITS)) {
-    const list = Array.isArray(next[key]) ? next[key] : [];
+    let list = Array.isArray(next[key]) ? next[key] : [];
+    if (key === 'intimations' || key === 'processes') {
+      list = list.filter(item => !item?.captureSuppressed);
+    }
     if (list.length > limit) {
       // Coleções são mantidas com os itens mais recentes primeiro.
       next[key] = list.slice(0, limit);
       console.warn(`[ATRIUM Runtime]: coleção "${key}" excedeu ${limit} itens; os mais antigos foram descartados do runtime.`);
+    } else if (next[key] !== list) {
+      next[key] = list;
     }
   }
   return next;
@@ -1515,6 +1557,7 @@ function resolveCollectorSpawnToken(token) {
   if (entry.expiresAt < Date.now()) { collectorSpawnTokens.delete(key); return null; }
   return { id: entry.workspaceId };
 }
+const appStateMutationScope = new AsyncLocalStorage();
 const appStateMutationTails = new Map();
 const runtimeMutationTails = new Map();
 const workspaceRuntimeHealth = new Map();
@@ -1567,8 +1610,20 @@ const googleCalendarSync = createGoogleCalendarService({
 
 function enqueueAppStateMutation(operation) {
   const workspaceId = workspaceDataDirectory();
+  const activeScope = appStateMutationScope.getStore();
+  if (activeScope && activeScope.active && activeScope.workspaceId === workspaceId) {
+    return Promise.resolve().then(operation);
+  }
   const previous = appStateMutationTails.get(workspaceId) || Promise.resolve();
-  const queued = previous.then(operation, operation);
+  const runScoped = async () => {
+    const scope = { workspaceId, active: true };
+    try {
+      return await appStateMutationScope.run(scope, operation);
+    } finally {
+      scope.active = false;
+    }
+  };
+  const queued = previous.then(runScoped, runScoped);
   appStateMutationTails.set(workspaceId, queued.catch(() => {}));
   return queued;
 }
@@ -1951,11 +2006,11 @@ async function saveAppStateDirectUnlocked(value, expectedRevision = null, option
   value = applySafeDefaults(value);
   if (Array.isArray(value.processes)) value.processes = collapseDuplicateProcessRows(value.processes);
 
-  const current = await readAppStateEnvelope();
+  const current = options.currentEnvelope ?? await readAppStateEnvelope();
   if (current.revision && expectedRevision !== current.revision) {
     throw Object.assign(new Error('Os dados foram atualizados em outra aba ou pelo importador. Recarregue a Central antes de salvar.'), { statusCode: 409 });
   }
-  if (current.state?.audit && Array.isArray(current.state.audit)) {
+  if (current.state !== value && current.state?.audit && Array.isArray(current.state.audit)) {
     const mergedAudit = [...(value.audit || [])];
     for (const entry of current.state.audit) {
       if (!mergedAudit.some(m => (m.id && m.id === entry.id) || (m.at && m.at === entry.at))) {
@@ -1988,6 +2043,9 @@ async function saveAppStateDirectUnlocked(value, expectedRevision = null, option
     throw error;
   }
 
+  publicAppStateCache.key = '';
+  publicAppStateCache.stamp = '';
+  publicAppStateCache.payload = null;
   stateHealth().status = 'READY';
   googleCalendarSync.markDirty(currentWorkspaceId());
   return { updatedAt: envelope.updatedAt, revision: envelope.revision, schemaVersion: CURRENT_SCHEMA_VERSION };
@@ -2008,10 +2066,9 @@ async function saveAppState(value, expectedRevision = null, options = {}) {
  * Narrativas de auditoria que descrevem escrita financeira. Servem só para barrar a
  * entrada fantasma de um flush cujo financeiro foi revertido.
  */
-const FINANCE_AUDIT_NARRATIVE = /^(?:Lançamento financeiro|Despesa)/i;
+const FINANCE_AUDIT_NARRATIVE = /^(?:Lançamento financeiro|Despesa|Honorários|Parcela de honorários|Recebimento|Requisição)/i;
 
-async function saveClientAppState(value, expectedRevision, session, options = {}) {
-  return enqueueAppStateMutation(async () => {
+async function saveClientAppStateUnlocked(value, expectedRevision, session, options = {}) {
     if (stateHealth().status === 'RECOVERY_REQUIRED' || stateHealth().status === 'FUTURE_SCHEMA_ERROR') {
       throw Object.assign(new Error('O sistema está em Modo de Recuperação. Não é permitido sobrescrever dados corrompidos sem restauração prévia.'), { statusCode: 423 });
     }
@@ -2145,7 +2202,7 @@ async function saveClientAppState(value, expectedRevision, session, options = {}
         actor
       }));
     value.audit = [...mergeAuditEntries, ...newEntries, ...previousAudit].slice(0, 1000);
-    const saved = await saveAppStateDirectUnlocked(value, expectedRevision);
+    const saved = await saveAppStateDirectUnlocked(value, expectedRevision, { currentEnvelope: current });
 
     // Despacho de eventos de notificação pós-commit
     try {
@@ -2185,7 +2242,10 @@ async function saveClientAppState(value, expectedRevision, session, options = {}
     }
 
     return saved;
-  });
+}
+
+async function saveClientAppState(value, expectedRevision, session, options = {}) {
+  return enqueueAppStateMutation(() => saveClientAppStateUnlocked(value, expectedRevision, session, options));
 }
 
 function normalizeAiSecrets(raw) {
@@ -2262,7 +2322,8 @@ async function configureAiProvider(body) {
   if (!apiKey || apiKey.length < 20) {
     throw Object.assign(new Error('Chave de API do provedor inválida ou muito curta.'), { statusCode: 400 });
   }
-  const baseUrl = definition.kind === 'gemini' ? null : await validateAiProviderBaseUrl(body.baseUrl || definition.baseUrl);
+  const resolvedAi = definition.kind === 'gemini' ? null : await resolvePublicAiProviderTarget(body.baseUrl || definition.baseUrl);
+  const baseUrl = resolvedAi ? resolvedAi.baseUrl : null;
   const model = String(body.model || definition.defaultModel).trim() || definition.defaultModel;
 
   const testStartedAt = Date.now();
@@ -2277,7 +2338,8 @@ async function configureAiProvider(body) {
         model,
         systemInstruction: null,
         contents: [{ role: 'user', parts: [{ text: 'Responda apenas com a palavra OK' }] }],
-        sessionId: definition.requiresSessionHeader ? `atrium-${currentWorkspaceId()}` : ''
+        sessionId: definition.requiresSessionHeader ? `atrium-${currentWorkspaceId()}` : '',
+        fetchImpl: createPinnedAiProviderFetch(resolvedAi.address)
       });
   } catch (err) {
     await recordAiUsage({
@@ -2289,7 +2351,10 @@ async function configureAiProvider(body) {
       durationMs: Date.now() - testStartedAt,
       errorCategory: classifyAiUsageError(err?.message)
     });
-    throw Object.assign(new Error(`Falha ao validar a chave com o provedor: ${err.message}`), { statusCode: 400 });
+    const safeHint = /^Falha do provedor de IA \(\d{3}\):/.test(String(err?.message || ''))
+      ? err.message.split(':')[0]
+      : 'Verifique a chave, o modelo e o endereço HTTPS informado.';
+    throw Object.assign(new Error(`Falha ao validar a chave com o provedor: ${safeHint}`), { statusCode: 400 });
   }
   await recordAiUsage({
     kind: 'ai',
@@ -2374,16 +2439,20 @@ async function classifierProviderDecision({ state, schemaId, sourceText = null }
     : '';
   const result = provider.kind === 'gemini'
     ? await callGeminiApi(provider.apiKey, prompt.systemInstruction, prompt.contents)
-    : await callCompatibleProvider({
-      kind: provider.kind,
-      baseUrl: provider.baseUrl || provider.definition?.baseUrl || '',
-      apiKey: provider.apiKey,
-      model: provider.model || provider.definition?.defaultModel,
-      systemInstruction: prompt.systemInstruction,
-      contents: prompt.contents,
-      maxTokens: 2048,
-      sessionId
-    });
+    : await (async () => {
+      const resolvedAi = await resolvePublicAiProviderTarget(provider.baseUrl || provider.definition?.baseUrl || '');
+      return callCompatibleProvider({
+        kind: provider.kind,
+        baseUrl: resolvedAi.baseUrl,
+        apiKey: provider.apiKey,
+        model: provider.model || provider.definition?.defaultModel,
+        systemInstruction: prompt.systemInstruction,
+        contents: prompt.contents,
+        maxTokens: 2048,
+        sessionId,
+        fetchImpl: createPinnedAiProviderFetch(resolvedAi.address)
+      });
+    })();
   const parsed = parseProviderDecision(result?.text);
   return { ...parsed, usage: result?.usage || null, provider: provider.id, transport: 'provider-degraded' };
 }
@@ -2434,14 +2503,15 @@ async function readAiUsageHistory() {
 }
 
 async function saveAiUsageHistory(history) {
+  const target = aiUsageFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = aiUsageFile();
     await mkdir(path.dirname(target), { recursive: true });
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify(history, null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[IA] Falha ao persistir o ledger de uso:', error?.message || error);
     return false;
   }
@@ -2478,14 +2548,15 @@ async function readErrorReports() {
 }
 
 async function saveErrorReports(reports) {
+  const target = errorReportsFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = errorReportsFile();
     await mkdir(path.dirname(target), { recursive: true });
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), reports: reports.slice(0, 200) }, null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Erro] Falha ao persistir relato de erro:', error?.message || error);
     return false;
   }
@@ -2521,17 +2592,22 @@ async function callActiveModel(systemInstruction, contents, { operation = 'assis
   if (!provider) throw new Error('Nenhum provedor de IA configurado.');
   const startedAt = Date.now();
   try {
-    const response = provider.kind === 'gemini'
-      ? await callGeminiApi(provider.apiKey, systemInstruction, contents)
-      : await callCompatibleProvider({
-          kind: provider.kind,
-          baseUrl: provider.baseUrl,
-          apiKey: provider.apiKey,
-          model: provider.model,
-          systemInstruction,
-          contents,
-          sessionId: provider.definition?.requiresSessionHeader ? `atrium-${currentWorkspaceId()}` : ''
-        });
+    let response;
+    if (provider.kind === 'gemini') {
+      response = await callGeminiApi(provider.apiKey, systemInstruction, contents);
+    } else {
+      const resolvedAi = await resolvePublicAiProviderTarget(provider.baseUrl);
+      response = await callCompatibleProvider({
+        kind: provider.kind,
+        baseUrl: resolvedAi.baseUrl,
+        apiKey: provider.apiKey,
+        model: provider.model,
+        systemInstruction,
+        contents,
+        sessionId: provider.definition?.requiresSessionHeader ? `atrium-${currentWorkspaceId()}` : '',
+        fetchImpl: createPinnedAiProviderFetch(resolvedAi.address)
+      });
+    }
     await recordAiUsage({
       kind: 'ai',
       operation,
@@ -2561,7 +2637,8 @@ async function callActiveModel(systemInstruction, contents, { operation = 'assis
   }
 }
 
-async function validateAiProviderBaseUrl(value) {  let url;
+async function resolvePublicAiProviderTarget(value) {
+  let url;
   try { url = new URL(String(value || '').trim()); } catch { throw Object.assign(new Error('Informe uma URL válida para o provedor de IA.'), { statusCode: 400 }); }
   if (url.protocol !== 'https:') throw Object.assign(new Error('O provedor de IA deve usar HTTPS.'), { statusCode: 400 });
   if (url.username || url.password) throw Object.assign(new Error('A URL do provedor não pode conter usuário ou senha.'), { statusCode: 400 });
@@ -2571,14 +2648,98 @@ async function validateAiProviderBaseUrl(value) {  let url;
   }
   let addresses;
   try {
-    addresses = isIP(hostname) ? [{ address: hostname }] : await lookup(hostname, { all: true, verbatim: true });
+    addresses = isIP(hostname) ? [{ address: hostname, family: isIP(hostname) }] : await lookup(hostname, { all: true, verbatim: true });
   } catch {
     throw Object.assign(new Error('Não foi possível resolver o endereço do provedor de IA.'), { statusCode: 400 });
   }
   if (!addresses.length || addresses.some(entry => isPrivateNetworkAddress(entry.address))) {
     throw Object.assign(new Error('O provedor de IA deve apontar para um endereço público seguro.'), { statusCode: 400 });
   }
-  return url.toString().replace(/\/+$/, '');
+  const primary = addresses[0];
+  return {
+    baseUrl: url.toString().replace(/\/+$/, ''),
+    address: { address: primary.address, family: primary.family || (primary.address.includes(':') ? 6 : 4) }
+  };
+}
+
+function createPinnedAiProviderFetch(pinnedAddress) {
+  return (targetUrl, init = {}) => new Promise((resolve, reject) => {
+    let url;
+    try { url = new URL(String(targetUrl || '')); } catch { return reject(new Error('URL de provedor de IA inválida.')); }
+    if (url.protocol !== 'https:') return reject(new Error('O provedor de IA deve usar HTTPS.'));
+    const bodyText = init.body === undefined || init.body === null ? '' : String(init.body);
+    const headers = { ...(init.headers || {}), Host: url.host };
+    if (bodyText && !Object.keys(headers).some(k => k.toLowerCase() === 'content-length')) {
+      headers['Content-Length'] = Buffer.byteLength(bodyText, 'utf8');
+    }
+    let settled = false;
+    const onAbort = () => {
+      const err = new Error('The operation was aborted.');
+      err.name = 'AbortError';
+      request.destroy(err);
+    };
+    const cleanupSignal = () => init.signal?.removeEventListener?.('abort', onAbort);
+    const request = https.request({
+      protocol: 'https:',
+      hostname: pinnedAddress.address,
+      port: url.port || 443,
+      path: `${url.pathname}${url.search}`,
+      method: init.method || 'POST',
+      headers,
+      servername: url.hostname.replace(/^\[|\]$/g, ''),
+      family: pinnedAddress.family,
+      lookup: (_h, _o, cb) => cb(null, pinnedAddress.address, pinnedAddress.family)
+    }, response => {
+      const status = Number(response.statusCode || 0);
+      if (status >= 300 && status < 400) {
+        response.destroy();
+        cleanupSignal();
+        settled = true;
+        return reject(new Error('Redirecionamento não permitido para provedor de IA.'));
+      }
+      const chunks = [];
+      let total = 0;
+      const MAX_BYTES = 4 * 1024 * 1024;
+      response.on('data', chunk => {
+        total += chunk.length;
+        if (total > MAX_BYTES) {
+          response.destroy(new Error('Resposta do provedor de IA excede o limite permitido.'));
+          return;
+        }
+        chunks.push(Buffer.from(chunk));
+      });
+      response.once('end', () => {
+        cleanupSignal();
+        if (settled) return;
+        settled = true;
+        const text = Buffer.concat(chunks).toString('utf8');
+        resolve({
+          ok: status >= 200 && status < 300,
+          status,
+          text: async () => text,
+          json: async () => JSON.parse(text)
+        });
+      });
+      response.once('error', err => {
+        cleanupSignal();
+        if (!settled) { settled = true; reject(err); }
+      });
+    });
+    if (init.signal?.aborted) {
+      cleanupSignal();
+      const err = new Error('The operation was aborted.');
+      err.name = 'AbortError';
+      request.destroy(err);
+      return reject(err);
+    }
+    init.signal?.addEventListener?.('abort', onAbort, { once: true });
+    request.once('error', err => {
+      cleanupSignal();
+      if (!settled) { settled = true; reject(err); }
+    });
+    if (bodyText) request.write(bodyText, 'utf8');
+    request.end();
+  });
 }
 
 const AI_ATTACHMENT_MAX_BYTES = 20_000_000;
@@ -2595,7 +2756,7 @@ const AI_ATTACHMENT_MAX_ITEMS = 5;
 const aiAttachmentWindows = new Map();
 
 function enforceAiAttachmentRateLimit(req) {
-  const key = String(req.socket?.remoteAddress || 'local');
+  const key = publicClientAddress(req) || 'local';
   const now = Date.now();
   const current = aiAttachmentWindows.get(key);
   const bucket = !current || now - current.startedAt >= 60_000 ? { startedAt: now, count: 0 } : current;
@@ -2609,7 +2770,7 @@ function enforceAiAttachmentRateLimit(req) {
 const aiChatWindows = new Map();
 
 function enforceAiChatRateLimit(req) {
-  const key = String(req.socket?.remoteAddress || 'local');
+  const key = publicClientAddress(req) || 'local';
   const now = Date.now();
   const current = aiChatWindows.get(key);
   const bucket = !current || now - current.startedAt >= 60_000 ? { startedAt: now, count: 0 } : current;
@@ -2775,7 +2936,11 @@ async function appendServerAudit(action, detail, actor = 'Administrador') {
       state.audit = state.audit.slice(0, 1000);
       await saveAppStateDirectUnlocked(state, envelope.revision || null);
     });
-  } catch {}
+  } catch (error) {
+    // A ação auditada já aconteceu; a falha não desfaz nada, mas não pode sumir em silêncio.
+    // Só o nome da ação vai para o log: o detalhe pode conter dados pessoais.
+    console.error(`[ATRIUM Auditoria] Falha ao registrar "${String(action || "").slice(0, 120)}": ${error?.code || error?.message || "erro desconhecido"}`);
+  }
 }
 
 const publicAppStateCache = { key: '', stamp: '', payload: null };
@@ -2937,9 +3102,14 @@ async function savePortalPreferences(enabledIds) {
     updatedAt: new Date().toISOString()
   };
   await mkdir(workspaceDataDirectory(), { recursive: true });
-  const temporary = `${portalPreferencesFile()}.${process.pid}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(envelope, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
-  await rename(temporary, portalPreferencesFile());
+  const temporary = `${portalPreferencesFile()}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
+  try {
+    await writeFile(temporary, `${JSON.stringify(envelope, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+    await rename(temporary, portalPreferencesFile());
+  } catch (error) {
+    await unlink(temporary).catch(() => {});
+    throw error;
+  }
 }
 
 function publicCertificatePortals(config, secrets) {
@@ -2978,13 +3148,14 @@ async function judicialIntegrationStatus() {
     expiresAt: null,
     source: secrets.certificate?.source || ''
   };
+  const pjeOfficePromise = pjeOfficeStatus();
   if (certificate.accessible && secrets.certificate?.passphrase) {
-    try { certificate = { ...certificate, ...(await validatePfx(certificatePath, secrets.certificate.passphrase)) }; }
+    try { certificate = { ...certificate, ...(await validatePfxCached(certificatePath, secrets.certificate.passphrase)) }; }
     catch { certificate.valid = false; }
   }
   return {
     certificate,
-    pjeOffice: await pjeOfficeStatus(),
+    pjeOffice: await pjeOfficePromise,
     automatedTotpEnabled: Boolean(secrets.allowAutomatedTotp),
     portals: publicCertificatePortals(config, secrets),
     interactiveCollectorRunning: collectorRegistry.isJobRunning(currentWorkspaceId()),
@@ -3083,6 +3254,24 @@ function validatePfxWithOpenSSL(file, passphrase) {
       };
     })().then(resolve, reject);
   });
+}
+
+// A validação do PFX abre processos externos (openssl/PowerShell) e era refeita a cada
+// GET /api/integrations/judicial. O resultado fica em memória enquanto o arquivo e a
+// senha não mudarem (tamanho, mtime e hash da senha), por no máximo 10 minutos.
+const PFX_VALIDATION_TTL_MS = 10 * 60 * 1000;
+const pfxValidationCache = new Map();
+
+async function validatePfxCached(file, passphrase) {
+  const info = await stat(file);
+  const key = [file, info.size, info.mtimeMs, createHash('sha256').update(String(passphrase)).digest('hex')].join('|');
+  const cached = pfxValidationCache.get(key);
+  if (cached && Date.now() - cached.at < PFX_VALIDATION_TTL_MS) return cached.promise;
+  const promise = validatePfx(file, passphrase);
+  pfxValidationCache.clear();
+  pfxValidationCache.set(key, { at: Date.now(), promise });
+  promise.catch(() => { if (pfxValidationCache.get(key)?.promise === promise) pfxValidationCache.delete(key); });
+  return promise;
 }
 
 function validatePfx(file, passphrase) {
@@ -3810,12 +3999,12 @@ async function persistExternalCollectionsToCanonical(collections = {}, { trigger
   return enqueueAppStateMutation(async () => {
     const current = await readAppStateEnvelope();
     if (!current.state) return { persisted: false, reason: 'NO_STATE' };
-    const incomingIntimations = sanitizeArray(collections.intimations);
-    const incomingProcesses = sanitizeArray(collections.processes);
+    const incomingIntimations = sanitizeArray(collections.intimations).filter(item => !item?.captureSuppressed);
+    const incomingProcesses = sanitizeArray(collections.processes).filter(item => !item?.captureSuppressed);
     const incomingContacts = sanitizeArray(collections.contacts);
-    const currentIntimations = sanitizeArray(current.state.intimations);
-    const currentProcesses = sanitizeArray(current.state.processes);
-    const currentContacts = sanitizeArray(current.state.contacts);
+    const currentIntimations = sanitizeArray(current.state.intimations, 100_000);
+    const currentProcesses = sanitizeArray(current.state.processes, 100_000);
+    const currentContacts = sanitizeArray(current.state.contacts, 100_000);
     const changed = externalCollectionHasChanges(currentIntimations, incomingIntimations)
       || externalCollectionHasChanges(currentProcesses, incomingProcesses)
       || externalCollectionHasChanges(currentContacts, incomingContacts);
@@ -4122,10 +4311,60 @@ function findHeaderRow(matrix) {
   return bestRow;
 }
 
+const SPREADSHEET_LIMITS = Object.freeze({
+  fileBytes: 15 * 1024 * 1024,
+  uncompressedBytes: 256 * 1024 * 1024,
+  rows: 50_000,
+  cells: 500_000
+});
+
+/**
+ * Soma o tamanho descomprimido declarado no diretório central do XLSX (ZIP).
+ * Serve para recusar planilha com compressão abusiva antes de entregar o buffer
+ * ao parser, que carregaria tudo em memória no processo único do servidor.
+ * Devolve null quando o arquivo não é um ZIP legível; nesse caso o parser decide.
+ */
+function xlsxDeclaredUncompressedBytes(buffer) {
+  const EOCD_SIGNATURE = 0x06054b50;
+  const CENTRAL_SIGNATURE = 0x02014b50;
+  let eocd = -1;
+  const floor = Math.max(0, buffer.length - 65_557);
+  for (let i = buffer.length - 22; i >= floor; i -= 1) {
+    if (buffer.readUInt32LE(i) === EOCD_SIGNATURE) { eocd = i; break; }
+  }
+  if (eocd < 0) return null;
+  const entryCount = buffer.readUInt16LE(eocd + 10);
+  const centralOffset = buffer.readUInt32LE(eocd + 16);
+  if (!entryCount || entryCount === 0xffff || centralOffset === 0xffffffff || centralOffset >= buffer.length) return null;
+  let cursor = centralOffset;
+  let total = 0;
+  for (let index = 0; index < entryCount; index += 1) {
+    if (cursor + 46 > buffer.length || buffer.readUInt32LE(cursor) !== CENTRAL_SIGNATURE) return null;
+    const entrySize = buffer.readUInt32LE(cursor + 24);
+    if (entrySize === 0xffffffff) return null;
+    total += entrySize;
+    if (total > SPREADSHEET_LIMITS.uncompressedBytes) return total;
+    cursor += 46
+      + buffer.readUInt16LE(cursor + 28)
+      + buffer.readUInt16LE(cursor + 30)
+      + buffer.readUInt16LE(cursor + 32);
+  }
+  return total;
+}
+
 async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = '' }) {
   let matrix = [];
   if (base64) {
     const buffer = Buffer.from(base64, 'base64');
+    if (buffer.length > SPREADSHEET_LIMITS.fileBytes) {
+      throw Object.assign(new Error('A planilha excede o limite de 15 MB.'), { statusCode: 413 });
+    }
+    const isZipContainer = buffer.length >= 2 && buffer[0] === 0x50 && buffer[1] === 0x4b;
+    const declaredUncompressed = xlsxDeclaredUncompressedBytes(buffer);
+    if ((isZipContainer && declaredUncompressed === null)
+      || (declaredUncompressed !== null && declaredUncompressed > SPREADSHEET_LIMITS.uncompressedBytes)) {
+      throw Object.assign(new Error('A planilha expande além do limite seguro ou tem estrutura ZIP inválida e não foi processada.'), { statusCode: 400 });
+    }
     try {
       const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false });
       const sheetName = wb.SheetNames[0];
@@ -4145,6 +4384,13 @@ async function parseUploadedSpreadsheet({ filename = '', base64 = '', content = 
   }
 
   if (!matrix.length) throw new Error('A planilha não contém dados legíveis.');
+  if (matrix.length > SPREADSHEET_LIMITS.rows) {
+    throw Object.assign(new Error(`A planilha tem mais de ${SPREADSHEET_LIMITS.rows.toLocaleString('pt-BR')} linhas e não foi processada.`), { statusCode: 400 });
+  }
+  const totalCells = matrix.reduce((total, row) => total + (Array.isArray(row) ? row.length : 0), 0);
+  if (totalCells > SPREADSHEET_LIMITS.cells) {
+    throw Object.assign(new Error(`A planilha tem mais de ${SPREADSHEET_LIMITS.cells.toLocaleString('pt-BR')} células e não foi processada.`), { statusCode: 400 });
+  }
 
   const headerRowIndex = findHeaderRow(matrix);
   const rawHeaders = (matrix[headerRowIndex] || []).map(c => String(c || '').trim());
@@ -4527,11 +4773,55 @@ function assertAuthenticated(req, requireCsrf = false) {
   return session;
 }
 function canSessionAccessPublication(session, state, publication) {
-  return canAccessPublication(session, publication, buildProcessIndex(state?.processes), security.listTeams(session.workspaceId));
+  return isPublicationAllowedForSession(session, state, publication);
 }
 
 function canSessionAccessTask(session, state, task) {
-  return canAccessTask(session, task, buildProcessIndex(state?.processes), security.listTeams(session.workspaceId));
+  return isTaskAllowedForSession(session, state, task);
+}
+
+function isRecordAllowedForSession(session, state, record, predicate) {
+  if (!record || typeof record !== 'object') return false;
+  if (isSuppressedRecord(record)) return false;
+  const processIndex = buildProcessIndex(state?.processes);
+  const contactIndex = buildContactIndex(state?.contacts);
+  const owner = privateOwnerForRecord(record, {
+    termsById: monitoringTermsById(state?.terms),
+    processIndex,
+    contactIndex
+  });
+  if (owner && !ownerMatchesUser(owner, session)) return false;
+  if (security.officeProfile(session.workspaceId).accessMode === 'enforced' && typeof predicate === 'function') {
+    return predicate(record, processIndex, security.listTeams(session.workspaceId), contactIndex);
+  }
+  return true;
+}
+
+function isPublicationAllowedForSession(session, state, publication) {
+  return isRecordAllowedForSession(
+    session,
+    state,
+    publication,
+    (record, processIndex, teams) => canAccessPublication(session, record, processIndex, teams)
+  );
+}
+
+function isTaskAllowedForSession(session, state, task) {
+  return isRecordAllowedForSession(
+    session,
+    state,
+    task,
+    (record, processIndex, teams) => canAccessTask(session, record, processIndex, teams)
+  );
+}
+
+function isProcessAllowedForSession(session, state, process) {
+  return isRecordAllowedForSession(
+    session,
+    state,
+    process,
+    (record, _processIndex, teams) => canAccessProcess(session, record, teams)
+  );
 }
 
 function isPrivilegedRole(role) {
@@ -4743,7 +5033,8 @@ function appendDocumentAudit(state, action, detail, session) {
 function documentResponseState(state, saved, session) {
   const teams = security.listTeams(session.workspaceId);
   const index = buildProcessIndex(state?.processes);
-  const documents = (state.documents || []).filter(item => documentVisibleToSession(session, state, item, { teams, index }));
+  const contactIndex = buildContactIndex(state?.contacts);
+  const documents = (state.documents || []).filter(item => documentVisibleToSession(session, state, item, { teams, index, contactIndex }));
   return { documents, revision: saved.revision };
 }
 function documentContentReferenceExists(state, checksum) {
@@ -4751,17 +5042,19 @@ function documentContentReferenceExists(state, checksum) {
   return (state?.documents || []).some(item => item?.checksum === checksum || item?.intelligence?.ocr?.checksum === checksum);
 }
 
-function documentVisibleToSession(session, state, document, { teams = null, index = null } = {}) {
+function documentVisibleToSession(session, state, document, { teams = null, index = null, contactIndex = null } = {}) {
   if (!document) return false;
   const processIndex = index || buildProcessIndex(state?.processes);
+  const contacts = contactIndex || buildContactIndex(state?.contacts);
   const owner = privateOwnerForRecord(document, {
     termsById: monitoringTermsById(state?.terms),
-    processIndex
+    processIndex,
+    contactIndex: contacts
   });
   const sessionId = String(session.id || session.userId || session.username || '');
   if (owner && !ownerMatchesUser(owner, session)) return false;
   if (security.officeProfile(session.workspaceId).accessMode !== 'enforced') return true;
-  return canAccessDocument(session, document, processIndex, teams || security.listTeams(session.workspaceId));
+  return canAccessDocument(session, document, processIndex, teams || security.listTeams(session.workspaceId), contacts);
 }
 
 function documentForSession(state, id, session) {
@@ -4948,6 +5241,7 @@ function isPrivateStaticPath(relative) {
     || segments.some(segment => segment.startsWith('.'));
 }
 
+const REAL_ROOT = await realpath(ROOT);
 async function serveStatic(req, res) {
   const requestTarget = String(req.url || '/');
   const queryIndex = requestTarget.indexOf('?');
@@ -4966,13 +5260,22 @@ async function serveStatic(req, res) {
     || publicDirectories.some(directory => relative.startsWith(directory))
     || isExplicitlyPublicFrontendFile(relative);
   if (!allowed || isPrivateStaticPath(relative)) return json(res, 404, { message: 'Arquivo não encontrado.' });
-  const file = path.resolve(ROOT, relative);
-  if (!file.startsWith(`${ROOT}${path.sep}`)) return json(res, 404, { message: 'Arquivo não encontrado.' });
+  const file = path.resolve(REAL_ROOT, relative);
+  if (!file.startsWith(`${REAL_ROOT}${path.sep}`)) return json(res, 404, { message: 'Arquivo não encontrado.' });
+  // Um link simbólico dentro de diretório público poderia apontar para fora da raiz
+  // ou para um diretório privado (data/, .git/). Resolve o alvo real e aplica as
+  // mesmas regras antes de ler.
+  let target;
+  try { target = await realpath(file); } catch { return json(res, 404, { message: 'Arquivo não encontrado.' }); }
+  const targetRelative = path.relative(REAL_ROOT, target).split(path.sep).join('/');
+  if (!target.startsWith(`${REAL_ROOT}${path.sep}`) || isPrivateStaticPath(targetRelative)) {
+    return json(res, 404, { message: 'Arquivo não encontrado.' });
+  }
   try {
-    const info = await stat(file); if (!info.isFile()) throw new Error('not-file');
-    const body = await readFile(file); applySecurityHeaders(res);
+    const info = await stat(target); if (!info.isFile()) throw new Error('not-file');
+    const body = await readFile(target); applySecurityHeaders(res);
     const cacheControl = 'no-store, private';
-    res.writeHead(200, { 'Content-Type': mimeTypes[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': cacheControl });
+    res.writeHead(200, { 'Content-Type': mimeTypes[path.extname(target).toLowerCase()] || 'application/octet-stream', 'Cache-Control': cacheControl });
     if (req.method !== 'HEAD') res.end(body); else res.end();
   } catch { json(res, 404, { message: 'Arquivo não encontrado.' }); }
 }
@@ -5036,9 +5339,10 @@ function mergeDjenCounters(list = []) {
   };
 }
 
-// Single-flight local do retry manual de captura DJEN por workspace: evita
-// duas coletas de reparo concorrentes quando o usuário clica repetidamente.
+// Single-flight local do retry manual e das coletas DJEN por workspace: evita
+// coletas concorrentes entre /api/sync e retry manual.
 const djenRetryWorkspaces = new Set();
+const djenActiveWorkspaces = new Set();
 
 async function readDjenSyncMarker(scope = 'office') {
   try {
@@ -5050,14 +5354,15 @@ async function readDjenSyncMarker(scope = 'office') {
 }
 
 async function saveDjenSyncMarker(marker, scope = 'office') {
+  const target = djenSyncMarkerFile(scope);
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = djenSyncMarkerFile(scope);
-    const temporary = `${target}.tmp`;
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(temporary, JSON.stringify(marker, null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[DJEN] Falha ao persistir o marcador de sincronização:', error?.message || error);
     return false;
   }
@@ -5076,13 +5381,15 @@ async function readDjenCaptureErrors() {
 }
 
 async function saveDjenCaptureErrors(queue) {
+  const target = djenCaptureErrorsFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = djenCaptureErrorsFile();
-    const temporary = `${target}.tmp`;
+    await mkdir(path.dirname(target), { recursive: true });
     await writeFile(temporary, JSON.stringify(queue, null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[DJEN] Falha ao persistir a fila de falhas de captura:', error?.message || error);
     return false;
   }
@@ -5097,6 +5404,8 @@ async function recordDjenCaptureErrorsRun({ attemptedTerms = [], counters = {}, 
   const queue = await readDjenCaptureErrors();
   const now = counters.completedAt || new Date().toISOString();
   let reconciled = queue;
+  let totalTermCount = 0;
+  let totalFailedCount = 0;
   // Cada escopo reconcilia a própria fila: falhar no escopo privado não remove
   // pendência do escritório (e vice-versa).
   for (const [scope, terms] of monitoredTermsByScope(attemptedTerms)) {
@@ -5107,9 +5416,43 @@ async function recordDjenCaptureErrorsRun({ attemptedTerms = [], counters = {}, 
       scope,
       now
     });
+    totalTermCount += reconciled.lastRun?.termCount || 0;
+    totalFailedCount += reconciled.lastRun?.failedCount || 0;
+  }
+  if (reconciled.lastRun && totalTermCount > 0) {
+    reconciled = {
+      ...reconciled,
+      lastRun: {
+        ...reconciled.lastRun,
+        termCount: totalTermCount,
+        failedCount: totalFailedCount
+      }
+    };
   }
   await saveDjenCaptureErrors(reconciled);
   return reconciled;
+}
+
+function hasPendingFailuresForScopeTerms(queue, scope, scopeTerms = []) {
+  const list = Array.isArray(scopeTerms) ? scopeTerms : [];
+  if (!list.length) return false;
+  return (queue?.terms || []).some(entry => {
+    const entryScope = entry?.scope === 'private' ? 'private' : 'office';
+    if (entryScope !== scope) return false;
+    return list.some(term => {
+      if (entryScope === 'private' && entry.privateOwnerUserId) {
+        const owner = String(term?.privateOwnerUserId || term?.ownerUserId || '').trim();
+        if (owner && !ownerMatchesUser(owner, { id: entry.privateOwnerUserId, username: entry.privateOwnerUserId })) {
+          return false;
+        }
+      }
+      const key = termKeyForCaptureErrors(term);
+      if (key && key === entry.termId) return true;
+      if (entry.oabUf && entry.oabNumber && term?.oabUf === entry.oabUf && term?.oabNumber === entry.oabNumber) return true;
+      const procDigits = String(term?.processNumber || term?.numeroProcesso || '').replace(/\D/g, '');
+      return Boolean(entry.processNumber && procDigits.length === 20 && procDigits === entry.processNumber);
+    });
+  });
 }
 
 function publicationFunnelFile() {
@@ -5125,14 +5468,15 @@ async function readPublicationFunnelHistory() {
 }
 
 async function savePublicationFunnelHistory(history) {
+  const target = publicationFunnelFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = publicationFunnelFile();
-    const temporary = `${target}.tmp`;
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(temporary, JSON.stringify(history, null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Publicações] Falha ao persistir o funil semanal:', error?.message || error);
     return false;
   }
@@ -5156,13 +5500,14 @@ async function readPublicationTriageStore() {
 }
 
 async function savePublicationTriageStore(store) {
+  const target = publicationTriageFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = publicationTriageFile();
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify(normalizePublicationTriageStore(store), null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Atrium IA] Falha ao persistir as sugestões de triagem:', error?.message || error);
     return false;
   }
@@ -5184,13 +5529,14 @@ async function readTaskTriageStore() {
 }
 
 async function saveTaskTriageStore(store) {
+  const target = taskTriageFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = taskTriageFile();
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify(normalizeTaskTriageStore(store), null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Atrium IA] Falha ao persistir as sugestões de tarefa:', error?.message || error);
     return false;
   }
@@ -5209,13 +5555,14 @@ async function readTaskRiskStore() {
 }
 
 async function saveTaskRiskStore(store) {
+  const target = taskRiskFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = taskRiskFile();
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify(normalizeTaskRiskStore(store), null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Atrium IA] Falha ao persistir o risco das tarefas:', error?.message || error);
     return false;
   }
@@ -5234,13 +5581,14 @@ async function readDuplicateReviewStore() {
 }
 
 async function saveDuplicateReviewStore(store) {
+  const target = duplicateReviewFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = duplicateReviewFile();
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify(normalizeDuplicateReviewStore(store), null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Atrium IA] Falha ao persistir a revisão de duplicatas:', error?.message || error);
     return false;
   }
@@ -5259,13 +5607,14 @@ async function readTaskDuplicateReviewStore() {
 }
 
 async function saveTaskDuplicateReviewStore(store) {
+  const target = taskDuplicateReviewFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = taskDuplicateReviewFile();
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify(normalizeDuplicateReviewStore(store), null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Atrium IA] Falha ao persistir a conferência de tarefas repetidas:', error?.message || error);
     return false;
   }
@@ -5292,13 +5641,14 @@ async function readFinancialTriageStore() {
 }
 
 async function saveFinancialTriageStore(store) {
+  const target = financialTriageFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = financialTriageFile();
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify(normalizeFinancialTriageStore(store), null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Atrium IA] Falha ao persistir a triagem financeira:', error?.message || error);
     return false;
   }
@@ -5313,13 +5663,14 @@ async function readCalibrationStore() {
 }
 
 async function saveCalibrationStore(store) {
+  const target = calibrationFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = calibrationFile();
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify(normalizeCalibrationStore(store), null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Atrium IA] Falha ao persistir a calibração do classificador:', error?.message || error);
     return false;
   }
@@ -5334,13 +5685,14 @@ async function readProcessTriageStore() {
 }
 
 async function saveProcessTriageStore(store) {
+  const target = processTriageFile();
+  const temporary = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   try {
-    const target = processTriageFile();
-    const temporary = `${target}.tmp`;
     await writeFile(temporary, JSON.stringify(normalizeProcessTriageStore(store), null, 2), { encoding: 'utf8', mode: 0o600 });
     await rename(temporary, target);
     return true;
   } catch (error) {
+    await unlink(temporary).catch(() => {});
     console.warn('[Atrium IA] Falha ao persistir as sugestões de processo:', error?.message || error);
     return false;
   }
@@ -5360,7 +5712,7 @@ async function runAutoTriageAfterSync() {
     lastAutoTriageAt = Date.now();
     const result = await handleAiClassifierRequest.runTriageBacklog({ limit: PUBLICATION_TRIAGE_BATCH_LIMIT });
     if (result?.classified) {
-      console.log(`[Atrium IA] triagem automática pós-sync: ${result.classified} sugestão(ões); ${result.pending ?? 0} pendente(s).`);
+      console.log(`[Atrium IA] triagem automática pós-sync: ${result.classified} ${plural(result.classified, 'sugestão', 'sugestões')}; ${result.pending ?? 0} ${plural(result.pending ?? 0, 'pendente', 'pendentes')}.`);
     }
     let taskResult = null;
     try {
@@ -5371,13 +5723,13 @@ async function runAutoTriageAfterSync() {
       console.warn('[Atrium IA] triagem de tarefas pós-sync falhou:', taskError?.message || taskError);
     }
     if (taskResult?.classified) {
-      console.log(`[Atrium IA] triagem de tarefas pós-sync: ${taskResult.classified} sugestão(ões); ${taskResult.pending ?? 0} pendente(s).`);
+      console.log(`[Atrium IA] triagem de tarefas pós-sync: ${taskResult.classified} ${plural(taskResult.classified, 'sugestão', 'sugestões')}; ${taskResult.pending ?? 0} ${plural(taskResult.pending ?? 0, 'pendente', 'pendentes')}.`);
     }
     try {
       // Arrumação autorizada pelo titular: depois da triagem, para usar as sugestões novas.
       if (typeof handleAiClassifierRequest.runAutoOrganize === 'function') {
         const organized = await handleAiClassifierRequest.runAutoOrganize({ members: security.listUsers(currentWorkspaceId()) });
-        if (organized?.total) console.log(`[Atrium IA] organização automática: ${organized.total} ajuste(s).`);
+        if (organized?.total) console.log(`[Atrium IA] organização automática: ${organized.total} ${plural(organized.total, 'ajuste', 'ajustes')}.`);
       }
     } catch (organizeError) {
       console.warn('[Atrium IA] organização automática falhou:', organizeError?.message || organizeError);
@@ -5393,7 +5745,7 @@ async function runAutoTriageAfterSync() {
       console.warn('[Atrium IA] risco das tarefas pós-sync falhou:', taskRiskError?.message || taskRiskError);
     }
     if (taskRiskResult?.classified) {
-      console.log(`[Atrium IA] risco das tarefas pós-sync: ${taskRiskResult.classified} sugestão(ões); ${taskRiskResult.pending ?? 0} pendente(s).`);
+      console.log(`[Atrium IA] risco das tarefas pós-sync: ${taskRiskResult.classified} ${plural(taskRiskResult.classified, 'sugestão', 'sugestões')}; ${taskRiskResult.pending ?? 0} ${plural(taskRiskResult.pending ?? 0, 'pendente', 'pendentes')}.`);
     }
     let duplicateResult = null;
     try {
@@ -5404,7 +5756,7 @@ async function runAutoTriageAfterSync() {
       console.warn('[Atrium IA] revisão de duplicatas pós-sync falhou:', duplicateError?.message || duplicateError);
     }
     if (duplicateResult?.classified) {
-      console.log(`[Atrium IA] revisão de duplicatas pós-sync: ${duplicateResult.classified} par(es); ${duplicateResult.pending ?? 0} pendente(s).`);
+      console.log(`[Atrium IA] revisão de duplicatas pós-sync: ${duplicateResult.classified} ${plural(duplicateResult.classified, 'par', 'pares')}; ${duplicateResult.pending ?? 0} ${plural(duplicateResult.pending ?? 0, 'pendente', 'pendentes')}.`);
     }
     let taskDuplicateResult = null;
     try {
@@ -5417,7 +5769,7 @@ async function runAutoTriageAfterSync() {
       console.warn('[Atrium IA] conferência de tarefas repetidas pós-sync falhou:', taskDuplicateError?.message || taskDuplicateError);
     }
     if (taskDuplicateResult?.classified) {
-      console.log(`[Atrium IA] tarefas repetidas pós-sync: ${taskDuplicateResult.classified} par(es); ${taskDuplicateResult.pending ?? 0} pendente(s).`);
+      console.log(`[Atrium IA] tarefas repetidas pós-sync: ${taskDuplicateResult.classified} ${plural(taskDuplicateResult.classified, 'par', 'pares')}; ${taskDuplicateResult.pending ?? 0} ${plural(taskDuplicateResult.pending ?? 0, 'pendente', 'pendentes')}.`);
     }
     if (taskDuplicateResult?.absorbed?.length) {
       console.log(`[Atrium IA] tarefas repetidas absorvidas automaticamente: ${taskDuplicateResult.absorbed.length} (reversível, auditado).`);
@@ -5431,7 +5783,7 @@ async function runAutoTriageAfterSync() {
       console.warn('[Atrium IA] triagem de processos pós-sync falhou:', processError?.message || processError);
     }
     if (processResult?.classified) {
-      console.log(`[Atrium IA] triagem de processos pós-sync: ${processResult.classified} sugestão(ões); ${processResult.pending ?? 0} pendente(s).`);
+      console.log(`[Atrium IA] triagem de processos pós-sync: ${processResult.classified} ${plural(processResult.classified, 'sugestão', 'sugestões')}; ${processResult.pending ?? 0} ${plural(processResult.pending ?? 0, 'pendente', 'pendentes')}.`);
     }
     let financialResult = null;
     try {
@@ -5442,7 +5794,7 @@ async function runAutoTriageAfterSync() {
       console.warn('[Atrium IA] triagem financeira pós-sync falhou:', financialError?.message || financialError);
     }
     if (financialResult?.classified) {
-      console.log(`[Atrium IA] triagem financeira pós-sync: ${financialResult.classified} sugestão(ões); ${financialResult.pending ?? 0} pendente(s).`);
+      console.log(`[Atrium IA] triagem financeira pós-sync: ${financialResult.classified} ${plural(financialResult.classified, 'sugestão', 'sugestões')}; ${financialResult.pending ?? 0} ${plural(financialResult.pending ?? 0, 'pendente', 'pendentes')}.`);
     }
   } catch (error) {
     console.warn('[Atrium IA] triagem automática pós-sync falhou:', error?.message || error);
@@ -5491,8 +5843,26 @@ function djenTermLabel(term) {
   return `OAB/${term.oabUf} ${term.oabNumber}`;
 }
 
+function saoPauloIsoDate(date = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
+}
+
+function djenDefaultWindowRange(lookbackDays = 2) {
+  const end = saoPauloIsoDate(new Date());
+  const safeDays = Math.min(365, Math.max(1, Number.isFinite(Number(lookbackDays)) ? Math.trunc(Number(lookbackDays)) : 2));
+  const startDate = new Date(`${end}T12:00:00-03:00`);
+  startDate.setDate(startDate.getDate() - (safeDays - 1));
+  return { start: saoPauloIsoDate(startDate), end };
+}
+
 async function collectDjenForWorkspaceTerms({ target, monitoredTerms, marker, syncTrigger = 'scheduled', reportProgress = false }) {
   const window = resolveDjenCaptureWindow(marker);
+  const defaultRange = djenDefaultWindowRange(window.lookbackDays);
   const counters = {
     initialCapture: window.initialCapture,
     lookbackDays: window.lookbackDays,
@@ -5506,6 +5876,9 @@ async function collectDjenForWorkspaceTerms({ target, monitoredTerms, marker, sy
     completedAt: null
   };
   for (const term of monitoredTerms) {
+    const termWindowStart = /^\d{4}-\d{2}-\d{2}$/.test(String(term?.windowStart || '')) ? String(term.windowStart) : defaultRange.start;
+    const termWindowEnd = /^\d{4}-\d{2}-\d{2}$/.test(String(term?.windowEnd || '')) ? String(term.windowEnd) : defaultRange.end;
+    const retryTrackingSince = term?.windowStart ? (window.intimationTrackingSince || termWindowStart) : window.intimationTrackingSince;
     try {
       if (reportProgress) {
         updateSyncProgress({
@@ -5522,8 +5895,9 @@ async function collectDjenForWorkspaceTerms({ target, monitoredTerms, marker, sy
         name: 'DJEN / CNJ Oficial',
         url: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao',
         lookbackDays: window.lookbackDays,
+        ...(term?.windowStart ? { cutoffDate: termWindowStart } : {}),
         intimationLookbackDays: window.intimationLookbackDays,
-        intimationTrackingSince: window.intimationTrackingSince,
+        intimationTrackingSince: retryTrackingSince,
         queryOabVariants: false,
         ...(isProcessMonitoringTerm(term)
           ? { numeroProcesso: term.processNumber }
@@ -5551,11 +5925,21 @@ async function collectDjenForWorkspaceTerms({ target, monitoredTerms, marker, sy
       counters.historicalSkipped += result.historicalSkipped || 0;
       if (!result.complete) {
         counters.failures.push(`${djenTermLabel(term)}: coleta parcial`);
-        counters.failureRecords.push({ ...term, message: 'coleta parcial' });
+        counters.failureRecords.push({
+          ...term,
+          windowStart: result.start || termWindowStart,
+          windowEnd: result.end || termWindowEnd,
+          message: 'coleta parcial'
+        });
       }
     } catch (error) {
       counters.failures.push(`${djenTermLabel(term)}: ${String(error.message).slice(0, 80)}`);
-      counters.failureRecords.push({ ...term, message: String(error.message).slice(0, 200) });
+      counters.failureRecords.push({
+        ...term,
+        windowStart: termWindowStart,
+        windowEnd: termWindowEnd,
+        message: String(error.message).slice(0, 200)
+      });
     }
   }
   counters.completedAt = new Date().toISOString();
@@ -5571,7 +5955,7 @@ async function collectAndPersistDjenTerms({ appState, monitoredTerms, marker, tr
   const runtime = await readRuntime();
   const processSuppressions = processDiscoverySuppressionSet(appState);
   const target = {
-    intimations: sanitizeArray(runtime.intimations),
+    intimations: sanitizeArray(runtime.intimations).filter(item => !item?.captureSuppressed),
     tasks: sanitizeArray(runtime.tasks),
     processes: mergeExternalProcesses(withoutSuppressedProcesses(appState.processes, processSuppressions), sanitizeArray(runtime.processes)),
     contacts: mergeExternalContacts(sanitizeArray(appState.contacts), sanitizeArray(runtime.contacts)),
@@ -5611,10 +5995,17 @@ async function recordScheduledSourceCheck(sourceId, { status, detail }) {
   try {
     await enqueueAppStateMutation(async () => {
       const envelope = await readAppStateEnvelope();
-      const source = (envelope.state?.sources || []).find(item => item?.id === sourceId);
-      if (!source) return;
-      Object.assign(source, { status, detail, lastCheck: new Date().toISOString() });
-      await saveAppStateDirectUnlocked(envelope.state, envelope.revision || null);
+      if (!envelope?.state) return;
+      const merged = mergeSourceChecks(envelope.state.sources || [], [{
+        id: sourceId,
+        status,
+        detail,
+        lastCheck: new Date().toISOString()
+      }]);
+      if (merged.changed) {
+        envelope.state.sources = merged.sources;
+        await saveAppStateDirectUnlocked(envelope.state, envelope.revision || null);
+      }
     });
   } catch (error) {
     console.warn('[Fontes] Não foi possível atualizar a situação da fonte:', error?.message || error);
@@ -5766,7 +6157,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
       const session = assertAuthenticated(req, true); await security.logout(req);
-      return json(res, 200, { ok: true, user: session.username }, { 'Set-Cookie': [security.clearCookie(), security.clearTrustedDeviceCookie()] });
+      return json(res, 200, { ok: true, user: session.username }, { 'Set-Cookie': [...security.clearSessionCookies(), security.clearTrustedDeviceCookie()] });
     }
     if (isOfficeRoute(url)) {
     const outcome = await handleOfficeRoute({ json, readJson, security, assertAuthenticated, assertAdmin, appendServerAudit, readAppStateEnvelope, enqueueAppStateMutation, saveAppStateDirectUnlocked, assertRevision: assertDocumentRevision, assertReauthentication }, req, res, url);
@@ -5814,7 +6205,9 @@ const server = http.createServer(async (req, res) => {
         json,
         readJson,
         security,
-        assertAuthenticated
+        assertAuthenticated,
+        assertReauthentication,
+        getNotificationService: workspaceId => notificationServiceForWorkspace(workspaceId)
       }, req, res, url);
       if (outcome !== PROFILE_ROUTE_MISS) return;
     }
@@ -5877,13 +6270,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/auth/mfa/enable') {
       const session = assertAuthenticated(req, true);
       const body = await readJson(req);
-      const result = await security.enableUserMfa(session.username, body);
+      const result = await security.enableUserMfa(session.username, body, remoteAddress(req));
       return json(res, 200, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/mfa/disable') {
       const session = assertAuthenticated(req, true);
       const body = await readJson(req);
-      const result = await security.disableUserMfa(session.username, body);
+      const result = await security.disableUserMfa(session.username, body, remoteAddress(req));
       return json(res, 200, result);
     }
     if (isGoogleCalendarRoute(url)) {
@@ -5978,6 +6371,7 @@ const server = http.createServer(async (req, res) => {
         collectorWorkspace,
         computeDomicilioWindow,
         currentWorkspaceId,
+        djenActiveWorkspaces,
         djenRetryWorkspaces,
         documentStorage,
         downloadProcessWithA1,
@@ -6059,10 +6453,25 @@ const server = http.createServer(async (req, res) => {
     // ==========================================
     if (req.method === 'GET' && (url.pathname === '/api/system/diagnostic' || url.pathname === '/api/system/diagnostic/export')) {
       const session = assertAuthenticated(req);
+      // Diagnóstico expõe runtime, backups e contagens do acervo: não é leitura de
+      // qualquer autenticado. A mesma permissão que administra as configurações
+      // gerais do escritório (e o papel privilegiado legado) abre a tela.
+      if (!isPrivilegedRole(session.role)
+        && !security.hasOfficePermission(session, 'office.manage')
+        && !security.hasOfficePermission(session, 'settings.manage')) {
+        throw Object.assign(new Error('Seu perfil não tem permissão para ver o diagnóstico do sistema.'), { statusCode: 403 });
+      }
       const runtime = await readRuntime();
       const aiKey = await readAiApiKey();
       const appEnv = await readAppStateEnvelope();
-      const state = appEnv.state || {};
+      const teams = security.listTeams(session.workspaceId);
+      const accessMode = security.officeProfile(session.workspaceId).accessMode;
+      const diagProcessIndex = buildProcessIndex(appEnv.state?.processes);
+      const diagContactIndex = buildContactIndex(appEnv.state?.contacts);
+      let state = appEnv.state ? filterPrivateScopeState(applyMonitoringScopes(appEnv.state), session, { teams }) : {};
+      if (appEnv.state && accessMode === 'enforced') {
+        state = filterOfficeState(state, session, { teams, processIndex: diagProcessIndex, contactIndex: diagContactIndex });
+      }
 
       let storageSizeBytes = 0;
       try {
@@ -6218,12 +6627,17 @@ const server = http.createServer(async (req, res) => {
       const backup = body && Object.prototype.hasOwnProperty.call(body, 'backupData') ? body.backupData : body;
       const restoredState = decryptAndValidateBackup(backup, session?.workspaceId || currentWorkspaceId());
 
-      // A fase transacional só começa depois da validação integral do candidato.
-      const currentEnv = await readAppStateEnvelope();
-      const safetySnapshot = await createPreRestoreSafetySnapshot(currentEnv, session);
-      if (safetySnapshot) await waitForRestoreConcurrencyTestWindow();
-      await saveAppStateDirect(restoredState, currentEnv.revision, { allowDegraded: true });
-      return json(res, 200, { ok: true, message: 'Dados restaurados com sucesso a partir do backup.' });
+      // Leitura, snapshot e commit na MESMA seção crítica da fila de mutações. Ler o
+      // envelope fora dela fazia o restore competir com outro write em curso: o
+      // revision lido já não era o do commit e o resultado era 409 espúrio, mesmo sem
+      // conflito real. A validação do candidato continua antes de tocar no estado.
+      const saved = await enqueueAppStateMutation(async () => {
+        const currentEnv = await readAppStateEnvelope();
+        const safetySnapshot = await createPreRestoreSafetySnapshot(currentEnv, session);
+        if (safetySnapshot) await waitForRestoreConcurrencyTestWindow();
+        return saveAppStateDirectUnlocked(restoredState, currentEnv.revision, { allowDegraded: true });
+      });
+      return json(res, 200, { ok: true, revision: saved?.revision || null, message: 'Dados restaurados com sucesso a partir do backup.' });
     }
 
     // ==========================================
@@ -6324,10 +6738,12 @@ const server = http.createServer(async (req, res) => {
         applyTaskCompletionTreatment,
         assertAdmin,
         assertAuthenticated,
+        buildContactIndex,
         buildProcessIndex,
         canSessionAccessPublication,
         canWriteFinancial,
         discardedFinanceCollections,
+        enqueueAppStateMutation,
         existsSync,
         filterOfficeState,
         filterPrivateScopeState,
@@ -6351,6 +6767,7 @@ const server = http.createServer(async (req, res) => {
         sanitizeArray,
         saveAppStateDirect,
         saveClientAppState,
+        saveClientAppStateUnlocked,
         security,
         stateHealth
       }, req, res, url);
@@ -6365,13 +6782,16 @@ const server = http.createServer(async (req, res) => {
       if (query.length > 160) throw Object.assign(new Error('A busca global aceita no máximo 160 caracteres.'), { statusCode: 400 });
       const envelope = await readAppStateEnvelope();
       const synchronization = await currentSearchIndex().ensure({ state: envelope.state || {}, revision: envelope.revision || null });
-      let results = currentSearchIndex().search(query, { limit: url.searchParams.get('limit') });
       const teams = security.listTeams(session.workspaceId);
       const scopedState = applyMonitoringScopes(envelope.state || {});
-      results = filterPrivateSearchResults(session, results, scopedState, { teams });
-      if (security.officeProfile(session.workspaceId).accessMode === 'enforced') {
-        results = results.filter(result => canAccessSearchResult(session, result, scopedState, teams));
-      }
+      const enforcedAccess = security.officeProfile(session.workspaceId).accessMode === 'enforced';
+      // O contexto de acesso é montado uma vez por requisição e reutilizado em todos
+      // os resultados: nada de reconstruir índices e conjuntos privados por match.
+      const canInclude = createSearchAccessFilter(session, scopedState, { teams, enforced: enforcedAccess });
+      const results = currentSearchIndex().search(query, {
+        limit: url.searchParams.get('limit'),
+        canInclude
+      });
       return json(res, 200, {
         ok: true,
         query,
@@ -6403,6 +6823,7 @@ const server = http.createServer(async (req, res) => {
         assertAuthenticated,
         assertDocumentOwner,
         assertDocumentRevision,
+        buildContactIndex,
         buildProcessIndex,
         calendarPayload,
         canAccessContact,
@@ -7050,229 +7471,244 @@ const server = http.createServer(async (req, res) => {
         throw Object.assign(new Error('ID da publicação divergente.'), { statusCode: 400 });
       }
 
-      const envelope = await readAppStateEnvelope();
-      if (envelope.revision !== undefined && envelope.revision !== null) {
-        if (body.revision === undefined || body.revision === null || body.revision === '') {
-          throw Object.assign(new Error('Revisão de estado obrigatória.'), { statusCode: 409 });
-        }
-        if (body.revision !== envelope.revision) {
-          throw Object.assign(new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'), { statusCode: 409 });
-        }
-      }
-
-      const state = envelope.state || {};
-      if (!Array.isArray(state.intimations)) state.intimations = [];
-      if (!Array.isArray(state.tasks)) state.tasks = [];
-      const item = resolveIntimationAlias(state.intimations, publicationId);
-      if (!item) throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
-
-      const currentStatus = item.treatmentStatus || 'untreated';
-      if (currentStatus === 'discarded') {
-        throw Object.assign(new Error('Publicação descartada não pode originar nova tarefa.'), { statusCode: 409 });
-      }
-      if (!['untreated', 'in_review', 'treated'].includes(currentStatus)) {
-        throw Object.assign(new Error(`Status de tratamento inválido: "${currentStatus}".`), { statusCode: 409 });
-      }
-
-      const actorName = String(session.displayName || session.username || 'Advogado').slice(0, 100);
-      const nowIso = new Date().toISOString();
-      const task = buildCanonicalPublicationTask(body.task, item.id || publicationId, actorName, nowIso);
-      const aiSuggestionInput = body.task && body.task.aiSuggestion && typeof body.task.aiSuggestion === 'object'
-        ? body.task.aiSuggestion
-        : null;
-      const aiSuggestion = aiSuggestionInput
-        ? {
-            id: String(aiSuggestionInput.id || '').slice(0, 120),
-            action: String(aiSuggestionInput.action || '').slice(0, 240),
-            reason: String(aiSuggestionInput.reason || '').slice(0, 80),
-            confidence: Number.isFinite(Number(aiSuggestionInput.confidence)) ? Number(aiSuggestionInput.confidence) : 0,
-            at: String(aiSuggestionInput.at || nowIso).slice(0, 40),
-            piece: String(aiSuggestionInput.piece || '').slice(0, 120)
+      const outcome = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        if (envelope.revision !== undefined && envelope.revision !== null) {
+          if (body.revision === undefined || body.revision === null || body.revision === '') {
+            throw Object.assign(new Error('Revisão de estado obrigatória.'), { statusCode: 409 });
           }
-        : null;
-      const publicationRestricted = Boolean(
-        item.restricted
-        || item.segredoJustica
-        || item.isSecret
-        || item.secrecy
-        || item.domicilioMeta?.segredoJustica === true
-        || Number(item.domicilioMeta?.nivelSigilo) > 0
-      );
-      const publicationPrivate = item.scope === 'private' || Boolean(item.privateOwnerUserId);
-      if (!canSessionAccessPublication(session, state, item)) {
-        throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
-      }
-      if (publicationPrivate || publicationRestricted) {
-        task.scope = 'private';
-        task.privateOwnerUserId = String(item.privateOwnerUserId || item.ownerUserId || session.id || session.userId || session.username || '');
-        task.ownerUserId = task.privateOwnerUserId;
-      }
-      if (publicationRestricted) {
-        task.restricted = true;
-        task.title = 'Conferir publicação restrita';
-        task.description = 'Publicação com acesso restrito. Consulte o conteúdo no ATRIUM.';
-        if (aiSuggestion) aiSuggestion.piece = '';
-      }
-      if (aiSuggestion) {
-        task.createdBy = String(session.username || session.displayName || '').slice(0, 120);
-        task.createdByName = actorName;
-      }
-      const sourceIsDomicilio = String(item.sourceReportedDeadlineSource || '').toLowerCase() === 'domicilio';
-      const deadlineIsDomicilio = String(item.deadlineSource || '').toLowerCase() === 'domicilio';
-      const humanDeadlineSource = ['manual', 'humano', 'conferencia', 'confirmed', 'human'].includes(String(item.deadlineSource || '').toLowerCase());
-      const domicilioOnly = deadlineIsDomicilio || (sourceIsDomicilio && !humanDeadlineSource);
-      const domicilioDate = String(item.sourceReportedDeadlineAt || (domicilioOnly ? item.deadline : '') || '').trim();
-      if (domicilioOnly) {
-        task.deadline = '';
-        task.deadlineSource = '';
-        if (domicilioDate) task.sourceReportedDeadlineAt = domicilioDate;
-      }
-      const previousTaskId = String(item.taskId || '');
-      const previousLinkedTaskIds = Array.isArray(item.linkedTaskIds) ? [...item.linkedTaskIds] : [];
-      const previousTreatmentStatus = currentStatus;
-      // Marca a origem do prazo para que alterações posteriores da fonte oficial possam
-      // acompanhar a tarefa (prazo digitado por pessoa permanece humano e intocável).
-      const sourceDeadline = String(item.sourceReportedDeadlineAt || '').trim();
-      const sourceDeadlineSource = String(item.sourceReportedDeadlineSource || item.deadlineSource || '').toLowerCase();
-      if (sourceDeadlineSource !== 'domicilio' && sourceDeadline && String(task.deadline || '').trim() === sourceDeadline) {
-        task.deadlineSource = String(item.sourceReportedDeadlineSource || item.source || 'fonte oficial').slice(0, 40);
-        task.sourceReportedDeadlineAt = sourceDeadline;
-      }
-      const existingAiTask = aiSuggestion
-        ? state.tasks.find(record => record
-            && record.aiSuggestion
-            && record.status === 'triagem'
-            && record.active !== false
-            && !record.absorbedInto
-            && [record.intimationId, record.sourceIntimationId].map(String).includes(String(item.id || publicationId)))
-        : null;
-      if (existingAiTask) {
-        const existingAiSensitive = existingAiTask.scope === 'private' || existingAiTask.privateOwnerUserId || existingAiTask.restricted;
-        if (existingAiSensitive && !canSessionAccessTask(session, state, existingAiTask)) {
-          throw Object.assign(new Error('A tarefa da sugestão já existe, mas não está disponível para este usuário.'), { statusCode: 409 });
+          if (body.revision !== envelope.revision) {
+            throw Object.assign(new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'), { statusCode: 409 });
+          }
         }
-        const undoStore = createAiTaskUndoStore({
-          file: path.join(workspaceDataDirectory(), 'ai-task-undo.json'),
-          encrypt: value => security.encrypt(value),
-          decrypt: payload => security.decrypt(payload)
-        });
-        const record = await undoStore.get(existingAiTask.id);
-        const creator = String(record?.createdBy || existingAiTask.createdBy || '');
-        const actor = String(session.username || session.displayName || '');
-        if (existingAiSensitive && creator && creator !== actor && !isPrivilegedRole(session.role)) {
-          throw Object.assign(new Error('A tarefa da sugestão já existe, mas não está disponível para este usuário.'), { statusCode: 409 });
-        }
-        return json(res, 200, {
-          ok: true,
-          idempotent: true,
-          task: existingAiTask,
-          publication: item,
-          intimation: item,
-          revision: envelope.revision,
-          message: 'Tarefa da sugestão já existe.'
-        });
-      }
-      const existingTask = state.tasks.find(record => record?.id === task.id);
-      if (existingTask) {
-        const linkedIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : [];
-        const linkedToPublication = (existingTask.intimationId === item.id || existingTask.sourceIntimationId === item.id) && linkedIds.includes(existingTask.id);
-        if (!linkedToPublication) {
-          throw Object.assign(new Error('O ID da tarefa já está em uso.'), { statusCode: 409 });
-        }
-        const existingSensitive = existingTask.scope === 'private' || existingTask.privateOwnerUserId || existingTask.restricted;
-        if (existingSensitive && !canSessionAccessTask(session, state, existingTask)) {
-          throw Object.assign(new Error('A tarefa já existe, mas não está disponível para este usuário.'), { statusCode: 409 });
-        }
-        return json(res, 200, {
-          ok: true,
-          idempotent: true,
-          task: existingTask,
-          publication: item,
-          intimation: item,
-          revision: envelope.revision,
-          message: 'Tarefa já vinculada a esta publicação.'
-        });
-      }
 
-      state.tasks.unshift(task);
-      if (!Array.isArray(item.linkedTaskIds)) item.linkedTaskIds = item.taskId ? [item.taskId] : [];
-      if (!item.linkedTaskIds.includes(task.id)) item.linkedTaskIds.push(task.id);
-      item.taskId = task.id;
-      // A tarefa específica substitui a tarefa genérica de prazo da mesma publicação:
-      // a genérica intocada é absorvida (reversível) e o prazo da fonte é herdado.
-      const absorption = absorbSourceDeadlineTasksForPublication(state, {
-        publicationId: String(item.id || publicationId),
-        keeperId: String(task.id),
-        actor: actorName,
-        nowIso,
-        canAbsorb: candidate => canSessionAccessTask(session, state, candidate)
-      });
-      if (currentStatus === 'untreated') {
-        item.treatmentStatus = 'in_review';
-        item.treatmentStartedAt = nowIso;
-        item.treatmentStartedBy = actorName;
-      }
-      if (aiSuggestion) {
-        task.aiSuggestion = aiSuggestion;
-        const undoStore = createAiTaskUndoStore({
-          file: path.join(workspaceDataDirectory(), 'ai-task-undo.json'),
-          encrypt: value => security.encrypt(value),
-          decrypt: payload => security.decrypt(payload)
-        });
-        await undoStore.set(task.id, {
+        const state = envelope.state || {};
+        if (!Array.isArray(state.intimations)) state.intimations = [];
+        if (!Array.isArray(state.tasks)) state.tasks = [];
+        const item = resolveIntimationAlias(state.intimations, publicationId);
+        if (!item) throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
+
+        const currentStatus = item.treatmentStatus || 'untreated';
+        if (currentStatus === 'discarded') {
+          throw Object.assign(new Error('Publicação descartada não pode originar nova tarefa.'), { statusCode: 409 });
+        }
+        if (!['untreated', 'in_review', 'treated'].includes(currentStatus)) {
+          throw Object.assign(new Error(`Status de tratamento inválido: "${currentStatus}".`), { statusCode: 409 });
+        }
+
+        const actorName = String(session.displayName || session.username || 'Advogado').slice(0, 100);
+        const nowIso = new Date().toISOString();
+        const task = buildCanonicalPublicationTask(body.task, item.id || publicationId, actorName, nowIso);
+        const aiSuggestionInput = body.task && body.task.aiSuggestion && typeof body.task.aiSuggestion === 'object'
+          ? body.task.aiSuggestion
+          : null;
+        const aiSuggestion = aiSuggestionInput
+          ? {
+              id: String(aiSuggestionInput.id || '').slice(0, 120),
+              action: String(aiSuggestionInput.action || '').slice(0, 240),
+              reason: String(aiSuggestionInput.reason || '').slice(0, 80),
+              confidence: Number.isFinite(Number(aiSuggestionInput.confidence)) ? Number(aiSuggestionInput.confidence) : 0,
+              at: String(aiSuggestionInput.at || nowIso).slice(0, 40),
+              piece: String(aiSuggestionInput.piece || '').slice(0, 120)
+            }
+          : null;
+        const publicationRestricted = Boolean(
+          item.restricted
+          || item.segredoJustica
+          || item.isSecret
+          || item.secrecy
+          || item.domicilioMeta?.segredoJustica === true
+          || Number(item.domicilioMeta?.nivelSigilo) > 0
+        );
+        const publicationPrivate = item.scope === 'private' || Boolean(item.privateOwnerUserId);
+        if (!canSessionAccessPublication(session, state, item)) {
+          throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
+        }
+        if (publicationPrivate || publicationRestricted) {
+          task.scope = 'private';
+          task.privateOwnerUserId = String(item.privateOwnerUserId || item.ownerUserId || session.id || session.userId || session.username || '');
+          task.ownerUserId = task.privateOwnerUserId;
+        }
+        if (publicationRestricted) {
+          task.restricted = true;
+          task.title = 'Conferir publicação restrita';
+          task.description = 'Publicação com acesso restrito. Consulte o conteúdo no ATRIUM.';
+          if (aiSuggestion) aiSuggestion.piece = '';
+        }
+        if (aiSuggestion) {
+          task.createdBy = String(session.username || session.displayName || '').slice(0, 120);
+          task.createdByName = actorName;
+        }
+        const sourceIsDomicilio = String(item.sourceReportedDeadlineSource || '').toLowerCase() === 'domicilio';
+        const deadlineIsDomicilio = String(item.deadlineSource || '').toLowerCase() === 'domicilio';
+        const humanDeadlineSource = ['manual', 'humano', 'conferencia', 'confirmed', 'human'].includes(String(item.deadlineSource || '').toLowerCase());
+        const domicilioOnly = deadlineIsDomicilio || (sourceIsDomicilio && !humanDeadlineSource);
+        const domicilioDate = String(item.sourceReportedDeadlineAt || (domicilioOnly ? item.deadline : '') || '').trim();
+        if (domicilioOnly) {
+          task.deadline = '';
+          task.deadlineSource = '';
+          if (domicilioDate) task.sourceReportedDeadlineAt = domicilioDate;
+        }
+        const previousTaskId = String(item.taskId || '');
+        const previousLinkedTaskIds = Array.isArray(item.linkedTaskIds) ? [...item.linkedTaskIds] : [];
+        const previousTreatmentStatus = currentStatus;
+        // Marca a origem do prazo para que alterações posteriores da fonte oficial possam
+        // acompanhar a tarefa (prazo digitado por pessoa permanece humano e intocável).
+        const sourceDeadline = String(item.sourceReportedDeadlineAt || '').trim();
+        const sourceDeadlineSource = String(item.sourceReportedDeadlineSource || item.deadlineSource || '').toLowerCase();
+        if (sourceDeadlineSource !== 'domicilio' && sourceDeadline && String(task.deadline || '').trim() === sourceDeadline) {
+          task.deadlineSource = String(item.sourceReportedDeadlineSource || item.source || 'fonte oficial').slice(0, 40);
+          task.sourceReportedDeadlineAt = sourceDeadline;
+        }
+        const existingAiTask = aiSuggestion
+          ? state.tasks.find(record => record
+              && record.aiSuggestion
+              && record.status === 'triagem'
+              && record.active !== false
+              && !record.absorbedInto
+              && [record.intimationId, record.sourceIntimationId].map(String).includes(String(item.id || publicationId)))
+          : null;
+        if (existingAiTask) {
+          const existingAiSensitive = existingAiTask.scope === 'private' || existingAiTask.privateOwnerUserId || existingAiTask.restricted;
+          if (existingAiSensitive && !canSessionAccessTask(session, state, existingAiTask)) {
+            throw Object.assign(new Error('A tarefa da sugestão já existe, mas não está disponível para este usuário.'), { statusCode: 409 });
+          }
+          const undoStore = createAiTaskUndoStore({
+            file: path.join(workspaceDataDirectory(), 'ai-task-undo.json'),
+            encrypt: value => security.encrypt(value),
+            decrypt: payload => security.decrypt(payload)
+          });
+          const record = await undoStore.get(existingAiTask.id);
+          const creator = String(record?.createdBy || existingAiTask.createdBy || '');
+          const actor = String(session.username || session.displayName || '');
+          if (existingAiSensitive && creator && creator !== actor && !isPrivilegedRole(session.role)) {
+            throw Object.assign(new Error('A tarefa da sugestão já existe, mas não está disponível para este usuário.'), { statusCode: 409 });
+          }
+          return {
+            status: 200,
+            payload: {
+              ok: true,
+              idempotent: true,
+              task: existingAiTask,
+              publication: item,
+              intimation: item,
+              revision: envelope.revision,
+              message: 'Tarefa da sugestão já existe.'
+            }
+          };
+        }
+        const existingTask = state.tasks.find(record => record?.id === task.id);
+        if (existingTask) {
+          const linkedIds = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : [];
+          const linkedToPublication = (existingTask.intimationId === item.id || existingTask.sourceIntimationId === item.id) && linkedIds.includes(existingTask.id);
+          if (!linkedToPublication) {
+            throw Object.assign(new Error('O ID da tarefa já está em uso.'), { statusCode: 409 });
+          }
+          const existingSensitive = existingTask.scope === 'private' || existingTask.privateOwnerUserId || existingTask.restricted;
+          if (existingSensitive && !canSessionAccessTask(session, state, existingTask)) {
+            throw Object.assign(new Error('A tarefa já existe, mas não está disponível para este usuário.'), { statusCode: 409 });
+          }
+          return {
+            status: 200,
+            payload: {
+              ok: true,
+              idempotent: true,
+              task: existingTask,
+              publication: item,
+              intimation: item,
+              revision: envelope.revision,
+              message: 'Tarefa já vinculada a esta publicação.'
+            }
+          };
+        }
+
+        state.tasks.unshift(task);
+        if (!Array.isArray(item.linkedTaskIds)) item.linkedTaskIds = item.taskId ? [item.taskId] : [];
+        if (!item.linkedTaskIds.includes(task.id)) item.linkedTaskIds.push(task.id);
+        item.taskId = task.id;
+        // A tarefa específica substitui a tarefa genérica de prazo da mesma publicação:
+        // a genérica intocada é absorvida (reversível) e o prazo da fonte é herdado.
+        const absorption = absorbSourceDeadlineTasksForPublication(state, {
           publicationId: String(item.id || publicationId),
-          createdBy: String(session.username || session.displayName || ''),
-          createdAt: nowIso,
-          previousTaskId,
-          previousLinkedTaskIds,
-          previousTreatmentStatus,
-          treatmentStartedAtAfter: String(item.treatmentStartedAt || ''),
-          treatmentStartedByAfter: String(item.treatmentStartedBy || ''),
-          absorbedTaskIds: Array.isArray(absorption?.absorbed) ? absorption.absorbed.map(String) : [],
-          deadlineAfter: String(task.deadline || ''),
-          priorityAfter: String(task.priority || ''),
-          responsibleAfter: String(task.responsible || ''),
-          responsiblesAfter: Array.isArray(task.responsibles) ? [...task.responsibles] : [],
-          fatalDeadlineAfter: String(task.fatalDeadline || ''),
-          descriptionHash: hashTaskText(task.description),
-          titleHash: hashTaskText(task.title),
-          clientHash: hashTaskText(task.client),
-          processHash: hashTaskText(task.process),
-          historyHash: hashTaskHistory(task.history),
-          pointsAfter: Number(task.points) || 0,
-          dateAfter: String(task.date || ''),
-          timeAfter: String(task.time || ''),
-          assigneeUserIdAfter: String(task.assigneeUserId || ''),
-          followerUserIdsAfter: Array.isArray(task.followerUserIds) ? [...task.followerUserIds] : [],
-          activeAfter: task.active !== false,
-          absorbedIntoAfter: String(task.absorbedInto || '')
+          keeperId: String(task.id),
+          actor: actorName,
+          nowIso,
+          canAbsorb: candidate => canSessionAccessTask(session, state, candidate)
         });
-      }
+        if (currentStatus === 'untreated') {
+          item.treatmentStatus = 'in_review';
+          item.treatmentStartedAt = nowIso;
+          item.treatmentStartedBy = actorName;
+        }
+        if (aiSuggestion) task.aiSuggestion = aiSuggestion;
 
-      if (!Array.isArray(state.audit)) state.audit = [];
-      state.audit.unshift({
-        id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
-        at: nowIso,
-        action: 'Tarefa criada a partir de publicação',
-        detail: `${task.title} · ${item.process || item.id || publicationId}`.slice(0, 500),
-        actor: actorName
-      });
-      state.audit = state.audit.slice(0, 1000);
+        if (!Array.isArray(state.audit)) state.audit = [];
+        state.audit.unshift({
+          id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
+          at: nowIso,
+          action: 'Tarefa criada a partir de publicação',
+          detail: `${task.title} · ${item.process || item.id || publicationId}`.slice(0, 500),
+          actor: actorName
+        });
+        state.audit = state.audit.slice(0, 1000);
 
-      const saved = await saveAppStateDirect(state, envelope.revision || null);
-      return json(res, 201, {
-        ok: true,
-        idempotent: false,
-        task,
-        publication: item,
-        intimation: item,
-        revision: saved.revision,
-        message: 'Tarefa criada e vinculada à publicação com sucesso.'
+        const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
+        if (aiSuggestion) {
+          const undoStore = createAiTaskUndoStore({
+            file: path.join(workspaceDataDirectory(), 'ai-task-undo.json'),
+            encrypt: value => security.encrypt(value),
+            decrypt: payload => security.decrypt(payload)
+          });
+          await undoStore.set(task.id, {
+            publicationId: String(item.id || publicationId),
+            createdBy: String(session.username || session.displayName || ''),
+            createdAt: nowIso,
+            previousTaskId,
+            previousLinkedTaskIds,
+            previousTreatmentStatus,
+            treatmentStartedAtAfter: String(item.treatmentStartedAt || ''),
+            treatmentStartedByAfter: String(item.treatmentStartedBy || ''),
+            absorbedTaskIds: Array.isArray(absorption?.absorbed) ? absorption.absorbed.map(String) : [],
+            deadlineAfter: String(task.deadline || ''),
+            priorityAfter: String(task.priority || ''),
+            responsibleAfter: String(task.responsible || ''),
+            responsiblesAfter: Array.isArray(task.responsibles) ? [...task.responsibles] : [],
+            fatalDeadlineAfter: String(task.fatalDeadline || ''),
+            descriptionHash: hashTaskText(task.description),
+            titleHash: hashTaskText(task.title),
+            clientHash: hashTaskText(task.client),
+            processHash: hashTaskText(task.process),
+            historyHash: hashTaskHistory(task.history),
+            pointsAfter: Number(task.points) || 0,
+            dateAfter: String(task.date || ''),
+            timeAfter: String(task.time || ''),
+            assigneeUserIdAfter: String(task.assigneeUserId || ''),
+            followerUserIdsAfter: Array.isArray(task.followerUserIds) ? [...task.followerUserIds] : [],
+            activeAfter: task.active !== false,
+            absorbedIntoAfter: String(task.absorbedInto || '')
+          });
+        }
+        return {
+          status: 201,
+          payload: {
+            ok: true,
+            idempotent: false,
+            task,
+            publication: item,
+            intimation: item,
+            revision: saved.revision,
+            message: 'Tarefa criada e vinculada à publicação com sucesso.'
+          }
+        };
       });
+      return json(res, outcome.status, outcome.payload);
     }
 
     // Desfaz a tarefa criada pela sugestão do Atrium IA, devolvendo a publicação ao
-    // estado anterior e reativando tarefas de prazo que a criação tenha absorvido.
+    // estado anterior e reativando as tarefas de prazo que a criação tenha absorvido.
+    // Se alguma absorvida ainda existente está fora do acesso de quem desfaz, o pedido
+    // é recusado por inteiro (403): desfazer em parte apagaria a tarefa criada e
+    // deixaria a absorvida órfã, com o prazo da fonte fora de qualquer tela.
     if (req.method === 'POST' && url.pathname.startsWith('/api/publications/') && url.pathname.endsWith('/task/undo')) {
       const session = assertAuthenticated(req, true);
       if (session.status === 'pending' || session.status === 'inactive') {
@@ -7285,107 +7721,124 @@ const server = http.createServer(async (req, res) => {
       const taskId = String(body.taskId || '').trim();
       if (!taskId) throw Object.assign(new Error('ID da tarefa não informado.'), { statusCode: 400 });
 
-      const envelope = await readAppStateEnvelope();
-      if (envelope.revision !== undefined && envelope.revision !== null) {
-        if (body.revision === undefined || body.revision === null || body.revision === '') {
-          throw Object.assign(new Error('Revisão de estado obrigatória.'), { statusCode: 409 });
+      const outcome = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        if (envelope.revision !== undefined && envelope.revision !== null) {
+          if (body.revision === undefined || body.revision === null || body.revision === '') {
+            throw Object.assign(new Error('Revisão de estado obrigatória.'), { statusCode: 409 });
+          }
+          if (body.revision !== envelope.revision) {
+            throw Object.assign(new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'), { statusCode: 409 });
+          }
         }
-        if (body.revision !== envelope.revision) {
-          throw Object.assign(new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'), { statusCode: 409 });
+        const state = envelope.state || {};
+        if (!Array.isArray(state.tasks)) state.tasks = [];
+        if (!Array.isArray(state.intimations)) state.intimations = [];
+        const item = resolveIntimationAlias(state.intimations, publicationId);
+        if (!item) throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
+        if (!canSessionAccessPublication(session, state, item)) {
+          throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
         }
-      }
-      const state = envelope.state || {};
-      if (!Array.isArray(state.tasks)) state.tasks = [];
-      if (!Array.isArray(state.intimations)) state.intimations = [];
-      const item = resolveIntimationAlias(state.intimations, publicationId);
-      if (!item) throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
-      if (!canSessionAccessPublication(session, state, item)) {
-        throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
-      }
-      const safePublication = () => ({
-        id: item.id,
-        treatmentStatus: item.treatmentStatus,
-        taskId: item.taskId || '',
-        linkedTaskIds: Array.isArray(item.linkedTaskIds) ? [...item.linkedTaskIds] : [],
-        treatmentStartedAt: item.treatmentStartedAt || '',
-        treatmentStartedBy: item.treatmentStartedBy || ''
-      });
-      const undoStore = createAiTaskUndoStore({
+        const safePublication = () => ({
+          id: item.id,
+          treatmentStatus: item.treatmentStatus,
+          taskId: item.taskId || '',
+          linkedTaskIds: Array.isArray(item.linkedTaskIds) ? [...item.linkedTaskIds] : [],
+          treatmentStartedAt: item.treatmentStartedAt || '',
+          treatmentStartedBy: item.treatmentStartedBy || ''
+        });
+        const undoStore = createAiTaskUndoStore({
           file: path.join(workspaceDataDirectory(), 'ai-task-undo.json'),
           encrypt: value => security.encrypt(value),
           decrypt: payload => security.decrypt(payload)
         });
-      const record = await undoStore.get(taskId);
-      const task = state.tasks.find(entry => entry && String(entry.id) === taskId);
-      if (!task) {
-        if (record) await undoStore.remove(taskId);
-        const linked = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds.map(String) : [];
-        if (String(item.taskId || '') !== taskId && !linked.includes(taskId)) {
-          return json(res, 200, {
-            ok: true,
-            alreadyUndone: true,
-            removedTaskId: taskId,
-            restoredTaskIds: [],
-            skippedAbsorbedTaskIds: [],
-            publication: safePublication(),
-            revision: envelope.revision,
-            message: 'Tarefa já desfeita.'
-          });
+        const record = await undoStore.get(taskId);
+        const task = state.tasks.find(entry => entry && String(entry.id) === taskId);
+        if (!task) {
+          if (record) await undoStore.remove(taskId);
+          const linked = Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds.map(String) : [];
+          if (String(item.taskId || '') !== taskId && !linked.includes(taskId)) {
+            return {
+              status: 200,
+              payload: {
+                ok: true,
+                alreadyUndone: true,
+                removedTaskId: taskId,
+                restoredTaskIds: [],
+                skippedAbsorbedTaskIds: [],
+                publication: safePublication(),
+                revision: envelope.revision,
+                message: 'Tarefa já desfeita.'
+              }
+            };
+          }
+          throw Object.assign(new Error('Tarefa não encontrada.'), { statusCode: 404 });
         }
-        throw Object.assign(new Error('Tarefa não encontrada.'), { statusCode: 404 });
-      }
-      if (!record) {
-        throw Object.assign(new Error('Esta tarefa não foi criada pela sugestão do Atrium IA.'), { statusCode: 409 });
-      }
-      if (!canSessionAccessTask(session, state, task)) {
-        throw Object.assign(new Error('Tarefa não encontrada.'), { statusCode: 404 });
-      }
-      const actorId = String(session.username || session.displayName || '');
-      if (record.createdBy && record.createdBy !== actorId && !isPrivilegedRole(session.role)) {
-        throw Object.assign(new Error('Apenas quem criou a tarefa ou um administrador pode desfazer.'), { statusCode: 403 });
-      }
-      const linkedToPublication = [task.intimationId, task.sourceIntimationId, item.id, item.externalId]
-        .map(value => String(value || ''))
-        .includes(String(publicationId));
-      if (!linkedToPublication) throw Object.assign(new Error('A tarefa não pertence a esta publicação.'), { statusCode: 409 });
+        if (!record) {
+          throw Object.assign(new Error('Esta tarefa não foi criada pela sugestão do Atrium IA.'), { statusCode: 409 });
+        }
+        if (!canSessionAccessTask(session, state, task)) {
+          throw Object.assign(new Error('Tarefa não encontrada.'), { statusCode: 404 });
+        }
+        const actorId = String(session.username || session.displayName || '');
+        if (record.createdBy && record.createdBy !== actorId && !isPrivilegedRole(session.role)) {
+          throw Object.assign(new Error('Apenas quem criou a tarefa ou um administrador pode desfazer.'), { statusCode: 403 });
+        }
+        const linkedToPublication = [task.intimationId, task.sourceIntimationId, item.id, item.externalId]
+          .map(value => String(value || ''))
+          .includes(String(publicationId));
+        if (!linkedToPublication) throw Object.assign(new Error('A tarefa não pertence a esta publicação.'), { statusCode: 409 });
 
-      const hashOf = hashTaskText;
-      const untouched = String(task.status || '') === 'triagem'
-        && task.active !== false
-        && !task.absorbedInto
-        && String(task.responsible || '') === String(record.responsibleAfter || '')
-        && JSON.stringify(Array.isArray(task.responsibles) ? task.responsibles : []) === JSON.stringify(Array.isArray(record.responsiblesAfter) ? record.responsiblesAfter : [])
-        && !String(task.completedAt || '').trim()
-        && !String(task.notes || '').trim()
-        && !String(task.resolution || '').trim()
-        && !(Array.isArray(task.timeLogs) && task.timeLogs.some(log => Number(log?.minutes) > 0))
-        && String(task.deadline || '') === String(record.deadlineAfter || '')
-        && String(task.priority || '') === String(record.priorityAfter || '')
-        && String(task.fatalDeadline || '') === String(record.fatalDeadlineAfter || '')
-        && hashOf(task.description) === String(record.descriptionHash || '')
-        && hashOf(task.title) === String(record.titleHash || '')
-        && hashOf(task.client) === String(record.clientHash || '')
-        && hashOf(task.process) === String(record.processHash || '')
-        && hashTaskHistory(task.history) === String(record.historyHash || '')
-        && (Number(task.points) || 0) === (Number(record.pointsAfter) || 0)
-        && String(task.date || '') === String(record.dateAfter || '')
-        && String(task.time || '') === String(record.timeAfter || '')
-        && String(task.assigneeUserId || '') === String(record.assigneeUserIdAfter || '')
-        && JSON.stringify(Array.isArray(task.followerUserIds) ? task.followerUserIds : []) === JSON.stringify(Array.isArray(record.followerUserIdsAfter) ? record.followerUserIdsAfter : []);
-      if (!untouched) {
-        throw Object.assign(new Error('A tarefa já foi alterada; não é possível desfazer.'), { statusCode: 409 });
-      }
+        const hashOf = hashTaskText;
+        const untouched = String(task.status || '') === 'triagem'
+          && task.active !== false
+          && !task.absorbedInto
+          && String(task.responsible || '') === String(record.responsibleAfter || '')
+          && JSON.stringify(Array.isArray(task.responsibles) ? task.responsibles : []) === JSON.stringify(Array.isArray(record.responsiblesAfter) ? record.responsiblesAfter : [])
+          && !String(task.completedAt || '').trim()
+          && !String(task.notes || '').trim()
+          && !String(task.resolution || '').trim()
+          && !(Array.isArray(task.timeLogs) && task.timeLogs.some(log => Number(log?.minutes) > 0))
+          && String(task.deadline || '') === String(record.deadlineAfter || '')
+          && String(task.priority || '') === String(record.priorityAfter || '')
+          && String(task.fatalDeadline || '') === String(record.fatalDeadlineAfter || '')
+          && hashOf(task.description) === String(record.descriptionHash || '')
+          && hashOf(task.title) === String(record.titleHash || '')
+          && hashOf(task.client) === String(record.clientHash || '')
+          && hashOf(task.process) === String(record.processHash || '')
+          && hashTaskHistory(task.history) === String(record.historyHash || '')
+          && (Number(task.points) || 0) === (Number(record.pointsAfter) || 0)
+          && String(task.date || '') === String(record.dateAfter || '')
+          && String(task.time || '') === String(record.timeAfter || '')
+          && String(task.assigneeUserId || '') === String(record.assigneeUserIdAfter || '')
+          && JSON.stringify(Array.isArray(task.followerUserIds) ? task.followerUserIds : []) === JSON.stringify(Array.isArray(record.followerUserIdsAfter) ? record.followerUserIdsAfter : []);
+        if (!untouched) {
+          throw Object.assign(new Error('A tarefa já foi alterada; não é possível desfazer.'), { statusCode: 409 });
+        }
 
-      const actorName = String(session.displayName || session.username || 'Advogado').slice(0, 100);
-      const nowIso = new Date().toISOString();
-      state.tasks = state.tasks.filter(entry => !entry || String(entry.id) !== taskId);
-      const restoredTaskIds = [];
-      const restoredTasks = [];
-      const skippedAbsorbedTaskIds = [];
-      for (const absorbedId of (Array.isArray(record.absorbedTaskIds) ? record.absorbedTaskIds : [])) {
-        const absorbed = state.tasks.find(entry => entry && String(entry.id) === String(absorbedId));
-        if (!absorbed) continue;
-        if (!canSessionAccessTask(session, state, absorbed)) {
+        const actorName = String(session.displayName || session.username || 'Advogado').slice(0, 100);
+        const nowIso = new Date().toISOString();
+        // Nenhuma mutação antes de confirmar que todas as absorvidas ainda existentes
+        // estão no acesso do ator. A recusa é integral e não devolve os ids das tarefas
+        // privadas de outra pessoa.
+        const restorableAbsorbedTasks = [];
+        for (const absorbedId of (Array.isArray(record.absorbedTaskIds) ? record.absorbedTaskIds : [])) {
+          const absorbed = state.tasks.find(entry => entry && String(entry.id) === String(absorbedId));
+          if (!absorbed) continue;
+          // O record guarda todos os ids absorvidos na criação. Um id histórico que
+          // já não aponta para esta tarefa (restaurado ou reabsorvido por outra tarefa)
+          // não faz parte deste desfazer: não pode ser reativado, reescrito nem reatribuído.
+          if (String(absorbed.absorbedInto || '') !== String(taskId)) continue;
+          if (!canSessionAccessTask(session, state, absorbed)) {
+            throw Object.assign(new Error('Outra pessoa absorveu uma tarefa de prazo fora do seu acesso. Peça a quem tem acesso a essa tarefa para desfazer a criação.'), { statusCode: 403 });
+          }
+          restorableAbsorbedTasks.push(absorbed);
+        }
+        state.tasks = state.tasks.filter(entry => !entry || String(entry.id) !== taskId);
+        const restoredTaskIds = [];
+        const restoredTasks = [];
+        for (const absorbed of restorableAbsorbedTasks) {
+          const absorbedId = String(absorbed.id);
           delete absorbed.absorbedInto;
           delete absorbed.absorbedAt;
           delete absorbed.absorbReason;
@@ -7395,67 +7848,59 @@ const server = http.createServer(async (req, res) => {
           absorbed.history = [...(Array.isArray(absorbed.history) ? absorbed.history : []), {
             at: nowIso,
             action: 'Absorção desfeita ao desfazer a tarefa da sugestão',
-            actor: 'Sistema'
+            actor: actorName
           }].slice(-200);
-          skippedAbsorbedTaskIds.push(String(absorbedId));
-          continue;
+          restoredTaskIds.push(String(absorbedId));
+          restoredTasks.push({ ...absorbed });
         }
-        delete absorbed.absorbedInto;
-        delete absorbed.absorbedAt;
-        delete absorbed.absorbReason;
-        delete absorbed.absorbedBy;
-        absorbed.active = true;
-        absorbed.updatedAt = nowIso;
-        absorbed.history = [...(Array.isArray(absorbed.history) ? absorbed.history : []), {
+        const currentLinked = (Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : [])
+          .map(String)
+          .filter(id => id !== taskId);
+        for (const restoredId of restoredTaskIds) {
+          if (!currentLinked.includes(restoredId) && state.tasks.some(entry => entry && String(entry.id) === restoredId)) {
+            currentLinked.push(restoredId);
+          }
+        }
+        item.linkedTaskIds = currentLinked;
+        if (String(item.taskId || '') === taskId) {
+          const previous = String(record.previousTaskId || '');
+          item.taskId = previous && currentLinked.includes(previous) ? previous : (currentLinked[0] || '');
+        }
+        if (record.previousTreatmentStatus === 'untreated'
+          && item.treatmentStatus === 'in_review'
+          && String(item.treatmentStartedAt || '') === String(record.treatmentStartedAtAfter || '')
+          && String(item.treatmentStartedBy || '') === String(record.treatmentStartedByAfter || '')) {
+          item.treatmentStatus = 'untreated';
+          delete item.treatmentStartedAt;
+          delete item.treatmentStartedBy;
+        }
+        if (!Array.isArray(state.audit)) state.audit = [];
+        state.audit.unshift({
+          id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
           at: nowIso,
-          action: 'Absorção desfeita ao desfazer a tarefa da sugestão',
+          action: 'Tarefa da sugestão desfeita',
+          detail: `${String(task.title || taskId).slice(0, 160)} · ${item.process || item.id || publicationId}`.slice(0, 500),
           actor: actorName
-        }].slice(-200);
-        restoredTaskIds.push(String(absorbedId));
-        restoredTasks.push({ ...absorbed });
-      }
-      const currentLinked = (Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : [])
-        .map(String)
-        .filter(id => id !== taskId);
-      for (const restoredId of restoredTaskIds) {
-        if (!currentLinked.includes(restoredId) && state.tasks.some(entry => entry && String(entry.id) === restoredId)) {
-          currentLinked.push(restoredId);
-        }
-      }
-      item.linkedTaskIds = currentLinked;
-      if (String(item.taskId || '') === taskId) {
-        const previous = String(record.previousTaskId || '');
-        item.taskId = previous && currentLinked.includes(previous) ? previous : (currentLinked[0] || '');
-      }
-      if (record.previousTreatmentStatus === 'untreated'
-        && item.treatmentStatus === 'in_review'
-        && String(item.treatmentStartedAt || '') === String(record.treatmentStartedAtAfter || '')
-        && String(item.treatmentStartedBy || '') === String(record.treatmentStartedByAfter || '')) {
-        item.treatmentStatus = 'untreated';
-        delete item.treatmentStartedAt;
-        delete item.treatmentStartedBy;
-      }
-      if (!Array.isArray(state.audit)) state.audit = [];
-      state.audit.unshift({
-        id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
-        at: nowIso,
-        action: 'Tarefa da sugestão desfeita',
-        detail: `${String(task.title || taskId).slice(0, 160)} · ${item.process || item.id || publicationId}`.slice(0, 500),
-        actor: actorName
+        });
+        state.audit = state.audit.slice(0, 1000);
+        const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null);
+        await undoStore.remove(taskId);
+        return {
+          status: 200,
+          payload: {
+            ok: true,
+            removedTaskId: taskId,
+            restoredTaskIds,
+            restoredTasks,
+            // O caminho parcial foi removido: a lista fica sempre vazia para clientes antigos.
+            skippedAbsorbedTaskIds: [],
+            publication: safePublication(),
+            revision: saved.revision,
+            message: 'Tarefa da sugestão desfeita.'
+          }
+        };
       });
-      state.audit = state.audit.slice(0, 1000);
-      const saved = await saveAppStateDirect(state, envelope.revision || null);
-      await undoStore.remove(taskId);
-      return json(res, 200, {
-        ok: true,
-        removedTaskId: taskId,
-        restoredTaskIds,
-        restoredTasks,
-        skippedAbsorbedTaskIds,
-        publication: safePublication(),
-        revision: saved.revision,
-        message: 'Tarefa da sugestão desfeita.'
-      });
+      return json(res, outcome.status, outcome.payload);
     }
 
     // Providências operacionais explícitas e rastreáveis originadas em publicação.
@@ -7471,34 +7916,47 @@ const server = http.createServer(async (req, res) => {
       if (body.publicationId && String(body.publicationId).trim() !== publicationId) {
         throw Object.assign(new Error('ID da publicação divergente.'), { statusCode: 400 });
       }
-      const envelope = await readAppStateEnvelope();
-      if (!body.revision || body.revision !== envelope.revision) {
-        throw Object.assign(new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'), { statusCode: 409 });
-      }
-      if (!envelope.state) throw Object.assign(new Error('O estado local ainda não foi inicializado.'), { statusCode: 409 });
-      const resolvedWorkPublication = resolveIntimationAlias(envelope.state.intimations, publicationId);
-      if (!resolvedWorkPublication) throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
-      const result = applyPublicationWorkAction(envelope.state, resolvedWorkPublication.id || publicationId, body.action, {
-        actorName: session.displayName || session.username,
-        nowIso: new Date().toISOString()
-      });
-      if (result.idempotent) {
-        return json(res, 200, {
-          ok: true,
-          readOnlyJudicial: true,
-          ...result,
-          revision: envelope.revision,
-          message: 'Esta providência já está vinculada à publicação.'
+      const outcome = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        if (!body.revision || body.revision !== envelope.revision) {
+          throw Object.assign(new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'), { statusCode: 409 });
+        }
+        if (!envelope.state) throw Object.assign(new Error('O estado local ainda não foi inicializado.'), { statusCode: 409 });
+        const resolvedWorkPublication = resolveIntimationAlias(envelope.state.intimations, publicationId);
+        if (!resolvedWorkPublication || !isPublicationAllowedForSession(session, envelope.state, resolvedWorkPublication)) {
+          throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
+        }
+        const result = applyPublicationWorkAction(envelope.state, resolvedWorkPublication.id || publicationId, body.action, {
+          actorName: session.displayName || session.username,
+          nowIso: new Date().toISOString(),
+          canAccessPublication: item => isPublicationAllowedForSession(session, envelope.state, item),
+          canAccessProcess: proc => isProcessAllowedForSession(session, envelope.state, proc)
         });
-      }
-      const saved = await saveAppStateDirect(envelope.state, envelope.revision);
-      return json(res, 201, {
-        ok: true,
-        readOnlyJudicial: true,
-        ...result,
-        revision: saved.revision,
-        message: 'Providência criada e vinculada à publicação.'
+        if (result.idempotent) {
+          return {
+            status: 200,
+            payload: {
+              ok: true,
+              readOnlyJudicial: true,
+              ...result,
+              revision: envelope.revision,
+              message: 'Esta providência já está vinculada à publicação.'
+            }
+          };
+        }
+        const saved = await saveAppStateDirectUnlocked(envelope.state, envelope.revision);
+        return {
+          status: 201,
+          payload: {
+            ok: true,
+            readOnlyJudicial: true,
+            ...result,
+            revision: saved.revision,
+            message: 'Providência criada e vinculada à publicação.'
+          }
+        };
       });
+      return json(res, outcome.status, outcome.payload);
     }
 
     // Fusão confirmada de publicações duplicadas: o painel de duplicatas prováveis mostra os
@@ -7515,37 +7973,35 @@ const server = http.createServer(async (req, res) => {
       if (!idA || !idB) {
         throw Object.assign(new Error('Informe as duas publicações que devem ser fundidas.'), { statusCode: 400 });
       }
-      const envelope = await readAppStateEnvelope();
-      if (!envelope.state) throw Object.assign(new Error('O estado local ainda não foi inicializado.'), { statusCode: 409 });
-      // Sem gate na revisão enviada pelo cliente: o acervo é reescrito com frequência (autosave
-      // da UI, sessões judiciais, sincronização) e exigir a revisão da tela fazia o clique da
-      // fusão morrer em 409 com aviso e sem efeito. A concorrência é protegida pela CAS na
-      // gravação (`saveAppStateDirect` com a revisão lida agora, dentro da fila de mutações) e o
-      // par é revalidado no estado atual — fundir é operação de par, não sobrescrita do acervo.
-      const mergePair = [idA, idB].map(id => resolveIntimationAlias(envelope.state.intimations || [], id));
-      if (mergePair.some(publication => !publication || !canSessionAccessPublication(session, envelope.state, publication))) {
-        throw Object.assign(new Error('Publicação não localizada no acervo acessível ao seu perfil.'), { statusCode: 404 });
-      }
-            const result = mergeIntimationPairIntoState(envelope.state, idA, idB, {
-        actor: session.displayName || session.username,
-        nowIso: new Date().toISOString()
-      });
-      if (!result.merged) {
-        throw Object.assign(new Error(`Este par não pode ser fundido agora (${result.reason}).`), {
-          statusCode: 409,
-          code: 'MERGE_REFUSED',
-          reason: result.reason
+      const payload = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        if (!envelope.state) throw Object.assign(new Error('O estado local ainda não foi inicializado.'), { statusCode: 409 });
+        const mergePair = [idA, idB].map(id => resolveIntimationAlias(envelope.state.intimations || [], id));
+        if (mergePair.some(publication => !publication || !canSessionAccessPublication(session, envelope.state, publication))) {
+          throw Object.assign(new Error('Publicação não localizada no acervo acessível ao seu perfil.'), { statusCode: 404 });
+        }
+        const result = mergeIntimationPairIntoState(envelope.state, idA, idB, {
+          actor: session.displayName || session.username,
+          nowIso: new Date().toISOString()
         });
-      }
-      const saved = await saveAppStateDirect(envelope.state, envelope.revision);
-      return json(res, 200, {
-        ok: true,
-        keeperId: result.keeperId,
-        loserId: result.loserId,
-        reason: result.reason,
-        revision: saved.revision,
-        message: 'Publicações unificadas. Dá para desfazer, e tudo ficou na auditoria.'
+        if (!result.merged) {
+          throw Object.assign(new Error(`Este par não pode ser fundido agora (${result.reason}).`), {
+            statusCode: 409,
+            code: 'MERGE_REFUSED',
+            reason: result.reason
+          });
+        }
+        const saved = await saveAppStateDirectUnlocked(envelope.state, envelope.revision);
+        return {
+          ok: true,
+          keeperId: result.keeperId,
+          loserId: result.loserId,
+          reason: result.reason,
+          revision: saved.revision,
+          message: 'Publicações unificadas. Dá para desfazer, e tudo ficou na auditoria.'
+        };
       });
+      return json(res, 200, payload);
     }
 
     // Tarefas repetidas: o Atrium IA aponta os grupos, a pessoa escolhe o que manter. Diferente da
@@ -7554,13 +8010,18 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/tasks/duplicate-groups') {
       const session = assertAuthenticated(req, false);
       const envelope = await readAppStateEnvelope();
-      const visible = envelope.state
-        ? filterPrivateScopeState(applyMonitoringScopes(envelope.state), session, { teams: security.listTeams(session.workspaceId) })
-        : envelope.state;
+      const teams = security.listTeams(session.workspaceId);
+      const accessMode = security.officeProfile(session.workspaceId).accessMode;
+      const scoped = envelope.state ? applyMonitoringScopes(envelope.state) : envelope.state;
+      const processIndex = scoped ? buildProcessIndex(scoped.processes) : new Map();
+      const contactIndex = scoped ? buildContactIndex(scoped.contacts) : new Map();
+      let visible = scoped ? filterPrivateScopeState(scoped, session, { teams }) : scoped;
+      if (visible && accessMode === 'enforced') {
+        visible = filterOfficeState(visible, session, { teams, processIndex, contactIndex });
+      }
       const plano = planRepeatedTaskGroups({
         tasks: Array.isArray(visible?.tasks) ? visible.tasks : [],
-        intimations: Array.isArray(visible?.intimations) ? visible.intimations : []
-,
+        intimations: Array.isArray(visible?.intimations) ? visible.intimations : [],
         processes: Array.isArray(visible?.processes) ? visible.processes : []
       });
       return json(res, 200, { ok: true, groups: plano.groups });
@@ -7576,49 +8037,52 @@ const server = http.createServer(async (req, res) => {
       if (!keeperId || loserIds.length === 0) {
         throw Object.assign(new Error('Escolha a tarefa que fica e as que serão unificadas.'), { statusCode: 400 });
       }
-      const envelope = await readAppStateEnvelope();
-      if (!envelope.state) throw Object.assign(new Error('O estado local ainda não foi inicializado.'), { statusCode: 409 });
-      const consolidationTasks = new Map((envelope.state.tasks || []).map(task => [String(task.id), task]));
-      for (const taskId of [keeperId, ...loserIds]) {
-        const task = consolidationTasks.get(String(taskId));
-        if (!task || !canSessionAccessTask(session, envelope.state, task)) {
-          throw Object.assign(new Error('Tarefa não localizada no acervo acessível ao seu perfil.'), { statusCode: 404 });
+      const payload = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        if (!envelope.state) throw Object.assign(new Error('O estado local ainda não foi inicializado.'), { statusCode: 409 });
+        const consolidationTasks = new Map((envelope.state.tasks || []).map(task => [String(task.id), task]));
+        for (const taskId of [keeperId, ...loserIds]) {
+          const task = consolidationTasks.get(String(taskId));
+          if (!task || !canSessionAccessTask(session, envelope.state, task)) {
+            throw Object.assign(new Error('Tarefa não localizada no acervo acessível ao seu perfil.'), { statusCode: 404 });
+          }
         }
-      }
-            const result = applyTaskGroupConsolidation(envelope.state, {
-        keeperId,
-        loserIds,
-        actor: session.displayName || session.username,
-        nowIso: new Date().toISOString()
+        const result = applyTaskGroupConsolidation(envelope.state, {
+          keeperId,
+          loserIds,
+          actor: session.displayName || session.username,
+          nowIso: new Date().toISOString()
+        });
+        if (!result.changed) {
+          // Motivo em texto humano para quem opera, código de máquina em `reason` para o painel
+          // explicar a recusa e recarregar a lista (o grupo pode ter sido absorvido em outra aba).
+          throw Object.assign(
+            new Error('Nada foi unificado: as tarefas escolhidas já estavam unificadas ou encerradas.'),
+            { statusCode: 409, code: 'CONSOLIDATION_REFUSED', reason: result.reason || 'sem-mudanca' }
+          );
+        }
+        for (const entry of result.auditEntries) {
+          envelope.state.audit = [entry, ...(Array.isArray(envelope.state.audit) ? envelope.state.audit : [])].slice(0, 5000);
+        }
+        const saved = await saveAppStateDirectUnlocked(envelope.state, envelope.revision);
+        // Os registros tocados voltam como ficaram gravados: o cliente espelha o mesmo estado (só
+        // `absorbedInto`/`active` no espelho apagava `absorbedBy` e o histórico no próximo flush).
+        const tocados = [];
+        for (const id of [keeperId, ...loserIds.map(item => String(item))]) {
+          const registro = (Array.isArray(envelope.state.tasks) ? envelope.state.tasks : [])
+            .find(task => task && String(task.id) === String(id));
+          if (registro && !tocados.includes(registro)) tocados.push(registro);
+        }
+        return {
+          ok: true,
+          absorbed: result.absorbed,
+          undo: result.undo,
+          tasks: tocados,
+          revision: saved.revision,
+          message: 'Tarefas repetidas unificadas. Dá para desfazer, e tudo ficou na auditoria.'
+        };
       });
-      if (!result.changed) {
-        // Motivo em texto humano para quem opera, código de máquina em `reason` para o painel
-        // explicar a recusa e recarregar a lista (o grupo pode ter sido absorvido em outra aba).
-        throw Object.assign(
-          new Error('Nada foi unificado: as tarefas escolhidas já estavam unificadas ou encerradas.'),
-          { statusCode: 409, code: 'CONSOLIDATION_REFUSED', reason: result.reason || 'sem-mudanca' }
-        );
-      }
-      for (const entry of result.auditEntries) {
-        envelope.state.audit = [entry, ...(Array.isArray(envelope.state.audit) ? envelope.state.audit : [])].slice(0, 5000);
-      }
-      const saved = await saveAppStateDirect(envelope.state, envelope.revision);
-      // Os registros tocados voltam como ficaram gravados: o cliente espelha o mesmo estado (só
-      // `absorbedInto`/`active` no espelho apagava `absorbedBy` e o histórico no próximo flush).
-      const tocados = [];
-      for (const id of [keeperId, ...loserIds.map(item => String(item))]) {
-        const registro = (Array.isArray(envelope.state.tasks) ? envelope.state.tasks : [])
-          .find(task => task && String(task.id) === String(id));
-        if (registro && !tocados.includes(registro)) tocados.push(registro);
-      }
-      return json(res, 200, {
-        ok: true,
-        absorbed: result.absorbed,
-        undo: result.undo,
-        tasks: tocados,
-        revision: saved.revision,
-        message: 'Tarefas repetidas unificadas. Dá para desfazer, e tudo ficou na auditoria.'
-      });
+      return json(res, 200, payload);
     }
 
     if (req.method === 'POST' && url.pathname === '/api/tasks/consolidate/undo') {
@@ -7626,19 +8090,22 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req, 20_000);
       const absorbedId = String(body.absorbedId || '').trim();
       if (!absorbedId) throw Object.assign(new Error('Informe a tarefa unificada.'), { statusCode: 400 });
-      const envelope = await readAppStateEnvelope();
-      const absorbedTask = (envelope.state?.tasks || []).find(task => String(task?.id) === absorbedId);
-      if (!absorbedTask || !canSessionAccessTask(session, envelope.state, absorbedTask)) {
-        throw Object.assign(new Error('Tarefa unificada não encontrada.'), { statusCode: 404 });
-      }
-      const result = undoTaskGroupConsolidation(envelope.state, {
-        absorbedId,
-        actor: session.displayName || session.username,
-        nowIso: new Date().toISOString()
+      const payload = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        const absorbedTask = (envelope.state?.tasks || []).find(task => String(task?.id) === absorbedId);
+        if (!absorbedTask || !canSessionAccessTask(session, envelope.state, absorbedTask)) {
+          throw Object.assign(new Error('Tarefa unificada não encontrada.'), { statusCode: 404 });
+        }
+        const result = undoTaskGroupConsolidation(envelope.state, {
+          absorbedId,
+          actor: session.displayName || session.username,
+          nowIso: new Date().toISOString()
+        });
+        if (!result.changed) throw Object.assign(new Error('Esta tarefa não está unificada.'), { statusCode: 409 });
+        const saved = await saveAppStateDirectUnlocked(envelope.state, envelope.revision);
+        return { ok: true, revision: saved.revision, message: 'A tarefa voltou ao fluxo.' };
       });
-      if (!result.changed) throw Object.assign(new Error('Esta tarefa não está unificada.'), { statusCode: 409 });
-      const saved = await saveAppStateDirect(envelope.state, envelope.revision);
-      return json(res, 200, { ok: true, revision: saved.revision, message: 'A tarefa voltou ao fluxo.' });
+      return json(res, 200, payload);
     }
 
     // Tratamento de Publicações / Intimações (Workflow de Triagem)
@@ -7674,138 +8141,175 @@ const server = http.createServer(async (req, res) => {
         throw Object.assign(new Error('Ação de tratamento inválida.'), { statusCode: 400 });
       }
 
-      const envelope = await readAppStateEnvelope();
-      if (envelope.revision !== undefined && envelope.revision !== null) {
-        if (body.revision === undefined || body.revision === null || body.revision === '') {
-          throw Object.assign(
-            new Error('Revisão de estado obrigatória.'),
-            { statusCode: 409 }
-          );
-        }
-        if (body.revision !== envelope.revision) {
-          throw Object.assign(
-            new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'),
-            { statusCode: 409 }
-          );
-        }
-      }
-
-      const state = envelope.state || {};
-      if (!Array.isArray(state.intimations)) state.intimations = [];
-      const item = resolveIntimationAlias(state.intimations, publicationId);
-      if (!item) {
-        throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
-      }
-      // Espelha a leitura por modo: escopo privado sempre; RBAC de escritório só em
-      // `enforced` (em `shadow` a publicação de escritório é visível e tratável pelo membro).
-      {
-        const owner = privateOwnerForRecord(item, { termsById: monitoringTermsById(state.terms), processIndex: buildProcessIndex(state.processes) });
-        const privateDenied = Boolean(owner) && !ownerMatchesUser(owner, session);
-        const suppressedDenied = isSuppressedRecord(item);
-        const officeDenied = security.officeProfile(session.workspaceId).accessMode === 'enforced'
-          && !canAccessPublication(session, item, buildProcessIndex(state.processes), security.listTeams(session.workspaceId));
-        if (privateDenied || suppressedDenied || officeDenied) {
-          throw Object.assign(new Error('Publicação fora do seu escopo de acesso.'), { statusCode: 403 });
-        }
-      }
-      const currentStatus = item.treatmentStatus || 'untreated';
-      const ALLOWED_TRANSITIONS = {
-        untreated: ['start_review', 'mark_treated', 'discard'],
-        in_review: ['mark_treated', 'discard'],
-        treated: ['reopen'],
-        discarded: ['restore']
-      };
-      const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
-      if (!allowed.includes(action)) {
-        throw Object.assign(
-          new Error(`Transição inválida: ação "${action}" não é permitida para publicação com status "${currentStatus}".`),
-          { statusCode: 409 }
-        );
-      }
-
-      const actorName = session.displayName || session.username || 'Advogado';
-      const nowIso = new Date().toISOString();
-      const procRef = item.process || item.number || item.title || item.id;
-      let auditLabel = '';
-      let auditDetail = `Processo: ${procRef}`;
-
-      switch (action) {
-        case 'start_review':
-          item.treatmentStatus = 'in_review';
-          item.treatmentStartedAt = item.treatmentStartedAt || nowIso;
-          item.treatmentStartedBy = item.treatmentStartedBy || actorName;
-          item.discardedAt = null;
-          item.discardedBy = null;
-          item.treatedAt = null;
-          item.treatedBy = null;
-          auditLabel = 'Análise de publicação iniciada';
-          break;
-
-        case 'mark_treated':
-          item.treatmentStatus = 'treated';
-          item.treatedAt = nowIso;
-          item.treatedBy = actorName;
-          item.discardedAt = null;
-          item.discardedBy = null;
-          item.treatmentNote = body.note ? String(body.note).trim() : null;
-          auditLabel = 'Publicação marcada como tratada';
-          break;
-
-        case 'discard':
-          item.treatmentStatus = 'discarded';
-          item.discardedAt = nowIso;
-          item.discardedBy = actorName;
-          item.treatedAt = null;
-          item.treatedBy = null;
-          item.treatmentNote = body.note ? String(body.note).trim() : null;
-          if (item.treatmentNote) {
-            auditDetail += ` — Motivo: ${item.treatmentNote}`;
+      const payload = await enqueueAppStateMutation(async () => {
+        const envelope = await readAppStateEnvelope();
+        if (envelope.revision !== undefined && envelope.revision !== null) {
+          if (body.revision === undefined || body.revision === null || body.revision === '') {
+            throw Object.assign(
+              new Error('Revisão de estado obrigatória.'),
+              { statusCode: 409 }
+            );
           }
-          auditLabel = 'Publicação descartada';
-          break;
+          if (body.revision !== envelope.revision) {
+            throw Object.assign(
+              new Error('Esta publicação foi atualizada por outro usuário. Recarregue os dados.'),
+              { statusCode: 409 }
+            );
+          }
+        }
 
-        case 'reopen':
-          item.treatmentStatus = 'in_review';
-          item.treatmentStartedAt = nowIso;
-          item.treatmentStartedBy = actorName;
-          item.treatedAt = null;
-          item.treatedBy = null;
-          item.treatmentNote = null;
-          item.discardedAt = null;
-          item.discardedBy = null;
-          auditLabel = 'Publicação reaberta';
-          break;
+        const state = envelope.state || {};
+        if (!Array.isArray(state.intimations)) state.intimations = [];
+        const item = resolveIntimationAlias(state.intimations, publicationId);
+        if (!item) {
+          throw Object.assign(new Error('Publicação não encontrada no acervo.'), { statusCode: 404 });
+        }
+        // Espelha a leitura por modo: escopo privado sempre; RBAC de escritório só em
+        // `enforced` (em `shadow` a publicação de escritório é visível e tratável pelo membro).
+        {
+          const owner = privateOwnerForRecord(item, { termsById: monitoringTermsById(state.terms), processIndex: buildProcessIndex(state.processes) });
+          const privateDenied = Boolean(owner) && !ownerMatchesUser(owner, session);
+          const suppressedDenied = isSuppressedRecord(item);
+          const officeDenied = security.officeProfile(session.workspaceId).accessMode === 'enforced'
+            && !canAccessPublication(session, item, buildProcessIndex(state.processes), security.listTeams(session.workspaceId));
+          if (privateDenied || suppressedDenied || officeDenied) {
+            throw Object.assign(new Error('Publicação fora do seu escopo de acesso.'), { statusCode: 403 });
+          }
+        }
+        const currentStatus = item.treatmentStatus || 'untreated';
+        const normalizedNote = body.note ? String(body.note).trim() : '';
+        if (currentStatus === 'treated' && action === 'mark_treated' && !normalizedNote) {
+          if (item.unread) {
+            item.unread = false;
+            const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null, { currentEnvelope: envelope });
+            return {
+              ok: true,
+              action,
+              intimation: item,
+              revision: saved.revision,
+              idempotent: true,
+              message: 'Publicação marcada como tratada com sucesso.'
+            };
+          }
+          return {
+            ok: true,
+            action,
+            intimation: item,
+            revision: envelope.revision,
+            idempotent: true,
+            message: 'Publicação marcada como tratada com sucesso.'
+          };
+        }
+        const ALLOWED_TRANSITIONS = {
+          untreated: ['start_review', 'mark_treated', 'discard'],
+          in_review: ['mark_treated', 'discard'],
+          treated: ['reopen'],
+          discarded: ['restore']
+        };
+        const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
+        if (!allowed.includes(action)) {
+          throw Object.assign(
+            new Error(`Transição inválida: ação "${action}" não é permitida para publicação com status "${currentStatus}".`),
+            { statusCode: 409 }
+          );
+        }
 
-        case 'restore':
-          item.treatmentStatus = 'untreated';
-          item.discardedAt = null;
-          item.discardedBy = null;
-          item.treatedAt = null;
-          item.treatedBy = null;
-          item.treatmentNote = null;
-          auditLabel = 'Publicação restaurada';
-          break;
-      }
+        const actorName = session.displayName || session.username || 'Advogado';
+        const nowIso = new Date().toISOString();
+        const procRef = item.process || item.number || item.title || item.id;
+        let auditLabel = '';
+        let auditDetail = `Processo: ${procRef}`;
 
-      if (!Array.isArray(state.audit)) state.audit = [];
-      state.audit.unshift({
-        id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
-        at: nowIso,
-        action: auditLabel,
-        detail: String(auditDetail || '').slice(0, 500),
-        actor: String(actorName || 'Sistema').slice(0, 100)
+        switch (action) {
+          case 'start_review':
+            item.treatmentStatus = 'in_review';
+            item.treatmentStartedAt = item.treatmentStartedAt || nowIso;
+            item.treatmentStartedBy = item.treatmentStartedBy || actorName;
+            item.discardedAt = null;
+            item.discardedBy = null;
+            item.treatedAt = null;
+            item.treatedBy = null;
+            item.treatmentSource = null;
+            item.treatmentTaskId = null;
+            auditLabel = 'Análise de publicação iniciada';
+            break;
+
+          case 'mark_treated':
+            item.treatmentStatus = 'treated';
+            item.unread = false;
+            item.treatedAt = nowIso;
+            item.treatedBy = actorName;
+            item.discardedAt = null;
+            item.discardedBy = null;
+            item.treatmentSource = null;
+            item.treatmentTaskId = null;
+            item.treatmentNote = body.note ? String(body.note).trim() : null;
+            auditLabel = 'Publicação marcada como tratada';
+            break;
+
+          case 'discard':
+            item.treatmentStatus = 'discarded';
+            item.discardedAt = nowIso;
+            item.discardedBy = actorName;
+            item.treatedAt = null;
+            item.treatedBy = null;
+            item.treatmentSource = null;
+            item.treatmentTaskId = null;
+            item.treatmentNote = body.note ? String(body.note).trim() : null;
+            if (item.treatmentNote) {
+              auditDetail += ` — Motivo: ${item.treatmentNote}`;
+            }
+            auditLabel = 'Publicação descartada';
+            break;
+
+          case 'reopen':
+            item.treatmentStatus = 'in_review';
+            item.treatmentStartedAt = nowIso;
+            item.treatmentStartedBy = actorName;
+            item.treatedAt = null;
+            item.treatedBy = null;
+            item.treatmentNote = null;
+            item.treatmentSource = null;
+            item.treatmentTaskId = null;
+            item.discardedAt = null;
+            item.discardedBy = null;
+            auditLabel = 'Publicação reaberta';
+            break;
+
+          case 'restore':
+            item.treatmentStatus = 'untreated';
+            item.discardedAt = null;
+            item.discardedBy = null;
+            item.treatedAt = null;
+            item.treatedBy = null;
+            item.treatmentNote = null;
+            item.treatmentSource = null;
+            item.treatmentTaskId = null;
+            auditLabel = 'Publicação restaurada';
+            break;
+        }
+
+        if (!Array.isArray(state.audit)) state.audit = [];
+        state.audit.unshift({
+          id: `aud-${Date.now()}-${randomBytes(4).toString('hex')}`,
+          at: nowIso,
+          action: auditLabel,
+          detail: String(auditDetail || '').slice(0, 500),
+          actor: String(actorName || 'Sistema').slice(0, 100)
+        });
+        state.audit = state.audit.slice(0, 1000);
+
+        const saved = await saveAppStateDirectUnlocked(state, envelope.revision || null, { currentEnvelope: envelope });
+
+        return {
+          ok: true,
+          action,
+          intimation: item,
+          revision: saved.revision,
+          message: `${auditLabel} com sucesso.`
+        };
       });
-      state.audit = state.audit.slice(0, 1000);
-
-      const saved = await saveAppStateDirect(state, envelope.revision || null);
-
-      return json(res, 200, {
-        ok: true,
-        action,
-        intimation: item,
-        revision: saved.revision,
-        message: `${auditLabel} com sucesso.`
-      });
+      return json(res, 200, payload);
     }
 
     // Assistente IA (provedores configuráveis)
@@ -8156,13 +8660,55 @@ Diretrizes essenciais:
       return json(res, 200, syncState().progress);
     }
     if (req.method === 'GET' && url.pathname.startsWith('/api/commands/')) {
-      assertAuthenticated(req);
+      const session = assertAuthenticated(req);
       const idCommand = decodeURIComponent(url.pathname.slice('/api/commands/'.length));
-      const command = asyncCommands.get(idCommand, currentWorkspaceId());
+      const ownerUserId = String(session.id || session.userId || session.username || '').trim();
+      const command = asyncCommands.get(idCommand, currentWorkspaceId(), {
+        ownerUserId,
+        isAdmin: isPrivilegedRole(session.role)
+      });
       if (!command) {
         return json(res, 404, { ok: false, code: 'COMMAND_NOT_FOUND', message: 'Comando assíncrono não encontrado ou expirado. Consulte o estado atual da operação.' });
       }
-      return json(res, 200, { ok: true, command: projectAsyncCommand(command) });
+      const projected = projectAsyncCommand(command);
+      if (command.kind === 'djen-capture-retry' && projected?.result && command.ownerUserId && !ownerMatchesUser(command.ownerUserId, session)) {
+        const envelope = await readAppStateEnvelope().catch(() => null);
+        const stateTerms = Array.isArray(envelope?.state?.terms) ? envelope.state.terms : [];
+        const canSeeRetriedEntry = item => {
+          const itemId = String(item?.termId || '').trim();
+          const itemDigits = String(item?.processNumber || '').replace(/\D/g, '');
+          const matchesTerm = term => {
+            const key = String(termKeyForCaptureErrors(term) || '').trim();
+            if (itemId && !itemId.startsWith('oab:') && !itemId.startsWith('process:')) {
+              return Boolean(key && key === itemId);
+            }
+            if (itemId && key && key === itemId) return true;
+            const procDigits = String(term?.processNumber || term?.numeroProcesso || '').replace(/\D/g, '');
+            return Boolean(itemDigits.length === 20 && procDigits === itemDigits);
+          };
+          const matches = stateTerms.filter(matchesTerm);
+          return matches.some(term => term.scope !== 'private' || ownerMatchesUser(term.privateOwnerUserId || term.ownerUserId, session));
+        };
+        const rawRetried = Array.isArray(projected.result.retried) ? projected.result.retried : [];
+        const hiddenLabels = new Set(
+          rawRetried
+            .filter(item => !canSeeRetriedEntry(item))
+            .flatMap(item => [
+              item.oabUf && item.oabNumber ? `OAB/${item.oabUf} ${item.oabNumber}` : '',
+              item.processNumber ? `processo ${formatMonitoredProcessNumber(item.processNumber)}` : '',
+              String(item.processNumber || '').trim()
+            ].filter(Boolean))
+        );
+        projected.result = {
+          ...projected.result,
+          retried: Array.isArray(projected.result.retried) ? rawRetried.filter(canSeeRetriedEntry) : projected.result.retried,
+          failures: Array.isArray(projected.result.failures)
+            ? projected.result.failures.filter(msg => ![...hiddenLabels].some(label => String(msg || '').includes(label)))
+            : projected.result.failures,
+          ...(projected.result.queue ? { queue: filterCaptureErrorsForSession(projected.result.queue, { session, terms: stateTerms }) } : {})
+        };
+      }
+      return json(res, 200, { ok: true, command: projected });
     }
     if (req.method === 'GET' && url.pathname === '/api/publications/funnel-weekly') {
       assertAuthenticated(req);
@@ -8199,7 +8745,12 @@ Diretrizes essenciais:
         });
       }
 
+      if (djenRetryWorkspaces.has(wsId) || djenActiveWorkspaces.has(wsId)) {
+        throw Object.assign(new Error('Uma coleta DJEN já está em andamento. Aguarde a conclusão para iniciar uma nova sincronização.'), { statusCode: 409 });
+      }
+
       syncState().requestActive = true;
+      djenActiveWorkspaces.add(wsId);
       req.ownsSync = true;
 
       // Acopla ao EprocSyncScheduler para single-flight lock e rastreio de telemetria estruturado
@@ -8262,7 +8813,7 @@ Diretrizes essenciais:
           inpiSyncResult = await syncActiveInpiToState(appState, { scan: syncTrigger === 'manual' });
           intimations = mergeExternalIntimations(
             intimations,
-            sanitizeArray(appState.intimations).filter(item => item?.source === 'INPI' || item?.origin === 'inpi_rpi')
+            sanitizeArray(appState.intimations, 100_000).filter(item => !item?.captureSuppressed && (item?.source === 'INPI' || item?.origin === 'inpi_rpi'))
           );
         } catch (error) {
           inpiSyncError = String(error?.message || error).slice(0, 240);
@@ -8294,10 +8845,13 @@ Diretrizes essenciais:
         console.log('===============================================================');
         console.log('[Etapa 1/4] Consultando comunicações no DJEN (ComunicaAPI do CNJ)...');
         const djenCounterList = [];
+        const djenScopeCounters = {};
+        const djenScopeTerms = {};
         const djenMarkers = {};
         for (const [scope, terms] of monitoredTermsByScope(monitoredTerms)) {
           const marker = await readDjenSyncMarker(scope);
           djenMarkers[scope] = marker;
+          djenScopeTerms[scope] = terms;
           const counters = await collectDjenForWorkspaceTerms({
             target,
             monitoredTerms: terms,
@@ -8306,26 +8860,27 @@ Diretrizes essenciais:
             reportProgress: true
           });
           djenCounterList.push(counters);
+          djenScopeCounters[scope] = counters;
         }
         const djenCounters = mergeDjenCounters(djenCounterList);
-        djenSyncRun = { marker: djenMarkers.office || djenMarkers.private || {}, markers: djenMarkers, counters: djenCounters };
-        await recordDjenCaptureErrorsRun({
+        const djenQueue = await recordDjenCaptureErrorsRun({
           attemptedTerms: monitoredTerms,
           counters: djenCounters,
           trigger: syncTrigger === 'daily' ? 'scheduled' : syncTrigger
         });
+        djenSyncRun = { marker: djenMarkers.office || djenMarkers.private || {}, markers: djenMarkers, scopeCounters: djenScopeCounters, scopeTerms: djenScopeTerms, counters: djenCounters, queue: djenQueue };
         const djenFailures = djenCounters.failures;
         const djenRecords = djenCounters.records;
         const djenInboxAdded = djenCounters.inboxAdded;
         const djenInboxUpdated = djenCounters.inboxUpdated;
         const djenHistoricalSkipped = djenCounters.historicalSkipped;
-        console.log(`  [OK] DJEN concluído (${djenCounters.initialCapture ? 'captura inicial de 60 dias' : 'janela de 2 dias'}): ${djenRecords} publicação(ões) lida(s) no total (+${djenInboxAdded} nova(s) na inbox, ${djenInboxUpdated} atualizada(s), ${djenHistoricalSkipped} histórica(s) arquivada(s)).`);
+        console.log(`  [OK] DJEN concluído (${djenCounters.initialCapture ? 'captura inicial de 60 dias' : 'janela de 2 dias'}): ${djenRecords} ${plural(djenRecords, 'publicação', 'publicações')} ${plural(djenRecords, 'lida', 'lidas')} no total (+${djenInboxAdded} ${plural(djenInboxAdded, 'nova', 'novas')} na inbox, ${djenInboxUpdated} ${plural(djenInboxUpdated, 'atualizada', 'atualizadas')}, ${djenHistoricalSkipped} ${plural(djenHistoricalSkipped, 'histórica', 'históricas')} ${plural(djenHistoricalSkipped, 'arquivada', 'arquivadas')}).`);
         updateSyncProgress({
           step: 2,
           totalSteps: 4,
           phase: 'djen-done',
           label: 'DJEN Concluído',
-          detail: `[1/4] DJEN concluído: ${djenRecords} lida(s) · +${djenInboxAdded} nova(s) · ${djenInboxUpdated} atualizada(s) · ${djenHistoricalSkipped} histórica(s).`,
+          detail: `[1/4] DJEN concluído: ${djenRecords} ${plural(djenRecords, 'lida', 'lidas')} · +${djenInboxAdded} ${plural(djenInboxAdded, 'nova', 'novas')} · ${djenInboxUpdated} ${plural(djenInboxUpdated, 'atualizada', 'atualizadas')} · ${djenHistoricalSkipped} ${plural(djenHistoricalSkipped, 'histórica', 'históricas')}.`,
           percent: 34
         });
 
@@ -8345,7 +8900,7 @@ Diretrizes essenciais:
             lastCheck: new Date().toISOString(),
             detail: inpiSyncError
               ? `Falha na consulta RPI: ${inpiSyncError}`
-              : `${inpiAdded} nova(s) publicação(ões) incorporada(s) ao painel nesta sincronização.`
+              : `${inpiAdded} ${plural(inpiAdded, 'nova', 'novas')} ${plural(inpiAdded, 'publicação', 'publicações')} ${plural(inpiAdded, 'incorporada', 'incorporadas')} ao painel nesta sincronização.`
           });
         }
         if (monitoredTerms.length) {
@@ -8357,8 +8912,8 @@ Diretrizes essenciais:
             status: djenFailures.length ? 'attention' : 'ok',
             lastCheck: new Date().toISOString(),
             detail: djenFailures.length
-              ? `${djenRecords} publicação(ões) lida(s); ${djenFailures.join(' | ').slice(0, 240)}`
-              : `${djenRecords} publicação(ões) lida(s) (+${djenInboxAdded} nova(s), ${djenInboxUpdated} atualizada(s), ${djenHistoricalSkipped} histórica(s)) para ${monitoredTerms.length} termo(s) monitorado(s)`
+              ? `${djenRecords} ${plural(djenRecords, 'publicação', 'publicações')} ${plural(djenRecords, 'lida', 'lidas')}; ${djenFailures.join(' | ').slice(0, 240)}`
+              : `${djenRecords} ${plural(djenRecords, 'publicação', 'publicações')} ${plural(djenRecords, 'lida', 'lidas')} (+${djenInboxAdded} ${plural(djenInboxAdded, 'nova', 'novas')}, ${djenInboxUpdated} ${plural(djenInboxUpdated, 'atualizada', 'atualizadas')}, ${djenHistoricalSkipped} ${plural(djenHistoricalSkipped, 'histórica', 'históricas')}) para ${monitoredTerms.length} ${plural(monitoredTerms.length, 'termo', 'termos')} ${plural(monitoredTerms.length, 'monitorado', 'monitorados')}`
           });
         }
 
@@ -8400,10 +8955,12 @@ Diretrizes essenciais:
               id: 'datajud-cnj',
               name: 'DataJud / CNJ',
               autoRefreshKey: true,
+              batchByAlias: true,
+              maxBatchSize: 10,
               keyPageUrl: 'https://datajud-wiki.cnj.jus.br/api-publica/acesso/',
               maxProcessesPerRun: 5,
               movementLookbackDays: 7,
-              requestSpacingMs: 150,
+              requestSpacingMs: 250,
               timeoutMs: 45_000
             }, { monitoredTerms }, target, {
               apiKey: appState?.settings?.datajudApiKey,
@@ -8421,7 +8978,7 @@ Diretrizes essenciais:
               }
             });
             console.log(`  [OK] DataJud concluído: ${datajudResult.found}/${datajudResult.queried} processos enriquecidos com andamentos.`);
-            // Motivo curto da falha (sem PII): permite agir em vez de so ver "N falha(s)".
+            // Motivo curto da falha (sem PII): permite agir em vez de so ver uma contagem de falhas sem motivo.
             const datajudFailureHint = (() => {
               const reasons = datajudResult.failureReasons || {};
               if (!datajudResult.failed) return '';
@@ -8431,16 +8988,19 @@ Diretrizes essenciais:
               if (reasons.alias) return ' (tribunal sem índice público no DataJud)';
               return '';
             })();
-            setSource(['datajud-cnj', 'datajud'], {
+            const datajudSourcePayload = {
               id: 'datajud-cnj',
               name: 'DataJud / CNJ',
               short: 'DJD',
               method: 'API pública oficial',
               status: datajudResult.complete ? 'ok' : 'attention',
               lastCheck: new Date().toISOString(),
-              detail: `${datajudResult.found}/${datajudResult.queried} processo(s) localizado(s); ${datajudResult.updated} atualizado(s)${datajudResult.failed ? `; ${datajudResult.failed} falha(s)${datajudFailureHint}` : ''}`
-            });
+              detail: `${datajudResult.found}/${datajudResult.queried} ${plural(datajudResult.queried, 'processo', 'processos')} ${plural(datajudResult.queried, 'localizado', 'localizados')}; ${datajudResult.updated} ${plural(datajudResult.updated, 'atualizado', 'atualizados')}${datajudResult.failed ? `; ${datajudResult.failed} ${plural(datajudResult.failed, 'falha', 'falhas')}${datajudFailureHint}` : ''}`
+            };
+            setSource(['datajud-cnj', 'datajud'], datajudSourcePayload);
+            await recordScheduledSourceCheck('datajud-cnj', { status: datajudSourcePayload.status, detail: datajudSourcePayload.detail });
           } catch (error) {
+            const errDetail = `Aviso DataJud: ${String(error.message).slice(0, 120)}`;
             setSource(['datajud-cnj', 'datajud'], {
               id: 'datajud-cnj',
               name: 'DataJud / CNJ',
@@ -8448,39 +9008,19 @@ Diretrizes essenciais:
               method: 'API pública oficial',
               status: 'attention',
               lastCheck: new Date().toISOString(),
-              detail: `Aviso DataJud: ${String(error.message).slice(0, 120)}`
+              detail: errDetail
             });
+            await recordScheduledSourceCheck('datajud-cnj', { status: 'attention', detail: errDetail });
           }
         } else {
           console.log('\n[Etapa 2/4] Nenhum novo processo requer consulta DataJud.');
         }
 
-        const tjrsMonitoring = await refreshMonitoredTjrsProcesses({
-          processes: target.processes,
-          userId: String(syncSession?.username || syncSession?.userId || syncSession?.id || ''),
-          credentialManager: (await judicialOrchestratorForCurrentWorkspace()).credentialManager,
-          client: tjrsSidecarClient,
-          onProgress: ({ current, total, number }) => updateSyncProgress({
-            step: 2,
-            totalSteps: 4,
-            phase: 'tjrs-monitoring',
-            label: 'Monitorando processos TJRS…',
-            detail: `[2/4] TJRS: Processo ${current}/${total} (${number})`,
-            percent: Math.round(72 + (current / Math.max(total, 1)) * 5)
-          })
-        });
-        target.processes = tjrsMonitoring.processes;
-        if (tjrsMonitoring.configured) {
-          console.log(`  [${tjrsMonitoring.failed || tjrsMonitoring.keyRejected ? 'ATENÇÃO' : 'OK'}] TJRS com chave: ${tjrsMonitoring.checked}/${tjrsMonitoring.configured} processo(s) monitorado(s); ${tjrsMonitoring.newMovements} novo(s) andamento(s)${tjrsMonitoring.failed ? `; ${tjrsMonitoring.failed} falha(s) ${JSON.stringify(tjrsMonitoring.failureCodes || {})}${tjrsMonitoring.aborted ? '; consulta interrompida' : ''}` : ''}${tjrsMonitoring.firstCollections ? `; ${tjrsMonitoring.firstCollections} primeira(s) consulta(s)` : ''}${tjrsMonitoring.pendingFirstCollection ? `; ${tjrsMonitoring.pendingFirstCollection} para os próximos ciclos` : ''}${tjrsMonitoring.keyRejected ? `; ${tjrsMonitoring.keyRejected} chave(s) recusada(s) pelo TJRS` : ''}.`);
-          setSource(['tjrs-sidecar-monitor'], {
-            id: 'tjrs-sidecar-monitor',
-            name: 'Monitoramento TJRS com chave',
-            short: 'TJRS',
-            method: 'Coletor local + chave cifrada',
-            status: tjrsMonitoring.failed || tjrsMonitoring.keyRejected ? 'attention' : 'ok',
-            lastCheck: new Date().toISOString(),
-            detail: `${tjrsMonitoring.checked}/${tjrsMonitoring.configured} processo(s) consultado(s); ${tjrsMonitoring.updated} atualizado(s); ${tjrsMonitoring.newMovements} novo(s) andamento(s)${tjrsMonitoring.failed ? `; ${tjrsMonitoring.failed} falha(s)${tjrsMonitoring.failed ? ` Motivos: ${Object.entries(tjrsMonitoring.failureCodes || {}).map(([code, count]) => `${code} (${count})`).join(', ')}.` : ''}${tjrsMonitoring.aborted ? ' Consulta interrompida após falhas seguidas.' : ''}` : ''}${tjrsMonitoring.keyRejected ? `; ${tjrsMonitoring.keyRejected} chave(s) recusada(s) pelo TJRS. A varredura eproc continua cobrindo os processos da carteira` : ''}`
-          });
+        // A consulta ao TJRS por chave foi desativada (22/11/2026): os processos do
+        // TJRS são atualizados pela varredura do eproc com A1. A fonte antiga sai
+        // da lista para não manter um alerta de coleta que não roda mais.
+        for (let index = sources.length - 1; index >= 0; index -= 1) {
+          if (sources[index]?.id === 'tjrs-sidecar-monitor') sources.splice(index, 1);
         }
 
         // O pipeline eproc oficial já foi registrado no EprocSyncScheduler no início
@@ -8514,7 +9054,7 @@ Diretrizes essenciais:
         contacts = mergeExternalContacts(contacts, target.contacts);
         judicialImported = ['intimations', 'tasks', 'processes', 'contacts']
           .reduce((total, key) => total + Math.max(0, target[key].length - initialCounts[key]), 0);
-        console.log(`  [OK] Consolidado: ${intimations.length} intimação(ões), ${processes.length} processo(s) no acervo.`);
+        console.log(`  [OK] Consolidado: ${intimations.length} ${plural(intimations.length, 'intimação', 'intimações')}, ${processes.length} ${plural(processes.length, 'processo', 'processos')} no acervo.`);
       }
 
       // 2. Sincronização com Agenda Externa (Webcal / iCalendar)
@@ -8525,7 +9065,7 @@ Diretrizes essenciais:
           events = mergeBy(events, parsed.events);
           tasks = mergeBy(tasks, parsed.tasks);
           calendarImported = parsed.events.length;
-          sources.push({ id: 'external-calendar', name: 'Agenda Externa', short: 'CAL', method: 'Webcal/iCal', status: 'ok', lastCheck: new Date().toISOString(), detail: `${parsed.events.length} compromisso(s) lido(s)` });
+          sources.push({ id: 'external-calendar', name: 'Agenda Externa', short: 'CAL', method: 'Webcal/iCal', status: 'ok', lastCheck: new Date().toISOString(), detail: `${parsed.events.length} ${plural(parsed.events.length, 'compromisso', 'compromissos')} ${plural(parsed.events.length, 'lido', 'lidos')}` });
         } catch (error) {
           sources.push({ id: 'external-calendar', name: 'Agenda Externa', short: 'CAL', method: 'Webcal/iCal', status: 'error', lastCheck: new Date().toISOString(), detail: `Falha na leitura: ${String(error.message).slice(0, 120)}` });
         }
@@ -8586,15 +9126,25 @@ Diretrizes essenciais:
         intimations: mergeExternalIntimations(current.intimations, updatedRuntime.intimations),
         processes: mergeExternalProcesses(withoutSuppressedProcesses(current.processes, processSuppressions), updatedRuntime.processes),
         contacts: mergeExternalContacts(current.contacts, updatedRuntime.contacts),
-        sources: mergeBy(current.sources, updatedRuntime.sources, 'id'),
+        sources: withoutRetiredSources(mergeBy(current.sources, updatedRuntime.sources, 'id')),
         updatedAt: updatedRuntime.updatedAt
       }));
 
       // Marcador durável da captura DJEN: 60 dias na primeira execução bem-sucedida,
-      // 2 dias nas seguintes (cadência 07h/12h/19h ou botão manual).
+      // 2 dias nas seguintes.
       if (djenSyncRun && djenSyncRun.counters.termCount > 0) {
         for (const [scope, marker] of Object.entries(djenSyncRun.markers || {})) {
-          await saveDjenSyncMarker(nextDjenMarker(marker, { completedAt: djenSyncRun.counters.completedAt }), scope);
+          const scopeCounters = djenSyncRun.scopeCounters?.[scope];
+          if (!scopeCounters || scopeCounters.termCount === 0 || scopeCounters.failures.length > 0) continue;
+          const scopeHasPendingFailures = hasPendingFailuresForScopeTerms(
+            djenSyncRun.queue,
+            scope,
+            djenSyncRun.scopeTerms?.[scope] || []
+          );
+          await saveDjenSyncMarker(nextDjenMarker(marker, {
+            completedAt: scopeCounters.completedAt || djenSyncRun.counters.completedAt,
+            initialCaptureCompleted: !scopeHasPendingFailures
+          }), scope);
         }
       }
 
@@ -8701,6 +9251,7 @@ Diretrizes essenciais:
         console.warn('[PJe] Não foi possível enfileirar os portais:', String(pjeEnqueueError?.message || pjeEnqueueError).slice(0, 160));
       }
       syncState().requestActive = false;
+      djenActiveWorkspaces.delete(wsId);
       req.ownsSync = false;
 
       return json(res, 200, {
@@ -8731,6 +9282,7 @@ Diretrizes essenciais:
   } catch (error) {
     if (req.ownsSync) {
       syncState().requestActive = false;
+      djenActiveWorkspaces.delete(currentWorkspaceId());
       req.ownsSync = false;
       updateSyncProgress({
       step: 0,
@@ -8753,11 +9305,20 @@ Diretrizes essenciais:
       ...(error.reauthRequired === true && error.code === 'REAUTH_REQUIRED' && error.statusCode === 403 && !String(req.url || '').split('?')[0].endsWith('/factory-reset') ? { 'X-Atrium-Reauth': 'required' } : {}),
       ...(error.retryAfter ? { 'Retry-After': String(error.retryAfter) } : {})
     };
-    const message = error instanceof SyntaxError ? 'JSON inválido.' : (error.message || 'Falha interna da central.');
-    if (!error.statusCode) console.error('[ATRIUM] Falha interna na requisição.');
+    const isSyntax = error instanceof SyntaxError;
+    const isUri = error instanceof URIError;
+    const statusCode = isUri ? 400 : (error.statusCode || 500);
+    const message = isSyntax
+      ? 'JSON inválido.'
+      : isUri
+        ? 'Parâmetro de endereço malformado.'
+        : error.statusCode
+          ? (error.message || 'Falha na requisição.')
+          : 'Falha interna da central.';
+    if (!error.statusCode && !isSyntax && !isUri) console.error('[ATRIUM] Falha interna na requisição:', error?.message || error);
     const payload = { message };
     if (typeof error.code === 'string' && (PUBLIC_ERROR_CODES.has(error.code) || (error.reauthRequired && !String(req?.url || '').includes('/factory-reset')))) payload.code = error.code;
-    json(res, error.statusCode || 500, payload, headers);
+    json(res, statusCode, payload, headers);
   }
 });
 
@@ -8781,7 +9342,7 @@ for (const workspace of (security.state.workspaces || [{ id: security.state.defa
         const inpiSyncRes = await inpiService.syncMatchesToState(inpiEnvelope.state);
         if (inpiSyncRes?.added > 0) {
           await saveAppStateDirect(inpiEnvelope.state, inpiEnvelope.revision || null);
-          console.log(`[INPI Service]: ${inpiSyncRes.added} publicação(ões) do INPI sincronizada(s) para o acervo de publicações no workspace "${workspace.id}".`);
+          console.log(`[INPI Service]: ${inpiSyncRes.added} ${plural(inpiSyncRes.added, 'publicação', 'publicações')} do INPI ${plural(inpiSyncRes.added, 'sincronizada', 'sincronizadas')} para o acervo de publicações no workspace "${workspace.id}".`);
         }
       }
     });
