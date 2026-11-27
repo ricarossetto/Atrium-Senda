@@ -25,6 +25,7 @@ const STATIC_LINK_INVENTORY = Object.freeze([
   Object.freeze({ group: 'legislation', title: 'Código Penal (CP)', href: 'https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm', target: '_blank', rel: 'noopener noreferrer' }),
   Object.freeze({ group: 'legislation', title: 'Código de Processo Penal (CPP)', href: 'https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm', target: '_blank', rel: 'noopener noreferrer' }),
   Object.freeze({ group: 'case-law', title: 'Jurisprudência do STJ (SCON)', href: 'https://processo.stj.jus.br/SCON/', target: '_blank', rel: 'noopener noreferrer' }),
+  Object.freeze({ group: 'tools', title: 'Prompts Jurídicos Atualizados (02/2026)', href: 'https://ricarossetto.github.io/prompts-atualizados-02-2026/', target: '_blank', rel: 'noopener noreferrer' }),
   Object.freeze({ group: 'tools', title: 'JURISPRUDENCIAIA', href: 'https://www.jurisprudenciaia.com.br/', target: '_blank', rel: 'noopener noreferrer' }),
   Object.freeze({ group: 'tools', title: 'TRANSCREVEIA', href: 'https://www.transcreveia.com.br/', target: '_blank', rel: 'noopener noreferrer' })
 ]);

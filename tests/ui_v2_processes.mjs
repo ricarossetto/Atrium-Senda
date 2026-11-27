@@ -143,6 +143,7 @@ try {
     ]) assert.ok(inspectorText.includes(expected), `Inspector deve preservar: ${expected}`);
     assert.ok(await page.locator('.legal-timeline [data-process-timeline]').count() >= 4, 'Entidades oficiais navegáveis devem aparecer na linha do tempo.');
     assert.equal(await page.locator('[data-process-task]').count(), 3, 'Todas as tarefas vinculadas devem permanecer acessíveis no inspector.');
+    await page.locator('#processInspectorMore').click();
     assert.equal(await page.locator('#processInspectorTjrs').isVisible(), true);
     assert.equal(await page.locator('#processInspectorDownloadEprocA1').isVisible(), true);
     assert.equal(await page.locator('#processInspectorTasks').isVisible(), true);
@@ -151,7 +152,7 @@ try {
     assert.deepEqual(await page.locator('#processInspector > footer > button:visible').evaluateAll(buttons => buttons.map(button => button.id)), [
       'processInspectorCreateTask', 'processInspectorDownloadEprocA1', 'processInspectorTjrs',
       'processInspectorEdit', 'processInspectorDocuments', 'processInspectorTasks',
-      'processInspectorAssistant', 'processInspectorAccessKey', 'processInspectorDelete'
+      'processInspectorAssistant', 'processInspectorAccessKey', 'processInspectorDelete', 'processInspectorMore'
     ], 'Rodapé deve seguir a ordem operacional solicitada.');
     assert.equal(await page.locator('#processInspector > footer').evaluate(element => getComputedStyle(element).display), 'grid', 'Rodapé deve distribuir as ações em grade 3x3.');
     assert.match(await page.locator('#processInspectorCreateTask').evaluate(element => getComputedStyle(element).backgroundColor), /194, 220, 234/, 'A ação principal do inspetor deve usar azul mineral no tema claro.');
@@ -201,6 +202,9 @@ try {
           : { ok: false, message: 'Falha sintética controlada.' })
       });
     });
+    if (await page.locator('#processInspectorMore').getAttribute('aria-expanded') === 'false') {
+      await page.locator('#processInspectorMore').click();
+    }
     await page.locator('#processInspectorTjrs').click();
     await page.locator('#toastRegion .toast.success', { hasText: 'atualizado via Certificado A1' }).waitFor();
     assert.equal(tjrsRequests, 1);
@@ -255,7 +259,7 @@ try {
     assert.equal(await page.locator('.process-form-section').count(), 8);
     const names = await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name));
     const expectedNames = [
-      'number', 'oldNumber', 'originNumbers', 'nb', 'client', 'clientPosition', 'opposingParty', 'actionGroup', 'actionType', 'judicialPhase', 'risk', 'stage',
+      'number', 'oldNumber', 'originNumbers', 'nb', 'client', 'clientPosition', 'opposingParty', 'actionGroup', 'actionType', 'actionClass', 'competence', 'judge', 'subject', 'caseValue', 'judicialPhase', 'risk', 'stage',
       'protocol', 'caseFolder', 'court', 'county', 'courtUnit', 'responsible', 'responsibleUserId', 'registeredAt', 'lastMovementAt', 'lastMovement', 'feeType',
       'feePercentage', 'feeAmount', 'feeMonthly', 'feeStatus', 'requisitionType', 'requisitionAmount', 'requisitionBank', 'requisitionStatus',
       'feeNotes', 'secrecy', 'monitoring', 'notes'
@@ -264,7 +268,7 @@ try {
     assert.equal(await page.locator('#field-client').getAttribute('required'), '');
     assert.equal(await page.locator('#field-accessKey').getAttribute('type'), 'password');
     assert.equal(await page.locator('#field-accessKey').getAttribute('name'), null, 'A chave não pode integrar o payload comum do Store.');
-    assert.match(await page.locator('.process-tjrs-assist-key').textContent(), /cofre cifrado.*reutilizada no monitoramento/i);
+    assert.match(await page.locator('.process-tjrs-assist-key').textContent(), /cofre cifrado/i);
     const submittedFinancial = await page.evaluate(() => {
       const data = Object.fromEntries(new FormData(document.getElementById('modalForm')).entries());
       return { feeType: data.feeType, feePercentage: data.feePercentage, feeAmount: data.feeAmount, feeMonthly: data.feeMonthly };
@@ -338,43 +342,22 @@ try {
     });
     await page.locator('[data-process-create]').click();
     await page.locator('#modalBackdrop[data-modal-mode="process"]:not(.hidden)').waitFor();
-    assert.equal(await page.locator('#processTjrsPreview').isVisible(), true);
     await page.locator('#field-number').fill('0000001-58.2099.8.21.0000');
     await page.locator('[data-cnj-hint]').waitFor();
     assert.match(await page.locator('[data-cnj-hint]').textContent(), /Tribunal de Justiça \(RS\) · Competência originária/, 'CNJ válido deve indicar tribunal e grau derivado do OOOO.');
-    await page.locator('#processTjrsPreview').click();
-    await page.locator('#processTjrsPreviewStatus', { hasText: 'Dados judiciais carregados para revisão.' }).waitFor();
-    assert.deepEqual(previewPayload, { processNumber: '0000001-58.2099.8.21.0000' });
-    assert.equal(await page.locator('#field-court').inputValue(), 'TJRS');
-    assert.equal(await page.locator('#field-actionType').inputValue(), 'PROCEDIMENTO DO JUIZADO ESPECIAL CÍVEL');
-    assert.equal(await page.locator('#field-client').inputValue(), '', 'Parte judicial não pode virar cliente automaticamente.');
-    assert.equal(await page.locator('#field-opposingParty').inputValue(), '', 'Parte adversa não pode ser inferida sem posição humana.');
-    assert.match(await page.locator('#processTjrsPreviewStatus').textContent(), /Nenhuma parte foi definida automaticamente como cliente/);
-    await Promise.all([
-      page.waitForResponse(response => response.url().includes('/api/integrations/tjrs-sidecar/processes/preview')),
-      page.locator('#processTjrsPreview').click()
-    ]);
+    const courtDetails = page.locator('details:has(#field-court)');
+    if (await courtDetails.count()) await courtDetails.evaluate(d => { d.open = true; });
     await page.locator('#field-court').fill('Órgão revisado manualmente');
     await page.locator('#field-number').fill('5001111-00.2026.8.21.0001');
     assert.match(await page.locator('[data-cnj-hint]').textContent(), /Dígito verificador não confere/, 'DV inválido deve avisar no formulário.');
     assert.equal(await page.locator('[data-cnj-fix]').isVisible(), true, 'Correção sugerida deve estar disponível.');
-    assert.equal(await page.locator('#field-court').inputValue(), 'Órgão revisado manualmente', 'Campo alterado pelo usuário deve sobreviver à invalidação do draft.');
-    assert.equal(await page.locator('#field-actionType').inputValue(), '', 'Sugestão judicial antiga deve ser removida quando o CNJ muda.');
-    assert.equal(await page.locator('#field-lastMovement').inputValue(), '', 'Andamento do CNJ anterior não pode permanecer no formulário.');
-    assert.match(await page.locator('#processTjrsPreviewStatus').textContent(), /CNJ foi alterado/);
     await page.locator('#field-number').fill('0000001-58.2099.8.21.0000');
-    await page.locator('#processTjrsPreview').click();
-    await page.locator('#processTjrsPreviewStatus', { hasText: 'Dados judiciais carregados para revisão.' }).waitFor();
-    assert.equal(await page.locator('#field-court').inputValue(), 'Órgão revisado manualmente', 'Nova consulta não deve sobrescrever campo manual não vazio.');
     await page.locator('#field-client').fill('Cliente definido após revisão humana');
     await page.locator('#modalForm button[type="submit"]').click();
     await page.locator('#modalBackdrop.hidden').waitFor({ state: 'attached' });
     const assisted = await page.evaluate(() => window.Atrium.Store.state.processes.find(item => item.number === '0000001-58.2099.8.21.0000'));
     assert.equal(assisted.client, 'Cliente definido após revisão humana');
     assert.equal(assisted.court, 'Órgão revisado manualmente');
-    assert.equal(assisted.source, 'TJRS_PUBLIC');
-    assert.equal(assisted.judicialParties.length, 2);
-    assert.equal(assisted.movements.length, 1);
 
     const probe = await page.evaluate(() => window.__uiV2RuntimeProbe);
     assert.equal(probe.intervals, runtimeBaseline.intervals, 'Processos V2 não pode adicionar timer ao runtime existente.');

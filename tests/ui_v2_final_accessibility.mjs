@@ -17,7 +17,7 @@ try {
   const desktop = await session.createContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
   try {
     const { page, pageErrors } = await prepareUiV2Page(desktop, session.server.baseUrl, { theme: 'dark' });
-    assert.equal(await page.locator('nav[data-v2-nav-group]').count(), 6);
+    assert.equal(await page.locator('nav[data-v2-nav-group]').count(), 4);
 
     const processNav = page.locator('.nav-item[data-view="processes"]');
     await processNav.focus();
@@ -66,7 +66,7 @@ try {
     await page.keyboard.press('Enter');
     await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
     await page.waitForFunction(() => document.querySelector('#processInspector')?.contains(document.activeElement));
-    await page.locator('#processInspectorDelete').focus();
+    await page.locator('#processInspectorMore').focus();
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.matches('[data-panel-size-toggle]')), true, 'O controle de tamanho vem antes de fechar.');
     await page.keyboard.press('Tab');

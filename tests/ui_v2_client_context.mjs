@@ -37,7 +37,7 @@ try {
 
   await openClient();
   const summary = await page.locator('.contact-legal-summary').textContent();
-  for (const expected of ['Visão 360', 'Contexto jurídico', '2Processos', '1Providências', '1Publicações', '1Documentos', '1Agenda', '2Financeiro']) {
+  for (const expected of ['Visão 360', 'Contexto jurídico', '2Processos', '1Providência', '1Publicação', '1Documento', '1Agenda', '2Financeiro']) {
     assert.ok(summary.replace(/\s+/g, '').includes(expected.replace(/\s+/g, '')), `Resumo 360 deve exibir ${expected}.`);
   }
   assert.match(summary, /Somente vínculos principais ou relações processuais registradas/);

@@ -201,12 +201,21 @@ try {
   // 8. Test Eproc Download Autos Access Control
   console.log('[Teste 8] Testando proteção de download de autos por processo inexistente no workspace...');
   // B tenta baixar autos referenciando processo de A
+  response = await postJson(`${server.baseUrl}/api/integrations/eproc/processes/download-autos`, {
+    processId: 'proc-a',
+    processNumber: cnjSecretA,
+    revision: readB.revision
+  }, { Cookie: secondCookie, 'X-CSRF-Token': second.csrfToken });
+  // processId fora do escritório deve falhar fechado com 404 antes da checagem de A1.
+  assert.equal(response.status, 404, `Escritório B deveria receber 404 para processId de A, recebeu ${response.status}`);
+  assert.equal((await response.text()).includes(cnjSecretA), false, 'A resposta não pode expor o processo do Escritório A.');
+  // A rota antiga por chave do TJRS está desativada para qualquer escritório.
   response = await postJson(`${server.baseUrl}/api/integrations/tjrs-sidecar/processes/download-autos`, {
     processId: 'proc-a',
     processNumber: cnjSecretA,
     revision: readB.revision
   }, { Cookie: secondCookie, 'X-CSRF-Token': second.csrfToken });
-  assert.equal(response.status, 404, 'Escritório B conseguiu disparar download de autos para processo pertencente ao Escritório A!');
+  assert.equal(response.status, 410, 'A consulta ao TJRS por chave deve estar desativada.');
 
   console.log('\n===============================================================');
   console.log('  TODOS OS TESTES DE COLETA E ISOLAMENTO PASSARAM COM SUCESSO! ');

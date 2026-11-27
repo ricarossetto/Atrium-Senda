@@ -204,7 +204,10 @@ try {
 
   // A auto-exclusão de um master único não pode resetar a instalação inteira
   // enquanto existirem outros escritórios na mesma instalação.
-  response = await postJson(`${server.baseUrl}/api/auth/profile/delete`, {}, { Cookie: secondCookie, 'X-CSRF-Token': second.csrfToken });
+  response = await postJson(`${server.baseUrl}/api/auth/profile/delete`, {
+    password,
+    code: generateTotp(pending.manualSecret, Math.floor(Date.now() / 30_000) + 1)
+  }, { Cookie: secondCookie, 'X-CSRF-Token': second.csrfToken });
   assert(response.status === 409, 'Master de um escritório resetou a instalação com outros escritórios presentes.');
   const firstStillAuthenticated = await (await fetch(`${server.baseUrl}/api/auth/status`, { headers: { Cookie: firstCookie } })).json();
   assert(firstStillAuthenticated.authenticated, 'Sessão do primeiro escritório foi derrubada por tentativa de exclusão do segundo.');

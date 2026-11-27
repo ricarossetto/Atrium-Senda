@@ -50,11 +50,17 @@ try {
   assert.doesNotMatch(await page.locator('[data-financial-record="fin-unknown"]').first().textContent(), /em_conferencia_sintetica/);
   assert.match(await page.locator('[data-financial-record="fin-final"]').first().textContent(), /Repassado e Quitado/);
 
+  // Os cartões resumem a carteira inteira: o filtro muda a lista, não os totais (FIN-05; antes o
+  // cartão de honorários caía ao filtrar RPVs porque a soma ficava dentro do filtro).
+  const kpis = () => page.evaluate(() => ['finMetricHonorarios', 'finMetricRpvCount', 'finMetricExpenses', 'finMetricReceipts'].map(id => document.getElementById(id)?.textContent.trim()));
+  const kpisAll = await kpis();
   await page.locator('[data-fin-filter="rpv"]').click();
   assert.equal(await page.locator('[data-fin-filter="rpv"]').getAttribute('aria-pressed'), 'true');
   assert.equal(await page.locator('.financial-v2-table [data-financial-record]').count(), 5);
+  assert.deepEqual(await kpis(), kpisAll, 'Cartões iguais com o filtro RPVs / Alvarás.');
   await page.locator('[data-fin-filter="honorarios"]').click();
   assert.equal(await page.locator('.financial-v2-table [data-financial-record]').count(), 3);
+  assert.deepEqual(await kpis(), kpisAll, 'Cartões iguais com o filtro Honorários.');
   await page.locator('[data-fin-filter="all"]').click();
   await page.locator('#financialSearch').fill('Status Sintético');
   assert.equal(await page.locator('.financial-v2-table [data-financial-record]').count(), 1);

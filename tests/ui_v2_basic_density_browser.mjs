@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
 
-const BASIC_HIDDEN_VIEWS = Object.freeze(['financial', 'reports', 'documents', 'assistant', 'prompts', 'links', 'leads']);
+const BASIC_HIDDEN_VIEWS = Object.freeze(['financial', 'reports', 'documents', 'assistant', 'leads']);
+const BASIC_HIDDEN_VIEW_LINKS = Object.freeze(['prompts', 'links']);
 const BASIC_VISIBLE_VIEWS = Object.freeze(['dashboard', 'kanban', 'inbox', 'agenda', 'processes', 'contacts', 'calculations', 'configuration', 'integrations']);
 
 const session = await startUiV2Session();
@@ -15,7 +16,7 @@ async function openDensityPage({ density = null, theme = 'light', viewport = { w
   return { context, page, pageErrors };
 }
 
-function rectProbe() {
+function rectProbe(hiddenLinks = []) {
   const rectOf = selector => {
     const element = document.querySelector(selector);
     if (!element) return null;
@@ -23,6 +24,10 @@ function rectProbe() {
     if (!rects.length) return { visible: false, width: 0, height: 0, top: 0, left: 0 };
     const box = element.getBoundingClientRect();
     return { visible: true, width: box.width, height: box.height, top: box.top, left: box.left };
+  };
+  const linkHidden = view => {
+    const element = document.querySelector(`[data-view-link="${view}"]`);
+    return !element || getComputedStyle(element).display === 'none';
   };
   return {
     density: document.documentElement.dataset.uiDensity,
@@ -33,8 +38,9 @@ function rectProbe() {
     navRects: Object.fromEntries(
       [...document.querySelectorAll('.nav-item[data-view]')].map(item => [item.dataset.view, item.getClientRects().length > 0])
     ),
+    linkHidden: Object.fromEntries(hiddenLinks.map(view => [view, linkHidden(view)])),
     groupHidden: Object.fromEntries(
-      ['management', 'intelligence'].map(group => {
+      ['work', 'management'].map(group => {
         const nav = document.querySelector(`[data-v2-nav-group="${group}"]`);
         const toggle = document.querySelector(`[data-v2-nav-toggle="${group}"]`);
         return [group, { navHidden: Boolean(nav?.hidden), toggleVisible: Boolean(toggle && toggle.getClientRects().length > 0) }];
@@ -51,20 +57,23 @@ function rectProbe() {
 try {
   const basicRun = await openDensityPage({ density: 'basic' });
   try {
-    const basic = await basicRun.page.evaluate(rectProbe);
+    const basic = await basicRun.page.evaluate(rectProbe, BASIC_HIDDEN_VIEW_LINKS);
     assert.equal(basic.density, 'basic', 'A preferência local basic deve vencer o default do host.');
     assert.equal(basic.chip?.visible, true, 'O chip de densidade deve aparecer no Basic.');
     assert.ok(basic.chip.height >= 14 && basic.chip.width >= 30, 'O chip precisa de geometria legível, sem colapso.');
     for (const view of BASIC_HIDDEN_VIEWS) {
       assert.equal(basic.navRects[view], false, `Basic deve recolher a navegação de ${view}.`);
     }
+    for (const view of BASIC_HIDDEN_VIEW_LINKS) {
+      assert.equal(basic.linkHidden[view], true, `Basic deve recolher o link de ${view}.`);
+    }
     for (const view of BASIC_VISIBLE_VIEWS) {
       assert.equal(basic.navRects[view], true, `Basic deve preservar a navegação de ${view}.`);
     }
-    assert.equal(basic.groupHidden.management.navHidden, false, 'Gestão deve permanecer visível no Basic para expor Cálculos.');
-    assert.equal(basic.groupHidden.intelligence.navHidden, true, 'Inteligência totalmente filtrada deve sair da navegação.');
-    assert.equal(basic.groupHidden.management.toggleVisible, true, 'Toggle de Gestão deve permanecer visível quando Cálculos está disponível no Basic.');
-    assert.equal(basic.groupHidden.intelligence.toggleVisible, false, 'Toggle de grupo vazio não pode ficar órfão.');
+    assert.equal(basic.groupHidden.work.navHidden, false, 'Dia a dia deve permanecer visível no Basic.');
+    assert.equal(basic.groupHidden.management.navHidden, false, 'Escritório deve permanecer visível no Basic para expor Cálculos.');
+    assert.equal(basic.groupHidden.work.toggleVisible, true, 'Toggle de Dia a dia deve permanecer visível.');
+    assert.equal(basic.groupHidden.management.toggleVisible, true, 'Toggle de Escritório deve permanecer visível.');
     assert.deepEqual(basic.duplicateIds, [], 'O filtro Basic não pode duplicar ids.');
     assert.ok(basic.docOverflow <= 0, 'O filtro Basic não pode introduzir overflow horizontal no documento.');
     assert.ok(basic.sidebar.width > 0 && basic.main.width > 0, 'Shell deve continuar dimensionado no Basic.');
@@ -102,16 +111,19 @@ try {
 
   const proRun = await openDensityPage({ density: 'pro' });
   try {
-    const pro = await proRun.page.evaluate(rectProbe);
+    const pro = await proRun.page.evaluate(rectProbe, BASIC_HIDDEN_VIEW_LINKS);
     assert.equal(pro.density, 'pro', 'PRO deve permanecer a densidade padrão fora de basic.atrium.adv.br.');
     assert.equal(pro.chip?.visible, false, 'PRO não pode ganhar o chip de densidade.');
     for (const view of [...BASIC_HIDDEN_VIEWS, ...BASIC_VISIBLE_VIEWS]) {
       assert.equal(pro.navRects[view], true, `PRO deve preservar a navegação de ${view}.`);
     }
-    assert.equal(pro.groupHidden.management.navHidden, false, 'PRO deve preservar o grupo Gestão.');
-    assert.equal(pro.groupHidden.intelligence.navHidden, false, 'PRO deve preservar o grupo Inteligência.');
-    assert.equal(pro.groupHidden.management.toggleVisible, true, 'PRO deve preservar o controle do grupo Gestão.');
-    assert.equal(pro.groupHidden.intelligence.toggleVisible, true, 'PRO deve preservar o controle do grupo Inteligência.');
+    for (const view of BASIC_HIDDEN_VIEW_LINKS) {
+      assert.equal(pro.linkHidden[view], false, `PRO deve preservar o link de ${view}.`);
+    }
+    assert.equal(pro.groupHidden.work.navHidden, false, 'PRO deve preservar o grupo Dia a dia.');
+    assert.equal(pro.groupHidden.management.navHidden, false, 'PRO deve preservar o grupo Escritório.');
+    assert.equal(pro.groupHidden.work.toggleVisible, true, 'PRO deve preservar o controle do grupo Dia a dia.');
+    assert.equal(pro.groupHidden.management.toggleVisible, true, 'PRO deve preservar o controle do grupo Escritório.');
     assert.deepEqual(pro.duplicateIds, [], 'PRO não pode ganhar ids duplicados.');
     assert.ok(pro.docOverflow <= 0, 'PRO não pode introduzir overflow horizontal no documento.');
     assert.deepEqual(proRun.pageErrors, [], `PRO gerou pageerror: ${proRun.pageErrors.join(' | ')}`);
@@ -163,7 +175,7 @@ try {
   try {
     await mobileRun.page.locator('#menuToggle').click();
     await mobileRun.page.locator('#sidebar.open').waitFor();
-    const mobile = await mobileRun.page.evaluate(rectProbe);
+    const mobile = await mobileRun.page.evaluate(rectProbe, BASIC_HIDDEN_VIEW_LINKS);
     assert.equal(mobile.density, 'basic', 'O drawer mobile deve abrir na densidade Basic.');
     assert.equal(mobile.chip?.visible, true, 'O chip precisa continuar visível no drawer mobile.');
     assert.equal(mobile.docOverflow <= 0, true, 'O drawer mobile não pode introduzir overflow horizontal.');

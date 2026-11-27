@@ -131,11 +131,12 @@ try {
     window.Atrium.Store.state.settings.calendarUrl = 'webcal://canonical.synthetic.example.test/calendar';
     window.Atrium.Store.state.settings.externalCalendarUrl = 'webcal://fallback.synthetic.example.test/calendar';
   });
+  if (await page.locator('#googleCalendarBackdrop.hidden').count()) await page.locator('#googleCalendarButton').click();
   await page.locator('#configureCalendarButton').click();
-  await page.locator('#calendarConfigBackdrop:not(.hidden)').waitFor();
+  await page.locator('#googleCalendarBackdrop:not(.hidden)').waitFor();
   assert.equal(await page.locator('#calendarInputUrl').inputValue(), 'webcal://canonical.synthetic.example.test/calendar');
   await page.keyboard.press('Escape');
-  await page.locator('#calendarConfigBackdrop').waitFor({ state: 'hidden' });
+  await page.locator('#googleCalendarBackdrop').waitFor({ state: 'hidden' });
 
   await page.evaluate(() => {
     window.Atrium.Store.state.settings.calendarUrl = '';
@@ -146,8 +147,9 @@ try {
     store.flush = async () => { window.__uiV2CalendarOps.push({ type: 'flush' }); return true; };
     window.Atrium.App.syncAll = async () => { window.__uiV2CalendarOps.push({ type: 'sync' }); };
   });
+  if (await page.locator('#googleCalendarBackdrop.hidden').count()) await page.locator('#googleCalendarButton').click();
   await page.locator('#configureCalendarButton').click();
-  await page.locator('#calendarConfigBackdrop:not(.hidden)').waitFor();
+  await page.locator('#googleCalendarBackdrop:not(.hidden)').waitFor();
   assert.equal(await page.locator('#calendarInputUrl').inputValue(), 'webcal://fallback.synthetic.example.test/calendar');
   await page.locator('#calendarInputUrl').fill('https://calendar.synthetic.example.test/feed.ics');
   await page.locator('#calendarConfigSubmit').click();

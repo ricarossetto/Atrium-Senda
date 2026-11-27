@@ -80,7 +80,7 @@ try {
     assert.equal(await button.getAttribute('aria-pressed'), 'true');
     const visibleStatuses = await page.locator('#leadsV2Workspace [data-lead-id]').evaluateAll(records => records.map(record => record.querySelector('.lead-v2-status')?.textContent.trim()));
     assert.ok(visibleStatuses.length >= 1);
-    assert.equal(await page.locator('#leadCount').textContent(), `${visibleStatuses.length} atendimentos`);
+    assert.equal(await page.locator('#leadCount').textContent(), `${visibleStatuses.length} ${visibleStatuses.length === 1 ? 'atendimento' : 'atendimentos'}`);
   }
   assert.equal(await page.evaluate(() => JSON.stringify(window.Atrium.Store.state.leads)), leadsBeforeFilter);
   await page.locator('[data-lead-filter="all"]').click();
@@ -95,7 +95,7 @@ try {
   assert.equal(presentationEffects.intervals, before.intervals);
 
   await page.locator('[data-lead-id="lead-v2-proposal"]').click();
-  await page.locator('#modalTitle', { hasText: 'Editar Atendimento' }).waitFor();
+  await page.locator('#modalTitle', { hasText: 'Editar atendimento' }).waitFor();
   assert.deepEqual((await page.locator('#modalForm [name]').evaluateAll(elements => elements.map(element => element.name))).sort(), ['client', 'contactId', 'estimatedFee', 'notes', 'origin', 'responsible', 'serviceType', 'status']);
   await page.locator('#field-client').fill('Carla Proposta Editada V2');
   await page.locator('#modalForm button[type="submit"]').click();

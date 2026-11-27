@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderContactEprocSection, renderContactsV2Workspace } from '../js/views/ui-v2/contacts-presenter.js';
 import { fillContactSearch, prepareUiV2ContactsFixture, prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,7 +23,7 @@ assert.doesNotMatch(presenterSource, /\bStore\b|\bfetch\s*\(|\bsave\s*\(|\bflush
 assert.match(featureSource, /item\.name} \$\{item\.document} \$\{item\.mobile} \$\{item\.phone} \$\{item\.email} \$\{item\.origin} \$\{item\.contactRole/);
 assert.match(featureSource, /store\.audit\(editing \? 'Contato atualizado' : 'Contato cadastrado', record\.name\)/);
 
-const expectedFields = ['name', 'contactRole', 'leadOrigin', 'document', 'rg', 'birthDate', 'profession', 'maritalStatus', 'mobile', 'phone', 'email', 'origin', 'city', 'state', 'address', 'district', 'zip', 'notes'].sort();
+const expectedFields = ['name', 'contactRole', 'leadOrigin', 'document', 'rg', 'birthDate', 'profession', 'maritalStatus', 'gender', 'nationality', 'birthPlace', 'motherName', 'fatherName', 'mobile', 'phone', 'email', 'origin', 'city', 'state', 'address', 'district', 'zip', 'notes'].sort();
 const session = await startUiV2Session();
 try {
   const context = await session.createContext();
@@ -41,12 +42,13 @@ try {
 
   await fillContactSearch(page, '000.000.001-91', 1);
   assert.equal(await page.locator('#contactsV2Workspace [data-contact-id]').count(), 1, 'Busca oficial por documento deve continuar local.');
-  assert.equal(await page.locator('#contactCount').textContent(), '9 contatos', 'Count deve permanecer total, não filtrado.');
+  assert.equal(await page.locator('#contactCount').textContent(), '1 de 9 contatos', 'Count deve refletir a busca e manter o total geral ao lado.');
   await fillContactSearch(page, '', 9);
 
   await page.locator('[data-contact-role-filter="cliente"]').click();
   assert.equal(await page.locator('[data-contact-role-filter="cliente"]').getAttribute('aria-pressed'), 'true');
   assert.equal(await page.locator('#contactsV2Workspace [data-contact-id]').count(), 2);
+  assert.equal(await page.locator('#contactCount').textContent(), '2 de 9 contatos', 'Count acompanha o filtro de papel.');
   assert.deepEqual(await page.locator('#contactsV2Workspace [data-contact-id]').evaluateAll(nodes => nodes.map(node => node.dataset.contactId).sort()),
     ['ui-v2-contact-client', 'ui-v2-contact-long']);
   await page.locator('[data-contact-role-filter="testemunha"]').click();
@@ -94,8 +96,8 @@ try {
   await page.locator('[data-contact-documents]').click();
   await page.locator('#docGeneratorBackdrop:not(.hidden)').waitFor();
   assert.match(await page.locator('#docGenTypeSelect').textContent(), /Procuração/);
-  assert.match(await page.locator('#docGenTypeSelect').textContent(), /Contrato de Honorários/);
-  assert.match(await page.locator('#docGenTypeSelect').textContent(), /Hipossuficiência/);
+  assert.match(await page.locator('#docGenTypeSelect').textContent(), /Contrato de honorários/i);
+  assert.match(await page.locator('#docGenTypeSelect').textContent(), /hipossuficiência/i);
   await page.locator('#docGenCancel').click();
 
   await page.locator('[data-contact-edit]').click();
@@ -162,5 +164,72 @@ try {
 } finally {
   await session.stop();
 }
+
+console.log('  OK: Unitários de renderContactEprocSection e renderContactsV2Workspace.');
+assert.equal(
+  renderContactEprocSection({
+    item: { id: 'plain-contact', name: 'Contato Simples' },
+    escapeHtml: value => String(value ?? ''),
+    formatDate: value => String(value || '—')
+  }),
+  '',
+  'Sem eprocPerson não deve renderizar seção eproc.'
+);
+const eprocUnitHtml = renderContactsV2Workspace({
+  records: [{
+    id: 'contact-eproc-pf',
+    name: 'Pessoa Eproc Sintética',
+    contactRole: 'cliente',
+    leadOrigin: 'indicacao',
+    gender: 'Feminino',
+    nationality: 'Brasileira',
+    birthPlace: 'Canoas/RS',
+    motherName: 'Maria Mãe Sintética',
+    fatherName: 'José Pai Sintético',
+    eprocPerson: {
+      personType: 'PF',
+      portalHost: 'eproc1g.tjrs.jus.br',
+      syncedAt: '2026-09-18',
+      addressHistory: [
+        { type: 'Residencial', raw: 'Av. Exemplo <XSS>, 200', hasStreet: true, includedAt: '2026-09-10' },
+        { type: 'Complementar', raw: '90000-000 - Porto Alegre/RS', hasStreet: false, includedAtRaw: '01/08/2025' }
+      ],
+      nameHistory: [
+        { name: 'Nome Anterior Sintético', includedAtRaw: '15/02/2024' }
+      ]
+    }
+  }],
+  allRecords: [{ id: 'contact-eproc-pf', contactRole: 'cliente' }],
+  selectedId: 'contact-eproc-pf',
+  selectedContext: null,
+  roleFilter: 'all',
+  query: '',
+  sort: { field: 'name', direction: 'asc' },
+  pagination: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
+  escapeHtml: value => String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;'),
+  formatDate: value => (value ? String(value) : '—')
+});
+for (const expectedText of [
+  'Sexo', 'Feminino', 'Nacionalidade', 'Brasileira', 'Naturalidade', 'Canoas/RS',
+  'Nome da mãe', 'Maria Mãe Sintética', 'Nome do pai', 'José Pai Sintético',
+  'Dados judiciais (eproc)', 'Pessoa Física (PF)', 'eproc1g.tjrs.jus.br', '2026-09-18',
+  'Histórico de endereços', 'Av. Exemplo &lt;XSS&gt;, 200', 'Endereço completo',
+  'Sem logradouro', 'Incluído em 2026-09-10', 'Incluído em 01/08/2025',
+  'Histórico de nomes', 'Nome Anterior Sintético', 'Incluído em 15/02/2024'
+]) {
+  assert.ok(eprocUnitHtml.includes(expectedText), `Inspector de contato deve exibir: ${expectedText}`);
+}
+const pjEprocHtml = renderContactEprocSection({
+  item: { id: 'contact-eproc-pj', eprocPerson: { personType: 'PJ', portalHost: 'eproc.jfrs.jus.br' } },
+  escapeHtml: value => String(value ?? ''),
+  formatDate: value => String(value || '—')
+});
+assert.match(pjEprocHtml, /Pessoa Jurídica \(PJ\)/);
+assert.match(pjEprocHtml, /eproc\.jfrs\.jus\.br/);
 
 console.log('✓ Contatos V2 preserva feature única, busca, sort, filtros, CRUD, privacidade e integrações oficiais.');

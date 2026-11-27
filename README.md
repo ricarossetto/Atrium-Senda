@@ -6,7 +6,7 @@
 [![Página Oficial Senda](https://img.shields.io/badge/Página_Oficial-senda.atrium.adv.br%2Fdiscover-2f7d5b?style=for-the-badge&labelColor=0B0D0E)](https://senda.atrium.adv.br/discover/)
 
 [![Licença](https://img.shields.io/badge/licença-FSL--1.1_(Uso_Local_Não--Concorrente)-blue)](LICENSE)
-[![Versão](https://img.shields.io/badge/versão-3.3.2_(Escopo_Basic)-9b7a3c)](docs/RELEASE_NOTES_3.3.2.md)
+[![Versão](https://img.shields.io/badge/versão-3.4.0_(Escopo_Basic)-9b7a3c)](docs/RELEASE_NOTES_3.4.0.md)
 [![Node.js](https://img.shields.io/badge/Node.js-24+-3c873a)](#instalação)
 
 ---
@@ -84,14 +84,14 @@ Baixe o pacote da sua plataforma na [página oficial do Senda](https://senda.atr
 
 | Sistema | Arquivo |
 | --- | --- |
-| Windows 10 e 11 x64 | `ATRIUM_3.3.2_x64-setup.exe` (NSIS) ou `ATRIUM_3.3.2_x64_pt-BR.msi` |
-| Windows 11 ARM64 | `ATRIUM_3.3.2_arm64-setup.exe` (NSIS) |
-| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.3.2_amd64.deb` |
-| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.3.2-1.x86_64.rpm` |
+| Windows 10 e 11 x64 | `ATRIUM_3.4.0_x64-setup.exe` (NSIS) ou `ATRIUM_3.4.0_x64_pt-BR.msi` |
+| Windows 11 ARM64 | `ATRIUM_3.4.0_arm64-setup.exe` (NSIS) |
+| Debian, Ubuntu, Mint, Pop!_OS, Zorin | `ATRIUM_3.4.0_amd64.deb` |
+| Fedora, RHEL, Rocky, Alma, openSUSE | `ATRIUM-3.4.0-1.x86_64.rpm` |
 | Arch, Manjaro, EndeavourOS | AppImage ou `PKGBUILD` anexado à release |
-| Qualquer Linux x64 | `ATRIUM_3.3.2_amd64.AppImage` |
-| macOS Apple Silicon | `ATRIUM_3.3.2_aarch64.dmg` |
-| macOS Intel | `ATRIUM_3.3.2_x64.dmg` |
+| Qualquer Linux x64 | `ATRIUM_3.4.0_amd64.AppImage` |
+| macOS Apple Silicon | `ATRIUM_3.4.0_aarch64.dmg` |
+| macOS Intel | `ATRIUM_3.4.0_x64.dmg` |
 
 No Linux, o script oficial detecta a distribuição e instala o formato certo:
 

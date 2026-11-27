@@ -150,7 +150,7 @@ async function runInteractionsTest(viewport, cookieStr, label) {
       await nextBtn.click();
     }
     assert.equal(await activeSlide(), 5, `${label}: Deve estar no slide final (5).`);
-    assert.equal(await nextBtn.textContent(), 'Começar a usar o Atrium', `${label}: Botão final deve ser "Começar a usar o Atrium".`);
+    assert.equal(await nextBtn.textContent(), 'Começar a usar o ATRIUM', `${label}: Botão final deve ser "Começar a usar o Atrium".`);
 
     await nextBtn.click();
     await page.locator('#guidedTourBackdrop.hidden').waitFor({ state: 'attached', timeout: 5000 });

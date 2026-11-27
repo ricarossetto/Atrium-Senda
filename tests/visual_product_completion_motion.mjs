@@ -36,9 +36,10 @@ try {
             email: 'cadastro@example.test', phone: '51900000000', address: 'RUA DOS TESTES, 100', district: 'CENTRO', city: 'CIDADE SINTÉTICA', state: 'RS', zip: '98765-000', qsa: [{ name: 'PESSOA SÓCIA SINTÉTICA', role: 'Sócia-Administradora' }], registry: { source: 'BrasilAPI · dados públicos de CNPJ', freshness: 'live', consultedAt: '2026-09-02T12:00:00.000Z' }
           };
           else if (value === '/api/registry/status') payload = { providers: [
-            { id: 'brasilapi', name: 'BrasilAPI', capabilities: ['CNPJ', 'CEP', 'Bancos'], configured: true, priority: 1, cacheTtlMs: 43200000, lastSuccessAt: '2026-09-02T12:00:00.000Z', lastLatencyMs: 124, state: 'available' },
-            { id: 'viacep', name: 'ViaCEP', capabilities: ['CEP fallback'], configured: true, priority: 2, cacheTtlMs: 604800000, lastSuccessAt: null, lastLatencyMs: null, state: 'available' },
-            { id: 'cpf-external', name: 'Consulta externa de CPF', capabilities: ['CPF'], configured: false, state: 'not_configured' }
+            { id: 'cnpja-open', name: 'CNPJá Open', capabilities: ['CNPJ primário (5 req/min)', 'Simples / MEI', 'QSA', 'CNAEs', 'Matriz/Filial'], configured: true, priority: 1, cacheTtlMs: 43200000, rateLimitPerMinute: 5, lastSuccessAt: '2026-11-24T12:00:00.000Z', lastLatencyMs: 92, state: 'available' },
+            { id: 'brasilapi', name: 'BrasilAPI', capabilities: ['CNPJ fallback / alfanumérico', 'CEP', 'Bancos'], configured: true, priority: 2, cacheTtlMs: 43200000, lastSuccessAt: '2026-09-02T12:00:00.000Z', lastLatencyMs: 124, state: 'available' },
+            { id: 'viacep', name: 'ViaCEP', capabilities: ['CEP fallback'], configured: true, priority: 3, cacheTtlMs: 604800000, lastSuccessAt: null, lastLatencyMs: null, state: 'available' },
+            { id: 'cpf-local', name: 'Validação de CPF', capabilities: ['CPF · formato e dígitos verificadores'], configured: true, priority: 'local', cacheTtlMs: null, lastSuccessAt: null, lastLatencyMs: 0, state: 'available' }
           ] };
           else payload = { records: [] };
           return { ok: true, status: 200, async json() { return structuredClone(payload); } };

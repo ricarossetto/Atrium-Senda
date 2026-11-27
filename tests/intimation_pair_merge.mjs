@@ -135,7 +135,7 @@ function stateWith(overrides = {}) {
   const block = server.slice(routeIndex, routeIndex + 4_000);
   assert.match(block, /assertAuthenticated\(req, true\)/, 'exige sessão e CSRF');
   assert.match(block, /mergeIntimationPairIntoState\(/, 'usa o motor oficial de fusão');
-  assert.match(block, /saveAppStateDirect\(envelope\.state, envelope\.revision\)/, 'persiste com CAS na revisão lida no servidor');
+  assert.match(block, /saveAppStateDirect(?:Unlocked)?\((?:currentEnvelope|envelope)\.state, (?:currentEnvelope|envelope)\.revision\)/, 'persiste com CAS na revisão lida no servidor');
   assert.doesNotMatch(block, /body\.revision !== envelope\.revision/, 'não exige a revisão da tela: o acervo é reescrito com frequência e o clique morria em 409');
   assert.doesNotMatch(block, /assertAdmin\(/, 'fusão é curadoria do acervo, não ato administrativo');
   const presenter = readFileSync(new URL('../js/views/ui-v2/publications-presenter.js', import.meta.url), 'utf8');

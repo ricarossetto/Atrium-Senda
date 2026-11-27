@@ -1,6 +1,6 @@
 {
   "name": "atrium-senda",
-  "version": "3.3.2",
+  "version": "3.4.0",
   "description": "ATRIUM Senda — edição básica local para advogados individuais (processos, publicações, tarefas, agenda e contatos). Para Financeiro, Cálculos, Documentos com OCR e Atrium IA na nuvem, acesse https://atrium.adv.br",
   "homepage": "https://senda.atrium.adv.br/discover/",
   "author": "ATRIUM (https://atrium.adv.br)",
@@ -52,7 +52,8 @@
     "test:ci-fast": "node tests/security.mjs && node tests/secret-hygiene.mjs && node tests/security_migrations.mjs && node tests/multi_tenant_isolation.mjs && node tests/state_migrations.mjs && node tests/instance_lock.test.mjs && node tests/large_state_persistence.mjs && node tests/state_payload_limit.test.mjs && node tests/backup_restore.mjs && node tests/spec_contracts.mjs && node tests/toolchain_contract.mjs && node tests/state_etag_principal.test.mjs && node tests/publication_treatment_access.test.mjs && node tests/private_scope_write_isolation.test.mjs && node tests/cnis_page_cap.test.mjs && node tests/inpi_scan_limit.test.mjs && node tests/omni_court_key.test.mjs && node tests/dashboard_deadline_escape.mjs && node tests/task_completion_notification_privacy.test.mjs && node tests/document_upload_access.test.mjs && node tests/ai_context_access.test.mjs && node tests/mfa_legacy_rotation.test.mjs && node tests/events_runtime_scope.test.mjs && node tests/ai_classifier_access.test.mjs && node tests/api-error-code-allowlist.mjs",
     "test:ci-judicial": "node tests/judicial_sandbox.mjs && node tests/judicial_discovery.mjs && node tests/judicial_integration_rbac.mjs && node tests/judicial_auth_state.mjs && node tests/managed_judicial_connectivity.mjs && node tests/tjrs_sidecar_integration.mjs && node tests/tjrs_sidecar_fallback.mjs && node tests/eproc_a1_totp_integration.mjs && node tests/eproc-core-contract.mjs && node tests/eproc-registry.mjs && node tests/eproc-parsers.mjs && node tests/eproc-read-only-actions.mjs && node tests/eproc-scheduler-contract.mjs && node tests/eproc-legacy-routes-csrf.mjs && node tests/pje-registry.mjs && node tests/pje-read-only-actions.mjs && node tests/pje-runtime.mjs && node tests/pje-projection.mjs && node tests/pje-verification-store.mjs && node tests/publication_workflow.mjs && node tests/djen-capture-window.test.mjs && node tests/domicilio-eletronico.test.mjs && node tests/domicilio-ingest.test.mjs && node tests/domicilio-runner.test.mjs",
     "test": "node tests/run-all.mjs",
-    "lint:ui": "node scripts/ui-lint.mjs http://127.0.0.1:4173"
+    "lint:ui": "node scripts/ui-lint.mjs http://127.0.0.1:4173",
+    "test:ios-ui": "node tests/haptics_ios.mjs && node tests/ui_v2_ios_simulation.mjs"
   },
   "keywords": [
     "advocacia",

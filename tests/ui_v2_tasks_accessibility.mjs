@@ -122,8 +122,8 @@ try {
       };
     });
     assert.ok(Math.abs(settledViewSwitch.indicatorWidth - settledViewSwitch.buttonWidth) <= 0.1, 'Indicador mobile deve ter a mesma largura da coluna interna.');
-    assert.ok(Math.abs(settledViewSwitch.indicatorTranslateX - (settledViewSwitch.indicatorWidth + 8)) <= 0.1, 'Indicador Kanban mobile deve deslocar uma coluna mais o gap de 8px.');
-    assert.ok(Math.abs(settledViewSwitch.secondButtonLeft - settledViewSwitch.firstButtonLeft - (settledViewSwitch.buttonWidth + 8)) <= 0.1, 'Switch mobile deve usar duas colunas 50/50 separadas por 8px.');
+    assert.ok(Math.abs(settledViewSwitch.indicatorTranslateX - (settledViewSwitch.indicatorWidth + 6)) <= 0.1, 'Indicador Kanban mobile deve deslocar uma coluna mais o gap de 6px.');
+    assert.ok(Math.abs(settledViewSwitch.secondButtonLeft - settledViewSwitch.firstButtonLeft - (settledViewSwitch.buttonWidth + 6)) <= 0.1, 'Switch mobile deve usar duas colunas 50/50 separadas por 6px.');
 
     const kanbanCard = await page.evaluate(() => {
       const card = document.querySelector('#kanbanBoard .task-card');

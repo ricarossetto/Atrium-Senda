@@ -561,7 +561,25 @@ const checkFiles = [
   'tests/visual_ui_v2_tasks.mjs',
   'tests/visual_ui_v2_agenda.mjs',
   'tests/visual_ui_v2_contacts.mjs',
-  'tests/visual-qa.mjs'
+  'tests/visual-qa.mjs',
+  'tests/plural_contract.mjs',
+  'tests/haptics_ios.mjs',
+  'tests/spreadsheet_import_limits.test.mjs',
+  'tests/search_contract_unit.test.mjs',
+  'tests/security_findings_6822.test.mjs',
+  'tests/email_smtp_pin.test.mjs',
+  'tests/private_owner_legacy_merge.test.mjs',
+  'tests/agenda_time_label.test.mjs',
+  'tests/publication_certificate_link.test.mjs',
+  'tests/eproc-trf4-cert-login.mjs',
+  'tests/pje-error-log-sanitize.mjs',
+  'tests/pje-headed-display-authority.mjs',
+  'tests/onboarding_markers_contract.mjs',
+  'tests/security_profile_email_change.mjs',
+  'tests/security_integration_reauth.mjs',
+  'tests/ui_v2_layer_exit.mjs',
+  'tests/ai_classifier_suggestion_contract.mjs',
+  'tests/ai_classifier_calibration_privacy.test.mjs'
 ];
 
 const testSuites = [
@@ -993,7 +1011,25 @@ const testSuites = [
   { name: 'Salvamento: Não Apaga nem Esconde Registros', file: 'tests/state_flush_integrity.test.mjs' },
   { name: 'Integrações: Destinatários com Fontes, Alvos e Telemetria Legíveis', file: 'tests/ui_v2_mail_receivers_layout.mjs' },
   { name: 'Layout Review Batch: 6 Combinações Tema/Viewport', file: 'tests/layout_review_batch.mjs' },
-  { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' }
+  { name: 'Smoke Test E2E Playwright (Fluxo Completo UI / Kanban)', file: 'tests/smoke.mjs' },
+  { name: 'Pluralização: contrato sem plural entre parênteses', file: 'tests/plural_contract.mjs' },
+  { name: 'iOS Safari: haptics e layout sem clipping em toque', file: 'tests/haptics_ios.mjs' },
+  { name: 'Planilhas: limites e rejeição segura na importação', file: 'tests/spreadsheet_import_limits.test.mjs' },
+  { name: 'Busca: contrato unitário de indexação e ranking', file: 'tests/search_contract_unit.test.mjs' },
+  { name: 'Segurança: endurecimento de credenciais e remoção atômica A1', file: 'tests/security_findings_6822.test.mjs' },
+  { name: 'E-mail: pinagem TLS/SMTP na configuração', file: 'tests/email_smtp_pin.test.mjs' },
+  { name: 'Privacidade: merge legado preservando privateOwner', file: 'tests/private_owner_legacy_merge.test.mjs' },
+  { name: 'Agenda: rótulo de horário e formatação', file: 'tests/agenda_time_label.test.mjs' },
+  { name: 'Publicações: vínculo com certificado digital', file: 'tests/publication_certificate_link.test.mjs' },
+  { name: 'eproc TRF4: login com certificado A1', file: 'tests/eproc-trf4-cert-login.mjs' },
+  { name: 'PJe: sanitização de logs de erro', file: 'tests/pje-error-log-sanitize.mjs' },
+  { name: 'PJe: autoridade de exibição headless/headed', file: 'tests/pje-headed-display-authority.mjs' },
+  { name: 'Onboarding: contrato de marcadores e passos', file: 'tests/onboarding_markers_contract.mjs' },
+  { name: 'Segurança: reautenticação ao alterar e-mail do perfil', file: 'tests/security_profile_email_change.mjs' },
+  { name: 'Segurança: reautenticação em integrações críticas', file: 'tests/security_integration_reauth.mjs' },
+  { name: 'UI V2: saída limpa de camadas, modais e drawers', file: 'tests/ui_v2_layer_exit.mjs' },
+  { name: 'Classificador IA: contrato de sugestão em publicações', file: 'tests/ai_classifier_suggestion_contract.mjs' },
+  { name: 'Classificador IA: privacidade na calibração e histórico', file: 'tests/ai_classifier_calibration_privacy.test.mjs' }
 ];
 
 const RUN_TIMEOUT_MS = Number(process.env.ATRIUM_TEST_TIMEOUT_MS) || 300_000;

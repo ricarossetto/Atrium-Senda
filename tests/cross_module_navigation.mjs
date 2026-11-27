@@ -59,6 +59,7 @@ try {
   await page.locator('#view-processes.active').waitFor();
   await page.locator('#processInspectorBackdrop:not(.hidden)').waitFor();
 
+  await page.locator('#processInspectorMore').click();
   await page.locator('#processInspectorAssistant').click();
   await page.locator('#view-assistant.active').waitFor();
   assert.equal(await page.locator('#assistantContextSelect').inputValue(), 'process:nav-process');

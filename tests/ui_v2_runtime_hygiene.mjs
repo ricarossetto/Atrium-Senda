@@ -82,7 +82,7 @@ try {
     assert.equal(result.mode, 'v2');
     assert.equal(result.modeControls, 0);
     assert.equal(layout.navItems, UI_V2_PRIMARY_NAV_VIEWS.length);
-    assert.equal(layout.navGroups, 6);
+    assert.equal(layout.navGroups, 4);
     assert.equal(layout.activeViews.length, 1);
     assert.deepEqual(layout.duplicateIds, []);
     assert.deepEqual(layout.visibleOverlays, []);

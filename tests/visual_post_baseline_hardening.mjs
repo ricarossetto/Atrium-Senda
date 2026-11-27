@@ -43,7 +43,7 @@ try {
 
     await page.evaluate(() => { window.Atrium.App.openGuidedTour(true); window.Atrium.App.showTourSlide(5); });
     await page.locator('.tour-slide.active[data-slide="5"]').waitFor();
-    assert.equal(await page.locator('#tourNextButton').textContent(), 'Começar a usar o Atrium'); assertions++;
+    assert.equal(await page.locator('#tourNextButton').textContent(), 'Começar a usar o ATRIUM'); assertions++;
     assert.doesNotMatch(await page.locator('#tourNextButton').textContent(), /🚀/); assertions++;
     await capture(page, '02-onboarding-final-screen.png');
     assert.deepEqual(pageErrors, []); assertions++;

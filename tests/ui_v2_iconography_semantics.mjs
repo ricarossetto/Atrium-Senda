@@ -19,10 +19,10 @@ const canonicalMapping = Object.freeze({
   importer: 'importer', audit: 'audit', links: 'links', reports: 'reports'
 });
 const primaryMapping = Object.freeze(Object.fromEntries(
-  Object.entries(canonicalMapping).filter(([view]) => !['audit', 'monitoring', 'importer'].includes(view))
+  Object.entries(canonicalMapping).filter(([view]) => !['audit', 'monitoring', 'importer', 'prompts', 'links'].includes(view))
 ));
 assert.equal(Object.keys(canonicalMapping).length, 19);
-assert.equal(Object.keys(primaryMapping).length, 16);
+assert.equal(Object.keys(primaryMapping).length, 14);
 assert.equal(new Set(Object.values(canonicalMapping)).size, 19, 'Cada view oficial deve possuir um nome semântico próprio.');
 
 const mappedFromMarkup = Object.fromEntries([...index.matchAll(/<button class="nav-item[^"]*" data-view="([^"]+)"[^>]*>[\s\S]*?<use href="assets\/icons\/atrium-ui-icons\.svg(?:\?v=[^"#]+)?#atrium-icon-([^"]+)"[\s\S]*?<\/button>/g)]
@@ -53,6 +53,6 @@ assert.match(named, /role="img"/);
 assert.match(named, /aria-label="Certificado digital"/);
 assert.match(iconHref('nome-inexistente'), /^assets\/icons\/atrium-ui-icons\.svg(?:\?v=[^#]+)?#atrium-icon-info$/, 'Nome inválido deve cair em fallback visual seguro.');
 
-console.log('✓ 19 capacidades usam nomes oficiais; 16 destinos primários na sidebar e auditoria permanece em Configurações.');
+console.log('✓ 19 capacidades usam nomes oficiais; 14 destinos primários na sidebar e auditoria permanece em Configurações.');
 console.log('✓ 6/6 pares críticos possuem símbolos distintos.');
 console.log('✓ Helper preserva ícones decorativos ocultos e ícones informativos nomeados.');

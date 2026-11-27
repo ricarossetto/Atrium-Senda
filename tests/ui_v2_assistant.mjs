@@ -187,7 +187,7 @@ try {
   }, MARKDOWN_FIXTURE);
 
   assert.deepEqual(result.statuses, {
-    configured: { configured: true, chip: 'Chave Ativa', banner: 'none', v2: 'Provedor de IA configurado' },
+    configured: { configured: true, chip: 'Chave ativa', banner: 'none', v2: 'Provedor de IA configurado' },
     unconfigured: { configured: false, chip: 'Chave não configurada', banner: 'block', v2: 'Configuração necessária' },
     failure: { configured: false, chip: 'Chave não configurada', banner: 'block', v2: 'Configuração necessária' }
   });

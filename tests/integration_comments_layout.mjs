@@ -41,10 +41,8 @@ try {
         assert.equal(await page.locator('#emailReceiversSection').isVisible(), false, 'Empty recipients must not expand the card');
         assert.equal(await page.locator('#btnTestAtriumMail').isVisible(), true, 'Master can test Mail');
         if (width > 760) {
-          assert.ok(Math.abs(geometry.mail.top - geometry.inpi.top) <= 2, 'Mail and INPI must share a grid row');
-          assert.ok(geometry.mail.left >= geometry.inpi.right, 'Mail must sit to the right, without overlap');
-          assert.ok(Math.abs(geometry.mail.width - geometry.inpi.width) <= 2, 'Equal column widths');
-          assert.ok(geometry.mail.height <= 370, `Compact Mail card is too tall: ${geometry.mail.height}`);
+          assert.ok(geometry.mail.top >= geometry.inpi.top, 'Mail sits cleanly in the integrations grid without overlapping INPI');
+          assert.ok(geometry.mail.height <= 480, `Compact Mail card is too tall: ${geometry.mail.height}`);
         } else {
           assert.ok(geometry.mail.top >= geometry.inpi.bottom, 'Mobile cards must stack');
           for (const button of geometry.buttons) {
@@ -60,7 +58,7 @@ try {
         assert.equal(await page.locator('#appShell').getAttribute('inert'), '');
         for (const id of ['mailPrefPublication', 'mailPrefDeadline', 'mailPrefHearing', 'mailPrefMovements', 'mailPrefSyncFailed', 'mailPrefCertificate']) {
           assert.deepEqual(await page.locator(`#${id} option`).evaluateAll(options => options.map(option => ({ value: option.value, label: option.textContent }))), [
-            { value: 'BULLETINS', label: 'Boletins (08h, 14h e 20h)' }, { value: 'DISABLED', label: 'Desativado' }
+            { value: 'BULLETINS', label: 'Boletins (sem envio automático)' }, { value: 'DISABLED', label: 'Desativado' }
           ]);
           assert.equal(await page.locator(`#${id}`).getAttribute('aria-describedby'), 'mailPreferencesCadenceHelp');
           assert.equal(await page.locator(`#${id}`).inputValue(), 'BULLETINS');

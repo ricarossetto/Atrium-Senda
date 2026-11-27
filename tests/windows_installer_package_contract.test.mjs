@@ -20,7 +20,7 @@ if (process.platform !== 'win32') {
   process.exit(0);
 }
 
-const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'tmp-senda-release-3.3.2-installer-'));
+const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'tmp-senda-release-3.4.0-installer-'));
 const fixtureDirectory = path.join(temporaryDirectory, 'pacote-sintetico');
 fs.mkdirSync(fixtureDirectory, { recursive: true });
 
@@ -66,10 +66,10 @@ function Test-PackageContract([string]$Name, [string]$Version, [string]$Expected
     }
 }
 
-$acceptedSenda = Test-PackageContract 'atrium-senda' '3.3.2' '3.3.2'
-$acceptedLegacy = Test-PackageContract 'atrium' '3.3.2' '3.3.2'
-$rejectedOtherName = Test-PackageContract 'outro-pacote' '3.3.2' '3.3.2'
-$rejectedVersionMismatch = Test-PackageContract 'atrium-senda' '3.3.1' '3.3.2'
+$acceptedSenda = Test-PackageContract 'atrium-senda' '3.4.0' '3.4.0'
+$acceptedLegacy = Test-PackageContract 'atrium' '3.4.0' '3.4.0'
+$rejectedOtherName = Test-PackageContract 'outro-pacote' '3.4.0' '3.4.0'
+$rejectedVersionMismatch = Test-PackageContract 'atrium-senda' '3.3.2' '3.4.0'
 
 [pscustomobject][ordered]@{ acceptedSenda = $acceptedSenda; acceptedLegacy = $acceptedLegacy; rejectedOtherName = $rejectedOtherName; rejectedVersionMismatch = $rejectedVersionMismatch } | ConvertTo-Json -Compress
 `;

@@ -235,6 +235,7 @@ try {
           stepUpDenials += 1;
           assert.equal(deniedTestResponse.status(), 403, 'teste Mail sem step-up deve ser recusado');
           assert.equal(deniedTestResponse.headers()['x-atrium-reauth'], 'required', 'teste Mail sinaliza reautenticação por X-Atrium-Reauth');
+          await testModal.waitFor({ state: 'hidden', timeout: 10_000 });
           assert.equal(await testModal.isHidden(), true, 'modal Mail deve abrir espaço para o prompt de step-up');
           const reauthPrompt = page.locator('#modalBackdrop[data-modal-mode="reauth"]:not(.hidden)');
           await reauthPrompt.waitFor({ timeout: 10_000 });
@@ -290,8 +291,8 @@ try {
           const publicationCadence = page.locator('#userPrefPublicationCadence');
           assert.equal(await publicationCadence.count(), 1, 'Select de cadência de publicações deve existir');
           // Alterar opção de cadência no perfil
-          await publicationCadence.selectOption('IMMEDIATE');
-          assert.equal(await publicationCadence.inputValue(), 'IMMEDIATE', 'Usuário deve conseguir selecionar cadência imediata');
+          await publicationCadence.selectOption('DISABLED');
+          assert.equal(await publicationCadence.inputValue(), 'DISABLED', 'Usuário deve conseguir desativar cadência');
 
           const deadlineCadence = page.locator('#userPrefDeadlineCadence');
           assert.equal(await deadlineCadence.count(), 1, 'Select de cadência de prazos deve existir');

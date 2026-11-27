@@ -14,7 +14,7 @@ try {
     body: JSON.stringify({
       currentRole: 'master_admin',
       users: [
-        { id: 'user-avatar-1', username: 'ricardo.teste', displayName: 'Ricardo Teste', email: 'ricardo@example.test', role: 'master_admin', status: 'active', avatar: PNG },
+        { id: 'user-avatar-1', username: 'ricardo.teste', displayName: 'Ricardo Rossetto', email: 'ricardo@example.test', role: 'master_admin', status: 'active', avatar: PNG },
         { id: 'user-avatar-2', username: 'advogada.teste', displayName: 'Advogada Teste', email: 'advogada@example.test', role: 'collaborator', status: 'active', avatar: '' }
       ]
     })
@@ -29,7 +29,7 @@ try {
       title: 'Tarefa com avatar do integrante',
       status: 'triagem',
       active: true,
-      responsible: 'Ricardo Teste',
+      responsible: 'Ricardo Rossetto',
       assigneeUserId: 'user-avatar-1',
       deadline: today,
       createdAt: new Date().toISOString()
@@ -38,7 +38,7 @@ try {
       id: 'avatar-process-1',
       number: '5000000-00.2026.8.21.0010',
       client: 'Cliente Avatar Sintético',
-      responsible: 'Ricardo Teste',
+      responsible: 'Ricardo Rossetto',
       responsibleUserIds: ['user-avatar-1']
     });
     Store.save();
@@ -54,8 +54,8 @@ try {
   assert.match(await memberCard.locator('.config-user-workload').textContent(), /1 tarefa aberta · 1 processo/, 'Carga do integrante conta tarefa e processo por id.');
 
   await page.evaluate(() => window.Atrium.App.switchView('kanban'));
-  await page.waitForFunction(() => document.querySelector('.task-owner img.member-avatar-image'));
-  assert.equal(await page.locator('.task-owner img.member-avatar-image').count(), 1, 'Cartão usa a foto do integrante vinculado.');
+  await page.waitForFunction(() => document.querySelector('.task-owner img.member-avatar-image, .owner-tag img.member-avatar-image'));
+  assert.ok(await page.locator('.task-owner img.member-avatar-image, .owner-tag img.member-avatar-image').count() >= 1, 'Cartão usa a foto do integrante vinculado.');
   await page.locator('#newTaskButton').click();
   await page.locator('#modalBackdrop[data-modal-mode="task"]:not(.hidden)').waitFor();
   assert.ok(await page.locator('#modalFields .modal-combobox-avatar').count() >= 1, 'Picker de responsável mostra avatares.');

@@ -72,8 +72,20 @@ try {
   };
   const stepOf = page => page.locator('#productTourTitle').textContent();
 
+  let officeCount = 0;
+  const newOffice = async () => {
+    officeCount += 1;
+    const username = `titular_tour_${officeCount}`;
+    const pending = await (await postJson(`${server.baseUrl}/api/auth/workspaces/register`, { username, displayName: `Titular Teste ${officeCount}`, email: `${username}@example.test`, workspaceName: `Escritório Tour ${officeCount}`, password: PASSWORD })).json();
+    assert.ok(pending.setupToken, pending.message);
+    const created = await postJson(`${server.baseUrl}/api/auth/workspaces/register/verify`, { setupToken: pending.setupToken, skipMfa: true });
+    assert.equal(created.status, 200);
+    return created.headers.get('set-cookie').split(';')[0];
+  };
+
   for (const [width, height, theme] of [[1440, 900, 'light'], [1024, 768, 'dark'], [390, 844, 'light']]) {
-    const { page, context, errors, stateWrites } = await open({ cookie: adminCookie, width, height, theme, init: () => sessionStorage.setItem('atrium_pending_product_tour', 'true') });
+    const cookie = await newOffice();
+    const { page, context, errors, stateWrites } = await open({ cookie, width, height, theme, init: () => sessionStorage.setItem('atrium_pending_product_tour', 'true') });
     await page.locator('#productTour .product-tour-card').waitFor();
     assert.match(await stepOf(page), /Boas-vindas/);
     assert.equal(await page.evaluate(() => document.getElementById('appShell').inert), true, 'o resto da tela não recebe clique');

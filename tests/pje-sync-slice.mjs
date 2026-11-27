@@ -112,7 +112,7 @@ try {
   assert.equal(projected.counters.pjeIntimationsCreated, 1, 'Uma comunicação com CNJ deve gerar uma intimação.');
   const pjeIntimation = projected.state.intimations.find(item => item.source === 'pje');
   assert.ok(pjeIntimation, 'A comunicação PJe deve aparecer no acervo de Publicações.');
-  assert.equal(pjeIntimation.process, '50012345620258120001');
+  assert.equal(pjeIntimation.process, '5001234-56.2025.8.12.0001', 'CNJ no formato oficial mascarado, como em state.processes.');
   assert.equal(pjeIntimation.treatmentStatus, 'untreated');
   assert.equal(pjeIntimation.unread, true);
   assert.equal(pjeIntimation.sourceReportedAt, '2026-09-12', 'A data exibida é a da listagem do portal.');
@@ -163,6 +163,99 @@ try {
   assert.deepEqual(secondIngest.state.processes, firstIngest.state.processes);
   assert.deepEqual(secondIngest.state.tasks, firstIngest.state.tasks);
   console.log('  ✓ Estado idempotente: nenhuma diferença na segunda passagem.');
+
+  console.log('[T6b] Horário da coleta não reescreve tarefa, descrição nem histórico...');
+  {
+    const taskId = 'pje:pje-tjmt-1g:situacao:pendentes-de-ciencia-ou-de-resposta';
+    const first = mergePjeInventoryIntoState(
+      { processes: [], tasks: [] },
+      makeInventory(),
+      { now: '2026-09-17T20:00:00.000Z' }
+    );
+    const before = first.state.tasks.find(task => task.id === taskId);
+    assert.ok(before, 'Tarefa agregada de situação criada na primeira coleta.');
+    assert.match(before.description, /^2 expedientes/, 'Descrição gerada com a contagem da fonte.');
+
+    const later = makeInventory({ collectedAt: '2026-09-17T21:00:00.000Z' });
+    const second = mergePjeInventoryIntoState(first.state, later, { now: '2026-09-17T21:00:00.000Z' });
+    assert.equal(second.counters.tasksUpdated, 0, 'Só o horário da coleta não pode atualizar a tarefa.');
+    assert.deepEqual(
+      second.state.tasks.find(task => task.id === taskId),
+      before,
+      'Tarefa, descrição e updatedAt permanecem idênticos sem dado material novo.'
+    );
+    console.log('  ✓ Horário isolado preserva tarefa, descrição e histórico.');
+  }
+
+  console.log('[T6c] Contagem e descrição ausente são registradas; texto humano é preservado...');
+  {
+    const taskId = 'pje:pje-tjmt-1g:situacao:pendentes-de-ciencia-ou-de-resposta';
+    const first = mergePjeInventoryIntoState(
+      { processes: [], tasks: [] },
+      makeInventory(),
+      { now: '2026-09-17T20:00:00.000Z' }
+    );
+    const changed = makeInventory({ collectedAt: '2026-09-17T21:00:00.000Z' });
+    changed.expedientes.situations[0].count = 3;
+    const updated = mergePjeInventoryIntoState(first.state, changed, { now: '2026-09-17T21:00:00.000Z' });
+    const afterCount = updated.state.tasks.find(task => task.id === taskId);
+    assert.equal(updated.counters.tasksUpdated, 1, 'Mudança real de contagem atualiza a tarefa.');
+    assert.equal(afterCount.pjeSituation.count, 3);
+    assert.match(afterCount.description, /^3 expedientes/, 'Descrição gerada acompanha a nova contagem.');
+    assert.equal(afterCount.updatedAt, '2026-09-17T21:00:00.000Z');
+
+    const sameCount = makeInventory({ collectedAt: '2026-09-17T22:00:00.000Z' });
+    sameCount.expedientes.situations[0].count = 3;
+    const human = { ...afterCount, description: 'Descrição revisada pela equipe.' };
+    const preservedHuman = mergePjeInventoryIntoState(
+      { processes: [], tasks: [human] },
+      sameCount,
+      { now: '2026-09-17T22:00:00.000Z' }
+    );
+    const humanTask = preservedHuman.state.tasks.find(task => task.id === taskId);
+    assert.equal(humanTask.description, 'Descrição revisada pela equipe.', 'Descrição humana não é sobrescrita.');
+    assert.equal(preservedHuman.counters.tasksUpdated, 0, 'Horário da coleta não invalida edição humana.');
+
+    const withoutDescription = { ...afterCount, description: '' };
+    const filled = mergePjeInventoryIntoState(
+      { processes: [], tasks: [withoutDescription] },
+      sameCount,
+      { now: '2026-09-17T22:00:00.000Z' }
+    );
+    const filledTask = filled.state.tasks.find(task => task.id === taskId);
+    assert.match(filledTask.description, /^3 expedientes/, 'Descrição ausente é preenchida.');
+    assert.equal(filled.counters.tasksUpdated, 1, 'Preenchimento é registrado como atualização.');
+    console.log('  ✓ Mudanças reais registradas; descrição ausente preenchida e texto humano preservado.');
+  }
+
+  console.log('[T6d] Troca de rótulo com mesmo slug atualiza o dado persistido, não o texto humano...');
+  {
+    const taskId = 'pje:pje-tjmt-1g:situacao:pendentes-de-ciencia-ou-de-resposta';
+    const humanTitle = 'Título escrito pela equipe';
+    const humanDescription = 'Descrição escrita pela equipe.';
+    const first = mergePjeInventoryIntoState(
+      { processes: [], tasks: [] },
+      makeInventory(),
+      { now: '2026-09-17T20:00:00.000Z' }
+    );
+    const seeded = {
+      ...first.state,
+      tasks: first.state.tasks.map(task => task.id === taskId
+        ? { ...task, title: humanTitle, description: humanDescription }
+        : task)
+    };
+    const relabeled = makeInventory({ collectedAt: '2026-09-17T22:00:00.000Z' });
+    // Mesmo slug do rótulo original: muda só a grafia (sem acento).
+    relabeled.expedientes.situations[0].label = 'Pendentes de ciencia ou de resposta';
+    const merged = mergePjeInventoryIntoState(seeded, relabeled, { now: '2026-09-17T22:00:00.000Z' });
+    const task = merged.state.tasks.find(candidate => candidate.id === taskId);
+    assert.equal(task.pjeSituation.label, 'Pendentes de ciencia ou de resposta', 'Rótulo persistido acompanha a fonte.');
+    assert.equal(task.title, humanTitle, 'Título escrito por pessoa permanece.');
+    assert.equal(task.description, humanDescription, 'Descrição escrita por pessoa permanece.');
+    assert.equal(task.updatedAt, '2026-09-17T22:00:00.000Z', 'Troca de rótulo é registrada no histórico.');
+    assert.equal(merged.counters.tasksUpdated, 1, 'Somente a tarefa com rótulo alterado é atualizada.');
+    console.log('  ✓ Rótulo material atualizado; título e descrição humanos intactos.');
+  }
 
   console.log('[T7] XLS de auditoria é gerado e reparseável...');
   const xlsPath = await writePjeInventoryXls(inventory, { directory: path.join(rootDir, 'reports'), fileName: 'tjmt-slice.xlsx' });

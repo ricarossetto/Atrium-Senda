@@ -9,7 +9,7 @@ import { generateTotp } from '../lib/security.mjs';
 
 const PASSWORD = 'Senha-Caracterizacao-2026!';
 const UPDATE = process.env.CHARACTERIZATION_PRINT === 'true';
-const server = await startTestServer({ env: { BETA_DISABLE_AUTOMATIONS: 'true' } });
+const server = await startTestServer({ env: { BETA_DISABLE_AUTOMATIONS: 'true', ATRIUM_SENDA_UNLOCK_PRO_DEV: '1' } });
 
 const ROUTES = [
   ['POST', '/api/integrations/judicial/sync', false],
@@ -142,9 +142,9 @@ const EXPECTED = {
   },
   "PATCH /api/integrations/email/receivers/update": {
     "semSessao": 401,
-    "membro": 403,
+    "membro": 405,
     "formatoMembro": "message",
-    "admin": 404,
+    "admin": 405,
     "formato": "message"
   },
   "DELETE /api/integrations/email/receivers/inexistente": {
@@ -158,7 +158,7 @@ const EXPECTED = {
     "semSessao": 401,
     "membro": 403,
     "formatoMembro": "message",
-    "admin": 404,
+    "admin": 400,
     "formato": "message"
   },
   "DELETE /api/integrations/email/receivers": {

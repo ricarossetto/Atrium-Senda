@@ -2,6 +2,25 @@
 
 As mudanças relevantes do ATRIUM Senda são registradas neste arquivo. O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa versionamento semântico.
 
+## 3.4.0 — 2026-11-27
+
+### Adicionado
+
+- **Retorno tátil e preferências do aparelho**: pulso nativo no iOS/Safari 26.5+ e Android com ativação controlada, desligamento limpo do DOM tátil e aviso automático quando o sistema reduz movimento.
+- **Simulação e testes novos**: adicionadas coberturas para iPhone Safari 26.5+ (`tests/ui_v2_ios_simulation.mjs`), retorno tátil (`tests/haptics_ios.mjs`), concordância gramatical (`tests/plural_contract.mjs`), limites de planilha (`tests/spreadsheet_import_limits.test.mjs`), contrato unitário de busca (`tests/search_contract_unit.test.mjs`) e suíte de hardening/integrações.
+
+### Corrigido
+
+- **Navegação e layout responsivo**: barra lateral condensada em dois grupos recolhíveis, transição de tema escuro consistente, autenticação em coluna única com conferência de abas sem truncamento, painéis expansíveis e rolagem móvel no `window` sem perda de foco na barra inferior.
+- **Concordância e detalhes de interface**: contagem singular/plural sem parênteses nas métricas de Configuração, e-mails, integrações judiciais, cálculos e financeiro; preservação de metadados eproc e `caseValue` na edição de processos; link de certidão DJEN e etiquetas de horário na Agenda.
+- **Concorrência, segurança e privacidade**: fila reentrante em mutações de estado e escrita atômica com arquivos temporários únicos, proteção contra SSRF com pinagem de DNS em provedores de IA, verificação de caminho real (`realpath`) ao servir arquivos estáticos, filtragem de acesso na busca, diagnóstico, comandos assíncronos e reautenticação em alterações sensíveis de perfil.
+- **eproc e DJEN**: login com certificado no eproc 9.24 (TRF4/JFRS), janelas de captura DJEN por dia de São Paulo e tratamento de falha de autenticação de portal sem vazamento entre escopos.
+
+### Alterado
+
+- **Consulta TJRS por chave desativada**: rotas legadas de prévia, sincronização e download via sidecar/omni respondem `410` com orientação explícita para uso do eproc via certificado A1, e o monitor legado de sidecar foi aposentado.
+- **Versão 3.4.0 e cache do frontend**: pacote, desktop Tauri, instaladores, PKGBUILD, manifesto de versões e documentação atualizados para a versão 3.4.0.
+
 ## 3.3.2 — 2026-11-24
 
 ### Corrigido

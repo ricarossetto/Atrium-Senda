@@ -126,7 +126,7 @@ test('eproc - Extração da chave do processo em diferentes formatos da capa', a
   assert.equal(dismissedDialogs, 1);
 });
 
-test('eproc - Vinculação automática da chave de acesso no processo e no cofre do sistema', async () => {
+test('eproc - GET consulta a chave legada; POST com CSRF a vincula ao cofre do sistema', async () => {
   const cnj = '5001234-56.2026.8.21.0001';
   const accessKey = '987654321012';
 
@@ -153,10 +153,14 @@ test('eproc - Vinculação automática da chave de acesso no processo e no cofre
     }
   };
 
+  const csrfFlags = [];
   const handler = createTjrsSidecarHttpHandler({
     client: { health: async () => ({ ok: true }) },
-    assertAuthenticated: () => ({ userId: 'user-adv-1' }),
-    readJson: async () => ({}),
+    assertAuthenticated: (_req, requireCsrf) => {
+      csrfFlags.push(Boolean(requireCsrf));
+      return { userId: 'user-adv-1' };
+    },
+    readJson: async req => req.body || {},
     readStateEnvelope: async () => ({ state }),
     saveState: async () => {},
     credentialManager,
@@ -180,8 +184,19 @@ test('eproc - Vinculação automática da chave de acesso no processo e no cofre
   assert.equal(handled, true);
   assert.equal(mockRes.statusCode, 200);
   assert.equal(mockRes.data.ok, true);
-  assert.equal(mockRes.data.configured, true, 'Deve auto-vincular a chave do processo ao cofre do usuário');
+  assert.equal(mockRes.data.configured, true, 'GET deve apenas sinalizar a chave legada como presente');
+  assert.equal(await credentialManager.getProcessAccessKey(cnj, 'user-adv-1'), null, 'GET não pode migrar a chave para o cofre');
 
-  // Confirma que agora a chave está salva no cofre seguro
-  assert.equal(await credentialManager.getProcessAccessKey(cnj, 'user-adv-1'), accessKey);
+  // POST com CSRF migra a chave legada para o cofre seguro
+  const postRes = {};
+  const postHandled = await handler(
+    { method: 'POST', body: { processNumber: cnj } },
+    postRes,
+    new URL('http://localhost/api/integrations/tjrs-sidecar/processes/access-key/status')
+  );
+  assert.equal(postHandled, true);
+  assert.equal(postRes.statusCode, 200);
+  assert.equal(postRes.data.configured, true);
+  assert.equal(await credentialManager.getProcessAccessKey(cnj, 'user-adv-1'), accessKey, 'POST deve migrar a chave legada para o cofre');
+  assert.deepEqual(csrfFlags, [false, true], 'POST de migração deve exigir CSRF');
 });

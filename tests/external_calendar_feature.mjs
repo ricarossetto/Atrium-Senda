@@ -192,9 +192,39 @@ const failureFeature = createExternalCalendarFeature({
   secureFetch: async () => ({ ok: true, async json() { return { imported: 2, revision: 'revision-after-no-double-save', message: 'Agenda sintética sincronizada.' }; } }),
   schedule: () => 1
 });
+assert.equal(failureFeature.hasUnsavedChanges(), false, 'Antes de abrir a aba iCal não há rascunho não salvo.');
 assert.equal(await failureFeature.submit({ preventDefault() {} }), true);
 assert.equal(failureStoreSaves, 0, 'A configuração oficial não deve chamar Store.save novamente.');
 assert.equal(failureStoreFlushes, 0, 'A configuração oficial não deve chamar Store.flush novamente.');
+
+{
+  const sharedEls = {
+    configureCalendarButton: makeElement(),
+    googleCalendarBackdrop: makeElement({ hidden: true }),
+    calendarInputUrl: makeElement({ value: '' }),
+    calendarConfigStatus: makeElement({ hidden: true }),
+    modalBackdrop: makeElement({ hidden: true })
+  };
+  let closeCalled = 0;
+  const sharedFeature = createExternalCalendarFeature({
+    store: { state: { settings: { calendarUrl: 'https://saved.example.test/cal.ics' } } },
+    documentRef: { getElementById: id => sharedEls[id] || null, body: { style: {} } },
+    confirmFn: () => { closeCalled++; return true; },
+    schedule: () => 1
+  });
+  assert.equal(sharedFeature.hasUnsavedChanges(), false);
+  sharedEls.calendarInputUrl.value = 'https://stale.example.test/old.ics';
+  assert.equal(sharedFeature.hasUnsavedChanges(), false, 'Sem ter aberto iCal na sessão atual, não pode acusar rascunho antigo.');
+  sharedFeature.open();
+  assert.equal(sharedEls.calendarInputUrl.value, 'https://saved.example.test/cal.ics');
+  sharedEls.calendarInputUrl.value = 'https://draft.example.test/edited.ics';
+  sharedFeature.open();
+  assert.equal(sharedEls.calendarInputUrl.value, 'https://draft.example.test/edited.ics', 'Reabrir a aba iCal no modal já aberto preserva o rascunho.');
+  assert.equal(sharedFeature.hasUnsavedChanges(), true);
+  assert.equal(sharedFeature.requestClose(), true);
+  assert.equal(closeCalled, 1);
+  assert.equal(sharedFeature.hasUnsavedChanges(), false);
+}
 
 assert.deepEqual([...new Set(requests.map(request => request.url))], ['/api/calendar/configure']);
 console.log('✓ Feature modular de Agenda Externa aprovada: módulo nativo, URL compatível, POST exato, persistência, audit, status e sync injetado.');

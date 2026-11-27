@@ -48,7 +48,7 @@ for (const [id, type] of [['auditFilters', 'click'], ['auditSearch', 'input'], [
 
 assert.equal(feature.render().length, 4);
 assert.equal(elements.auditCountBadge.textContent, '4 eventos');
-assert.match(elements.auditList.innerHTML, /Data e Hora[\s\S]*Usuário \/ Agente[\s\S]*Ação Executada[\s\S]*Detalhes do Evento[\s\S]*Status/);
+assert.match(elements.auditList.innerHTML, /Data e Hora[\s\S]*Usuário \/ Agente[\s\S]*Ação Executada[\s\S]*Detalhes do Evento[\s\S]*Situação/);
 assert.match(elements.auditList.innerHTML, /Admin &lt;script&gt;/);
 assert.match(elements.auditList.innerHTML, /Sessão &lt;img src=x&gt;/);
 assert.doesNotMatch(elements.auditList.innerHTML, /Admin <script>|<img src=x>/);

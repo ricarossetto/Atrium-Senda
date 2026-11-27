@@ -380,7 +380,7 @@ try {
   });
 
   assert.deepEqual(characterization.statuses, {
-    configured: { configured: true, chipText: 'Chave Ativa', chipClass: 'status-chip connected', bannerDisplay: 'none' },
+    configured: { configured: true, chipText: 'Chave ativa', chipClass: 'status-chip connected', bannerDisplay: 'none' },
     unconfigured: { configured: false, chipText: 'Chave não configurada', chipClass: 'status-chip warning', bannerDisplay: 'block' },
     failure: { configured: false, chipText: 'Chave não configurada', chipClass: 'status-chip warning', bannerDisplay: 'block' }
   });

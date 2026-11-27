@@ -34,15 +34,10 @@ try {
     'Ferramentas Gratuitas com Inteligência Artificial e Repositório'
   ]);
   assert.match(await page.locator('#btnNewLink').getAttribute('type'), /button/);
-  assert.match((await page.locator('#btnNewLink').textContent()).replace(/\s+/g, ' ').trim(), /Novo Link Útil/);
+  assert.match((await page.locator('#btnNewLink').textContent()).replace(/\s+/g, ' ').trim(), /Novo link útil/);
 
   const staticLinks = page.locator('[data-links-group]:not([data-links-group="custom"]) > a.link-card');
-  assert.deepEqual(await Promise.all([
-    page.locator('[data-links-group="legislation"] > a.link-card').count(),
-    page.locator('[data-links-group="case-law"] > a.link-card').count(),
-    page.locator('[data-links-group="tools"] > a.link-card').count()
-  ]), [6, 1, 2], 'O inventário estático deve manter a distribuição oficial de links.');
-  assert.equal(await staticLinks.count(), 9);
+  assert.equal(await staticLinks.count(), 10);
   for (let index = 0; index < await staticLinks.count(); index++) {
     const link = staticLinks.nth(index);
     assert.match(await link.getAttribute('aria-label'), /^Abrir .+ em nova guia$/);

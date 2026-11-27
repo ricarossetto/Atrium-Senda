@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { prepareUiV2ContactsFixture, prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
+import { fieldLabelIssues, prepareUiV2ContactsFixture, prepareUiV2Page, startUiV2Session } from './ui_v2_helpers.mjs';
 
 console.log('\n===============================================================');
 console.log('  ATRIUM — UI V2 CONTACTS ACCESSIBILITY');
@@ -36,15 +36,9 @@ try {
   await page.waitForFunction(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement));
   assert.equal(await page.evaluate(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement)), true);
   assert.equal(await page.locator('.contact-form-section legend').count(), 5);
-  assert.equal(await page.locator('#modalForm [name]:not(.field-select-native)').evaluateAll(nodes => nodes.every(node => {
-    const label = document.querySelector(`label[for="${node.id}"]`);
-    return Boolean(label && label.textContent.trim());
-  })), true, 'Todos os campos acessíveis devem manter labels conectados.');
-  assert.equal(await page.locator('#modalForm select.field-select-native').evaluateAll(nodes => nodes.every(node => {
-    const proxyId = `${node.id}-busca`;
-    const label = document.querySelector(`label[for="${proxyId}"]`);
-    return Boolean(label && label.textContent.trim());
-  })), true, 'Cada select nativo deve ter label conectado ao campo de busca acessível.');
+  const contactFields = ['name', 'contactRole', 'leadOrigin', 'document', 'rg', 'birthDate', 'profession', 'maritalStatus', 'gender', 'nationality', 'birthPlace', 'motherName', 'fatherName', 'mobile', 'phone', 'email', 'origin', 'city', 'state', 'address', 'district', 'zip', 'notes'];
+  assert.equal(await page.locator('#modalForm [name]').count(), contactFields.length);
+  assert.deepEqual(await fieldLabelIssues(page, contactFields), [], 'Todos os 23 campos devem manter labels conectados.');
   await page.keyboard.press('Escape');
   await page.locator('#modalBackdrop').waitFor({ state: 'hidden' });
   assert.equal(await page.evaluate(() => document.activeElement?.hasAttribute('data-contact-edit')), true);
@@ -99,6 +93,8 @@ try {
   await sheet.waitFor();
   await mobilePage.waitForFunction(() => document.querySelector('#modalBackdrop .modal')?.contains(document.activeElement));
   assert.equal(await mobilePage.locator('#contactInspector').isVisible(), false, 'O edit sheet deve substituir visualmente o inspector, não ficar atrás dele.');
+  // A geometria conferida é a da gaveta assentada: a entrada desliza alguns pixels da direita.
+  await sheet.evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
   const sheetRect = await sheet.evaluate(element => {
     const rect = element.getBoundingClientRect();
     return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: innerWidth, height: innerHeight, formOverflow: element.querySelector('form').scrollWidth - element.querySelector('form').clientWidth };
