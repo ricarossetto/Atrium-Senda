@@ -103,9 +103,10 @@ export function renderContactsPagination({ pagination, escapeHtml }) {
 
 export function roleForPresentation(item) {
   const key = String(item?.contactRole || '').trim();
+  if (!key) return { key: 'sem_papel', label: 'Sem papel' };
   return {
-    key: ROLE_LABELS[key] ? key : (key || 'cliente'),
-    label: ROLE_LABELS[key] || (key || 'Cliente')
+    key,
+    label: ROLE_LABELS[key] || key
   };
 }
 
@@ -122,12 +123,15 @@ function renderContactRecord({ item, selectedId, escapeHtml, formatDate }) {
   const phone = item.mobile || item.phone || '—';
   const registered = item.registeredAt || item.createdAt;
   const origin = originForPresentation(item);
+  const primarySubtitle = item.profession || item.companyProfile?.tradeName || item.companyProfile?.primaryActivity || '';
+  const companyAlert = isInactiveCompanyStatus(item.companyProfile?.status)
+    ? `<span class="contact-company-alert">${escapeHtml(item.companyProfile.status)}</span>` : '';
   return `<button type="button" class="contact-record${selected ? ' is-selected' : ''}" role="listitem" data-contact-id="${escapeHtml(item.id)}" aria-label="Abrir contato ${escapeHtml(item.name || 'sem nome')}, papel ${escapeHtml(role.label)}" aria-current="${selected ? 'true' : 'false'}">
     <span class="contact-role-marker is-${escapeHtml(role.key)}" aria-hidden="true"></span>
     <span class="contact-record-primary">
-      <span class="contact-record-role">${escapeHtml(role.label)}</span>
+      <span class="contact-record-role">${escapeHtml(role.label)}${companyAlert}</span>
       <strong>${escapeHtml(item.name || 'Contato sem nome')}</strong>
-      ${item.profession ? `<small>${escapeHtml(item.profession)}</small>` : ''}
+      ${primarySubtitle ? `<small>${escapeHtml(primarySubtitle)}</small>` : ''}
     </span>
     <span class="contact-record-channel"><strong>${escapeHtml(phone)}</strong><small>${escapeHtml(item.email || '')}</small></span>
     <span class="contact-record-context"><strong>${escapeHtml(location)}</strong><small>${escapeHtml(origin)}</small></span>
@@ -169,7 +173,12 @@ function renderContactInspector({ item, context, escapeHtml, formatDate }) {
         definition('CPF / CNPJ', item.document, escapeHtml),
         definition('RG', item.rg, escapeHtml),
         definition('Nascimento', item.birthDate ? formatDate(item.birthDate) : '', escapeHtml),
-        definition('Estado civil', item.maritalStatus, escapeHtml)
+        definition('Estado civil', item.maritalStatus, escapeHtml),
+        definition('Sexo', item.gender ?? item.eprocPerson?.gender, escapeHtml),
+        definition('Nacionalidade', item.nationality ?? item.eprocPerson?.nationality, escapeHtml),
+        definition('Naturalidade', item.birthPlace ?? item.eprocPerson?.birthPlace, escapeHtml),
+        definition('Nome da mãe', item.motherName ?? item.eprocPerson?.motherName, escapeHtml),
+        definition('Nome do pai', item.fatherName ?? item.eprocPerson?.fatherName, escapeHtml)
       ], 'is-sensitive')}
       ${inspectorSection('Endereço', [
         definition('Endereço cadastrado', address, escapeHtml),
@@ -180,6 +189,8 @@ function renderContactInspector({ item, context, escapeHtml, formatDate }) {
         definition('Fonte', item.source || (item.externalId ? 'Externa' : 'Interna'), escapeHtml),
         definition('Registrado em', formatDate(item.registeredAt || item.createdAt), escapeHtml)
       ])}
+      ${renderContactEprocSection({ item, escapeHtml, formatDate })}
+      ${renderContactCompanySection({ item, escapeHtml, formatDate })}
       ${item.notes ? `<section class="contact-inspector-section contact-notes"><h4>Notas</h4><p>${escapeHtml(item.notes)}</p></section>` : ''}
       ${renderClientFinancialSummary({ context, escapeHtml })}
       ${renderRelatedProcesses({ context, escapeHtml })}
@@ -196,6 +207,165 @@ function renderContactInspector({ item, context, escapeHtml, formatDate }) {
   </aside>`;
 }
 
+function formatEprocDateValue(value, formatDate) {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
+    const formatted = formatDate(text);
+    return formatted && formatted !== '—' ? formatted : text;
+  }
+  return text;
+}
+
+export function renderContactEprocSection({ item, escapeHtml, formatDate }) {
+  const ep = item?.eprocPerson;
+  if (!ep || typeof ep !== 'object') return '';
+
+  const personTypeLabel = ep.personType === 'PJ'
+    ? 'Pessoa Jurídica (PJ)'
+    : ep.personType === 'PF'
+      ? 'Pessoa Física (PF)'
+      : String(ep.personType || '').trim();
+  const syncedLabel = formatEprocDateValue(ep.syncedAt, formatDate);
+  const metaDefinitions = [
+    definition('Tipo de pessoa', personTypeLabel, escapeHtml),
+    definition('Portal eproc', ep.portalHost, escapeHtml),
+    definition('Sincronizado em', syncedLabel, escapeHtml)
+  ].filter(Boolean).join('');
+
+  const addresses = Array.isArray(ep.addressHistory) ? ep.addressHistory.filter(Boolean) : [];
+  const addressBlock = addresses.length
+    ? `<div class="contact-eproc-subsection">
+        <h5>Histórico de endereços</h5>
+        <ul class="contact-eproc-address-list">
+          ${addresses.map(addr => {
+            const addressText = addr.raw || [addr.street, addr.district, addr.zip, addr.city, addr.state].filter(Boolean).join(' · ') || 'Endereço sem descrição';
+            const hasStreet = typeof addr.hasStreet === 'boolean'
+              ? addr.hasStreet
+              : Boolean(addr.street && /[A-Za-zÀ-ÿ0-9]{2,}/.test(String(addr.street)));
+            const includedLabel = addr.includedAtRaw || formatEprocDateValue(addr.includedAt, formatDate);
+            const badgeClass = hasStreet ? 'is-complete' : 'is-incomplete';
+            const badgeText = hasStreet ? 'Endereço completo' : 'Sem logradouro';
+            return `<li class="contact-eproc-address-item">
+              <div class="contact-eproc-address-head">
+                ${addr.type ? `<span class="contact-eproc-address-type">${escapeHtml(addr.type)}</span>` : ''}
+                <span class="contact-eproc-badge ${badgeClass}">${badgeText}</span>
+              </div>
+              <p class="contact-eproc-address-text">${escapeHtml(addressText)}</p>
+              ${includedLabel ? `<small class="contact-eproc-address-date">Incluído em ${escapeHtml(includedLabel)}</small>` : ''}
+            </li>`;
+          }).join('')}
+        </ul>
+      </div>`
+    : '';
+
+  const names = Array.isArray(ep.nameHistory) ? ep.nameHistory.filter(Boolean) : [];
+  const nameBlock = names.length
+    ? `<div class="contact-eproc-subsection">
+        <h5>Histórico de nomes</h5>
+        <ul class="contact-eproc-name-list">
+          ${names.map(entry => {
+            const label = typeof entry === 'string' ? entry : (entry.name || '');
+            if (!String(label).trim()) return '';
+            const included = typeof entry === 'object' ? (entry.includedAtRaw || formatEprocDateValue(entry.includedAt, formatDate)) : '';
+            return `<li><strong>${escapeHtml(label)}</strong>${included ? `<span>Incluído em ${escapeHtml(included)}</span>` : ''}</li>`;
+          }).filter(Boolean).join('')}
+        </ul>
+      </div>`
+    : '';
+
+  if (!metaDefinitions && !addressBlock && !nameBlock) return '';
+
+  return `<section class="contact-inspector-section contact-eproc-section" aria-labelledby="contactEprocHeading">
+    <h4 id="contactEprocHeading">Dados judiciais (eproc)</h4>
+    ${metaDefinitions ? `<dl>${metaDefinitions}</dl>` : ''}
+    ${addressBlock}
+    ${nameBlock}
+  </section>`;
+}
+
+function isCnpjDocument(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').length === 14;
+}
+
+function isInactiveCompanyStatus(status) {
+  const cleanStatus = String(status || '').trim();
+  return Boolean(cleanStatus && !/^ativa$/i.test(cleanStatus));
+}
+
+export function renderContactCompanySection({ item, escapeHtml, formatDate }) {
+  const company = item?.companyProfile && typeof item.companyProfile === 'object' ? item.companyProfile : null;
+  const hasCnpj = isCnpjDocument(item?.document);
+  if (!company && !hasCnpj) return '';
+  if (!company) {
+    return `<section class="contact-inspector-section contact-company-section" aria-labelledby="contactCompanyHeading">
+      <div class="contact-company-header">
+        <h4 id="contactCompanyHeading">Perfil empresarial (CNPJ)</h4>
+        <button type="button" class="v2-button is-secondary contact-company-refresh" data-contact-registry-refresh>Consultar CNPJ</button>
+      </div>
+      <p class="contact-company-placeholder">CNPJ cadastrado sem enriquecimento empresarial. Consulte na CNPJá Open para trazer situação cadastral, CNAE, Simples Nacional e quadro societário.</p>
+    </section>`;
+  }
+
+  const inactive = isInactiveCompanyStatus(company.status);
+  const badgeClass = inactive ? 'is-inactive' : 'is-active';
+  const badgeLabel = [company.status, company.establishmentType].filter(Boolean).join(' · ') || 'CNPJ consultado';
+  const capitalFormatted = Number.isFinite(Number(company.capital)) && Number(company.capital) > 0
+    ? formatMoney(company.capital) : '';
+  const sizeFormatted = company.size
+    ? `${company.size}${company.sizeAcronym && !company.size.toUpperCase().includes(company.sizeAcronym.toUpperCase()) ? ` (${company.sizeAcronym})` : ''}`
+    : '';
+  const cnaeLabel = company.primaryActivity
+    ? `${company.primaryActivityCode ? `${company.primaryActivityCode} · ` : ''}${company.primaryActivity}` : '';
+  const simplesLabel = typeof company.simpleNational === 'boolean'
+    ? (company.simpleNational ? `Sim${company.simpleNationalSince ? ` (desde ${formatEprocDateValue(company.simpleNationalSince, formatDate)})` : ''}` : 'Não')
+    : '';
+  const meiLabel = typeof company.mei === 'boolean' ? (company.mei ? 'Sim' : 'Não') : '';
+
+  const defs = [
+    definition('Nome fantasia', company.tradeName, escapeHtml),
+    definition('Natureza jurídica', company.legalNature, escapeHtml),
+    definition('Porte', sizeFormatted, escapeHtml),
+    definition('Capital social', capitalFormatted, escapeHtml),
+    definition('Abertura', formatEprocDateValue(company.openedAt, formatDate), escapeHtml),
+    definition('Situação em', formatEprocDateValue(company.statusDate, formatDate), escapeHtml),
+    definition('CNAE principal', cnaeLabel, escapeHtml),
+    definition('Simples Nacional', simplesLabel, escapeHtml),
+    definition('MEI', meiLabel, escapeHtml),
+    definition('IBGE', company.municipalityIbgeCode, escapeHtml)
+  ].filter(Boolean).join('');
+
+  const secondaryList = Array.isArray(company.secondaryActivities) && company.secondaryActivities.length
+    ? `<div class="contact-company-subsection"><h5>Atividades secundárias (${company.secondaryActivities.length})</h5><ul class="contact-company-cnae-list">${company.secondaryActivities.slice(0, 5).map(act => `<li>${escapeHtml([act.code, act.description].filter(Boolean).join(' · '))}</li>`).join('')}</ul></div>`
+    : '';
+
+  const taxEvents = Array.isArray(company.taxEvents) && company.taxEvents.length
+    ? `<div class="contact-company-subsection"><h5>Eventos tributários recentes</h5><ul class="contact-company-cnae-list">${company.taxEvents.slice(0, 4).map(ev => `<li>${escapeHtml([ev.regime, formatEprocDateValue(ev.from, formatDate), ev.text].filter(Boolean).join(' · '))}</li>`).join('')}</ul></div>`
+    : '';
+
+  const qsaList = Array.isArray(company.qsa) && company.qsa.length
+    ? `<div class="contact-company-subsection"><h5>Quadro societário (${company.qsa.length})</h5><ul class="contact-company-qsa-list">${company.qsa.map(partner => `<li><strong>${escapeHtml(partner.name)}</strong><span>${escapeHtml([partner.role, partner.personType, partner.since ? `desde ${formatEprocDateValue(partner.since, formatDate)}` : ''].filter(Boolean).join(' · ') || 'Participação registrada')}</span></li>`).join('')}</ul></div>`
+    : '';
+
+  const consultedLabel = formatEprocDateValue(company.consultedAt, formatDate);
+  const provenanceParts = [company.source, consultedLabel ? `consultado em ${consultedLabel}` : ''].filter(Boolean).join(' · ');
+
+  return `<section class="contact-inspector-section contact-company-section" aria-labelledby="contactCompanyHeading">
+    <div class="contact-company-header">
+      <div>
+        <h4 id="contactCompanyHeading">Perfil empresarial (CNPJ)</h4>
+        <span class="contact-company-status-badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
+      </div>
+      ${hasCnpj ? '<button type="button" class="v2-button is-secondary contact-company-refresh" data-contact-registry-refresh>Atualizar via CNPJ</button>' : ''}
+    </div>
+    ${defs ? `<dl>${defs}</dl>` : ''}
+    ${secondaryList}
+    ${taxEvents}
+    ${qsaList}
+    ${provenanceParts ? `<small class="contact-company-provenance">${escapeHtml(provenanceParts)}</small>` : ''}
+  </section>`;
+}
+
 function renderLegalContextSummary({ item, context, escapeHtml, formatDate }) {
   const metrics = context?.metrics;
   if (!metrics) return '';
@@ -206,10 +376,10 @@ function renderLegalContextSummary({ item, context, escapeHtml, formatDate }) {
   return `<section class="contact-legal-summary" aria-labelledby="contactLegalSummaryHeading">
     <div class="contact-context-heading"><div><p>Visão 360</p><h4 id="contactLegalSummaryHeading">Contexto jurídico</h4></div>${context.nextDeadline ? `<span>Próximo prazo ${escapeHtml(formatDate(context.nextDeadline))}</span>` : ''}</div>
     <div class="contact-context-metrics">
-      ${contextMetric(metrics.processes, 'Processos')}
-      ${contextMetric(metrics.openTasks, 'Providências')}
-      ${contextMetric(metrics.publications, 'Publicações')}
-      ${contextMetric(metrics.documents, 'Documentos')}
+      ${contextMetric(metrics.processes, 'Processos', 'Processo')}
+      ${contextMetric(metrics.openTasks, 'Providências', 'Providência')}
+      ${contextMetric(metrics.publications, 'Publicações', 'Publicação')}
+      ${contextMetric(metrics.documents, 'Documentos', 'Documento')}
       ${contextMetric(metrics.appointments, 'Agenda')}
       ${contextMetric(metrics.financial, 'Financeiro')}
     </div>
@@ -217,8 +387,10 @@ function renderLegalContextSummary({ item, context, escapeHtml, formatDate }) {
   </section>`;
 }
 
-function contextMetric(value, label) {
-  return `<div><strong>${Number(value) || 0}</strong><span>${label}</span></div>`;
+// Singular com 1 ("1 Providência", não "1 Providências"); Agenda e Financeiro são invariáveis.
+function contextMetric(value, label, singular = label) {
+  const count = Number(value) || 0;
+  return `<div><strong>${count}</strong><span>${count === 1 ? singular : label}</span></div>`;
 }
 
 function renderClientFinancialSummary({ context, escapeHtml }) {
@@ -301,19 +473,33 @@ function sortButton(field, label, sort) {
 
 function renderEmpty({ hasContacts, query, roleFilter }) {
   const filtered = hasContacts && (Boolean(query) || roleFilter !== 'all');
+  // A mensagem diz o que de fato filtrou e oferece a saída: antes sugeria "selecione outro
+  // papel" mesmo com "Todos" ativo e não tinha botão para limpar a busca.
+  const hint = !filtered
+    ? 'Cadastre a primeira pessoa para iniciar a base de relacionamentos.'
+    : query && roleFilter !== 'all'
+      ? 'Nenhum contato com este papel corresponde à busca.'
+      : query
+        ? 'Nenhum contato corresponde à busca.'
+        : 'Nenhum contato com este papel.';
+  const actions = [
+    filtered && query ? '<button type="button" class="v2-button is-secondary" data-contact-clear-search>Limpar busca</button>' : '',
+    filtered && roleFilter !== 'all' ? '<button type="button" class="v2-button is-secondary" data-contact-role-filter="all">Ver todos</button>' : '',
+    `<button type="button" class="v2-button ${filtered ? 'is-secondary' : 'is-primary'}" data-contact-create>${iconSvg('add')}Novo contato</button>`
+  ].filter(Boolean).join('');
   return `<div class="contact-empty-state">
     <span aria-hidden="true">${iconSvg('contacts')}</span>
     <strong>${filtered ? 'Nenhum contato encontrado.' : 'Nenhum contato cadastrado.'}</strong>
-    <p>${filtered ? 'Revise a busca ou selecione outro papel.' : 'Cadastre a primeira pessoa para iniciar a base de relacionamentos.'}</p>
-    ${filtered ? '' : `<button type="button" class="v2-button is-primary" data-contact-create>${iconSvg('add')}Novo contato</button>`}
+    <p>${hint}</p>
+    <div class="contact-empty-actions">${actions}</div>
   </div>`;
 }
 
 function roleCounts(records) {
   return records.reduce((counts, item) => {
-    const role = String(item.contactRole || '').trim();
-    if (ROLE_LABELS[role]) counts[role] = (counts[role] || 0) + 1;
+    const key = roleForPresentation(item).key;
+    if (ROLE_LABELS[key]) counts[key] = (counts[key] || 0) + 1;
     return counts;
   }, {});
 }
-import { iconSvg } from './icons.js?v=3.3.2';
+import { iconSvg } from './icons.js?v=3.4.0';

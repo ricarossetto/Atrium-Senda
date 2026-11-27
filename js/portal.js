@@ -1,5 +1,5 @@
-import { openLinkedPublication } from './components/linked-publication-reader.js?v=3.3.2';
-import { requestAuthUsers } from './core/auth-users-request.js?v=3.3.2';
+import { openLinkedPublication } from './components/linked-publication-reader.js?v=3.4.0';
+import { requestAuthUsers } from './core/auth-users-request.js?v=3.4.0';
 import {
   ATRIUM_STORE_PERSISTENCE_ERROR_EVENT,
   STORE_PERSISTENCE_CONFLICT_EVENT,
@@ -7,56 +7,61 @@ import {
   Store,
   isoDate,
   uid
-} from './core/store.js?v=3.3.2';
-import { applyClientReconciliation } from './core/client-reconciliation.js?v=3.3.2';
-import { pathForView, publicationIdFromLocation, viewFromHash, viewFromPathname } from './core/routes.js?v=3.3.2';
-import { acknowledgeActivity } from './core/activity-inbox.js?v=3.3.2';
-import { getCompletionNotifications, markCompletionNotificationsRead, refreshCompletionNotifications } from './core/notification-inbox.js?v=3.3.2';
-import { searchContent } from './core/api.js?v=3.3.2';
-import { createReauthRunner } from './core/reauth.js?v=3.3.2';
-import { createGlobalSearch } from './components/global-search.js?v=3.3.2';
-import { createQuickAdd } from './components/quick-add.js?v=3.3.2';
-import { createModal, installModalComboboxes } from './components/modal.js?v=3.3.2';
-import { attachFieldSuggest } from './components/field-suggest.js?v=3.3.2';
-import { fieldContextOptions, teamEmailOptions, teamNameOptions } from './core/field-context.js?v=3.3.2';
-import { installPanelSizeToggle, resetPanelSize } from './components/panel-size.js?v=3.3.2';
-import { createOnboarding } from './components/onboarding.js?v=3.3.2';
-import { mountTotpGuide } from './components/totp-guide.js?v=3.3.2';
-import { createProductTour } from './components/product-tour.js?v=3.3.2';
-import { buildTourSteps, shouldStartTour } from './core/product-tour-steps.js?v=3.3.2';
-import { computeFirstSteps } from './views/ui-v2/first-steps.js?v=3.3.2';
-import { createSetupWizardFeature } from './features/setup-wizard.js?v=3.3.2';
-import { createTheme } from './components/theme.js?v=3.3.2';
-import { Toast } from './components/toast.js?v=3.3.2';
-import { createUiMode } from './views/ui-v2/mode.js?v=3.3.2';
-import { resolveDensityFromPlan } from './views/ui-v2/plan-density.js?v=3.3.2';
-import { hasMonitoredOab } from './views/ui-v2/first-steps.js?v=3.3.2';
-import { transitionPageContent } from './views/ui-v2/page-transition.js?v=3.3.2';
-import { createUiV2Shell } from './views/ui-v2/shell.js?v=3.3.2';
-import { createSystemStatusBar } from './views/ui-v2/system-status.js?v=3.3.2';
-import { officeScopeItems } from './core/office-scope.js?v=3.3.2';
-import { renderFinancialV2Workspace } from './views/ui-v2/financial-presenter.js?v=3.3.2';
+} from './core/store.js?v=3.4.0';
+import { applyClientReconciliation } from './core/client-reconciliation.js?v=3.4.0';
+import { pathForView, publicationIdFromLocation, viewFromHash, viewFromPathname } from './core/routes.js?v=3.4.0';
+import { acknowledgeActivity } from './core/activity-inbox.js?v=3.4.0';
+import { clearCompletionNotifications, getCompletionNotifications, markCompletionNotificationsRead, refreshCompletionNotifications } from './core/notification-inbox.js?v=3.4.0';
+import { resetOfficeDirectoryCache } from './core/office-directory.js?v=3.4.0';
+import { resetTaskTriageForTests } from './core/task-triage.js?v=3.4.0';
+import { resetProcessTriageForTests } from './core/process-triage.js?v=3.4.0';
+import { searchContent } from './core/api.js?v=3.4.0';
+import { createReauthRunner } from './core/reauth.js?v=3.4.0';
+import { createGlobalSearch } from './components/global-search.js?v=3.4.0';
+import { createQuickAdd } from './components/quick-add.js?v=3.4.0';
+import { createModal, installModalComboboxes } from './components/modal.js?v=3.4.0';
+import { attachFieldSuggest } from './components/field-suggest.js?v=3.4.0';
+import { fieldContextOptions, teamEmailOptions, teamNameOptions } from './core/field-context.js?v=3.4.0';
+import { installPanelSizeToggle, resetPanelSize } from './components/panel-size.js?v=3.4.0';
+import { createOnboarding } from './components/onboarding.js?v=3.4.0';
+import { mountTotpGuide } from './components/totp-guide.js?v=3.4.0';
+import { createProductTour } from './components/product-tour.js?v=3.4.0';
+import { buildTourSteps, shouldStartTour } from './core/product-tour-steps.js?v=3.4.0';
+import { computeFirstSteps } from './views/ui-v2/first-steps.js?v=3.4.0';
+import { showSkeleton, revealInto } from './views/ui-v2/skeleton.js?v=3.4.0';
+import { createSetupWizardFeature } from './features/setup-wizard.js?v=3.4.0';
+import { createTheme } from './components/theme.js?v=3.4.0';
+import { Toast } from './components/toast.js?v=3.4.0';
+import { createUiMode } from './views/ui-v2/mode.js?v=3.4.0';
+import { resolveDensityFromPlan } from './views/ui-v2/plan-density.js?v=3.4.0';
+import { hasMonitoredOab } from './views/ui-v2/first-steps.js?v=3.4.0';
+import { transitionPageContent } from './views/ui-v2/page-transition.js?v=3.4.0';
+import { createUiV2Shell } from './views/ui-v2/shell.js?v=3.4.0';
+import { haptic, hapticError, hapticSuccess, installHapticsRuntime } from './core/haptics.js?v=3.4.0';
+import { createSystemStatusBar } from './views/ui-v2/system-status.js?v=3.4.0';
+import { officeScopeItems } from './core/office-scope.js?v=3.4.0';
+import { renderFinancialV2Workspace } from './views/ui-v2/financial-presenter.js?v=3.4.0';
 /* `calculations-presenter.js` é versionado porque passou a carregar a superfície
  * LC 142: sem o `?v=`, a borda do Cloudflare (max-age=14400) continuaria
  * servindo a cópia sem o cenário previdenciário por até 4 h após o deploy. */
-import { renderCalculationsV2Workspace } from './views/ui-v2/calculations-presenter.js?v=3.3.2';
-import { renderDocumentsV2Catalog } from './views/ui-v2/documents-presenter.js?v=3.3.2';
-import { renderLeadsV2Workspace } from './views/ui-v2/leads-presenter.js?v=3.3.2';
-import { renderAssistantV2Presentation } from './views/ui-v2/assistant-presenter.js?v=3.3.2';
-import { renderPromptsV2Presentation } from './views/ui-v2/prompts-presenter.js?v=3.3.2';
-import { renderMonitoringV2Presentation, renderDjenCaptureErrorsV2Presentation } from './views/ui-v2/monitoring-presenter.js?v=3.3.2';
-import { createJudicialIntegrationsPresenter } from './views/ui-v2/judicial-integrations-presenter.js?v=3.3.2';
-import { createEmailCalendarPresenter } from './views/ui-v2/email-calendar-presenter.js?v=3.3.2';
-import { createConfigurationAdminPresenter } from './views/ui-v2/configuration-presenter.js?v=3.3.2';
-import { createImporterPresenter } from './views/ui-v2/importer-presenter.js?v=3.3.2';
-import { createAuditPresenter } from './views/ui-v2/audit-presenter.js?v=3.3.2';
-import { createAgendaFeature } from './features/agenda.js?v=3.3.2';
-import { createAssistantFeature } from './features/assistant.js?v=3.3.2';
-import { createAuditFeature } from './features/audit.js?v=3.3.2';
-import { createConfigurationFeature } from './features/configuration.js?v=3.3.2';
-import { createContactsFeature } from './features/contacts.js?v=3.3.2';
-import { createDashboardFeature } from './features/dashboard.js?v=3.3.2';
-import { treatPublicationForCompletedTask } from './features/publication-task-completion.js?v=3.3.2';
+import { renderCalculationsV2Workspace } from './views/ui-v2/calculations-presenter.js?v=3.4.0';
+import { renderDocumentsV2Catalog } from './views/ui-v2/documents-presenter.js?v=3.4.0';
+import { renderLeadsV2Workspace } from './views/ui-v2/leads-presenter.js?v=3.4.0';
+import { renderAssistantV2Presentation } from './views/ui-v2/assistant-presenter.js?v=3.4.0';
+import { renderPromptsV2Presentation } from './views/ui-v2/prompts-presenter.js?v=3.4.0';
+import { renderMonitoringV2Presentation, renderDjenCaptureErrorsV2Presentation } from './views/ui-v2/monitoring-presenter.js?v=3.4.0';
+import { createJudicialIntegrationsPresenter } from './views/ui-v2/judicial-integrations-presenter.js?v=3.4.0';
+import { createEmailCalendarPresenter } from './views/ui-v2/email-calendar-presenter.js?v=3.4.0';
+import { createConfigurationAdminPresenter } from './views/ui-v2/configuration-presenter.js?v=3.4.0';
+import { createImporterPresenter } from './views/ui-v2/importer-presenter.js?v=3.4.0';
+import { createAuditPresenter } from './views/ui-v2/audit-presenter.js?v=3.4.0';
+import { createAgendaFeature } from './features/agenda.js?v=3.4.0';
+import { createAssistantFeature } from './features/assistant.js?v=3.4.0';
+import { createAuditFeature } from './features/audit.js?v=3.4.0';
+import { createConfigurationFeature } from './features/configuration.js?v=3.4.0';
+import { createContactsFeature } from './features/contacts.js?v=3.4.0';
+import { createDashboardFeature } from './features/dashboard.js?v=3.4.0';
+import { treatPublicationForCompletedTask } from './features/publication-task-completion.js?v=3.4.0';
 import {
   DASHBOARD_WIDGETS,
   emptyDashboardWidgetPreferences,
@@ -66,28 +71,28 @@ import {
   writeDashboardWidgetPreferencesToState,
   writeUiDensityPreference,
   dashboardWorkspaceMode
-} from './core/dashboard-widgets.js?v=3.3.2';
-import { createDocumentsFeature } from './features/documents.js?v=3.3.2';
-import { createEmailIntegrationFeature } from './features/email-integration.js?v=3.3.2';
-import { createExternalCalendarFeature } from './features/external-calendar.js?v=3.3.2';
-import { createGoogleCalendarFeature } from './features/google-calendar.js?v=3.3.2';
-import { createFinancialFeature } from './features/financial.js?v=3.3.2';
-import { createCalculationsFeature } from './features/calculations.js?v=3.3.2';
-import { createImporterFeature } from './features/importer.js?v=3.3.2';
-import { createErrorReportFeature } from './features/error-report.js?v=3.3.2';
-import { createJudicialIntegrationsFeature } from './features/judicial-integrations.js?v=3.3.2';
-import { createInpiIntegrationFeature } from './features/inpi-integration.js?v=3.3.2';
-import { createLeadsFeature } from './features/leads.js?v=3.3.2';
-import { createLinksFeature } from './features/links.js?v=3.3.2';
-import { createMonitoringFeature } from './features/monitoring.js?v=3.3.2';
-import { createOfficeIdentityFeature } from './features/office-identity.js?v=3.3.2';
-import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js?v=3.3.2';
-import { publicationsInRecentScope, resolveIntimationId } from './core/publication-scope.js?v=3.3.2';
-import { createProcessesFeature } from './features/processes.js?v=3.3.2';
-import { createPromptsFeature } from './features/prompts.js?v=3.3.2';
-import { createSystemAdminFeature } from './features/system-admin.js?v=3.3.2';
-import { createTasksFeature } from './features/tasks.js?v=3.3.2';
-import { createReportsFeature } from './features/reports.js?v=3.3.2';
+} from './core/dashboard-widgets.js?v=3.4.0';
+import { createDocumentsFeature } from './features/documents.js?v=3.4.0';
+import { createEmailIntegrationFeature } from './features/email-integration.js?v=3.4.0';
+import { createExternalCalendarFeature } from './features/external-calendar.js?v=3.4.0';
+import { createGoogleCalendarFeature } from './features/google-calendar.js?v=3.4.0';
+import { createFinancialFeature } from './features/financial.js?v=3.4.0';
+import { createCalculationsFeature } from './features/calculations.js?v=3.4.0';
+import { createImporterFeature } from './features/importer.js?v=3.4.0';
+import { createErrorReportFeature } from './features/error-report.js?v=3.4.0';
+import { createJudicialIntegrationsFeature } from './features/judicial-integrations.js?v=3.4.0';
+import { createInpiIntegrationFeature } from './features/inpi-integration.js?v=3.4.0';
+import { createLeadsFeature } from './features/leads.js?v=3.4.0';
+import { createLinksFeature } from './features/links.js?v=3.4.0';
+import { createMonitoringFeature } from './features/monitoring.js?v=3.4.0';
+import { createOfficeIdentityFeature } from './features/office-identity.js?v=3.4.0';
+import { classifyIntimationAct, createPublicationsFeature } from './features/publications.js?v=3.4.0';
+import { activeIntimations, publicationsInRecentScope, resolveIntimationId } from './core/publication-scope.js?v=3.4.0';
+import { createProcessesFeature } from './features/processes.js?v=3.4.0';
+import { createPromptsFeature } from './features/prompts.js?v=3.4.0';
+import { createSystemAdminFeature } from './features/system-admin.js?v=3.4.0';
+import { createTasksFeature } from './features/tasks.js?v=3.4.0';
+import { createReportsFeature } from './features/reports.js?v=3.4.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 (() => {
@@ -125,11 +130,40 @@ const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 
   const normalizeText = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const formatDate = value => {
     if (!value) return '—';
-    const [year, month, day] = String(value).slice(0, 10).split('-').map(Number);
-    if (!year || !month || !day) return value;
-    return new Intl.DateTimeFormat('pt-BR').format(new Date(year, month - 1, day));
+    const raw = String(value).trim();
+    if (!raw || raw === '—' || raw === '-') return '—';
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+    if (dateOnly) {
+      const date = new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+      return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat('pt-BR').format(date);
+    }
+    const brDate = /^(\d{2})\/(\d{2})\/(\d{4})(?:[\sT]+(?:às\s+)?(\d{2}):(\d{2})(?::(\d{2}))?)?$/i.exec(raw);
+    if (brDate) {
+      const day = Number(brDate[1]);
+      const month = Number(brDate[2]);
+      const year = Number(brDate[3]);
+      const date = new Date(year, month - 1, day);
+      if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
+        return new Intl.DateTimeFormat('pt-BR').format(date);
+      }
+      return '—';
+    }
+    const sqlDate = /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(raw);
+    if (sqlDate) {
+      const date = new Date(Number(sqlDate[1]), Number(sqlDate[2]) - 1, Number(sqlDate[3]), Number(sqlDate[4]), Number(sqlDate[5]), Number(sqlDate[6] || 0));
+      return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat('pt-BR').format(date);
+    }
+    // Data ilegível nunca volta como texto cru: o retorno vai para HTML em vários módulos.
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('pt-BR').format(date);
   };
-  const formatDateTime = value => value ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : 'Nunca';
+  const formatDateTime = value => {
+    if (!value) return 'Nunca';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(date);
+  };
 
   function addDays(isoString, days) {
     if (!isoString) return '';
@@ -162,11 +196,33 @@ const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 
   // specs/human-deadline-policy.md). A data de publicação do DJEN é derivada no
   // backend (`lib/core/business-days.mjs`), apenas informativa.
 
+  const PT_BR_COLLATOR = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
+  let cachedDaysUntilKey = '';
+  let cachedTodayMidnightMs = 0;
+
+  const todayMidnightMs = () => {
+    const now = new Date();
+    const key = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+    if (key !== cachedDaysUntilKey) {
+      cachedDaysUntilKey = key;
+      cachedTodayMidnightMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    }
+    return cachedTodayMidnightMs;
+  };
+
   const daysUntil = value => {
     if (!value) return Infinity;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
-    return Math.ceil((date - today) / 86400000);
+    const raw = String(value).slice(0, 10);
+    let targetMs;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const y = Number(raw.slice(0, 4));
+      const m = Number(raw.slice(5, 7));
+      const d = Number(raw.slice(8, 10));
+      targetMs = new Date(y, m - 1, d).getTime();
+    } else {
+      targetMs = new Date(`${raw}T00:00:00`).getTime();
+    }
+    return Math.ceil((targetMs - todayMidnightMs()) / 86400000);
   };
 
   function sortRecords(records, sortConfig) {
@@ -187,7 +243,7 @@ const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 
       if (valA === undefined || valA === null || valA === '') return 1;
       if (valB === undefined || valB === null || valB === '') return -1;
       if (typeof valA === 'string' && typeof valB === 'string') {
-        return valA.localeCompare(valB, 'pt-BR', { numeric: true, sensitivity: 'base' }) * modifier;
+        return PT_BR_COLLATOR.compare(valA, valB) * modifier;
       }
       if (valA < valB) return -1 * modifier;
       if (valA > valB) return 1 * modifier;
@@ -431,6 +487,7 @@ function getAssistantContextSearchComponent() {
       // Ativação do Atrium IA no walkthrough: mesma rota oficial do painel (admin + CSRF).
       onActivateAi: enabled => getPublicationsFeature().setAiClassifierEnabled(enabled),
       isAiEnabled: () => getPublicationsFeature().aiClassifierEnabled,
+      isAiIncluded: () => false,
       onOpenTour: () => App.startProductTour()
     });
     return onboardingComponent;
@@ -458,7 +515,7 @@ function getAssistantContextSearchComponent() {
         });
       },
       onFinish: outcome => {
-        if (outcome !== 'guided') App.markProductTourDone();
+        App.markProductTourDone();
         if (outcome === 'skipped') App.toast('Você pode rever o tour no menu de três pontos, no topo da tela.');
       },
       onChoice: (step, value) => (step === 'a1' ? App.saveCertificateAnswer(value) : undefined),
@@ -469,7 +526,7 @@ function getAssistantContextSearchComponent() {
 
   function getSetupWizardFeature() {
     setupWizardComponent ||= createSetupWizardFeature({
-      iconSvg: name => `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${name}"></use></svg>`,
+      iconSvg: name => `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-${name}"></use></svg>`,
       onComplete: profile => App.completeSetupWizard(profile),
       onOpenPanel: async (panel, profile) => {
         if (!await App.completeSetupWizard(profile)) return false;
@@ -518,13 +575,14 @@ function getAssistantContextSearchComponent() {
     uiShellComponent ||= createUiV2Shell({
       getNotifications: () => {
         const today = isoDate();
-        const publications = publicationsInRecentScope(Store.state.intimations).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').map(item => ({ target: 'intimation', id: item.id, title: item.title || 'Publicação pendente', detail: `${item.process || 'Sem processo'} · revisar triagem` }));
-        const tasks = (Store.state.tasks || []).filter(item => item.active !== false && !TERMINAL_STATUSES.includes(item.status) && (item.fatalDeadline || item.deadline) && (item.fatalDeadline || item.deadline) < today).map(item => ({ target: 'task', id: item.id, title: item.title || 'Tarefa atrasada', detail: `${item.process || item.client || 'Sem vínculo'} · prazo informado ${item.fatalDeadline || item.deadline}` }));
+        const publications = publicationsInRecentScope(activeIntimations(Store.state.intimations)).filter(item => (item.treatmentStatus || 'untreated') === 'untreated').map(item => ({ target: 'intimation', id: item.id, title: item.title || 'Publicação pendente', detail: `${item.process || 'Sem processo'} · revisar triagem` }));
+        const tasks = (Store.state.tasks || []).filter(item => item && item.active !== false && !item.absorbedInto && !TERMINAL_STATUSES.includes(item.status) && (item.fatalDeadline || item.deadline) && (item.fatalDeadline || item.deadline) < today).map(item => ({ target: 'task', id: item.id, title: item.title || 'Tarefa atrasada', detail: `${item.process || item.client || 'Sem vínculo'} · prazo informado ${item.fatalDeadline || item.deadline}` }));
         return [...getCompletionNotifications(), ...publications, ...tasks];
       },
       onNotificationsOpen: () => { void markCompletionNotificationsRead(); },
       onNotificationSelect: selection => App.handleGlobalSearchSelection(selection)
     });
+    installHapticsRuntime();
     return uiShellComponent;
   }
 
@@ -612,7 +670,13 @@ function getAssistantContextSearchComponent() {
       escapeHtml,
       showToast: (message, type) => App.toast(message, type),
       onRenderMonitoring: () => App.renderMonitoring(),
-      presentation: getConfigurationAdminPresenter()
+      presentation: getConfigurationAdminPresenter(),
+      lookupCnpj: async value => {
+        const response = await window.AtriumAuth.secureFetch(`/api/registry/cnpj?value=${encodeURIComponent(value)}`, { headers: { Accept: 'application/json' } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Não foi possível consultar o CNPJ informado.');
+        return payload;
+      }
     });
     return officeIdentityFeature;
   }
@@ -690,9 +754,11 @@ function getAssistantContextSearchComponent() {
       // "V" de tratar publicação no meio do trabalho.
       onSyncAppState: async () => {
         try {
-          await Store.flush().catch(() => {});
-          await Store.load();
-          App.renderAll();
+          const flushed = await Store.flush().catch(() => false);
+          if (flushed) {
+            const loaded = await Store.load();
+            if (loaded) App.renderAll();
+          }
         } catch { /* mantém a tela atual */ }
       }
     });
@@ -767,8 +833,8 @@ function getAssistantContextSearchComponent() {
       showToast: (message, type) => App.toast(message, type),
       secureFetch: (...args) => window.AtriumAuth.secureFetch(...args),
       requestAuthUsers,
-      getLinkedTasks: processNumber => Store.state.tasks.filter(task => task.active !== false && processNumber && String(task.process || '').trim() === processNumber),
-      getLinkedIntimations: processNumber => Store.state.intimations.filter(item => processNumber && String(item.process || '').trim() === processNumber),
+      getLinkedTasks: processNumber => Store.state.tasks.filter(task => task && task.active !== false && !task.absorbedInto && processNumber && String(task.process || '').trim() === processNumber),
+      getLinkedIntimations: processNumber => activeIntimations(Store.state.intimations).filter(item => processNumber && String(item.process || '').trim() === processNumber),
       isTerminalStatus: status => TERMINAL_STATUSES.includes(status),
       openOwnerDocuments: (ownerType, ownerId, documentId) => App.openOwnerDocuments(ownerType, ownerId, documentId),
       openClient: process => {
@@ -939,7 +1005,7 @@ function getAssistantContextSearchComponent() {
       getContextCandidates: () => ({
         processes: officeScopeItems(Store.state.processes),
         documents: officeScopeItems(Store.state.documents),
-        intimations: officeScopeItems(Store.state.intimations),
+        intimations: officeScopeItems(activeIntimations(Store.state.intimations)),
         contacts: officeScopeItems(Store.state.contacts)
       }),
       getLegalSkills: () => window.CODEX_LEGAL_SKILLS || [],
@@ -1024,12 +1090,18 @@ function getAssistantContextSearchComponent() {
       showToast: (message, type) => App.toast(message, type),
       audit: (action, detail) => Store.audit(action, detail),
       onSyncAll: options => App.syncAll(options),
+      onStateChanged: async () => {
+        const expectedFingerprint = Store.persistenceFingerprint();
+        if (expectedFingerprint !== Store.persistedFingerprint) return;
+        if (await Store.load({ expectedFingerprint, expectedRevision: Store.revision })) App.renderAll();
+      },
       onReportError: input => App.reportError(input),
       onEprocStatus: ({ state, detail, percent, determinate, onActivate, owner }) => {
         getSystemStatusComponent().setState(state, detail, percent, { determinate, onActivate, owner });
       },
       presentation: judicialIntegrationsPresenter,
-      transitionPageContent
+      transitionPageContent,
+      skeleton: { show: showSkeleton, revealInto }
     });
     return judicialIntegrationsFeature;
   }
@@ -1057,6 +1129,14 @@ function getAssistantContextSearchComponent() {
       windowRef: window,
       secureFetch: (...args) => window.AtriumAuth.secureFetch(...args),
       showToast: (message, type) => App.toast(message, type),
+      hasExternalCalendarConfigured: () => Boolean(
+        Store.state.settings?.calendarUrl
+        || Store.state.settings?.externalCalendarUrl
+        || Store.state.settings?.calendarConfigured
+      ),
+      hasUnsavedIcalChanges: () => getExternalCalendarFeature().hasUnsavedChanges(),
+      onRequestClose: () => getExternalCalendarFeature().requestClose(),
+      onShowIcalTab: () => getExternalCalendarFeature().open(),
       // Traz o que veio da agenda pessoal, sem passar por cima do que está sendo editado na tela.
       onStateChanged: async () => {
         const expectedFingerprint = Store.persistenceFingerprint();
@@ -1077,6 +1157,8 @@ function getAssistantContextSearchComponent() {
       secureFetch: (...args) => window.AtriumAuth.secureFetch(...args),
       showToast: (message, type) => App.toast(message, type),
       onSyncAll: options => App.syncAll(options),
+      onActivateIcalTab: () => getGoogleCalendarFeature().activateTab('ical'),
+      onStatusChange: () => getGoogleCalendarFeature().refreshCardSummary(),
       presentation: emailCalendarPresenter
     });
     return externalCalendarFeature;
@@ -1167,7 +1249,7 @@ function getAssistantContextSearchComponent() {
       documentRef: document,
       windowRef: window,
       secureFetch: (...args) => window.AtriumAuth.secureFetch(...args),
-      fetchFn: (...args) => window.fetch(...args),
+      fetchFn: (...args) => (window.AtriumAuth?.secureFetch ? window.AtriumAuth.secureFetch(...args) : window.fetch(...args)),
       escapeHtml,
       showToast: (message, type) => App.toast(message, type),
       openModal: (...args) => App.openModal(...args),
@@ -1303,7 +1385,7 @@ function getAssistantContextSearchComponent() {
       await this.loadAuthUsers({ shared: true });
       void refreshCompletionNotifications();
       window.setInterval(() => {
-        if (!document.hidden) void refreshCompletionNotifications();
+        if (!document.hidden && window.AtriumAuth?.authenticated) void refreshCompletionNotifications();
       }, 60_000);
       // Só quem administra inicia coleta. O servidor recusa; aqui só esconde o que não funcionaria.
       document.documentElement.dataset.canCollect = String(this.canStartCollection());
@@ -1331,7 +1413,7 @@ function getAssistantContextSearchComponent() {
       // explícita no botão Sincronizar. Recarregar a página nunca sincroniza.
       if (window.sessionStorage.getItem('atrium_initial_sync_pending') === 'true') {
         window.sessionStorage.removeItem('atrium_initial_sync_pending');
-        void this.syncAll({ silent: false, trigger: 'manual' });
+        void this.runFirstSync();
       }
 
       const initialFromPath = viewFromPathname(window.location.pathname);
@@ -1417,9 +1499,9 @@ function getAssistantContextSearchComponent() {
         getUiShellComponent().handleKeydown(event);
         if (event.defaultPrevented) return;
         if (event.key === 'Escape') {
-          this.closeModal();
+          getModalComponent().requestClose();
           this.closeJudicialSetup();
-          this.closeOfficeSetup();
+          getOfficeIdentityFeature().requestClose();
           this.closeCalendarConfigModal();
           this.closeGeminiKeyModal();
           this.closeFinancialEntryModal();
@@ -1530,7 +1612,7 @@ function getAssistantContextSearchComponent() {
       if (this.currentView === 'contacts' && view !== 'contacts') getContactsFeature().closeInspector({ restoreFocus: false });
       this.currentView = view;
       document.querySelectorAll('.view').forEach(element => element.classList.toggle('active', element.id === `view-${view}`));
-      const hubSubviewParent = ({ monitoring: 'integrations', importer: 'integrations', audit: 'configuration' })[view] || view;
+      const hubSubviewParent = ({ monitoring: 'integrations', importer: 'integrations', audit: 'configuration', prompts: 'assistant' })[view] || view;
       document.querySelectorAll('.nav-item[data-view]').forEach(element => {
         const isActive = element.dataset.view === hubSubviewParent;
         element.classList.toggle('active', isActive);
@@ -1564,11 +1646,20 @@ function getAssistantContextSearchComponent() {
       getUiShellComponent().syncMobileNavigation(view);
       getUiShellComponent().closeNavigation({ restoreFocus: false });
       if (navigationHadFocus) document.getElementById('appMain')?.focus({ preventScroll: true });
-      const mobileBodyScroller = window.innerWidth <= 860 && document.documentElement.dataset.ui === 'v2';
-      (mobileBodyScroller ? document.body : window).scrollTo({ top: 0, behavior: mobileBodyScroller ? 'instant' : window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'instant' });
     },
+    // Identidade, contadores e a view ativa atualizam aqui; o corpo completo do painel só
+    // renderiza quando `dashboard` está em exibição (switchView renderiza ao entrar).
     renderAll() {
-      ['renderOfficeIdentity', 'renderDashboard', 'renderInbox', 'renderKanban', 'renderProcesses', 'renderContacts', 'renderLeads', 'renderFinancial', 'renderReports', 'renderDocuments', 'renderAgenda', 'renderMonitoring', 'renderPrompts', 'renderLinks', 'renderConfiguration', 'renderAudit'].forEach(method => {
+      const viewRenderers = {
+        inbox: 'renderInbox', kanban: 'renderKanban', processes: 'renderProcesses', contacts: 'renderContacts',
+        leads: 'renderLeads', financial: 'renderFinancial', reports: 'renderReports', documents: 'renderDocuments',
+        agenda: 'renderAgenda', monitoring: 'renderMonitoring', prompts: 'renderPrompts', links: 'renderLinks',
+        configuration: 'renderConfiguration', audit: 'renderAudit'
+      };
+      const methods = ['renderOfficeIdentity', this.currentView === 'dashboard' ? 'renderDashboard' : 'renderDashboardMetrics'];
+      if (viewRenderers[this.currentView]) methods.push(viewRenderers[this.currentView]);
+      methods.forEach(method => {
         try { this[method]?.(); } catch (error) { console.error(`Falha em ${method}:`, error); }
       });
     },
@@ -1586,6 +1677,44 @@ function getAssistantContextSearchComponent() {
     markProductTourDone() {
       sessionStorage.removeItem('atrium_pending_product_tour');
       try { localStorage.setItem(this.productTourUserKey(), 'true'); } catch { /* preferência opcional */ }
+      void this.saveOnboardingMarker('productTour');
+    },
+    /** Marcação de primeiro acesso do usuário guardada no servidor (vale em qualquer navegador). */
+    serverOnboarding() {
+      const onboarding = window.AtriumAuth?.currentUser?.onboarding;
+      return onboarding && typeof onboarding === 'object' ? onboarding : null;
+    },
+    /** Grava a marcação no perfil do usuário. A cópia local continua só como atalho. */
+    async saveOnboardingMarker(marker) {
+      const field = marker === 'productTour' ? 'productTourDone' : 'firstStepsHidden';
+      const auth = window.AtriumAuth;
+      if (!auth?.authenticated || typeof auth.secureFetch !== 'function') return false;
+      if (this.serverOnboarding()?.[field] === true) return true;
+      // Uma gravação por marcação de cada vez: renderizações seguidas não repetem o envio.
+      this.onboardingSaves ||= new Map();
+      if (this.onboardingSaves.has(marker)) return this.onboardingSaves.get(marker);
+      const saving = this.sendOnboardingMarker(auth, marker).finally(() => this.onboardingSaves.delete(marker));
+      this.onboardingSaves.set(marker, saving);
+      return saving;
+    },
+    async sendOnboardingMarker(auth, marker) {
+      try {
+        const response = await auth.secureFetch('/api/auth/onboarding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ marker })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload?.onboarding) return false;
+        if (auth.currentUser) auth.currentUser.onboarding = { ...payload.onboarding };
+        return true;
+      } catch {
+        // Sem rede a marcação fica só neste navegador; a próxima abertura tenta de novo.
+        return false;
+      }
+    },
+    markFirstStepsHidden() {
+      return this.saveOnboardingMarker('firstSteps');
     },
     setupStatus: {},
     /** Situação do que falta configurar. Falha na consulta só deixa o item como pendente. */
@@ -1635,7 +1764,6 @@ function getAssistantContextSearchComponent() {
       }
     },
     async startProductTour() {
-      getOnboardingComponent().close();
       await this.loadSetupStatus();
       return getProductTour().start();
     },
@@ -1643,19 +1771,24 @@ function getAssistantContextSearchComponent() {
       if (sessionStorage.getItem('atrium_pending_setup_wizard') === 'true'
         || sessionStorage.getItem('atrium_pending_a1_onboarding') === 'true') return;
       if (document.querySelector('.modal-backdrop:not(.hidden)')) return;
-      let doneForUser = false;
+      // A fonte da decisão é o perfil do usuário no servidor; só a marcação local vinculada
+      // a este usuário sobe ao perfil (evita que preferência global contamine outra conta).
+      let doneForUser = this.serverOnboarding()?.productTourDone === true;
       let seenBefore = false;
+      let browserOff = false;
+      let userLocalDone = false;
       try {
-        if (localStorage.getItem('atrium_product_tour_off') === 'true') return;
-        doneForUser = localStorage.getItem(this.productTourUserKey()) === 'true';
+        browserOff = localStorage.getItem('atrium_product_tour_off') === 'true';
+        userLocalDone = localStorage.getItem(this.productTourUserKey()) === 'true';
         seenBefore = Boolean(localStorage.getItem('atrium_tour_seen') || localStorage.getItem('jurisflow_tour_seen'));
-      } catch { return; }
+      } catch { /* sem armazenamento local, vale só a marcação do servidor */ }
+      if (userLocalDone && !doneForUser) void this.saveOnboardingMarker('productTour');
+      if (browserOff) return;
+      doneForUser ||= userLocalDone;
       if (!shouldStartTour({ pending: sessionStorage.getItem('atrium_pending_product_tour') === 'true', doneForUser, seenBefore })) return;
       this.startProductTour();
     },
     openGuidedTour(force = false) {
-      const productTour = getProductTour();
-      if (productTour.isOpen()) productTour.finish('guided');
       getOnboardingComponent().open(force);
     },
     closeGuidedTour() {
@@ -1986,6 +2119,7 @@ function getAssistantContextSearchComponent() {
       open();
     },
     renderDashboard() { return getDashboardFeature().render(); },
+    renderDashboardMetrics() { return getDashboardFeature().renderMetrics(); },
     renderMetrics() { return getDashboardFeature().renderMetrics(); },
     renderPublicationsMetrics() {
       return getPublicationsFeature().renderMetrics();
@@ -2391,8 +2525,8 @@ function getAssistantContextSearchComponent() {
             await onSubmit(data);
             return;
           }
-          this.closeModal();
-          void Promise.resolve().then(() => onSubmit(data)).catch(error => this.toast(error.message || 'Não foi possível salvar o registro.', 'error'));
+          const result = await onSubmit(data);
+          if (result !== false && result !== null) this.closeModal();
           return;
         }
         if (this.modalMode.mode === 'intimationDetail') {
@@ -2539,7 +2673,7 @@ function getAssistantContextSearchComponent() {
         if (!await Store.flush()) throw new Error('As alterações locais ainda não foram salvas. Tente de novo em instantes.');
         await Store.load();
         this.renderAll();
-        this.toast('Dados atualizados. A coleta nos tribunais é manual e só pode ser iniciada por quem administra o escritório.');
+        this.toast('Dados atualizados. A coleta nos tribunais roda nos ciclos automáticos e por quem administra o escritório.');
         return true;
       } catch (error) {
         this.toast(error.message || 'Não foi possível atualizar. Tente de novo em instantes.', 'error');
@@ -2547,6 +2681,17 @@ function getAssistantContextSearchComponent() {
       } finally {
         this.syncInProgress = false;
       }
+    },
+    // Primeira busca da OAB do escritório recém-criado. O "Comece por aqui" mostra o
+    // andamento e o resultado real (publicações encontradas, nenhuma ou falha); vale só
+    // nesta sessão e não muda a regra de quando a coleta roda.
+    async runFirstSync() {
+      this.firstSync = { status: 'running' };
+      this.renderDashboard?.();
+      let ok = false;
+      try { ok = await this.syncAll({ silent: false, trigger: 'manual' }); } catch { ok = false; }
+      this.firstSync = ok === false ? { status: 'failed', message: '' } : { status: 'done' };
+      this.renderDashboard?.();
     },
     async syncAll({ silent = false, trigger = 'manual' } = {}) {
       if (this.syncInProgress) return false;
@@ -2574,7 +2719,7 @@ function getAssistantContextSearchComponent() {
                 }
               }
             } catch { /* polling silencioso */ } finally { pollBusy = false; }
-          }, 350);
+          }, 750);
         }
         const response = await window.AtriumAuth.secureFetch('/api/sync', {
           method: 'POST',
@@ -2669,8 +2814,16 @@ function getAssistantContextSearchComponent() {
     },
     async importJson(file) {
       if (!file) return;
+      let payload;
       try {
-        const payload = JSON.parse(await file.text());
+        payload = JSON.parse(await file.text());
+      } catch {
+        this.toast('O arquivo não contém um JSON válido.', 'error');
+        document.getElementById('jsonImportInput').value = '';
+        return;
+      }
+      const snapshot = JSON.parse(JSON.stringify(Store.state));
+      try {
         let imported = 0;
         const defaultTerm = Store.state.terms[0] ? `${Store.state.terms[0].name} · ${Store.state.terms[0].registration}` : 'Advogado(a) Titular';
         if (Array.isArray(payload)) {
@@ -2713,7 +2866,11 @@ function getAssistantContextSearchComponent() {
         Store.audit('Arquivo importado', `${plural(imported, 'registro adicionado', 'registros adicionados')}.`);
         if (!await Store.flush()) throw new Error('Os registros foram lidos, mas não puderam ser persistidos. Tente novamente.');
         this.renderAll(); this.toast(`${plural(imported, 'registro importado', 'registros importados')}.`, 'success');
-      } catch { this.toast('O arquivo não contém um JSON válido.', 'error'); }
+      } catch (error) {
+        Store.state = snapshot;
+        this.renderAll();
+        this.toast(error?.message || 'Não foi possível importar o arquivo.', 'error');
+      }
       document.getElementById('jsonImportInput').value = '';
     },
     exportJson(data, filename) {
@@ -2721,27 +2878,91 @@ function getAssistantContextSearchComponent() {
       const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url);
     },
     toast(message, type = '', action = null) {
+      if (type === 'success') hapticSuccess();
+      else if (type === 'error') hapticError();
+      else if (type === 'warning') haptic(10);
       return Toast.show(message, type, action);
     }
   };
 
   let initialized = false;
+  let sessionCleared = false;
+  const clearClientSession = () => {
+    sessionCleared = true;
+    Store.clearSession({ scrub: true });
+    clearCompletionNotifications();
+    resetOfficeDirectoryCache();
+    resetTaskTriageForTests();
+    resetProcessTriageForTests();
+    fieldTeamMembersAt = 0;
+    try { getTasksFeature().stopTimeSheet(); } catch {}
+    try { assistantFeature?.clearConversation?.({ silent: true }); } catch {}
+    try { App.closeModal(); } catch {}
+    try { getOfficeIdentityFeature().close(); } catch {}
+  };
+  window.addEventListener('keller:logged-out', clearClientSession);
+  window.addEventListener('keller:auth-expired', () => {
+    clearClientSession();
+    getSystemStatusComponent().setState('reauth', 'Sessão expirada. Entre novamente para continuar.');
+  });
+  // No celular a barra de situação já mostra o erro, durável, logo abaixo do topo; o toast
+  // igual caía por cima dela. Na tela larga os dois continuam.
+  const statusBarCarriesError = () => Boolean(window.matchMedia?.('(max-width: 860px)').matches)
+    && document.documentElement.dataset.ui === 'v2' && Boolean(document.getElementById('systemStatusBar'));
   window.addEventListener(STORE_PERSISTENCE_CONFLICT_EVENT, event => {
     getSystemStatusComponent().setState('conflict', event.detail?.message);
-    App.toast(event.detail?.message || 'Não foi possível salvar: o mesmo dado mudou em outro lugar. Suas alterações continuam nesta tela. Copie o que precisar e recarregue a página.', 'error');
+    if (!statusBarCarriesError()) App.toast(event.detail?.message || 'Não foi possível salvar: o mesmo dado mudou em outro lugar. Suas alterações continuam nesta tela. Copie o que precisar e recarregue a página.', 'error');
   });
   window.addEventListener(ATRIUM_STORE_PERSISTENCE_ERROR_EVENT, event => {
     getSystemStatusComponent().setState(event.detail?.status === 401 ? 'reauth' : 'error', event.detail?.message);
-    App.toast(event.detail?.message || STORE_PERSISTENCE_ERROR_MESSAGE, 'error');
+    if (!statusBarCarriesError()) App.toast(event.detail?.message || STORE_PERSISTENCE_ERROR_MESSAGE, 'error');
   });
-  const boot = () => {
-    if (initialized) {
-      App.applyPlanDensity();
-      getUiShellComponent().applyMode(getUiModeComponent().currentMode);
-      return;
+  let bootInFlight = false;
+  const boot = async () => {
+    if (bootInFlight) return;
+    bootInFlight = true;
+    try {
+      if (initialized) {
+        if (sessionCleared) {
+          sessionCleared = false;
+          const loaded = await Store.load();
+          await App.loadAuthUsers({ shared: true });
+          void refreshCompletionNotifications();
+          document.documentElement.dataset.canCollect = String(App.canStartCollection());
+          document.getElementById('btnOpenSetupWizard')?.classList.toggle('hidden', window.AtriumAuth?.currentUser?.role !== 'master_admin');
+          if (loaded) {
+            getSystemStatusComponent().setState('ready', 'Pronto');
+          } else {
+            getSystemStatusComponent().setState('offline', 'Modo offline: estado anterior mantido');
+          }
+          App.checkServerStatus();
+          App.checkAiStatus();
+          void App.loadSetupStatus();
+          App.applyPlanDensity();
+          getUiShellComponent().applyMode(getUiModeComponent().currentMode);
+          App.renderAll();
+          App.syncViewUrl(App.currentView);
+          if (window.sessionStorage.getItem('atrium_initial_sync_pending') === 'true') {
+            window.sessionStorage.removeItem('atrium_initial_sync_pending');
+            void App.runFirstSync();
+          }
+          return;
+        }
+        App.applyPlanDensity();
+        getUiShellComponent().applyMode(getUiModeComponent().currentMode);
+        return;
+      }
+      try {
+        await App.init();
+        initialized = true;
+      } catch (err) {
+        initialized = false;
+        console.error('App.init failed:', err);
+        window.AtriumAuth.logout();
+      }
+    } finally {
+      bootInFlight = false;
     }
-    initialized = true;
-    App.init().catch(err => { console.error('App.init failed:', err); window.AtriumAuth.logout(); });
   };
   window.Atrium = { App, Store };
   window.AtriumSenda = window.Atrium;

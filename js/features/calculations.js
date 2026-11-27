@@ -1,7 +1,8 @@
 import {
   buildCivelSummaryText,
   buildCivelCsv
-} from '../views/ui-v2/calculations-civel-suite.js?v=3.3.2';
+} from '../views/ui-v2/calculations-civel-suite.js?v=3.4.0';
+import { plural } from '../core/plural.js?v=3.4.0';
 
 function addMonthsIso(iso, delta) {
   const [y, m, d] = String(iso || '').split('-').map(Number);
@@ -634,7 +635,7 @@ export function createCalculationsFeature({
           }));
           civelSub = 'judicial';
           etapa = 'formulario';
-          showToast?.(`${items.length} item(ns) enviados para a Planilha Judicial.`, 'success');
+          showToast?.(`${items.length} ${plural(items.length, 'item', 'itens')} ${plural(items.length, 'enviado', 'enviados')} para a Planilha Judicial.`, 'success');
           render();
         }
         return;
@@ -702,7 +703,7 @@ export function createCalculationsFeature({
         const firstEmpty = form.itens.length === 1 && !String(form.itens[0].valor || '').trim();
         form.itens = firstEmpty ? geradas : [...form.itens, ...geradas];
         error = '';
-        showToast?.(`${qtd} parcela(s) adicionada(s) à planilha.`, 'success');
+        showToast?.(`${qtd} ${plural(qtd, 'parcela', 'parcelas')} ${plural(qtd, 'adicionada', 'adicionadas')} à planilha.`, 'success');
         render();
         return;
       }
@@ -1252,6 +1253,16 @@ export function createCalculationsFeature({
         }
       }
     }
+    if (JSON.stringify(clone).length > 120_000 && clone.correcao && Array.isArray(clone.correcao.parcelas) && clone.correcao.parcelas.length > 36) {
+      compactada = true;
+      clone.correcao.parcelas = [...clone.correcao.parcelas.slice(0, 18), ...clone.correcao.parcelas.slice(-18)];
+      clone.correcao.parcelasCompactadas = true;
+    }
+    if (JSON.stringify(clone).length > 120_000 && Array.isArray(clone.simulacaoDescartes) && clone.simulacaoDescartes.length > 24) {
+      compactada = true;
+      clone.simulacaoDescartes = [...clone.simulacaoDescartes.slice(0, 12), ...clone.simulacaoDescartes.slice(-12)];
+      clone.simulacaoDescartesCompactada = true;
+    }
     if (compactada) clone.memoriaCompactada = true;
     if (JSON.stringify(clone).length > 140_000) {
       throw new Error('O cálculo é muito extenso para salvar; reduza itens ou o período.');
@@ -1618,11 +1629,11 @@ export function createCalculationsFeature({
         if (merged.added > 0) tempo.vinculos = merged.vinculos;
         const avisos = Array.isArray(payload.avisos) ? [...payload.avisos] : [];
         if (payload.dadosSegurado?.nome) avisos.unshift(`Segurado identificado no documento: ${payload.dadosSegurado.nome}.`);
-        if (merged.added > 0) avisos.push(`${merged.added} vínculo(s) adicionados à aba Tempo de contribuição; confira antes de calcular.`);
+        if (merged.added > 0) avisos.push(`${merged.added} ${plural(merged.added, 'vínculo', 'vínculos')} ${plural(merged.added, 'adicionado', 'adicionados')} à aba Tempo de contribuição; confira antes de calcular.`);
         previdenciario.importAvisos = avisos;
         if (resultAba === 'previdenciario') result = null;
         const fonte = payload.fonte === 'fabrica' ? ' pela Fábrica de Cálculos' : '';
-        showToast?.(`${competencias.length} competência(s) extraída(s)${fonte}; confira antes de calcular.`, 'success');
+        showToast?.(`${competencias.length} ${plural(competencias.length, 'competência', 'competências')} ${plural(competencias.length, 'extraída', 'extraídas')}${fonte}; confira antes de calcular.`, 'success');
       }
     } catch (err) {
       error = err?.message || 'Falha ao interpretar o CNIS.';
@@ -2505,7 +2516,7 @@ export function createCalculationsFeature({
         resumo: payload.resumo || { competencias: competencias.length, vinculos: vinculosNovos.length },
         pendencias: Array.isArray(payload.avisos) ? payload.avisos : []
       };
-      showToast?.(`${competencias.length} competência(s) lidas do CNIS; confira as pendências.`, 'success');
+      showToast?.(`${competencias.length} ${plural(competencias.length, 'competência', 'competências')} ${plural(competencias.length, 'lida', 'lidas')} do CNIS; confira as pendências.`, 'success');
     } catch (err) {
       if (token !== lc142ImportacaoToken) return { ok: false, cancelled: true };
       lc142.cnis = { ...lc142.cnis, status: 'erro', erro: err?.message || 'Falha ao ler o CNIS.', progresso: null };
@@ -2612,7 +2623,7 @@ export function createCalculationsFeature({
     }
     const total = lc142.selecionadas.length;
     lc142.erro = '';
-    showToast?.(`${total} competência(s) marcadas para conferência. Nenhum valor foi alterado.`, 'success');
+    showToast?.(`${total} ${plural(total, 'competência', 'competências')} ${plural(total, 'marcada', 'marcadas')} para conferência. Nenhum valor foi alterado.`, 'success');
     render();
     return { ok: true, total };
   }

@@ -1,9 +1,9 @@
-import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.3.2';
-import { compactSourceLabel } from '../../core/legal-timeline.js?v=3.3.2';
-import { describeCnj } from '../../core/cnj.js?v=3.3.2';
-import { safeImageSource } from '../../core/link-safety.js?v=3.3.2';
-import { sanitizeRichHtml } from '../../core/html-safety.js?v=3.3.2';
-import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.3.2';
+import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from '../../components/panel-size.js?v=3.4.0';
+import { compactSourceLabel } from '../../core/legal-timeline.js?v=3.4.0';
+import { describeCnj } from '../../core/cnj.js?v=3.4.0';
+import { safeImageSource } from '../../core/link-safety.js?v=3.4.0';
+import { sanitizeRichHtml } from '../../core/html-safety.js?v=3.4.0';
+import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.4.0';
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -32,6 +32,7 @@ export function createProcessesV2Presenter({
   onAccessKeyStatus,
   onCreateTask,
   onCreateMovement,
+  onSaveAccess,
   onDelete,
   getHasA1Certificate = () => false,
   getTriage = () => null
@@ -47,6 +48,15 @@ export function createProcessesV2Presenter({
   let previousBodyOverflow = '';
 
   const byId = id => documentRef?.getElementById(id);
+  // Rodapé do inspetor: recolhido mostra os botões principais; "Mais ações" revela os demais.
+  function setInspectorActionsExpanded(expanded) {
+    const toggle = byId('processInspectorMore');
+    const footer = toggle?.closest('footer');
+    if (!toggle || !footer) return;
+    footer.classList.toggle('is-expanded', Boolean(expanded));
+    toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    toggle.textContent = expanded ? 'Menos ações' : 'Mais ações';
+  }
 
   function init() {
     if (initialized) return false;
@@ -105,6 +115,8 @@ export function createProcessesV2Presenter({
         onDownloadAutos?.(event.target.closest('[data-download-autos]'), selectedItem);
       } else if (event.target.closest('[data-process-access-key]')) {
         onAccessKey?.(selectedItem);
+      } else if (event.target.closest('[data-process-access-save]')) {
+        void onSaveAccess?.(selectedItem);
       }
     });
     byId('processInspectorEdit')?.addEventListener('click', () => {
@@ -162,8 +174,9 @@ export function createProcessesV2Presenter({
       }
       const assistantBtn = event.target.closest('[data-assistant-process-doc]');
       if (assistantBtn) {
+        const item = selectedItem;
         closeProcessDocuments({ returnToProcess: false });
-        onAssistant?.(selectedItem);
+        onAssistant?.(item);
         return;
       }
       const card = event.target.closest('[data-doc-card-id]');
@@ -179,6 +192,9 @@ export function createProcessesV2Presenter({
     });
     byId('processInspectorExport')?.addEventListener('click', () => {
       if (selectedItem) onExport?.(selectedItem);
+    });
+    byId('processInspectorMore')?.addEventListener('click', () => {
+      setInspectorActionsExpanded(!byId('processInspectorMore')?.closest('footer')?.classList.contains('is-expanded'));
     });
     byId('processInspectorDelete')?.addEventListener('click', () => {
       if (selectedItem) onDelete?.(selectedItem);
@@ -219,23 +235,26 @@ export function createProcessesV2Presenter({
       + `</div></nav>`;
   }
 
-  function renderEmpty({ hasProcesses, query }) {
+  function renderEmpty({ hasProcesses, query, filtered = Boolean(query) }) {
+    const activeFilter = Boolean(query || filtered);
     const title = hasProcesses && query
       ? 'Nenhum processo encontrado para esta busca.'
-      : 'Nenhum processo cadastrado.';
-    const message = hasProcesses && query
-      ? 'Revise os termos pesquisados para localizar outro registro.'
+      : (hasProcesses && activeFilter
+        ? 'Nenhum processo encontrado neste filtro.'
+        : 'Nenhum processo cadastrado.');
+    const message = hasProcesses && activeFilter
+      ? 'Revise a busca ou os filtros aplicados para localizar outro registro.'
       : 'Cadastre um processo para iniciar a carteira processual.';
-    const action = hasProcesses && query
+    const action = hasProcesses && activeFilter
       ? ''
       : '<button type="button" class="v2-button is-primary process-empty-action" data-process-create>Cadastrar processo</button>';
     return `<tr class="process-empty-row"><td colspan="6"><div class="v2-empty-state"><strong>${title}</strong><p>${message}</p>${action}</div></td></tr>`;
   }
 
-  function updateCount({ visible, total, query }) {
+  function updateCount({ visible, total, query, filtered = Boolean(query) }) {
     const count = byId('processResultCount');
     if (!count) return;
-    count.textContent = query
+    count.textContent = (query || filtered)
       ? `${visible} de ${total} processo${total === 1 ? '' : 's'}`
       : `${total} processo${total === 1 ? '' : 's'}`;
   }
@@ -243,6 +262,9 @@ export function createProcessesV2Presenter({
   function open(item, summary, invoker) {
     if (!item) return false;
     init();
+    // Atualização do mesmo processo com o inspetor aberto mantém o rodapé como o usuário deixou; abertura nova começa recolhida.
+    const refreshingSameProcess = Boolean(byId('processInspectorBackdrop') && !byId('processInspectorBackdrop').classList.contains('hidden'))
+      && String(selectedItem?.id ?? '') === String(item.id ?? '');
     close({ restoreFocus: false });
     selectedItem = item;
     selectedTasks = summary.linkedTasks || [];
@@ -255,6 +277,7 @@ export function createProcessesV2Presenter({
 
     const number = item.number || item.protocol || 'Processo sem número';
     const isTjrs = String(item.number || '').includes('.8.21.') || String(item.court || '').toUpperCase().includes('TJRS');
+    const isEproc = isTjrs || isEprocProcess(item);
     const hasA1 = typeof getHasA1Certificate === 'function' ? Boolean(getHasA1Certificate()) : false;
     byId('processInspectorTitle').textContent = number;
     byId('processInspectorContent').innerHTML = renderInspector({ item, summary, escapeHtml, formatDate, formatMinutes, hasA1Certificate: hasA1 });
@@ -267,19 +290,19 @@ export function createProcessesV2Presenter({
       a1Button.classList.remove('is-available', 'is-complete');
       if (isDownloaded) {
         a1Button.disabled = false;
-        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-check"></use></svg><span>Autos baixados</span>';
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-check"></use></svg><span>Autos baixados</span>';
         a1Button.title = 'Autos oficiais já baixados do eproc TJRS via Certificado A1.';
       } else if (!isTjrs) {
         a1Button.disabled = true;
-        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
         a1Button.title = 'Baixar autos com A1 disponível apenas para processos do TJRS (eproc).';
       } else if (!hasA1) {
         a1Button.disabled = true;
-        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
         a1Button.title = 'Requer Certificado Digital A1 ativo nas configurações do escritório.';
       } else {
         a1Button.disabled = false;
-        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
+        a1Button.innerHTML = '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-download"></use></svg><span>Baixar Autos com A1</span>';
         a1Button.title = 'Baixar peças oficiais e autos integrais do eproc TJRS via Certificado A1.';
       }
     }
@@ -303,11 +326,11 @@ export function createProcessesV2Presenter({
     const keyButton = byId('processInspectorAccessKey');
     if (keyButton) {
       keyButton.classList.remove('hidden');
-      if (!isTjrs) {
+      if (!isEproc) {
         keyButton.disabled = true;
         keyButton.textContent = 'Chave de acesso';
         keyButton.classList.remove('is-available', 'is-configured', 'is-complete');
-        keyButton.title = 'Chave de acesso aplicável a processos do eproc TJRS.';
+        keyButton.title = 'Chave de acesso aplicável a processos do eproc.';
       } else {
         const hasKey = Boolean(item.accessKey || item.chaveAcesso || item.hasAccessKey
           || (Array.isArray(item.tags) && item.tags.includes('chave-disponivel')));
@@ -335,11 +358,12 @@ export function createProcessesV2Presenter({
     });
 
     const backdrop = byId('processInspectorBackdrop');
+    if (!refreshingSameProcess) setInspectorActionsExpanded(false);
     backdrop.classList.remove('hidden');
     byId('appShell')?.setAttribute('inert', '');
     if (documentRef.body) documentRef.body.style.overflow = 'hidden';
     queueMicrotask(() => byId('processInspectorClose')?.focus());
-    void onAccessKeyStatus?.(item);
+    if (isEproc) void onAccessKeyStatus?.(item);
     return true;
   }
 
@@ -458,7 +482,7 @@ export function createProcessesV2Presenter({
       container.innerHTML = `
         <div class="process-documents-empty">
           <p>Nenhum documento anexado a este processo no momento.</p>
-          <small>Use "Gerar caderno em PDFs" ou "Baixar Autos com A1" para capturar as peças oficiais.</small>
+          <small>Use "Baixar Autos com A1" para capturar as peças oficiais.</small>
         </div>`;
       return;
     }
@@ -490,7 +514,7 @@ export function createProcessesV2Presenter({
               <h4 class="process-doc-card-name" title="${escapeHtml(doc.name || doc.originalName)}">${escapeHtml(doc.name || doc.originalName || 'Documento sem nome')}</h4>
               ${doc.metadata?.summary ? `<p class="process-doc-card-summary">${escapeHtml(doc.metadata.summary)}</p>` : ''}
               <div class="process-doc-card-actions">
-                <button type="button" class="button ghost text-xs" data-preview-process-doc="${escapeHtml(doc.id)}">Preview</button>
+                <button type="button" class="button ghost text-xs" data-preview-process-doc="${escapeHtml(doc.id)}">Prévia</button>
                 <button type="button" class="button ghost text-xs" data-download-process-doc="${escapeHtml(doc.id)}">Baixar</button>
                 <button type="button" class="button ghost text-xs" data-assistant-process-doc="${escapeHtml(doc.id)}">Assistente</button>
               </div>
@@ -600,6 +624,18 @@ function hasConfirmedEprocEnrichment(item) {
   // when only one detail field changes. Keep the marker until the canonical
   // enrichment status (or its completion timestamp) confirms completion.
   return false;
+}
+
+export function isEprocProcess(item) {
+  if (!item) return false;
+  const isTjrs = String(item.number || '').includes('.8.21.') || String(item.court || '').toUpperCase().includes('TJRS');
+  if (isTjrs) return true;
+  return Boolean(
+    item.eprocDetails
+    || item.hasAccessKey
+    || (Array.isArray(item.tags) && item.tags.includes('chave-disponivel'))
+    || [item.source, item.portalId, item.system, item.judicialIntegration?.source].some(value => /eproc/i.test(String(value || '')))
+  );
 }
 
 export function isProcessEnrichmentCandidate(item, hasA1 = true) {
@@ -773,7 +809,7 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
   ${renderProcessFinance(item, escapeHtml, formatDate)}
 
   <section class="process-inspector-section" aria-labelledby="processTimelineHeading">
-    <div class="process-inspector-section-heading"><h3 id="processTimelineHeading">Linha do tempo jurídica</h3><button type="button" class="button ghost" data-process-new-movement><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-add"></use></svg><span>Novo andamento</span></button></div>
+    <div class="process-inspector-section-heading"><h3 id="processTimelineHeading">Linha do tempo jurídica</h3><button type="button" class="button ghost" data-process-new-movement><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-add"></use></svg><span>Novo andamento</span></button></div>
     ${renderLegalTimeline(summary.timeline || [], escapeHtml, formatDate)}
   </section>
 
@@ -785,6 +821,8 @@ export function renderInspector({ item, summary, escapeHtml, formatDate, formatM
   ${renderOperationalLinks(summary.linkedAppointments || [], summary.linkedDocuments || [], escapeHtml, formatDate)}
 
   ${renderJudicialContext(item, escapeHtml, formatDate)}
+
+  ${renderProcessEprocDetails(item, escapeHtml, formatDate)}
 
   <section class="process-inspector-section" aria-labelledby="processPublicationsHeading">
     <h3 id="processPublicationsHeading">Publicações vinculadas</h3>
@@ -999,9 +1037,207 @@ function renderJudicialContext(item, escapeHtml, formatDate) {
   </section>`;
 }
 
+function normalizeEprocLabelKey(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function parseActiveEprocFlag(value) {
+  if (value === true) return { active: true, detail: '' };
+  if (value === false || value === null || value === undefined) return { active: false, detail: '' };
+  const text = String(value).trim();
+  if (!text || /^(?:n[aã]o(?:\s+informad[oa]|\s+se\s+aplica)?|n\/?a|false|0|-|nenhum[a]?|sem\s+informa[çc][ãa]o)$/i.test(text)) {
+    return { active: false, detail: '' };
+  }
+  if (/^(?:sim|s|yes|true|1|ativ[ao])$/i.test(text)) {
+    return { active: true, detail: '' };
+  }
+  return { active: true, detail: text };
+}
+
+function formatEprocCaseValue(rawValue, fallbackFormatted) {
+  if (rawValue !== null && rawValue !== undefined && rawValue !== '') {
+    const parsed = Number(rawValue);
+    if (Number.isFinite(parsed) && parsed >= 0) return formatFinancialValue(parsed);
+  }
+  return String(fallbackFormatted || '').trim();
+}
+
+function formatEprocRawDate(value, formatDate) {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
+    const formatted = formatDate(text);
+    return formatted && formatted !== '—' ? formatted : text;
+  }
+  return text;
+}
+
+const EPROC_INDICATOR_DEFS = Object.freeze([
+  ['justicaGratuita', 'Justiça gratuita'],
+  ['antecipacaoTutela', 'Antecipação de tutela'],
+  ['juizo100Digital', 'Juízo 100% Digital'],
+  ['tramitacaoAgil', 'Tramitação ágil'],
+  ['renunciaExcedente60SM', 'Renúncia > 60 salários']
+]);
+
+const EPROC_PRIORITY_FLAG_DEFS = Object.freeze([
+  ['idoso', 'Pessoa idosa'],
+  ['prioridadeIdoso', 'Pessoa idosa'],
+  ['criancaAdolescente', 'Criança e Adolescente'],
+  ['doencaGrave', 'Doença grave'],
+  ['pessoaDeficiencia', 'Pessoa com deficiência'],
+  ['pessoaTea', 'Pessoa com TEA'],
+  ['lei14289', 'Lei 14.289'],
+  ['peticaoUrgente', 'Petição urgente'],
+  ['acaoColetiva', 'Ação coletiva'],
+  ['prevencao', 'Prevenção'],
+  ['reconvencao', 'Reconvecção'],
+  ['vistaMp', 'Vista Ministério Público'],
+  ['grandeDevedor', 'Grande devedor']
+]);
+
+const EPROC_MAIN_ADDITIONAL_KEYS = new Set([
+  'valor da causa',
+  'nivel de sigilo',
+  'justica gratuita',
+  'antecipacao de tutela',
+  'opcao por juizo 100% digital',
+  'tramitacao agil',
+  'renuncia excedente 60 sm',
+  'renuncia excedente'
+]);
+
+export function renderProcessEprocDetails(item, escapeHtml, formatDate) {
+  const details = item?.eprocDetails && typeof item.eprocDetails === 'object' ? item.eprocDetails : null;
+  const hasCaseValue = item?.caseValue !== null && item?.caseValue !== undefined && item?.caseValue !== '';
+  if (!details && !item?.actionClass && !item?.competence && !item?.judge && !hasCaseValue) return '';
+
+  const actionClass = item?.actionClass || details?.actionClass || '';
+  const competence = item?.competence || details?.competence || '';
+  const judge = item?.judge || details?.judge || '';
+  const rawCaseValue = Object.hasOwn(item || {}, 'caseValue') ? item.caseValue : details?.caseValue;
+  const caseValueText = formatEprocCaseValue(
+    rawCaseValue,
+    Object.hasOwn(item || {}, 'caseValue') && item.caseValue === null ? '' : (details?.caseValueFormatted || item?.caseValueFormatted || '')
+  );
+  const situation = details?.situation || '';
+  const autuacaoText = formatEprocRawDate(details?.autuacaoAt || details?.registeredAtRaw || '', formatDate);
+  const secrecyLevelText = details?.secrecyLevelText
+    || (details?.secrecyLevel !== undefined && details?.secrecyLevel !== null && details?.secrecyLevel !== '' ? String(details.secrecyLevel) : '');
+
+  const metaHtml = [
+    definition('Classe da ação', actionClass, escapeHtml),
+    definition('Competência', competence, escapeHtml),
+    definition('Juiz(a)', judge, escapeHtml),
+    definition('Valor da causa', caseValueText, escapeHtml),
+    definition('Situação no tribunal', situation, escapeHtml),
+    definition('Data de autuação', autuacaoText, escapeHtml),
+    definition('Nível de sigilo', secrecyLevelText, escapeHtml)
+  ].filter(Boolean).join('');
+
+  const flags = details?.flags && typeof details.flags === 'object' ? details.flags : {};
+  const activeIndicators = EPROC_INDICATOR_DEFS
+    .map(([key, label]) => {
+      const parsed = parseActiveEprocFlag(flags[key] ?? details?.[key]);
+      if (!parsed.active) return '';
+      const text = parsed.detail ? `${label}: ${parsed.detail}` : label;
+      return `<span class="process-eproc-chip is-indicator">${escapeHtml(text)}</span>`;
+    })
+    .filter(Boolean);
+
+  const priorityMap = new Map();
+  const pushPriority = label => {
+    const clean = String(label ?? '').trim();
+    if (!clean) return;
+    const key = normalizeEprocLabelKey(clean);
+    if (!priorityMap.has(key)) priorityMap.set(key, clean);
+  };
+  if (Array.isArray(details?.priorities)) {
+    for (const entry of details.priorities) {
+      if (typeof entry === 'string') pushPriority(entry);
+      else if (entry && typeof entry === 'object') {
+        const parsed = parseActiveEprocFlag(entry.active ?? entry.value ?? true);
+        if (parsed.active) pushPriority(entry.label || entry.name || parsed.detail);
+      }
+    }
+  }
+  for (const [key, label] of EPROC_PRIORITY_FLAG_DEFS) {
+    const parsed = parseActiveEprocFlag(flags[key]);
+    if (parsed.active) pushPriority(parsed.detail ? `${label}: ${parsed.detail}` : label);
+  }
+  const activePriorities = [...priorityMap.values()];
+
+  const subjects = Array.isArray(details?.subjects) ? details.subjects.filter(Boolean) : [];
+  const rawAdditional = Array.isArray(details?.additionalInfo)
+    ? details.additionalInfo
+    : (details?.additionalInfo && typeof details.additionalInfo === 'object'
+      ? Object.entries(details.additionalInfo).map(([label, value]) => ({ label, value }))
+      : []);
+  const seenExtra = new Set();
+  const extraPairs = rawAdditional
+    .map(pair => ({
+      label: String(pair?.label ?? '').trim(),
+      value: String(pair?.value ?? '').trim()
+    }))
+    .filter(pair => {
+      if (!pair.label || !pair.value) return false;
+      if (/chave|accesskey|senha|password|token/i.test(pair.label)) return false;
+      const key = normalizeEprocLabelKey(pair.label);
+      if (EPROC_MAIN_ADDITIONAL_KEYS.has(key) || seenExtra.has(key)) return false;
+      seenExtra.add(key);
+      return true;
+    });
+
+  if (!metaHtml && !activeIndicators.length && !activePriorities.length && !subjects.length && !extraPairs.length) {
+    return '';
+  }
+
+  const indicatorsBlock = activeIndicators.length
+    ? `<div class="process-eproc-block"><h4>Indicadores processuais</h4><div class="process-eproc-chips">${activeIndicators.join('')}</div></div>`
+    : '';
+  const prioritiesBlock = activePriorities.length
+    ? `<div class="process-eproc-block"><h4>Prioridades legais ativas</h4><div class="process-eproc-chips">${activePriorities.map(label => `<span class="process-eproc-chip is-priority">${escapeHtml(label)}</span>`).join('')}</div></div>`
+    : '';
+  const subjectsBlock = subjects.length
+    ? `<div class="process-eproc-block"><h4>Assuntos do processo</h4><ul class="process-eproc-subject-list">${subjects.map(subj => {
+        const code = String(subj.code ?? '').trim();
+        const desc = String(subj.description ?? subj.name ?? subj.label ?? '').trim();
+        const isPrincipal = Boolean(subj.principal);
+        return `<li class="process-eproc-subject-item">
+          <div class="process-eproc-subject-copy">
+            ${code ? `<code class="process-eproc-subject-code">${escapeHtml(code)}</code>` : ''}
+            <span>${escapeHtml(desc || 'Assunto não descrito')}</span>
+          </div>
+          ${isPrincipal ? '<span class="process-eproc-principal-badge">Principal</span>' : ''}
+        </li>`;
+      }).join('')}</ul></div>`
+    : '';
+  const extraBlock = extraPairs.length
+    ? `<details class="process-eproc-extra">
+        <summary>Informações adicionais do eproc (${extraPairs.length})</summary>
+        <dl class="process-metadata-grid process-eproc-extra-grid">
+          ${extraPairs.map(pair => definition(pair.label, pair.value, escapeHtml)).join('')}
+        </dl>
+      </details>`
+    : '';
+
+  return `<section class="process-inspector-section process-eproc-section" aria-labelledby="processEprocDetailsHeading">
+    <h3 id="processEprocDetailsHeading">Dados judiciais (eproc)</h3>
+    ${metaHtml ? `<dl class="process-metadata-grid">${metaHtml}</dl>` : ''}
+    ${indicatorsBlock}
+    ${prioritiesBlock}
+    ${subjectsBlock}
+    ${extraBlock}
+  </section>`;
+}
+
 function renderAccessKeyAction(item) {
-  const isTjrs = String(item?.number || '').includes('.8.21.') || String(item?.court || '').toUpperCase().includes('TJRS');
-  if (!isTjrs) return '';
+  if (!isEprocProcess(item)) return '';
   return `<div class="process-access-key-action" data-process-access-key-status="loading"><div><strong>Chave de acesso do processo</strong><span data-process-access-key-copy>Verificando o cofre do escritório…</span></div><button type="button" class="button ghost" data-process-access-key>Adicionar chave</button></div>`;
 }
 

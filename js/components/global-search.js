@@ -1,15 +1,16 @@
-import { iconSvg } from '../views/ui-v2/primitives.js?v=3.3.2';
+import { iconSvg } from '../views/ui-v2/primitives.js?v=3.4.0';
+import { activeIntimations } from '../core/publication-scope.js?v=3.4.0';
 
 const GROUPS = Object.freeze({
-  process: { label: 'Processos', icon: 'process', classic: 'PROC', target: 'process' },
-  contact: { label: 'Contatos', icon: 'contact', classic: 'CONT', target: 'contact' },
+  process: { label: 'Processos', icon: 'processes', classic: 'PROC', target: 'process' },
+  contact: { label: 'Contatos', icon: 'contacts', classic: 'CONT', target: 'contact' },
   lead: { label: 'Atendimentos / CRM', icon: 'leads', classic: 'CRM', target: 'lead' },
-  publication: { label: 'Publicações e DJEN', icon: 'publication', classic: 'PUB', target: 'intimation' },
-  task: { label: 'Tarefas e Prazos', icon: 'task', classic: 'TAR', target: 'task' },
+  publication: { label: 'Publicações e DJEN', icon: 'publications', classic: 'PUB', target: 'intimation' },
+  task: { label: 'Tarefas e Prazos', icon: 'tasks', classic: 'TAR', target: 'task' },
   document: { label: 'Documentos e OCR', icon: 'documents', classic: 'DOC', target: 'document' },
   appointment: { label: 'Agenda', icon: 'agenda', classic: 'AG', target: 'agenda' },
   note: { label: 'Notas internas', icon: 'publications', classic: 'NT', target: 'intimation' },
-  movement: { label: 'Movimentações judiciais', icon: 'process', classic: 'MOV', target: 'process' },
+  movement: { label: 'Movimentações judiciais', icon: 'processes', classic: 'MOV', target: 'process' },
   financial: { label: 'Financeiro jurídico', icon: 'financial', classic: 'R$', target: 'financial' },
   prompt: { label: 'Prompts jurídicos', icon: 'prompts', classic: 'PR', target: 'prompt' },
   audit: { label: 'Auditoria', icon: 'audit', classic: 'AUD', target: 'audit' }
@@ -114,7 +115,7 @@ export function createGlobalSearch({
     if (openOnFocus) input?.addEventListener('focus', () => { void perform(input.value); });
     if (shortcuts) document.addEventListener('keydown', event => {
       const shortcut = ((event.key === 'k' || event.key === 'K') && (event.ctrlKey || event.metaKey))
-        || (event.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName));
+        || (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) && !document.activeElement?.isContentEditable);
       if (shortcut) {
         event.preventDefault();
         input?.focus();
@@ -231,13 +232,13 @@ export function createGlobalSearch({
       }));
     return [
       ...matches(processes, 'process', 'process', item => item.number || 'Processo S/N', item => `${item.client || 'Cliente'} · ${item.court || 'Tribunal'}`, item => `${item.number} ${String(item.number || '').replace(/\D/g, '')} ${item.client} ${item.court} ${item.actionType} ${(item.movements || []).map(movement => movement.description || movement.text || movement.name).join(' ')}`, 'Registro processual'),
-      ...matches(state.contacts, 'contact', 'contact', item => item.name || 'Contato', item => item.document || item.cpf || item.cnpj || item.email || item.phone || 'Sem documento', item => `${item.name} ${item.document} ${item.cpf} ${item.cnpj} ${item.cpfCnpj} ${String(item.document || item.cpf || item.cnpj || item.cpfCnpj || '').replace(/\D/g, '')} ${item.email} ${item.phone}`, 'Cadastro do contato'),
+      ...matches(state.contacts, 'contact', 'contact', item => item.name || 'Contato', item => item.companyProfile ? [item.companyProfile.tradeName, item.companyProfile.status, item.document || item.email || item.phone].filter(Boolean).join(' · ') || 'Empresa cadastrada' : (item.document || item.cpf || item.cnpj || item.email || item.phone || 'Sem documento'), item => `${item.name} ${item.document} ${item.cpf} ${item.cnpj} ${item.cpfCnpj} ${String(item.document || item.cpf || item.cnpj || item.cpfCnpj || '').replace(/\D/g, '')} ${item.email} ${item.phone} ${item.companyProfile?.tradeName || ''} ${item.companyProfile?.primaryActivity || ''} ${item.companyProfile?.status || ''} ${item.companyProfile?.legalNature || ''} ${(item.companyProfile?.qsa || []).map(p => p.name).join(' ')}`, 'Cadastro do contato'),
       ...matches(state.leads, 'lead', 'lead', item => item.client || 'Atendimento', item => item.serviceType || item.status || 'CRM jurídico', item => `${item.client} ${item.serviceType} ${item.status} ${item.origin} ${item.responsible} ${item.notes}`, 'Atendimento / CRM'),
-      ...matches((state.tasks || []).filter(item => item && item.active !== false), 'task', 'task', item => item.title || 'Tarefa', item => processContext(item) || item.client || item.process || `Prazo: ${formatDate(item.deadline)}`, item => `${item.title} ${item.description} ${item.client} ${item.process} ${item.responsible} ${processContext(item)}`, 'Tarefa'),
-      ...matches(state.intimations, 'publication', 'intimation', item => item.title || 'Publicação', item => processContext(item) || item.process || item.court || 'DataJud', item => `${item.title} ${item.text} ${item.client} ${item.process} ${item.court} ${processContext(item)}`, 'Publicação'),
+      ...matches((state.tasks || []).filter(item => item && item.active !== false && !item.absorbedInto), 'task', 'task', item => item.title || 'Tarefa', item => processContext(item) || item.client || item.process || `Prazo: ${formatDate(item.deadline)}`, item => `${item.title} ${item.description} ${item.client} ${item.process} ${item.responsible} ${processContext(item)}`, 'Tarefa'),
+      ...matches(activeIntimations(state.intimations), 'publication', 'intimation', item => item.title || 'Publicação', item => processContext(item) || item.process || item.court || 'DataJud', item => `${item.title} ${item.text} ${item.client} ${item.process} ${item.court} ${processContext(item)}`, 'Publicação'),
       ...matches((state.documents || []).filter(item => !item.deletedAt), 'document', 'document', item => item.name || item.originalName || 'Documento', item => `${processContext(item)} · ${item.documentType || 'Documento'} · ${item.documentDate || ''}`, item => `${item.name} ${item.originalName} ${item.documentType} ${item.documentDate} ${item.metadata?.origin} ${(item.metadata?.tags || []).join(' ')} ${item.metadata?.summary} ${item.metadata?.context} ${(item.metadata?.entities || []).map(entity => `${entity?.type || ''} ${entity?.label || ''} ${entity?.identifier || ''}`).join(' ')} ${processContext(item)}`, 'Metadata documental'),
       ...matches(state.agenda, 'appointment', 'agenda', item => item.title || 'Compromisso', item => processContext(item) || item.client || item.date || 'Agenda', item => `${item.title} ${item.notes} ${item.description} ${item.date} ${item.time} ${processContext(item)}`, 'Agenda'),
-      ...(state.intimations || []).flatMap(publication => (publication.workNotes || []).filter(note => normalizeText(`${note.text} ${publication.title} ${processContext(publication)}`).includes(needle)).map(note => ({ entityType: 'note', target: 'intimation', id: publication.id, title: 'Nota interna da publicação', context: `${processContext(publication)} · ${publication.title || ''}`, snippet: note.text || '', matchedField: 'Nota interna', relevance: 0 }))),
+      ...activeIntimations(state.intimations || []).flatMap(publication => (publication.workNotes || []).filter(note => normalizeText(`${note.text} ${publication.title} ${processContext(publication)}`).includes(needle)).map(note => ({ entityType: 'note', target: 'intimation', id: publication.id, title: 'Nota interna da publicação', context: `${processContext(publication)} · ${publication.title || ''}`, snippet: note.text || '', matchedField: 'Nota interna', relevance: 0 }))),
       ...processes.flatMap(process => (process.movements || []).filter(movement => normalizeText(`${movement.description} ${movement.text} ${movement.name} ${process.number} ${process.client}`).includes(needle)).map(movement => ({ entityType: 'movement', target: 'process', id: process.id, title: movement.description || movement.text || movement.name || 'Movimentação processual', context: `${process.number || ''} · ${process.client || ''}`, snippet: movement.detail || movement.complement || '', matchedField: 'Movimentação judicial', relevance: 0 }))),
       ...processes.flatMap(process => (process.expenses || []).filter(expense => normalizeText(`${expense.description} ${expense.title} ${expense.status} ${expense.amount} ${process.number} ${process.client}`).includes(needle)).map(expense => ({ entityType: 'financial', target: 'financial', id: process.id, title: expense.description || expense.title || 'Despesa processual', context: `${process.number || ''} · ${process.client || ''}`, snippet: String(expense.amount || ''), matchedField: 'Lançamento financeiro', relevance: 0 }))),
       ...processes.flatMap(process => (process.feeInstallments || []).filter(installment => normalizeText(`${installment.description} ${installment.status} ${installment.amount} ${installment.dueDate} ${process.number} ${process.client}`).includes(needle)).map(installment => ({ entityType: 'financial', target: 'financial', id: process.id, title: installment.description || 'Parcela de honorários', context: `${process.number || ''} · ${process.client || ''}`, snippet: `${installment.amount || ''} · ${installment.dueDate || ''}`, matchedField: 'Parcela de honorários', relevance: 0 }))),

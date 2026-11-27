@@ -83,14 +83,16 @@ export function expandOccurrences(rule, { startDate, from = null, to = null, lim
   const start = normalizeDateOnly(startDate);
   if (!normalized || !start) return [];
   const max = Math.max(1, Math.min(RECURRENCE_MAX_OCCURRENCES, Number(limit) || RECURRENCE_MAX_OCCURRENCES));
+  const normalizedFrom = normalizeDateOnly(from);
   const windowEnd = normalizeDateOnly(to) || normalized.until || null;
+  const maxIterations = 5000;
   const dates = [];
-  for (let index = 0; index < max; index += 1) {
+  for (let index = 0; index < maxIterations && dates.length < max; index += 1) {
     const cursor = occurrenceAt(start, normalized, index);
     if (normalized.until && cursor > normalized.until) break;
     if (normalized.count && index >= normalized.count) break;
     if (windowEnd && cursor > windowEnd) break;
-    if (!from || cursor >= from) dates.push(cursor);
+    if (!normalizedFrom || cursor >= normalizedFrom) dates.push(cursor);
   }
   return dates;
 }
@@ -133,11 +135,13 @@ export function materializeSeries(master, { exceptions = [], from = null, to = n
       const exception = byDate.get(date);
       if (exception?.recurrence?.skipped === true) return null;
       const base = exception ? { ...master, ...exception } : { ...master };
+      const effectiveDate = normalizeDateOnly(exception?.date) || date;
+      const effectiveDeadline = normalizeDateOnly(exception?.deadline) || effectiveDate;
       return {
         ...base,
         id: occurrenceId(master.id, date),
-        date,
-        ...(base.deadline !== undefined ? { deadline: date } : {}),
+        date: effectiveDate,
+        ...(base.deadline !== undefined ? { deadline: effectiveDeadline } : {}),
         recurrence: { ...master.recurrence, occurrenceDate: date, exceptionId: exception?.id || null },
         seriesId: master.id,
         virtual: !exception
@@ -202,6 +206,15 @@ export function applyRecurrenceEdit({ items = [], masterId, occurrenceDate, scop
       ...(master.deadline !== undefined ? { deadline: date } : {})
     };
     delete splitMaster.recurrence.count;
+    for (let i = 0; i < list.length; i += 1) {
+      const entry = list[i];
+      if (entry?.recurrence?.exceptionOf === master.id && normalizeDateOnly(entry.recurrence.occurrenceDate) >= date) {
+        list[i] = {
+          ...entry,
+          recurrence: { ...entry.recurrence, exceptionOf: seriesId }
+        };
+      }
+    }
     list.push(splitMaster);
     return { ok: true, items: list, scope, newSeriesId: seriesId, changedIds: [master.id, seriesId] };
   }

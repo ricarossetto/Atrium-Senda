@@ -2,7 +2,7 @@
  * Tour de primeiro acesso: leva a pessoa pelas telas e destaca a área de cada parada.
  * Só navega e destaca. Não grava nada nos dados do escritório.
  */
-import { mountTotpGuide } from './totp-guide.js?v=3.3.2';
+import { mountTotpGuide } from './totp-guide.js?v=3.4.0';
 
 const GAP = 12;
 const SPOT_PADDING = 8;
@@ -188,6 +188,9 @@ export function createProductTour({ documentRef = document, windowRef = window, 
 
   function start() {
     if (root) return false;
+    // Não abre por cima do assistente de primeiro acesso.
+    const onboarding = documentRef.getElementById('guidedTourBackdrop');
+    if (onboarding && !onboarding.classList.contains('hidden')) return false;
     steps = buildSteps();
     if (!steps.length) return false;
     previousFocus = documentRef.activeElement;

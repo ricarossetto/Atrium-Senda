@@ -1,6 +1,18 @@
-import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.3.2';
+import { memberAvatarHtml } from '../../core/member-avatar.js?v=3.4.0';
 
 const DATE_LOCALE = 'pt-BR';
+const EMPTY_DAY_SUMMARY = Object.freeze({ eventCount: 0, taskCount: 0, fatalCount: 0, intimationCount: 0, total: 0 });
+const LONG_DATE_FMT = new Intl.DateTimeFormat(DATE_LOCALE, {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric'
+});
+const SHORT_DATE_FMT = new Intl.DateTimeFormat(DATE_LOCALE, {
+  day: '2-digit',
+  month: 'short'
+});
+const SHORT_MONTH_FMT = new Intl.DateTimeFormat(DATE_LOCALE, { month: 'short' });
+const MONTH_YEAR_FMT = new Intl.DateTimeFormat(DATE_LOCALE, { month: 'long', year: 'numeric' });
 
 function dateAtNoon(value) {
   const date = new Date(`${value}T12:00:00`);
@@ -9,19 +21,12 @@ function dateAtNoon(value) {
 
 function longDate(value) {
   const date = dateAtNoon(value);
-  return date ? new Intl.DateTimeFormat(DATE_LOCALE, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  }).format(date) : 'Data não informada';
+  return date ? LONG_DATE_FMT.format(date) : 'Data não informada';
 }
 
 function shortDate(value) {
   const date = dateAtNoon(value);
-  return date ? new Intl.DateTimeFormat(DATE_LOCALE, {
-    day: '2-digit',
-    month: 'short'
-  }).format(date).replace('.', '').toLocaleUpperCase(DATE_LOCALE) : 'SEM DATA';
+  return date ? SHORT_DATE_FMT.format(date).replace('.', '').toLocaleUpperCase(DATE_LOCALE) : 'SEM DATA';
 }
 
 function nextDate(value) {
@@ -79,7 +84,7 @@ function activityRow(item, { escapeHtml, formatMinutes }) {
   const meta = activityMeta(item);
   const date = dateAtNoon(item.date);
   const day = date ? String(date.getDate()).padStart(2, '0') : '—';
-  const month = date ? new Intl.DateTimeFormat(DATE_LOCALE, { month: 'short' }).format(date).replace('.', '') : '';
+  const month = date ? SHORT_MONTH_FMT.format(date).replace('.', '') : '';
   const time = item.type === 'intimation' ? 'Data da publicação' : meta.dateLabel;
   const trackedTime = item.type === 'task' && item.timeMins > 0
     ? `<span class="agenda-activity-time">${escapeHtml(formatMinutes(item.timeMins))} apontados</span>`
@@ -104,13 +109,39 @@ function activityRow(item, { escapeHtml, formatMinutes }) {
     </button>`;
 }
 
-function calendarDaySummary({ events, tasks, intimations, date }) {
-  const eventCount = events.filter(item => item.date === date).length;
-  const dayTasks = tasks.filter(item => (item.fatalDeadline || item.deadline) === date);
-  const fatalCount = dayTasks.filter(item => Boolean(item.fatalDeadline)).length;
-  const taskCount = dayTasks.length - fatalCount;
-  const intimationCount = intimations.filter(item => item.publishedAt === date || item.createdAt?.slice(0, 10) === date).length;
-  return { eventCount, taskCount, fatalCount, intimationCount, total: eventCount + taskCount + fatalCount + intimationCount };
+function buildCalendarSummaryIndex({ events = [], tasks = [], intimations = [], prefix = '' }) {
+  const index = new Map();
+  const bucket = date => {
+    let entry = index.get(date);
+    if (!entry) {
+      entry = { eventCount: 0, taskCount: 0, fatalCount: 0, intimationCount: 0, total: 0 };
+      index.set(date, entry);
+    }
+    return entry;
+  };
+  for (const item of events) {
+    const date = item?.date;
+    if (!date || (prefix && !date.startsWith(prefix))) continue;
+    const entry = bucket(date);
+    entry.eventCount += 1;
+    entry.total += 1;
+  }
+  for (const item of tasks) {
+    const date = item?.fatalDeadline || item?.deadline;
+    if (!date || (prefix && !date.startsWith(prefix))) continue;
+    const entry = bucket(date);
+    if (item.fatalDeadline) entry.fatalCount += 1;
+    else entry.taskCount += 1;
+    entry.total += 1;
+  }
+  for (const item of intimations) {
+    const date = item?.publishedAt || item?.createdAt?.slice(0, 10);
+    if (!date || (prefix && !date.startsWith(prefix))) continue;
+    const entry = bucket(date);
+    entry.intimationCount += 1;
+    entry.total += 1;
+  }
+  return index;
 }
 
 function indicatorMarkup(summary) {
@@ -136,7 +167,7 @@ function dayAccessibleName(date, summary, { today, selected }) {
 
 export function createAgendaPresenter({ escapeHtml, formatMinutes } = {}) {
   function renderActivities({ activities = [], selectedDate = null, today }) {
-    if (!activities.length) return `<div class="empty-detail agenda-empty-state"><span aria-hidden="true">◇</span><h3>Nenhuma atividade</h3><p>${selectedDate ? 'Não há compromissos, tarefas datadas ou publicações para esta data.' : 'Nenhuma atividade próxima encontrada.'}</p></div>`;
+    if (!activities.length) return `<div class="empty-detail agenda-empty-state"><span aria-hidden="true">◇</span><h3>Nenhuma atividade</h3><p>${selectedDate ? 'Não há compromissos, tarefas datadas ou publicações para esta data.' : 'Crie um compromisso ou uma tarefa com data para vê-los aqui.'}</p></div>`;
 
     const groups = new Map();
     for (const item of activities) {
@@ -162,9 +193,11 @@ export function createAgendaPresenter({ escapeHtml, formatMinutes } = {}) {
     const days = [];
     for (let index = 0; index < first.getDay(); index++) days.push('<span class="calendar-day muted" aria-hidden="true"></span>');
 
+    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+    const summaryByDate = buildCalendarSummaryIndex({ events: agenda, tasks, intimations, prefix: monthPrefix });
     for (let day = 1; day <= last.getDate(); day++) {
-      const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const summary = calendarDaySummary({ events: agenda, tasks, intimations, date });
+      const date = `${monthPrefix}${String(day).padStart(2, '0')}`;
+      const summary = summaryByDate.get(date) || EMPTY_DAY_SUMMARY;
       const isToday = date === today;
       const selected = date === selectedDate;
       days.push(`
@@ -175,20 +208,26 @@ export function createAgendaPresenter({ escapeHtml, formatMinutes } = {}) {
         </button>`);
     }
 
-    const localizedMonth = new Intl.DateTimeFormat(DATE_LOCALE, { month: 'long', year: 'numeric' }).format(first);
+    const localizedMonth = MONTH_YEAR_FMT.format(first);
     const monthName = localizedMonth.charAt(0).toLocaleUpperCase(DATE_LOCALE) + localizedMonth.slice(1);
     return `
       <header class="calendar-header">
         <div><p>Calendário mensal</p><h3 id="agendaCalendarMonth">${escapeHtml(monthName)}</h3></div>
         <div class="calendar-nav">
-          <button type="button" id="calPrevMonth" aria-label="Mostrar mês anterior" title="Mês anterior"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-left"></use></svg></button>
-          <button type="button" id="calNextMonth" aria-label="Mostrar próximo mês" title="Próximo mês"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-right"></use></svg></button>
+          <button type="button" id="calPrevMonth" aria-label="Mostrar mês anterior" title="Mês anterior"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-chevron-left"></use></svg></button>
+          <button type="button" id="calNextMonth" aria-label="Mostrar próximo mês" title="Próximo mês"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-chevron-right"></use></svg></button>
         </div>
       </header>
       <div class="calendar-grid ${direction ? `month-enter is-${direction}` : ''}" role="group" aria-labelledby="agendaCalendarMonth">
         ${['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'].map(day => `<span class="calendar-weekday" aria-hidden="true">${day.slice(0, 3)}</span>`).join('')}
         ${days.join('')}
-      </div>`;
+      </div>
+      <ul class="calendar-legend" aria-label="Legenda das marcas do calendário">
+        <li><i class="cal-dot event" aria-hidden="true"></i>Compromisso</li>
+        <li><i class="cal-dot task" aria-hidden="true"></i>Tarefa com data</li>
+        <li><i class="cal-dot fatal" aria-hidden="true"></i>Prazo fatal</li>
+        <li><i class="cal-dot intimation" aria-hidden="true"></i>Publicação</li>
+      </ul>`;
   }
 
   function renderSummary({ events = [], tasks = [], intimations = [] }) {

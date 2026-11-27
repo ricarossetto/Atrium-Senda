@@ -48,7 +48,19 @@ export function activeIntimations(items) {
   return (Array.isArray(items) ? items : []).filter(isActiveIntimation);
 }
 
-export function resolveIntimationId(items, id) {
+export function buildIntimationIndex(items) {
+  const byId = new Map();
+  if (!Array.isArray(items)) return byId;
+  for (const item of items) {
+    if (!item || item.id === undefined || item.id === null) continue;
+    const key = String(item.id);
+    if (!byId.has(key)) byId.set(key, item);
+  }
+  return byId;
+}
+
+export function resolveIntimationId(items, id, index = null) {
+  const lookup = index instanceof Map ? index : null;
   const records = Array.isArray(items) ? items : [];
   let current = id;
   const visited = new Set();
@@ -56,16 +68,25 @@ export function resolveIntimationId(items, id) {
     const key = String(current).trim();
     if (visited.has(key)) return '';
     visited.add(key);
-    const record = records.find(item => String(item?.id) === key);
+    const record = lookup ? lookup.get(key) : records.find(item => String(item?.id) === key);
     if (!record || !isMergedIntimation(record)) return key;
     current = mergedIntimationTarget(record);
   }
   return '';
 }
 
-export function findIntimationRecord(items, id) {
+export function findIntimationRecord(items, id, index = null) {
+  const lookup = index instanceof Map ? index : null;
   const records = Array.isArray(items) ? items : [];
-  const resolved = resolveIntimationId(records, id);
-  if (!resolved) return null;
-  return records.find(item => String(item?.id) === resolved) || null;
+  let current = id;
+  const visited = new Set();
+  while (current !== undefined && current !== null && String(current).trim() !== '') {
+    const key = String(current).trim();
+    if (visited.has(key)) return null;
+    visited.add(key);
+    const record = lookup ? lookup.get(key) : records.find(item => String(item?.id) === key);
+    if (!record || !isMergedIntimation(record)) return record || null;
+    current = mergedIntimationTarget(record);
+  }
+  return null;
 }

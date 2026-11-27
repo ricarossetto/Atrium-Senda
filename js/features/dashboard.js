@@ -1,14 +1,15 @@
-import { Store } from '../core/store.js?v=3.3.2';
-import { activeIntimations, findIntimationRecord, publicationsInRecentScope } from '../core/publication-scope.js?v=3.3.2';
-import { buildActivityInbox } from '../core/activity-inbox.js?v=3.3.2';
-import { computeTaskPerformance } from '../core/task-performance.js?v=3.3.2';
-import { renderDashboardV2Summary } from '../views/ui-v2/dashboard.js?v=3.3.2';
-import { renderFirstSteps } from '../views/ui-v2/first-steps.js?v=3.3.2';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.3.2';
-import { renderOfficeInvolved, taskInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.3.2';
-import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.3.2';
-import { officeOabKeys } from '../core/publication-parties.js?v=3.3.2';
-import { officeScopeItems } from '../core/office-scope.js?v=3.3.2';
+import { Store } from '../core/store.js?v=3.4.0';
+import { activeIntimations, findIntimationRecord, publicationsInRecentScope } from '../core/publication-scope.js?v=3.4.0';
+import { materializeCollection } from '../core/recurrence.js?v=3.4.0';
+import { buildActivityInbox } from '../core/activity-inbox.js?v=3.4.0';
+import { computeTaskPerformance } from '../core/task-performance.js?v=3.4.0';
+import { renderDashboardV2Summary } from '../views/ui-v2/dashboard.js?v=3.4.0';
+import { firstStepsHiddenUserKey, renderFirstSteps } from '../views/ui-v2/first-steps.js?v=3.4.0';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.4.0';
+import { createInvolvementIndex, renderOfficeInvolved, taskInvolvedPeople, teamForPeople, teamForTask } from '../core/office-involved.js?v=3.4.0';
+import { getOfficeDirectory, officeDirectoryLoaded, refreshOfficeDirectory } from '../core/office-directory.js?v=3.4.0';
+import { officeOabKeys } from '../core/publication-parties.js?v=3.4.0';
+import { officeScopeItems } from '../core/office-scope.js?v=3.4.0';
 
 export function createDashboardFeature({
   store = Store,
@@ -42,6 +43,22 @@ export function createDashboardFeature({
   let weeklyFunnel = null;
   let funnelRequested = false;
   let funnelLoading = false;
+  const DASHBOARD_TASK_LIMIT_KEY = 'atrium:dashboard:task-limit';
+  const DASHBOARD_TASK_LIMIT_OPTIONS = [5, 10, 20, 50];
+  const normalizeTaskLimit = value => {
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    return DASHBOARD_TASK_LIMIT_OPTIONS.includes(parsed) ? parsed : 10;
+  };
+  const readStoredTaskLimit = () => {
+    try {
+      const storage = documentRef?.defaultView?.localStorage || globalThis.localStorage;
+      return normalizeTaskLimit(storage?.getItem?.(DASHBOARD_TASK_LIMIT_KEY));
+    } catch {
+      return 10;
+    }
+  };
+  let dashboardTaskLimit = readStoredTaskLimit();
+  let showAllDashboardTasks = false;
   const byId = id => documentRef?.getElementById(id);
   const normalizedProcessNumber = value => String(value || '').replace(/\D/g, '');
   const normalizedName = value => String(value || '').trim().toLocaleLowerCase('pt-BR');
@@ -87,9 +104,36 @@ export function createDashboardFeature({
   // perto das varreduras O(n·m) que o índice elimina.
   const lookupOf = processes => buildProcessLookup(processes);
 
+  function buildIntimationById(intimations) {
+    const byId = new Map();
+    for (const item of intimations || []) {
+      if (!item || item.id === undefined || item.id === null) continue;
+      const key = String(item.id);
+      if (!byId.has(key)) byId.set(key, item);
+    }
+    return byId;
+  }
+
+  function resolveIntimationFromLookup(intimationsOrMap, id) {
+    if (!(intimationsOrMap instanceof Map)) return findIntimationRecord(intimationsOrMap, id);
+    let current = id;
+    const visited = new Set();
+    while (current !== undefined && current !== null && String(current).trim() !== '') {
+      const key = String(current).trim();
+      if (visited.has(key)) return null;
+      visited.add(key);
+      const record = intimationsOrMap.get(key);
+      if (!record) return null;
+      const merged = record.mergedInto;
+      if (merged === undefined || merged === null || merged === '') return record;
+      current = typeof merged === 'object' ? (merged.id ?? merged.targetId ?? '') : merged;
+    }
+    return null;
+  }
+
   const resolveTaskContext = (task, lookup, intimations = store.state.intimations || []) => {
-    const intimation = findIntimationRecord(intimations, task.intimationId)
-      || findIntimationRecord(intimations, task.sourceIntimationId);
+    const intimation = resolveIntimationFromLookup(intimations, task.intimationId)
+      || resolveIntimationFromLookup(intimations, task.sourceIntimationId);
     const processId = task.processId || intimation?.processId || '';
     const processNumber = task.process || intimation?.process || '';
     const normalizedNumber = normalizedProcessNumber(processNumber);
@@ -120,19 +164,36 @@ export function createDashboardFeature({
     set taskFilter(value) { dashboardTaskFilter = value || 'all'; },
     get taskSort() { return dashboardTaskSort; },
     set taskSort(value) { dashboardTaskSort = value || 'date-asc'; },
+    get taskLimit() { return dashboardTaskLimit; },
+    set taskLimit(value) { dashboardTaskLimit = normalizeTaskLimit(value); },
 
     init() {
       if (initialized) return false;
       initialized = true;
       byId('btnDashboardNewTask')?.addEventListener('click', () => onOpenTask?.());
+      const limitSelect = byId('dashboardTaskLimitSelect');
+      if (limitSelect) {
+        limitSelect.value = String(dashboardTaskLimit);
+        limitSelect.addEventListener('change', event => {
+          dashboardTaskLimit = normalizeTaskLimit(event.target.value);
+          showAllDashboardTasks = false;
+          try {
+            const storage = documentRef?.defaultView?.localStorage || globalThis.localStorage;
+            storage?.setItem?.(DASHBOARD_TASK_LIMIT_KEY, String(dashboardTaskLimit));
+          } catch {}
+          this.renderTasks();
+        });
+      }
       byId('dashboardTaskSortSelect')?.addEventListener('change', event => {
         dashboardTaskSort = event.target.value;
+        showAllDashboardTasks = false;
         this.renderTasks();
       });
       byId('dashboardTaskFilters')?.addEventListener('click', event => {
         const button = event.target.closest('button[data-dashboard-task-filter]');
         if (!button) return;
         dashboardTaskFilter = button.dataset.dashboardTaskFilter;
+        showAllDashboardTasks = false;
         byId('dashboardTaskFilters').querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button));
         this.renderTasks();
       });
@@ -172,7 +233,7 @@ export function createDashboardFeature({
       this.renderHearings(widgets.hearings);
       const performance = this.performanceValues();
       renderDashboardV2Summary({ documentRef, metrics, widgets, insights, performance, formatDate, formatCurrency, escapeHtml });
-      renderFirstSteps({ documentRef, state: store.state, status: globalThis.Atrium?.App?.setupStatus || {}, onAction: action => globalThis.Atrium?.App?.runSetupAction(action), canManage: globalThis.AtriumAuth?.currentUser?.role === 'master_admin', storage: documentRef?.defaultView?.localStorage, escapeHtml });
+      renderFirstSteps({ documentRef, state: store.state, status: globalThis.Atrium?.App?.setupStatus || {}, firstSync: globalThis.Atrium?.App?.firstSync || null, onAction: action => globalThis.Atrium?.App?.runSetupAction(action), canManage: globalThis.AtriumAuth?.currentUser?.role === 'master_admin', hiddenForUser: globalThis.AtriumAuth?.currentUser?.onboarding?.firstStepsHidden === true, userKey: firstStepsHiddenUserKey(globalThis.AtriumAuth?.currentUser), onHide: () => globalThis.Atrium?.App?.markFirstStepsHidden?.(), storage: documentRef?.defaultView?.localStorage, escapeHtml });
       this.applyDashboardWidgetPreferences();
       return { metrics, widgets, activities, insights, performance };
     },
@@ -184,7 +245,7 @@ export function createDashboardFeature({
     performanceValues() {
       const goals = store.state.configuration?.goals || [];
       const goalEntry = goals.find(entry => entry && Number.isFinite(Number(entry.pointsGoal)) && Number(entry.pointsGoal) > 0);
-      return computeTaskPerformance(store.state.tasks || [], {
+      return computeTaskPerformance(officeScopeItems((store.state.tasks || []).filter(task => task && task.active !== false && !task.absorbedInto)), {
         goal: goalEntry ? Number(goalEntry.pointsGoal) : null,
         now: new Date()
       });
@@ -277,10 +338,10 @@ export function createDashboardFeature({
     renderMetrics() {
       // Métricas do escritório não somam o escopo privado; o selo da caixa de
       // entrada continua reflecting o acervo pessoal do membro.
-      const officeIntimations = officeScopeItems(store.state.intimations);
+      const officeIntimations = activeIntimations(officeScopeItems(store.state.intimations));
       const untreatedIntimations = getUntreatedCount?.() || 0;
       const officeUntreated = officeIntimations.filter(item => (item.treatmentStatus || 'untreated') === 'untreated').length;
-      const deadlines = officeScopeItems(store.state.tasks).filter(task => task.active !== false && !isTerminalStatus(task.status) && daysUntil(task.deadline) >= 0 && daysUntil(task.deadline) <= 7).length;
+      const deadlines = officeScopeItems(store.state.tasks).filter(task => task && task.active !== false && !task.absorbedInto && !isTerminalStatus(task.status) && daysUntil(task.deadline) >= 0 && daysUntil(task.deadline) <= 7).length;
       const activeProcesses = officeScopeItems(store.state.processes).filter(process => process.monitoring !== 'inactive').length;
       const sources = store.state.sources || [];
       const activeSources = sources.filter(source => source.status === 'ok').length;
@@ -303,18 +364,19 @@ export function createDashboardFeature({
       return { untreatedIntimations, officeUntreated, deadlines, activeProcesses, activeSources, sourceCount: sources.length };
     },
 
-    visibleTasks() {
-      const tasks = (store.state.tasks || []).filter(task => task && task.active !== false);
+    visibleTasks(lookupOverride = null, intimationMapOverride = null) {
+      const tasks = (store.state.tasks || []).filter(task => task && task.active !== false && !task.absorbedInto);
       const processes = store.state.processes || [];
       const intimations = store.state.intimations || [];
-      const lookup = lookupOf(processes);
+      const lookup = lookupOverride || lookupOf(processes);
+      const intimationLookup = intimationMapOverride || buildIntimationById(intimations);
       const memo = new Map();
       // Resolve cada tarefa uma única vez: o comparador abaixo roda O(n log n)
       // vezes e cada resolução varria a base de processos.
       const contextOf = task => {
         let context = memo.get(task);
         if (!context) {
-          context = resolveTaskContext(task, lookup, intimations);
+          context = resolveTaskContext(task, lookup, intimationLookup);
           memo.set(task, context);
         }
         return context;
@@ -358,10 +420,13 @@ export function createDashboardFeature({
       const processes = store.state.processes || [];
       const intimations = store.state.intimations || [];
       const lookup = lookupOf(processes);
-      const officeKeys = officeOabKeys({ terms: store.state.terms || [], users: getOfficeDirectory().users });
-      const filtered = this.visibleTasks();
+      const intimationLookup = buildIntimationById(intimations);
+      const directory = getOfficeDirectory();
+      const officeKeys = officeOabKeys({ terms: store.state.terms || [], users: directory.users });
+      const involvementIndex = createInvolvementIndex({ processes, intimations, users: directory.users, teams: directory.teams });
+      const filtered = this.visibleTasks(lookup, intimationLookup);
       if (!officeDirectoryLoaded()) {
-        void refreshOfficeDirectory().then(directory => { if (directory.users.length || directory.teams.length) this.renderTasks(); });
+        void refreshOfficeDirectory().then(dir => { if (dir.users.length || dir.teams.length) this.renderTasks(); });
       }
       const countEl = byId('dashboardTaskCount');
       if (countEl) countEl.textContent = `${filtered.length} tarefas`;
@@ -371,8 +436,15 @@ export function createDashboardFeature({
         return;
       }
 
-      listEl.innerHTML = filtered.map(task => {
-        const { clientName, processNumber, actionType } = resolveTaskContext(task, lookup, intimations);
+      const limitSelect = byId('dashboardTaskLimitSelect');
+      if (limitSelect && limitSelect.value !== String(dashboardTaskLimit)) {
+        limitSelect.value = String(dashboardTaskLimit);
+      }
+
+      const visibleRows = showAllDashboardTasks ? filtered : filtered.slice(0, dashboardTaskLimit);
+      const remainingCount = filtered.length - visibleRows.length;
+      const rowsHtml = visibleRows.map(task => {
+        const { clientName, processNumber, actionType } = resolveTaskContext(task, lookup, intimationLookup);
         const points = Number(task.points) || 0;
         const titleLower = String(task.title || '').toLowerCase();
         let typeBadge = 'tarefa';
@@ -401,8 +473,8 @@ export function createDashboardFeature({
           : sourceReference ? `${escapeHtml(formatDate(sourceReference))} · referência do ${escapeHtml(sourceLabel)} · conferir` : 'Sem data';
         const dateStateClass = operationalDeadline ? (days < 0 ? 'is-overdue' : days <= 2 ? 'is-due-soon' : '') : '';
         const difficultyText = points >= 50 ? 'Alta Complexidade' : points >= 20 ? 'Média' : points > 0 ? 'Básica' : '';
-        const people = taskInvolvedPeople(task, getOfficeDirectory().users, processes, intimations, officeKeys);
-        const team = teamForTask(task, getOfficeDirectory().teams, processes) || teamForPeople(getOfficeDirectory().teams, people);
+        const people = taskInvolvedPeople(task, directory.users, processes, intimations, officeKeys, involvementIndex);
+        const team = teamForTask(task, directory.teams, processes, involvementIndex) || teamForPeople(directory.teams, people);
         const involved = renderOfficeInvolved({ people, team, escapeHtml, iconSvg }) || '<span class="office-involved office-involved-empty">Sem responsável</span>';
 
         return `
@@ -427,6 +499,23 @@ export function createDashboardFeature({
           </div>
         `;
       }).join('');
+      const expandHtml = remainingCount > 0
+        ? `<button type="button" class="v2-button is-secondary dashboard-tasks-more" data-dashboard-tasks-expand>Mostrar todas as ${filtered.length} tarefas (${remainingCount} restantes)</button>`
+        : (showAllDashboardTasks && filtered.length > dashboardTaskLimit
+            ? `<button type="button" class="v2-button is-secondary dashboard-tasks-more" data-dashboard-tasks-collapse>Recolher para ${dashboardTaskLimit} tarefas</button>`
+            : '');
+      listEl.innerHTML = rowsHtml + expandHtml;
+
+      const expandButton = listEl.querySelector?.('[data-dashboard-tasks-expand]');
+      expandButton?.addEventListener('click', () => {
+        showAllDashboardTasks = true;
+        this.renderTasks();
+      });
+      const collapseButton = listEl.querySelector?.('[data-dashboard-tasks-collapse]');
+      collapseButton?.addEventListener('click', () => {
+        showAllDashboardTasks = false;
+        this.renderTasks();
+      });
 
       listEl.querySelectorAll('[data-dashboard-task-id]').forEach(item => {
         item.addEventListener('click', event => {
@@ -512,10 +601,10 @@ export function createDashboardFeature({
     widgetValues() {
       // "Minhas atividades" é pessoal (mantém o escopo privado do próprio
       // membro); a carteira de processos é do escritório.
-      const tasks = (store.state.tasks || []).filter(task => task && task.active !== false);
+      const tasks = (store.state.tasks || []).filter(task => task && task.active !== false && !task.absorbedInto);
       const processes = officeScopeItems(store.state.processes);
       const leads = store.state.leads || [];
-      const visibleTasks = tasks.filter(task => task.active !== false);
+      const visibleTasks = tasks;
       const completed = visibleTasks.filter(task => isTerminalStatus(task.status)).length;
       const late = visibleTasks.filter(task => !isTerminalStatus(task.status) && daysUntil(task.deadline) < 0).length;
       const pending = visibleTasks.filter(task => !isTerminalStatus(task.status) && daysUntil(task.deadline) >= 0).length;
@@ -571,7 +660,9 @@ export function createDashboardFeature({
       };
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const upcomingAgenda = (store.state.agenda || [])
+      const formatLocalIso = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const agendaHorizon = new Date(todayStart.getTime() + 120 * 86400000);
+      const upcomingAgenda = materializeCollection(store.state.agenda || [], { from: formatLocalIso(todayStart), to: formatLocalIso(agendaHorizon) })
         .map(item => ({ item, time: parseAgendaTime(item?.date) }))
         .filter(({ item, time }) => item && Number.isFinite(time) && time >= todayStart.getTime())
         .sort((left, right) => left.time - right.time)
@@ -587,7 +678,9 @@ export function createDashboardFeature({
         activeLeads,
         feesPending,
         minutes30d,
-        documentCount: Array.isArray(store.state.customDocs) ? store.state.customDocs.length : 0,
+        documentCount: Array.isArray(store.state.documents)
+          ? officeScopeItems(store.state.documents).filter(doc => !doc?.deletedAt).length
+          : (Array.isArray(store.state.customDocs) ? store.state.customDocs.length : 0),
         hearings: this.hearingValues(),
         nextDeadlineTask: (() => {
           const candidates = visibleTasks
@@ -602,7 +695,7 @@ export function createDashboardFeature({
     actionableValues() {
       const state = store.state || {};
       // Contadores do escritório não somam o escopo privado nem registros suprimidos.
-      const tasks = officeScopeItems(state.tasks).filter(task => task && task.active !== false);
+      const tasks = officeScopeItems(state.tasks).filter(task => task && task.active !== false && !task.absorbedInto);
       const processes = officeScopeItems(state.processes);
       const recentPublications = activeIntimations(publicationsInRecentScope(officeScopeItems(state.intimations)));
       const allPublications = activeIntimations(officeScopeItems(state.intimations));
@@ -686,7 +779,7 @@ export function createDashboardFeature({
       if (weekEl) weekEl.textContent = String(Number(hearings.week) || 0);
       if (!Array.isArray(hearings.items) || !hearings.items.length) {
         list.innerHTML = `<div class="v2-hearings-empty">
-          <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-agenda"></use></svg>
+          <svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-agenda"></use></svg>
           <p>Nenhuma audiência ou sessão designada.</p>
         </div>`;
         return;

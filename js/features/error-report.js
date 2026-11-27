@@ -1,4 +1,4 @@
-import { buildErrorReportPayload, redactErrorReportText } from '../core/error-report.js?v=3.3.2';
+import { buildErrorReportPayload, redactErrorReportText } from '../core/error-report.js?v=3.4.0';
 
 /**
  * ATRIUM — Relato de erro com código próprio e envio opcional ao suporte.
@@ -100,14 +100,14 @@ export function createErrorReportFeature({
       return true;
     },
 
-    async open({ scope = 'ATRIUM', message = '', details = '' } = {}) {
+    async open({ scope = 'ATRIUM', message = '', details = '', explicit = false } = {}) {
       feature.init();
       const backdrop = byId('errorReportBackdrop');
       if (!backdrop) return false;
       if (!String(message || '').trim()) return false;
       // Não interrompe outro overlay aberto: o erro continua registrado no console
       // e pode ser reportado pelo ponto de origem (ex.: painel de sincronização).
-      const otherOverlay = documentRef.querySelector?.('.modal-backdrop:not(.hidden), .eproc-sync-modal-backdrop:not(.hidden)');
+      const otherOverlay = !explicit && documentRef.querySelector?.('.modal-backdrop:not(.hidden), .eproc-sync-modal-backdrop:not(.hidden)');
       if (otherOverlay && !feature.isOpen) {
         console.warn('[ATRIUM] Erro registrado enquanto outro overlay estava aberto:', scope, message);
         return false;

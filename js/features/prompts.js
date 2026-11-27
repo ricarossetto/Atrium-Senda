@@ -1,7 +1,7 @@
 const PROMPTS_ICON_NAMES = new Set(['assistant', 'check', 'copy', 'search']);
 const iconSvg = name => {
   const safeName = PROMPTS_ICON_NAMES.has(name) ? name : 'search';
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${safeName}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-${safeName}"></use></svg>`;
 };
 
 const promptTypeClass = value => {
@@ -36,6 +36,21 @@ export function createPromptsFeature({
   let previewBodyOverflow = '';
   const byId = id => documentRef.getElementById(id);
   const allPrompts = () => [...(store.state.customPrompts || []), ...getDefaultPrompts()];
+  const haystackCache = new WeakMap();
+  let lastCategorySelectSig = '';
+  let lastChipsSig = '';
+  const promptHaystack = prompt => {
+    const title = String(prompt?.title || '');
+    const description = String(prompt?.description || '');
+    const tags = Array.isArray(prompt?.tags) ? prompt.tags.join(' ') : '';
+    const body = String(prompt?.prompt || '');
+    const sig = `${title.length}:${description.length}:${tags.length}:${body.length}:${prompt?.updatedAt || ''}`;
+    const cached = haystackCache.get(prompt);
+    if (cached && cached.sig === sig) return cached.text;
+    const text = normalizeText(`${title} ${description} ${tags} ${body}`);
+    haystackCache.set(prompt, { sig, text });
+    return text;
+  };
 
   const feature = {
     get filter() {
@@ -223,38 +238,48 @@ export function createPromptsFeature({
       const chipsContainer = byId('promptsCategoryChips');
       const categorySelect = byId('promptCategorySelect');
       const countDisplay = byId('promptsCountDisplay');
-      const categories = ['all', ...new Set(prompts.map(prompt => prompt.category))];
+      const categorySet = new Set();
+      for (const prompt of prompts) categorySet.add(prompt.category);
+      const categories = ['all', ...categorySet];
+      const uiMode = documentRef.documentElement?.dataset?.ui === 'v2' ? 'v2' : 'classic';
 
-      if (categorySelect && (categorySelect.options.length <= 1 || categorySelect.options.length !== categories.length)) {
+      if (categorySelect) {
         const currentValue = categorySelect.value || 'all';
-        categorySelect.innerHTML = categories.map(category => {
-          const label = category === 'all' ? `Todas as Áreas (${prompts.length} prompts)` : category;
-          return `<option value="${escapeHtml(category)}">${escapeHtml(label)}</option>`;
-        }).join('');
-        if (categories.includes(currentValue)) categorySelect.value = currentValue;
+        const selectSig = `${prompts.length}|${categories.join('\u0001')}`;
+        if (selectSig !== lastCategorySelectSig || !categorySelect.options?.length) {
+          lastCategorySelectSig = selectSig;
+          categorySelect.innerHTML = categories.map(category => {
+            const label = category === 'all' ? `Todas as áreas (${prompts.length} prompts)` : category;
+            return `<option value="${escapeHtml(category)}">${escapeHtml(label)}</option>`;
+          }).join('');
+        }
+        categorySelect.value = categorySet.has(currentValue) || currentValue === 'all' ? currentValue : 'all';
       }
 
-      const topCategories = ['all', ...[...new Set(prompts.map(prompt => prompt.category))].slice(0, 12)];
+      const topCategories = categories.slice(0, 13);
       const searchNeedle = normalizeText(filter.search || '');
+      const filterTypeNormalized = filter.type !== 'all' ? normalizeText(filter.type) : '';
       const filtered = prompts.filter(prompt => {
         if (filter.category !== 'all' && prompt.category !== filter.category) return false;
-        if (filter.type !== 'all' && normalizeText(prompt.type) !== normalizeText(filter.type)) return false;
-        if (searchNeedle) {
-          const haystack = normalizeText(`${prompt.title} ${prompt.description} ${(prompt.tags || []).join(' ')} ${prompt.prompt}`);
-          if (!haystack.includes(searchNeedle)) return false;
-        }
+        if (filterTypeNormalized && normalizeText(prompt.type) !== filterTypeNormalized) return false;
+        if (searchNeedle && !promptHaystack(prompt).includes(searchNeedle)) return false;
         return true;
       });
 
-      const v2Presentation = documentRef.documentElement?.dataset?.ui === 'v2' && typeof renderV2Presentation === 'function'
+      const shouldBuildV2 = uiMode === 'v2' && typeof renderV2Presentation === 'function';
+      const v2Presentation = shouldBuildV2
         ? renderV2Presentation({ prompts: filtered, topCategories, selectedCategory: filter.category, escapeHtml, normalizeText })
         : null;
       if (chipsContainer) {
-        chipsContainer.innerHTML = v2Presentation?.chipsHtml || topCategories.map(category => {
-          const selected = filter.category === category;
-          const label = category === 'all' ? 'Todas as Áreas' : category;
-          return `<button type="button" class="prompt-chip ${selected ? 'active' : ''}" data-category="${escapeHtml(category)}">${escapeHtml(label)}</button>`;
-        }).join('');
+        const chipsSig = `${uiMode}|${filter.category}|${topCategories.join('\u0001')}`;
+        if (chipsSig !== lastChipsSig || !chipsContainer.childElementCount) {
+          lastChipsSig = chipsSig;
+          chipsContainer.innerHTML = v2Presentation?.chipsHtml || topCategories.map(category => {
+            const selected = filter.category === category;
+            const label = category === 'all' ? 'Todas as áreas' : category;
+            return `<button type="button" class="prompt-chip ${selected ? 'active' : ''}" data-category="${escapeHtml(category)}">${escapeHtml(label)}</button>`;
+          }).join('');
+        }
       }
 
       if (countDisplay) countDisplay.textContent = `Mostrando ${filtered.length} de ${prompts.length} prompts`;

@@ -1,5 +1,5 @@
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
-const iconSvg = name => `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${name}"></use></svg>`;
+const iconSvg = name => `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-${name}"></use></svg>`;
 
 const defaultEscapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
@@ -24,6 +24,7 @@ export function createImporterFeature({
   let initialized = false;
   let importedSpreadsheetData = null;
   let importedBatch = null;
+  let isCommitting = false;
   const byId = id => documentRef?.getElementById(id);
 
   const collectionSize = key => (Array.isArray(store?.state?.[key]) ? store.state[key].length : 0);
@@ -197,10 +198,14 @@ export function createImporterFeature({
         presentation?.onPreview?.(data);
         return true;
       }
-      const headers = Object.keys(previewRows[0]);
+      const headers = [...new Set(previewRows.flatMap(row => Object.keys(row || {})))];
       if (byId('importerPreviewHead')) byId('importerPreviewHead').innerHTML = `<tr>${headers.map(header => `<th>${escapeHtml(header)}</th>`).join('')}</tr>`;
       if (byId('importerPreviewBody')) {
-        byId('importerPreviewBody').innerHTML = previewRows.map(row => `<tr>${headers.map(header => `<td>${escapeHtml(String(row[header] || '—'))}</td>`).join('')}</tr>`).join('');
+        byId('importerPreviewBody').innerHTML = previewRows.map(row => `<tr>${headers.map(header => {
+          const val = row?.[header];
+          const display = val === undefined || val === null || val === '' ? '—' : String(val);
+          return `<td>${escapeHtml(display)}</td>`;
+        }).join('')}</tr>`).join('');
       }
       presentation?.onPreview?.(data);
       card.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
@@ -269,65 +274,76 @@ export function createImporterFeature({
     },
 
     async commit() {
+      if (isCommitting) return false;
       const data = importedSpreadsheetData;
       if (!data) return false;
-      const batch = Array.isArray(importedBatch) && importedBatch.length ? importedBatch : null;
-      let processCount = 0;
-      let contactCount = 0;
-      let taskCount = 0;
-      const outcomes = [];
-      if (batch) {
-        for (const file of batch) {
-          if (file.ok === false) {
-            outcomes.push({ filename: file.filename, ok: false, error: file.error, processes: 0, contacts: 0, tasks: 0, created: 0, merged: 0, ignored: 0 });
-            continue;
+      isCommitting = true;
+      const commitBtn = byId('importerCommitButton');
+      if (commitBtn) commitBtn.disabled = true;
+      const stateSnapshot = JSON.parse(JSON.stringify(store.state));
+      try {
+        const batch = Array.isArray(importedBatch) && importedBatch.length ? importedBatch : null;
+        let processCount = 0;
+        let contactCount = 0;
+        let taskCount = 0;
+        const outcomes = [];
+        if (batch) {
+          for (const file of batch) {
+            if (file.ok === false) {
+              outcomes.push({ filename: file.filename, ok: false, error: file.error, processes: 0, contacts: 0, tasks: 0, created: 0, merged: 0, ignored: 0 });
+              continue;
+            }
+            const outcome = this.applyFile(file);
+            outcomes.push(outcome);
+            processCount += outcome.processes;
+            contactCount += outcome.contacts;
+            taskCount += outcome.tasks;
           }
-          const outcome = this.applyFile(file);
-          outcomes.push(outcome);
-          processCount += outcome.processes;
-          contactCount += outcome.contacts;
-          taskCount += outcome.tasks;
+        } else {
+          for (const process of data.processes || []) {
+            upsertProcess(process);
+            processCount++;
+          }
+          for (const contact of data.contacts || []) {
+            upsertContact(contact);
+            contactCount++;
+          }
+          for (const task of data.tasks || []) {
+            upsertTask(task);
+            taskCount++;
+          }
         }
-      } else {
-        for (const process of data.processes || []) {
-          upsertProcess(process);
-          processCount++;
+        const failed = outcomes.filter(outcome => !outcome.ok).length;
+        const created = outcomes.reduce((sum, outcome) => sum + outcome.created, 0);
+        const merged = outcomes.reduce((sum, outcome) => sum + outcome.merged, 0);
+        const ignored = outcomes.reduce((sum, outcome) => sum + outcome.ignored, 0);
+        const detail = batch
+          ? `${plural(processCount, 'processo', 'processos')}, ${plural(contactCount, 'contato', 'contatos')} e ${plural(taskCount, 'tarefa', 'tarefas')} importados de ${batch.length} arquivos`
+            + `${failed ? `; ${plural(failed, 'arquivo', 'arquivos')} com falha` : ''}`
+            + `${created || merged || ignored ? ` (${plural(created, 'novo', 'novos')}, ${plural(merged, 'conciliado', 'conciliados')}, ${plural(ignored, 'ignorado', 'ignorados')})` : ''}.`
+          : `${plural(processCount, 'processo', 'processos')}, ${plural(contactCount, 'contato', 'contatos')} e ${plural(taskCount, 'tarefa', 'tarefas')} importados.`;
+        store.audit('Importação de planilha concluída', detail);
+        store.save();
+        if (!await store.flush()) {
+          store.state = stateSnapshot;
+          showToast('Não foi possível salvar a importação no servidor. Tente novamente.', 'error');
+          return false;
         }
-        for (const contact of data.contacts || []) {
-          upsertContact(contact);
-          contactCount++;
+        if (batch && failed) {
+          this.renderOutcomes(outcomes);
+          showToast(`Importação concluída com pendências: ${plural(processCount, 'processo', 'processos')}, ${plural(contactCount, 'contato', 'contatos')} e ${plural(taskCount, 'tarefa', 'tarefas')}; ${plural(failed, 'arquivo', 'arquivos')} com falha.`, 'warning');
+        } else {
+          this.cancel();
+          showToast(`Importação concluída: ${plural(processCount, 'processo', 'processos')}, ${plural(contactCount, 'contato', 'contatos')} e ${plural(taskCount, 'tarefa', 'tarefas')} importados!`, 'success');
         }
-        for (const task of data.tasks || []) {
-          upsertTask(task);
-          taskCount++;
-        }
+        onRenderAll();
+        if (!failed && processCount > 0) onSwitchView('processes');
+        else if (!failed && contactCount > 0) onSwitchView('contacts');
+        return true;
+      } finally {
+        isCommitting = false;
+        if (commitBtn?.isConnected) commitBtn.disabled = false;
       }
-      const failed = outcomes.filter(outcome => !outcome.ok).length;
-      const created = outcomes.reduce((sum, outcome) => sum + outcome.created, 0);
-      const merged = outcomes.reduce((sum, outcome) => sum + outcome.merged, 0);
-      const ignored = outcomes.reduce((sum, outcome) => sum + outcome.ignored, 0);
-      const detail = batch
-        ? `${plural(processCount, 'processo', 'processos')}, ${plural(contactCount, 'contato', 'contatos')} e ${plural(taskCount, 'tarefa', 'tarefas')} importados de ${batch.length} arquivos`
-          + `${failed ? `; ${plural(failed, 'arquivo', 'arquivos')} com falha` : ''}`
-          + `${created || merged || ignored ? ` (${plural(created, 'novo', 'novos')}, ${plural(merged, 'conciliado', 'conciliados')}, ${plural(ignored, 'ignorado', 'ignorados')})` : ''}.`
-        : `${plural(processCount, 'processo', 'processos')}, ${plural(contactCount, 'contato', 'contatos')} e ${plural(taskCount, 'tarefa', 'tarefas')} importados.`;
-      store.audit('Importação de planilha concluída', detail);
-      store.save();
-      if (!await store.flush()) {
-        if (batch) this.renderOutcomes(outcomes);
-        return false;
-      }
-      if (batch && failed) {
-        this.renderOutcomes(outcomes);
-        showToast(`Importação concluída com pendências: ${plural(processCount, 'processo', 'processos')}, ${plural(contactCount, 'contato', 'contatos')} e ${plural(taskCount, 'tarefa', 'tarefas')}; ${plural(failed, 'arquivo', 'arquivos')} com falha.`, 'warning');
-      } else {
-        this.cancel();
-        showToast(`Importação concluída: ${plural(processCount, 'processo', 'processos')}, ${plural(contactCount, 'contato', 'contatos')} e ${plural(taskCount, 'tarefa', 'tarefas')} importados!`, 'success');
-      }
-      onRenderAll();
-      if (!failed && processCount > 0) onSwitchView('processes');
-      else if (!failed && contactCount > 0) onSwitchView('contacts');
-      return true;
     }
   };
 

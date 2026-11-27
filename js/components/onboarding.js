@@ -1,4 +1,4 @@
-import { safeImageSource } from '../core/link-safety.js?v=3.3.2';
+import { safeImageSource } from '../core/link-safety.js?v=3.4.0';
 
 function escapeAttribute(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -10,7 +10,7 @@ function escapeAttribute(value) {
   }[character]));
 }
 
-export function createOnboarding({ getSettings, saveState, showToast, onSlideChange, onTimerChange, onNavigate, onActivateAi, isAiEnabled, onOpenTour = null } = {}) {
+export function createOnboarding({ getSettings, saveState, showToast, onSlideChange, onTimerChange, onNavigate, onActivateAi, isAiEnabled, isAiIncluded, onOpenTour = null, onOpenLetterhead = null } = {}) {
   let initialized = false;
   let currentSlide = 0;
   let tourTimer = null;
@@ -35,8 +35,12 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     });
     document.getElementById('tourPrevButton')?.addEventListener('click', () => showSlide(currentSlide - 1));
     document.getElementById('tourNextButton')?.addEventListener('click', () => showSlide(currentSlide + 1));
+    document.getElementById('btnOnboardingConfigureLetterhead')?.addEventListener('click', () => {
+      close();
+      onOpenLetterhead?.();
+    });
     // Ativação do Atrium IA direto no walkthrough: mesma rota oficial do painel (admin + CSRF),
-    // e a pessoa pode desligar depois em Configurações. Nesta fase é gratuita.
+    // e a pessoa pode desligar depois em Configurações. O plano decide se o recurso aparece.
     document.getElementById('tourActivateAi')?.addEventListener('click', async () => {
       const botao = document.getElementById('tourActivateAi');
       const rotulo = document.getElementById('tourActivateAiLabel');
@@ -51,7 +55,7 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
         status.textContent = 'Pronto: o robô começa pelas publicações abertas.';
         showToast?.('Atrium IA ativado. Você pode desligar quando quiser em Configurações.', 'success');
       } else {
-        status.textContent = 'Não foi possível ativar agora — tente em Configurações.';
+        status.textContent = 'Não foi possível ativar agora. O Atrium IA faz parte do plano Pro IA.';
       }
     });
     document.getElementById('guidedTourBackdrop')?.addEventListener('click', event => {
@@ -122,6 +126,7 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
         close();
         return;
       }
+      if (event.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
       if (event.key === 'ArrowRight') showSlide(currentSlide + 1);
       else if (event.key === 'ArrowLeft') showSlide(currentSlide - 1);
     });
@@ -129,6 +134,10 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
 
   function handlePhotoUpload(file) {
     if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(String(file.type || '').toLowerCase()) || file.size > 512 * 1024) {
+      showToast?.('Use uma imagem PNG, JPEG ou WebP de até 512 KB.', 'error');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = e => {
       draftPhoto = e.target.result;
@@ -227,13 +236,24 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
     document.getElementById('onboardingThemeCardDark')?.classList.toggle('active', selectedTheme === 'dark');
     document.getElementById('onboardingThemeCardLight')?.classList.toggle('active', selectedTheme === 'light');
 
-    if (selectedTheme === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
+    if (typeof globalThis.__atriumApplyThemeChrome === 'function') {
+      globalThis.__atriumApplyThemeChrome(selectedTheme);
     } else {
-      document.documentElement.removeAttribute('data-theme');
+      const dark = selectedTheme === 'dark';
+      const bg = dark ? '#111315' : '#f3f4f2';
+      const r = document.documentElement;
+      r.dataset.theme = dark ? 'dark' : 'light';
+      r.style.colorScheme = dark ? 'dark' : 'light';
+      r.style.backgroundColor = bg;
+      if (document.head) {
+        document.head.querySelectorAll('meta[name="theme-color"]').forEach(m => m.remove());
+        const meta = document.createElement('meta');
+        meta.name = 'theme-color';
+        meta.content = bg;
+        document.head.appendChild(meta);
+      }
     }
     try { localStorage.setItem('atrium_theme', selectedTheme); } catch {}
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', selectedTheme === 'light' ? '#eef1f1' : '#0c0c0b');
 
     document.querySelectorAll('[data-theme-toggle]').forEach(button => {
       button.setAttribute('aria-pressed', selectedTheme === 'light' ? 'true' : 'false');
@@ -370,7 +390,10 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
   function syncAiCard() {
     const rotulo = document.getElementById('tourActivateAiLabel');
     const status = document.getElementById('tourActivateAiStatus');
-    if (!rotulo) return;
+    const card = document.getElementById('tourAiCard');
+    const included = typeof isAiIncluded === 'function' ? isAiIncluded() !== false : true;
+    if (card) card.hidden = !included;
+    if (!rotulo || !included) return;
     const ativo = typeof isAiEnabled === 'function' && isAiEnabled();
     rotulo.textContent = ativo ? 'Atrium IA ativado' : 'Ativar o Atrium IA';
     if (status && ativo) status.textContent = 'Já ativado neste escritório.';
@@ -423,12 +446,41 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
         avatarEl.style.backgroundImage = 'none';
       }
 
-      if (draftPhoto && typeof window !== 'undefined' && window.KellerAuth?.currentUser) {
-        window.KellerAuth.currentUser.photo = draftPhoto;
-        const profileImg = document.getElementById('profileAvatarImage');
-        if (profileImg) {
-          profileImg.src = draftPhoto;
-          profileImg.hidden = false;
+      const auth = typeof window !== 'undefined' ? (window.AtriumAuth || window.KellerAuth) : null;
+      if (draftPhoto && auth?.currentUser) {
+        const photoToSave = draftPhoto;
+        if (auth.authenticated && typeof auth.secureFetch === 'function') {
+          const profileBody = {
+            displayName: auth.currentUser.displayName || settings.lawyerName || '',
+            phone: auth.currentUser.phone || '',
+            avatar: photoToSave
+          };
+          // Enviar `email: ''` agora significa remoção e exige step-up. O tour só
+          // salva a foto: inclui o e-mail apenas quando há endereço real, e a
+          // ausência do campo preserva o endereço já cadastrado no servidor.
+          const currentEmail = String(auth.currentUser.email || '').trim();
+          if (currentEmail) profileBody.email = currentEmail;
+          void auth.secureFetch('/api/auth/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(profileBody)
+          }).then(async response => {
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || !payload?.user) throw new Error(payload?.message || 'Não foi possível salvar a foto de perfil.');
+            if (typeof auth.applyProfile === 'function') auth.applyProfile(payload.user);
+            else auth.currentUser.avatar = photoToSave;
+          }).catch(error => {
+            showToast?.(error?.message || 'Não foi possível salvar a foto de perfil.', 'error');
+          });
+        } else {
+          auth.currentUser.avatar = photoToSave;
+          const profileImg = document.getElementById('profileAvatarImage');
+          const initials = document.querySelector('.profile-initials');
+          if (profileImg) {
+            profileImg.src = photoToSave;
+            profileImg.hidden = false;
+          }
+          if (initials) initials.classList.add('hidden');
         }
       }
     }
@@ -480,8 +532,14 @@ export function createOnboarding({ getSettings, saveState, showToast, onSlideCha
 
     const previousButton = document.getElementById('tourPrevButton');
     const nextButton = document.getElementById('tourNextButton');
-    if (previousButton) previousButton.style.display = index > 0 ? 'inline-block' : 'none';
-    if (nextButton) nextButton.innerHTML = index === total - 1 ? 'Começar a usar o Atrium' : 'Próximo ' + '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-chevron-right"></use></svg>';
+    // No primeiro passo não há "Anterior": antes o display inline era vencido pelo CSS e o botão
+    // aparecia ativo sem destino.
+    if (previousButton) {
+      previousButton.hidden = index === 0;
+      previousButton.disabled = index === 0;
+      previousButton.style.display = index > 0 ? 'inline-block' : 'none';
+    }
+    if (nextButton) nextButton.innerHTML = index === total - 1 ? 'Começar a usar o ATRIUM' : 'Próximo ' + '<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-chevron-right"></use></svg>';
   }
 
   function hasBeenSeen() {

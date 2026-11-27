@@ -16,7 +16,16 @@ export function getCompletionNotifications() {
   return completionNotifications;
 }
 
+export function clearCompletionNotifications() {
+  completionNotifications = [];
+  loading = null;
+}
+
 export function refreshCompletionNotifications() {
+  if (!window.AtriumAuth?.authenticated) {
+    completionNotifications = [];
+    return Promise.resolve([]);
+  }
   if (loading) return loading;
   loading = (async () => {
     try {

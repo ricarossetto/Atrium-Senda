@@ -79,8 +79,8 @@ const RULES = {
   origin: { options: ({ state }) => withExtra(distinct(names(state.configuration?.origins)), list(state.contacts).map(item => item?.origin)) },
   city: { options: ({ state }) => distinct(list(state.contacts).map(item => item?.city)) },
   district: { options: ({ state }) => distinct(list(state.contacts).map(item => item?.district)) },
-  category: { options: ({ state }) => distinct(list(state.prompts).map(item => item?.category)) },
-  tags: { options: ({ state }) => distinct(list(state.prompts).flatMap(item => (Array.isArray(item?.tags) ? item.tags : splitNames(item?.tags)))), multiple: true }
+  category: { options: ({ state }) => distinct([...list(state.customPrompts), ...list(globalThis.PROMPTS_DATA)].map(item => item?.category)) },
+  tags: { options: ({ state }) => distinct([...list(state.customPrompts), ...list(globalThis.PROMPTS_DATA)].flatMap(item => (Array.isArray(item?.tags) ? item.tags : splitNames(item?.tags)))), multiple: true }
 };
 
 export function fieldContextRule(name) {

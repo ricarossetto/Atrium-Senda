@@ -1,4 +1,4 @@
-import { filterSuggestions } from '../core/field-context.js?v=3.3.2';
+import { filterSuggestions } from '../core/field-context.js?v=3.4.0';
 
 // Lista de sugestões própria do ATRIUM. Fica no body, em posição fixa, para não ser
 // cortada pela rolagem do painel. Há uma só por página; só uma é usada de cada vez.
@@ -8,6 +8,8 @@ let current = null;
 
 function ensurePopup() {
   if (popup?.isConnected) return popup;
+  const existing = document.getElementById(POPUP_ID);
+  if (existing) { popup = existing; return popup; }
   popup = document.createElement('div');
   popup.id = POPUP_ID;
   popup.className = 'field-suggest hidden';

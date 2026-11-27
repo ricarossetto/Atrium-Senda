@@ -1,6 +1,6 @@
-import { Store, isoDate } from '../core/store.js?v=3.3.2';
-import { readableAuditDetail } from '../views/ui-v2/audit-presenter.js?v=3.3.2';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.3.2';
+import { Store, isoDate } from '../core/store.js?v=3.4.0';
+import { readableAuditDetail } from '../views/ui-v2/audit-presenter.js?v=3.4.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.4.0';
 
 export const AUDIT_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
 export const AUDIT_DEFAULT_PAGE_SIZE = 25;
@@ -134,7 +134,7 @@ export function createAuditFeature({
       list.innerHTML = `
         <div class="responsive-table">
           <table class="sortable-table">
-            <thead><tr><th style="width:170px;">Data e Hora</th><th style="width:140px;">Usuário / Agente</th><th>Ação Executada</th><th>Detalhes do Evento</th><th style="width:100px;">Status</th></tr></thead>
+            <thead><tr><th style="width:170px;">Data e Hora</th><th style="width:140px;">Usuário / Agente</th><th>Ação Executada</th><th>Detalhes do Evento</th><th style="width:100px;">Situação</th></tr></thead>
             <tbody>${pageEvents.map(item => `
               <tr>
                 <td><time style="font-size:12px;color:var(--muted);">${formatDateTime(item.at)}</time></td>
@@ -236,4 +236,4 @@ export function createAuditFeature({
 
   return feature;
 }
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.3.2';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.4.0';

@@ -1,4 +1,4 @@
-import { describeLinkSafety } from '../core/link-safety.js?v=3.3.2';
+import { describeLinkSafety, normalizeExternalUrl } from '../core/link-safety.js?v=3.4.0';
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
 
 const defaultEscapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
@@ -199,7 +199,7 @@ export function createInpiIntegrationFeature({
           <span class="inpi-monitor-type-badge ${typeClass}">${typeLabel}</span>
           <b>${escapeHtml(monitor.label || monitor.term)}</b>
           <span class="inpi-monitor-hits">${formatNumber(hits)} ocorrência${hits === 1 ? '' : 's'}</span>
-          <button type="button" class="inpi-remove-term-btn" data-delete-monitor-id="${escapeHtml(monitor.id)}" title="Remover termo ${escapeHtml(monitor.term)}" aria-label="Remover termo ${escapeHtml(monitor.term)}"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-close"></use></svg></button>
+          <button type="button" class="inpi-remove-term-btn" data-delete-monitor-id="${escapeHtml(monitor.id)}" title="Remover termo ${escapeHtml(monitor.term)}" aria-label="Remover termo ${escapeHtml(monitor.term)}"><svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-close"></use></svg></button>
         </div>
       `;
     }).join('');
@@ -290,8 +290,8 @@ export function createInpiIntegrationFeature({
           <div class="inpi-card-footer">
             <span class="inpi-hits-summary">Identificado por termos vinculados ao escritório</span>
             <div class="inpi-actions">
-              ${match.links?.pdf ? `<a class="inpi-action-link primary" href="${escapeHtml(match.links.pdf)}" target="_blank" rel="noreferrer" title="Abrir caderno oficial em PDF da RPI">PDF Oficial</a>${linkSafetyChip(match.links.pdf)}` : ''}
-              ${match.links?.xml ? `<a class="inpi-action-link" href="${escapeHtml(match.links.xml)}" target="_blank" rel="noreferrer" title="Baixar arquivo XML original da RPI">XML INPI</a>${linkSafetyChip(match.links.xml)}` : ''}
+              ${normalizeExternalUrl(match.links?.pdf) ? `<a class="inpi-action-link primary" href="${escapeHtml(normalizeExternalUrl(match.links.pdf))}" target="_blank" rel="noreferrer" title="Abrir caderno oficial em PDF da RPI">PDF Oficial</a>${linkSafetyChip(match.links.pdf)}` : ''}
+              ${normalizeExternalUrl(match.links?.xml) ? `<a class="inpi-action-link" href="${escapeHtml(normalizeExternalUrl(match.links.xml))}" target="_blank" rel="noreferrer" title="Baixar arquivo XML original da RPI">XML INPI</a>${linkSafetyChip(match.links.xml)}` : ''}
             </div>
           </div>
         </article>
@@ -433,10 +433,19 @@ export function createInpiIntegrationFeature({
       } catch {}
     },
 
-    async loadData() {
+    async loadData({ reconcile = false } = {}) {
       try {
+        // Reconciliação é mutação: só acontece quando o painel abre. Nos demais
+        // carregamentos o GET permanece somente leitura, sem request duplicado.
+        const dataRequest = reconcile
+          ? secureFetch('/api/integrations/inpi/data', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: '{}'
+            })
+          : secureFetch('/api/integrations/inpi/data', { headers: { Accept: 'application/json' } });
         const [dataRes, statusRes, monitorsRes] = await Promise.all([
-          secureFetch('/api/integrations/inpi/data', { headers: { Accept: 'application/json' } }),
+          dataRequest,
           secureFetch('/api/integrations/inpi/status', { headers: { Accept: 'application/json' } }),
           secureFetch('/api/integrations/inpi/monitors', { headers: { Accept: 'application/json' } })
         ]);
@@ -446,6 +455,7 @@ export function createInpiIntegrationFeature({
           // nova publicação apareça imediatamente no painel, sem exigir F5.
           if (inpiData?.newIntimations?.length && typeof store?.load === 'function') {
             await store.load();
+            windowRef?.Atrium?.App?.renderAll?.();
           }
         }
         if (statusRes.ok) inpiStatus = await statusRes.json();
@@ -487,7 +497,7 @@ export function createInpiIntegrationFeature({
         backdrop.setAttribute('aria-hidden', 'false');
       }
       renderStatus();
-      await this.loadData();
+      await this.loadData({ reconcile: true });
     },
 
     closeModal() {

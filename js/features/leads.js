@@ -1,5 +1,5 @@
-import { Store, isoDate, uid } from '../core/store.js?v=3.3.2';
-import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.3.2';
+import { Store, isoDate, uid } from '../core/store.js?v=3.4.0';
+import { transitionPageContent, focusPageControl } from '../views/ui-v2/page-transition.js?v=3.4.0';
 
 export const LEAD_PAGE_SIZES = Object.freeze([25, 100, 500, 1000]);
 export const LEAD_DEFAULT_PAGE_SIZE = 25;
@@ -199,7 +199,7 @@ export function createLeadsFeature({
       return true;
     },
 
-    render(query = '', { resetPage = false } = {}) {
+    render(query = byId('leadSearch')?.value || '', { resetPage = false } = {}) {
       const listEl = byId('leadTableBody');
       if (!listEl) return;
       if (resetPage) leadPage = 1;
@@ -207,14 +207,16 @@ export function createLeadsFeature({
       const needle = normalizeText(query);
       const leads = store.state.leads || [];
 
+      const validStatuses = ['novo', 'em_analise', 'proposta', 'fechado', 'declinado'];
       const filtered = leads.filter(lead => {
-        if (filter !== 'all' && lead.status !== filter) return false;
+        const effectiveStatus = validStatuses.includes(lead?.status) ? lead.status : 'novo';
+        if (filter !== 'all' && effectiveStatus !== filter) return false;
         if (!needle) return true;
         return normalizeText(`${lead.client} ${lead.serviceType} ${lead.origin} ${lead.responsible}`).includes(needle);
       });
 
       const countEl = byId('leadCount');
-      if (countEl) countEl.textContent = `${filtered.length} atendimentos`;
+      if (countEl) countEl.textContent = `${filtered.length} ${filtered.length === 1 ? 'atendimento' : 'atendimentos'}`;
 
       byId('leadStatusFilters')?.querySelectorAll('button[data-lead-filter]').forEach(button => {
         const selected = button.dataset.leadFilter === filter;
@@ -271,7 +273,7 @@ export function createLeadsFeature({
         const statusMap = {
           novo: '<span class="lead-status-chip novo">Novo</span>',
           em_analise: '<span class="lead-status-chip em_analise">Em análise</span>',
-          proposta: '<span class="lead-status-chip proposta">Proposta Enviada</span>',
+          proposta: '<span class="lead-status-chip proposta">Proposta enviada</span>',
           fechado: '<span class="lead-status-chip fechado">Fechado</span>',
           declinado: '<span class="lead-status-chip declinado">Declinado</span>'
         };
@@ -340,15 +342,15 @@ export function createLeadsFeature({
           })),
           note: 'A seleção preserva o vínculo com o contato oficial. Um nome digitado livremente não cria contato automaticamente.'
         },
-        { name: 'serviceType', label: 'Tipo de Ação / Serviço Jurídico', required: true, full: true, placeholder: 'Ex: Concessão de Aposentadoria Especial' },
+        { name: 'serviceType', label: 'Tipo de ação / serviço jurídico', required: true, full: true, placeholder: 'Ex: Concessão de Aposentadoria Especial' },
         {
-          name: 'status', label: 'Status do Atendimento', type: 'select',
+          name: 'status', label: 'Situação do atendimento', type: 'select',
           options: [
-            { value: 'novo', label: 'Novo Lead / Contato Inicial' },
-            { value: 'em_analise', label: 'Em Análise Documental' },
-            { value: 'proposta', label: 'Proposta de Honorários Enviada' },
-            { value: 'fechado', label: 'Contrato Fechado (Virou Cliente)' },
-            { value: 'declinado', label: 'Declinado / Não Viável' }
+            { value: 'novo', label: 'Novo / primeiro contato' },
+            { value: 'em_analise', label: 'Em análise documental' },
+            { value: 'proposta', label: 'Proposta de honorários enviada' },
+            { value: 'fechado', label: 'Contrato fechado (virou cliente)' },
+            { value: 'declinado', label: 'Declinado / não viável' }
           ]
         },
         {
@@ -364,11 +366,11 @@ export function createLeadsFeature({
           ]
         },
         { name: 'estimatedFee', label: 'Honorários Estimados (R$)', type: 'number', placeholder: 'Ex: 5000' },
-        { name: 'responsible', label: 'Responsável pelo Atendimento', placeholder: 'Ex: Dra. Beatriz' },
+        { name: 'responsible', label: 'Responsável pelo Atendimento', placeholder: 'Ex: Dr. Ricardo' },
         { name: 'notes', label: 'Observações e Relato do Caso', type: 'textarea', full: true, placeholder: 'Descreva a pretensão do cliente e próximos passos...' }
       ];
 
-      openModal?.('lead', editing ? 'Editar Atendimento' : 'Novo atendimento / Oportunidade', 'CRM Jurídico', fields, {
+      openModal?.('lead', editing ? 'Editar atendimento' : 'Novo atendimento', 'Atendimentos', fields, {
         status: 'novo',
         origin: 'Indicação de Cliente',
         responsible: getCurrentUserName?.() || 'Advogado(a)',

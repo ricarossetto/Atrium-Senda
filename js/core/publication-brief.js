@@ -4,7 +4,7 @@
  * O resumo é montado com o texto oficial e com a classificação que já existe.
  * Não calcula prazo, não declara ciência e não substitui a leitura do teor.
  */
-import { publicationReadableText } from './html-text.js?v=3.3.2';
+import { publicationReadableText } from './html-text.js?v=3.4.0';
 
 const DECISION_PATTERN = /(RECURSO\s+(?:DESPROVIDO|PROVIDO)|NEGO\s+PROVIMENTO|DOU\s+PROVIMENTO|JULGO\s+(?:PROCEDENTE|IMPROCEDENTE)|HOMOLOGO|DEFIRO|INDEFIRO|CONDENO|ABSOLVO|DECIDO|DECIDIU|ACORDAM|DESPROVIDO|PROVIDO)/i;
 
@@ -111,22 +111,68 @@ function daysUntil(value, now) {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
+const TRIAGE_KIND_LABELS = Object.freeze({
+  providencia: 'Exige providência',
+  ciencia_rotina: 'Mero expediente / ciência',
+  acompanhamento: 'Acompanhamento'
+});
+
+const PIECE_ACTION_KEYS = new Set([
+  'contestar',
+  'recorrer',
+  'manifestar',
+  'peticao_intermediaria',
+  'cumprimento_sentenca'
+]);
+
 function classifierFields(classifier) {
   const suggestion = classifier?.suggestion || {};
   const detail = suggestion.suggestion || classifier?.suggestion?.suggestion || {};
+  const briefData = classifier?.brief || suggestion.brief || {};
   const action = String(suggestion.action || classifier?.action || '');
   const priority = String(detail.priority?.label || classifier?.priority || '');
   const confidenceValue = detail.area?.confidence ?? classifier?.areaConfidence ?? suggestion.confidence;
   const confidence = Number.isFinite(Number(confidenceValue)) ? Number(confidenceValue) : null;
   const deadlineSignal = String(detail.deadline_signal?.label || classifier?.deadlineSignal || '');
-  return { action, priority, confidence, deadlineSignal };
+  const briefSummary = String(classifier?.briefSummary || briefData.summary || '').trim();
+  const briefAction = String(classifier?.briefAction || briefData.action || '').trim();
+  const briefPiece = String(classifier?.briefPiece || briefData.piece || '').trim();
+  const briefTriageKind = String(classifier?.briefTriageKind || briefData.triageKind || '').trim();
+  const briefTriageKindOrigin = String(classifier?.briefTriageKindOrigin || briefData.triageKindOrigin || '').trim();
+  const briefActionKey = String(classifier?.briefActionKey || briefData.actionKey || '').trim();
+  const briefChecklist = Array.isArray(classifier?.briefChecklist)
+    ? classifier.briefChecklist.filter(Boolean)
+    : Array.isArray(briefData.checklist)
+      ? briefData.checklist.filter(Boolean)
+      : [];
+  const briefAttention = String(classifier?.briefAttention || briefData.attention || '').trim();
+  const briefTaskDefinition = String(classifier?.briefTaskDefinition || briefData.suggestedTaskDefinition || '').trim();
+  const briefModel = String(classifier?.briefModel || briefData.model || '').trim();
+  return {
+    action,
+    priority,
+    confidence,
+    deadlineSignal,
+    briefSummary,
+    briefAction,
+    briefPiece,
+    briefTriageKind,
+    briefTriageKindOrigin,
+    briefActionKey,
+    briefChecklist,
+    briefAttention,
+    briefTaskDefinition,
+    briefModel
+  };
 }
 
 export function buildPublicationBrief({ item, act, classifier } = {}) {
   const category = String(act?.category || 'Publicação');
   const fields = classifierFields(classifier);
   const source = item?.fullTextSource === 'domicilio' && item?.fullText ? item.fullText : (item?.text || item?.sourceText || item?.description || '');
-  const what = extractWhat(source);
+  const extractedWhat = extractWhat(source);
+  const aiEnriched = Boolean(fields.briefSummary);
+  const what = aiEnriched ? fields.briefSummary : extractedWhat;
   const baseAction = ACTION_BY_CATEGORY[category] || ACTION_BY_CATEGORY['Publicação'];
   const needsReview = fields.action === 'review' || fields.action === 'abstain' || !fields.action;
   const sourceIsDomicilio = String(item?.sourceReportedDeadlineSource || '').toLowerCase() === 'domicilio';
@@ -134,27 +180,57 @@ export function buildPublicationBrief({ item, act, classifier } = {}) {
   const domicilioSource = sourceIsDomicilio || deadlineIsDomicilio;
   const humanDeadline = isHumanDeadlineSource(item?.deadlineSource);
   const hasSourceDate = Boolean(item?.deadline || item?.sourceReportedDeadlineAt);
-  const actionParts = [];
-  // Em publicação sem ato identificado, "conferir" já é a ação: não repete a mesma ideia.
-  if (needsReview && category !== 'Publicação') actionParts.push('Conferir antes de agir');
-  actionParts.push(baseAction);
-  if (fields.deadlineSignal === 'sim') {
-    if (humanDeadline) actionParts.push('Conferir o prazo registrado no ATRIUM');
-    else if (domicilioSource) actionParts.push('Conferir a data de referência do Domicílio');
-    else if (hasSourceDate) actionParts.push('Conferir o prazo informado pela fonte');
-    else actionParts.push('Conferir se há prazo na fonte');
+  const deadlineReminder = fields.deadlineSignal === 'sim'
+    ? (humanDeadline
+      ? 'Conferir o prazo registrado no ATRIUM'
+      : domicilioSource
+        ? 'Conferir a data de referência do Domicílio'
+        : hasSourceDate
+          ? 'Conferir o prazo informado pela fonte'
+          : 'Conferir se há prazo na fonte')
+    : '';
+  let action = '';
+  if (aiEnriched && fields.briefAction) {
+    const cleanAiAction = fields.briefAction.replace(/\.+$/, '');
+    const needsDeadlineNote = deadlineReminder && !/prazo|domic[ií]lio|fonte/i.test(cleanAiAction);
+    action = `${cleanAiAction}${needsDeadlineNote ? `. ${deadlineReminder}` : ''}.`;
+  } else {
+    const actionParts = [];
+    // Em publicação sem ato identificado, "conferir" já é a ação: não repete a mesma ideia.
+    if (needsReview && category !== 'Publicação') actionParts.push('Conferir antes de agir');
+    actionParts.push(baseAction);
+    if (deadlineReminder) actionParts.push(deadlineReminder);
+    action = `${actionParts.join('. ')}.`;
   }
-  const action = `${actionParts.join('. ')}.`;
-  const piece = PIECE_BY_CATEGORY[category] || PIECE_BY_CATEGORY['Publicação'];
-  const pieceKind = PIECE_CATEGORIES.has(category) ? 'peca' : 'providencia';
-  const tone = /urgente|alta/i.test(fields.priority) ? 'urgent' : needsReview ? 'review' : 'normal';
+  const piece = (aiEnriched && fields.briefPiece) || PIECE_BY_CATEGORY[category] || PIECE_BY_CATEGORY['Publicação'];
+  const pieceKind = (aiEnriched && fields.briefActionKey)
+    ? (PIECE_ACTION_KEYS.has(fields.briefActionKey) ? 'peca' : 'providencia')
+    : (PIECE_CATEGORIES.has(category) ? 'peca' : 'providencia');
+  const triageKind = fields.briefTriageKind || '';
+  const triageKindLabel = TRIAGE_KIND_LABELS[triageKind] || '';
+  const tone = /urgente|alta/i.test(fields.priority)
+    ? 'urgent'
+    : triageKind === 'ciencia_rotina'
+      ? 'routine'
+      : needsReview
+        ? 'review'
+        : 'normal';
   return {
     what,
     action,
     piece,
-    pieceIsGeneric: category === 'Publicação',
+    pieceIsGeneric: !fields.briefPiece && category === 'Publicação',
     pieceKind,
-    source: fields.action ? 'Atrium IA' : 'Leitura do teor',
+    triageKind,
+    triageKindLabel,
+    triageKindOrigin: fields.briefTriageKindOrigin,
+    actionKey: fields.briefActionKey,
+    checklist: fields.briefChecklist,
+    attention: fields.briefAttention,
+    suggestedTaskDefinition: fields.briefTaskDefinition,
+    aiEnriched,
+    briefModel: fields.briefModel,
+    source: (aiEnriched || fields.action) ? 'Atrium IA' : 'Leitura do teor',
     confidence: fields.confidence,
     priority: fields.priority,
     deadlineSignal: fields.deadlineSignal,

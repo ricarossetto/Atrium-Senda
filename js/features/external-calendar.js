@@ -5,13 +5,17 @@ export function createExternalCalendarFeature({
   secureFetch = (...args) => windowRef?.KellerAuth?.secureFetch(...args),
   showToast = () => {},
   onSyncAll = () => {},
+  onActivateIcalTab = null,
+  onStatusChange = () => {},
   confirmFn = message => windowRef?.confirm?.(message) ?? false,
   schedule = (callback, delay) => windowRef?.setTimeout?.(callback, delay) ?? globalThis.setTimeout(callback, delay),
   presentation = null
 } = {}) {
   let initialized = false;
   let initialUrl = '';
+  let draftLoaded = false;
   const byId = id => documentRef?.getElementById(id);
+  const backdropForSheet = () => byId('calendarConfigBackdrop') || byId('googleCalendarBackdrop');
 
   const feature = {
     init() {
@@ -30,41 +34,49 @@ export function createExternalCalendarFeature({
     },
 
     refreshStatus() {
-      const chip = byId('calendarIntegrationStatus');
-      if (!chip) return false;
       const configured = Boolean(
         store?.state?.settings?.calendarUrl
         || store?.state?.settings?.externalCalendarUrl
         || store?.state?.settings?.calendarConfigured
       );
-      chip.textContent = configured ? 'Agenda configurada' : 'Não configurado — opcional';
-      chip.className = `status-chip ${configured ? 'connected' : 'muted'}`;
+      const chip = byId('calendarIntegrationStatus');
+      if (chip) {
+        chip.textContent = configured ? 'Agenda configurada' : 'Não configurado — opcional';
+        chip.className = `status-chip ${configured ? 'connected' : 'muted'}`;
+      }
+      onStatusChange(configured);
       return configured;
     },
 
     open() {
+      const backdrop = backdropForSheet();
+      const alreadyOpen = Boolean(!byId('calendarConfigBackdrop') && backdrop && !backdrop.classList.contains('hidden'));
+      if (!byId('calendarConfigBackdrop')) onActivateIcalTab?.();
       const input = byId('calendarInputUrl');
-      const url = store?.state?.settings?.calendarUrl || store?.state?.settings?.externalCalendarUrl || '';
-      if (input) input.value = url;
-      initialUrl = url;
-      const status = byId('calendarConfigStatus');
-      if (status) {
-        status.className = 'calendar-sync-status hidden';
-        status.textContent = '';
+      if (!alreadyOpen || !draftLoaded) {
+        const url = store?.state?.settings?.calendarUrl || store?.state?.settings?.externalCalendarUrl || '';
+        if (input) input.value = url;
+        initialUrl = url;
+        draftLoaded = true;
+        const status = byId('calendarConfigStatus');
+        if (status) {
+          status.className = 'calendar-sync-status hidden';
+          status.textContent = '';
+        }
       }
-      byId('calendarConfigBackdrop')?.classList.remove('hidden');
+      backdrop?.classList.remove('hidden');
       if (documentRef?.body) documentRef.body.style.overflow = 'hidden';
       presentation?.open?.('externalCalendar');
       schedule(() => input?.focus?.(), 50);
-      return url;
+      return input?.value ?? initialUrl;
     },
 
     hasUnsavedChanges() {
-      return Boolean(initialUrl !== (byId('calendarInputUrl')?.value || ''));
+      return Boolean(draftLoaded && initialUrl !== (byId('calendarInputUrl')?.value || ''));
     },
 
     requestClose() {
-      const backdrop = byId('calendarConfigBackdrop');
+      const backdrop = backdropForSheet();
       if (!backdrop || backdrop.classList.contains('hidden')) return true;
       if (this.hasUnsavedChanges()
         && !confirmFn('Há alterações não salvas na agenda externa. Deseja realmente fechar e descartá-las?')) return false;
@@ -72,10 +84,11 @@ export function createExternalCalendarFeature({
     },
 
     close() {
-      const backdrop = byId('calendarConfigBackdrop');
+      const backdrop = backdropForSheet();
       if (!backdrop || backdrop.classList.contains('hidden')) return false;
       backdrop.classList.add('hidden');
       initialUrl = '';
+      draftLoaded = false;
       if (byId('modalBackdrop')?.classList.contains('hidden') && documentRef?.body) documentRef.body.style.overflow = '';
       presentation?.close?.('externalCalendar');
       return true;
@@ -108,9 +121,12 @@ export function createExternalCalendarFeature({
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || 'Falha ao salvar configuração da agenda.');
 
+        store.state.settings ||= {};
         store.state.settings.calendarUrl = data.calendarUrl ?? calendarUrl;
         store.state.settings.externalCalendarUrl = data.externalCalendarUrl ?? data.calendarUrl ?? calendarUrl;
         store.state.settings.calendarConfigured = data.calendarConfigured ?? Boolean(store.state.settings.calendarUrl);
+        initialUrl = byId('calendarInputUrl')?.value || '';
+        draftLoaded = true;
         if (data.revision) store.revision = data.revision;
         this.refreshStatus();
 

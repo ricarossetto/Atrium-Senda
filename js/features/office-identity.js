@@ -1,8 +1,8 @@
-import { Store } from '../core/store.js?v=3.3.2';
-import { iconSvg } from '../views/ui-v2/icons.js?v=3.3.2';
-import { describeLinkSafety, safeImageSource } from '../core/link-safety.js?v=3.3.2';
-import { MAX_SUSPENSIONS, describeSuspension, normalizeSuspension, normalizeSuspensions } from '../core/suspension-calendar.js?v=3.3.2';
-import { installPanelSizeToggle, resetPanelSize } from '../components/panel-size.js?v=3.3.2';
+import { Store } from '../core/store.js?v=3.4.0';
+import { iconSvg } from '../views/ui-v2/icons.js?v=3.4.0';
+import { describeLinkSafety, safeImageSource } from '../core/link-safety.js?v=3.4.0';
+import { MAX_SUSPENSIONS, describeSuspension, normalizeSuspension, normalizeSuspensions } from '../core/suspension-calendar.js?v=3.4.0';
+import { installPanelSizeToggle, resetPanelSize } from '../components/panel-size.js?v=3.4.0';
 
 export function createOfficeIdentityFeature({
   store = Store,
@@ -12,12 +12,31 @@ export function createOfficeIdentityFeature({
   showToast,
   onRenderMonitoring,
   confirmFn = message => globalThis.window?.confirm?.(message) ?? false,
-  presentation = null
+  presentation = null,
+  lookupCnpj = null
 } = {}) {
   let initialized = false;
   let tempOfficeLogo = null;
   let initialFormSnapshot = '';
   const byId = id => documentRef?.getElementById(id);
+  /**
+   * Termo que representa a identidade do advogado titular. `upsert('terms')` insere no início
+   * da lista, então o índice 0 pode ser um termo de processo monitorado; usá-lo como identidade
+   * fazia a tela carregar e sobrescrever o CNJ monitorado com nome/OAB do titular.
+   * Só termo de escritório (sem escopo privado e sem dono) e não processo é elegível.
+   * Entre os elegíveis, prevalece o `primary`. Sem termo elegível, nada é lido nem gravado.
+   */
+  const isIdentityTerm = term => Boolean(term)
+    && String(term.type || '').toLowerCase() !== 'process'
+    && String(term.scope || '').toLowerCase() !== 'private'
+    && !String(term.privateOwnerUserId || term.ownerUserId || '').trim();
+
+  const primaryTermOf = () => {
+    const terms = Array.isArray(store?.state?.terms) ? store.state.terms : [];
+    return terms.find(term => term?.primary === true && isIdentityTerm(term))
+      || terms.find(isIdentityTerm)
+      || null;
+  };
 
   const feature = {
     get initialized() { return initialized; },
@@ -40,6 +59,7 @@ export function createOfficeIdentityFeature({
         this.updateLogoPreview();
       });
       byId('officeSetupForm')?.addEventListener('submit', event => this.handleSubmit(event));
+      byId('btnLookupOfficeCnpj')?.addEventListener('click', () => this.handleCnpjLookup());
       byId('btnAddSuspension')?.addEventListener('click', () => this.addSuspension());
       byId('suspensionList')?.addEventListener('click', event => {
         const button = event.target.closest('[data-suspension-remove]');
@@ -66,6 +86,13 @@ export function createOfficeIdentityFeature({
         nameEl.title = fullIdentity;
       }
       if (labelEl) labelEl.textContent = 'Escritório';
+      const planEl = byId('sidebarOfficePlan');
+      if (planEl) {
+        const plan = globalThis.window?.AtriumAuth?.currentWorkspace?.plan || '';
+        const label = ({ basic: 'Basic', pro: 'Pro', pro_ia: 'Pro IA' })[plan] || '';
+        planEl.textContent = label;
+        planEl.hidden = !label;
+      }
       if (avatarEl) {
         if (officeLogo) {
           avatarEl.innerHTML = `<img src="${escapeHtml(officeLogo)}" class="office-custom-logo" alt="Logo">`;
@@ -82,13 +109,20 @@ export function createOfficeIdentityFeature({
 
     open() {
       const settings = store.state.settings || {};
-      const primaryTerm = store.state.terms?.[0] || {};
+      const primaryTerm = primaryTermOf() || {};
       byId('officeInputName').value = settings.officeName || 'Meu Escritório';
       byId('officeInputSlogan').value = settings.officeSlogan || 'Desde 1983';
       byId('officeInputLawyer').value = settings.lawyerName || primaryTerm.name || 'Advogado(a) Titular';
       byId('officeInputOab').value = settings.lawyerOab || primaryTerm.registration || 'OAB/UF 000000';
       byId('officeInputAddress').value = settings.lawyerAddress || '';
       byId('officeInputCity').value = settings.city || '';
+      const cnpjInput = byId('officeInputCnpj');
+      if (cnpjInput) cnpjInput.value = settings.officeCnpj || '';
+      const cnpjStatus = byId('officeCnpjStatus');
+      if (cnpjStatus) {
+        cnpjStatus.textContent = '';
+        delete cnpjStatus.dataset.state;
+      }
       const deadlineMode = settings.deadlineMode === 'manual' ? 'manual' : 'auto';
       const modeAuto = byId('officeDeadlineModeAuto');
       const modeManual = byId('officeDeadlineModeManual');
@@ -102,14 +136,81 @@ export function createOfficeIdentityFeature({
       presentation?.openOfficeIdentity?.();
     },
 
+    async handleCnpjLookup() {
+      const cnpjInput = byId('officeInputCnpj');
+      const statusEl = byId('officeCnpjStatus');
+      const button = byId('btnLookupOfficeCnpj');
+      const setCnpjStatus = (text, state = 'neutral') => {
+        if (!statusEl) return;
+        statusEl.textContent = text;
+        statusEl.dataset.state = state;
+      };
+      if (typeof lookupCnpj !== 'function') {
+        setCnpjStatus('Consulta de CNPJ indisponível neste contexto.', 'error');
+        return null;
+      }
+      const rawValue = String(cnpjInput?.value || '').trim();
+      if (!rawValue) {
+        setCnpjStatus('Informe o CNPJ do escritório para buscar os dados.', 'attention');
+        return null;
+      }
+      const previousLabel = button?.textContent || 'Buscar CNPJ';
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Buscando…';
+      }
+      setCnpjStatus('Consultando CNPJ (CNPJá Open / fonte pública)…', 'loading');
+      try {
+        const result = await lookupCnpj(rawValue);
+        if (cnpjInput && result?.document) cnpjInput.value = result.document;
+        const nameInput = byId('officeInputName');
+        if (nameInput && (result?.legalName || result?.tradeName)) {
+          nameInput.value = result.legalName || result.tradeName;
+        }
+        const sloganInput = byId('officeInputSlogan');
+        if (sloganInput) {
+          const currentSlogan = sloganInput.value.trim();
+          const altSlogan = (result?.tradeName && result.tradeName !== result.legalName)
+            ? result.tradeName
+            : (result?.legalNature || '');
+          if ((!currentSlogan || currentSlogan === 'Desde 1983') && altSlogan) {
+            sloganInput.value = altSlogan.slice(0, 100);
+          }
+        }
+        const addressInput = byId('officeInputAddress');
+        const fullAddress = [result?.address, result?.district, result?.zip].filter(Boolean).join(' · ');
+        if (addressInput && fullAddress) addressInput.value = fullAddress.slice(0, 150);
+        const cityInput = byId('officeInputCity');
+        const fullCity = [result?.city, result?.state].filter(Boolean).join(' / ');
+        if (cityInput && fullCity) cityInput.value = fullCity.slice(0, 80);
+        const sourceLabel = result?.registry?.source || 'CNPJá Open';
+        setCnpjStatus(`Dados preenchidos via ${sourceLabel}. Revise e clique em Salvar.`, 'success');
+        showToast?.('Dados do escritório preenchidos pelo CNPJ. Revise antes de salvar.', 'success');
+        return result;
+      } catch (error) {
+        const message = error?.message || 'Não foi possível consultar o CNPJ informado.';
+        setCnpjStatus(message, 'error');
+        showToast?.(message, 'error');
+        return null;
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = previousLabel;
+        }
+      }
+    },
+
     formSnapshot() {
+      const cnpjEl = byId('officeInputCnpj');
       return JSON.stringify({
         name: byId('officeInputName')?.value || '',
         slogan: byId('officeInputSlogan')?.value || '',
+        ...(cnpjEl ? { cnpj: cnpjEl.value || '' } : {}),
         lawyer: byId('officeInputLawyer')?.value || '',
         oab: byId('officeInputOab')?.value || '',
         address: byId('officeInputAddress')?.value || '',
         city: byId('officeInputCity')?.value || '',
+        deadlineMode: byId('officeDeadlineModeManual')?.checked ? 'manual' : 'auto',
         logo: tempOfficeLogo || ''
       });
     },
@@ -206,6 +307,7 @@ export function createOfficeIdentityFeature({
         showToast?.('Informe data inicial e final válidas (fim não pode ser anterior ao início).', 'danger');
         return false;
       }
+      const stateSnapshot = JSON.parse(JSON.stringify(store.state));
       store.state.settings ||= {};
       const current = normalizeSuspensions(store.state.settings.suspensions);
       if (current.length >= MAX_SUSPENSIONS) {
@@ -216,15 +318,18 @@ export function createOfficeIdentityFeature({
       store.audit('Suspensão registrada', describeSuspension(candidate));
       store.save();
       this.renderSuspensions();
+      try {
+        const flushed = await store.flush();
+        if (flushed === false) throw new Error('Não foi possível salvar a suspensão.');
+      } catch (error) {
+        store.state = stateSnapshot;
+        this.renderSuspensions();
+        showToast?.(error.message || 'Não foi possível salvar a suspensão.', 'error');
+        return false;
+      }
       for (const id of ['suspensionInputStart', 'suspensionInputEnd', 'suspensionInputSource', 'suspensionInputNote']) {
         const field = byId(id);
         if (field) field.value = '';
-      }
-      try {
-        await store.flush();
-      } catch (error) {
-        showToast?.(error.message || 'Não foi possível salvar a suspensão.', 'error');
-        return false;
       }
       showToast?.('Suspensão registrada (informativa; não cria prazo).', 'success');
       return true;
@@ -234,13 +339,17 @@ export function createOfficeIdentityFeature({
       const current = normalizeSuspensions(store.state.settings?.suspensions);
       const next = current.filter(item => item.id !== id);
       if (next.length === current.length) return false;
+      const stateSnapshot = JSON.parse(JSON.stringify(store.state));
       store.state.settings.suspensions = next;
       store.audit('Suspensão removida', String(id));
       store.save();
       this.renderSuspensions();
       try {
-        await store.flush();
+        const flushed = await store.flush();
+        if (flushed === false) throw new Error('Não foi possível remover a suspensão.');
       } catch (error) {
+        store.state = stateSnapshot;
+        this.renderSuspensions();
         showToast?.(error.message || 'Não foi possível remover a suspensão.', 'error');
         return false;
       }
@@ -259,9 +368,16 @@ export function createOfficeIdentityFeature({
       store.state.settings.city = byId('officeInputCity').value.trim();
     store.state.settings.deadlineMode = byId('officeDeadlineModeManual')?.checked ? 'manual' : 'auto';
       store.state.settings.officeLogo = tempOfficeLogo;
-      if (store.state.terms?.[0]) {
-        store.state.terms[0].name = store.state.settings.lawyerName;
-        store.state.terms[0].registration = store.state.settings.lawyerOab;
+      const cnpjInput = byId('officeInputCnpj');
+      if (cnpjInput) {
+        const cleanCnpj = cnpjInput.value.trim();
+        if (cleanCnpj) store.state.settings.officeCnpj = cleanCnpj;
+        else if ('officeCnpj' in store.state.settings) delete store.state.settings.officeCnpj;
+      }
+      const primaryTerm = primaryTermOf();
+      if (primaryTerm) {
+        primaryTerm.name = store.state.settings.lawyerName;
+        primaryTerm.registration = store.state.settings.lawyerOab;
       }
       store.audit('Identidade do escritório atualizada', store.state.settings.officeName);
       store.save();

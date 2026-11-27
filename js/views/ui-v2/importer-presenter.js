@@ -1,9 +1,9 @@
-import { iconSvg } from './icons.js?v=3.3.2';
+import { iconSvg } from './icons.js?v=3.4.0';
 
 const COUNT_DEFINITIONS = Object.freeze([
-  Object.freeze({ key: 'processes', label: 'Processos', icon: 'processes' }),
-  Object.freeze({ key: 'contacts', label: 'Contatos', icon: 'contacts' }),
-  Object.freeze({ key: 'tasks', label: 'Tarefas', icon: 'tasks' })
+  Object.freeze({ key: 'processes', label: 'Processos', singular: 'Processo', icon: 'processes' }),
+  Object.freeze({ key: 'contacts', label: 'Contatos', singular: 'Contato', icon: 'contacts' }),
+  Object.freeze({ key: 'tasks', label: 'Tarefas', singular: 'Tarefa', icon: 'tasks' })
 ]);
 
 export function createImporterPresenter({ documentRef = globalThis.document } = {}) {
@@ -37,7 +37,8 @@ export function createImporterPresenter({ documentRef = globalThis.document } = 
       const value = documentRef.createElement('strong');
       value.textContent = String(count);
       const label = documentRef.createElement('span');
-      label.textContent = definition.label;
+      // Singular com 1 ("1 Processo", não "1 Processos").
+      label.textContent = count === 1 ? definition.singular : definition.label;
       item.append(value, label);
       fragment.append(item);
     }

@@ -1,4 +1,4 @@
-import { renderPerformanceChart } from './performance-chart.js?v=3.3.2';
+import { renderPerformanceChart } from './performance-chart.js?v=3.4.0';
 
 function setText(documentRef, id, value) {
   const element = documentRef?.getElementById?.(id);
@@ -120,10 +120,10 @@ function renderActionableInsights({ documentRef, insights, formatDate, formatCur
       <small>Distribuição por responsável cadastrado</small>
     </article>
     <article class="dashboard-insight-card">
-      <header><span>Fluxo de publicações</span><strong>${pendingPublications} ${pendingPublications === 1 ? 'pendente' : 'pendentes'}</strong></header>
+      <header><span>Fluxo de publicações</span><strong title="Acervo do escritório: publicações privadas não entram nesta contagem">${pendingPublications} ${pendingPublications === 1 ? 'pendente' : 'pendentes'}</strong></header>
       <dl><div><dt>Tempo médio de tratamento</dt><dd>${escapeHtml(durationLabel(insights.averageTreatmentMinutes))}</dd></div><div><dt>Atividades para revisar</dt><dd>${Number(insights.recentActivityCount || 0)}</dd></div></dl>
       ${renderWeeklyFunnel(insights.weeklyFunnel, escapeHtml)}
-      <small>${sample ? `Média baseada em ${sample} tratamento${sample === 1 ? '' : 's'} com início e conclusão registrados` : 'A média aparece quando início e conclusão estiverem registrados'}</small>
+      <small>${sample ? `Média baseada em ${sample} tratamento${sample === 1 ? '' : 's'} com início e conclusão registrados` : 'A média aparece quando início e conclusão estiverem registrados'}. Conta só o acervo do escritório; publicações privadas ficam fora.</small>
     </article>
     <article class="dashboard-insight-card">
       <header><span>Situação do sistema</span><strong>${pendingSyncs} ${pendingSyncs === 1 ? 'pendência' : 'pendências'}</strong></header>

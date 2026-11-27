@@ -98,6 +98,15 @@ function isSafeSvgDataUrl(raw) {
   } catch { return false; }
 }
 
+export function normalizeExternalUrl(value) {
+  try {
+    const url = new URL(String(value ?? '').trim());
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
 export function safeImageSource(value) {
   const raw = String(value ?? '').trim();
   if (!raw) return '';

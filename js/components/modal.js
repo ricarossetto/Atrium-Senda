@@ -8,9 +8,9 @@ export function dateInputValue(value) {
   return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
 }
 
-import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from './panel-size.js?v=3.3.2';
-import { attachFieldSuggest, enhanceSelect } from './field-suggest.js?v=3.3.2';
-import { fieldContextRule } from '../core/field-context.js?v=3.3.2';
+import { installPanelSizeToggle, resetPanelSize, syncPanelSizeControl } from './panel-size.js?v=3.4.0';
+import { attachFieldSuggest, enhanceSelect } from './field-suggest.js?v=3.4.0';
+import { fieldContextRule } from '../core/field-context.js?v=3.4.0';
 
 const SELF_MANAGED_TYPES = new Set(['combobox', 'model-combobox', 'textarea', 'select', 'password', 'date', 'time', 'number', 'email', 'tel', 'url', 'checkbox', 'file', 'hidden']);
 // Menu curto se escolhe de olho; a partir daqui, digitar é mais rápido que rolar.
@@ -41,6 +41,13 @@ const LATERAL_MODAL_MODES = Object.freeze([
   'task', 'agenda', 'contact', 'lead', 'prompt', 'term', 'source', 'datajud',
   'configuration', 'feedback', 'publicationWorkAction'
 ]);
+
+/** Duração da saída das camadas (token --v2-duration-fast), lida do CSS para ficar em sincronia. */
+function layerExitMilliseconds() {
+  const raw = globalThis.getComputedStyle?.(document.documentElement)?.getPropertyValue('--v2-duration-fast')?.trim() || '';
+  const match = raw.match(/^([\d.]+)(ms|s)$/);
+  return match ? Math.round(Number(match[1]) * (match[2] === 's' ? 1000 : 1)) : 150;
+}
 
 export function createModal({ escapeHtml, onModeChange, getFieldOptions, onFieldContextOpen } = {}) {
   let initialized = false;
@@ -73,7 +80,10 @@ export function createModal({ escapeHtml, onModeChange, getFieldOptions, onField
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
+      if (!focusable.includes(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
@@ -109,8 +119,8 @@ export function createModal({ escapeHtml, onModeChange, getFieldOptions, onField
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalEyebrow').textContent = eyebrow;
     const renderField = field => {
-      const value = defaults[field.name] ?? field.value ?? '';
-      if (field.type === 'date') field = { ...field, value: dateInputValue(field.value) };
+      const rawValue = defaults[field.name] ?? field.value ?? '';
+      const value = field.type === 'date' ? dateInputValue(rawValue) : rawValue;
       const inputType = ['text', 'password', 'email', 'tel', 'number', 'date', 'time', 'url', 'search'].includes(field.type) ? field.type : 'text';
       if (field.type === 'combobox') {
         const identityName = field.identityName || `${field.name}Id`;
@@ -141,7 +151,7 @@ export function createModal({ escapeHtml, onModeChange, getFieldOptions, onField
       if (field.type === 'select') return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label><select id="field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" ${field.required ? 'required' : ''}>${field.options.map(option => `<option value="${escapeHtml(option.value)}" ${String(value) === String(option.value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select></div>`;
       const suggestions = '';
       const list = '';
-      return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label><input id="field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" type="${inputType}" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} ${list}>${suggestions}${field.note ? `<small class="field-note">${escapeHtml(field.note)}</small>` : ''}</div>`;
+      return `<div class="field ${field.full ? 'full' : ''}"><label for="field-${escapeHtml(field.name)}">${escapeHtml(field.label)}</label><input id="field-${escapeHtml(field.name)}" name="${escapeHtml(field.name)}" type="${inputType}" value="${escapeHtml(value)}" ${field.step ? `step="${escapeHtml(field.step)}"` : ''} ${field.required ? 'required' : ''} ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} ${list}>${suggestions}${field.note ? `<small class="field-note">${escapeHtml(field.note)}</small>` : ''}</div>`;
     };
     const isV2 = document.documentElement.dataset.ui === 'v2';
     const fieldsHtml = mode === 'process' && isV2
@@ -168,7 +178,7 @@ export function createModal({ escapeHtml, onModeChange, getFieldOptions, onField
     document.getElementById('modalBackdrop').classList.remove('hidden');
     syncSizeControl(mode);
     initialFormSnapshot = formSnapshot();
-    if (['task', 'agenda', 'contact', 'lead', 'prompt', 'term', 'source', 'datajud', 'configuration', 'feedback', 'publicationWorkAction', 'processMovement', 'reauth'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
+    if (['task', 'agenda', 'contact', 'lead', 'prompt', 'term', 'source', 'datajud', 'configuration', 'feedback', 'publicationWorkAction', 'processMovement', 'reauth', 'process', 'intimation', 'link'].includes(mode) && isV2) document.getElementById('appShell')?.setAttribute('inert', '');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
       const modalFields = document.getElementById('modalFields');
@@ -228,7 +238,15 @@ export function createModal({ escapeHtml, onModeChange, getFieldOptions, onField
     const backdrop = document.getElementById('modalBackdrop');
     const wasOpen = backdrop && !backdrop.classList.contains('hidden');
     backdrop?.classList.add('hidden');
-    backdrop?.removeAttribute('data-modal-mode');
+    // O formato da camada (gaveta lateral, folha) vem do modo. Ele só sai depois do fade de saída
+    // (motion.css), para a camada não trocar de formato enquanto some. Se o modal reabrir antes,
+    // o modo novo prevalece e este não é apagado.
+    const closingMode = backdrop?.getAttribute('data-modal-mode');
+    if (backdrop && closingMode !== null) {
+      setTimeout(() => {
+        if (backdrop.classList.contains('hidden') && backdrop.getAttribute('data-modal-mode') === closingMode) backdrop.removeAttribute('data-modal-mode');
+      }, layerExitMilliseconds() + 40);
+    }
     resetPanelSize(modalPanel());
     document.getElementById('appShell')?.removeAttribute('inert');
     onModeChange?.(null);
@@ -440,10 +458,10 @@ function installModelCombobox(field) {
 const PROCESS_FIELD_SECTIONS = Object.freeze({
   number: 'Essencial', oldNumber: 'Identificação', originNumbers: 'Identificação', nb: 'Identificação', protocol: 'Identificação', caseFolder: 'Identificação',
   client: 'Essencial', clientPosition: 'Essencial', opposingParty: 'Essencial',
-  actionGroup: 'Classificação', actionType: 'Essencial', judicialPhase: 'Classificação', risk: 'Classificação', stage: 'Classificação',
-  court: 'Órgão e responsabilidade', county: 'Órgão e responsabilidade', courtUnit: 'Órgão e responsabilidade', responsible: 'Órgão e responsabilidade',
+  actionGroup: 'Classificação', actionType: 'Essencial', actionClass: 'Classificação', subject: 'Classificação', judicialPhase: 'Classificação', risk: 'Classificação', stage: 'Classificação',
+  court: 'Órgão e responsabilidade', county: 'Órgão e responsabilidade', courtUnit: 'Órgão e responsabilidade', competence: 'Órgão e responsabilidade', judge: 'Órgão e responsabilidade', responsible: 'Órgão e responsabilidade',
   registeredAt: 'Movimentação', lastMovementAt: 'Movimentação', lastMovement: 'Movimentação',
-  feeType: 'Honorários', feePercentage: 'Honorários', feeAmount: 'Honorários', feeMonthly: 'Honorários', feeStatus: 'Honorários', feeNotes: 'Honorários',
+  feeType: 'Honorários', feePercentage: 'Honorários', feeAmount: 'Honorários', feeMonthly: 'Honorários', caseValue: 'Honorários', feeStatus: 'Honorários', feeNotes: 'Honorários',
   requisitionType: 'Requisições', requisitionAmount: 'Requisições', requisitionBank: 'Requisições', requisitionStatus: 'Requisições',
   secrecy: 'Privacidade e acompanhamento', monitoring: 'Privacidade e acompanhamento', notes: 'Privacidade e acompanhamento'
 });
@@ -516,6 +534,8 @@ function renderAgendaSections(fields, renderField) {
 const CONTACT_FIELD_SECTIONS = Object.freeze({
   name: 'Identificação', contactRole: 'Identificação', document: 'Identificação', rg: 'Identificação',
   birthDate: 'Identificação', profession: 'Identificação', maritalStatus: 'Identificação',
+  gender: 'Identificação', nationality: 'Identificação', birthPlace: 'Identificação',
+  motherName: 'Identificação', fatherName: 'Identificação',
   mobile: 'Contato', phone: 'Contato', email: 'Contato',
   address: 'Endereço', district: 'Endereço', city: 'Endereço', state: 'Endereço', zip: 'Endereço',
   leadOrigin: 'Relacionamento', origin: 'Relacionamento',

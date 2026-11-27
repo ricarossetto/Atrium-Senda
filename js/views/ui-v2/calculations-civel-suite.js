@@ -1,3 +1,4 @@
+import { plural } from '../../core/plural.js?v=3.4.0';
 export const CIVEL_TOOLS = Object.freeze([
   { id: 'judicial', label: 'Planilha Judicial (Lei 14.905/24)' },
   { id: 'correcao', label: 'Correção e Deflação Reversa' },
@@ -354,7 +355,7 @@ export function renderCivelSuiteForm({ civelSub, suite = {}, catalog = null, ico
         <button type="button" class="button ghost" data-calc-action="civel-htm-exemplo"><span>Carregar exemplo legado pré-2023</span></button>
         <button type="button" class="button" data-calc-action="civel-suite-calcular"${st.loading ? ' disabled' : ''}>${icon('check')}<span>${st.loading ? 'Analisando...' : 'Analisar planilha .HTM'}</span></button>
         ${diag?.repairedHtml ? `<button type="button" class="button ghost" data-calc-action="civel-htm-baixar">${icon('download')}<span>Baixar .htm reparado</span></button>` : ''}
-        ${diag?.extractedItems?.length ? `<button type="button" class="button gold" data-calc-action="civel-htm-importar">${icon('add')}<span>Enviar ${diag.extractedItems.length} item(ns) para Planilha Judicial</span></button>` : ''}
+        ${diag?.extractedItems?.length ? `<button type="button" class="button gold" data-calc-action="civel-htm-importar">${icon('add')}<span>Enviar ${diag.extractedItems.length} ${plural(diag.extractedItems.length, 'item', 'itens')} para Planilha Judicial</span></button>` : ''}
       </div>
       ${st.error ? `<p class="calc-feedback" role="alert">${escapeHtml(st.error)}</p>` : ''}
       ${diag ? `<div class="calc-summary" aria-live="polite">
@@ -370,7 +371,18 @@ export function renderCivelSuiteForm({ civelSub, suite = {}, catalog = null, ico
   return '';
 }
 
-export function renderCivelSuiteResult(result, escapeHtml, formatCurrency) {
+// Datas ISO (AAAA-MM-DD, AAAA-MM) e decimais com ponto vindos do motor saem no padrão brasileiro.
+function brDisplay(value) {
+  const text = String(value ?? '');
+  let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  m = /^(\d{4})-(\d{2})$/.exec(text);
+  if (m) return `${m[2]}/${m[1]}`;
+  return /^-?\d+\.\d+%?$/.test(text) ? text.replace('.', ',') : text;
+}
+
+export function renderCivelSuiteResult(result, escapeHtmlRaw, formatCurrency) {
+  const escapeHtml = value => escapeHtmlRaw(brDisplay(value));
   if (!result || typeof result !== 'object') return '';
 
   if (result.modalidade === 'correcao_monetaria') {

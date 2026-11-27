@@ -1,7 +1,13 @@
+const PREVIEW_TEXT_CACHE = new Map();
+const TYPE_CLASS_CACHE = new Map();
+
 // Prompt guardado em JSON aparece como texto: a pessoa lê o pedido, não a estrutura.
 export function promptPreviewText(value) {
   const text = String(value ?? '').trim();
   if (!text.startsWith('{')) return text;
+  const cached = PREVIEW_TEXT_CACHE.get(text);
+  if (cached !== undefined) return cached;
+  let formatted = text;
   try {
     const values = [];
     const walk = entry => {
@@ -10,20 +16,29 @@ export function promptPreviewText(value) {
       else if (entry && typeof entry === 'object') Object.values(entry).forEach(walk);
     };
     walk(JSON.parse(text));
-    return values.join(' · ') || text;
+    formatted = values.join(' · ') || text;
   } catch {
-    return text;
+    formatted = text;
   }
+  if (PREVIEW_TEXT_CACHE.size > 600) PREVIEW_TEXT_CACHE.clear();
+  PREVIEW_TEXT_CACHE.set(text, formatted);
+  return formatted;
 }
 
 const promptTypeClass = value => {
-  const suffix = String(value ?? '')
+  const raw = String(value ?? '');
+  const cached = TYPE_CLASS_CACHE.get(raw);
+  if (cached !== undefined) return cached;
+  const suffix = raw
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return suffix ? `type-${suffix}` : 'type-geral';
+  const cls = suffix ? `type-${suffix}` : 'type-geral';
+  if (TYPE_CLASS_CACHE.size > 100) TYPE_CLASS_CACHE.clear();
+  TYPE_CLASS_CACHE.set(raw, cls);
+  return cls;
 };
 
 export function renderPromptsV2Presentation({
@@ -85,4 +100,4 @@ export function renderPromptsV2Presentation({
 
   return Object.freeze({ chipsHtml, libraryHtml });
 }
-import { iconSvg } from './icons.js?v=3.3.2';
+import { iconSvg } from './icons.js?v=3.4.0';

@@ -2,7 +2,8 @@ import {
   renderCivelSubNav,
   renderCivelSuiteForm,
   renderCivelSuiteResult
-} from './calculations-civel-suite.js?v=3.3.2';
+} from './calculations-civel-suite.js?v=3.4.0';
+import { plural } from '../../core/plural.js?v=3.4.0';
 
 const SPECIES_LABELS = Object.freeze({
   debito: 'Débito',
@@ -41,12 +42,32 @@ const ABAS = Object.freeze([
 ]);
 
 function icon(name) {
-  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${name}"></use></svg>`;
+  return `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-${name}"></use></svg>`;
 }
 
 function speciesBadge(especie, escapeHtml) {
   const negative = especie === 'amortizacao' || especie === 'desconto';
   return `<span class="calc-species${negative ? ' is-negative' : ''}">${escapeHtml(SPECIES_LABELS[especie] || especie)}</span>`;
+}
+
+// Datas ISO da memória (AAAA-MM-DD ou AAAA-MM) exibidas no padrão brasileiro.
+function brDate(value) {
+  const text = String(value ?? '');
+  let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  m = /^(\d{4})-(\d{2})$/.exec(text);
+  if (m) return `${m[2]}/${m[1]}`;
+  return text;
+}
+
+// Números decimais da memória (fator, taxa) com vírgula decimal.
+function brNum(value) {
+  const text = String(value ?? '');
+  return /^-?\d+\.\d+$/.test(text) ? text.replace('.', ',') : text;
+}
+
+function brDisplay(value) {
+  return brNum(brDate(value)).replace(/^(-?\d+)\.(\d+)%$/, '$1,$2%');
 }
 
 function displayMoney(value, formatCurrency) {
@@ -704,7 +725,7 @@ function renderConferenciaIndices(conferencia, conferindo, escapeHtml) {
   return `<section class="calc-conference" aria-label="Conferência oficial de índices" aria-live="polite">
     ${cabecalho}
     <div class="calc-conference-summary">${chips}</div>
-    <ul class="calc-conference-list">${lista}</ul>
+    <ul class="calc-conference-list">${itens}</ul>
     <p class="calc-hint">Tolerância de ${escapeHtml(String(conferencia.toleranciaPercentual ?? '0,10').replace('.', ','))}% para arredondamento das tabelas. Janela conferida: ${competencias}. Última competência na tabela: ${escapeHtml(conferencia.ultimaCompetenciaOficial || 'não informada')}. A conferência não substitui a revisão humana.</p>
   </section>`;
 }
@@ -726,7 +747,7 @@ function renderCivelResult(result, escapeHtml, formatCurrency, conferencia = nul
     ['Abatimentos', result.resumo.abatimentos]
   ].map(([label, value]) => `<div class="calc-tile"><span>${label}</span><strong>${escapeHtml(displayMoney(value, formatCurrency))}</strong></div>`).join('');
   const sources = result.fontes.map(source =>
-    `<span>${escapeHtml(source.serie)} · ${escapeHtml(source.de)} a ${escapeHtml(source.ate)}</span>`).join('');
+    `<span>${escapeHtml(source.serie)} · ${escapeHtml(brDate(source.de))} a ${escapeHtml(brDate(source.ate))}</span>`).join('');
   return `<h3>Resumo</h3>
     <div class="calc-summary" aria-live="polite">${tiles}
       <div class="calc-tile is-total"><span>Total</span><strong>${escapeHtml(displayMoney(result.resumo.total, formatCurrency))}</strong></div>
@@ -740,7 +761,8 @@ function renderCivelResult(result, escapeHtml, formatCurrency, conferencia = nul
     ${renderConferenciaIndices(conferencia, conferindo, escapeHtml)}`;
 }
 
-function renderTrabalhistaResult(result, escapeHtml, formatCurrency) {
+function renderTrabalhistaResult(result, escapeHtmlRaw, formatCurrency) {
+  const escapeHtml = value => escapeHtmlRaw(brDisplay(value));
   const tiles = [
     ['Proventos', result.resumo.proventos],
     ['Descontos', result.resumo.descontos],
@@ -777,7 +799,7 @@ function renderTrabalhistaResult(result, escapeHtml, formatCurrency) {
     </div>
     <h3>Parâmetros da rescisão</h3>
     <div class="calc-memorial">
-      <details open><summary>${escapeHtml(result.tipoDesligamento)} · aviso ${escapeHtml(parametros.aviso)}</summary>
+      <details open><summary>${escapeHtml(DESLIGAMENTOS.find(item => item.value === result.tipoDesligamento)?.label || result.tipoDesligamento)} · aviso ${escapeHtml(parametros.aviso)}</summary>
         <dl>
           <div><dt>Anos completos</dt><dd>${escapeHtml(String(parametros.anosCompletos))}</dd></div>
           <div><dt>Aviso (dias-base)</dt><dd>${escapeHtml(String(parametros.avisoDiasBase))}</dd></div>
@@ -791,15 +813,16 @@ function renderTrabalhistaResult(result, escapeHtml, formatCurrency) {
     <div class="calc-sources">${result.avisos.map(aviso => `<span>${escapeHtml(aviso)}</span>`).join('')}</div>`;
 }
 
-function renderTransicoes(transicoes, escapeHtml) {
+function renderTransicoes(transicoes, escapeHtmlRaw) {
+  const escapeHtml = value => escapeHtmlRaw(brDisplay(value));
   const faltas = registro => {
     if (!registro) return '—';
     if (registro.aplicavel === false) return 'Regra não aplicável';
     const partes = [];
-    if (registro.tempoMeses) partes.push(`${registro.tempoMeses} mes(es) de tempo`);
-    if (registro.idadeMeses) partes.push(`${registro.idadeMeses} mes(es) de idade`);
-    if (registro.pontos) partes.push(`${registro.pontos} ponto(s)`);
-    if (registro.carenciaMeses) partes.push(`${registro.carenciaMeses} mes(es) de carência`);
+    if (registro.tempoMeses) partes.push(`${registro.tempoMeses} ${plural(registro.tempoMeses, 'mês', 'meses')} de tempo`);
+    if (registro.idadeMeses) partes.push(`${registro.idadeMeses} ${plural(registro.idadeMeses, 'mês', 'meses')} de idade`);
+    if (registro.pontos) partes.push(`${registro.pontos} ${plural(registro.pontos, 'ponto', 'pontos')}`);
+    if (registro.carenciaMeses) partes.push(`${registro.carenciaMeses} ${plural(registro.carenciaMeses, 'mês', 'meses')} de carência`);
     return partes.length > 0 ? partes.join(' · ') : '—';
   };
   const rows = transicoes.regras.map(regra => `<tr>
@@ -814,7 +837,7 @@ function renderTransicoes(transicoes, escapeHtml) {
         <caption class="sr-only">Comparador de regras de transição</caption>
         <thead><tr>
           <th scope="col">Regra</th>
-          <th scope="col">Status</th>
+          <th scope="col">Situação</th>
           <th scope="col">Faltas</th>
           <th scope="col">RMI</th>
         </tr></thead>
@@ -824,7 +847,8 @@ function renderTransicoes(transicoes, escapeHtml) {
     <div class="calc-sources">${transicoes.observacoes.map(observacao => `<span>${escapeHtml(observacao)}</span>`).join('')}</div>`;
 }
 
-function renderCorrecaoTable(correcao, escapeHtml, formatCurrency) {
+function renderCorrecaoTable(correcao, escapeHtmlRaw, formatCurrency) {
+  const escapeHtml = value => escapeHtmlRaw(brDisplay(value));
   const linhas = correcao.parcelas.map((parcela, index) => {
     const descartada = correcao.parcelasDescartadas.includes(parcela.competencia);
     return `<tr class="${descartada ? 'is-descartada' : ''}" data-correcao-row="${index}">
@@ -855,10 +879,11 @@ function renderCorrecaoTable(correcao, escapeHtml, formatCurrency) {
         <tbody>${linhas}</tbody>
       </table>
     </div>
-    <p class="calc-hint">Referência ${escapeHtml(correcao.referencia)} · PBC de ${correcao.pbc} · ${correcao.consideradas} consideradas · ${correcao.descartadas} descartadas · soma considerada ${escapeHtml(displayMoney(correcao.somaConsiderada, formatCurrency))} · média ${escapeHtml(displayMoney(correcao.media, formatCurrency))}</p>`;
+    <p class="calc-hint">Referência ${escapeHtml(correcao.referencia)} · PBC de ${correcao.pbc} · ${correcao.consideradas} ${correcao.consideradas === 1 ? 'considerada' : 'consideradas'} · ${correcao.descartadas} ${correcao.descartadas === 1 ? 'descartada' : 'descartadas'} · soma considerada ${escapeHtml(displayMoney(correcao.somaConsiderada, formatCurrency))} · média ${escapeHtml(displayMoney(correcao.media, formatCurrency))}</p>`;
 }
 
-function renderPrevidenciarioResult(result, escapeHtml, formatCurrency) {
+function renderPrevidenciarioResult(result, escapeHtmlRaw, formatCurrency) {
+  const escapeHtml = value => escapeHtmlRaw(brDisplay(value));
   const tiles = [
     ['Competências', String(result.resumo.competencias)],
     ['Carência (meses)', String(result.resumo.carenciaMeses)],
@@ -916,14 +941,15 @@ function renderVinculoRow(vinculo, index, escapeHtml) {
   </tr>`;
 }
 
-function renderTempoResultado(resultado, escapeHtml, formatCurrency) {
+function renderTempoResultado(resultado, escapeHtmlRaw, formatCurrency) {
+  const escapeHtml = value => escapeHtmlRaw(brDisplay(value));
   const blocos = [];
   if (resultado.tempo) {
     const tempo = resultado.tempo;
     const vinculos = tempo.vinculos.map(vinculo => `<tr class="${vinculo.sobreposto ? 'is-descartada' : ''}" data-vinculo-resultado="${vinculo.indice}">
       <td>${vinculo.indice}</td>
       <td>${escapeHtml(vinculo.inicio)} a ${escapeHtml(vinculo.fim)}</td>
-      <td>${escapeHtml(vinculo.tipo)}</td>
+      <td>${escapeHtml((TEMPO_TIPOS.find(([value]) => value === vinculo.tipo) || [])[1] || vinculo.tipo)}</td>
       <td>${escapeHtml(String(vinculo.fator))}</td>
       <td class="calc-money">${vinculo.dias}</td>
       <td class="calc-money">${vinculo.diasEfetivos}</td>
@@ -993,7 +1019,8 @@ function rotuloModeloQualidade(modelo) {
   return 'não declarado pela origem';
 }
 
-function renderAnalisesAvancadas(avancadas, escapeHtml, formatCurrency) {
+function renderAnalisesAvancadas(avancadas, escapeHtmlRaw, formatCurrency) {
+  const escapeHtml = value => escapeHtmlRaw(brDisplay(value));
   const estado = avancadas || {};
   const projecao = estado.projecao || {};
   const pensao = estado.pensao || {};
@@ -1177,7 +1204,8 @@ function renderAnalisesAvancadas(avancadas, escapeHtml, formatCurrency) {
   </section>`;
 }
 
-function renderComplementar(complementar, escapeHtml, formatCurrency) {
+function renderComplementar(complementar, escapeHtmlRaw, formatCurrency) {
+  const escapeHtml = value => escapeHtmlRaw(brDisplay(value));
   const estado = complementar || {};
   const grauOptions = [['grave', 'Grave'], ['moderada', 'Moderada'], ['leve', 'Leve']]
     .map(([value, label]) => `<option value="${value}"${estado.grau === value ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('');
@@ -1450,8 +1478,15 @@ function lc142EtapaIndice(etapa) {
 function lc142Texto(value, escapeHtml, fallback = '—') {
   if (value === null || value === undefined) return escapeHtml(fallback);
   const texto = String(value).trim();
-  return escapeHtml(texto === '' ? fallback : texto);
+  if (texto === '') return escapeHtml(fallback);
+  const dataHora = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2})/.exec(texto);
+  if (dataHora) return escapeHtml(`${dataHora[3]}/${dataHora[2]}/${dataHora[1]} ${dataHora[4]}`);
+  return escapeHtml(brNum(brDate(texto)));
 }
+
+const LC142_CONVENCOES = Object.freeze({
+  declared_30_360_inclusive_union: 'Ano de 360 dias, com períodos concomitantes unidos (declarada)'
+});
 
 /* Dinheiro do envelope chega como string decimal ("2550.00"). A formatação é
  * feita por manipulação de STRING, não por `Number`: assim o valor exibido não
@@ -1549,7 +1584,7 @@ function renderLc142Hipoteses(state, escapeHtml) {
       </dl>
       <p class="lc142-hipotese-resumo">${lc142Texto(hipotese?.resumo, escapeHtml, 'Sem resultado calculado.')}</p>
       ${pendencias > 0
-        ? `<p class="lc142-hipotese-pendencia">${escapeHtml(`${pendencias} pendência(s) impedem o cálculo.`)}</p>`
+        ? `<p class="lc142-hipotese-pendencia">${escapeHtml(`${pendencias} ${plural(pendencias, 'pendência', 'pendências')} ${plural(pendencias, 'impede', 'impedem')} o cálculo.`)}</p>`
         : '<p class="lc142-hipotese-ok">Sem pendências registradas.</p>'}
       <div class="lc142-actions">
         <button type="button" class="button ghost lc142-btn" data-lc142-action="abrir-hipotese" data-id="${escapeHtml(hipotese?.id || '')}">${icon('chevron-right')}<span>Abrir</span></button>
@@ -1564,7 +1599,7 @@ function renderLc142Hipoteses(state, escapeHtml) {
       </div>
       ${novoBotao}
     </header>
-    <p class="lc142-lede">${escapeHtml(`${hipoteses.length} hipótese(s) nesta sessão.`)} O estado do cartão é o estado real do cenário: nada aqui simula conclusão.</p>
+    <p class="lc142-lede">${escapeHtml(`${hipoteses.length} ${plural(hipoteses.length, 'hipótese', 'hipóteses')} nesta sessão.`)} O estado do cartão é o estado real do cenário: nada aqui simula conclusão.</p>
     <div class="lc142-hipoteses">${cartoes}</div>
   </section>`;
 }
@@ -1746,7 +1781,7 @@ function renderLc142Vinculos(state, escapeHtml) {
         <p class="lc142-kicker">Tempo</p>
         <h3 id="lc142VinculosHeading">Vínculos</h3>
       </div>
-      <span class="lc142-badge is-draft">${escapeHtml(`${vinculos.length} vínculo(s)`)}</span>
+      <span class="lc142-badge is-draft">${escapeHtml(`${vinculos.length} ${plural(vinculos.length, 'vínculo', 'vínculos')}`)}</span>
     </header>
     <p class="lc142-lede">Cada vínculo traz intervalo, regime e fonte. Todo ajuste exige um motivo e fica registrado como revisado.</p>
     <div class="lc142-vinculos">${cartoes}</div>
@@ -1872,13 +1907,13 @@ function renderLc142Parcelas(state, escapeHtml, formatCurrency) {
         <p class="lc142-kicker">PBC</p>
         <h3 id="lc142ParcelasHeading">Contribuições</h3>
       </div>
-      <span class="lc142-badge is-draft">${escapeHtml(`${parcelas.length} competência(s)`)}</span>
+      <span class="lc142-badge is-draft">${escapeHtml(`${parcelas.length} ${plural(parcelas.length, 'competência', 'competências')}`)}</span>
     </header>
     ${tiles}
     <div class="lc142-lote" role="group" aria-label="Seleção em lote">
       <button type="button" class="button ghost lc142-btn" data-lc142-action="contribuicoes-selecionar-todas">${icon('list')}<span>Selecionar todas as visíveis</span></button>
       <button type="button" class="button ghost lc142-btn" data-lc142-action="contribuicoes-limpar">${icon('close')}<span>Limpar seleção</span></button>
-      <button type="button" class="button ghost lc142-btn" data-lc142-action="contribuicoes-em-lote" data-modo="conferir"${selecionadas.size === 0 ? ' disabled' : ''}>${icon('check')}<span>${escapeHtml(`Conferir ${selecionadas.size} selecionada(s)`)}</span></button>
+      <button type="button" class="button ghost lc142-btn" data-lc142-action="contribuicoes-em-lote" data-modo="conferir"${selecionadas.size === 0 ? ' disabled' : ''}>${icon('check')}<span>${escapeHtml(`Conferir ${selecionadas.size} ${plural(selecionadas.size, 'selecionada', 'selecionadas')}`)}</span></button>
     </div>
     <p class="lc142-hint">No celular, o resumo mostra competência e valor corrigido; ao abrir a linha, aparecem valor nominal, teto, fator, corrigido, uso, origem e histórico. Na tela larga a mesma informação aparece em tabela com rolagem própria.</p>
     <div class="lc142-parcelas">${itens}</div>
@@ -2033,7 +2068,7 @@ function renderLc142Blockers(blockers, escapeHtml) {
     <button type="button" class="button ghost lc142-btn" data-lc142-action="ir-para-campo" data-campo="${escapeHtml(blocker?.field || '')}">${icon('edit')}<span>Corrigir campo</span></button>
   </li>`).join('');
   return `<div class="lc142-bloqueio" role="alert">
-    <h4>${escapeHtml(`${lista.length} bloqueio(s) impedem o cálculo`)}</h4>
+    <h4>${escapeHtml(`${lista.length} ${plural(lista.length, 'bloqueio', 'bloqueios')} ${plural(lista.length, 'impede', 'impedem')} o cálculo`)}</h4>
     <p>Cada bloqueio aponta o campo que precisa de decisão. Nenhum valor financeiro é apresentado enquanto houver bloqueio.</p>
     <ul class="lc142-lista">${itens}</ul>
   </div>`;
@@ -2100,7 +2135,7 @@ function renderLc142Revisao(state, escapeHtml) {
     </div>
     ${validacao ? `<div class="lc142-alerta ${validacao.valido ? '' : 'is-warning'}" data-lc142-validacao role="${validacao.valido ? 'status' : 'alert'}">
       <strong>${validacao.valido ? 'Hipótese validada pelo servidor' : 'A validação do servidor apontou pendências'}</strong>
-      <p>${escapeHtml(validacao.valido ? 'O cenário passou na validação de schema sem persistir nada.' : `${validacao.blockers.length} bloqueio(s) declarados. Corrija o campo indicado antes de calcular.`)}</p>
+      <p>${escapeHtml(validacao.valido ? 'O cenário passou na validação de schema sem persistir nada.' : `${validacao.blockers.length} ${plural(validacao.blockers.length, 'bloqueio', 'bloqueios')} ${plural(validacao.blockers.length, 'declarado', 'declarados')}. Corrija o campo indicado antes de calcular.`)}</p>
     </div>` : ''}
     <div class="lc142-actions lc142-actions-sticky">
       <button type="button" class="button ghost lc142-btn" data-lc142-action="validar-hipotese"${validando ? ' disabled' : ''} aria-busy="${validando ? 'true' : 'false'}">${icon('check')}<span>${validando ? 'Validando...' : 'Validar hipótese'}</span></button>
@@ -2242,7 +2277,7 @@ function renderLc142Result(result, escapeHtml, formatCurrency) {
       <dl class="lc142-dl">
         <div><dt>Tempo total</dt><dd>${lc142Dias(tempo.total, escapeHtml)}</dd></div>
         <div><dt>Tempo sem projeção</dt><dd>${lc142Dias(tempo.sem_projecao, escapeHtml)}</dd></div>
-        <div><dt>Convenção de contagem</dt><dd><code>${lc142Texto(tempo.convention, escapeHtml, 'não declarada')}</code></dd></div>
+        <div><dt>Convenção de contagem</dt><dd>${lc142Texto(LC142_CONVENCOES[tempo.convention] || tempo.convention, escapeHtml, 'não declarada')}</dd></div>
         <div><dt>Tempo exigido</dt><dd>${lc142Texto(pcd.anos_exigidos, escapeHtml)} anos</dd></div>
         <div><dt>Tempo atingido no cenário</dt><dd>${pcd.tempo_atingido_no_cenario === true ? 'Sim' : 'Não'}</dd></div>
         <div><dt>Competências preenchidas por hipótese</dt><dd>${lc142Texto(pcd.filled_minimum_count, escapeHtml)}</dd></div>
@@ -2367,7 +2402,7 @@ function renderLc142Entry(lc142, escapeHtml) {
     </div>
     <div class="lc142-entry-actions">
       <button type="button" class="button gold lc142-btn" data-calc-action="lc142-abrir">${icon('calculations')}<span>Abrir assistente LC 142</span></button>
-      <span class="lc142-entry-count">${escapeHtml(hipoteses.length === 0 ? 'Nenhuma hipótese nesta sessão' : `${hipoteses.length} hipótese(s) nesta sessão`)}</span>
+      <span class="lc142-entry-count">${escapeHtml(hipoteses.length === 0 ? 'Nenhuma hipótese nesta sessão' : `${hipoteses.length} ${plural(hipoteses.length, 'hipótese', 'hipóteses')} nesta sessão`)}</span>
     </div>
   </section>`;
 }
@@ -2458,7 +2493,7 @@ function renderPrevidenciarioHub(state, escapeHtml, formatCurrency) {
       eyebrow: 'Aposentadoria da PcD',
       titulo: 'LC 142/2013',
       descricao: 'Assistente em 9 etapas: hipótese, CNIS, vínculos, contribuições, premissas, revisão e relatórios.',
-      meta: hipoteses === 0 ? 'Nenhuma hipótese nesta sessão' : `${hipoteses} hipótese(s) nesta sessão`,
+      meta: hipoteses === 0 ? 'Nenhuma hipótese nesta sessão' : `${hipoteses} ${plural(hipoteses, 'hipótese', 'hipóteses')} nesta sessão`,
       acao: 'Abrir assistente'
     },
     {
@@ -2609,7 +2644,7 @@ export function renderCalculationsWorkspace(state = {}) {
   const etapa = state.etapa === 'resultado' && temResultado ? 'resultado' : 'formulario';
   const resumoValor = result?.resumo?.total ?? result?.resumo?.liquido ?? result?.resumo?.rmi ?? null;
   const badge = result
-    ? (resumoValor != null ? `Total ${resumoValor}` : 'Simulação carregada')
+    ? (resumoValor != null ? `Total ${displayMoney(resumoValor, formatCurrency)}` : 'Simulação carregada')
     : state.catalog
       ? `${state.catalog.series.length} séries · ${state.catalog.tabelas.resumo.total} tabelas`
       : 'Carregando catálogo...';
@@ -2656,8 +2691,8 @@ export function renderCalculationsWorkspace(state = {}) {
         </div>
         <div class="calc-actions">
           <button type="button" class="button ghost" data-calc-action="voltar-form">${icon('chevron-left')}<span>Editar dados</span></button>
-          <button type="button" class="button gold" data-calc-action="baixar-pdf"${state.gerandoPdf ? ' disabled aria-busy="true"' : ''}>${icon('download')}<span>${state.gerandoPdf ? 'Gerando PDF...' : 'Baixar PDF (ATRIUM)'}</span></button>
-          ${aba === 'civel' && result ? `<button type="button" class="button ghost" data-calc-action="civel-copiar-resumo"><span>Copiar p/ petição</span></button>
+          <button type="button" class="button gold" data-calc-action="baixar-pdf"${state.gerandoPdf ? ' disabled aria-busy="true"' : ''}>${icon('download')}<span>${state.gerandoPdf ? 'Gerando PDF...' : 'Baixar PDF'}</span></button>
+          ${aba === 'civel' && result ? `<button type="button" class="button ghost" data-calc-action="civel-copiar-resumo"><span>Copiar para a petição</span></button>
           <button type="button" class="button ghost" data-calc-action="civel-exportar-csv">${icon('download')}<span>Exportar CSV</span></button>` : ''}
           <button type="button" class="button ghost" data-calc-action="imprimir">${icon('documents')}<span>Imprimir relatório</span></button>
           ${renderSaveButton(form)}

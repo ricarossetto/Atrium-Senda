@@ -1,5 +1,14 @@
+const palavra = (count, singular, pluralForm) => (Math.abs(Number(count)) === 1 ? singular : pluralForm);
 const plural = (count, singular, pluralForm) => `${count} ${Number(count) === 1 ? singular : pluralForm}`;
-const iconSvg = name => `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-${name}"></use></svg>`;
+const iconSvg = name => `<svg class="atrium-icon" aria-hidden="true" focusable="false"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-${name}"></use></svg>`;
+const normalizeExternalUrl = value => {
+  try {
+    const url = new URL(String(value ?? '').trim());
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : '';
+  } catch {
+    return '';
+  }
+};
 
 export function createJudicialIntegrationsFeature({
   documentRef = globalThis.document,
@@ -9,10 +18,14 @@ export function createJudicialIntegrationsFeature({
   showToast = () => {},
   audit = () => {},
   onSyncAll = async () => {},
+  onStateChanged = async () => {},
+  onReportError = null,
   warn = () => {},
   confirmFn = message => windowRef?.confirm?.(message) ?? false,
   presentation = null,
   transitionPageContent = (_documentRef, _selectors, _direction, render) => render(),
+  // Esqueleto de carregamento ({ show, revealInto } de views/ui-v2/skeleton.js). Opcional.
+  skeleton = null,
   onEprocStatus = () => {},
   pollIntervalMs = 1800,
   sleepFn = ms => new Promise(resolve => setTimeout(resolve, ms))
@@ -119,8 +132,8 @@ export function createJudicialIntegrationsFeature({
     grid.innerHTML = portals.map(portal => {
       const last = portal.lastSync;
       const counts = last ? 'Acervo: ' + (last.acervo || '-') + ' · Expedientes: ' + (last.expedientes || '-') : 'Sem sincronização ainda';
-      const familyLabel = pjeFamilyLabels[portal.layoutFamily] || escapeHtml(portal.layoutFamily || 'PJe');
-      const runtimeLabel = pjeRuntimeLabels[portal.runtimePreference] || escapeHtml(portal.runtimePreference || 'auto');
+      const familyLabel = pjeFamilyLabels[portal.layoutFamily] || portal.layoutFamily || 'PJe';
+      const runtimeLabel = pjeRuntimeLabels[portal.runtimePreference] || portal.runtimePreference || 'auto';
       const jobStatusLabel = last ? (pjeJobStatusLabels[last.status] || last.status) : '';
       const lastLine = last ? 'Último sync: ' + (last.finishedAt ? new Date(last.finishedAt).toLocaleString('pt-BR') : '-') + ' · ' + jobStatusLabel : '';
       const errorLine = last?.errorCode
@@ -186,6 +199,7 @@ export function createJudicialIntegrationsFeature({
       showToast('PJe sincronizado sem alterações reais.', 'success');
     } else {
       showToast('Sincronização PJe concluída (' + (job.collected ?? 0) + ' expedientes).', 'success');
+      await onStateChanged?.();
     }
     await refreshPjeSection();
   };
@@ -762,6 +776,9 @@ export function createJudicialIntegrationsFeature({
     portalDrawerActions(item) {
       if (item.authStrategy === 'public') return '';
       const id = escapeHtml(item.id);
+      if (item.recommendedAction === 'retry_sync') {
+        return `<button type="button" class="button gold" data-portal-action="sync" data-portal-id="${id}">Repetir sincronização</button>`;
+      }
       if (['action_required', 'human_action_required', 'expired'].includes(item.connectivityState)) {
         return `<button type="button" class="button gold" data-portal-action="reconnect" data-portal-id="${id}">Configurar autenticação</button>`;
       }
@@ -774,26 +791,29 @@ export function createJudicialIntegrationsFeature({
     async loadDrawerCommunications(portalId) {
       const container = byId('jcoDrawerComms');
       if (!container) return;
-      container.innerHTML = '<p class="jco-drawer-note">Carregando expedientes…</p>';
+      const loading = skeleton?.show?.(container, { label: 'Carregando expedientes…', variant: 'list', rows: 3 });
+      if (!loading) container.innerHTML = '<p class="jco-drawer-note">Carregando expedientes…</p>';
       const params = new URLSearchParams({ portalId, page: '1', pageSize: '5' });
       const response = await secureFetch('/api/judicial/communications?' + params.toString(), { headers: { Accept: 'application/json' } }).catch(() => null);
       const data = await response?.json?.().catch(() => null);
       const target = byId('jcoDrawerComms');
       if (!target) return;
+      // Com esqueleto, a troca é animada; sem ele, o conteúdo entra direto como antes.
+      const show = html => { if (skeleton?.revealInto) skeleton.revealInto(target, html); else target.innerHTML = html; };
       if (!response?.ok || !data?.ok || !Array.isArray(data.items)) {
-        target.innerHTML = '<p class="jco-drawer-note">Não foi possível carregar os expedientes agora.</p>';
+        show('<p class="jco-drawer-note">Não foi possível carregar os expedientes agora.</p>');
         return;
       }
       if (!data.items.length) {
-        target.innerHTML = '<h4 class="jco-drawer-sub">Expedientes capturados</h4><p class="jco-drawer-note">Nenhum expediente para este portal.</p>';
+        show('<h4 class="jco-drawer-sub">Expedientes capturados</h4><p class="jco-drawer-note">Nenhum expediente para este portal.</p>');
         return;
       }
-      target.innerHTML = '<h4 class="jco-drawer-sub">Expedientes capturados</h4>'
+      show('<h4 class="jco-drawer-sub">Expedientes capturados</h4>'
         + data.items.map(entry => '<div class="jco-drawer-comm-item">'
           + `<strong>${escapeHtml(entry.processNumber || '-')}</strong>`
           + `<span>${escapeHtml((entry.situationMemberships || []).join(', ') || '-')}</span>`
           + `<span>${escapeHtml(entry.sourceReportedDeadlineAt ? 'Prazo informado: ' + entry.sourceReportedDeadlineAt : 'Sem prazo informado')}</span>`
-          + '</div>').join('');
+          + '</div>').join(''));
     },
 
     renderManagedCoverage() {
@@ -826,13 +846,17 @@ export function createJudicialIntegrationsFeature({
           ? `Próxima tentativa ${feature.formatManagedTime(item.nextRefreshAt)}`
           : emptyCoverage
             ? 'Nova verificação na cadência do servidor'
-            : item.humanAction
-              ? 'Aguardando configuração do escritório'
-              : isPublic
-                ? 'Consulta somente leitura sob demanda'
-                : 'Cadência começa após a primeira sincronização';
+            : item.recommendedAction === 'retry_sync'
+              ? 'Aguardando nova sincronização'
+              : item.humanAction
+                ? 'Aguardando configuração do escritório'
+                : isPublic
+                  ? 'Consulta somente leitura sob demanda'
+                  : 'Cadência começa após a primeira sincronização';
         const actionButton = !isPublic ? (
-          ['action_required', 'human_action_required', 'expired'].includes(item.connectivityState)
+          item.recommendedAction === 'retry_sync'
+            ? `<button type="button" class="button gold btn-action-portal" data-portal-action="sync" data-portal-id="${escapeHtml(item.id)}">Repetir sincronização</button>`
+            : ['action_required', 'human_action_required', 'expired'].includes(item.connectivityState)
             ? `<button type="button" class="button gold btn-action-portal" data-portal-action="reconnect" data-portal-id="${escapeHtml(item.id)}">Configurar autenticação</button>`
             : item.connectivityState === 'not_configured'
             ? `<button type="button" class="button ghost btn-action-portal" data-portal-action="configure" data-portal-id="${escapeHtml(item.id)}">Configurar</button>`
@@ -1407,7 +1431,7 @@ export function createJudicialIntegrationsFeature({
           <article class="v2-eproc-portal-card" data-portal-id="${escapeHtml(p.id)}">
             <div class="v2-eproc-card-top">
               <span class="v2-eproc-court-badge">
-                ${presentation?.icon?.('court') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-court"></use></svg>'}
+                ${presentation?.icon?.('court') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-court"></use></svg>'}
                 ${escapeHtml(p.acronym || p.id)}
               </span>
               <span class="status-chip ${badgeClass}">${escapeHtml(p.statusLabel || (isConnected ? 'Conectado' : 'Disponível'))}</span>
@@ -1416,7 +1440,7 @@ export function createJudicialIntegrationsFeature({
               <h4>${escapeHtml(p.name)}</h4>
               <p>${escapeHtml(p.court)} · Grau ${p.level}</p>
               <div class="v2-eproc-auth-method">
-                ${presentation?.icon?.('security') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-security"></use></svg>'}
+                ${presentation?.icon?.('security') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-security"></use></svg>'}
                 <span>${escapeHtml(p.authType)}</span>
               </div>
               <div class="v2-eproc-card-metrics">
@@ -1431,9 +1455,11 @@ export function createJudicialIntegrationsFeature({
               </span>
               <div class="v2-eproc-card-actions">
                 ${p.requiresA1 || p.requiresTotp ? `<button type="button" class="button ghost" data-open-portal-config="${escapeHtml(p.id)}">Configurar</button>` : ''}
-                <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer" class="button ghost" title="Abrir portal oficial do tribunal" aria-label="Abrir ${escapeHtml(p.name)}">
-                  ${presentation?.icon?.('external-link') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.3.2#atrium-icon-external-link"></use></svg>'}
-                </a>
+                ${normalizeExternalUrl(p.url)
+                  ? `<a href="${escapeHtml(normalizeExternalUrl(p.url))}" target="_blank" rel="noopener noreferrer" class="button ghost" title="Abrir portal oficial do tribunal" aria-label="Abrir ${escapeHtml(p.name)}">
+                  ${presentation?.icon?.('external-link') || '<svg class="atrium-icon" aria-hidden="true"><use href="assets/icons/atrium-ui-icons.svg?v=3.4.0#atrium-icon-external-link"></use></svg>'}
+                </a>`
+                  : ''}
               </div>
             </div>
           </article>
@@ -1487,6 +1513,7 @@ export function createJudicialIntegrationsFeature({
         const phaseLabel = byId('eprocSyncPhaseLabel');
         const countLabel = byId('eprocSyncCountLabel');
         const consoleStatus = byId('eprocSyncConsoleLiveDot');
+        let lastLoggedLineKey = '';
         const updateGlobal = (state, detail, percent = null, determinate = percent !== null) => onEprocStatus?.({
           state, detail, percent, determinate, owner: state === 'syncing' ? 'eproc' : null,
           onActivate: ['syncing', 'error', 'partial'].includes(state) && eprocSyncJobId
@@ -1557,7 +1584,13 @@ export function createJudicialIntegrationsFeature({
           updateGlobal(jobState === 'ERROR' ? 'error' : (jobState === 'COMPLETED_WITH_WARNINGS' ? 'warning' : 'syncing'), `${portalText}: ${actionText}`, percent, percent !== null);
           if (currentAction) currentAction.textContent = actionText;
 
-          if (telemetryPortal?.action) appendLog(`[${telemetryPortal.portalId}] ${telemetryPortal.action}`);
+          if (telemetryPortal?.portalId && telemetryPortal?.action) {
+            const lineKey = `${telemetryPortal.portalId}|${telemetryPortal.action}`;
+            if (lineKey !== lastLoggedLineKey) {
+              lastLoggedLineKey = lineKey;
+              appendLog(`[${telemetryPortal.portalId}] ${telemetryPortal.action}`);
+            }
+          }
           const backendStep = Number(telemetryPortal?.step || 0);
           if (backendStep > 0) {
             for (let step = 1; step <= 5; step++) {
@@ -1644,6 +1677,7 @@ export function createJudicialIntegrationsFeature({
               reportErrorBtn?.classList.add('hidden');
               showToast('Sincronização eproc confirmada pelo backend.', 'success');
               audit('Sincronização judicial supervisionada', 'Pipeline dos tribunais concluído e confirmado pelo backend.');
+              await onStateChanged?.();
               await feature.refreshStatus();
               return true;
             }
@@ -1665,6 +1699,7 @@ export function createJudicialIntegrationsFeature({
               reportErrorBtn?.classList.add('hidden');
               showToast('Sincronização concluída com ressalvas. O que foi coletado foi guardado.', 'warning');
               audit('Sincronização judicial supervisionada', `Pipeline dos tribunais concluído com ressalvas: ${message}`.slice(0, 500));
+              await onStateChanged?.();
               await feature.refreshStatus();
               return true;
             }
@@ -1684,9 +1719,11 @@ export function createJudicialIntegrationsFeature({
               if (reportErrorBtn && typeof onReportError === 'function') {
                 reportErrorBtn.classList.remove('hidden');
                 reportErrorBtn.onclick = () => {
+                  feature.closeEprocSyncModal?.();
                   void onReportError({
                     scope: `Sincronização eproc${failedPortal?.portalId ? ` · ${failedPortal.portalId}` : ''}`,
                     message,
+                    explicit: true,
                     details: [
                       `Job: ${eprocSyncJobId || 'não informado'}`,
                       `Portal: ${failedPortal?.portalId || 'não informado'}`,

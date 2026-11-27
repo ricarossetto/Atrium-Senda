@@ -1,8 +1,9 @@
-import { sourceMethodLabel } from '../../core/source-method-label.js?v=3.3.2';
-import { iconSvg } from './icons.js?v=3.3.2';
+import { sourceMethodLabel } from '../../core/source-method-label.js?v=3.4.0';
+import { iconSvg } from './icons.js?v=3.4.0';
 
 const SOURCE_STATUS = Object.freeze({
   ok: Object.freeze({ label: 'Ativo', className: 'connected' }),
+  syncing: Object.freeze({ label: 'Sincronizando', className: 'warning' }),
   attention: Object.freeze({ label: 'Atenção', className: 'warning' }),
   error: Object.freeze({ label: 'Falha', className: 'danger' }),
   planned: Object.freeze({ label: 'Preparado', className: 'planned' }),
