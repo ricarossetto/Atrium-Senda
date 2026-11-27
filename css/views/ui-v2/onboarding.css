@@ -118,7 +118,7 @@ html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline
   font-weight: 600;
   color: var(--tour-muted);
   letter-spacing: .02em;
-  transition: all 180ms ease;
+  transition: color 180ms ease, font-weight 180ms ease;
   cursor: pointer;
 }
 #guidedTourBackdrop .tour-step-indicator.active,
@@ -144,7 +144,7 @@ html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline
   border: 1px solid var(--tour-line);
   background: var(--tour-soft);
   color: var(--tour-muted);
-  transition: all 180ms ease;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
 }
 #guidedTourBackdrop .tour-step-indicator.active .tour-step-num,
 #guidedTourBackdrop:has(.tour-slide.active[data-slide="0"]) .tour-step-indicator[data-step="0"] .tour-step-num,
@@ -251,25 +251,30 @@ html[data-theme="light"] #guidedTourBackdrop .tour-brand-light { display: inline
 }
 #guidedTourBackdrop .tour-icon-box svg { filter: none; }
 
-/* Action Buttons — Dourado Claro Champagne Nobre */
+/* Action Buttons — Azul mineral no tema claro e dourado champagne no escuro */
 #guidedTourBackdrop .button.gold {
-  color: #1a1813 !important;
-  background: linear-gradient(135deg, #dfbe6a 0%, #d4af37 100%) !important;
-  border: 1px solid #d4af37 !important;
+  color: var(--v2-action-primary-text, #2A4554) !important;
+  background: var(--v2-action-primary-bg, rgba(194, 220, 234, .62)) !important;
+  border: 1px solid var(--v2-action-primary-border, rgba(128, 172, 196, .50)) !important;
   font-weight: 700;
-  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.28);
-  transition: all 180ms ease;
+  box-shadow: var(--v2-action-primary-shadow, 0 2px 8px rgba(58, 95, 116, .12));
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 #guidedTourBackdrop .button.gold:hover {
-  background: linear-gradient(135deg, #e8cb7d 0%, #dfbe6a 100%) !important;
-  border-color: #c5a046 !important;
-  box-shadow: 0 6px 18px rgba(212, 175, 55, 0.38);
+  background: var(--v2-action-primary-hover, rgba(184, 214, 230, .76)) !important;
+  border-color: var(--v2-action-primary-border, rgba(128, 172, 196, .50)) !important;
+  box-shadow: var(--v2-action-primary-shadow, 0 2px 8px rgba(58, 95, 116, .12));
 }
 html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   color: #0f1214 !important;
   background: linear-gradient(135deg, #e5ca78 0%, #d4af37 100%) !important;
   border-color: #e5ca78 !important;
   box-shadow: 0 4px 16px rgba(212, 175, 55, 0.32);
+}
+html:not([data-theme="light"]) #guidedTourBackdrop .button.gold:hover {
+  background: linear-gradient(135deg, #e8cb7d 0%, #dfbe6a 100%) !important;
+  border-color: #c5a046 !important;
+  box-shadow: 0 6px 18px rgba(212, 175, 55, 0.38);
 }
 
 #guidedTourBackdrop .button.ghost {
@@ -498,7 +503,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 180ms ease;
+  transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease;
 }
 #guidedTourBackdrop .onboarding-media-btn:hover {
   border-color: var(--tour-accent-gold);
@@ -523,7 +528,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: all 180ms ease;
+  transition: border-color 180ms ease, background-color 180ms ease;
 }
 #guidedTourBackdrop .tour-feature-card:hover {
   border-color: var(--tour-accent-gold);
@@ -640,7 +645,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   background: var(--tour-soft);
   cursor: pointer;
   text-align: left;
-  transition: all 180ms ease;
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
   min-height: 190px;
   box-sizing: border-box;
   gap: 8px;
@@ -723,7 +728,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   border: 1.5px solid var(--tour-line) !important;
   background: var(--tour-soft) !important;
   cursor: pointer !important;
-  transition: all 180ms cubic-bezier(0.2, 0, 0, 1) !important;
+  transition: border-color 180ms cubic-bezier(0.2, 0, 0, 1), background-color 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 180ms cubic-bezier(0.2, 0, 0, 1) !important;
   box-sizing: border-box !important;
   width: 100% !important;
   min-height: 62px !important;
@@ -745,7 +750,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   flex: 0 0 20px !important;
   display: grid !important;
   place-items: center !important;
-  transition: all 180ms ease !important;
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease !important;
   box-sizing: border-box !important;
 }
 #guidedTourBackdrop .onboarding-a1-card.active .a1-card-radio {
@@ -796,7 +801,7 @@ html:not([data-theme="light"]) #guidedTourBackdrop .button.gold {
   box-sizing: border-box !important;
   text-align: center !important;
   line-height: 1 !important;
-  transition: all 180ms ease !important;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease !important;
 }
 #guidedTourBackdrop .a1-status-badge.badge-recommended {
   background: rgba(223, 190, 106, 0.16) !important;
@@ -1132,5 +1137,13 @@ html[data-theme="light"] #guidedTourBackdrop .a1-status-badge.badge-free {
     height: 44px !important;
     white-space: nowrap !important;
   }
+}
+
+#guidedTourBackdrop .onboarding-card-action {
+  margin-top: 8px;
+}
+#guidedTourBackdrop .onboarding-letterhead-btn {
+  min-height: 36px;
+  font-size: 12px;
 }
 

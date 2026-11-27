@@ -12,10 +12,15 @@ html[data-ui="v2"] :where(input:not([type="checkbox"]):not([type="radio"]), sele
 
 html[data-ui="v2"] :where(.button, .v2-button, .icon-button):not(:disabled):active { transform: translateY(1px); }
 
-html[data-ui="v2"] :where(.contact-record, .lead-v2-record, .process-v2-record, .agenda-v2-record, .configuration-row, .audit-record, tbody tr) {
+html[data-ui="v2"] :where(.contact-record, .lead-v2-record, .process-v2-record, .agenda-v2-record, .configuration-row, .audit-record) {
   transition: background-color var(--v2-duration-fast) var(--v2-ease-standard),
     border-color var(--v2-duration-fast) var(--v2-ease-standard),
     box-shadow var(--v2-duration-base) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] tbody tr {
+  transition: background-color var(--v2-duration-fast) var(--v2-ease-standard),
+    border-color var(--v2-duration-fast) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] :where(.modal-combobox-listbox, .global-search-palette, .notification-panel):not(.hidden) {
@@ -41,6 +46,47 @@ html[data-ui="v2"] :where(.metric-card, .dashboard-stat-card, .pub-metric-card) 
 @keyframes v2-feedback-enter {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Saída das camadas sobrepostas e dos menus. A classe .hidden continua entrando na hora (foco,
+   aria-hidden, inert e a lógica de cada tela não mudam); só o display vira none ao fim de uma
+   transição curta, enquanto a camada some em fade. Fechar é mais rápido e mais discreto que abrir:
+   sem deslocamento grande e sem desfoque. Navegador sem transition-behavior fecha de uma vez, como
+   antes. A camada que está saindo não recebe clique. */
+html[data-ui="v2"] :is(.modal-backdrop, .process-inspector-backdrop, .process-documents-backdrop, .prompt-preview-backdrop, .mail-preferences-drawer-backdrop, .eproc-sync-modal-backdrop, .process-access-key-backdrop, .publication-inspector-backdrop).hidden {
+  pointer-events: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition-property: display;
+  transition-duration: var(--v2-duration-fast);
+  transition-behavior: allow-discrete;
+  animation: v2-layer-exit var(--v2-duration-fast) var(--v2-ease-exit) both;
+}
+
+html[data-ui="v2"] :is(.quick-add-menu, .doc-export-menu, .search-palette-dropdown, .notification-panel, .modal-combobox-listbox).hidden {
+  pointer-events: none;
+  transition-property: display;
+  transition-duration: var(--v2-duration-fast);
+  transition-behavior: allow-discrete;
+  animation: v2-popover-exit var(--v2-duration-fast) var(--v2-ease-exit) both;
+}
+
+/* O aviso recebe .is-leaving um instante antes de sair do DOM (js/components/toast.js). */
+html[data-ui="v2"] .toast.is-leaving {
+  pointer-events: none;
+  animation: v2-feedback-exit var(--v2-duration-fast) var(--v2-ease-exit) both;
+}
+
+@keyframes v2-layer-exit {
+  to { opacity: 0; }
+}
+
+@keyframes v2-popover-exit {
+  to { opacity: 0; transform: translateY(-4px); }
+}
+
+@keyframes v2-feedback-exit {
+  to { opacity: 0; transform: translateY(6px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

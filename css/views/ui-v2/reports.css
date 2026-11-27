@@ -97,6 +97,12 @@ html[data-ui="v2"] #view-reports .reports-kpi strong {
   font-variant-numeric: tabular-nums;
 }
 
+html[data-ui="v2"] #view-reports .reports-kpi small {
+  color: var(--v2-color-warning);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 html[data-ui="v2"] #view-reports .reports-range {
   margin: var(--v2-space-2) 0 0;
   color: var(--v2-color-muted-foreground);

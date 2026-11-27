@@ -57,7 +57,7 @@
 html[data-ui="v2"] .nav-item .atrium-icon,
 html[data-ui="v2"] .icon-button .atrium-icon,
 html[data-ui="v2"] .button .atrium-icon {
-  transition: color 160ms ease, transform 160ms ease;
+  transition: color var(--v2-duration-fast) var(--v2-ease-standard), transform var(--v2-duration-fast) var(--v2-ease-standard);
 }
 
 html[data-ui="v2"] .nav-item.active .atrium-icon {
@@ -67,6 +67,20 @@ html[data-ui="v2"] .nav-item.active .atrium-icon {
 html[data-ui="v2"] .sidebar.collapsed .nav-icon,
 html[data-ui="v2"] .sidebar.collapsed .nav-icon .atrium-icon {
   margin-inline: auto;
+}
+
+/* Acento dourado do ATRIUM Legal Icon System v2: o símbolo pinta o detalhe de domínio
+   (etiqueta dos autos, selo, areia do prazo) com --atrium-icon-accent. Sem a variável, o
+   ícone fica monocromático em currentColor. O dourado acende só em superfícies de
+   identidade; botões e controles utilitários continuam monocromáticos. */
+html[data-ui="v2"] .nav-item.active .atrium-icon,
+.metric-icon > .atrium-icon,
+.integration-logo > .atrium-icon,
+.tour-icon-box > .atrium-icon,
+.dropzone-icon > .atrium-icon,
+.prompts-banner-icon > .atrium-icon,
+.empty-icon > .atrium-icon {
+  --atrium-icon-accent: var(--v2-color-gold);
 }
 
 @media (prefers-reduced-motion: reduce) {

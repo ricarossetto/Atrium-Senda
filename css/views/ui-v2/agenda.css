@@ -43,16 +43,21 @@ html[data-ui="v2"] .v2-agenda-heading small {
 html[data-ui="v2"] #agendaFilterTabs {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--v2-space-2);
-  padding: var(--v2-space-2);
+  /* Cada aba tem pelo menos a largura do próprio rótulo e mesma altura (44px) dos botões do cabeçalho. */
+  grid-template-columns: repeat(4, minmax(max-content, 1fr));
+  align-items: stretch;
+  height: 44px;
+  gap: 4px;
+  padding: 2px;
   background: var(--v2-color-surface-inset);
   border: 1px solid var(--v2-color-border-subtle);
   border-radius: var(--v2-radius-md);
+  box-sizing: border-box;
 }
 html[data-ui="v2"] #agendaFilterTabs button {
-  min-height: 40px;
-  padding: 7px 10px;
+  min-height: 0;
+  height: 100%;
+  padding: 0 10px;
   color: var(--v2-color-foreground-secondary);
   background: transparent;
   border: 0;
@@ -70,8 +75,8 @@ html[data-ui="v2"] #view-agenda button:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--v2-color-primary) 55%, transparent);
   outline-offset: 2px;
 }
-html[data-ui="v2"] #view-agenda .toolbar-actions { gap: var(--v2-space-2); }
-html[data-ui="v2"] #view-agenda .toolbar-actions .button { min-height: 40px; }
+html[data-ui="v2"] #view-agenda .toolbar-actions { align-items: center; gap: var(--v2-space-2); }
+html[data-ui="v2"] #view-agenda .toolbar-actions .button { height: 44px; min-height: 44px; box-sizing: border-box; }
 html[data-ui="v2"] #agendaSyncButton { display: none; }
 html[data-ui="v2"] .agenda-label-classic { display: none; }
 html[data-ui="classic"] .agenda-label-v2 { display: none; }
@@ -156,7 +161,7 @@ html[data-ui="v2"] #view-agenda .calendar-day {
   border-radius: var(--v2-radius-md);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  transition: background 160ms var(--v2-ease-standard), border-color 160ms var(--v2-ease-standard), box-shadow 160ms var(--v2-ease-standard), color 160ms var(--v2-ease-standard);
+  transition: background var(--v2-duration-fast) var(--v2-ease-standard), border-color var(--v2-duration-fast) var(--v2-ease-standard), box-shadow var(--v2-duration-fast) var(--v2-ease-standard), color var(--v2-duration-fast) var(--v2-ease-standard);
 }
 html[data-ui="v2"] #view-agenda .calendar-day:hover:not(.muted) {
   color: var(--v2-color-foreground);
@@ -199,6 +204,18 @@ html[data-ui="v2"] #view-agenda .cal-dot.event { background: var(--v2-color-prim
 html[data-ui="v2"] #view-agenda .cal-dot.task { background: var(--v2-color-muted-foreground); }
 html[data-ui="v2"] #view-agenda .cal-dot.fatal { background: var(--v2-color-danger); }
 html[data-ui="v2"] #view-agenda .cal-dot.intimation { background: var(--v2-color-gold); }
+/* Legenda: a cor das marcas não pode ser a única informação (guia §3). */
+html[data-ui="v2"] #view-agenda .calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--v2-space-2) var(--v2-space-4);
+  margin: var(--v2-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--v2-color-foreground-secondary);
+  font-size: 12px;
+}
+html[data-ui="v2"] #view-agenda .calendar-legend li { display: inline-flex; align-items: center; gap: 6px; }
 html[data-ui="v2"] #view-agenda .calendar-activity-count {
   position: absolute;
   top: 8px;
@@ -316,7 +333,7 @@ html[data-ui="v2"] #agendaList .agenda-item {
   border: 1px solid var(--v2-color-border-subtle);
   border-radius: var(--v2-radius-md);
   cursor: pointer;
-  transition: transform 180ms var(--v2-ease-standard), background 180ms var(--v2-ease-standard), border-color 180ms var(--v2-ease-standard);
+  transition: transform var(--v2-duration-fast) var(--v2-ease-standard), background var(--v2-duration-fast) var(--v2-ease-standard), border-color var(--v2-duration-fast) var(--v2-ease-standard);
 }
 html[data-ui="v2"] #agendaList .agenda-item:hover {
   background: var(--v2-color-surface-elevated);
@@ -383,9 +400,9 @@ html[data-ui="v2"] .agenda-activity-kind.is-intimation { color: var(--v2-color-g
 html[data-ui="v2"] .agenda-activity-open { align-self: center; color: var(--v2-color-muted-foreground); font-size: 18px; }
 html[data-ui="v2"] .agenda-empty-state { padding: var(--v2-space-8) var(--v2-space-4); }
 
-html[data-ui="v2"] #view-agenda .calendar-grid.month-enter.is-next { animation: agenda-month-next 190ms var(--v2-ease-standard); }
-html[data-ui="v2"] #view-agenda .calendar-grid.month-enter.is-previous { animation: agenda-month-previous 190ms var(--v2-ease-standard); }
-html[data-ui="v2"] #agendaList > .agenda-activity-groups { animation: agenda-activity-enter 190ms var(--v2-ease-standard); }
+html[data-ui="v2"] #view-agenda .calendar-grid.month-enter.is-next { animation: agenda-month-next var(--v2-duration-base) var(--v2-ease-standard); }
+html[data-ui="v2"] #view-agenda .calendar-grid.month-enter.is-previous { animation: agenda-month-previous var(--v2-duration-base) var(--v2-ease-standard); }
+html[data-ui="v2"] #agendaList > .agenda-activity-groups { animation: agenda-activity-enter var(--v2-duration-base) var(--v2-ease-standard); }
 @keyframes agenda-month-next { from { opacity: .28; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes agenda-month-previous { from { opacity: .28; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes agenda-activity-enter { from { opacity: .35; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -405,7 +422,7 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] .modal {
   border-left: 1px solid var(--v2-color-border);
   border-radius: 0;
   box-shadow: var(--v2-shadow-elevated);
-  animation: agenda-drawer-enter 220ms var(--v2-ease-standard);
+  animation: v2-sheet-in var(--v2-duration-slow) var(--v2-ease-standard) both;
 }
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] .modal > header,
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] .modal > footer {
@@ -491,7 +508,6 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] [data-combobox-optio
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] [data-combobox-option] small { color: var(--v2-color-muted-foreground); font-size: 12px; }
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] [data-combobox-option].hidden { display: none; }
 
-@keyframes agenda-drawer-enter { from { opacity: .35; clip-path: inset(0 0 0 100%); } to { opacity: 1; clip-path: inset(0); } }
 
 @media (max-width: 1180px) {
   html[data-ui="v2"] #view-agenda > .section-toolbar { grid-template-columns: 1fr 1.4fr; }
@@ -502,6 +518,15 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] [data-combobox-optio
 
 @media (max-width: 1300px) {
   html[data-ui="v2"] #view-agenda .agenda-day-header { flex-direction: column; }
+}
+
+/* Largura intermediária: título em linha própria; abas e ações dividem a linha de baixo
+   (mesma ordem do DOM e do Tab). Em três colunas as abas ficavam sem espaço. */
+@media (min-width: 901px) and (max-width: 1399px) {
+  html[data-ui="v2"] #view-agenda > .section-toolbar { display: flex; flex-wrap: wrap; align-items: center; }
+  html[data-ui="v2"] #view-agenda > .section-toolbar > .v2-agenda-heading { flex: 1 0 100%; }
+  html[data-ui="v2"] #view-agenda > .section-toolbar > #agendaFilterTabs { flex: 0 0 auto; width: max-content; max-width: 100%; }
+  html[data-ui="v2"] #view-agenda > .section-toolbar > .toolbar-actions { margin-left: auto; }
 }
 
 @media (max-width: 1100px) {
@@ -549,7 +574,8 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="agenda"] [data-combobox-optio
   html[data-ui="v2"] #view-agenda .cal-dot { width: 5px; height: 5px; border-radius: 1px; }
   html[data-ui="v2"] #view-agenda .calendar-activity-count { top: 3px; right: 3px; min-width: 16px; padding: 1px 4px; }
   html[data-ui="v2"] #agendaDayBadges { font-size: 12px; }
-  html[data-ui="v2"] #agendaFilterTabs button { font-size: 11px; padding: 6px 4px; }
+  html[data-ui="v2"] #agendaFilterTabs { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; height: auto; gap: 4px; padding: 4px; }
+  html[data-ui="v2"] #agendaFilterTabs button { flex: 1 0 auto; min-width: 44px; height: auto; min-height: 44px; font-size: 11px; padding: 6px 8px; }
   html[data-ui="v2"] #view-agenda .agenda-list-card { padding-bottom: calc(var(--v2-space-4) + var(--atrium-safe-bottom)); }
   html[data-ui="v2"] #agendaList .agenda-item { grid-template-columns: 40px minmax(0, 1fr) 11px; min-height: 58px; }
   html[data-ui="v2"] .agenda-activity-kind { grid-column: 2; justify-self: start; }
@@ -588,7 +614,12 @@ html[data-ui="v2"] .agenda-activity-subtitle {
   gap: 6px;
   min-width: 0;
 }
+/* A linha é flex: o text-overflow do <small> não alcança o <span>, e o texto era cortado
+   no meio da palavra ("Sala de audiênc"). As reticências ficam no próprio span; o texto
+   completo segue no nome acessível do botão e no detalhe. */
 html[data-ui="v2"] .agenda-activity-subtitle > span {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

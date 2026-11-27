@@ -593,7 +593,7 @@ html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] .modal {
   border-left: 1px solid var(--v2-color-border);
   border-radius: 0;
   box-shadow: var(--v2-shadow-elevated);
-  animation: prompt-drawer-in 240ms var(--v2-ease-standard) both;
+  animation: v2-sheet-in var(--v2-duration-slow) var(--v2-ease-standard) both;
 }
 
 html[data-ui="v2"] #modalBackdrop[data-modal-mode="prompt"] .modal > header {
@@ -654,10 +654,6 @@ html[data-ui="v2"] .prompt-form-section .field.full { grid-column: 1 / -1; }
 html[data-ui="v2"] .prompt-form-section .field label { color: var(--v2-color-foreground-secondary); font-size: 12px; }
 html[data-ui="v2"] .prompt-form-section textarea[name="prompt"] { min-height: 280px; resize: vertical; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; line-height: 1.55; }
 
-@keyframes prompt-drawer-in {
-  from { opacity: .7; transform: translateX(28px); }
-  to { opacity: 1; transform: translateX(0); }
-}
 
 @media (max-width: 1440px) {
   html[data-ui="v2"] #promptsGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -680,8 +676,8 @@ html[data-ui="v2"] .prompt-form-section textarea[name="prompt"] { min-height: 28
   html[data-ui="v2"] #view-prompts .prompts-filter-bar { gap: var(--v2-space-3); padding: var(--v2-space-3) !important; }
   html[data-ui="v2"] #view-prompts .prompts-filter-row { grid-template-columns: 1fr; }
   html[data-ui="v2"] #promptsCountDisplay { grid-column: 1; justify-self: start; margin: 0; }
-  html[data-ui="v2"] #promptsCategoryChips { flex-wrap: nowrap; margin-inline: calc(var(--v2-space-3) * -1); padding: var(--v2-space-1) var(--v2-space-3) var(--v2-space-2); overflow-x: auto; scrollbar-width: thin; }
-  html[data-ui="v2"] #promptsCategoryChips .prompt-chip { min-height: 44px; flex: 0 0 auto; }
+  html[data-ui="v2"] #promptsCategoryChips { flex-wrap: wrap; margin-inline: 0; padding: var(--v2-space-1) 0 var(--v2-space-2); overflow-x: visible; gap: 6px; }
+  html[data-ui="v2"] #promptsCategoryChips .prompt-chip { min-height: 44px; flex: 0 1 auto; }
   html[data-ui="v2"] #promptsGrid .prompt-library-card { min-height: 0; padding: var(--v2-space-4) !important; border-radius: var(--v2-radius-lg); }
   html[data-ui="v2"] #promptsGrid .prompt-box { max-height: 210px; }
   html[data-ui="v2"] #promptsGrid .prompt-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }

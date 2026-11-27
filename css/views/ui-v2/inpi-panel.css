@@ -94,7 +94,7 @@
   background: var(--v2-color-surface-elevated, rgba(255, 255, 255, 0.03));
   border: 1px solid var(--v2-color-border, #262c36);
   border-radius: 12px;
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  transition: border-color var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease), transform var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease);
 }
 
 .inpi-metric-card:hover {
@@ -221,7 +221,7 @@
   margin-left: 2px;
   line-height: 1;
   border-radius: 4px;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition: color var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease), background var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease);
 }
 
 .inpi-remove-term-btn:hover {
@@ -379,7 +379,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease), background-color var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease);
 }
 
 .inpi-result-card:hover {
@@ -512,7 +512,7 @@
   color: var(--v2-color-foreground, #f0f2f5);
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--v2-color-border, #262c36);
-  transition: all 0.2s ease;
+  transition: color var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease), background-color var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease), border-color var(--v2-duration-fast, 150ms) var(--v2-ease-standard, ease);
 }
 
 .inpi-action-link:hover {
@@ -529,6 +529,18 @@
 
 .inpi-action-link.primary:hover {
   background: rgba(198, 159, 83, 0.3);
+}
+
+html[data-ui="v2"][data-theme="light"] .inpi-action-link.primary {
+  background: var(--v2-action-primary-bg);
+  border-color: var(--v2-action-primary-border);
+  color: var(--v2-action-primary-text);
+}
+
+html[data-ui="v2"][data-theme="light"] .inpi-action-link.primary:hover {
+  background: var(--v2-action-primary-hover);
+  border-color: var(--v2-action-primary-border);
+  color: var(--v2-action-primary-text);
 }
 
 /* Empty State */
@@ -550,4 +562,86 @@
   margin: 0;
   font-size: 13px;
   color: var(--v2-color-muted-foreground, #8c96a5);
+}
+
+@media (max-width: 760px) {
+  #inpiPanelBackdrop {
+    padding: 8px;
+    align-items: flex-end;
+  }
+
+  .inpi-panel-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 16px);
+    border-radius: var(--v2-radius-lg, 14px);
+  }
+
+  .inpi-panel-header {
+    position: relative;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px 56px 14px 16px;
+  }
+
+  .inpi-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  #btnInpiScanNow {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  #inpiPanelClose {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .inpi-panel-content {
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .inpi-metrics-grid,
+  .inpi-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inpi-monitors-header,
+  .inpi-add-term-row,
+  .inpi-toolbar,
+  .inpi-filter-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inpi-flex-2,
+  .inpi-flex-1,
+  .inpi-search-box {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .inpi-input-field input,
+  .inpi-input-field select,
+  .inpi-search-box input,
+  .inpi-filter-group select,
+  .inpi-add-term-actions button,
+  .inpi-btn-add-term {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .inpi-count-badge {
+    margin-left: 0;
+  }
 }

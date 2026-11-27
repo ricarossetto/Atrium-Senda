@@ -44,7 +44,9 @@ html[data-ui="v2"] .v2-publications-heading h2 {
 
 html[data-ui="v2"] .v2-publications-heading span {
   color: var(--v2-color-foreground-secondary);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 html[data-ui="v2"] #view-inbox :where(.button, .icon-button, .filter-tabs button, select) {
@@ -188,11 +190,103 @@ html[data-ui="v2"] #inboxFilters button.active {
   border-color: var(--v2-color-primary);
 }
 
+/* Menu do Atrium IA: um botão na barra; dentro, uma chave por função (classificar publicações
+   e organizar tarefas), cada uma com o que faz. Mesma família do menu de utilidades do shell. */
+html[data-ui="v2"] #view-inbox .ai-control-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+html[data-ui="v2"] #view-inbox .ai-control-menu > summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v2-space-2);
+  cursor: pointer;
+}
+html[data-ui="v2"] #view-inbox .ai-control-menu > summary::-webkit-details-marker { display: none; }
+html[data-ui="v2"] #view-inbox .ai-control-menu.is-on > summary {
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-primary-soft);
+  border-color: var(--v2-color-primary);
+}
+html[data-ui="v2"] #view-inbox .ai-control-state {
+  padding: 1px var(--v2-space-2);
+  border-radius: var(--v2-radius-round);
+  border: 1px solid var(--v2-color-border);
+  background: var(--v2-color-surface-secondary);
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+html[data-ui="v2"] #view-inbox .ai-control-menu.is-on .ai-control-state {
+  border-color: color-mix(in srgb, var(--v2-color-primary) 45%, var(--v2-color-border));
+  color: var(--v2-color-foreground);
+}
+html[data-ui="v2"] #view-inbox .ai-control-chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform var(--v2-duration-fast) var(--v2-ease-standard);
+}
+html[data-ui="v2"] #view-inbox .ai-control-menu[open] .ai-control-chevron { transform: rotate(180deg); }
+html[data-ui="v2"] #view-inbox .ai-control-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: var(--v2-z-popover);
+  width: min(380px, calc(100vw - 32px));
+  display: grid;
+  gap: var(--v2-space-1);
+  padding: var(--v2-space-2);
+  background: var(--v2-color-surface-elevated);
+  border: 1px solid var(--v2-color-border-strong, var(--v2-color-border));
+  border-radius: var(--v2-radius-md);
+  box-shadow: var(--v2-shadow-elevated);
+}
+html[data-ui="v2"] #view-inbox .ai-control-menu:not([open]) .ai-control-panel { display: none; }
+html[data-ui="v2"] #view-inbox .ai-control-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--v2-space-3);
+  padding: var(--v2-space-2) var(--v2-space-2);
+  border-radius: var(--v2-radius-sm);
+}
+html[data-ui="v2"] #view-inbox .ai-control-row + .ai-control-row { border-top: 1px solid var(--v2-color-border-subtle); border-radius: 0; }
+html[data-ui="v2"] #view-inbox .ai-control-text { display: grid; gap: 2px; min-width: 0; }
+html[data-ui="v2"] #view-inbox .ai-control-text strong {
+  color: var(--v2-color-foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+html[data-ui="v2"] #view-inbox .ai-control-text small {
+  color: var(--v2-color-muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: normal;
+}
+html[data-ui="v2"] #view-inbox .ai-control-row.is-disabled strong { color: var(--v2-color-muted-foreground); }
+/* A contagem do que já foi analisado fica na linha de "Classificar publicações"; o botão
+   "Analisar publicações" está na própria barra, a um clique. */
+html[data-ui="v2"] #view-inbox .ai-control-footer {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--v2-space-2);
+  margin-top: var(--v2-space-1);
+}
+html[data-ui="v2"] #view-inbox .ai-control-footer[hidden] { display: none; }
 html[data-ui="v2"] #view-inbox #aiClassifierToggle[aria-pressed="true"] {
   color: var(--v2-color-foreground);
   background: var(--v2-color-primary-soft);
   border-color: var(--v2-color-primary);
 }
+
+html[data-ui="v2"] #view-inbox .publication-primary-actions .ai-control-menu > summary {
+  white-space: nowrap;
+}
+
+/* A chave liga/desliga (.ai-switch) é controle compartilhado: primitives.css. */
 
 html[data-ui="v2"] #view-inbox .toolbar-actions {
   min-width: 0;
@@ -248,13 +342,15 @@ html[data-ui="v2"] #view-inbox .inbox-sort-control {
 
 html[data-ui="v2"] #view-inbox .inbox-sort-control select {
   width: 100%;
+  height: 38px;
   min-height: 38px;
-  padding: 0 30px 0 var(--v2-space-2);
+  padding: 9px 30px 9px var(--v2-space-2);
   color: var(--v2-color-foreground);
   background: var(--v2-color-surface-inset);
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-md);
   font-size: 12px;
+  line-height: 18px;
   text-transform: none;
 }
 
@@ -432,8 +528,22 @@ html[data-ui="v2"] #inboxList .publication-row-quick:disabled {
   cursor: wait;
 }
 
+/* Confirmação imediata no toque do quick-check enquanto o servidor persiste. */
+html[data-ui="v2"] #inboxList .publication-record-shell.is-treating {
+  opacity: .68;
+  transition: opacity var(--v2-duration-fast) var(--v2-ease-standard);
+}
+
+html[data-ui="v2"] #inboxList .publication-record-shell.is-treating .publication-row-quick {
+  color: var(--v2-color-foreground);
+  background: var(--v2-color-success);
+  border-color: var(--v2-color-success);
+  opacity: 1;
+  cursor: wait;
+}
+
 /* Saída do quick-check: o check acende em sucesso e a linha desliza para fora
-   antes da re-renderização (240ms no JS; reduced-motion vira snap pelo blanket). */
+   antes da re-renderização (180ms no JS; reduced-motion vira snap pelo blanket). */
 html[data-ui="v2"] #inboxList .publication-record-shell.is-treated-exit {
   transition: opacity var(--v2-duration-base) var(--v2-ease-standard),
     transform var(--v2-duration-base) var(--v2-ease-standard);
@@ -572,19 +682,12 @@ html[data-ui="v2"] .publication-deadline-conference-hint {
 }
 
 html[data-ui="v2"] .ai-classifier-backlog-status {
-  align-self: center;
-  margin-right: auto;
-  max-width: 190px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  padding: 3px 9px;
-  border-radius: var(--v2-radius-round);
-  border: 1px solid var(--v2-color-border);
-  background: var(--v2-color-surface-secondary);
+  margin: 0;
   font-size: 12px;
+  line-height: 1.45;
   color: var(--v2-color-muted-foreground);
 }
+html[data-ui="v2"] .ai-classifier-backlog-status.hidden { display: none; }
 
 html[data-ui="v2"] .publication-priority {
   color: var(--v2-color-warning);
@@ -648,6 +751,11 @@ html[data-ui="v2"] #inboxList .publication-record-aside .office-involved {
   }
   html[data-ui="v2"] #inboxList .publication-record-aside .office-involved {
     max-width: 190px;
+    gap: 5px;
+    padding: 3px 4px;
+  }
+  html[data-ui="v2"] #inboxList .publication-record-aside .office-involved:has(.office-involved-team) {
+    padding-right: 7px;
   }
 }
 
@@ -674,6 +782,10 @@ html[data-ui="v2"] .publication-record-date {
   color: var(--v2-color-foreground-secondary);
   font-size: 12px;
 }
+
+/* O <small> herdava "font-size: smaller" (10px), abaixo do mínimo do guia. */
+html[data-ui="v2"] .publication-record-origin small,
+html[data-ui="v2"] .publication-record-date small { font-size: 12px; line-height: 16px; }
 
 html[data-ui="v2"] .publication-record-origin { grid-area: origin; }
 html[data-ui="v2"] .publication-record-date { grid-area: date; justify-items: end; text-align: right; }
@@ -1053,6 +1165,10 @@ html[data-ui="v2"] #intimationDetail .publication-brief-priority.is-urgent {
   color: var(--v2-color-danger);
   background: color-mix(in srgb, var(--v2-color-danger) 12%, transparent);
 }
+html[data-ui="v2"][data-theme="dark"] #intimationDetail .publication-brief-priority.is-urgent,
+html[data-ui="v2"].dark #intimationDetail .publication-brief-priority.is-urgent {
+  color: color-mix(in srgb, var(--v2-color-danger) 82%, #ffffff);
+}
 
 html[data-ui="v2"] #intimationDetail .publication-brief-priority.is-review {
   color: var(--v2-color-gold);
@@ -1072,12 +1188,16 @@ html[data-ui="v2"] #intimationDetail .publication-brief-confidence {
 
 html[data-ui="v2"] #intimationDetail .publication-brief-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: var(--v2-space-3);
   margin: 0;
 }
 
 html[data-ui="v2"] #intimationDetail .publication-brief-grid > div { min-width: 0; }
+
+html[data-ui="v2"] #intimationDetail .publication-brief-grid > .publication-brief-summary {
+  grid-column: 1 / -1;
+}
 
 html[data-ui="v2"] #intimationDetail .publication-brief-grid dt {
   margin: 0 0 2px;
@@ -1133,6 +1253,144 @@ html[data-ui="v2"] #intimationDetail .publication-brief-undo.is-blocked small {
   font-size: 12px;
 }
 
+html[data-ui="v2"] #intimationDetail .publication-brief-priority.is-routine {
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-secondary);
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-triage {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .03em;
+  border: 1px solid var(--v2-color-border);
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-triage.is-providencia {
+  color: var(--v2-color-gold);
+  background: color-mix(in srgb, var(--v2-color-gold) 12%, transparent);
+  border-color: color-mix(in srgb, var(--v2-color-gold) 35%, transparent);
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-triage.is-ciencia_rotina {
+  color: var(--v2-color-success);
+  background: color-mix(in srgb, var(--v2-color-success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--v2-color-success) 30%, transparent);
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-triage.is-acompanhamento {
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-secondary);
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-attention {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--v2-radius-md);
+  border: 1px solid color-mix(in srgb, var(--v2-color-gold) 36%, var(--v2-color-border));
+  background: color-mix(in srgb, var(--v2-color-gold) 8%, var(--v2-color-surface));
+  color: var(--v2-color-foreground);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-attention .atrium-icon {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  color: var(--v2-color-gold);
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-checklist {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--v2-radius-md);
+  border: 1px solid var(--v2-color-border-subtle);
+  background: var(--v2-color-surface-secondary);
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-section-label {
+  color: var(--v2-color-foreground-secondary);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-checklist ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: var(--v2-color-foreground);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-calibrate {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--v2-radius-md);
+  border: 1px solid var(--v2-color-border);
+  background: var(--v2-color-surface);
+  font-size: 12px;
+  color: var(--v2-color-foreground-secondary);
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-calibrate-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-calibrate-options .button {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+html[data-ui="v2"] #intimationDetail .publication-brief-calibrate-options .button.is-selected {
+  border-color: var(--v2-color-gold);
+  color: var(--v2-color-gold);
+  background: color-mix(in srgb, var(--v2-color-gold) 10%, transparent);
+}
+
+html[data-ui="v2"] #view-inbox .publication-triage-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  border: 1px solid var(--v2-color-border);
+}
+
+html[data-ui="v2"] #view-inbox .publication-triage-chip.is-providencia {
+  color: var(--v2-color-gold);
+  background: color-mix(in srgb, var(--v2-color-gold) 10%, transparent);
+  border-color: color-mix(in srgb, var(--v2-color-gold) 32%, transparent);
+}
+
+html[data-ui="v2"] #view-inbox .publication-triage-chip.is-rotina {
+  color: var(--v2-color-success);
+  background: color-mix(in srgb, var(--v2-color-success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--v2-color-success) 30%, transparent);
+}
+
+html[data-ui="v2"] #view-inbox .publication-triage-chip.is-acompanhamento {
+  color: var(--v2-color-foreground-secondary);
+  background: var(--v2-color-surface-secondary);
+}
+
 html[data-ui="v2"] #view-inbox .publication-today-chip {
   display: inline-flex;
   align-items: center;
@@ -1172,7 +1430,7 @@ html[data-ui="v2"] #intimationDetail .detail-actions {
 }
 
 html[data-ui="v2"] #intimationDetail .detail-actions .button { min-height: 38px; padding: 0 var(--v2-space-3); font-size: 12px; }
-html[data-ui="v2"] #intimationDetail .detail-actions .button.gold { color: var(--v2-color-on-primary) !important; background: var(--v2-color-primary); border-color: var(--v2-color-primary); }
+html[data-ui="v2"] #intimationDetail .detail-actions .button.gold { color: var(--v2-action-primary-text) !important; background: var(--v2-action-primary-bg); border-color: var(--v2-action-primary-border); box-shadow: var(--v2-action-primary-shadow); }
 html[data-ui="v2"] #intimationDetail .btn-danger-action { margin-left: auto; color: var(--v2-color-danger); }
 
 html[data-ui="v2"] .publication-decision-dialog {
@@ -1196,6 +1454,9 @@ html[data-ui="v2"] .publication-decision-dialog h2 { margin: 3px 0 0; overflow: 
 html[data-ui="v2"] .publication-decision-dialog iframe { display: block; width: 100%; height: calc(100% - 77px); background: #f4f1eb; border: 0; }
 html[data-ui="v2"] #intimationDetail .publication-work-menu { position: relative; }
 html[data-ui="v2"] #intimationDetail .publication-work-menu > summary { display: inline-flex; align-items: center; list-style: none; cursor: pointer; }
+/* "Outras providências" é ação secundária: mesmo peso dos botões vizinhos (vinha em 700 e
+   disputava atenção com "Marcar como tratada"). */
+html[data-ui="v2"] #intimationDetail .detail-actions .publication-work-menu > summary.button { font-weight: 400; }
 html[data-ui="v2"] #intimationDetail .publication-work-menu > summary::-webkit-details-marker { display: none; }
 html[data-ui="v2"] #intimationDetail .publication-work-menu-popover {
   position: absolute;
@@ -1231,7 +1492,7 @@ html[data-ui="v2"] :where(#publicationsEmailModalBackdrop, #publicationEmailBack
   border: 1px solid var(--v2-color-border);
   border-radius: var(--v2-radius-xl);
   box-shadow: var(--v2-shadow-elevated);
-  animation: v2-dialog-in var(--v2-duration-slow) var(--v2-ease-standard) both;
+  animation: v2-dialog-enter var(--v2-duration-base) var(--v2-ease-emphasized) both;
 }
 
 html[data-ui="v2"] #publicationsEmailModalBackdrop .modal { width: min(760px, 100%) !important; }
@@ -1368,11 +1629,22 @@ html[data-ui="v2"] #discardPublicationSubmitBtn {
   html[data-ui="v2"] #view-inbox .inbox-layout { display: block; }
   html[data-ui="v2"] #view-inbox .inbox-list-card { max-height: none; }
   html[data-ui="v2"] #inboxList { max-height: none; overflow: visible; }
-  html[data-ui="v2"] #view-inbox .list-head { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  html[data-ui="v2"] #view-inbox .list-head { display: none !important; }
 
   html[data-ui="v2"] #inboxList .v2-publication-record {
     min-height: 154px;
     padding: var(--v2-space-3);
+    row-gap: var(--v2-space-2);
+  }
+
+  html[data-ui="v2"] #inboxList .publication-record-status {
+    min-height: 44px;
+    justify-self: start;
+  }
+
+  html[data-ui="v2"] #inboxList .publication-ai-chip,
+  html[data-ui="v2"] #inboxList .publication-ai-deadline {
+    display: none;
   }
 
   html[data-ui="v2"] #inboxList .publication-record-case {
@@ -1391,6 +1663,8 @@ html[data-ui="v2"] #discardPublicationSubmitBtn {
 
   html[data-ui="v2"] #inboxList .publication-record-aside {
     right: var(--v2-space-3);
+    flex-wrap: nowrap;
+    gap: 6px;
   }
 
   html[data-ui="v2"] #inboxList .publication-row-quick {
@@ -1643,6 +1917,15 @@ html[data-ui="v2"] #intimationDetail .btn-danger-action { margin-left: 0; }
   html[data-ui="v2"] #intimationDetail,
   html[data-ui="v2"] #view-inbox.publication-detail-open #intimationDetail { width: 100%; }
   html[data-ui="v2"] #intimationDetail .detail-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* No computador, cada botão tem a largura do próprio rótulo (com respiro de 16px) e a fila ocupa a
+   linha inteira: a grade de colunas iguais de 140px espremia "Marcar como tratada" até o texto
+   encostar na borda. No celular, a grade de duas colunas abaixo continua valendo. */
+@media (min-width: 768px) {
+  html[data-ui="v2"] #intimationDetail .detail-actions { display: flex; flex-wrap: wrap; }
+  html[data-ui="v2"] #intimationDetail .detail-actions > * { flex: 1 1 auto; }
+  html[data-ui="v2"] #intimationDetail .detail-actions .button { padding-inline: var(--v2-space-4); }
 }
 
 /* Barra operacional única; os grupos internos não criam novas linhas. */
@@ -1925,6 +2208,17 @@ html[data-ui="v2"] .ai-classifier-custom input {
 
 @media (max-width: 760px) {
   html[data-ui="v2"] .ai-classifier-custom input { width: 100%; min-width: 0; }
+  /* Nomear área: campo e botões empilhados com a mesma altura, na ordem do DOM (e do
+     Tab), sem a quebra irregular em três tamanhos. */
+  html[data-ui="v2"] .ai-classifier-custom-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: var(--v2-space-2);
+    width: 100%;
+  }
+  html[data-ui="v2"] .ai-classifier-custom { width: 100%; }
+  html[data-ui="v2"] .ai-classifier-custom-row > .button { min-height: 44px; min-width: 0; justify-content: center; white-space: normal; text-align: center; }
   html[data-ui="v2"] .ai-classifier-actions .button,
   html[data-ui="v2"] .ai-classifier-correct-options .button { min-height: 44px; }
 }
@@ -2316,8 +2610,8 @@ html[data-ui="v2"] #view-inbox .duplicate-record {
 }
 
 html[data-ui="v2"] #view-inbox .duplicate-record:hover { color: var(--v2-color-accent, var(--v2-color-foreground)); text-decoration: underline; }
-html[data-ui="v2"] #view-inbox .duplicate-record-source { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--v2-color-muted-foreground); }
-html[data-ui="v2"] #view-inbox .duplicate-record-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch; }
+html[data-ui="v2"] #view-inbox .duplicate-record-source { flex: 0 0 auto; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--v2-color-muted-foreground); }
+html[data-ui="v2"] #view-inbox .duplicate-record-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 html[data-ui="v2"] #view-inbox .duplicate-vs { color: var(--v2-color-muted-foreground); font-weight: 800; }
 
 html[data-ui="v2"] #view-inbox .duplicate-verdict-cell {
@@ -2420,13 +2714,32 @@ html[data-ui="v2"] #view-inbox .duplicate-pair.is-removing {
 
 @media (max-width: 760px) {
   html[data-ui="v2"] #view-inbox .duplicate-pair {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 10px 12px;
   }
 
-  html[data-ui="v2"] #view-inbox .duplicate-record-label { max-width: 18ch; }
+  html[data-ui="v2"] #view-inbox .duplicate-record {
+    width: 100%;
+    align-items: flex-start;
+  }
 
-  html[data-ui="v2"] #view-inbox .duplicate-verdict-cell { margin-left: 0; }
+  html[data-ui="v2"] #view-inbox .duplicate-record-label {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  html[data-ui="v2"] #view-inbox .duplicate-vs {
+    display: none;
+  }
+
+  html[data-ui="v2"] #view-inbox .duplicate-verdict-cell {
+    margin-left: 0;
+    justify-content: flex-start;
+    width: 100%;
+  }
 }
 
 @media (max-width: 760px) {
@@ -2474,12 +2787,15 @@ html[data-ui="v2"] #view-inbox .duplicate-pair.is-removing {
   /* Métricas: "Descartadas hoje" quebra em duas linhas e a linha 2 ficava mais alta que a 1. */
   html[data-ui="v2"] #view-inbox .publications-metrics-grid { grid-auto-rows: 1fr; }
 
-  /* Filtros com rolagem local: sem esconder as abas do fim (Urgentes/Importantes). */
+  /* Filtros em grade simétrica 3x3 (9 abas): sem aba órfã, altura compacta e alvo de 44px. */
   html[data-ui="v2"] #inboxFilters.filter-tabs {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     overflow: visible;
     max-width: 100%;
+    width: 100%;
+    gap: 4px;
+    padding: 4px;
   }
 }
 
@@ -2490,60 +2806,68 @@ html[data-ui="v2"] #view-inbox .publication-primary-actions {
   align-items: center;
   gap: var(--v2-space-2);
 }
-@media (min-width: 1100px) {
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .publication-mine-only { margin-left: auto; }
-}
-/* Todas as ações na mesma linha: quem cede espaço é o aviso de sugestões, com o texto inteiro no title. */
-@media (min-width: 1280px) {
+@media (min-width: 1440px) {
   html[data-ui="v2"] #view-inbox .publication-primary-actions { flex-wrap: nowrap; }
   html[data-ui="v2"] #view-inbox .publication-primary-actions .button { flex: 0 0 auto; padding-inline: var(--v2-space-3); }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .publication-mine-only { flex: 0 0 auto; }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .ai-classifier-backlog-status { flex: 0 1 auto; min-width: 72px; max-width: 320px; margin-right: 0; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions .publication-mine-only { flex: 0 0 auto; margin-left: auto; }
 }
-@media (min-width: 1280px) and (max-width: 1439px) {
-  html[data-ui="v2"] #view-inbox .publication-primary-actions { gap: 6px; }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .button { padding-inline: var(--v2-space-2); }
-}
-/* Na largura intermediária as ações ocupam duas linhas preenchidas, sem botão sozinho. As sugestões continuam marcadas em cada publicação. */
+/* Na largura intermediária as ações ocupam duas linhas preenchidas, sem botão sozinho. */
 @media (min-width: 761px) and (max-width: 1199px) {
   html[data-ui="v2"] #view-inbox .publication-primary-actions { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); width: 100%; align-items: stretch; gap: var(--v2-space-2); }
   html[data-ui="v2"] #view-inbox .publication-primary-actions .button,
   html[data-ui="v2"] #view-inbox .publication-primary-actions .publication-mine-only { min-width: 0; margin-left: 0; padding-inline: var(--v2-space-2); }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .ai-classifier-backlog-status { display: none; }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions #aiClassifierToggle { grid-column: span 3; }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions #aiAutoOrganizeToggle { grid-column: span 4; }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions #aiClassifierBacklogButton { grid-column: span 5; }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .publication-mine-only { grid-column: span 5; justify-content: center; }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions #btnEmailPublications { grid-column: span 4; }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions #newIntimationButton { grid-column: span 3; }
+  /* Com "Analisar publicações" visível: três em cima e duas embaixo; sem ele, duas e duas. */
+  html[data-ui="v2"] #view-inbox .publication-primary-actions #aiClassifierToggle,
+  html[data-ui="v2"] #view-inbox .publication-primary-actions .ai-control-menu { grid-column: span 4; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions #aiClassifierBacklogButton { grid-column: span 4; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions .ai-control-menu > summary { width: 100%; justify-content: center; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions .publication-mine-only { grid-column: span 4; justify-content: center; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions:has(#aiClassifierBacklogButton[hidden]) :is(#aiClassifierToggle, .ai-control-menu, .publication-mine-only) { grid-column: span 6; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions #btnEmailPublications { grid-column: span 6; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions #newIntimationButton { grid-column: span 6; }
 }
-/* Sem largura para filtros e seletores na mesma linha: cada grupo ganha a sua, sem cortar nada na borda. */
-@media (min-width: 861px) and (max-width: 1199px) {
+/* Sem largura para 9 filtros e 2 seletores na mesma linha abaixo de 1440px: filtros ganham a linha inteira e seletores não cortam. */
+@media (min-width: 861px) and (max-width: 1439px) {
   html[data-ui="v2"] #view-inbox > .section-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  html[data-ui="v2"] #view-inbox > .section-toolbar > #inboxFilters.filter-tabs { grid-column: 1 / -1; flex-wrap: wrap; }
-  html[data-ui="v2"] #publicationsMetrics.publications-metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-ui="v2"] #view-inbox > .section-toolbar > #inboxFilters.filter-tabs {
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 3px;
+  }
+  html[data-ui="v2"] #view-inbox #inboxFilters .filter-count {
+    margin-left: 3px;
+    padding: 1px 5px;
+  }
 }
-/* Com a sidebar aberta, os oito filtros cabem em uma linha, sem "Importantes" sozinho. */
-@media (min-width: 861px) and (max-width: 960px) {
-  html[data-ui="v2"] #inboxFilters.filter-tabs { gap: 2px; }
-  html[data-ui="v2"] #inboxFilters button { padding-inline: 3px; }
-}
-/* O seletor de ordem precisa de largura para "Mais recentes" sem corte. */
 @media (min-width: 1200px) and (max-width: 1439px) {
-  html[data-ui="v2"] #view-inbox > .section-toolbar { grid-template-columns: max-content minmax(0, 1.15fr) minmax(0, 1fr); }
+  html[data-ui="v2"] #view-inbox #inboxFilters button {
+    padding-inline: 6px;
+  }
 }
-/* Sem espaço para o aviso, os botões seguem em uma linha; as sugestões continuam marcadas em cada publicação. */
-@media (min-width: 1200px) and (max-width: 1279px) {
-  html[data-ui="v2"] #view-inbox .publication-primary-actions { flex-wrap: nowrap; gap: 6px; }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .button { flex: 0 0 auto; padding-inline: var(--v2-space-2); }
+@media (min-width: 861px) and (max-width: 1199px) {
+  html[data-ui="v2"] #publicationsMetrics.publications-metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-ui="v2"] #view-inbox > .section-toolbar > #inboxFilters.filter-tabs { gap: 1px; padding: 2px; }
+  html[data-ui="v2"] #view-inbox #inboxFilters .filter-count { margin-left: 2px; padding: 1px 4px; }
+}
+/* Com a sidebar aberta, os filtros cabem com conforto. */
+@media (min-width: 861px) and (max-width: 960px) {
+  html[data-ui="v2"] #view-inbox > .section-toolbar { padding-inline: 4px; }
+  html[data-ui="v2"] #view-inbox > .section-toolbar > #inboxFilters.filter-tabs { gap: 0; padding: 2px; }
+  html[data-ui="v2"] #view-inbox #inboxFilters button { padding-inline: 2px !important; letter-spacing: -.02em; }
+  html[data-ui="v2"] #view-inbox #inboxFilters .filter-count { margin-left: 2px; padding: 1px 3px; }
+}
+/* Entre 1200px e 1439px as ações quebram limpo sem cortar "+ Nova publicação". */
+@media (min-width: 1200px) and (max-width: 1439px) {
+  html[data-ui="v2"] #view-inbox .publication-primary-actions { flex-wrap: wrap; gap: 8px; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions .button { flex: 0 0 auto; padding-inline: var(--v2-space-3); }
   html[data-ui="v2"] #view-inbox .publication-primary-actions .publication-mine-only { flex: 0 0 auto; }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .ai-classifier-backlog-status { display: none; }
 }
 html[data-ui="v2"] #view-inbox .publication-mine-only {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--v2-color-border-subtle);
   border-radius: var(--v2-radius-md);
@@ -2552,7 +2876,7 @@ html[data-ui="v2"] #view-inbox .publication-mine-only {
   color: var(--v2-color-foreground-secondary);
   white-space: nowrap;
   cursor: pointer;
-  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+  transition: border-color var(--v2-duration-fast) var(--v2-ease-standard), background-color var(--v2-duration-fast) var(--v2-ease-standard), color var(--v2-duration-fast) var(--v2-ease-standard);
 }
 html[data-ui="v2"] #view-inbox .publication-mine-only:hover {
   border-color: var(--v2-color-border-strong, var(--v2-color-border));
@@ -2575,8 +2899,24 @@ html[data-ui="v2"] #view-inbox .publication-mine-only input:focus-visible {
   outline-offset: 2px;
 }
 @media (max-width: 900px) {
-  html[data-ui="v2"] #intimationDetail .publication-brief { padding: var(--v2-space-4); }
+  html[data-ui="v2"] #intimationDetail .publication-brief {
+    margin: var(--v2-space-3) var(--v2-space-4) 0;
+    padding: var(--v2-space-4);
+    border: 1px solid var(--v2-color-border-subtle);
+    border-radius: var(--v2-radius-lg);
+  }
   html[data-ui="v2"] #intimationDetail .publication-brief-grid { grid-template-columns: 1fr; }
+  html[data-ui="v2"] #intimationDetail .publication-brief-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--v2-space-2);
+  }
+  html[data-ui="v2"] #intimationDetail .publication-brief-actions .button,
+  html[data-ui="v2"] #intimationDetail .publication-brief-actions .text-button {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
 }
 @media (max-width: 760px) {
   html[data-ui="v2"] #view-inbox .publication-mine-only {
@@ -2625,31 +2965,16 @@ html[data-ui="v2"] #view-inbox .publication-mine-only input:focus-visible {
   html[data-ui="v2"] #view-inbox .publication-primary-actions .button span {
     white-space: normal;
   }
-  /* O bloco anterior (linha ~1315) forçava "Enviar por e-mail" na linha inteira; aqui ele
-     volta a dividir a linha com o "Atrium IA". A ordem explícita de todos os filhos mantém
-     a sequência do DOM (Tab acompanha o visual): secundárias na mesma linha, filtro e ação
-     de destaque fechando as linhas seguintes. */
-  html[data-ui="v2"] #view-inbox .publication-primary-actions #aiClassifierToggle,
-  html[data-ui="v2"] #view-inbox .publication-primary-actions #aiClassifierBacklogButton,
-  html[data-ui="v2"] #view-inbox .publication-primary-actions #btnEmailPublications {
-    grid-column: auto;
-    order: 1;
-  }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .ai-classifier-backlog-status {
-    order: 2;
-  }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .publication-mine-only {
-    order: 3;
-  }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions #newIntimationButton {
-    order: 4;
-  }
-  html[data-ui="v2"] #view-inbox .publication-primary-actions #newIntimationButton,
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .publication-mine-only,
-  html[data-ui="v2"] #view-inbox .publication-primary-actions .ai-classifier-backlog-status {
+  /* Uma ação por linha, na ordem do DOM (Tab acompanha o visual): menu do Atrium IA, filtro,
+     envio por e-mail e nova publicação. Meia largura cortava "Atrium IA" e o filtro. */
+  html[data-ui="v2"] #view-inbox .publication-primary-actions > * {
     grid-column: 1 / -1;
   }
-}
+  html[data-ui="v2"] #view-inbox .ai-control-panel { width: 100%; }
+  html[data-ui="v2"] #view-inbox .publication-primary-actions .ai-control-menu > summary {
+    width: 100%;
+    justify-content: center;
+  }}
 
 /* Celular: a lista vem primeiro, e o texto da publicação não fica sob os botões. */
 html[data-ui="v2"] .inbox-filters-toggle,
@@ -2659,30 +2984,72 @@ html[data-ui="v2"] #intimationDetail .detail-actions-more {
 
 @media (max-width: 760px) {
   html[data-ui="v2"] #view-inbox .publications-metrics-grid {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--v2-space-2);
-    overflow-x: auto;
-    scrollbar-width: none;
+    overflow: visible;
   }
 
   html[data-ui="v2"] #view-inbox .pub-metric-card {
-    flex: 0 0 132px;
+    min-width: 0;
     min-height: 0;
-    padding: var(--v2-space-2) var(--v2-space-3);
+    padding: var(--v2-space-2);
   }
 
   html[data-ui="v2"] #view-inbox .pub-metric-icon {
     display: none;
   }
 
+  /* Contadores compactos: número e rótulo na mesma linha, sem quebrar "Não / tratadas".
+     Antes, os quatro cartões ocupavam ~170px e empurravam a primeira publicação para baixo. */
+  html[data-ui="v2"] #view-inbox #publicationsMetrics .pub-metric-card {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: var(--v2-space-1) var(--v2-space-3);
+  }
+
+  html[data-ui="v2"] #view-inbox #publicationsMetrics .pub-metric-content {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--v2-space-2);
+    min-width: 0;
+  }
+
+  html[data-ui="v2"] #view-inbox #publicationsMetrics .pub-metric-content strong {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  html[data-ui="v2"] #view-inbox #publicationsMetrics .pub-metric-content span {
+    margin: 0;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 13px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   html[data-ui="v2"] #view-inbox #inboxFilters {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow-x: visible;
+    max-width: 100%;
+    width: 100%;
+    gap: 4px;
+    padding: 4px;
   }
 
   html[data-ui="v2"] #view-inbox #inboxFilters > button {
-    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding-inline: 4px;
+    justify-content: center;
+    white-space: nowrap;
   }
 
   html[data-ui="v2"] .inbox-filters-toggle {
@@ -2699,6 +3066,8 @@ html[data-ui="v2"] #intimationDetail .detail-actions-more {
   html[data-ui="v2"] #intimationDetail .detail-actions-more {
     display: inline-flex;
     justify-content: center;
+    grid-column: 1 / -1;
+    width: 100%;
     min-height: 44px;
   }
 
@@ -2711,7 +3080,8 @@ html[data-ui="v2"] #intimationDetail .detail-actions-more {
 html[data-ui="v2"] #intimationDetail .publication-detail-next {
   position: absolute;
   top: 12px;
-  right: 108px;
+  /* Fechar (44) e Maximizar (44) com 8px entre cada um: Próxima termina 8px antes do Maximizar. */
+  right: calc(var(--v2-space-3) + 104px);
   min-height: 44px;
 }
 
@@ -2719,4 +3089,11 @@ html[data-ui="v2"] #intimationDetail .publication-detail-next {
   html[data-ui="v2"] #intimationDetail .publication-detail-next {
     right: 68px;
   }
+}
+
+/* Até 860px (mesmo corte da estrutura mobile em shell.js): a lista rola junto com a página
+   para que a barra inferior recolha normalmente em retrato e paisagem no iPhone. */
+@media (max-width: 860px) {
+  html[data-ui="v2"] #view-inbox .inbox-list-card { max-height: none; }
+  html[data-ui="v2"] #inboxList { max-height: none; overflow: visible; }
 }
